@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  checks: write
+  contents: read
+
 jobs:
   fast-check:
     name: Fast PR checks (lint, trunk, quick-tests)
@@ -13,6 +17,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install jq (required by trunk-action)
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run Trunk check (fast)
         uses: trunk-io/trunk-action@v1
