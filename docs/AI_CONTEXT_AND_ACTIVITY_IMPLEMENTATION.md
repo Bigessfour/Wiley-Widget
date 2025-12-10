@@ -12,6 +12,7 @@ Enhanced the Wiley Widget database and application to support AI context extract
 ## 🎯 Key Features Implemented
 
 ### 1. AI Context Entity Tracking
+
 - **Entity Extraction**: Automatically extracts important information from conversations:
   - **Person Names**: Tracks individuals mentioned in conversations
   - **Dates**: Captures mentioned dates for meetings, deadlines, events
@@ -26,6 +27,7 @@ Enhanced the Wiley Widget database and application to support AI context extract
 - **Normalization**: Standardizes entity values for consistent matching
 
 ### 2. Activity Logging System
+
 - **Real-Time Tracking**: Records all user activities and system events
 - **Activity Grid Integration**: Populates the Activity Grid with live database data
 - **Auto-Refresh**: Updates every 30 seconds
@@ -38,6 +40,7 @@ Enhanced the Wiley Widget database and application to support AI context extract
 ## 📊 Database Schema
 
 ### AIContextEntities Table
+
 ```sql
 CREATE TABLE dbo.AIContextEntities (
     Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -58,12 +61,14 @@ CREATE TABLE dbo.AIContextEntities (
 ```
 
 **Indexes**:
+
 - IX_AIContextEntities_ConversationId
 - IX_AIContextEntities_Type_NormalizedValue
 - IX_AIContextEntities_LastMentionedAt (DESC)
 - IX_AIContextEntities_IsActive_Filtered
 
 ### ActivityLogs Table
+
 ```sql
 CREATE TABLE dbo.ActivityLogs (
     Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -84,6 +89,7 @@ CREATE TABLE dbo.ActivityLogs (
 ```
 
 **Indexes**:
+
 - IX_ActivityLogs_Timestamp (DESC)
 - IX_ActivityLogs_ActivityType
 - IX_ActivityLogs_User
@@ -97,6 +103,7 @@ CREATE TABLE dbo.ActivityLogs (
 ### 1. Repository Layer
 
 **IAIContextRepository** (`src/WileyWidget.Data/IAIContextRepository.cs`)
+
 ```csharp
 public interface IAIContextRepository
 {
@@ -110,6 +117,7 @@ public interface IAIContextRepository
 ```
 
 **IActivityLogRepository** (`src/WileyWidget.Data/IActivityLogRepository.cs`)
+
 ```csharp
 public interface IActivityLogRepository
 {
@@ -126,6 +134,7 @@ public interface IActivityLogRepository
 **IAIContextExtractionService** (`src/WileyWidget.Services.Abstractions/IAIContextExtractionService.cs`)
 
 Uses regex pattern matching to extract entities:
+
 - **Date Pattern**: Matches dates in various formats
 - **Account Pattern**: Identifies GL account numbers
 - **Amount Pattern**: Extracts monetary amounts
@@ -138,12 +147,14 @@ Uses regex pattern matching to extract entities:
 ### 3. UI Integration
 
 **ChatWindow** (`src/WileyWidget.WinForms/Forms/ChatWindow.cs`)
+
 - Extracts context from every message exchange
 - Logs chat activities to database
 - Tracks conversation metrics (duration, status)
 - Fire-and-forget background extraction (non-blocking)
 
 **MainForm Activity Grid** (`src/WileyWidget.WinForms/Forms/MainForm.Docking.cs`)
+
 - Loads activities from database instead of hardcoded sample data
 - Auto-refreshes every 30 seconds
 - Displays: Timestamp, Activity, Details, User
@@ -154,6 +165,7 @@ Uses regex pattern matching to extract entities:
 ## 🔄 Data Flow
 
 ### Message Processing Flow
+
 ```
 User sends message
     ↓
@@ -179,6 +191,7 @@ Activity Grid auto-refreshes (30s interval)
 ```
 
 ### Context Extraction Process
+
 ```
 Message text
     ↓
@@ -199,15 +212,18 @@ Check for duplicates (by normalized value)
 ## 📈 Database Objects Created
 
 ### Tables
+
 1. **AIContextEntities** - Context entity storage
 2. **ActivityLogs** - Activity tracking
 
 ### Stored Procedures
+
 1. **sp_ArchiveOldActivityLogs** - Cleanup old logs (default 90 days)
 2. **sp_GetAIContextForConversation** - Retrieve context for conversation
 3. **sp_GetRecentActivities** - Get latest activities for grid
 
 ### Views
+
 1. **vw_AIContextSummary** - Entity statistics by type
 2. **vw_ActivityStatistics** - Activity metrics dashboard
 
@@ -216,6 +232,7 @@ Check for duplicates (by normalized value)
 ## 🚀 Usage Examples
 
 ### Extract Context from Conversation
+
 ```csharp
 var contextService = serviceProvider.GetRequiredService<IAIContextExtractionService>();
 var entities = await contextService.ExtractEntitiesAsync(
@@ -226,6 +243,7 @@ var entities = await contextService.ExtractEntitiesAsync(
 ```
 
 ### Log Activity
+
 ```csharp
 var activityRepo = serviceProvider.GetRequiredService<IActivityLogRepository>();
 await activityRepo.LogActivityAsync(new ActivityLog
@@ -242,12 +260,14 @@ await activityRepo.LogActivityAsync(new ActivityLog
 ```
 
 ### Query Activity Grid Data
+
 ```csharp
 var activities = await activityRepo.GetRecentActivitiesAsync(skip: 0, take: 50);
 activityGrid.DataSource = activities;
 ```
 
 ### Search Context Entities
+
 ```csharp
 var contextRepo = serviceProvider.GetRequiredService<IAIContextRepository>();
 var accountEntities = await contextRepo.SearchEntitiesAsync("Account", "1001");
@@ -259,16 +279,19 @@ var peopleEntities = await contextRepo.GetEntitiesByTypeAsync("Person");
 ## 🎨 UI Enhancements
 
 ### Activity Grid (MainForm Right Panel)
+
 **Before**: Hardcoded sample data  
 **After**: Real-time database integration
 
 **Features**:
+
 - Live data from ActivityLogs table
 - Auto-refresh every 30 seconds
 - Sortable and filterable columns
 - Graceful fallback to sample data if DB unavailable
 
 **Completeness**: **95%** (was 60%)
+
 - ✅ Real-time database binding
 - ✅ Auto-refresh mechanism
 - ✅ Error handling with fallback
@@ -279,11 +302,14 @@ var peopleEntities = await contextRepo.GetEntitiesByTypeAsync("Person");
 ## 🧪 Testing
 
 ### Sample Data Included
+
 The migration script inserts sample data for immediate testing:
+
 - 5 sample AI context entities
 - 7 sample activity log entries
 
 ### Manual Testing Commands
+
 ```sql
 -- View context entities
 SELECT * FROM dbo.AIContextEntities WHERE IsActive = 1;
@@ -316,12 +342,14 @@ EXEC dbo.sp_ArchiveOldActivityLogs @DaysToKeep = 90;
 ## 📊 Performance Optimizations
 
 ### Database
+
 - Strategic indexes on frequently queried columns
 - Filtered indexes for active records only
 - Descending indexes for time-based queries
 - Archive mechanism to prevent table bloat
 
 ### Application
+
 - Fire-and-forget context extraction (non-blocking UI)
 - 30-second refresh interval (configurable)
 - Async/await throughout
@@ -332,6 +360,7 @@ EXEC dbo.sp_ArchiveOldActivityLogs @DaysToKeep = 90;
 ## 🔮 Future Enhancements
 
 ### Context Extraction
+
 - [ ] Integrate NLP/ML models (Azure Cognitive Services, OpenAI)
 - [ ] Custom entity types (departments, vendors, projects)
 - [ ] Relationship tracking (entity graphs)
@@ -339,6 +368,7 @@ EXEC dbo.sp_ArchiveOldActivityLogs @DaysToKeep = 90;
 - [ ] Multi-language support
 
 ### Activity Logging
+
 - [ ] Real-time notifications (SignalR)
 - [ ] Activity filters in UI (by user, type, date)
 - [ ] Export to CSV/Excel
@@ -346,6 +376,7 @@ EXEC dbo.sp_ArchiveOldActivityLogs @DaysToKeep = 90;
 - [ ] Anomaly detection (unusual patterns)
 
 ### AI Memory
+
 - [ ] Use context entities to personalize AI responses
 - [ ] "Remember when we discussed..." queries
 - [ ] Context-aware suggestions
@@ -357,18 +388,22 @@ EXEC dbo.sp_ArchiveOldActivityLogs @DaysToKeep = 90;
 ## 📝 Migration Guide
 
 ### Database Setup
+
 1. Run migration script: `sql/migrations/20251209_Add_AI_Context_And_Activity_Tables.sql`
 2. Verify tables created: Check for `AIContextEntities` and `ActivityLogs`
 3. Test stored procedures: Run sample queries
 4. Review sample data: Confirm test records inserted
 
 ### Application Startup
+
 Services are automatically registered via DI:
+
 - `IAIContextRepository` → `AIContextRepository`
 - `IActivityLogRepository` → `ActivityLogRepository`
 - `IAIContextExtractionService` → `AIContextExtractionService`
 
 ### Verification
+
 1. Start application
 2. Open Chat Window
 3. Send a message mentioning a date, name, or account
@@ -380,27 +415,33 @@ Services are automatically registered via DI:
 ## 📚 Related Files
 
 ### Models
+
 - `src/WileyWidget.Models/Models/AIContextEntity.cs`
 - `src/WileyWidget.Models/Models/ActivityLog.cs`
 
 ### Repositories
+
 - `src/WileyWidget.Data/IAIContextRepository.cs`
 - `src/WileyWidget.Data/AIContextRepository.cs`
 - `src/WileyWidget.Data/IActivityLogRepository.cs`
 - `src/WileyWidget.Data/ActivityLogRepository.cs`
 
 ### Services
+
 - `src/WileyWidget.Services.Abstractions/IAIContextExtractionService.cs`
 - `src/WileyWidget.Services/AIContextExtractionService.cs`
 
 ### UI
+
 - `src/WileyWidget.WinForms/Forms/ChatWindow.cs`
 - `src/WileyWidget.WinForms/Forms/MainForm.Docking.cs`
 
 ### Database
+
 - `sql/migrations/20251209_Add_AI_Context_And_Activity_Tables.sql`
 
 ### Configuration
+
 - `src/WileyWidget.Data/AppDbContext.cs` (DbSet registrations)
 - `src/WileyWidget.WinForms/Configuration/DependencyInjection.cs` (service registration)
 
@@ -411,6 +452,7 @@ Services are automatically registered via DI:
 **Mission Complete**: The database and application now fully support AI context extraction and activity tracking.
 
 **Key Achievements**:
+
 - ✅ AI can now remember names, dates, events, accounts from conversations
 - ✅ Activity Grid displays real-time data from database
 - ✅ All activities logged for audit trail

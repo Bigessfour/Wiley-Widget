@@ -23,22 +23,24 @@ lint:
     - markdownlint
     - dotnet-format
   enabled:
+    - flake8@7.3.0
+    - psscriptanalyzer@1.24.0
     - actionlint@1.7.9
     - hadolint@2.14.0
     - shellcheck@0.11.0
     - shfmt@3.6.0
     - svgo@4.0.0
-    - black@25.11.0
+    - black@25.12.0
     - checkov@3.2.495
     - git-diff-check
-    - gitleaks@8.29.1
+    - gitleaks@8.30.0
     - isort@7.0.0
     - osv-scanner@2.3.0
-    - oxipng@9.1.5
-    - prettier@3.6.2
+    - oxipng@10.0.0
+    - prettier@3.7.4
     - pyright@1.1.407
     - taplo@0.10.0
-    - trufflehog@3.91.1
+    - trufflehog@3.92.1
     - yamllint@1.37.1
   ignore:
     - linters: [pyright]
@@ -61,4 +63,6 @@ actions:
     - trunk-upgrade-available
 tools:
   enabled:
+    - converttosarif@1.24.0
+    - pwsh@7.5.4
     - dotnet@9.0.306

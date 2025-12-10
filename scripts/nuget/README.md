@@ -4,10 +4,10 @@ PowerShell scripts for managing the Wiley Widget private NuGet feed.
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `start-server.ps1` | Start/stop the BaGet NuGet server in Docker |
-| `push-package.ps1` | Push .nupkg files to the private feed |
+| Script              | Description                                 |
+| ------------------- | ------------------------------------------- |
+| `start-server.ps1`  | Start/stop the BaGet NuGet server in Docker |
+| `push-package.ps1`  | Push .nupkg files to the private feed       |
 | `list-packages.ps1` | List packages available on the private feed |
 
 ## Quick Start
@@ -31,7 +31,7 @@ $env:NUGET_API_KEY = [System.Guid]::NewGuid().ToString("N")
 Use Command Palette (Ctrl+Shift+P) → "Tasks: Run Task":
 
 - `nuget:start-server` - Start the NuGet server
-- `nuget:stop-server` - Stop the NuGet server  
+- `nuget:stop-server` - Stop the NuGet server
 - `nuget:push-package` - Push a single package (prompts for path)
 - `nuget:push-syncfusion-patches` - Push all packages from `packages/local/syncfusion-patches/`
 - `nuget:list-packages` - List all packages on the feed

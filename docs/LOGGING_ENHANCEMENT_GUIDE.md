@@ -1,4 +1,5 @@
 # Logging Enhancement Guide for Wiley Widget
+
 **Target:** Address remaining 8% coverage gaps + add optional production features
 
 ---
@@ -14,6 +15,7 @@ These add immediate value with minimal code changes.
 **File:** `WileyWidget.WinForms/Forms/MainForm.cs`
 
 **Current State:**
+
 ```csharp
 private void RefreshButton_Click(object sender, EventArgs e)
 {
@@ -22,6 +24,7 @@ private void RefreshButton_Click(object sender, EventArgs e)
 ```
 
 **Enhanced:**
+
 ```csharp
 private void RefreshButton_Click(object sender, EventArgs e)
 {
@@ -45,6 +48,7 @@ private void ExportButton_Click(object sender, EventArgs e)
 **File:** `src/Services/MainDashboardService.cs`
 
 **Current:**
+
 ```csharp
 public async Task<DashboardDataDto> LoadDashboardDataAsync()
 {
@@ -54,16 +58,17 @@ public async Task<DashboardDataDto> LoadDashboardDataAsync()
 ```
 
 **Enhanced:**
+
 ```csharp
 public async Task<DashboardDataDto> LoadDashboardDataAsync()
 {
     using var activity = LogActivity.Start(_logger, "LoadDashboardData");
-    
+
     var accounts = await _accountRepository.GetAllAsync();
     _logger.LogInformation("Loaded {AccountCount} accounts", accounts.Count);
-    
+
     // ... processing with nested activities
-    
+
     return result; // LogActivity logs elapsed time on Dispose
 }
 
@@ -97,6 +102,7 @@ private static class LogActivity
 **Benefit:** Identify performance bottlenecks in production
 
 **Output:**
+
 ```
 ▶ LoadDashboardData started
 Loaded 72 accounts
@@ -110,6 +116,7 @@ Loaded 72 accounts
 **File:** `src/Services/SettingsService.cs`
 
 **Current:**
+
 ```csharp
 var result = await _validator.ValidateAsync(settings, ct);
 if (!result.IsValid)
@@ -121,6 +128,7 @@ if (!result.IsValid)
 ```
 
 **Enhanced:**
+
 ```csharp
 var result = await _validator.ValidateAsync(settings, ct);
 if (!result.IsValid)
@@ -128,15 +136,15 @@ if (!result.IsValid)
     var errorDetails = result.Errors
         .GroupBy(e => e.PropertyName)
         .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToList());
-    
+
     _logger.LogWarning("Settings validation failed: {@ValidationErrors}", errorDetails);
-    
+
     // Log individual errors for structured queries
     foreach (var error in result.Errors)
     {
         _logger.LogDebug("Validation error: {Property} = {Message}", error.PropertyName, error.ErrorMessage);
     }
-    
+
     throw new ValidationException(result.Errors);
 }
 ```
@@ -156,6 +164,7 @@ These add advanced tracing capabilities.
 **File:** `WileyWidget.WinForms/Program.cs`
 
 **Step 1: Add enricher in Serilog setup**
+
 ```csharp
 .Enrich.When(
     logEvent => string.IsNullOrEmpty(logEvent.Properties.GetValueOrDefault("CorrelationId")?.ToString() ?? ""),
@@ -163,18 +172,20 @@ These add advanced tracing capabilities.
 ```
 
 **Step 2: Use in MainForm constructor**
+
 ```csharp
 public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, MainViewModel? viewModel = null)
 {
     var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
     Serilog.Log.Logger = Serilog.Log.Logger.ForContext("CorrelationId", correlationId);
-    
+
     _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     _logger.LogInformation("MainForm session opened - Correlation: {CorrelationId}", correlationId);
 }
 ```
 
 **Step 3: Use in async operations**
+
 ```csharp
 private async Task InitializeDataAsync()
 {
@@ -198,6 +209,7 @@ private async Task InitializeDataAsync()
 ```
 
 **Output:**
+
 ```
 2025-12-05 13:33:12.000 [INF] MainForm session opened - Correlation: a1b2c3d4
 2025-12-05 13:33:12.050 [INF] Dashboard initialization started {CorrelationId: a1b2c3d4, Operation: DashboardLoad}
@@ -253,11 +265,13 @@ namespace WileyWidget.WinForms.Diagnostics
 ```
 
 **Register in Program.cs:**
+
 ```csharp
 .Enrich.With(new UserContextEnricher(() => Environment.UserName))
 ```
 
 **Output:**
+
 ```
 2025-12-05 13:33:12 [INF] MainForm initialized {UserName: biges, UserRole: Standard}
 ```
@@ -293,7 +307,7 @@ namespace WileyWidget.Services.Logging
             try
             {
                 _stopwatch.Restart();
-                
+
                 if (parameters != null)
                 {
                     _logger.LogInformation("Service operation started: {Operation} with params: {@Parameters}",
@@ -325,6 +339,7 @@ namespace WileyWidget.Services.Logging
 ```
 
 **Usage in Service:**
+
 ```csharp
 private readonly ServiceCallInterceptor _interceptor;
 
@@ -369,6 +384,7 @@ These are for advanced monitoring in production environments.
 ```
 
 **NuGet Package:**
+
 ```powershell
 dotnet add package Serilog.Sinks.ApplicationInsights
 dotnet add package Microsoft.ApplicationInsights
@@ -404,6 +420,7 @@ networks:
 ```
 
 **Configure Serilog:**
+
 ```json
 {
   "WriteTo": [
@@ -419,6 +436,7 @@ networks:
 ```
 
 **Run & Access:**
+
 ```bash
 docker-compose up seq
 # Then visit http://localhost:5341
@@ -430,16 +448,16 @@ docker-compose up seq
 
 ## Implementation Priority Recommendation
 
-| Phase | Effort | Impact | Recommended? |
-|-------|--------|--------|---|
-| Phase 1.1 (Button logging) | 15 min | High | ⭐⭐⭐ YES |
-| Phase 1.2 (Performance metrics) | 20 min | Medium | ⭐⭐⭐ YES |
-| Phase 1.3 (Validation details) | 10 min | High | ⭐⭐⭐ YES |
-| Phase 2.1 (Correlation IDs) | 45 min | Medium | ⭐⭐ Optional |
-| Phase 2.2 (User context) | 30 min | Low | ⭐ Nice-to-have |
-| Phase 2.3 (Service interceptor) | 45 min | Low | ⭐ Nice-to-have |
-| Phase 3.1 (App Insights) | 30 min | Medium | ⭐ For prod only |
-| Phase 3.2 (Seq) | 60 min | High | ⭐⭐ For prod |
+| Phase                           | Effort | Impact | Recommended?     |
+| ------------------------------- | ------ | ------ | ---------------- |
+| Phase 1.1 (Button logging)      | 15 min | High   | ⭐⭐⭐ YES       |
+| Phase 1.2 (Performance metrics) | 20 min | Medium | ⭐⭐⭐ YES       |
+| Phase 1.3 (Validation details)  | 10 min | High   | ⭐⭐⭐ YES       |
+| Phase 2.1 (Correlation IDs)     | 45 min | Medium | ⭐⭐ Optional    |
+| Phase 2.2 (User context)        | 30 min | Low    | ⭐ Nice-to-have  |
+| Phase 2.3 (Service interceptor) | 45 min | Low    | ⭐ Nice-to-have  |
+| Phase 3.1 (App Insights)        | 30 min | Medium | ⭐ For prod only |
+| Phase 3.2 (Seq)                 | 60 min | High   | ⭐⭐ For prod    |
 
 ---
 
@@ -448,6 +466,7 @@ docker-compose up seq
 Do this now to close the remaining 8% coverage gap:
 
 ### Step 1: Add to MainForm.cs
+
 ```csharp
 // In each button handler:
 private void RefreshButton_Click(object sender, EventArgs e)
@@ -464,6 +483,7 @@ private void ExportButton_Click(object sender, EventArgs e)
 ```
 
 ### Step 2: Add Performance Helper
+
 Create file: `src/Utilities/PerformanceLogger.cs`
 
 ```csharp
@@ -499,6 +519,7 @@ namespace WileyWidget.Utilities
 ```
 
 ### Step 3: Use in Services
+
 ```csharp
 public async Task<DashboardDataDto> LoadDashboardAsync()
 {
@@ -541,9 +562,9 @@ Select-String -Path "logs/wiley-widget-*.log" -Pattern "Validation failed"
 ---
 
 **Next Steps:**
+
 1. Choose one Phase 1 enhancement
 2. Implement in a test service
 3. Verify logs in `/logs`
 4. Repeat for remaining Phase 1 items
 5. Plan Phase 2 for next sprint
-

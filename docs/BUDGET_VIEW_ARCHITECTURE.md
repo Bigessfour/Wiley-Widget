@@ -59,15 +59,18 @@ This document explains the **layered architecture** and how each file determines
 ## 📁 File Responsibilities
 
 ### 1️⃣ **BudgetEntry.cs** (Model Layer)
+
 **Location:** `src\WileyWidget.Models\Models\BudgetEntry.cs`
 
 **Determines:**
+
 - ✅ What **properties** exist (AccountNumber, BudgetedAmount, ActualAmount, etc.)
 - ✅ What **relationships** exist (Department, Fund, Parent/Children)
 - ✅ **Data validation rules** (Required, MaxLength, RegularExpression)
 - ✅ **Computed properties** (Variance = BudgetedAmount - ActualAmount)
 
 **Example:**
+
 ```csharp
 public class BudgetEntry
 {
@@ -88,15 +91,18 @@ public class BudgetEntry
 ---
 
 ### 2️⃣ **IBudgetRepository.cs** (Business Interface)
+
 **Location:** `src\WileyWidget.Business\Interfaces\IBudgetRepository.cs`
 
 **Determines:**
+
 - ✅ What **data operations** are available
 - ✅ What **query methods** exist (GetByFiscalYearAsync, GetByDepartmentAsync)
 - ✅ What **CRUD operations** are supported (AddAsync, UpdateAsync, DeleteAsync)
 - ✅ What **analysis methods** exist (GetVarianceAnalysisAsync, GetYearEndSummaryAsync)
 
 **Example:**
+
 ```csharp
 public interface IBudgetRepository
 {
@@ -114,14 +120,17 @@ public interface IBudgetRepository
 ---
 
 ### 3️⃣ **BudgetRepository.cs** (Data Implementation)
+
 **Location:** `src\WileyWidget.Data\BudgetRepository.cs`
 
 **Determines:**
+
 - ✅ **How** data is fetched (EF Core queries, caching, filtering)
 - ✅ **Performance optimizations** (AsNoTracking, Include statements)
 - ✅ **Telemetry and logging**
 
 **Example:**
+
 ```csharp
 public class BudgetRepository : IBudgetRepository
 {
@@ -142,21 +151,25 @@ public class BudgetRepository : IBudgetRepository
 ---
 
 ### 4️⃣ **BudgetViewModel.cs** (Presentation Logic)
+
 **Location:** `src\WileyWidget.WinForms\ViewModels\BudgetViewModel.cs`
 
 **Determines:**
+
 - ✅ What **state** the UI needs (collections, selected items, filters)
 - ✅ What **commands** are available (Load, Add, Edit, Delete, Export)
 - ✅ What **business logic** happens before/after data operations
 - ✅ What **derived properties** are computed (TotalBudgeted, TotalVariance, PercentUsed)
 
 **Built from:**
+
 1. **BudgetEntry properties** → `ObservableCollection<BudgetEntry> BudgetEntries`
 2. **Repository methods** → `IAsyncRelayCommand LoadBudgetsCommand`, `AddEntryAsync()`
 3. **UI needs** → Filter properties, analysis properties, error messages
 4. **Export services** → Export commands using `IPdfExportService`, `IExcelExportService`
 
 **Example:**
+
 ```csharp
 public partial class BudgetViewModel : ObservableObject
 {
@@ -196,21 +209,25 @@ public partial class BudgetViewModel : ObservableObject
 ---
 
 ### 5️⃣ **BudgetViewForm.cs** (UI Implementation)
+
 **Location:** `src\WileyWidget.WinForms\Forms\BudgetViewForm.cs`
 
 **Determines:**
+
 - ✅ What **UI controls** are shown (DataGrid, Charts, Buttons, TextBoxes)
 - ✅ How **data binding** works (BindingSource, PropertyChanged events)
 - ✅ What **user interactions** are possible (Click events, Context menus)
 - ✅ How data is **visualized** (Chart types, Grid columns, Formatting)
 
 **Built from:**
+
 1. **ViewModel properties** → Bound to UI controls
 2. **ViewModel commands** → Wired to button clicks
 3. **BudgetEntry properties** → Grid columns, chart data points
 4. **UI/UX requirements** → Layout, styling, user feedback
 
 **Example:**
+
 ```csharp
 public partial class BudgetViewForm : Form
 {
@@ -259,18 +276,21 @@ public partial class BudgetViewForm : Form
 ### When adding a new feature, ask:
 
 #### 1. **Is it a data field?** → Add to `BudgetEntry.cs`
+
 ```csharp
 // Example: Add "Notes" field
 public string Notes { get; set; }
 ```
 
 #### 2. **Is it a data operation?** → Add to `IBudgetRepository.cs` and implement in `BudgetRepository.cs`
+
 ```csharp
 // Example: Get overbudget entries
 Task<IEnumerable<BudgetEntry>> GetOverBudgetEntriesAsync(int fiscalYear);
 ```
 
 #### 3. **Is it UI state or business logic?** → Add to `BudgetViewModel.cs`
+
 ```csharp
 // Example: Filter state
 [ObservableProperty]
@@ -282,6 +302,7 @@ private int entriesOverBudget;
 ```
 
 #### 4. **Is it a user action?** → Add command to `BudgetViewModel.cs` and wire in Form
+
 ```csharp
 // ViewModel:
 public IAsyncRelayCommand CalculateVariancesCommand { get; }
@@ -293,6 +314,7 @@ calcBtn.Click += async (s, e) =>
 ```
 
 #### 5. **Is it visual/layout?** → Add to `BudgetViewForm.cs`
+
 ```csharp
 // Example: Add a chart
 var chart = new ChartControl { Dock = DockStyle.Fill };
@@ -304,6 +326,7 @@ panel.Controls.Add(chart);
 ## 📊 Concrete Example: Adding "Budget Notes" Feature
 
 ### Step 1: Add to Model
+
 ```csharp
 // BudgetEntry.cs
 [MaxLength(500)]
@@ -311,6 +334,7 @@ public string? Notes { get; set; }
 ```
 
 ### Step 2: Add Repository Method (if needed)
+
 ```csharp
 // IBudgetRepository.cs
 Task<IEnumerable<BudgetEntry>> GetEntriesWithNotesAsync(int fiscalYear);
@@ -325,6 +349,7 @@ public async Task<IEnumerable<BudgetEntry>> GetEntriesWithNotesAsync(int fiscalY
 ```
 
 ### Step 3: Add to ViewModel
+
 ```csharp
 // BudgetViewModel.cs
 [ObservableProperty]
@@ -343,6 +368,7 @@ private async Task FilterNotesAsync()
 ```
 
 ### Step 4: Add to Form
+
 ```csharp
 // BudgetViewForm.cs
 // Add column to grid
@@ -374,15 +400,15 @@ notesFilterCheck.CheckedChanged += (s, e) =>
 
 ## 🔍 Quick Reference: Finding What You Need
 
-| Want to... | Look at... |
-|------------|-----------|
-| Know what properties exist | `BudgetEntry.cs` |
-| Know what queries are possible | `IBudgetRepository.cs` |
-| Understand data fetching logic | `BudgetRepository.cs` |
-| See what commands are available | `BudgetViewModel.cs` (Commands section) |
-| See what filters/state exist | `BudgetViewModel.cs` (ObservableProperty fields) |
-| See what buttons/controls exist | `BudgetViewForm.cs` (InitializeComponent) |
-| Understand data binding | `BudgetViewForm.cs` (SetupBindings) |
+| Want to...                      | Look at...                                       |
+| ------------------------------- | ------------------------------------------------ |
+| Know what properties exist      | `BudgetEntry.cs`                                 |
+| Know what queries are possible  | `IBudgetRepository.cs`                           |
+| Understand data fetching logic  | `BudgetRepository.cs`                            |
+| See what commands are available | `BudgetViewModel.cs` (Commands section)          |
+| See what filters/state exist    | `BudgetViewModel.cs` (ObservableProperty fields) |
+| See what buttons/controls exist | `BudgetViewForm.cs` (InitializeComponent)        |
+| Understand data binding         | `BudgetViewForm.cs` (SetupBindings)              |
 
 ---
 
@@ -420,12 +446,14 @@ private async Task ExportToPdfAsync(string? filePath)
 ## Summary
 
 **The ViewModel knows what to contain by looking at:**
+
 1. ✅ The **Model** (BudgetEntry) → What properties/data exist
 2. ✅ The **Repository Interface** → What operations are possible
 3. ✅ The **UI requirements** → What state/commands the Form needs
 4. ✅ The **Business logic** → What derived calculations are needed
 
 **The Form knows what to display by looking at:**
+
 1. ✅ The **ViewModel properties** → What to bind to controls
 2. ✅ The **ViewModel commands** → What actions to trigger
 3. ✅ The **Model properties** → What columns/fields to show

@@ -327,7 +327,6 @@ Copy-Item "$env:APPDATA\WileyWidget\Secrets\.entropy" -Destination "C:\SecureBac
 1. Login to https://developer.intuit.com/app/developer/dashboard
 2. Click **Create an app** → **QuickBooks Online**
 3. Configure:
-
    - **App Name**: WileyWidget Development
    - **Redirect URIs**:
      - `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl`

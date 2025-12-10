@@ -47,8 +47,8 @@ Wiley Widget now has **complete Multiple Document Interface (MDI) support** with
 ```json
 {
   "UI": {
-    "UseMdiMode": true,          // Enable MDI container mode
-    "UseTabbedMdi": true,        // Use Syncfusion TabbedMDIManager
+    "UseMdiMode": true, // Enable MDI container mode
+    "UseTabbedMdi": true, // Use Syncfusion TabbedMDIManager
     "SyncfusionTheme": "Office2019DarkGray"
   }
 }
@@ -62,16 +62,16 @@ Wiley Widget now has **complete Multiple Document Interface (MDI) support** with
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+M` | Toggle MDI mode on/off |
-| `Ctrl+Tab` | Cycle to next MDI child |
+| Shortcut         | Action                      |
+| ---------------- | --------------------------- |
+| `Ctrl+M`         | Toggle MDI mode on/off      |
+| `Ctrl+Tab`       | Cycle to next MDI child     |
 | `Ctrl+Shift+Tab` | Cycle to previous MDI child |
-| `Ctrl+F4` | Close active MDI child |
-| `Ctrl+Shift+W` | Close all MDI children |
-| `Ctrl+Shift+C` | Cascade windows |
-| `Ctrl+Shift+H` | Tile windows horizontally |
-| `Ctrl+Shift+V` | Tile windows vertically |
+| `Ctrl+F4`        | Close active MDI child      |
+| `Ctrl+Shift+W`   | Close all MDI children      |
+| `Ctrl+Shift+C`   | Cascade windows             |
+| `Ctrl+Shift+H`   | Tile windows horizontally   |
+| `Ctrl+Shift+V`   | Tile windows vertically     |
 
 ## Usage Examples
 
@@ -111,7 +111,7 @@ public class MyForm : MdiChildFormBase
     {
         SetLogger(logger);
         InitializeComponent();
-        
+
         // Create menu that merges with parent
         var menuStrip = CreateMdiChildMenuStrip();
         var fileMenu = CreateMergeMenuItem("&File");
@@ -159,17 +159,17 @@ _tabbedMdiManager = new TabbedMDIManager
 {
     // Theme applied via ThemeName (uses SkinManager)
     ThemeName = "Office2019DarkGray",
-    
+
     // Tab positioning
     TabsTextOrientation = Orientation.Horizontal,
-    
+
     // Features
     ShowCloseButton = true,
     ShowTabListPopup = true,
     ShowNewButton = false,
-    
+
     // TabControlAdv settings
-    TabControlAdv = 
+    TabControlAdv =
     {
         ShowTabCloseButton = true,
         ShowScroll = true,
@@ -263,15 +263,17 @@ form.FormClosed += (s, e) => scope.Dispose();
 - **TabbedMDI** (UseMdiMode = true): For document-centric multi-window interface
 
 **Default Configuration**:
+
 ```json
 {
-  "UseSyncfusionDocking": true,   // Use DockingManager for layout
-  "UseMdiMode": true,              // Use TabbedMDI for documents
+  "UseSyncfusionDocking": true, // Use DockingManager for layout
+  "UseMdiMode": true, // Use TabbedMDI for documents
   "UseTabbedMdi": true
 }
 ```
 
 Both can coexist, but typically you'd use:
+
 - DockingManager for tool windows (panels, AI chat, etc.)
 - TabbedMDI for document windows (forms, reports, etc.)
 
@@ -377,6 +379,7 @@ These features are **not critical** for production use and can be added later if
 ## Conclusion
 
 The MDI implementation is **production-ready** with comprehensive support for:
+
 - Standard MDI operations
 - Syncfusion TabbedMDIManager integration
 - Theme support

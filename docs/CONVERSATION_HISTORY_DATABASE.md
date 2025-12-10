@@ -10,22 +10,22 @@ Conversation history for the AI Chat window is now persisted in the WileyWidget 
 
 Located in: `dbo.ConversationHistories`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `Id` | INT IDENTITY | Primary key (auto-increment) |
+| Column           | Type          | Description                                          |
+| ---------------- | ------------- | ---------------------------------------------------- |
+| `Id`             | INT IDENTITY  | Primary key (auto-increment)                         |
 | `ConversationId` | NVARCHAR(450) | Unique identifier for the conversation (GUID string) |
-| `Title` | NVARCHAR(500) | User-friendly title for the conversation |
-| `Description` | NVARCHAR(MAX) | Optional description or notes |
-| `MessagesJson` | NVARCHAR(MAX) | JSON-serialized array of ChatMessage objects |
-| `InitialContext` | NVARCHAR(MAX) | Context description when conversation started |
-| `MetadataJson` | NVARCHAR(MAX) | Additional metadata as JSON |
-| `CreatedAt` | DATETIME2 | When conversation was first created (UTC) |
-| `UpdatedAt` | DATETIME2 | When conversation was last modified (UTC) |
-| `LastAccessedAt` | DATETIME2 | When conversation was last opened |
-| `MessageCount` | INT | Total number of messages in conversation |
-| `ToolCallCount` | INT | Number of tool calls made (future use) |
-| `IsArchived` | BIT | Soft delete flag |
-| `IsFavorite` | BIT | User favorite flag |
+| `Title`          | NVARCHAR(500) | User-friendly title for the conversation             |
+| `Description`    | NVARCHAR(MAX) | Optional description or notes                        |
+| `MessagesJson`   | NVARCHAR(MAX) | JSON-serialized array of ChatMessage objects         |
+| `InitialContext` | NVARCHAR(MAX) | Context description when conversation started        |
+| `MetadataJson`   | NVARCHAR(MAX) | Additional metadata as JSON                          |
+| `CreatedAt`      | DATETIME2     | When conversation was first created (UTC)            |
+| `UpdatedAt`      | DATETIME2     | When conversation was last modified (UTC)            |
+| `LastAccessedAt` | DATETIME2     | When conversation was last opened                    |
+| `MessageCount`   | INT           | Total number of messages in conversation             |
+| `ToolCallCount`  | INT           | Number of tool calls made (future use)               |
+| `IsArchived`     | BIT           | Soft delete flag                                     |
+| `IsFavorite`     | BIT           | User favorite flag                                   |
 
 ### Indexes
 
@@ -38,6 +38,7 @@ Located in: `dbo.ConversationHistories`
 **File**: `src/WileyWidget.Models/Models/ConversationHistory.cs`
 
 The `ConversationHistory` entity corresponds to the database table and includes:
+
 - Navigation properties for EF Core
 - JSON serialization support via `MessagesJson` and `MetadataJson`
 - Audit timestamps (CreatedAt, UpdatedAt, LastAccessedAt)
@@ -45,6 +46,7 @@ The `ConversationHistory` entity corresponds to the database table and includes:
 **File**: `src/WileyWidget.Models/Models/ChatMessage.cs`
 
 The `ChatMessage` class represents individual messages:
+
 ```csharp
 public class ChatMessage
 {
@@ -61,6 +63,7 @@ public class ChatMessage
 ### ChatWindow.cs Methods
 
 #### SaveConversationAsync(string? conversationId = null)
+
 - Saves current conversation to database
 - Auto-generates conversation ID if not provided
 - Updates existing conversation or creates new record
@@ -68,21 +71,25 @@ public class ChatMessage
 - **Auto-called** after each message exchange
 
 #### LoadConversationAsync(string conversationId)
+
 - Loads conversation from database by ConversationId
 - Deserializes JSON messages back to ChatMessage objects
 - Updates UI with loaded messages
 - Updates LastAccessedAt timestamp
 
 #### GetRecentConversationsAsync(int limit = 20)
+
 - Returns list of recent non-archived conversations
 - Ordered by UpdatedAt descending
 - Useful for building conversation history UI
 
 #### DeleteConversationAsync(string conversationId)
+
 - Soft-deletes conversation by setting IsArchived = true
 - Preserves data for potential recovery
 
 #### StartNewConversation()
+
 - Clears current messages
 - Resets conversation ID
 - Prepares for fresh chat session
@@ -90,18 +97,21 @@ public class ChatMessage
 ## Usage Examples
 
 ### Manual Save
+
 ```csharp
 // Save current conversation with specific ID
 await chatWindow.SaveConversationAsync("my-conversation-123");
 ```
 
 ### Load Previous Conversation
+
 ```csharp
 // Load conversation by ID
 await chatWindow.LoadConversationAsync("my-conversation-123");
 ```
 
 ### List Recent Conversations
+
 ```csharp
 // Get 10 most recent conversations
 var recent = await chatWindow.GetRecentConversationsAsync(10);
@@ -112,6 +122,7 @@ foreach (var conv in recent)
 ```
 
 ### Start Fresh
+
 ```csharp
 // Clear current and start new conversation
 chatWindow.StartNewConversation();
@@ -120,6 +131,7 @@ chatWindow.StartNewConversation();
 ## Auto-Save Behavior
 
 The `ChatWindow` automatically saves the conversation after each message exchange:
+
 1. User sends message
 2. AI processes and responds
 3. `SaveConversationAsync()` is called automatically
@@ -143,6 +155,7 @@ var conversations = await dbContext.ConversationHistories
 ```
 
 This ensures:
+
 - Short-lived DbContext instances (avoid memory leaks)
 - Thread-safe operations
 - Proper async/await patterns
@@ -152,6 +165,7 @@ This ensures:
 ### Test Data Created
 
 A test conversation was inserted during implementation:
+
 ```sql
 ConversationId: 'test-conversation-001'
 Title: 'Budget Analysis Chat - Test'
@@ -159,8 +173,9 @@ MessageCount: 2
 ```
 
 ### Verification Query
+
 ```sql
-SELECT 
+SELECT
     ConversationId,
     Title,
     MessageCount,

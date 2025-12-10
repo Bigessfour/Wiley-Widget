@@ -9,12 +9,12 @@
 
 ### Current Forms (4 Total)
 
-| Form | Purpose | Size | Status | Syncfusion Controls |
-|------|---------|------|--------|---------------------|
-| **MainForm** | Dashboard hub with menu navigation | 1200x800 | ✅ Functional | SfDataGrid (activity log) |
-| **AccountsForm** | CRUD for municipal accounts, filtering, detail panel | 1400x900 | ✅ Functional | SfDataGrid, SfComboBox, SfTextBoxExt |
-| **ChartForm** | Budget analytics with custom-drawn bar/pie charts | 1200x850 | ⚠️ GDI+ custom charts | SfComboBox |
-| **SettingsForm** | Multi-tab settings (General, Connections, QB, Appearance, Advanced) | 700x500 | ✅ Functional | SfTabControl, SfTextBoxExt, SfComboBox, SfCheckBox |
+| Form             | Purpose                                                             | Size     | Status                | Syncfusion Controls                                |
+| ---------------- | ------------------------------------------------------------------- | -------- | --------------------- | -------------------------------------------------- |
+| **MainForm**     | Dashboard hub with menu navigation                                  | 1200x800 | ✅ Functional         | SfDataGrid (activity log)                          |
+| **AccountsForm** | CRUD for municipal accounts, filtering, detail panel                | 1400x900 | ✅ Functional         | SfDataGrid, SfComboBox, SfTextBoxExt               |
+| **ChartForm**    | Budget analytics with custom-drawn bar/pie charts                   | 1200x850 | ⚠️ GDI+ custom charts | SfComboBox                                         |
+| **SettingsForm** | Multi-tab settings (General, Connections, QB, Appearance, Advanced) | 700x500  | ✅ Functional         | SfTabControl, SfTextBoxExt, SfComboBox, SfCheckBox |
 
 ---
 
@@ -49,6 +49,7 @@ BudgetEntry (EF Entity)
 ### Display Models
 
 **MunicipalAccountDisplay** (ViewModel projection)
+
 - AccountNumber (string)
 - Name (string)
 - Description (string)
@@ -65,6 +66,7 @@ BudgetEntry (EF Entity)
 ## 3. VIEWMODEL BINDING ARCHITECTURE
 
 ### AccountsViewModel
+
 ```csharp
 ✅ Bindings:
   - IAsyncRelayCommand LoadAccountsCommand (ExecuteAsync)
@@ -79,6 +81,7 @@ BudgetEntry (EF Entity)
 ```
 
 ### ChartViewModel
+
 ```csharp
 ✅ Bindings:
   - ObservableCollection<ChartDataPoint> LineChartData
@@ -97,22 +100,22 @@ BudgetEntry (EF Entity)
 
 ### ✅ Properly Configured
 
-| Control | Form | Usage | Status |
-|---------|------|-------|--------|
-| SfDataGrid | AccountsForm | Account listing | Properly bound, AutoGenerateColumns=false, columns defined |
-| SfComboBox | AccountsForm | Fund/Type filters | Functional, SelectedIndexChanged wired |
-| SfTextBoxExt | AccountsForm, SettingsForm | Text input | Properly disposed in override |
-| SfTabControl | SettingsForm | Multi-tab layout | 5 tabs, proper hierarchy |
-| SfCheckBox | SettingsForm | Checkboxes | Properly disposed |
+| Control      | Form                       | Usage             | Status                                                     |
+| ------------ | -------------------------- | ----------------- | ---------------------------------------------------------- |
+| SfDataGrid   | AccountsForm               | Account listing   | Properly bound, AutoGenerateColumns=false, columns defined |
+| SfComboBox   | AccountsForm               | Fund/Type filters | Functional, SelectedIndexChanged wired                     |
+| SfTextBoxExt | AccountsForm, SettingsForm | Text input        | Properly disposed in override                              |
+| SfTabControl | SettingsForm               | Multi-tab layout  | 5 tabs, proper hierarchy                                   |
+| SfCheckBox   | SettingsForm               | Checkboxes        | Properly disposed                                          |
 
 ### ⚠️ Issues & Recommendations
 
-| Control | Issue | Form | Fix |
-|---------|-------|------|-----|
-| GDI+ Custom Charts | Manual bar/pie rendering; no LiveCharts | ChartForm | **Replace with LiveCharts** |
-| Detail Panel | Manual LINQ updates; not MVVM-bound | AccountsForm | **Bind to SelectedAccount in VM** |
-| Theme Application | Reflection-based at startup (Program.cs) | Global | **Centralize SfSkinManager.SetTheme()** |
-| Form Sizing | Inconsistent (MainForm 1200x800, AccountsForm 1400x900) | Global | **Standardize to 1400x900 + responsive splitters** |
+| Control            | Issue                                                   | Form         | Fix                                                |
+| ------------------ | ------------------------------------------------------- | ------------ | -------------------------------------------------- |
+| GDI+ Custom Charts | Manual bar/pie rendering; no LiveCharts                 | ChartForm    | **Replace with LiveCharts**                        |
+| Detail Panel       | Manual LINQ updates; not MVVM-bound                     | AccountsForm | **Bind to SelectedAccount in VM**                  |
+| Theme Application  | Reflection-based at startup (Program.cs)                | Global       | **Centralize SfSkinManager.SetTheme()**            |
+| Form Sizing        | Inconsistent (MainForm 1200x800, AccountsForm 1400x900) | Global       | **Standardize to 1400x900 + responsive splitters** |
 
 ---
 
@@ -149,12 +152,12 @@ BudgetEntry (EF Entity)
 
 ### Current State
 
-| Operation | Status | Location | Notes |
-|-----------|--------|----------|-------|
-| **Create** | ❌ Stub only | AccountsForm context menu | Shows MessageBox placeholder |
-| **Read** | ✅ Full | AccountsForm SfDataGrid | Loads from DB via VM |
-| **Update** | ❌ Stub only | AccountsForm detail panel "Edit" button | Shows MessageBox placeholder |
-| **Delete** | ❌ Stub only | AccountsForm context menu | Shows confirmation dialog only |
+| Operation  | Status       | Location                                | Notes                          |
+| ---------- | ------------ | --------------------------------------- | ------------------------------ |
+| **Create** | ❌ Stub only | AccountsForm context menu               | Shows MessageBox placeholder   |
+| **Read**   | ✅ Full      | AccountsForm SfDataGrid                 | Loads from DB via VM           |
+| **Update** | ❌ Stub only | AccountsForm detail panel "Edit" button | Shows MessageBox placeholder   |
+| **Delete** | ❌ Stub only | AccountsForm context menu               | Shows confirmation dialog only |
 
 ### Implementation Plan
 
@@ -192,7 +195,7 @@ BudgetEntry (EF Entity)
 
 ```csharp
 // ChartForm.cs - Manual rendering
-BarChartPanel_Paint(PaintEventArgs e) 
+BarChartPanel_Paint(PaintEventArgs e)
   → Draws bars manually with LinearGradientBrush
 PieChartPanel_Paint(PaintEventArgs e)
   → Draws pie slices + legend manually
@@ -305,7 +308,7 @@ Background White: Color.White
 ## 13. NEXT STEPS (Phase 2 Implementation)
 
 1. **✅ Task 1:** Audit Syncfusion controls & validate API usage
-2. **Task 2:** Upgrade ChartForm to LiveCharts 
+2. **Task 2:** Upgrade ChartForm to LiveCharts
 3. **Task 3:** Centralize theme manager & form sizing
 4. **Task 4:** Implement CRUD button handlers (mock → real DB calls)
 5. **Task 5:** Polish UI consistency (padding, colors, fonts)

@@ -26,7 +26,6 @@ It focuses on components that commonly cause friction in WinForms apps: Syncfusi
 ## 4. Package compatibility
 
 - Syncfusion: Verify Syncfusion WinForms packages have releases for .NET 10. If not, identify the minimum supported version, and upgrade packages accordingly.
-
   - If packages require a newer API surface, incrementally update the Syncfusion package versions in `.csproj` and recompile.
   - Confirm licensing registration and runtime behavior (Syncfusion licensing code must run early in `Program.Main`).
 

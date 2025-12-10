@@ -7,7 +7,6 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 1. Chat Window & Controls
 
 - **`src/WileyWidget.WinForms/Forms/ChatWindow.cs`**
-
   - Main chat window form
   - Manages conversation history and context
   - Handles save/load of conversations to database
@@ -15,7 +14,6 @@ This document provides a comprehensive listing of all files that interact to ena
   - Methods: `HandleMessageSentAsync`, `SetContext`, `LoadConversationAsync`, `SaveConversationAsync`, `GetRecentConversationsAsync`, `DeleteConversationAsync`, `StartNewConversation`
 
 - **`src/WileyWidget.WinForms/Controls/AIChatControl.cs`**
-
   - Primary chat UI control (messages display, input box, send button)
   - Handles tool detection and execution
   - Manages conversational AI fallback
@@ -34,7 +32,6 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 2. AI Service Abstractions
 
 - **`src/WileyWidget.Services.Abstractions/IAIService.cs`**
-
   - Interface for conversational AI (xAI/Grok integration)
   - Methods:
     - `SendMessageAsync(string message, List<ChatMessage>? conversationHistory = null)`
@@ -54,7 +51,6 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 3. AI Service Implementations
 
 - **`src/WileyWidget.Services/XAIService.cs`**
-
   - Implements `IAIService`
   - Conversational AI via xAI Grok API
   - Polly resilience policies (rate limiting, circuit breaker, retry)
@@ -70,7 +66,6 @@ This document provides a comprehensive listing of all files that interact to ena
   - Configuration: `XAIServiceOptions` (API key, model, timeout)
 
 - **`src/WileyWidget.Services/AIAssistantService.cs`**
-
   - Implements `IAIAssistantService`
   - Tool-based assistant for workspace operations
   - Python bridge for tool execution (`xai_tool_executor.py`)
@@ -92,13 +87,11 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 4. Data Models
 
 - **`src/WileyWidget.Models/Models/ChatMessage.cs`**
-
   - Represents a single chat message
   - Properties: `IsUser`, `Message`, `Text`, `Timestamp`, `Author`, `Metadata`
   - Factory methods: `CreateUserMessage`, `CreateAIMessage`
 
 - **`src/WileyWidget.Models/Models/ToolCall.cs`**
-
   - Represents a tool invocation request
   - Properties: `Id`, `Name`, `ToolType`, `Arguments`, `Metadata`
   - Used by `IAIAssistantService`
@@ -113,7 +106,6 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 5. Entity Framework & Database
 
 - **`src/WileyWidget.Data/AppDbContext.cs`**
-
   - EF Core DbContext
   - Includes `DbSet<ConversationHistory>` for chat persistence
   - Line 73: ConversationHistories DbSet
@@ -157,17 +149,14 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 9. Supporting Infrastructure
 
 - **`src/WileyWidget.Services/MemoryCacheService.cs`**
-
   - Caching service used by `XAIService`
   - Response caching to reduce API calls
 
 - **`src/WileyWidget.Services/LocalSecretVaultService.cs`**
-
   - Manages API keys (xAI API key)
   - Secure storage and retrieval
 
 - **`src/WileyWidget.Services.Abstractions/ICacheService.cs`**
-
   - Cache service interface
 
 - **`src/WileyWidget.Services.Abstractions/ISecretVaultService.cs`**
@@ -178,27 +167,22 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 10. Test Suite
 
 - **`tests/XAIServiceTests.cs`**
-
   - Unit tests for `XAIService`
   - Tests conversation history, tool calls, rate limiting
 
 - **`tests/AI_Services_Integration_Verification.cs`**
-
   - Integration tests and architecture documentation
   - Verifies tool detection, execution, fallback logic
   - Contains comprehensive flow diagrams
 
 - **`tests/AIServices_Audit_Duplicates.cs`**
-
   - Audit tests to ensure no duplicate AI services
   - Verifies proper interface implementation
 
 - **`tests/AIChatControl_Integration_Analysis.cs`** (if exists)
-
   - Integration tests for `AIChatControl`
 
 - **`tests/AIChatControl_SendMessageAsync_Tests.cs`** (if exists)
-
   - Unit tests for message sending logic
 
 - **`tests/WileyWidget.Tests/TestInfrastructure/Doubles/NullAIServiceDouble.cs`**
@@ -210,13 +194,11 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 11. Documentation Files
 
 - **`docs/CONVERSATION_HISTORY_DATABASE.md`**
-
   - Database schema documentation
   - Usage examples for save/load
   - Performance and security considerations
 
 - **`docs/CONVERSATION_HISTORY_SUMMARY.md`**
-
   - Implementation summary
   - Completed tasks and features
   - Production readiness checklist
@@ -229,7 +211,6 @@ This document provides a comprehensive listing of all files that interact to ena
 ### 12. Application Configuration
 
 - **`appsettings.json`** / **`appsettings.Development.json`**
-
   - XAI service configuration
   - API endpoints, timeouts, model selection
   - Logging configuration

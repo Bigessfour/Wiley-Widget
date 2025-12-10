@@ -9,6 +9,7 @@ This document describes the two-phase AI-first docking implementation for MainFo
 **Status:** Implemented and active on application startup
 
 **Changes:**
+
 - ✅ AI Chat Panel visible by default (`Visible = true`)
 - ✅ AI Panel width increased from 400px → 550px (35% of screen)
 - ✅ Keyboard shortcut: `Ctrl+1` toggles AI panel visibility
@@ -16,12 +17,14 @@ This document describes the two-phase AI-first docking implementation for MainFo
 - ✅ Auto-focus AI input when panel is shown
 
 **User Experience:**
+
 - AI chat is immediately visible on launch (right side, 550px wide)
 - Quick access via toolbar button or `Ctrl+1` keyboard shortcut
 - Dashboard cards remain accessible in left split panel
 - Activity grid in right split panel
 
 **Benefits:**
+
 - Zero migration risk (no architectural changes)
 - Immediate AI prominence improvement
 - Backward compatible with existing layouts
@@ -34,6 +37,7 @@ This document describes the two-phase AI-first docking implementation for MainFo
 **Status:** Fully implemented, disabled by default via feature flag
 
 **Architecture:**
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Menu Strip (Top)                                            │
@@ -56,6 +60,7 @@ This document describes the two-phase AI-first docking implementation for MainFo
 ```
 
 **Features:**
+
 - ✅ **Floating Windows:** Undock AI panel to second monitor
 - ✅ **Persistent Layouts:** Saves user preferences to AppData
 - ✅ **Auto-hide Panels:** Sides collapse when AI is focused
@@ -67,6 +72,7 @@ This document describes the two-phase AI-first docking implementation for MainFo
 **Implementation Details:**
 
 ### File Structure
+
 ```
 WileyWidget.WinForms/Forms/
 ├── MainForm.cs                 (Phase 1 - active, base implementation)
@@ -74,12 +80,14 @@ WileyWidget.WinForms/Forms/
 ```
 
 ### Dependencies
+
 - **Required:** `Syncfusion.Tools.Windows` (✅ already installed in project)
 - **Version:** 31.2.16+ (compatible with .NET 9)
 
 ### Enabling Phase 2
 
 **Option 1: Code-based (Permanent)**
+
 ```csharp
 // In MainForm constructor, after InitializeComponent()
 _useSyncfusionDocking = true;
@@ -87,24 +95,27 @@ InitializeSyncfusionDocking();
 ```
 
 **Option 2: Runtime Toggle (Dynamic)**
+
 ```csharp
 // Press Ctrl+D at runtime to toggle between modes
 // No restart required
 ```
 
 **Option 3: Configuration-based (Recommended for production)**
+
 ```json
 // appsettings.json
 {
   "UI": {
-    "UseSyncfusionDocking": false,  // Set true to enable Phase 2
-    "DefaultAIVisible": true,        // Phase 1 default visibility
-    "AIDefaultWidth": 550            // Phase 1 AI panel width
+    "UseSyncfusionDocking": false, // Set true to enable Phase 2
+    "DefaultAIVisible": true, // Phase 1 default visibility
+    "AIDefaultWidth": 550 // Phase 1 AI panel width
   }
 }
 ```
 
 ### Layout Persistence
+
 - **Storage:** `%APPDATA%\WileyWidget\wiley_widget_docking_layout.xml`
 - **Content:** Dock positions, sizes, visibility states, tab orders
 - **Auto-save:** On `FormClosing` event
@@ -113,6 +124,7 @@ InitializeSyncfusionDocking();
 ### API Usage Examples
 
 **Activate AI programmatically:**
+
 ```csharp
 if (_dockingManager != null && _aiChatControl != null)
 {
@@ -121,6 +133,7 @@ if (_dockingManager != null && _aiChatControl != null)
 ```
 
 **Check active control:**
+
 ```csharp
 var activeControl = _dockingManager?.ActiveControl;
 if (activeControl == _aiChatControl)
@@ -130,6 +143,7 @@ if (activeControl == _aiChatControl)
 ```
 
 **Query dock state with LINQ:**
+
 ```csharp
 var allDockPanels = _dockingManager?.Controls
     .OfType<Panel>()
@@ -142,6 +156,7 @@ var allDockPanels = _dockingManager?.Controls
 ## Testing & Validation
 
 ### Phase 1 Testing (Active)
+
 ```powershell
 # Build and run
 dotnet build .\WileyWidget.WinForms\WileyWidget.WinForms.csproj
@@ -155,6 +170,7 @@ dotnet run --project .\WileyWidget.WinForms\WileyWidget.WinForms.csproj
 ```
 
 ### Phase 2 Testing (Feature Flag)
+
 ```powershell
 # Enable Phase 2 in code:
 # Set _useSyncfusionDocking = true in MainForm constructor
@@ -173,6 +189,7 @@ dotnet run --project .\WileyWidget.WinForms\WileyWidget.WinForms.csproj
 ```
 
 ### Manual Test Checklist
+
 - [ ] Phase 1: AI panel shows on launch
 - [ ] Phase 1: Ctrl+1 toggles AI visibility
 - [ ] Phase 1: AI auto-focuses when shown
@@ -192,18 +209,21 @@ dotnet run --project .\WileyWidget.WinForms\WileyWidget.WinForms.csproj
 ## Performance & Best Practices
 
 ### Memory Management
+
 - ✅ All dock panels properly disposed in `DisposeSyncfusionDocking()`
 - ✅ Event handlers unsubscribed before disposal
 - ✅ Semaphore usage for thread-safe panel operations
 - ✅ Component disposal tracked via `IContainer`
 
 ### Logging
+
 - ✅ All dock events logged with `ILogger<MainForm>`
 - ✅ Debug-level for state changes (low noise)
 - ✅ Info-level for mode switches (visibility)
 - ✅ Error-level for initialization failures (critical)
 
 ### LINQ Usage (C# Best Practices)
+
 ```csharp
 // Preferred: LINQ for panel queries
 var aiPanel = _dockingManager?.Controls
@@ -214,6 +234,7 @@ var aiPanel = _dockingManager?.Controls
 ```
 
 ### Records for State (Future Enhancement)
+
 ```csharp
 // Consider using records for dock state serialization
 public record DockPanelState(string Name, DockingStyle Style, int Size, bool AutoHide);
@@ -224,22 +245,27 @@ public record DockPanelState(string Name, DockingStyle Style, int Size, bool Aut
 ## Troubleshooting
 
 ### Issue: Phase 2 doesn't activate
+
 **Cause:** Feature flag `_useSyncfusionDocking` is false (default)
 **Solution:** Set to true in constructor or via configuration
 
 ### Issue: Layout doesn't persist
+
 **Cause:** AppData path not writable or invalid
 **Solution:** Check logs for "Failed to save docking layout" errors
 
 ### Issue: Panels disappear after restart
+
 **Cause:** Corrupted layout XML file
 **Solution:** Delete `%APPDATA%\WileyWidget\wiley_widget_docking_layout.xml`
 
 ### Issue: Ctrl+D does nothing
+
 **Cause:** KeyPreview not enabled on form
 **Solution:** Already fixed in Phase 1 (verify `KeyPreview = true`)
 
 ### Issue: AI control not visible in Phase 2
+
 **Cause:** DI service resolution failed
 **Solution:** Check `_aiChatControl` initialization in Phase 1 logic
 
@@ -248,11 +274,13 @@ public record DockPanelState(string Name, DockingStyle Style, int Size, bool Aut
 ## Migration Path (Phase 1 → Phase 2)
 
 ### Step 1: Enable in Development (Current State)
+
 - Phase 1 active, Phase 2 code deployed but disabled
 - Users get immediate AI prominence improvements
 - No breaking changes to existing workflows
 
 ### Step 2: Beta Testing (Future)
+
 ```csharp
 // Enable for specific users via configuration
 if (Environment.GetEnvironmentVariable("WILEY_WIDGET_BETA") == "1")
@@ -263,19 +291,21 @@ if (Environment.GetEnvironmentVariable("WILEY_WIDGET_BETA") == "1")
 ```
 
 ### Step 3: Gradual Rollout (Future)
+
 ```json
 // Feature flag in appsettings.json
 {
   "Features": {
     "SyncfusionDocking": {
       "Enabled": true,
-      "RolloutPercentage": 25  // 25% of users
+      "RolloutPercentage": 25 // 25% of users
     }
   }
 }
 ```
 
 ### Step 4: Full Activation (Future)
+
 ```csharp
 // Remove feature flag, make Phase 2 default
 _useSyncfusionDocking = true;  // Default enabled
@@ -286,14 +316,14 @@ InitializeSyncfusionDocking();
 
 ## Keyboard Shortcuts Reference
 
-| Shortcut | Phase 1 | Phase 2 | Action |
-|----------|---------|---------|--------|
-| `Ctrl+1` | ✅ | ✅ | Toggle AI panel visibility |
-| `Ctrl+D` | 🚀 | 🚀 | Toggle Syncfusion docking mode |
-| `F5` | ✅ | ✅ | Refresh dashboard |
-| `Ctrl+Tab` | ❌ | 🚀 | Cycle through document tabs (Phase 2 only) |
-| `Ctrl+F1` | ❌ | 🚀 | Toggle left panel (Phase 2 only) |
-| `Ctrl+F2` | ❌ | 🚀 | Toggle right panel (Phase 2 only) |
+| Shortcut   | Phase 1 | Phase 2 | Action                                     |
+| ---------- | ------- | ------- | ------------------------------------------ |
+| `Ctrl+1`   | ✅      | ✅      | Toggle AI panel visibility                 |
+| `Ctrl+D`   | 🚀      | 🚀      | Toggle Syncfusion docking mode             |
+| `F5`       | ✅      | ✅      | Refresh dashboard                          |
+| `Ctrl+Tab` | ❌      | 🚀      | Cycle through document tabs (Phase 2 only) |
+| `Ctrl+F1`  | ❌      | 🚀      | Toggle left panel (Phase 2 only)           |
+| `Ctrl+F2`  | ❌      | 🚀      | Toggle right panel (Phase 2 only)          |
 
 ---
 

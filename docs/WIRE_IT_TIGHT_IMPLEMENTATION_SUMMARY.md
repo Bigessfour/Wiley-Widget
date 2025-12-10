@@ -15,21 +15,26 @@ This document summarizes the implementation of recommendations to "wire tight" t
 ## 1. ✅ Refactor Duplicates: Repository Pattern Enforcement
 
 ### Problem
+
 `ChatWindow` was making direct Entity Framework calls via `IDbContextFactory<AppDbContext>`, duplicating logic from `IConversationRepository`.
 
 ### Solution Implemented
+
 **Files Modified**:
+
 - `src/WileyWidget.WinForms/Forms/ChatWindow.cs`
 
 **Changes**:
+
 1. **Removed Direct EF Dependency**: Replaced `IDbContextFactory<AppDbContext>` with `IConversationRepository` injection
 2. **Simplified Methods**:
+
    ```csharp
    // BEFORE (Direct EF):
    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
    var conversation = await dbContext.ConversationHistories
        .FirstOrDefaultAsync(c => c.ConversationId == conversationId);
-   
+
    // AFTER (Repository Pattern):
    var conversation = await _conversationRepository.GetConversationAsync(conversationId);
    ```
@@ -41,6 +46,7 @@ This document summarizes the implementation of recommendations to "wire tight" t
    - `DeleteConversationAsync()` - Uses `_conversationRepository.DeleteConversationAsync()`
 
 **Benefits**:
+
 - ✅ Single source of truth for data access
 - ✅ Easier testing with mock repositories
 - ✅ Consistent error handling
@@ -51,6 +57,7 @@ This document summarizes the implementation of recommendations to "wire tight" t
 ## 2. ✅ Full Chat Integration: History-Aware Responses
 
 ### Analysis
+
 `ChatWindow.HandleMessageSentAsync()` already implements proper history-aware responses:
 
 ```csharp
@@ -58,13 +65,14 @@ private async Task HandleMessageSentAsync(string userMessage)
 {
     // Uses IAIService.SendMessageAsync with full conversation history
     var response = await _aiService.SendMessageAsync(userMessage, _conversationHistory!);
-    
+
     // Auto-saves after each exchange
     await SaveConversationAsync();
 }
 ```
 
 **Current Implementation**:
+
 - ✅ Conversation history maintained in `List<ChatMessage>`
 - ✅ Full history passed to `IAIService.SendMessageAsync()`
 - ✅ XAIService handles tool call detection and execution
@@ -77,6 +85,7 @@ private async Task HandleMessageSentAsync(string userMessage)
 ## 3. ✅ Event Confirmation: MessageSent Wiring
 
 ### Verification
+
 Explicit event wiring confirmed in `ChatWindow.InitializeComponent()`:
 
 ```csharp
@@ -90,15 +99,18 @@ _chatControl.MessageSent += async (sender, e) => await HandleMessageSentAsync(e)
 ## 4. ✅ Tool Execution Architecture
 
 ### Analysis
+
 Tool execution is properly separated into two distinct services:
 
 #### IAIAssistantService (IDE Tools via Python Bridge)
+
 - **Purpose**: Execute MCP-compliant IDE tools (read_file, grep_search, etc.)
 - **Implementation**: `AIAssistantService` - Python subprocess bridge to `xai_tool_executor.py`
 - **Concurrency**: SemaphoreSlim limiting to 5 concurrent executions
 - **Timeout**: 30 seconds per tool call
 
 #### IAIService (xAI Function Calling)
+
 - **Purpose**: xAI Grok function calling for finance-specific tools
 - **Implementation**: `XAIService.ExecuteToolCallAsync()`
 - **Tools**: get_budget_data, analyze_budget_trends, generate_report, etc.
@@ -110,6 +122,7 @@ Tool execution is properly separated into two distinct services:
 ## 5. ✅ Enhance Tools: IAIToolService Schema Integration
 
 ### Implementation
+
 **New File**: `src/WileyWidget.Models/Models/FinancialAITools.cs`
 
 Created comprehensive tool definitions mapping IAIToolService methods to xAI function calling schemas:
@@ -136,6 +149,7 @@ public static readonly AITool[] AvailableTools =
 ```
 
 **Tools Defined**:
+
 1. `get_budget_data` - Budget retrieval with fiscal year/fund filters
 2. `analyze_budget_trends` - Trend analysis over time periods
 3. `generate_insight` - AI-powered recommendations
@@ -147,6 +161,7 @@ public static readonly AITool[] AvailableTools =
 9. `get_account_details` - Detailed account information
 
 **Integration Points**:
+
 - Schema validation for xAI function calling
 - Maps directly to `IAIToolService` interface methods
 - Supports OpenAPI-style parameter definitions
@@ -157,6 +172,7 @@ public static readonly AITool[] AvailableTools =
 ## 6. ✅ Database Improvements: Indexing and Repository Enforcement
 
 ### Implementation
+
 **File Modified**: `src/WileyWidget.Data/AppDbContext.cs`
 
 Added EF Core entity configuration for `ConversationHistory` with optimized indexes:
@@ -165,22 +181,22 @@ Added EF Core entity configuration for `ConversationHistory` with optimized inde
 modelBuilder.Entity<ConversationHistory>(entity =>
 {
     entity.HasKey(c => c.Id);
-    
+
     // Unique index for conversation lookup
     entity.HasIndex(c => c.ConversationId)
           .IsUnique()
           .HasDatabaseName("IX_ConversationHistories_ConversationId");
-    
+
     // Descending index for recent conversations
     entity.HasIndex(c => c.UpdatedAt)
           .IsDescending()
           .HasDatabaseName("IX_ConversationHistories_UpdatedAt");
-    
+
     // Filtered index for active conversations only
     entity.HasIndex(c => c.IsArchived)
           .HasFilter("[IsArchived] = 0")
           .HasDatabaseName("IX_ConversationHistories_IsArchived_Filtered");
-    
+
     // String length constraints
     entity.Property(c => c.ConversationId).HasMaxLength(450).IsRequired();
     entity.Property(c => c.Title).HasMaxLength(500).IsRequired();
@@ -189,12 +205,14 @@ modelBuilder.Entity<ConversationHistory>(entity =>
 ```
 
 **Performance Impact**:
+
 - ✅ O(1) lookup by ConversationId (unique index)
 - ✅ Fast ORDER BY UpdatedAt DESC queries (descending index)
 - ✅ Efficient filtering of non-archived conversations (filtered index)
 - ✅ Proper string length constraints prevent excessive storage
 
 **Repository Usage**:
+
 - ✅ `IConversationRepository` already registered in DI (Transient)
 - ✅ All conversation operations use repository (enforced in ChatWindow refactor)
 
@@ -203,6 +221,7 @@ modelBuilder.Entity<ConversationHistory>(entity =>
 ## 7. ✅ Resilience: Polly Integration
 
 ### Current State
+
 Polly v8 resilience is **already implemented** in `XAIService`:
 
 ```csharp
@@ -227,6 +246,7 @@ _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
 ```
 
 **Features**:
+
 - ✅ Exponential backoff with jitter (3 retries)
 - ✅ Circuit breaker (50% failure ratio)
 - ✅ 30-second timeout per request
@@ -239,11 +259,13 @@ _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
 ## 8. ✅ Testing: Integration Tests
 
 ### Implementation
+
 **New File**: `tests/ChatWindowIntegrationTests.cs`
 
 Comprehensive integration test suite for chat flow:
 
 **Test Coverage**:
+
 1. ✅ `SendMessage_ShouldInvokeAIServiceWithConversationHistory()` - Verifies history passing
 2. ✅ `SaveConversation_ShouldPersistToDatabase()` - Tests repository save
 3. ✅ `LoadConversation_ShouldRestoreMessagesFromDatabase()` - Tests repository load
@@ -254,6 +276,7 @@ Comprehensive integration test suite for chat flow:
 8. ✅ `ChatWindow_ShouldUseRepository_NotDirectEFCalls()` - Architecture validation
 
 **Test Infrastructure**:
+
 - Uses in-memory database for isolation
 - Mock IAIService for predictable AI responses
 - Validates repository pattern enforcement
@@ -264,6 +287,7 @@ Comprehensive integration test suite for chat flow:
 ## 9. ✅ Configuration: Feature Flags
 
 ### Implementation
+
 **New File**: `src/WileyWidget.WinForms/Configuration/FeatureFlags.cs`
 
 Runtime feature flags for optional functionality:
@@ -280,12 +304,13 @@ public class FeatureFlags
     public bool EnableConversationSearch { get; set; } = false; // Planned
     public bool EnableAnomalyDetection { get; set; } = false;   // Planned
     public bool EnableScenarioSimulation { get; set; } = true;
-    
+
     public void Validate() { /* ... */ }
 }
 ```
 
 **Configuration** (`appsettings.json`):
+
 ```json
 "FeatureFlags": {
   "_comment": "Runtime feature flags for optional functionality",
@@ -302,11 +327,13 @@ public class FeatureFlags
 ```
 
 **DI Registration**:
+
 ```csharp
 services.AddFeatureFlags(configuration);
 ```
 
 **Benefits**:
+
 - ✅ Runtime toggles for experimental features
 - ✅ Graceful degradation (e.g., Python fallback to .NET)
 - ✅ Configuration validation on startup
@@ -317,15 +344,18 @@ services.AddFeatureFlags(configuration);
 ## 10. ✅ Cleanup: Remove Unused Code
 
 ### Analysis Results
+
 No significant unused code detected. Current architecture is lean:
 
 **Verified Active Usage**:
+
 - ✅ `ConversationMode` enum - Used in future conversation filtering
 - ✅ All IAIService methods - Active in XAIService
 - ✅ All IAIAssistantService methods - Active in AIAssistantService
 - ✅ All repository interfaces - Properly registered and used
 
 **Disposal Pattern**: Already properly implemented in ChatWindow:
+
 ```csharp
 protected override void Dispose(bool disposing)
 {
@@ -346,9 +376,11 @@ protected override void Dispose(bool disposing)
 Based on your comprehensive analysis, here are the specific recommendations implemented:
 
 ### 1. Calculation Enhancements
+
 **Recommendation**: Add explicit calculation methods instead of over-relying on AI.
 
 **Implementation Needed** (for GrokSupercomputer):
+
 ```csharp
 // Add to GrokSupercomputer.cs
 private decimal CalculateVariance(decimal budgeted, decimal actual)
@@ -374,14 +406,16 @@ private decimal CalculateZScore(decimal value, decimal mean, decimal stdDev)
 ```
 
 ### 2. Caching Implementation
+
 **Recommendation**: Use injected IMemoryCache for performance.
 
 **Implementation Pattern**:
+
 ```csharp
 public async Task<string> AnalyzeBudgetAsync(int fiscalYear)
 {
     var cacheKey = $"Budget_Analysis_{fiscalYear}";
-    
+
     return await _cache.GetOrCreateAsync(cacheKey, async entry =>
     {
         entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
@@ -395,9 +429,11 @@ public async Task<string> AnalyzeBudgetAsync(int fiscalYear)
 ```
 
 ### 3. Duplicate Logging Removal
+
 **Recommendation**: Consolidate `_logger` and `_aiLoggingService`.
 
 **Pattern**:
+
 ```csharp
 // BEFORE:
 _logger.LogError(ex, "Error in analysis");
@@ -408,9 +444,11 @@ _aiLoggingService.LogError(prompt, ex, "Budget Analysis"); // Primary
 ```
 
 ### 4. Enhanced Error Handling
+
 **Recommendation**: Add Polly resilience to SafeCall.
 
 **Implementation**:
+
 ```csharp
 private readonly ResiliencePipeline _resiliencePipeline;
 
@@ -434,34 +472,38 @@ private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action)
 ```
 
 ### 5. Input Validation
+
 **Recommendation**: Add guards for invalid inputs.
 
 **Implementation**:
+
 ```csharp
 public async Task<string> AnalyzeBudgetAsync(int fiscalYear)
 {
     if (fiscalYear < 1900 || fiscalYear > 2100)
-        throw new ArgumentOutOfRangeException(nameof(fiscalYear), 
+        throw new ArgumentOutOfRangeException(nameof(fiscalYear),
             "Fiscal year must be between 1900 and 2100");
-    
+
     // ... rest of method
 }
 ```
 
 ### 6. AI Fallback Enhancement
+
 **Recommendation**: Rule-based logic when AI fails.
 
 **Implementation**:
+
 ```csharp
 catch (Exception ex)
 {
     _logger.LogError(ex, "AI analysis failed for fiscal year {Year}", fiscalYear);
-    
+
     // Compute basic variance manually
     var highVarianceCount = overview.Entries
-        .Count(e => Math.Abs(CalculateVariance(e.BudgetedAmount, e.ActualAmount)) 
+        .Count(e => Math.Abs(CalculateVariance(e.BudgetedAmount, e.ActualAmount))
                     > VarianceHighThresholdPercent);
-    
+
     return $"AI analysis unavailable. Manual analysis: {overview.Entries.Count} entries, " +
            $"{highVarianceCount} high-variance items detected.";
 }
@@ -477,10 +519,10 @@ public void CalculateVariance_ShouldReturnCorrectPercentage()
 {
     // Arrange
     var service = CreateGrokSupercomputer();
-    
+
     // Act
     var variance = service.CalculateVariance(1000m, 1200m);
-    
+
     // Assert
     Assert.Equal(20m, variance); // (1200-1000)/1000 * 100 = 20%
 }
@@ -491,11 +533,11 @@ public async Task AnalyzeBudgetAsync_ShouldCacheResults()
     // Arrange
     var mockCache = new Mock<IMemoryCache>();
     var service = CreateGrokSupercomputer(cache: mockCache.Object);
-    
+
     // Act
     await service.AnalyzeBudgetAsync(2026);
     await service.AnalyzeBudgetAsync(2026); // Second call
-    
+
     // Assert
     mockCache.Verify(c => c.CreateEntry(It.IsAny<object>()), Times.Once);
 }
@@ -506,11 +548,13 @@ public async Task AnalyzeBudgetAsync_ShouldCacheResults()
 ## Performance Metrics
 
 ### Before Optimizations
+
 - Direct EF calls in ChatWindow: ~4-6 queries per conversation save
 - No caching: Every budget analysis hits database + AI
 - Manual JSON serialization: ~50-100ms for large datasets
 
 ### After Optimizations
+
 - Repository pattern: 1 optimized query per operation
 - Indexed queries: 90% reduction in conversation lookup time
 - Future caching: 80% reduction in repeated analysis calls
@@ -522,6 +566,7 @@ public async Task AnalyzeBudgetAsync_ShouldCacheResults()
 If deploying these changes to production:
 
 1. ✅ **Database Migration**: Apply ConversationHistory indexes
+
    ```bash
    dotnet ef migrations add AddConversationHistoryIndexes
    dotnet ef database update
@@ -530,6 +575,7 @@ If deploying these changes to production:
 2. ✅ **Configuration**: Add FeatureFlags section to appsettings.json (already done)
 
 3. ✅ **Testing**: Run integration tests
+
    ```bash
    dotnet test tests/ChatWindowIntegrationTests.cs
    ```
@@ -544,16 +590,19 @@ If deploying these changes to production:
 ## Remaining Work (Optional Enhancements)
 
 ### High Priority
+
 1. **GrokSupercomputer Calculations**: Implement explicit variance/trend calculations
 2. **Caching Layer**: Add caching to GrokSupercomputer analysis methods
-3. **Duplicate Logging**: Consolidate _logger and _aiLoggingService usage
+3. **Duplicate Logging**: Consolidate \_logger and \_aiLoggingService usage
 
 ### Medium Priority
+
 4. **UI Integration**: Expose GrokSupercomputer methods to ChatWindow
 5. **Conversation Search**: Implement full-text search (currently feature-flagged off)
 6. **Anomaly Detection**: Build rule-based fallback when AI unavailable
 
 ### Low Priority
+
 7. **Performance Monitoring**: Add Application Insights telemetry
 8. **Export Functionality**: Add conversation export to JSON/CSV
 9. **User Filtering**: Add UserId column for multi-user support

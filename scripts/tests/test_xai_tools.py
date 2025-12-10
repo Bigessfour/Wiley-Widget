@@ -19,12 +19,15 @@ from typing import Any
 
 try:
     import pytest  # type: ignore[reportMissingImports]
-except Exception:  # pragma: no cover - fallback for environments without pytest installed
+except (
+    Exception
+):  # pragma: no cover - fallback for environments without pytest installed
     # Minimal pytest stub to satisfy static analysis and allow basic runtime usage
     class _PytestStub:
         def fixture(self, *args, **kwargs):
             def decorator(func):
                 return func
+
             return decorator
 
         def main(self, args=None):
@@ -48,7 +51,9 @@ try:
     ToolCall = _mod.ToolCall
     XaiToolExecutor = _mod.XaiToolExecutor
     get_tool_call_type_compat = _mod.get_tool_call_type_compat
-except Exception:  # pragma: no cover - provide lightweight fallback for environments without the package
+except (
+    Exception
+):  # pragma: no cover - provide lightweight fallback for environments without the package
     from dataclasses import dataclass
     from typing import Any, Dict
 
@@ -163,12 +168,24 @@ except Exception:  # pragma: no cover - provide lightweight fallback for environ
             name = d.get("name") or ""
             handler = self.handlers.get_handler(name)
             out = handler(d.get("arguments", {}))
-            return ExecResult(success=not str(out).startswith("Error"), tool_type=TOOL_CALL_TYPE_CLIENT_SIDE, output=str(out), metadata={})
+            return ExecResult(
+                success=not str(out).startswith("Error"),
+                tool_type=TOOL_CALL_TYPE_CLIENT_SIDE,
+                output=str(out),
+                metadata={},
+            )
 
         def execute(self, tc: ToolCall) -> ExecResult:
             # simplistic behavior for server-side marker
-            if tc.tool_type == TOOL_CALL_TYPE_WEB_SEARCH or (tc.name and "web_search" in tc.name):
-                return ExecResult(success=True, tool_type=TOOL_CALL_TYPE_WEB_SEARCH, output="Server-side tool handled (stub)", metadata={"server_handled": True})
+            if tc.tool_type == TOOL_CALL_TYPE_WEB_SEARCH or (
+                tc.name and "web_search" in tc.name
+            ):
+                return ExecResult(
+                    success=True,
+                    tool_type=TOOL_CALL_TYPE_WEB_SEARCH,
+                    output="Server-side tool handled (stub)",
+                    metadata={"server_handled": True},
+                )
             return self.execute_dict({"name": tc.name, "arguments": tc.arguments or {}})
 
         def list_available_tools(self) -> dict:
@@ -185,6 +202,7 @@ except Exception:  # pragma: no cover - provide lightweight fallback for environ
         if "web_search" in name:
             return TOOL_CALL_TYPE_WEB_SEARCH
         return TOOL_CALL_TYPE_CLIENT_SIDE
+
 
 # ============================================================================
 # Fixtures

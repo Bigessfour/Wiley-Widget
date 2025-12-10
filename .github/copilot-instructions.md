@@ -11,9 +11,9 @@ This repository prefers consistent, lint-friendly Python code. Add this block to
 - Aim to pass Pylint/Flake8/Ruff in CI; disable rules only when necessary (e.g., --disable=missing-docstring for quick prototypes).
 
 Notes
+
 - These guidelines are meant to produce code that is lint-happy and review-friendly without being overly strict for prototypes.
 - Tailor the exact lint rule list in `.vscode/settings.json` per your team's tolerances.
-
 
 # C# Standards
 

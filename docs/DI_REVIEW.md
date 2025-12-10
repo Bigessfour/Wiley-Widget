@@ -92,17 +92,17 @@ services.AddSingleton<IDiValidationService, DiValidationService>();
 
 **Assessment:**
 
-| Service | Lifetime | Status | Notes |
-|---------|----------|--------|-------|
-| `IAIService` (XAI) | Singleton | ✅ | Stateless API client, appropriate |
-| `IAILoggingService` | Singleton | ✅ | Stateless logging wrapper |
-| `IAuditService` | Singleton | ✅ | Stateless audit logger |
-| `IReportExportService` | Singleton | ✅ | Stateless export logic |
-| `IExcelReaderService` | Transient | ✅ | I/O-intensive, good for transient |
-| `IExcelExportService` | Transient | ✅ | I/O-intensive, good for transient |
-| `IDataAnonymizerService` | Transient | ✅ | Data processing service |
-| `IChargeCalculatorService` | Transient | ✅ | Pure calculation logic |
-| `IDiValidationService` | Singleton | ✅ | Stateless reflection-based validation |
+| Service                    | Lifetime  | Status | Notes                                 |
+| -------------------------- | --------- | ------ | ------------------------------------- |
+| `IAIService` (XAI)         | Singleton | ✅     | Stateless API client, appropriate     |
+| `IAILoggingService`        | Singleton | ✅     | Stateless logging wrapper             |
+| `IAuditService`            | Singleton | ✅     | Stateless audit logger                |
+| `IReportExportService`     | Singleton | ✅     | Stateless export logic                |
+| `IExcelReaderService`      | Transient | ✅     | I/O-intensive, good for transient     |
+| `IExcelExportService`      | Transient | ✅     | I/O-intensive, good for transient     |
+| `IDataAnonymizerService`   | Transient | ✅     | Data processing service               |
+| `IChargeCalculatorService` | Transient | ✅     | Pure calculation logic                |
+| `IDiValidationService`     | Singleton | ✅     | Stateless reflection-based validation |
 
 **Critical Issue - Missing Export Service:**
 
@@ -368,16 +368,16 @@ typeof(IMemoryCache)                      // Registered via AddMemoryCache()
 
 ### Singleton Services Analysis
 
-| Service | Thread Safety | Mutable State | Status |
-|---------|---------------|--------------:|--------|
-| `ISettingsService` | ✅ | None (JSON file I/O isolated) | Safe |
-| `ISecretVaultService` | ✅ | None (encryption keys static) | Safe |
-| `IAIService` (XAI) | ⚠️ | HttpClient (thread-safe) | Review |
-| `IAILoggingService` | ✅ | None | Safe |
-| `IAuditService` | ✅ | File I/O (append-only) | Safe |
-| `IReportExportService` | ✅ | None (static method) | Safe |
-| `IQuickBooksService` | ⚠️ | OAuth tokens, API state | **Review** |
-| `IDiValidationService` | ✅ | None (reflection-based) | Safe |
+| Service                | Thread Safety |                 Mutable State | Status     |
+| ---------------------- | ------------- | ----------------------------: | ---------- |
+| `ISettingsService`     | ✅            | None (JSON file I/O isolated) | Safe       |
+| `ISecretVaultService`  | ✅            | None (encryption keys static) | Safe       |
+| `IAIService` (XAI)     | ⚠️            |      HttpClient (thread-safe) | Review     |
+| `IAILoggingService`    | ✅            |                          None | Safe       |
+| `IAuditService`        | ✅            |        File I/O (append-only) | Safe       |
+| `IReportExportService` | ✅            |          None (static method) | Safe       |
+| `IQuickBooksService`   | ⚠️            |       OAuth tokens, API state | **Review** |
+| `IDiValidationService` | ✅            |       None (reflection-based) | Safe       |
 
 **XAIService Concern:**
 

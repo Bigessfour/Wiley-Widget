@@ -14,14 +14,14 @@
 
 ## Decision Matrix
 
-| Option | Status | Reason Chosen / Rejected |
-|--------|--------|--------------------------|
-| **WinUI 3** | ❌ **Archived** | Silent XamlCompiler crashes in unpackaged mode, Windows App SDK 1.6–1.8 version hell, no stable unpackaged path in 2025. **6+ weeks lost to toolchain issues** with no resolution. |
-| **WPF** | ❌ **Legacy** | Previously used, works reliably, but Windows-only with heavier footprint. Already migrated away in v0.5.0. |
-| **WinForms** | ✅ **ACTIVE** | **Fastest path to stable .NET 9 desktop** with mature Syncfusion WinForms ecosystem. 5–10× faster load times, zero XAML complexity, rock-solid data binding. **Production-ready today.** |
-| **Avalonia** | 🔮 **Future** | Considered for cross-platform capability. Strong XAML-based framework with growing ecosystem. **Will revisit in 2026** once maturity increases and Syncfusion support expands. |
-| **MAUI** | ⏸️ **Skipped** | Still too immature for complex desktop LOB applications. Mobile-first focus doesn't align with municipal finance desktop requirements. |
-| **Electron/Web** | ⏸️ **Not Evaluated** | Performance concerns, heavyweight runtime, not suitable for data-intensive financial applications. |
+| Option           | Status               | Reason Chosen / Rejected                                                                                                                                                                 |
+| ---------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **WinUI 3**      | ❌ **Archived**      | Silent XamlCompiler crashes in unpackaged mode, Windows App SDK 1.6–1.8 version hell, no stable unpackaged path in 2025. **6+ weeks lost to toolchain issues** with no resolution.       |
+| **WPF**          | ❌ **Legacy**        | Previously used, works reliably, but Windows-only with heavier footprint. Already migrated away in v0.5.0.                                                                               |
+| **WinForms**     | ✅ **ACTIVE**        | **Fastest path to stable .NET 9 desktop** with mature Syncfusion WinForms ecosystem. 5–10× faster load times, zero XAML complexity, rock-solid data binding. **Production-ready today.** |
+| **Avalonia**     | 🔮 **Future**        | Considered for cross-platform capability. Strong XAML-based framework with growing ecosystem. **Will revisit in 2026** once maturity increases and Syncfusion support expands.           |
+| **MAUI**         | ⏸️ **Skipped**       | Still too immature for complex desktop LOB applications. Mobile-first focus doesn't align with municipal finance desktop requirements.                                                   |
+| **Electron/Web** | ⏸️ **Not Evaluated** | Performance concerns, heavyweight runtime, not suitable for data-intensive financial applications.                                                                                       |
 
 ---
 
@@ -139,10 +139,10 @@ No diagnostic information available.
 
 **Startup Time Comparison (measured on production hardware):**
 
-| Framework | Cold Start | Warm Start | First Render |
-|-----------|-----------|------------|--------------|
-| WinUI 3 (unpackaged) | 4.2s | 2.8s | 1.6s |
-| **WinForms** | **0.4s** | **0.2s** | **0.1s** |
+| Framework            | Cold Start | Warm Start | First Render |
+| -------------------- | ---------- | ---------- | ------------ |
+| WinUI 3 (unpackaged) | 4.2s       | 2.8s       | 1.6s         |
+| **WinForms**         | **0.4s**   | **0.2s**   | **0.1s**     |
 
 **10× faster.** Users notice.
 

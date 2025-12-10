@@ -20,7 +20,7 @@
       model: grok-4-1-fast-reasoning
       apiBase: https://api.x.ai/v1
       apiKeyEnv: XAI_API_KEY
-      contextWindow: 2000000  # 2M tokens
+      contextWindow: 2000000 # 2M tokens
       maxOutputTokens: 8192
       capabilities:
         - text-input
@@ -48,7 +48,7 @@
       usage_instructions: |
         from xai_sdk import Client
         from xai_sdk.tools import code_execution, web_search, x_search
-        
+
         client = Client(api_key=os.getenv("XAI_API_KEY"))
         chat = client.chat.create(
             model="grok-4-1-fast-reasoning",
@@ -63,7 +63,7 @@
       model: grok-4-1-fast-non-reasoning
       apiBase: https://api.x.ai/v1
       apiKeyEnv: XAI_API_KEY
-      contextWindow: 2000000  # 2M tokens
+      contextWindow: 2000000 # 2M tokens
       maxOutputTokens: 8192
       capabilities:
         - text-input

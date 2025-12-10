@@ -2,7 +2,7 @@
 
 **Status:** ✅ PRODUCTION READY  
 **Date:** December 3, 2025  
-**Version:** 1.0  
+**Version:** 1.0
 
 ---
 
@@ -16,13 +16,13 @@ This application is now hardened with production-grade exception handling, compr
 
 ### What Changed
 
-| Component | Before | After | Impact |
-|-----------|--------|-------|--------|
-| Exception Handling | Silent/Generic | Specific + Logged | 100% Visibility |
-| Console Output | Unstructured | Structured Logging | Queryable |
-| File Operations | No Recovery | Atomic + Atomic Retry | Zero Corruption |
-| Secrets Storage | User-scope DPAPI | Machine-scope DPAPI | More Secure |
-| Audit Trail | Optional Rotation | Automatic Rotation + Retention | Compliant |
+| Component          | Before            | After                          | Impact          |
+| ------------------ | ----------------- | ------------------------------ | --------------- |
+| Exception Handling | Silent/Generic    | Specific + Logged              | 100% Visibility |
+| Console Output     | Unstructured      | Structured Logging             | Queryable       |
+| File Operations    | No Recovery       | Atomic + Atomic Retry          | Zero Corruption |
+| Secrets Storage    | User-scope DPAPI  | Machine-scope DPAPI            | More Secure     |
+| Audit Trail        | Optional Rotation | Automatic Rotation + Retention | Compliant       |
 
 ### What Stayed the Same
 
@@ -126,21 +126,25 @@ Alert-On-Errors -Severity Error,Critical -Duration "1h"
 ### Log Queries
 
 **All Errors Last Hour**
+
 ```
 level:Error AND timestamp:[now-1h TO now]
 ```
 
 **Configuration Issues**
+
 ```
 logger:"QuickBooksService" AND (InvalidOperationException OR ArgumentException)
 ```
 
 **Audit Trail Failures**
+
 ```
 logger:"AuditService" AND level:Error
 ```
 
 **Secret Vault Issues**
+
 ```
 logger:"EncryptedLocalSecretVaultService" AND (UnauthorizedAccessException OR IOException)
 ```
@@ -148,18 +152,21 @@ logger:"EncryptedLocalSecretVaultService" AND (UnauthorizedAccessException OR IO
 ### Dashboards to Create
 
 **Application Health**
+
 - Error rate (5-min rollup)
 - Average exception handling latency
 - Audit trail entries/minute
 - Secret vault access success rate
 
 **Security**
+
 - Failed authentication attempts
 - Permission denied errors
 - Cryptographic operation failures
 - Unauthorized access attempts
 
 **Operations**
+
 - Log volume by logger
 - Exception types distribution
 - File system I/O latency
@@ -173,6 +180,7 @@ logger:"EncryptedLocalSecretVaultService" AND (UnauthorizedAccessException OR IO
 
 **Cause:** Insufficient file system permissions  
 **Resolution:**
+
 ```powershell
 # Check audit log permissions
 Get-Acl "C:\logs\audit.log" | Format-List
@@ -189,6 +197,7 @@ Set-Acl "C:\logs" $acl
 
 **Cause:** Token refresh failures or network issues  
 **Resolution:**
+
 ```powershell
 # Check token validity
 # (Via debug interface)
@@ -213,6 +222,7 @@ GET /debug/qbo/token-status
 
 **Cause:** Entropy generation or file I/O latency  
 **Resolution:**
+
 ```powershell
 # Check vault diagnostics
 GET /debug/secrets/diagnostics
@@ -237,10 +247,11 @@ GET /debug/secrets/diagnostics
 
 **Cause:** Rotation/retention not working  
 **Resolution:**
+
 ```powershell
 # Check audit service logs
-Get-Content logs/production/*.log | 
-  Select-String "audit" | 
+Get-Content logs/production/*.log |
+  Select-String "audit" |
   Select-String -E "(rotate|retention|cleanup)"
 
 # Manual rotation if needed
@@ -251,7 +262,7 @@ Remove-Item "logs/audit.log"
 # Verify retention job:
 # (Should run every audit operation)
 # Files older than 30 days should be deleted
-Get-ChildItem "logs/audit.log.*" | 
+Get-ChildItem "logs/audit.log.*" |
   Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-30)} |
   Remove-Item
 ```
@@ -260,9 +271,10 @@ Get-ChildItem "logs/audit.log.*" |
 
 **Cause:** Missing or inaccessible environment variables  
 **Resolution:**
+
 ```powershell
 # Check what variables are being read
-Get-Content logs/production/*.log | 
+Get-Content logs/production/*.log |
   Select-String "GetEnvironmentVariable" -Verbose
 
 # Set missing variables
@@ -394,7 +406,7 @@ Get-Acl "C:\AppData\WileyWidget\Secrets" | Format-List
 Test-Path "C:\AppData\WileyWidget\Secrets\.entropy"
 
 # 4. Scan logs for secrets (should find none)
-Get-ChildItem logs | 
+Get-ChildItem logs |
   Select-String -Pattern "[A-Za-z0-9+/=]{20,}" |
   Where-Object {$_ -notmatch "base64|example|test"}
 ```
@@ -411,10 +423,10 @@ $schedule = New-JobTrigger -Daily -At 2:00AM
 $backup = New-Job -ScriptBlock {
     # Backup database
     Backup-Database -Database WileyWidget -Path \\backup\daily
-    
+
     # Backup configuration
     Copy-Item -Path C:\AppData\WileyWidget -Destination \\backup\daily -Recurse
-    
+
     # Backup application
     Copy-Item -Path C:\Program Files\WileyWidget -Destination \\backup\daily -Recurse
 }
@@ -521,8 +533,8 @@ $auditLog | Export-Csv compliance-export.csv
 
 ```powershell
 # Verify logs retained for required period
-$oldestLog = Get-ChildItem logs | 
-  Sort-Object -Property LastWriteTime | 
+$oldestLog = Get-ChildItem logs |
+  Sort-Object -Property LastWriteTime |
   Select-Object -First 1
 
 $age = (Get-Date) - $oldestLog.LastWriteTime
@@ -574,7 +586,7 @@ Your production deployment is successful if:
 ✅ QuickBooks OAuth flow works  
 ✅ Audit trail being populated  
 ✅ Secret vault accessible  
-✅ Performance within baseline ±5%  
+✅ Performance within baseline ±5%
 
 ---
 
