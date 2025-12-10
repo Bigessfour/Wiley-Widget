@@ -17,7 +17,7 @@ jobs:
       - name: Run Trunk check (fast)
         uses: trunk-io/trunk-action@v1
         with:
-          arguments: check --ci
+          arguments: --ci
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
