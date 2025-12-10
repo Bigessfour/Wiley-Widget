@@ -102,7 +102,7 @@ namespace WileyWidget.WinForms.Tests
                 new AbstractionsChartDataPoint { Category = "Feb", Value = 1500 }
             };
 
-            var dashboard = new DashboardDto(100000m, 50000m, 25000m, 10, 5, DateTime.UtcNow.ToString("g"));
+            var dashboard = new DashboardDto(100000m, 50000m, 25000m, 10, 5, DateTime.UtcNow.ToString("g"), 0, null);
 
             chartService
                 .Setup(cs => cs.GetMonthlyTotalsAsync(It.IsAny<int>(), It.IsAny<System.Threading.CancellationToken>()))
@@ -293,7 +293,7 @@ namespace WileyWidget.WinForms.Tests
                 new AbstractionsChartDataPoint { Category = "Month1", Value = 1000 }
             };
 
-            var dashboard = new DashboardDto(100000m, 50000m, 25000m, 10, 5, DateTime.UtcNow.ToString("g"));
+            var dashboard = new DashboardDto(100000m, 50000m, 25000m, 10, 5, DateTime.UtcNow.ToString("g"), 0, null);
 
             chartService
                 .Setup(cs => cs.GetMonthlyTotalsAsync(It.IsAny<int>(), It.IsAny<System.Threading.CancellationToken>()))

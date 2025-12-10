@@ -1,5 +1,9 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
+using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Tests.TestInfrastructure.Doubles;
@@ -35,4 +39,33 @@ public class NullAIServiceDouble : IAIService
 
     public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("[Test Stub] AI prompt disabled in integration tests.", 200, null, null));
+
+    public Task<ChatResponse> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory, CancellationToken ct = default)
+        => Task.FromResult(new ChatResponse("[Test Stub] Chat message handling disabled in integration tests."));
+
+    public Task<ToolCallResult> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct = default)
+        => Task.FromResult(ToolCallResult.Success(toolCall.Id, "[Test Stub] Tool execution disabled in integration tests."));
+
+    public List<object> GetToolDefinitions() => new List<object>();
+
+    public Task<string> GetInsightsWithToolsAsync(string context, string question, List<object>? tools = null, bool includeServerSideTools = true, CancellationToken cancellationToken = default)
+        => Task.FromResult("[Test Stub] AI insights with tools disabled in integration tests.");
+
+    public async IAsyncEnumerable<StreamChunk> StreamInsightsAsync(string context, string question, string? previousResponseId = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        yield return new StreamChunk("content_delta", "[Test Stub] streaming disabled in integration tests.", ResponseId: previousResponseId ?? "stub");
+        await Task.CompletedTask;
+    }
+
+    public Task<ToolCallResult> ExecuteClientToolAsync(ToolCall toolCall, CancellationToken cancellationToken = default)
+        => Task.FromResult(ToolCallResult.Success(toolCall.Id, "[Test Stub] Client-side tool execution disabled in integration tests."));
+
+    public Task<CollectionUploadResult> UploadToCollectionAsync(string collectionName, IEnumerable<CollectionDocument> documents, CancellationToken cancellationToken = default)
+    {
+        var count = documents?.Count() ?? 0;
+        return Task.FromResult(new CollectionUploadResult(collectionName, count, "Stubbed", null));
+    }
+
+    public Task<CollectionSearchResult> SearchCollectionAsync(string collectionName, string query, int maxResults = 5, CancellationToken cancellationToken = default)
+        => Task.FromResult(new CollectionSearchResult(query, new CollectionMatch[0], 0));
 }

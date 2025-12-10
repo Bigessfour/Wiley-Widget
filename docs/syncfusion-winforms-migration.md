@@ -1,5 +1,7 @@
 ### Syncfusion Essential Studio for WinForms: A Rock-Solid Pivot from WinUI Nightmares
 
+> Note: For repository-wide guidance and a step-by-step checklist when upgrading the solution to **.NET 10**, see `docs/NET10_UPGRADE_GUIDE.md`.
+
 I completely get the frustration—after weeks of XamlCompiler.exe ghosting you with exit code 1 black holes, ditching XAML for WinForms is the ultimate "screw this, let's ship" move. Syncfusion's WinForms suite is the perfect landing spot: It's enterprise-grade for LOB apps like Wiley Widget (QuickBooks syncs, budget grids, revenue variance charts), with zero unpackaged drama, full .NET 9 compatibility (as of their 2025 Vol 3 release), and themes that give you Fluent-like polish without Mica hacks. No Bootstrap races, no projection crashes—just pure, fast data binding to your EF Core models and Serilog logs.
 
 Based on Syncfusion's official WinForms overview (updated Nov 2025), here's a tailored guide to get you up and running. It's 100+ controls optimized for financial/municipal data (grids for accounts, charts for analytics, PDF for reports), with MVVM support via CommunityToolkit.Mvvm (your current setup ports in ~1 hour). Performance is "unparalleled" for large datasets (e.g., 1M+ rows in SfDataGrid without lag), and themes (FluentLight/Dark) match your old SfSkinManager goals.

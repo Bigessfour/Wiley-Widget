@@ -49,4 +49,26 @@ public class NullAIService : IAIService
 
     public Task<ToolCallResult> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct = default)
         => Task.FromResult(ToolCallResult.Error(toolCall.Id, "Dev stub: tool execution is disabled in development."));
+
+    public List<object> GetToolDefinitions()
+        => new List<object>();
+
+    public Task<string> GetInsightsWithToolsAsync(string context, string question, List<object>? tools, bool useTools, CancellationToken cancellationToken = default)
+        => Task.FromResult("[Dev Stub] AI insights with tools are disabled in development. Configure XAI_API_KEY to enable.");
+
+    public async IAsyncEnumerable<StreamChunk> StreamInsightsAsync(string context, string question, string? model, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Ensure this async iterator contains an await to avoid CS1998 and to behave like a true async stream
+        await Task.Yield();
+        yield return new StreamChunk("content_delta", "[Dev Stub] Streaming insights are disabled in development.");
+    }
+
+    public Task<ToolCallResult> ExecuteClientToolAsync(ToolCall toolCall, CancellationToken ct = default)
+        => Task.FromResult(ToolCallResult.Error(toolCall.Id, "Dev stub: client tool execution is disabled in development."));
+
+    public Task<CollectionUploadResult> UploadToCollectionAsync(string collectionName, IEnumerable<CollectionDocument> documents, CancellationToken cancellationToken = default)
+        => Task.FromResult(new CollectionUploadResult(collectionName, 0, "Dev stub: upload disabled in development."));
+
+    public Task<CollectionSearchResult> SearchCollectionAsync(string collectionName, string query, int limit, CancellationToken cancellationToken = default)
+        => Task.FromResult(new CollectionSearchResult(query, Array.Empty<CollectionMatch>(), 0));
 }

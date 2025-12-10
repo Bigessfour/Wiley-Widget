@@ -12,6 +12,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Serilog;
 using WileyWidget.Models;
+using WileyWidget.Services.Helpers;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 
@@ -382,7 +383,7 @@ public class GrokSupercomputer : IGrokSupercomputer
             _logger.LogInformation("Running report calculations on data: {Title}", data.Title);
 
             // Check cache first
-            var cacheKey = $"Grok.RunReportCalcs:{data.Title?.GetHashCode() ?? 0}:{data.GeneratedAt:yyyyMMddHHmmss}";
+            var cacheKey = CacheKeyUtil.Generate("Grok.RunReportCalcs", "v1", data.Title ?? string.Empty, data.GeneratedAt.ToString("yyyyMMddHHmmss"));
             if (_appOptions.Value.EnableDataCaching && _cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is AnalyticsData cachedAnalytics)
             {
                 _logger.LogDebug("Cache hit for RunReportCalcs: {Key}", cacheKey);

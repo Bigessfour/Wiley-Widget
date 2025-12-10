@@ -51,7 +51,7 @@ namespace WileyWidget.Services
             var parent3 = Directory.GetParent(parent2?.FullName ?? ".");  // bin
             var parent4 = Directory.GetParent(parent3?.FullName ?? ".");  // WileyWidget.WinForms
             var projectRoot = Directory.GetParent(parent4?.FullName ?? ".")?.FullName ?? ".";  // Root (Wiley-Widget)
-            
+
             var logsDirectory = Path.Combine(projectRoot, "logs");
             Directory.CreateDirectory(logsDirectory);
 
@@ -335,6 +335,20 @@ namespace WileyWidget.Services
                 var totalQueries = _todayQueryCount;
                 return totalQueries > 0 ? (_totalErrors * 100.0 / totalQueries) : 0;
             }
+        }
+
+        /// <summary>
+        /// Gets a lightweight snapshot of today's AI metrics for diagnostics.
+        /// </summary>
+        public Dictionary<string, object> GetTodayMetrics()
+        {
+            return new Dictionary<string, object>
+            {
+                ["TimestampUtc"] = DateTime.UtcNow,
+                ["QueryCount"] = GetTodayQueryCount(),
+                ["AverageResponseTimeMs"] = GetAverageResponseTime(),
+                ["ErrorRatePercent"] = GetErrorRate()
+            };
         }
 
         /// <summary>

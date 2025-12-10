@@ -45,7 +45,11 @@ public class BudgetCategoryService : IBudgetCategoryService
     {
         try
         {
-            var entries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear);
+            // Use a lightweight retry strategy for transient failures (e.g. timeouts/network blips)
+            var entries = await SafeExecuteAsync(
+                () => _budgetRepository.GetByFiscalYearAsync(fiscalYear),
+                $"BudgetRepository.GetByFiscalYearAsync({fiscalYear})",
+                cancellationToken: cancellationToken);
 
             return entries.Select(MapToDto).ToList();
         }
@@ -63,6 +67,7 @@ public class BudgetCategoryService : IBudgetCategoryService
             var entry = await _context.BudgetEntries
                 .Include(b => b.Department)
                 .Include(b => b.Fund)
+                .Include(b => b.MunicipalAccount)
                 .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
             return entry == null ? null : MapToDto(entry);
@@ -170,7 +175,11 @@ public class BudgetCategoryService : IBudgetCategoryService
     {
         try
         {
-            var entries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear);
+            // Reuse the same retry helper for totals so transient repository failures are retried
+            var entries = await SafeExecuteAsync(
+                () => _budgetRepository.GetByFiscalYearAsync(fiscalYear),
+                $"BudgetRepository.GetByFiscalYearAsync({fiscalYear})",
+                cancellationToken: cancellationToken);
 
             var totalBudget = entries.Sum(e => e.BudgetedAmount);
             var totalActual = entries.Sum(e => e.ActualAmount);
@@ -185,9 +194,71 @@ public class BudgetCategoryService : IBudgetCategoryService
         }
     }
 
+    /// <summary>
+    /// Lightweight, local retry helper used to retry transient operations.
+    /// Keeps behavior local and predictable for services that do not opt into a global resilience pipeline.
+    /// </summary>
+    private async Task<T> SafeExecuteAsync<T>(Func<Task<T>> operation, string operationName, int maxRetries = 2, CancellationToken cancellationToken = default)
+    {
+        if (operation == null) throw new ArgumentNullException(nameof(operation));
+
+        var attempt = 0;
+        Exception? lastException = null;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (IsTransientError(ex) && attempt < maxRetries)
+            {
+                lastException = ex;
+                attempt++;
+                var delayMs = (int)(Math.Pow(2, attempt) * 100); // 200ms, 400ms, ...
+                _logger.LogWarning(ex, "{Operation} failed (attempt {Attempt}/{MaxRetries}). Retrying in {DelayMs}ms.",
+                    operationName, attempt, maxRetries, delayMs);
+
+                try
+                {
+                    await Task.Delay(delayMs, cancellationToken);
+                }
+                catch (OperationCanceledException) // preserve cancellation semantics
+                {
+                    throw;
+                }
+
+                continue;
+            }
+            catch (Exception ex)
+            {
+                // Non-transient or retries exhausted — bubble up
+                _logger.LogDebug(ex, "{Operation} failed permanently after {Attempt} attempts.", operationName, attempt);
+                throw;
+            }
+        }
+    }
+
+    private static bool IsTransientError(Exception ex)
+    {
+        // Conservative set of transient errors — expand later if needed
+        if (ex is TimeoutException) return true;
+        if (ex is TaskCanceledException) return true;
+        if (ex is OperationCanceledException) return false; // cancellation is not transient
+        if (ex is System.Net.Http.HttpRequestException) return true;
+        if (ex is DbUpdateException) return true; // EF transient write issues
+
+        // Fallback: treat common timeout hints as transient
+        if (ex.Message?.IndexOf("timeout", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+
+        return false;
+    }
+
     private static BudgetCategoryDto MapToDto(BudgetEntry entry)
     {
-        return new BudgetCategoryDto
+            return new BudgetCategoryDto
         {
             Id = entry.Id,
             AccountNumber = entry.AccountNumber,
@@ -197,7 +268,7 @@ public class BudgetCategoryService : IBudgetCategoryService
             EncumbranceAmount = entry.EncumbranceAmount,
             FiscalYear = entry.FiscalYear,
             DepartmentName = entry.Department?.Name ?? "Unknown",
-            FundName = entry.Fund?.Name
+            FundName = entry.Fund?.Name ?? entry.MunicipalAccount?.Name
         };
     }
 
@@ -219,8 +290,9 @@ public class BudgetCategoryService : IBudgetCategoryService
         var account = await _context.MunicipalAccounts.FirstOrDefaultAsync(cancellationToken);
         if (account == null)
         {
-            // Create default municipal account if none exist
-            account = new MunicipalAccount { AccountNumber = new AccountNumber("000"), Name = "General Fund" };
+            // Ensure a default department exists and set DepartmentId for the new municipal account
+            var defaultDeptId = await GetDefaultDepartmentIdAsync(cancellationToken);
+            account = new MunicipalAccount { AccountNumber = new AccountNumber("000"), Name = "General Fund", DepartmentId = defaultDeptId };
             _context.MunicipalAccounts.Add(account);
             await _context.SaveChangesAsync(cancellationToken);
         }

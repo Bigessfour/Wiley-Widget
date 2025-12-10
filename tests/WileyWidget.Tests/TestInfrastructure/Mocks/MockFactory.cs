@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
+using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Tests.TestInfrastructure.Mocks;

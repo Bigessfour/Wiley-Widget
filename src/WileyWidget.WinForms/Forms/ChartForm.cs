@@ -78,12 +78,15 @@ namespace WileyWidget.WinForms.Forms
 
         public ChartForm(ChartViewModel vm, ILogger<ChartForm> logger, IChartService chartService, IPrintingService printingService)
         {
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
 
-            _vm = vm;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
             _printingService = printingService ?? throw new ArgumentNullException(nameof(printingService));
+
+            // Apply view-model values to UI elements after InitializeComponent
+            ApplyViewModel();
 
             try
             {
@@ -130,6 +133,28 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger.LogError(ex, "Failed to initialize ChartForm");
                 throw;
+            }
+        }
+
+        private void ApplyViewModel()
+        {
+            try
+            {
+                if (_startDatePicker != null)
+                    _startDatePicker.Value = _vm.SelectedStartDate;
+                if (_endDatePicker != null)
+                    _endDatePicker.Value = _vm.SelectedEndDate;
+                if (_categoryFilter != null)
+                {
+                    if (_categoryFilter.Items.Contains(_vm.SelectedCategory))
+                        _categoryFilter.SelectedItem = _vm.SelectedCategory;
+                    else if (_categoryFilter.Items.Count > 0)
+                        _categoryFilter.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                try { _logger?.LogWarning(ex, "ApplyViewModel failed"); } catch { }
             }
         }
 
@@ -234,9 +259,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Date range pickers
             var dateRangeLabel = new ToolStripLabel("Date Range: ");
-            _startDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short, Value = _vm.SelectedStartDate };
+            _startDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short };
             var toLabel = new ToolStripLabel(" to ");
-            _endDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short, Value = _vm.SelectedEndDate };
+            _endDatePicker = new DateTimePicker { Width = 120, Format = DateTimePickerFormat.Short };
             var updateDateRangeBtn = new Button { Text = "Update", Width = 60, Height = 23 };
 
             updateDateRangeBtn.Click += async (s, e) =>
@@ -270,7 +295,7 @@ namespace WileyWidget.WinForms.Forms
             var categoryLabel = new ToolStripLabel("  Category: ");
             _categoryFilter = new ComboBox { Width = 150 };
             _categoryFilter.Items.AddRange(new object[] { "All Categories", "Revenue", "Expenses", "Capital", "Operations" });
-            _categoryFilter.SelectedItem = _vm.SelectedCategory;
+            // Selected category will be applied by ApplyViewModel()
             _categoryFilter.SelectedIndexChanged += async (s, e) =>
             {
                 await Utilities.AsyncEventHelper.ExecuteAsync(

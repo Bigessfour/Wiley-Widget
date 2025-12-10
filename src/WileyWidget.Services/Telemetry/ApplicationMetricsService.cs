@@ -23,6 +23,14 @@ public class ApplicationMetricsService : IDisposable
     // Histograms
     private readonly Histogram<double> _operationDuration;
     private readonly Histogram<double> _gcDuration;
+
+    // AI-specific metrics
+    private readonly Counter<long> _aiRequestsTotal;
+    private readonly Counter<long> _aiRetriesTotal;
+    private readonly Histogram<double> _aiResponseTimeMs;
+    private readonly Counter<long> _aiPromptTokens;
+    private readonly Counter<long> _aiCompletionTokens;
+    private readonly Counter<long> _aiTotalTokens;
     
     // ObservableGauges (polled metrics)
     private long _lastGcMemory;
@@ -62,6 +70,27 @@ public class ApplicationMetricsService : IDisposable
             "wiley.gc.duration",
             unit: "ms",
             description: "Garbage collection duration");
+
+        // AI-specific metrics
+        _aiRequestsTotal = _meter.CreateCounter<long>(
+            "ai.requests.total",
+            description: "Total number of AI provider requests");
+        _aiRetriesTotal = _meter.CreateCounter<long>(
+            "ai.retries.total",
+            description: "Total number of AI request retries");
+        _aiResponseTimeMs = _meter.CreateHistogram<double>(
+            "ai.response_time_ms",
+            unit: "ms",
+            description: "AI provider response time in milliseconds");
+        _aiPromptTokens = _meter.CreateCounter<long>(
+            "ai.tokens.prompt",
+            description: "Number of prompt tokens used");
+        _aiCompletionTokens = _meter.CreateCounter<long>(
+            "ai.tokens.completion",
+            description: "Number of completion tokens used");
+        _aiTotalTokens = _meter.CreateCounter<long>(
+            "ai.tokens.total",
+            description: "Total number of tokens used (prompt + completion)");
         
         // Observable gauges for memory metrics
         _meter.CreateObservableGauge(
@@ -179,6 +208,44 @@ public class ApplicationMetricsService : IDisposable
         
         _logger.LogInformation("Module {Module} initialization: {Success} in {Duration}ms",
             moduleName, success ? "SUCCESS" : "FAILED", durationMs);
+    }
+
+    /// <summary>
+    /// Records an AI provider request attempt and usage metrics.
+    /// </summary>
+    public void RecordAiRequest(string model, double responseTimeMs, int promptTokens = 0, int completionTokens = 0, int totalTokens = 0, int retryCount = 0, bool success = true)
+    {
+        var tags = new TagList
+        {
+            { "ai.model", model },
+            { "ai.success", success }
+        };
+
+        _aiRequestsTotal.Add(1, tags);
+        _aiRetriesTotal.Add(retryCount, tags);
+        _aiResponseTimeMs.Record(responseTimeMs, tags);
+
+        if (promptTokens > 0) _aiPromptTokens.Add(promptTokens, tags);
+        if (completionTokens > 0) _aiCompletionTokens.Add(completionTokens, tags);
+        if (totalTokens > 0) _aiTotalTokens.Add(totalTokens, tags);
+
+        _logger.LogDebug("Recorded AI metrics: model={Model}, time={Time}ms, promptTokens={Prompt}, completionTokens={Completion}, totalTokens={Total}, retries={Retries}",
+            model, responseTimeMs, promptTokens, completionTokens, totalTokens, retryCount);
+    }
+
+    /// <summary>
+    /// Records an AI retry event for observability.
+    /// </summary>
+    public void RecordAiRetry(string clientName, string model = "unknown")
+    {
+        var tags = new TagList
+        {
+            { "client", clientName },
+            { "ai.model", model }
+        };
+
+        _aiRetriesTotal.Add(1, tags);
+        _logger.LogDebug("Recorded AI retry metric for client={Client}, model={Model}", clientName, model);
     }
 
     /// <summary>

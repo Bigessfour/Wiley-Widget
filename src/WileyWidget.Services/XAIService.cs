@@ -16,6 +16,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.Services.Helpers;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
 using Polly;
@@ -47,6 +48,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IAIAssistantService? _assistantService;
     private readonly IAIPersonalityService? _personalityService;
     private readonly IFinancialInsightsService? _insightsService;
+    private readonly WileyWidget.Services.Telemetry.ApplicationMetricsService? _metricsService;
     private bool _disposed;
 
     /// <summary>
@@ -65,7 +67,9 @@ public class XAIService : IAIService, IDisposable
         SigNozTelemetryService? telemetryService = null,
         IAIAssistantService? assistantService = null,
         IAIPersonalityService? personalityService = null,
-        IFinancialInsightsService? insightsService = null
+        IFinancialInsightsService? insightsService = null,
+        WileyWidget.Services.Telemetry.ApplicationMetricsService? applicationMetricsService = null,
+        WileyWidget.Services.Resilience.IResiliencePipelineFactory? resilienceFactory = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
@@ -78,6 +82,7 @@ public class XAIService : IAIService, IDisposable
         _assistantService = assistantService;
         _personalityService = personalityService;
         _insightsService = insightsService;
+        _metricsService = applicationMetricsService;
     if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
@@ -152,96 +157,104 @@ public class XAIService : IAIService, IDisposable
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        // Create Polly v8 resilience pipeline with modern API
-        // Following Microsoft's recommended patterns for resilience
-        _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
-            // 1. RATE LIMITER - Prevent client-side throttling (50 requests/minute)
-            .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
-            {
-                PermitLimit = 50,
-                Window = TimeSpan.FromMinutes(1),
-                SegmentsPerWindow = 2,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            }))
-            // 2. TIMEOUT - Prevent hanging requests (15s configured timeout)
-            .AddTimeout(new TimeoutStrategyOptions
-            {
-                Timeout = TimeSpan.FromSeconds(timeoutSeconds),
-                OnTimeout = args =>
+        // Use the centralized resilience factory if provided (DI).
+        if (resilienceFactory != null)
+        {
+            _httpPipeline = resilienceFactory.CreateDefaultHttpPipeline("AIServices");
+        }
+        else
+        {
+            // Create Polly v8 resilience pipeline with modern API
+            // Following Microsoft's recommended patterns for resilience
+            _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+                // 1. RATE LIMITER - Prevent client-side throttling (50 requests/minute)
+                .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
                 {
-                    _logger.LogError("xAI API timeout after {Timeout}s", args.Timeout.TotalSeconds);
-                    // Outcome is not available on OnTimeout arguments in this runtime; record a timeout exception instead
-                    var tex = new TimeoutException($"xAI API timeout after {args.Timeout.TotalSeconds} seconds");
-                    _telemetryService?.RecordException(tex, ("xai.timeout", "request_timeout"));
-                    return ValueTask.CompletedTask;
-                }
-            })
-            // 3. CIRCUIT BREAKER - Fail fast during outages
-            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
-            {
-                FailureRatio = 0.5,                    // Open if 50% of requests fail
-                SamplingDuration = TimeSpan.FromSeconds(30),  // Sample window
-                MinimumThroughput = 5,                 // Minimum requests before evaluating
-                BreakDuration = TimeSpan.FromSeconds(circuitBreakerBreakSeconds), // Stay open for configured seconds
-                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
-                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
-                    .Handle<HttpRequestException>()
-                    .Handle<TaskCanceledException>(),
-                OnOpened = args =>
+                    PermitLimit = 50,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 2,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                }))
+                // 2. TIMEOUT - Prevent hanging requests (15s configured timeout)
+                .AddTimeout(new TimeoutStrategyOptions
                 {
-                    _logger.LogError("xAI API Circuit Breaker OPEN - too many failures");
-                    _telemetryService?.RecordException(args.Outcome.Exception,
-                        ("xai.circuit_breaker", "opened"));
-                    return ValueTask.CompletedTask;
-                },
-                OnClosed = args =>
-                {
-                    _logger.LogInformation("xAI API Circuit Breaker CLOSED - resuming normal operation");
-                    return ValueTask.CompletedTask;
-                },
-                OnHalfOpened = args =>
-                {
-                    _logger.LogInformation("xAI API Circuit Breaker HALF-OPEN - testing recovery");
-                    return ValueTask.CompletedTask;
-                }
-            })
-            // 4. RETRY - Handle transient errors with smart backoff
-            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
-            {
-                MaxRetryAttempts = 3,
-                BackoffType = DelayBackoffType.Exponential,
-                Delay = TimeSpan.FromMilliseconds(500),        // Base delay
-                UseJitter = true,                               // Critical for AI APIs with rate limits
-                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.RequestTimeout)
-                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.BadGateway)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.ServiceUnavailable)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.GatewayTimeout)
-                    .Handle<HttpRequestException>(),
-                OnRetry = args =>
-                {
-                    var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "Unknown";
-                    _logger.LogWarning("xAI API retry {Attempt}/3 after {Delay}ms due to {StatusCode}",
-                        args.AttemptNumber + 1, args.RetryDelay.TotalMilliseconds, statusCode);
-                    // Prefer logging the exception when available, otherwise log a string error
-                    if (args.Outcome.Exception != null)
+                    Timeout = TimeSpan.FromSeconds(timeoutSeconds),
+                    OnTimeout = args =>
                     {
-                        _aiLoggingService.LogError("Retry", args.Outcome.Exception);
+                        _logger.LogError("xAI API timeout after {Timeout}s", args.Timeout.TotalSeconds);
+                        // Outcome is not available on OnTimeout arguments in this runtime; record a timeout exception instead
+                        var tex = new TimeoutException($"xAI API timeout after {args.Timeout.TotalSeconds} seconds");
+                        _telemetryService?.RecordException(tex, ("xai.timeout", "request_timeout"));
+                        return ValueTask.CompletedTask;
                     }
-                    else
+                })
+                // 3. CIRCUIT BREAKER - Fail fast during outages
+                .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+                {
+                    FailureRatio = 0.5,                    // Open if 50% of requests fail
+                    SamplingDuration = TimeSpan.FromSeconds(30),  // Sample window
+                    MinimumThroughput = 5,                 // Minimum requests before evaluating
+                    BreakDuration = TimeSpan.FromSeconds(circuitBreakerBreakSeconds), // Stay open for configured seconds
+                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+                        .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
+                        .Handle<HttpRequestException>()
+                        .Handle<TaskCanceledException>(),
+                    OnOpened = args =>
                     {
-                        _aiLoggingService.LogError("Retry", $"HTTP {statusCode}", "Retry");
+                        _logger.LogError("xAI API Circuit Breaker OPEN - too many failures");
+                        _telemetryService?.RecordException(args.Outcome.Exception,
+                            ("xai.circuit_breaker", "opened"));
+                        return ValueTask.CompletedTask;
+                    },
+                    OnClosed = args =>
+                    {
+                        _logger.LogInformation("xAI API Circuit Breaker CLOSED - resuming normal operation");
+                        return ValueTask.CompletedTask;
+                    },
+                    OnHalfOpened = args =>
+                    {
+                        _logger.LogInformation("xAI API Circuit Breaker HALF-OPEN - testing recovery");
+                        return ValueTask.CompletedTask;
                     }
-                    return ValueTask.CompletedTask;
-                }
-            })
-            .Build();
+                })
+                // 4. RETRY - Handle transient errors with smart backoff
+                .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+                {
+                    MaxRetryAttempts = 3,
+                    BackoffType = DelayBackoffType.Exponential,
+                    Delay = TimeSpan.FromMilliseconds(500),        // Base delay
+                    UseJitter = true,                               // Critical for AI APIs with rate limits
+                    ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.RequestTimeout)
+                        .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.BadGateway)
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.ServiceUnavailable)
+                        .HandleResult(r => r.StatusCode == HttpStatusCode.GatewayTimeout)
+                        .Handle<HttpRequestException>(),
+                    OnRetry = args =>
+                    {
+                        var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "Unknown";
+                        _logger.LogWarning("xAI API retry {Attempt}/3 after {Delay}ms due to {StatusCode}",
+                            args.AttemptNumber + 1, args.RetryDelay.TotalMilliseconds, statusCode);
+                        // Prefer logging the exception when available, otherwise log a string error
+                        if (args.Outcome.Exception != null)
+                        {
+                            _aiLoggingService.LogError("Retry", args.Outcome.Exception);
+                        }
+                        else
+                        {
+                            _aiLoggingService.LogError("Retry", $"HTTP {statusCode}", "Retry");
+                        }
+                        return ValueTask.CompletedTask;
+                    }
+                })
+                .Build();
 
         _logger.LogInformation("✓ XAIService initialized with Polly v8 resilience pipeline (rate limit: 50/min, timeout: {Timeout}s, circuit breaker: 50% failure ratio, retry: 3x exponential with jitter)",
             timeoutSeconds);
+    }
     }
 
     /// <summary>
@@ -315,7 +328,7 @@ public class XAIService : IAIService, IDisposable
             apiCallSpan?.SetTag("ai.context_length", context?.Length ?? 0);
 
             // Create cache key from sanitized inputs
-            var cacheKey = $"XAI:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            var cacheKey = CacheKeyUtil.Generate("XAI", "v1", context, question);
 
             // Check cache first
             if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
@@ -426,6 +439,19 @@ public class XAIService : IAIService, IDisposable
                 {
                     var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
                     _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+
+                    // Record AI metrics (if configured)
+                    try
+                    {
+                        var promptTokens = result?.usage?.prompt_tokens ?? 0;
+                        var completionTokens = result?.usage?.completion_tokens ?? 0;
+                        var totalTokens = result?.usage?.total_tokens ?? 0;
+                        _metricsService?.RecordAiRequest(model, responseTimeMs, promptTokens, completionTokens, totalTokens, 0, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to record AI metrics");
+                    }
 
                     // Track successful response telemetry - commented out until Azure is configured
                     // _telemetryClient?.TrackEvent("XAIServiceSuccess", new Dictionary<string, string>
@@ -576,7 +602,7 @@ public class XAIService : IAIService, IDisposable
             var sanitizedQuestion = question;
             ValidateAndSanitizeInputs(ref sanitizedContext, ref sanitizedQuestion);
 
-            var cacheKey = $"XAI:{sanitizedContext.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{sanitizedQuestion.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            var cacheKey = CacheKeyUtil.Generate("XAI", "v1", sanitizedContext, sanitizedQuestion);
 
             // Check cache first
             if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
@@ -698,19 +724,32 @@ public class XAIService : IAIService, IDisposable
             var content = result.choices[0].message?.content;
             if (!string.IsNullOrEmpty(content))
             {
-                var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+            var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+            _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
 
-                Log.Information("Successfully received xAI response for question: {Question}", question);
+            // Record AI metrics (if configured)
+                    try
+            {
+                var promptTokens = result?.usage?.prompt_tokens ?? 0;
+            var completionTokens = result?.usage?.completion_tokens ?? 0;
+            var totalTokens = result?.usage?.total_tokens ?? 0;
+                _metricsService?.RecordAiRequest(model, responseTimeMs, promptTokens, completionTokens, totalTokens, 0, true);
+                    }
+            catch (Exception ex)
+                {
+                        _logger?.LogWarning(ex, "Failed to record AI metrics");
+                    }
 
-                // Cache the successful response
-                var cacheOptions = new MemoryCacheEntryOptions()
-                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(5))
-                    .SetSlidingExpiration(TimeSpan.FromMinutes(2));
-                _memoryCache.Set(cacheKey, content, cacheOptions);
+                    Log.Information("Successfully received xAI response for question: {Question}", question);
 
-                return content;
-            }
+                    // Cache the successful response
+                    var cacheOptions = new MemoryCacheEntryOptions()
+                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(5))
+                        .SetSlidingExpiration(TimeSpan.FromMinutes(2));
+                    _memoryCache.Set(cacheKey, content, cacheOptions);
+
+                    return content;
+                }
         }
 
         Log.Warning("xAI API returned empty or invalid response");
@@ -791,6 +830,20 @@ public class XAIService : IAIService, IDisposable
         {
             var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
             _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+
+            // Record AI metrics
+            try
+            {
+                var promptTokens = xaiResponse?.usage?.prompt_tokens ?? 0;
+                var completionTokens = xaiResponse?.usage?.completion_tokens ?? 0;
+                var totalTokens = xaiResponse?.usage?.total_tokens ?? 0;
+                _metricsService?.RecordAiRequest(model, responseTimeMs, promptTokens, completionTokens, totalTokens, 0, true);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to record AI metrics");
+            }
+
             Log.Information("Successfully received xAI response for question: {Question}", question);
             return new AIResponseResult(content, 200, null, null);
         }
@@ -902,6 +955,7 @@ public class XAIService : IAIService, IDisposable
     {
         public Choice[] choices { get; set; }
         public XAIError error { get; set; }
+        public Usage usage { get; set; }
 
         public class Choice
         {
@@ -911,6 +965,13 @@ public class XAIService : IAIService, IDisposable
         public class Message
         {
             public string content { get; set; }
+        }
+
+        public class Usage
+        {
+            public int prompt_tokens { get; set; }
+            public int completion_tokens { get; set; }
+            public int total_tokens { get; set; }
         }
 
         public class XAIError
@@ -1004,6 +1065,19 @@ public class XAIService : IAIService, IDisposable
                 var result = await response.Content.ReadFromJsonAsync<XAIResponse>();
                 var message = result?.choices?.FirstOrDefault()?.message?.content ?? "No response content";
 
+                // Record AI metrics (best-effort)
+                try
+                {
+                    var promptTokens = result?.usage?.prompt_tokens ?? 0;
+                    var completionTokens = result?.usage?.completion_tokens ?? 0;
+                    var totalTokens = result?.usage?.total_tokens ?? 0;
+                    _metricsService?.RecordAiRequest("grok-beta", 0, promptTokens, completionTokens, totalTokens, 0, true);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to record AI metrics");
+                }
+
                 _logger.LogInformation("Successfully received response from xAI");
                 return new AIResponseResult(message, (int)response.StatusCode);
             }
@@ -1040,6 +1114,9 @@ public class XAIService : IAIService, IDisposable
 
             // Add user message to conversation history
             conversationHistory.Add(ChatMessage.CreateUserMessage(sanitizedMessage));
+
+            // Start timing for telemetry
+            var startTime = DateTime.UtcNow;
 
             _logger.LogInformation("Sending message to xAI service (conversation history length: {Length})", conversationHistory.Count);
 
@@ -1131,6 +1208,20 @@ public class XAIService : IAIService, IDisposable
 
             // Add AI response to conversation history
             conversationHistory.Add(ChatMessage.CreateAIMessage(content));
+
+            // Record AI metrics (best-effort)
+            try
+            {
+                var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+                var promptTokens = xaiResponse?.usage?.prompt_tokens ?? 0;
+                var completionTokens = xaiResponse?.usage?.completion_tokens ?? 0;
+                var totalTokens = xaiResponse?.usage?.total_tokens ?? 0;
+                _metricsService?.RecordAiRequest(model, responseTimeMs, promptTokens, completionTokens, totalTokens, 0, true);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to record AI metrics");
+            }
 
             _aiLoggingService.LogResponse(sanitizedMessage, content, 0, 0);
             Log.Information("Successfully received xAI response");
@@ -1852,7 +1943,7 @@ public class XAIService : IAIService, IDisposable
                                     try
                                     {
                                         var jsonDoc = JsonDocument.Parse(tc.function.arguments);
-                                        args = JsonSerializer.Deserialize<Dictionary<string, object>>(tc.function.arguments) 
+                                        args = JsonSerializer.Deserialize<Dictionary<string, object>>(tc.function.arguments)
                                             ?? new Dictionary<string, object>();
                                     }
                                     catch (JsonException ex)
@@ -1995,7 +2086,7 @@ public class XAIService : IAIService, IDisposable
             _logger.LogDebug("xAI response length: {Length} characters", content.Length);
 
             // Cache the response
-            var cacheKey = $"XAI_TOOLS:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            var cacheKey = CacheKeyUtil.Generate("XAI_TOOLS", "v1", context, question);
             _memoryCache.Set(cacheKey, content, TimeSpan.FromMinutes(10));
 
             return content;

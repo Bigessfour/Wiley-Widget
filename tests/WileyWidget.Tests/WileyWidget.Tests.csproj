@@ -12,6 +12,7 @@
 
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Archived\**" />
     <Using Include="Xunit" />
   </ItemGroup>
 

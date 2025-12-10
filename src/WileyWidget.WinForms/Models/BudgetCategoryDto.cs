@@ -54,9 +54,9 @@ public partial class BudgetCategoryDto : ObservableObject
         get
         {
             var percentUsed = PercentUsed;
-            if (percentUsed > 1.0m) return "Over Budget";
-            if (percentUsed > 0.9m) return "Approaching Limit";
-            if (percentUsed > 0.75m) return "On Track";
+            if (percentUsed >= 1.0m) return "Over Budget";
+            if (percentUsed >= 0.9m) return "Approaching Limit";
+            if (percentUsed >= 0.75m) return "On Track";
             return "Under Budget";
         }
     }

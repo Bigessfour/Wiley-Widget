@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Tests
 
             // Setup default dashboard data response
             _mockDashboardService.Setup(x => x.LoadDashboardDataAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new DashboardDto(100000m, 75000m, 25000m, 10, 5, DateTime.Now.ToString("g")));
+                .ReturnsAsync(new DashboardDto(100000m, 75000m, 25000m, 10, 5, DateTime.Now.ToString("g"), 0, null));
         }
 
         [Fact]

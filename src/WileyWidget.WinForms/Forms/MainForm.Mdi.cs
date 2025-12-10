@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Reflection;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -269,24 +270,139 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Clear any ContextMenuStrip/Holders on the TabControlAdv that may be tied to a previous TabbedMDIManager.
-    /// This prevents Syncfusion exceptions about reusing a ContextMenuPlaceHolder for different managers.
+    /// Clear any ContextMenuStrip/Holders on all TabControlAdv instances we can find.
+    /// Syncfusion throws if a ContextMenuPlaceHolder from a previous manager is reused,
+    /// so we attempt a best-effort scan of every reachable TabControlAdv and clear
+    /// placeholder/context properties.
     /// </summary>
     private void ClearTabbedTabControlContextMenu()
     {
         try
         {
-            var tabCtrl = GetTabbedTabControl();
-            if (tabCtrl == null) return;
+            var tabControls = FindAllTabControlAdvInstances();
+            if (tabControls == null || tabControls.Count == 0) return;
 
-            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStrip");
-            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuPlaceHolder");
-            ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStripPlaceHolder");
+            foreach (var tabCtrl in tabControls)
+            {
+                ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStrip");
+                ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuPlaceHolder");
+                ResetTabControlContextMenuProperty(tabCtrl, "ContextMenuStripPlaceHolder");
+            }
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "ClearTabbedTabControlContextMenu encountered an error");
         }
+    }
+
+    /// <summary>
+    /// Attempt to locate every live TabControlAdv instance reachable from the MainForm.
+    /// This includes scanning the visible control tree (the main form and any MDI children)
+    /// and probing the TabbedMDIManager instance internals (properties/fields) via reflection
+    /// to find additional TabControlAdv controls the manager may create internally.
+    /// </summary>
+    private List<object> FindAllTabControlAdvInstances()
+    {
+        var found = new List<object>();
+
+        void WalkControls(Control.ControlCollection controls)
+        {
+            foreach (Control c in controls)
+            {
+                try
+                {
+                    if (string.Equals(c.GetType().Name, "TabControlAdv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!found.Contains(c)) found.Add(c);
+                    }
+
+                    if (c.HasChildren)
+                    {
+                        WalkControls(c.Controls);
+                    }
+                }
+                catch { /* best-effort scan - ignore failures */ }
+            }
+        }
+
+        try
+        {
+            // Walk the main form control tree
+            WalkControls(this.Controls);
+
+            // Walk MDI children as well
+            foreach (var child in MdiChildren)
+            {
+                try { WalkControls(child.Controls); } catch { }
+            }
+
+            // Inspect TabbedMDIManager internals (best-effort via reflection) - some versions keep references
+            if (_tabbedMdiManager != null)
+            {
+                var dmType = _tabbedMdiManager.GetType();
+
+                // Properties
+                var props = dmType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                foreach (var prop in props)
+                {
+                    try
+                    {
+                        var pType = prop.PropertyType;
+                        if (pType == null) continue;
+
+                        if (pType.Name.Contains("TabControlAdv"))
+                        {
+                            var val = prop.GetValue(_tabbedMdiManager);
+                            if (val != null && !found.Contains(val)) found.Add(val);
+                        }
+
+                        if (typeof(System.Collections.IEnumerable).IsAssignableFrom(pType) && pType != typeof(string))
+                        {
+                            var enumVal = prop.GetValue(_tabbedMdiManager) as System.Collections.IEnumerable;
+                            if (enumVal != null)
+                            {
+                                foreach (var item in enumVal)
+                                {
+                                    if (item != null && item.GetType().Name.Contains("TabControlAdv") && !found.Contains(item)) found.Add(item);
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // Fields
+                var fields = dmType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                foreach (var field in fields)
+                {
+                    try
+                    {
+                        var fType = field.FieldType;
+                        if (fType.Name.Contains("TabControlAdv"))
+                        {
+                            var val = field.GetValue(_tabbedMdiManager);
+                            if (val != null && !found.Contains(val)) found.Add(val);
+                        }
+
+                        if (typeof(System.Collections.IEnumerable).IsAssignableFrom(fType) && fType != typeof(string))
+                        {
+                            var enumVal = field.GetValue(_tabbedMdiManager) as System.Collections.IEnumerable;
+                            if (enumVal != null)
+                            {
+                                foreach (var item in enumVal)
+                                {
+                                    if (item != null && item.GetType().Name.Contains("TabControlAdv") && !found.Contains(item)) found.Add(item);
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+
+        return found;
     }
 
     private void ResetTabControlContextMenuProperty(object tabControl, string propertyName)
@@ -382,8 +498,15 @@ public partial class MainForm
     {
         try
         {
-            // Apply theme to newly added tab control (reflection-safe)
-            var newTabControl = e?.GetType().GetProperty("TabControlAdv")?.GetValue(e);
+            // Apply theme to newly added tab control (reflection-safe). Different
+            // Syncfusion versions call this property either 'TabControlAdv' or 'TabControl'.
+            object? newTabControl = null;
+            if (e != null)
+            {
+                var evType = e.GetType();
+                var p = evType.GetProperty("TabControlAdv") ?? evType.GetProperty("TabControl");
+                if (p != null) newTabControl = p.GetValue(e);
+            }
             if (newTabControl != null)
             {
                 var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
@@ -480,9 +603,9 @@ public partial class MainForm
     /// <summary>
     /// Configure context menu for MDI tabs.
     /// </summary>
-    private void ConfigureTabContextMenu()
+    private void ConfigureTabContextMenu(object? tabControlOverride = null)
     {
-        var tabControl = GetTabbedTabControl();
+        var tabControl = tabControlOverride ?? GetTabbedTabControl();
             if (tabControl == null) return;
 
         try
@@ -524,11 +647,61 @@ public partial class MainForm
             // New window (if applicable)
             var newWindowItem = new ToolStripMenuItem("&New Window", null, (s, e) =>
             {
-                // This would duplicate the current window - implement if needed
-                _logger.LogInformation("New window requested (not implemented)");
+                try
+                {
+                    var active = ActiveMdiChild;
+                    if (active == null) return;
+
+                    var formType = active.GetType();
+
+                    // Create a DI-backed instance when possible (uses ActivatorUtilities which honors constructor injection)
+                        var scope = _serviceProvider.CreateScope();
+                    Form? newForm = null;
+                    try { newForm = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance(scope.ServiceProvider, formType) as Form; } catch { }
+
+                    if (newForm == null)
+                    {
+                        try { newForm = Activator.CreateInstance(formType) as Form; } catch { }
+                    }
+
+                    if (newForm == null) return;
+
+                    // Ensure TabbedMDI-friendly MinimumSize
+                    try
+                    {
+                        if (_tabbedMdiManager != null && (newForm.MinimumSize.Width != 0 || newForm.MinimumSize.Height != 0))
+                        {
+                            try { _mdiChildOriginalMinimumSizes[newForm] = newForm.MinimumSize; } catch { }
+                            try { newForm.MinimumSize = Size.Empty; } catch { }
+                        }
+                    }
+                    catch { }
+
+                    newForm.MdiParent = this;
+                    newForm.FormClosed += (fs, fe) =>
+                    {
+                        try
+                        {
+                            if (_mdiChildOriginalMinimumSizes.TryGetValue(newForm, out var original))
+                            {
+                                try { if (!newForm.IsDisposed) newForm.MinimumSize = original; } catch { }
+                                _mdiChildOriginalMinimumSizes.Remove(newForm);
+                            }
+                        }
+                        catch { }
+
+                        try { scope.Dispose(); } catch { }
+                    };
+
+                    newForm.Show();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to open new instance of active MDI child");
+                }
             })
             {
-                Enabled = false
+                Enabled = true
             };
 
             // Add items to context menu
@@ -539,7 +712,7 @@ public partial class MainForm
             tabContextMenu.Items.Add(newWindowItem);
 
             // Assign context menu to TabControlAdv (clear any placeholder first)
-            var tabCtrl = GetTabbedTabControl();
+                var tabCtrl = tabControl;
             if (tabCtrl != null)
             {
                 var ctxProp = tabCtrl.GetType().GetProperty("ContextMenuStrip");
@@ -692,8 +865,15 @@ public partial class MainForm
             try
             {
                 if (_tabbedMdiManager == null) return null;
-                var prop = _tabbedMdiManager.GetType().GetProperty("TabControlAdv");
-                return prop?.GetValue(_tabbedMdiManager);
+
+                var dmType = _tabbedMdiManager.GetType();
+                var prop = dmType.GetProperty("TabControlAdv") ?? dmType.GetProperty("TabControl");
+                var val = prop?.GetValue(_tabbedMdiManager);
+                if (val != null) return val;
+
+                // As a fallback, scan reachable controls for a TabControlAdv instance
+                var found = FindAllTabControlAdvInstances();
+                return found.FirstOrDefault();
             }
             catch { return null; }
         }

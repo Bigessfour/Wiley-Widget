@@ -1347,7 +1347,9 @@ class RepositoryAnalyzer:
         self, files_data: FileDataList
     ) -> dict[str, str | list[dict[str, Any]] | dict[str, int | dict[str, Any]]]:
         """Generate enhanced architecture overview for MVVM/WinForms projects."""
-        summary: dict[str, str | list[dict[str, Any]] | dict[str, int | dict[str, Any]]] = {
+        summary: dict[
+            str, str | list[dict[str, Any]] | dict[str, int | dict[str, Any]]
+        ] = {
             "pattern": "MVVM + WinForms",
             "description": "Hybrid WPF/WinForms application using MVVM pattern with Prism, Syncfusion controls, and Entity Framework Core",
             "views": [],
@@ -1384,15 +1386,15 @@ class RepositoryAnalyzer:
                         "dependencies": file_data["context"]["dependencies"],
                         "type": "XAML View",
                     }
-                    
+
                     # Try to find associated ViewModel
                     for related in file_data["context"]["related_files"]:
                         if "ViewModel" in related:
                             view_info["viewmodel"] = Path(related).stem
                             view_vm_map[name] = view_info
-                    
+
                     summary["views"].append(view_info)
-                
+
                 elif sub_category == "viewmodel":
                     vm_info = {
                         "path": path,
@@ -1400,42 +1402,48 @@ class RepositoryAnalyzer:
                         "dependencies": file_data["context"]["dependencies"],
                         "type": "ViewModel",
                     }
-                    
+
                     # Extract properties and commands from summary
                     if "Properties" in summary_text:
                         props_match = re.search(r"Properties \((\d+)\)", summary_text)
                         if props_match:
                             vm_info["property_count"] = int(props_match.group(1))
-                    
+
                     if "Public Methods" in summary_text:
-                        methods_match = re.search(r"Public Methods \((\d+)", summary_text)
+                        methods_match = re.search(
+                            r"Public Methods \((\d+)", summary_text
+                        )
                         if methods_match:
                             vm_info["method_count"] = int(methods_match.group(1))
-                    
+
                     summary["viewmodels"].append(vm_info)
-                
+
                 elif sub_category == "model":
                     model_info = {
                         "path": path,
                         "name": name,
                         "type": "Model/Entity",
                     }
-                    
+
                     # Check if it's an entity
                     if "Entities" in path or "DbSet" in summary_text:
                         model_info["is_entity"] = True
                         summary["entities"].append(model_info)
                     else:
                         summary["models"].append(model_info)
-                
+
                 elif sub_category == "service":
                     service_info = {
                         "path": path,
                         "name": name,
-                        "type": "Service Implementation" if not name.startswith("I") else "Service Interface",
+                        "type": (
+                            "Service Implementation"
+                            if not name.startswith("I")
+                            else "Service Interface"
+                        ),
                         "dependencies": file_data["context"]["dependencies"],
                     }
-                    
+
                     # Categorize service type
                     if "XAI" in name or "AI" in name:
                         service_info["service_type"] = "AI/ML"
@@ -1447,15 +1455,15 @@ class RepositoryAnalyzer:
                         service_info["service_type"] = "Data Exchange"
                     else:
                         service_info["service_type"] = "General"
-                    
+
                     summary["services"].append(service_info)
-                
+
                 elif sub_category == "data":
                     data_info = {
                         "path": path,
                         "name": name,
                     }
-                    
+
                     # DbContext detection
                     if "DbContext" in name or "Context" in name:
                         data_info["type"] = "Database Context"
@@ -1468,52 +1476,64 @@ class RepositoryAnalyzer:
                     else:
                         data_info["type"] = "Repository/Data Access"
                         summary["repositories"].append(data_info)
-                
+
                 elif sub_category == "converter":
-                    summary["converters"].append({
-                        "path": path,
-                        "name": name,
-                        "type": "Value Converter",
-                    })
-                
+                    summary["converters"].append(
+                        {
+                            "path": path,
+                            "name": name,
+                            "type": "Value Converter",
+                        }
+                    )
+
                 elif sub_category == "behavior":
-                    summary["behaviors"].append({
-                        "path": path,
-                        "name": name,
-                        "type": "Attached Behavior",
-                    })
-                
+                    summary["behaviors"].append(
+                        {
+                            "path": path,
+                            "name": name,
+                            "type": "Attached Behavior",
+                        }
+                    )
+
                 elif "Module" in path or "Module" in name:
-                    summary["modules"].append({
-                        "path": path,
-                        "name": name,
-                        "type": "Prism Module",
-                    })
-                
+                    summary["modules"].append(
+                        {
+                            "path": path,
+                            "name": name,
+                            "type": "Prism Module",
+                        }
+                    )
+
                 # WinForms-specific detection
                 if ".cs" in path and "Form" in name and "ViewModel" not in name:
                     # Check if it's a Form or Dialog
                     if "Dialog" in name or "Dlg" in name:
-                        summary["dialogs"].append({
-                            "path": path,
-                            "name": name,
-                            "type": "WinForms Dialog",
-                        })
+                        summary["dialogs"].append(
+                            {
+                                "path": path,
+                                "name": name,
+                                "type": "WinForms Dialog",
+                            }
+                        )
                     elif "Form" in name and sub_category != "model":
-                        summary["forms"].append({
-                            "path": path,
-                            "name": name,
-                            "type": "WinForms Form",
-                        })
+                        summary["forms"].append(
+                            {
+                                "path": path,
+                                "name": name,
+                                "type": "WinForms Form",
+                            }
+                        )
 
         # Build view-viewmodel relationship map
         relationships = []
         for view_name, view_info in view_vm_map.items():
-            relationships.append({
-                "view": view_name,
-                "viewmodel": view_info.get("viewmodel", "Unknown"),
-                "view_path": view_info["path"],
-            })
+            relationships.append(
+                {
+                    "view": view_name,
+                    "viewmodel": view_info.get("viewmodel", "Unknown"),
+                    "view_path": view_info["path"],
+                }
+            )
 
         # Add counts and metadata
         summary["counts"] = {
@@ -1530,18 +1550,18 @@ class RepositoryAnalyzer:
             "dialogs": len(summary["dialogs"]),
             "dbcontexts": len(summary["dbcontexts"]),
         }
-        
+
         summary["relationships"] = {
             "view_viewmodel_pairs": relationships,
             "total_pairs": len(relationships),
         }
-        
+
         # Service categorization
         service_categories = {}
         for service in summary["services"]:
             svc_type = service.get("service_type", "General")
             service_categories[svc_type] = service_categories.get(svc_type, 0) + 1
-        
+
         summary["service_breakdown"] = service_categories
 
         return summary

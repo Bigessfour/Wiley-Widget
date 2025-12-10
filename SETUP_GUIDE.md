@@ -1,8 +1,8 @@
 # WileyWidget - Complete Setup Guide
 
-> **Last Updated**: November 23, 2025  
-> **Version**: 1.0.0  
-> **Target Framework**: .NET 9.0 + WinUI 3  
+> **Last Updated**: November 23, 2025
+> **Version**: 1.0.0
+> **Target Framework**: .NET 9.0 + WinUI 3
 > **Status**: ✅ Build Verified | ⚠️ Requires Database + Secrets Setup
 
 ---
@@ -194,6 +194,37 @@ After migrations, your database contains:
 
 ---
 
+### Optional: Manual fix for missing ActivityLogs table (non-EF environments)
+
+If your environment prevents running EF migrations (e.g., production policy or emergency fix), this repository includes a SQL script that will create the missing `dbo.ActivityLogs` table and indexes used by the application.
+
+1. Run the script using sqlcmd:
+
+```powershell
+sqlcmd -S .\SQLEXPRESS -d WileyWidgetDev -i sql\create_activitylogs.sql
+```
+
+2. Or run using PowerShell (requires SqlServer module):
+
+```powershell
+Import-Module SqlServer
+Invoke-Sqlcmd -ServerInstance '.\SQLEXPRESS' -Database 'WileyWidgetDev' -InputFile 'sql\create_activitylogs.sql'
+```
+
+3. Verify the table and indexes were created:
+
+```powershell
+sqlcmd -S .\SQLEXPRESS -d WileyWidgetDev -Q "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ActivityLogs'"
+sqlcmd -S .\SQLEXPRESS -d WileyWidgetDev -Q "EXEC sp_helpindex 'dbo.ActivityLogs'"
+```
+
+Notes:
+
+- Prefer adding and applying a proper EF Core migration so the schema remains tracked under source control and CI pipelines. The manual SQL script is a pragmatic stop-gap and is safe to run when applying a migration isn't practical immediately.
+- If you create the table manually, keep a record of it in your deployment notes. You may later scaffold an EF migration that matches the schema when it is appropriate to do so.
+
+---
+
 ## 🔐 Secrets Configuration
 
 WileyWidget uses **DPAPI-encrypted secret storage** for production-grade security.
@@ -296,6 +327,7 @@ Copy-Item "$env:APPDATA\WileyWidget\Secrets\.entropy" -Destination "C:\SecureBac
 1. Login to https://developer.intuit.com/app/developer/dashboard
 2. Click **Create an app** → **QuickBooks Online**
 3. Configure:
+
    - **App Name**: WileyWidget Development
    - **Redirect URIs**:
      - `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl`

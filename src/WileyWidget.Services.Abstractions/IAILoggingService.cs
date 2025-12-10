@@ -77,6 +77,11 @@ namespace WileyWidget.Services
         double GetErrorRate();
 
         /// <summary>
+        /// Gets a lightweight snapshot of today's AI metrics
+        /// </summary>
+        Dictionary<string, object> GetTodayMetrics();
+
+        /// <summary>
         /// Exports usage logs to a file for analysis.
         /// </summary>
         /// <param name="filePath">Path to export the logs</param>

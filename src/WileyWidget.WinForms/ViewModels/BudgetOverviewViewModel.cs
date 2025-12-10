@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Services;
@@ -154,11 +155,15 @@ namespace WileyWidget.ViewModels
 
                 var updated = await _budgetCategoryService.UpdateCategoryAsync(category, cancellationToken);
 
-                // Update in collection
-                var index = Categories.IndexOf(category);
-                if (index >= 0)
+                // Update in collection (match by Id rather than reference equality)
+                var existing = Categories.FirstOrDefault(c => c.Id == category.Id);
+                if (existing != null)
                 {
-                    Categories[index] = updated;
+                    var index = Categories.IndexOf(existing);
+                    if (index >= 0)
+                    {
+                        Categories[index] = updated;
+                    }
                 }
 
                 await RefreshTotalsAsync(cancellationToken);

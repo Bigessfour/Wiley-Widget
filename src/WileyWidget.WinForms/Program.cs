@@ -1,10 +1,18 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Syncfusion.Licensing;
-using System.IO;
+using System;
 using System.Globalization;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
@@ -16,23 +24,39 @@ namespace WileyWidget.WinForms
     internal static class Program
     {
         private static GlobalExceptionHandlerService? _exceptionHandler;
+        private static bool _skipSecretMigration;
+        private static bool _skipWarmUps;
+        private static readonly LoggingLevelSwitch LogLevelSwitch = new(LogEventLevel.Debug);
+        private const string AppMutexName = "Global\\WileyWidget-2D7455E5-1E5A-4A12-9EF1-8D50B6BD8E8A";
+        private static Mutex? _singleInstanceMutex;
+        private static bool _ownsMutex;
 
         [STAThread]
-        static void Main()
+        static async Task Main(string[] args)
         {
             var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            IHost? host = null;
+            var commandLineState = ParseCommandLineArgs(args);
+
+            ApplyCommandLineState(commandLineState);
+
             try
             {
                 // === BOOTSTRAP SERILOG IMMEDIATELY ===
                 // Configure minimal Serilog before anything else to capture early errors
                 BootstrapSerilog();
 
-                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
-                Serilog.Log.Information("Wiley Widget Application Starting");
-                Serilog.Log.Information("Version: {Version}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown");
-                Serilog.Log.Information("OS: {OS}", Environment.OSVersion);
-                Serilog.Log.Information(".NET: {Runtime}", Environment.Version);
-                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+                if (ReportCommandLineState(commandLineState))
+                {
+                    return;
+                }
+
+                LogStartupHeader();
+
+                if (!EnsureSingleInstance())
+                {
+                    return;
+                }
 
                 // === GLOBAL EXCEPTION HANDLERS (MUST BE FIRST) ===
                 // Wire up unhandled exception handlers BEFORE any other code runs
@@ -46,10 +70,14 @@ namespace WileyWidget.WinForms
                 // before calling Application.Run() method"
                 RegisterSyncfusionLicense();
 
+                Application.SetHighDpiMode(HighDpiMode.SystemAware);
+
                 ApplicationConfiguration.Initialize();  // Required for WinForms + .NET 9
 
                 // Build the host — UseSerilog will gracefully replace bootstrap logger
-                var host = CreateHostBuilder().Build();
+                host = CreateHostBuilder().Build();
+
+                ConfigureEnvironment(host);
 
                 // === INITIALIZE GLOBAL EXCEPTION HANDLER SERVICE ===
                 // Resolve the exception handler from DI after the host is built
@@ -119,15 +147,26 @@ namespace WileyWidget.WinForms
                     Serilog.Log.CloseAndFlush();
                 });
 
+                // Start the host synchronously to avoid yielding the STA UI thread.
+                // If we 'await' here the continuation may resume on a thread-pool thread
+                // (no WinForms synchronization context is installed until Application.Run),
+                // which can cause UI controls to be created on a non-STA thread.
+                host.StartAsync().GetAwaiter().GetResult();
+
                 // === VALIDATE DI CONFIGURATION ===
                 // NOW validate DI after host is built and logger is properly configured
                 // This prevents Serilog ReloadableLogger from freezing prematurely
                 DependencyInjection.ValidateDependencyInjection(host.Services);
 
                 // === MIGRATE SECRETS TO VAULT ===
-                // Migrate machine-scope environment variables to encrypted vault for secure storage
-                // Using GetAwaiter().GetResult() instead of .Wait() to avoid potential deadlocks in WinForms
-                MigrateSecretsToVaultAsync(host).GetAwaiter().GetResult();
+                if (!_skipSecretMigration)
+                {
+                    MigrateSecretsToVaultAsync(host).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    Serilog.Log.Debug("Secret migration skipped in development environment");
+                }
 
                 // === RUN STARTUP DIAGNOSTICS ===
                 // This verifies all services can be resolved before the app tries to use them
@@ -136,8 +175,14 @@ namespace WileyWidget.WinForms
                 RunStartupDiagnosticsAsync(host, CancellationToken.None).GetAwaiter().GetResult();
 
                 // === WARM UP CRITICAL SERVICES ===
-                // Pre-initialize frequently used services to improve perceived startup performance
-                WarmUpCriticalServices(host);
+                if (!_skipWarmUps)
+                {
+                    WarmUpCriticalServices(host);
+                }
+                else
+                {
+                    Serilog.Log.Debug("Service warm-up skipped in development environment");
+                }
 
                 // === PRE-FLIGHT CHECKS ===
                 // Final validation before showing UI
@@ -150,61 +195,55 @@ namespace WileyWidget.WinForms
 
                 // === LOG STARTUP COMPLETION ===
                 startupStopwatch.Stop();
-                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
-                Serilog.Log.Information("Wiley Widget Application Startup Complete");
-                Serilog.Log.Information("Version: {Version}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown");
-                Serilog.Log.Information(".NET Runtime: {Runtime}", Environment.Version);
-                Serilog.Log.Information("Startup Time: {StartupTime}ms", startupStopwatch.ElapsedMilliseconds);
-                Serilog.Log.Information("Ready to show MainForm...");
-                Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+                LogStartupCompletion(startupStopwatch.ElapsedMilliseconds);
 
-            // Now we have a running message pump — safe to resolve MainForm + its dependencies
-            // IMPORTANT: MainForm is Scoped, so resolve it within a service scope
-            using (var scope = host.Services.CreateScope())
-            {
-                // Check for test mode to provide better error handling during UI tests
-                var isTestMode = Environment.GetEnvironmentVariable("WILEY_UI_TEST_MODE") == "true";
-
-                try
+                // Now we have a running message pump — safe to resolve MainForm + its dependencies
+                // IMPORTANT: MainForm is Scoped, so resolve it within a service scope
+                using (var scope = host.Services.CreateScope())
                 {
-                    var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
+                    // Check for test mode to provide better error handling during UI tests
+                    var isTestMode = Environment.GetEnvironmentVariable("WILEY_UI_TEST_MODE") == "true";
 
-                    // Apply theme to MainForm using ThemeManagerService
-                    var mainFormThemeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeManagerService>(scope.ServiceProvider);
-                    if (mainFormThemeManager != null)
+                    try
                     {
-                        mainFormThemeManager.ApplyTheme(mainForm);
-                    }
+                        var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
 
-                    Application.Run(mainForm);
+                        // Apply theme to MainForm using ThemeManagerService
+                        var mainFormThemeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeManagerService>(scope.ServiceProvider);
+                        if (mainFormThemeManager != null)
+                        {
+                            mainFormThemeManager.ApplyTheme(mainForm);
+                        }
+
+                        Application.Run(mainForm);
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Fatal(ex, "Critical error running MainForm");
+                        System.Diagnostics.Debug.WriteLine($"FATAL: MainForm failed: {ex}");
+
+                        if (isTestMode)
+                        {
+                            // In test mode, show a dialog that FlaUI can detect
+                            MessageBox.Show(
+                                $"Startup failed: {ex.Message}\n\nDetails: {ex.GetType().Name}",
+                                "Wiley Widget - Startup Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        }
+                        else
+                        {
+                            // In normal mode, show user-friendly error
+                            MessageBox.Show(
+                                $"The application encountered an error during startup:\n\n{ex.Message}\n\nPlease check the logs for more details.",
+                                "Wiley Widget - Startup Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        }
+
+                        throw; // Re-throw to terminate the application
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Serilog.Log.Fatal(ex, "Critical error running MainForm");
-                    System.Diagnostics.Debug.WriteLine($"FATAL: MainForm failed: {ex}");
-
-                    if (isTestMode)
-                    {
-                        // In test mode, show a dialog that FlaUI can detect
-                        MessageBox.Show(
-                            $"Startup failed: {ex.Message}\n\nDetails: {ex.GetType().Name}",
-                            "Wiley Widget - Startup Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-                    else
-                    {
-                        // In normal mode, show user-friendly error
-                        MessageBox.Show(
-                            $"The application encountered an error during startup:\n\n{ex.Message}\n\nPlease check the logs for more details.",
-                            "Wiley Widget - Startup Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-
-                    throw; // Re-throw to terminate the application
-                }
-            }
             }
             catch (Exception ex)
             {
@@ -220,8 +259,28 @@ namespace WileyWidget.WinForms
             }
             finally
             {
-                // Ensure bootstrap logger is properly disposed and all logs are flushed
-                // This also disposes the host-configured logger after application exit
+                if (host != null)
+                {
+                    try
+                    {
+                        await host.StopAsync(TimeSpan.FromSeconds(5));
+                    }
+                    catch (Exception shutdownException)
+                    {
+                        Serilog.Log.Warning(shutdownException, "Graceful host shutdown interrupted");
+                    }
+
+                    host.Dispose();
+                }
+
+                if (_ownsMutex)
+                {
+                    try { _singleInstanceMutex?.ReleaseMutex(); } catch { }
+                    try { _singleInstanceMutex?.Dispose(); } catch { }
+                    _singleInstanceMutex = null;
+                    _ownsMutex = false;
+                }
+
                 Serilog.Log.CloseAndFlush();
             }
         }
@@ -236,7 +295,7 @@ namespace WileyWidget.WinForms
             Directory.CreateDirectory(logsDir);
 
             Log.Logger = new Serilog.LoggerConfiguration()
-                .MinimumLevel.Debug()
+                .MinimumLevel.ControlledBy(LogLevelSwitch)
                 .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
                 .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
                 .WriteTo.File(
@@ -256,6 +315,29 @@ namespace WileyWidget.WinForms
 
             Log.Information("Serilog bootstrap complete - logs directory: {LogsDir}", logsDir);
             System.Diagnostics.Debug.WriteLine($"Serilog bootstrap complete - logs at: {logsDir}");
+        }
+
+        private static void LogStartupHeader()
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+            Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+            Serilog.Log.Information("Wiley Widget Application Starting");
+            Serilog.Log.Information("Version: {Version}", version);
+            Serilog.Log.Information("OS: {OS}", Environment.OSVersion);
+            Serilog.Log.Information(".NET: {Runtime}", Environment.Version);
+            Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+        }
+
+        private static void LogStartupCompletion(long elapsedMilliseconds)
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+            Serilog.Log.Information("═══════════════════════════════════════════════════════════");
+            Serilog.Log.Information("Wiley Widget Application Startup Complete");
+            Serilog.Log.Information("Version: {Version}", version);
+            Serilog.Log.Information(".NET Runtime: {Runtime}", Environment.Version);
+            Serilog.Log.Information("Startup Time: {StartupTime}ms", elapsedMilliseconds);
+            Serilog.Log.Information("Ready to show MainForm...");
+            Serilog.Log.Information("═══════════════════════════════════════════════════════════");
         }
 
         /// <summary>
@@ -841,6 +923,32 @@ namespace WileyWidget.WinForms
             {
                 logger.Information("Performing pre-flight checks...");
 
+                // Check 0: Validate runtime and dependency versions
+                var requiredDotNetVersion = new Version(9, 0);
+                var currentDotNetVersion = Environment.Version;
+                if (currentDotNetVersion.CompareTo(requiredDotNetVersion) < 0)
+                {
+                    logger.Error("✗ .NET runtime version {CurrentVersion} is below required {RequiredVersion}", currentDotNetVersion, requiredDotNetVersion);
+                    allChecksPassed = false;
+                }
+                else
+                {
+                    logger.Information("✓ .NET runtime version meets minimum requirement ({Version})", currentDotNetVersion);
+                }
+
+                var minimumSyncfusionVersion = new Version(31, 2, 16);
+                var syncfusionAsm = typeof(SyncfusionLicenseProvider).Assembly;
+                var syncVersion = syncfusionAsm.GetName().Version;
+                if (syncVersion == null || syncVersion.CompareTo(minimumSyncfusionVersion) < 0)
+                {
+                    logger.Error("✗ Syncfusion version {Current} is invalid or below required {Required}", syncVersion, minimumSyncfusionVersion);
+                    allChecksPassed = false;
+                }
+                else
+                {
+                    logger.Information("✓ Syncfusion version {Version} meets minimum requirement", syncVersion);
+                }
+
                 // Check 1: Verify ThemeManager is functional
                 var themeManager = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                     .GetService<IThemeManagerService>(host.Services);
@@ -957,6 +1065,185 @@ namespace WileyWidget.WinForms
             {
                 logger.Error(ex, "Failed to run startup diagnostics");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Parse simple command-line switches that influence startup behavior.
+        /// </summary>
+        private static CommandLineState ParseCommandLineArgs(string[] args)
+        {
+            var unknownArgs = new List<string>();
+
+            if (args == null || args.Length == 0)
+            {
+                return new CommandLineState(false, false, false, false, false, Array.Empty<string>());
+            }
+
+            bool debug = false;
+            bool noSecrets = false;
+            bool noWarmUps = false;
+            bool safeMode = false;
+            bool helpRequested = false;
+
+            foreach (var rawArg in args)
+            {
+                if (string.IsNullOrWhiteSpace(rawArg))
+                {
+                    continue;
+                }
+
+                var arg = rawArg.Trim();
+                if (string.Equals(arg, "--debug", StringComparison.OrdinalIgnoreCase))
+                {
+                    debug = true;
+                }
+                else if (string.Equals(arg, "--no-secrets", StringComparison.OrdinalIgnoreCase))
+                {
+                    noSecrets = true;
+                }
+                else if (string.Equals(arg, "--no-warmups", StringComparison.OrdinalIgnoreCase))
+                {
+                    noWarmUps = true;
+                }
+                else if (string.Equals(arg, "--safe-mode", StringComparison.OrdinalIgnoreCase))
+                {
+                    safeMode = true;
+                }
+                else if (string.Equals(arg, "--help", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(arg, "-h", StringComparison.OrdinalIgnoreCase))
+                {
+                    helpRequested = true;
+                }
+                else
+                {
+                    unknownArgs.Add(arg);
+                }
+            }
+
+            return new CommandLineState(
+                debug,
+                noSecrets,
+                noWarmUps,
+                safeMode,
+                helpRequested,
+                unknownArgs.AsReadOnly());
+        }
+
+        private static void ApplyCommandLineState(CommandLineState state)
+        {
+            if (state.Debug)
+            {
+                LogLevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+            }
+
+            if (state.SafeMode)
+            {
+                _skipSecretMigration = true;
+                _skipWarmUps = true;
+                return;
+            }
+
+            if (state.NoSecrets)
+            {
+                _skipSecretMigration = true;
+            }
+
+            if (state.NoWarmUps)
+            {
+                _skipWarmUps = true;
+            }
+        }
+
+        private static bool ReportCommandLineState(CommandLineState state)
+        {
+            var logger = Serilog.Log.ForContext("SourceContext", "Startup.CommandLine");
+
+            if (state.Debug)
+            {
+                logger.Information("Verbose logging enabled via command line (--debug)");
+            }
+
+            if (state.SafeMode)
+            {
+                logger.Information("Safe mode enabled via command line (--safe-mode) - skipping secrets and warm-ups");
+            }
+            else
+            {
+                if (state.NoSecrets)
+                {
+                    logger.Information("Secret migration skipped via command line (--no-secrets)");
+                }
+
+                if (state.NoWarmUps)
+                {
+                    logger.Information("Service warm-up skipped via command line (--no-warmups)");
+                }
+            }
+
+            foreach (var arg in state.UnrecognizedArgs)
+            {
+                logger.Warning("Unrecognized command-line argument: {Arg}", arg);
+            }
+
+            if (state.HelpRequested)
+            {
+                logger.Information("Command-line switches: --debug, --no-secrets, --no-warmups, --safe-mode, --help/-h");
+                return true;
+            }
+
+            return false;
+        }
+
+        private sealed record CommandLineState(
+            bool Debug,
+            bool NoSecrets,
+            bool NoWarmUps,
+            bool SafeMode,
+            bool HelpRequested,
+            IReadOnlyList<string> UnrecognizedArgs);
+
+        private static bool EnsureSingleInstance()
+        {
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, AppMutexName, out bool createdNew);
+                _ownsMutex = createdNew;
+                if (!createdNew)
+                {
+                    Serilog.Log.Warning("Another instance is already running - exiting.");
+                    MessageBox.Show("Wiley Widget is already running.", "Instance Running", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Failed to acquire single-instance mutex - allowing startup to continue");
+            }
+
+            return true;
+        }
+
+        private static void ConfigureEnvironment(IHost host)
+        {
+            var env = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IHostEnvironment>(host.Services);
+            Serilog.Log.Information("Running in environment: {EnvironmentName}", env.EnvironmentName);
+
+                if (env.IsDevelopment())
+                {
+                    Serilog.Log.Debug("Development environment detected - enabling verbose diagnostics");
+                    Serilog.Log.Logger = Serilog.Log.Logger.ForContext("Environment", "Development");
+                    _skipSecretMigration = true;
+                    _skipWarmUps = true;
+                }
+            else if (env.IsProduction())
+            {
+                    var httpClientFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IHttpClientFactory>(host.Services);
+                if (httpClientFactory != null)
+                {
+                    Serilog.Log.Debug("Production environment detected - HTTP clients will enforce HTTPS policies");
+                    // Additional production-specific configuration could go here
+                }
             }
         }
 

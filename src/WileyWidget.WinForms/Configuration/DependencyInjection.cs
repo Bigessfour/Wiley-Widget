@@ -11,6 +11,7 @@ using FluentValidation;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Validation;
+using WileyWidget.Services.Resilience;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.ViewModels;
@@ -41,6 +42,14 @@ namespace WileyWidget.WinForms.Configuration
 
             // Memory Cache
             services.AddMemoryCache();
+            Debug.WriteLine("DI: Registered AddMemoryCache()");
+            // Application metrics service (Telemetry)
+            services.AddSingleton<WileyWidget.Services.Telemetry.ApplicationMetricsService>();
+            Debug.WriteLine("DI: Registered WileyWidget.Services.Telemetry.ApplicationMetricsService (Singleton)");
+
+            // Resilience pipeline factory (centralized retry, circuit-breaker, timeout, rate-limit)
+            services.AddSingleton<IResiliencePipelineFactory, ResiliencePipelineFactory>();
+            Debug.WriteLine("DI: Registered IResiliencePipelineFactory -> ResiliencePipelineFactory (Singleton)");
             Debug.WriteLine("DI: Registered AddMemoryCache()");
             services.AddSingleton<ICacheService, MemoryCacheService>();
             Debug.WriteLine("DI: Registered ICacheService -> MemoryCacheService (Singleton)");
@@ -154,6 +163,23 @@ namespace WileyWidget.WinForms.Configuration
 
             // AI Tool Service for Grok function calling (Scoped for proper lifecycle)
             services.AddScoped<IAIToolService, AIToolService>();
+            Debug.WriteLine("DI: Registered IAIToolService -> AIToolService (Scoped)");
+
+            // === GROK AI SERVICE (Configurable) ===
+            // The Grok supercomputer (IGrokSupercomputer) is an optional, network-dependent AI
+            // integration. When running in development or offline environments we prefer a
+            // no-op NullGrokSupercomputer that prevents network calls and makes tests reliable.
+            var enableGrok = configuration.GetValue<bool>("AI:EnableGrok", false);
+            if (enableGrok)
+            {
+                services.AddScoped<IGrokSupercomputer, GrokSupercomputer>();
+                Debug.WriteLine("DI: Registered IGrokSupercomputer -> GrokSupercomputer (Scoped) [ENABLED]");
+            }
+            else
+            {
+                services.AddSingleton<IGrokSupercomputer, NullGrokSupercomputer>();
+                Debug.WriteLine("DI: Registered IGrokSupercomputer -> NullGrokSupercomputer (Singleton) [Disabled]");
+            }
             Debug.WriteLine("DI: Registered IAIToolService -> AIToolService (Scoped)");
 
             // AI Context Extraction Service for extracting entities from conversations (Scoped)

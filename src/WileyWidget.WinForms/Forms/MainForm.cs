@@ -21,6 +21,7 @@ using System.Collections;
 using System.Windows.Forms.Design;
 using System.Text.Json;
 using WileyWidget.Models;
+using WileyWidget.Services.Abstractions;
 using Syncfusion.Windows.Forms;
 
 namespace WileyWidget.WinForms.Forms
@@ -47,6 +48,7 @@ namespace WileyWidget.WinForms.Forms
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MainForm> _logger;
+        private readonly WileyWidget.Services.IExceptionHandler? _exceptionHandler;
         private readonly MainViewModel? _viewModel;
         private readonly IConfiguration _configuration;
         private IContainer? components = null;
@@ -80,12 +82,13 @@ namespace WileyWidget.WinForms.Forms
         // Cancellation token source for async operations
         private CancellationTokenSource? _cts;
 
-        public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, IConfiguration configuration, MainViewModel? viewModel = null)
+        public MainForm(IServiceProvider serviceProvider, ILogger<MainForm> logger, IConfiguration configuration, WileyWidget.Services.IExceptionHandler? exceptionHandler = null, MainViewModel? viewModel = null)
         {
             // CRITICAL: Assign fields BEFORE InitializeComponent() because InitializeComponent uses _configuration
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _exceptionHandler = exceptionHandler;
             _viewModel = viewModel;
 
             InitializeComponent();
@@ -135,6 +138,14 @@ namespace WileyWidget.WinForms.Forms
             {
                 // Log full stack and surface to user, then rethrow so the host can handle fatal startup errors
                 _logger.LogCritical(ex, "Fatal error while initializing MainForm");
+                try
+                {
+                    _exceptionHandler?.HandleGeneralError("MainForm", "Initialize", ex, "Fatal error while initializing MainForm", isHandled: false);
+                }
+                catch (Exception handlerEx)
+                {
+                    _logger.LogWarning(handlerEx, "Exception handler failed while handling constructor exception");
+                }
                 throw;
             }
         }
@@ -196,6 +207,14 @@ namespace WileyWidget.WinForms.Forms
                     catch (Exception ex)
                     {
                         _logger.LogDebug(ex, "Failed to restore application UI state");
+                        try
+                        {
+                            _exceptionHandler?.HandleGeneralError("MainForm", "RestoreAppState", ex, "Failed to restore UI state", isHandled: true);
+                        }
+                        catch (Exception handlerEx)
+                        {
+                            _logger.LogWarning(handlerEx, "Exception handler failed while restoring UI state");
+                        }
                     }
 
                         // Initialize periodic dashboard refresh timer (30s) using IDashboardService when available
@@ -226,6 +245,14 @@ namespace WileyWidget.WinForms.Forms
                                     catch (Exception ex)
                                     {
                                         _logger.LogDebug(ex, "Periodic dashboard refresh failed");
+                                        try
+                                        {
+                                            _exceptionHandler?.HandleGeneralError("MainForm", "PeriodicDashboardRefresh", ex, "Periodic dashboard refresh failed", isHandled: true);
+                                        }
+                                        catch (Exception handlerEx)
+                                        {
+                                            _logger.LogWarning(handlerEx, "Exception handler failed while handling periodic dashboard refresh");
+                                        }
                                     }
                                 };
                                 _statusTimer.Start();
@@ -640,6 +667,41 @@ namespace WileyWidget.WinForms.Forms
                 _aiChatPanel.BackColor = Color.FromArgb(248, 249, 250);
             }
 
+            // Move AIChatControl instantiation to Load event to guarantee UI (STA) thread
+            // availability. The actual initialization happens in MainForm_Load below.
+            this.Load += MainForm_Load;
+
+            // === Add Controls in Order ===
+            Controls.Add(mainSplit);
+            Controls.Add(_aiChatPanel);
+            Controls.Add(quickToolbar);
+            Controls.Add(headerPanel);
+            Controls.Add(statusStrip);
+            Controls.Add(menu);
+
+            MainMenuStrip = menu;
+            Size = new Size(1200, 800);
+            MinimumSize = new Size(900, 650);
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Color.FromArgb(45, 45, 48);
+
+            ResumeLayout(false);
+            PerformLayout();
+        }
+
+        private void MainForm_Load(object? sender, EventArgs e)
+        {
+            // Ensure execution on UI thread; if called from a background thread, marshal to UI thread.
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => MainForm_Load(sender, e)));
+                return;
+            }
+
+            // Prevent double initialization
+            if (_aiChatControl != null)
+                return;
+
             try
             {
                 // AIChatControl is not registered in DI; manually resolve dependencies and instantiate
@@ -670,8 +732,8 @@ namespace WileyWidget.WinForms.Forms
                 IFinancialInsightsService? insightsService = null;
                 try
                 {
-                    personalityService = _serviceProvider.GetService<IAIPersonalityService>();
-                    insightsService = _serviceProvider.GetService<IFinancialInsightsService>();
+                    personalityService = ServiceProviderExtensions.GetService<IAIPersonalityService>(_serviceProvider);
+                    insightsService = ServiceProviderExtensions.GetService<IFinancialInsightsService>(_serviceProvider);
                     if (personalityService != null)
                     {
                         _logger.LogInformation("✓ IAIPersonalityService resolved - personality-driven responses enabled");
@@ -687,9 +749,8 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 _aiChatControl = new AIChatControl(aiService, aiLogger, conversationalAI, personalityService, insightsService);
-
                 _aiChatControl.Dock = DockStyle.Fill;
-                _aiChatPanel.Controls.Add(_aiChatControl);
+                _aiChatPanel?.Controls.Add(_aiChatControl);
 
                 if (conversationalAI != null)
                 {
@@ -702,25 +763,8 @@ namespace WileyWidget.WinForms.Forms
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize AI Chat Control - check DI configuration");
+                _logger.LogError(ex, "Failed to initialize AI Chat Control (Load handler) - check DI configuration");
             }
-
-            // === Add Controls in Order ===
-            Controls.Add(mainSplit);
-            Controls.Add(_aiChatPanel);
-            Controls.Add(quickToolbar);
-            Controls.Add(headerPanel);
-            Controls.Add(statusStrip);
-            Controls.Add(menu);
-
-            MainMenuStrip = menu;
-            Size = new Size(1200, 800);
-            MinimumSize = new Size(900, 650);
-            StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(45, 45, 48);
-
-            ResumeLayout(false);
-            PerformLayout();
         }
 
         private void RefreshDashboard()

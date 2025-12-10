@@ -26,4 +26,9 @@ public interface IAIAssistantService
     /// Format tool call as JSON for MCP execution
     /// </summary>
     string FormatToolCallJson(ToolCall toolCall);
+
+        /// <summary>
+        /// Validates a tool call against the supported synchronous tools
+        /// </summary>
+        bool ValidateToolCall(ToolCall? toolCall);
 }

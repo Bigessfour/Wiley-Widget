@@ -151,8 +151,8 @@ namespace WileyWidget.Data
             entity.Property(e => e.Balance).HasColumnType("decimal(18,2)");
             entity.Property(e => e.BudgetAmount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.RowVersion)
-                  .IsRowVersion()
-                  .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
+                .IsRowVersion()
+                .HasColumnType("rowversion");
         });
 
         // Fund relations
@@ -357,8 +357,8 @@ namespace WileyWidget.Data
             entity.Property(ub => ub.OtherCharges).HasColumnType("decimal(18,2)").HasDefaultValue(0);
             entity.Property(ub => ub.AmountPaid).HasColumnType("decimal(18,2)").HasDefaultValue(0);
             entity.Property(ub => ub.RowVersion)
-                  .IsRowVersion()
-                  .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
+                .IsRowVersion()
+                .HasColumnType("rowversion");
         });
 
         // UtilityCustomer configuration
@@ -366,7 +366,7 @@ namespace WileyWidget.Data
         {
             entity.Property(uc => uc.RowVersion)
                   .IsRowVersion()
-                  .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
+                  .HasColumnType("rowversion");
         });
 
         // Charge configuration

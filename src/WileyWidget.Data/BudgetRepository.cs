@@ -82,6 +82,7 @@ public class BudgetRepository : IBudgetRepository
                     .Where(be => be.FiscalYear == fiscalYear)
                     .Include(be => be.Department)
                     .Include(be => be.Fund)
+                    .AsSplitQuery()
                     .AsNoTracking()
                     .ToListAsync();
 
@@ -121,6 +122,7 @@ public class BudgetRepository : IBudgetRepository
         var query = _context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .AsSplitQuery()
             .AsQueryable();
 
         // Apply fiscal year filter if specified
@@ -155,6 +157,7 @@ public class BudgetRepository : IBudgetRepository
         return Task.FromResult(_context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .AsSplitQuery()
             .AsQueryable());
     }
 
@@ -331,18 +334,23 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate)
     {
-        var budgetEntries = await _context.BudgetEntries
-            .Include(be => be.Department)
-            .Include(be => be.Fund)
+        var summaryData = await _context.BudgetEntries
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Select(be => new
+            {
+                be.BudgetedAmount,
+                be.ActualAmount,
+                FundCode = be.Fund != null ? be.Fund.FundCode : null,
+                FundName = be.Fund != null ? be.Fund.Name : "Unknown"
+            })
             .ToListAsync();
 
         var analysis = new BudgetVarianceAnalysis
         {
             AnalysisDate = DateTime.UtcNow,
             BudgetPeriod = $"{startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}",
-            TotalBudgeted = budgetEntries.Sum(be => be.BudgetedAmount),
-            TotalActual = budgetEntries.Sum(be => be.ActualAmount),
+            TotalBudgeted = summaryData.Sum(x => x.BudgetedAmount),
+            TotalActual = summaryData.Sum(x => x.ActualAmount),
         };
 
         analysis.TotalVariance = analysis.TotalBudgeted - analysis.TotalActual;
@@ -351,15 +359,15 @@ public class BudgetRepository : IBudgetRepository
             : 0;
 
         // Group by funds
-        analysis.FundSummaries = budgetEntries
-            .GroupBy(be => be.Fund)
-            .Where(g => g.Key != null)
+        analysis.FundSummaries = summaryData
+            .GroupBy(x => new { x.FundCode, x.FundName })
+            .Where(g => g.Key.FundCode != null)
             .Select(g => new FundSummary
             {
-                Fund = new BudgetFundType { Code = g.Key!.FundCode, Name = g.Key.Name },
-                FundName = g.Key?.Name ?? "Unknown",
-                TotalBudgeted = g.Sum(be => be.BudgetedAmount),
-                TotalActual = g.Sum(be => be.ActualAmount),
+                Fund = new BudgetFundType { Code = g.Key.FundCode!, Name = g.Key.FundName },
+                FundName = g.Key.FundName,
+                TotalBudgeted = g.Sum(x => x.BudgetedAmount),
+                TotalActual = g.Sum(x => x.ActualAmount),
                 AccountCount = g.Count()
             })
             .ToList();
@@ -390,24 +398,25 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<DepartmentSummary>> GetDepartmentBreakdownAsync(DateTime startDate, DateTime endDate)
     {
-        var budgetEntries = await _context.BudgetEntries
-            .Include(be => be.Department)
-            .Include(be => be.Fund)
+        return await _context.BudgetEntries
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
-            .ToListAsync();
-
-        return budgetEntries
-            .GroupBy(be => be.Department)
-            .Where(g => g.Key != null)
+            .Select(be => new
+            {
+                DepartmentId = be.DepartmentId,
+                DepartmentName = be.Department != null ? be.Department.Name : "Unknown",
+                be.BudgetedAmount,
+                be.ActualAmount
+            })
+            .GroupBy(x => new { x.DepartmentId, x.DepartmentName })
             .Select(g => new DepartmentSummary
             {
-                Department = g.Key,
-                DepartmentName = g.Key?.Name ?? "Unknown",
-                TotalBudgeted = g.Sum(be => be.BudgetedAmount),
-                TotalActual = g.Sum(be => be.ActualAmount),
+                Department = new Department { Id = g.Key.DepartmentId, Name = g.Key.DepartmentName },
+                DepartmentName = g.Key.DepartmentName,
+                TotalBudgeted = g.Sum(x => x.BudgetedAmount),
+                TotalActual = g.Sum(x => x.ActualAmount),
                 AccountCount = g.Count()
             })
-            .ToList();
+            .ToListAsync();
     }
 
     /// <summary>
@@ -415,24 +424,26 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<FundSummary>> GetFundAllocationsAsync(DateTime startDate, DateTime endDate)
     {
-        var budgetEntries = await _context.BudgetEntries
-            .Include(be => be.Department)
-            .Include(be => be.Fund)
+        return await _context.BudgetEntries
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
-            .ToListAsync();
-
-        return budgetEntries
-            .GroupBy(be => be.Fund)
-            .Where(g => g.Key != null)
+            .Select(be => new
+            {
+                FundCode = be.Fund != null ? be.Fund.FundCode : null,
+                FundName = be.Fund != null ? be.Fund.Name : "Unknown",
+                be.BudgetedAmount,
+                be.ActualAmount
+            })
+            .GroupBy(x => new { x.FundCode, x.FundName })
+            .Where(g => g.Key.FundCode != null)
             .Select(g => new FundSummary
             {
-                Fund = new BudgetFundType { Code = g.Key!.FundCode, Name = g.Key.Name },
-                FundName = g.Key?.Name ?? "Unknown",
-                TotalBudgeted = g.Sum(be => be.BudgetedAmount),
-                TotalActual = g.Sum(be => be.ActualAmount),
+                Fund = new BudgetFundType { Code = g.Key.FundCode!, Name = g.Key.FundName },
+                FundName = g.Key.FundName,
+                TotalBudgeted = g.Sum(x => x.BudgetedAmount),
+                TotalActual = g.Sum(x => x.ActualAmount),
                 AccountCount = g.Count()
             })
-            .ToList();
+            .ToListAsync();
     }
 
     /// <summary>

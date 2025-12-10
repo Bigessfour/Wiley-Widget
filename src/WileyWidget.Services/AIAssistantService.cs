@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,15 @@ public partial class AIAssistantService : IAIAssistantService
     private readonly IBudgetRepository? _budgetRepository;
     private readonly IAuditRepository? _auditRepository;
     private readonly IWileyWidgetContextService? _contextService;
+
+    private static readonly HashSet<string> SupportedToolNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "read_file",
+        "grep_search",
+        "semantic_search",
+        "list_directory",
+        "get_errors"
+    };
 
     [GeneratedRegex(@"(read|grep|search|list|get errors?)\s+(.+)", RegexOptions.IgnoreCase)]
     private static partial Regex ToolDetectionRegex();
@@ -268,6 +278,17 @@ public partial class AIAssistantService : IAIAssistantService
     }
 
     /// <inheritdoc />
+    public bool ValidateToolCall(ToolCall? toolCall)
+    {
+        if (toolCall?.Arguments == null || toolCall.Arguments.Count == 0)
+        {
+            return false;
+        }
+
+        return SupportedToolNames.Contains(toolCall.Name);
+    }
+
+    /// <inheritdoc />
     public string FormatToolCallJson(ToolCall toolCall)
     {
         var options = new JsonSerializerOptions
@@ -385,14 +406,15 @@ public partial class AIAssistantService : IAIAssistantService
             var summary = await _budgetRepository.GetBudgetSummaryAsync(startDate, endDate);
 
             var result = new StringBuilder();
-            result.AppendLine($"Budget Analysis for Fiscal Year {fiscalYear}\");
-            result.AppendLine(\"═══════════════════════════════════════\");
-            result.AppendLine();\n            result.AppendLine($\"Analysis Date: {summary.AnalysisDate:yyyy-MM-dd HH:mm:ss}\");
-            result.AppendLine($\"Period: {summary.BudgetPeriod ?? \"N/A\"}\");
+            result.AppendLine($"Budget Analysis for Fiscal Year {fiscalYear}");
+            result.AppendLine("═══════════════════════════════════════");
             result.AppendLine();
-            result.AppendLine($\"Total Budgeted: ${summary.TotalBudgeted:N2}\");
-            result.AppendLine($\"Total Actual:   ${summary.TotalActual:N2}\");
-            result.AppendLine($\"Total Variance: ${summary.TotalVariance:N2} ({summary.TotalVariancePercentage:N2}%)\");
+            result.AppendLine($"Analysis Date: {summary.AnalysisDate:yyyy-MM-dd HH:mm:ss}");
+            result.AppendLine($"Period: {summary.BudgetPeriod ?? "N/A"}");
+            result.AppendLine();
+            result.AppendLine($"Total Budgeted: ${summary.TotalBudgeted:N2}");
+            result.AppendLine($"Total Actual:   ${summary.TotalActual:N2}");
+            result.AppendLine($"Total Variance: ${summary.TotalVariance:N2} ({summary.TotalVariancePercentage:N2}%)");
             result.AppendLine();
 
             if (!string.IsNullOrWhiteSpace(department))
@@ -402,37 +424,37 @@ public partial class AIAssistantService : IAIAssistantService
 
                 if (deptSummary != null)
                 {
-                    result.AppendLine($\"Department: {deptSummary.DepartmentName}\");
-                    result.AppendLine($\"  Budgeted: ${deptSummary.Budgeted:N2}\");
-                    result.AppendLine($\"  Actual:   ${deptSummary.Actual:N2}\");
-                    result.AppendLine($\"  Variance: ${deptSummary.Variance:N2}\");
+                    result.AppendLine($"Department: {deptSummary.DepartmentName}");
+                    result.AppendLine($"  Budgeted: ${deptSummary.Budgeted:N2}");
+                    result.AppendLine($"  Actual:   ${deptSummary.Actual:N2}");
+                    result.AppendLine($"  Variance: ${deptSummary.Variance:N2}");
                 }
                 else
                 {
-                    result.AppendLine($\"Department '{department}' not found in budget summary.\");
+                    result.AppendLine($"Department '{department}' not found in budget summary.");
                 }
             }
             else
             {
-                result.AppendLine(\"Top 5 Departments by Variance:\");
+                result.AppendLine("Top 5 Departments by Variance:");
                 var topVariances = summary.DepartmentSummaries
                     .OrderByDescending(d => Math.Abs(d.Variance))
                     .Take(5);
 
                 foreach (var dept in topVariances)
                 {
-                    var status = dept.Variance < 0 ? \"⚠️ Over\" : \"✅ Under\";
-                    result.AppendLine($\"  {status} {dept.DepartmentName}: ${Math.Abs(dept.Variance):N2}\");
+                    var status = dept.Variance < 0 ? "⚠️ Over" : "✅ Under";
+                    result.AppendLine($"  {status} {dept.DepartmentName}: ${Math.Abs(dept.Variance):N2}");
                 }
             }
 
-            _logger.LogInformation(\"Budget analysis completed for fiscal year {FiscalYear}\", fiscalYear);
+            _logger.LogInformation("Budget analysis completed for fiscal year {FiscalYear}", fiscalYear);
             return ToolCallResult.Success(toolCall.Id, result.ToString());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error running budget analysis\");
-            return ToolCallResult.Error(toolCall.Id, $\"Analysis error: {ex.Message}\");
+            _logger.LogError(ex, "Error running budget analysis");
+            return ToolCallResult.Error(toolCall.Id, $"Analysis error: {ex.Message}");
         }
     }
 
@@ -443,20 +465,20 @@ public partial class AIAssistantService : IAIAssistantService
     {
         if (_contextService == null)
         {
-            return ToolCallResult.Error(toolCall.Id, \"Context service not available.\");
+            return ToolCallResult.Error(toolCall.Id, "Context service not available.");
         }
 
         try
         {
             var contextInfo = await _contextService.GetOperationalContextAsync();
 
-            _logger.LogInformation(\"Retrieved current UI state\");
+            _logger.LogInformation("Retrieved current UI state");
             return ToolCallResult.Success(toolCall.Id, contextInfo);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error getting UI state\");
-            return ToolCallResult.Error(toolCall.Id, $\"Context error: {ex.Message}\");
+            _logger.LogError(ex, "Error getting UI state");
+            return ToolCallResult.Error(toolCall.Id, $"Context error: {ex.Message}");
         }
     }
 
@@ -467,25 +489,25 @@ public partial class AIAssistantService : IAIAssistantService
     {
         if (_auditRepository == null)
         {
-            return ToolCallResult.Error(toolCall.Id, \"Audit repository not available. This tool requires database access.\");
+            return ToolCallResult.Error(toolCall.Id, "Audit repository not available. This tool requires database access.");
         }
 
         try
         {
-            var entityType = toolCall.Arguments.TryGetValue(\"entity_type\", out var etObj)
+            var entityType = toolCall.Arguments.TryGetValue("entity_type", out var etObj)
                 ? etObj?.ToString()
                 : null;
 
-            var action = toolCall.Arguments.TryGetValue(\"action\", out var actObj)
+            var action = toolCall.Arguments.TryGetValue("action", out var actObj)
                 ? actObj?.ToString()
                 : null;
 
-            var startDate = toolCall.Arguments.TryGetValue(\"start_date\", out var sdObj)
-                ? DateTime.Parse(sdObj?.ToString() ?? DateTime.Now.AddDays(-7).ToString(\"yyyy-MM-dd\"))
+            var startDate = toolCall.Arguments.TryGetValue("start_date", out var sdObj)
+                ? DateTime.Parse(sdObj?.ToString() ?? DateTime.Now.AddDays(-7).ToString("yyyy-MM-dd"))
                 : DateTime.Now.AddDays(-7);
 
-            var endDate = toolCall.Arguments.TryGetValue(\"end_date\", out var edObj)
-                ? DateTime.Parse(edObj?.ToString() ?? DateTime.Now.ToString(\"yyyy-MM-dd\"))
+            var endDate = toolCall.Arguments.TryGetValue("end_date", out var edObj)
+                ? DateTime.Parse(edObj?.ToString() ?? DateTime.Now.ToString("yyyy-MM-dd"))
                 : DateTime.Now;
 
             var auditEntries = await _auditRepository.GetAuditTrailAsync(startDate, endDate);
@@ -504,35 +526,35 @@ public partial class AIAssistantService : IAIAssistantService
             var results = filtered.Take(50).ToList();
 
             var result = new StringBuilder();
-            result.AppendLine($\"Audit Trail Search Results ({results.Count} entries)\");
-            result.AppendLine(\"═══════════════════════════════════════════════\");
-            result.AppendLine($\"Period: {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}\");
+            result.AppendLine($"Audit Trail Search Results ({results.Count} entries)");
+            result.AppendLine("═══════════════════════════════════════════════");
+            result.AppendLine($"Period: {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}");
 
             if (!string.IsNullOrWhiteSpace(entityType))
-                result.AppendLine($\"Entity Type Filter: {entityType}\");
+                result.AppendLine($"Entity Type Filter: {entityType}");
             if (!string.IsNullOrWhiteSpace(action))
-                result.AppendLine($\"Action Filter: {action}\");
+                result.AppendLine($"Action Filter: {action}");
 
             result.AppendLine();
 
             foreach (var entry in results)
             {
-                result.AppendLine($\"{entry.Timestamp:yyyy-MM-dd HH:mm:ss} | {entry.Action} | {entry.EntityType} (ID: {entry.EntityId}) | User: {entry.UserId}\");
+                result.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss} | {entry.Action} | {entry.EntityType} (ID: {entry.EntityId}) | User: {entry.User}");
             }
 
             if (results.Count == 50)
             {
                 result.AppendLine();
-                result.AppendLine(\"(Limited to 50 most recent entries)\");
+                result.AppendLine("(Limited to 50 most recent entries)");
             }
 
-            _logger.LogInformation(\"Audit trail search returned {Count} entries\", results.Count);
+            _logger.LogInformation("Audit trail search returned {Count} entries", results.Count);
             return ToolCallResult.Success(toolCall.Id, result.ToString());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error searching audit trail\");
-            return ToolCallResult.Error(toolCall.Id, $\"Search error: {ex.Message}\");
+            _logger.LogError(ex, "Error searching audit trail");
+            return ToolCallResult.Error(toolCall.Id, $"Search error: {ex.Message}");
         }
     }
 
@@ -543,12 +565,12 @@ public partial class AIAssistantService : IAIAssistantService
     {
         if (_enterpriseRepository == null)
         {
-            return ToolCallResult.Error(toolCall.Id, \"Enterprise repository not available. This tool requires database access.\");
+            return ToolCallResult.Error(toolCall.Id, "Enterprise repository not available. This tool requires database access.");
         }
 
         try
         {
-            var includeInactive = toolCall.Arguments.TryGetValue(\"include_inactive\", out var inactiveObj) &&
+            var includeInactive = toolCall.Arguments.TryGetValue("include_inactive", out var inactiveObj) &&
                                   Convert.ToBoolean(inactiveObj);
 
             var enterprises = await _enterpriseRepository.GetAllAsync();
@@ -559,29 +581,29 @@ public partial class AIAssistantService : IAIAssistantService
             var enterpriseList = filtered.OrderBy(e => e.Name).ToList();
 
             var result = new StringBuilder();
-            result.AppendLine($\"Enterprises ({enterpriseList.Count} total)\");
-            result.AppendLine(\"══════════════════════════════════════════════════════\");
+            result.AppendLine($"Enterprises ({enterpriseList.Count} total)");
+            result.AppendLine("══════════════════════════════════════════════════════");
             result.AppendLine();
 
             foreach (var ent in enterpriseList)
             {
                 var netCashFlow = ent.MonthlyRevenue - ent.MonthlyExpenses;
-                var cashFlowIndicator = netCashFlow >= 0 ? \"✅\" : \"⚠️\";
+                var cashFlowIndicator = netCashFlow >= 0 ? "✅" : "⚠️";
 
-                result.AppendLine($\"{cashFlowIndicator} {ent.Name} (ID: {ent.Id})\");
-                result.AppendLine($\"   Type: {ent.Type} | Status: {ent.Status}\");
-                result.AppendLine($\"   Revenue: ${ent.MonthlyRevenue:N2}/mo | Expenses: ${ent.MonthlyExpenses:N2}/mo\");
-                result.AppendLine($\"   Net Cash Flow: ${netCashFlow:N2}/mo\");
+                result.AppendLine($"{cashFlowIndicator} {ent.Name} (ID: {ent.Id})");
+                result.AppendLine($"   Type: {ent.Type} | Status: {ent.Status}");
+                result.AppendLine($"   Revenue: ${ent.MonthlyRevenue:N2}/mo | Expenses: ${ent.MonthlyExpenses:N2}/mo");
+                result.AppendLine($"   Net Cash Flow: ${netCashFlow:N2}/mo");
                 result.AppendLine();
             }
 
-            _logger.LogInformation(\"Listed {Count} enterprises\", enterpriseList.Count);
+            _logger.LogInformation("Listed {Count} enterprises", enterpriseList.Count);
             return ToolCallResult.Success(toolCall.Id, result.ToString());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error listing enterprises\");
-            return ToolCallResult.Error(toolCall.Id, $\"Database error: {ex.Message}\");
+            _logger.LogError(ex, "Error listing enterprises");
+            return ToolCallResult.Error(toolCall.Id, $"Database error: {ex.Message}");
         }
     }
 

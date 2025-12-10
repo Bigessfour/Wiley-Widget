@@ -136,6 +136,7 @@ namespace WileyWidget.Data
                 .AsNoTracking()
                 .Include(ma => ma.Department)
                 .Include(ma => ma.BudgetEntries)
+                .AsSplitQuery()
                 .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync();
         }

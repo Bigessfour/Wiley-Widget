@@ -1,22 +1,10 @@
 {
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "file": ".vscode/copilot-instructions.md"
-    },
-    {
-      "file": ".vscode/copilot-mcp-rules.md"
-    },
-    {
-      "file": ".vscode/coding-standards.md"
-    }
-  ],
   "github.copilot.chat.localeOverride": "en",
   "github.copilot.advanced": {
     "debug.overrideEngine": "gpt-4o-2024-11-20",
     "debug.useNodeFetcher": true,
     "inlineSuggest.enable": true
   },
-  "editor.inlineSuggest.enabled": true,
   "copilot.chat.participation": "always",
   "files.associations": {
     "*.md": "markdown",
@@ -78,7 +66,7 @@
   "xamlDiag.autoDetectCompiler": true,
   "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
-  "xml.format.splitAttributes": false,
+  "xml.format.splitAttributes": "preserve",
   "xml.format.maxLineWidth": 120,
   "xml.format.splitAttributesIndentSize": 2,
   "xml.format.preserveSpace": ["*"],
@@ -207,7 +195,6 @@
   "python.linting.flake8Args": [
     "--ignore=E501,W291"
   ],
-  "python.analysis.typeCheckingMode": "basic",
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
 
@@ -262,11 +249,11 @@
     "winforms",
     "XAML"
   ],
-  "cSpell.enableFiletypes": [
-    "csharp",
-    "markdown",
-    "xml"
-  ],
+  "cSpell.enabledFileTypes": {
+    "csharp": true,
+    "markdown": true,
+    "xml": true
+  },
 
   // ============================================================================
   // Debugging Configuration
