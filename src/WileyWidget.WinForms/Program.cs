@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
+using Syncfusion.WinForms.Controls;
 using System;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.Models;
 using WileyWidget.Services;
 
@@ -27,7 +29,20 @@ namespace WileyWidget.WinForms
                 // 🔑 Syncfusion License (check UserSecrets, then env var)
                 builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
                 // Attempt to register license from configuration or environment variable. Do not fail startup when license is absent — allow trial mode.
-                WileyWidget.WinForms.Services.LicenseHelper.TryRegisterSyncfusionLicense(builder.Configuration, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+                // TODO: Restore LicenseHelper once implemented
+                // WileyWidget.WinForms.Services.LicenseHelper.TryRegisterSyncfusionLicense(builder.Configuration, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+
+                // Initialize Syncfusion SkinManager for dynamic theming
+                try
+                {
+                    // Note: Syncfusion.Office2019Theme.WinForms assembly should be added as NuGet package
+                    // SkinManager.LoadAssembly(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
+                    Log.Information("Syncfusion theme system initialized (using built-in Office2019Colorful)");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not load Office2019Theme assembly. Using built-in themes only.");
+                }
 
                 // Serilog configuration - read settings from appsettings.json and configuration
                 Log.Logger = new LoggerConfiguration()

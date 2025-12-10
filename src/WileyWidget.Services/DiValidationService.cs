@@ -5,6 +5,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Abstractions;
 
 namespace WileyWidget.Services
@@ -12,10 +13,10 @@ namespace WileyWidget.Services
     /// <summary>
     /// Implementation of DI validation service that scans assemblies and validates
     /// that all service interfaces can be resolved from the DI container.
-    /// 
+    ///
     /// Uses reflection to discover service interfaces and IServiceProvider to test resolution.
     /// Handles scoped services by creating temporary scopes, and provides detailed error reporting.
-    /// 
+    ///
     /// Reference: https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines
     /// </summary>
     public class DiValidationService : IDiValidationService
@@ -66,7 +67,7 @@ namespace WileyWidget.Services
         }
 
         public DiValidationReport ValidateRegistrations(
-            IEnumerable<Assembly>? assembliesToScan = null, 
+            IEnumerable<Assembly>? assembliesToScan = null,
             bool includeGenerics = false)
         {
             _logger.LogInformation("[DI_VALIDATION] Starting DI validation scan");
@@ -140,7 +141,7 @@ namespace WileyWidget.Services
             _logger.LogInformation("[DI_VALIDATION] Validating core services");
 
             var coreServiceTypes = GetCoreServiceTypes();
-            
+
             foreach (var serviceType in coreServiceTypes)
             {
                 try
@@ -262,7 +263,7 @@ namespace WileyWidget.Services
         /// Discovers service interfaces in the specified assemblies using reflection.
         /// </summary>
         private static IEnumerable<Type> GetServiceInterfaces(
-            IEnumerable<Assembly> assemblies, 
+            IEnumerable<Assembly> assemblies,
             bool includeGenerics)
         {
             return assemblies

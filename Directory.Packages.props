@@ -105,6 +105,9 @@
     <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.15" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.15" />
+    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.15" />
+    <!-- Data handling packages -->
+    <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <!-- Other safe ones you probably have -->
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />

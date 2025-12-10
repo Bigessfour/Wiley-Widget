@@ -1,6 +1,6 @@
 using WileyWidget.Models;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     public interface ISettingsService
     {

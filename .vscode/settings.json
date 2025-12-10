@@ -244,10 +244,15 @@
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
-  "terminal.integrated.defaultProfile.windows": "PowerShell (venv)",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "PowerShell (No Profile)": {
+      "path": "pwsh.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass"],
       "icon": "terminal-powershell"
     },
     "PowerShell (venv)": {

@@ -67,6 +67,12 @@
 				"-File",
 				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
+			"options": {
+				"shell": {
+					"executable": "pwsh",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"group": "build",
 			"presentation": {
 				"echo": true,
@@ -259,6 +265,12 @@
 				"-File",
 				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
+			"options": {
+				"shell": {
+					"executable": "pwsh",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"group": "build",
 			"presentation": {
 				"echo": true,
@@ -408,6 +420,12 @@
 				"-File",
 				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
+			"options": {
+				"shell": {
+					"executable": "pwsh",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"presentation": {
 				"echo": true,
 				"reveal": "silent",
@@ -517,6 +535,12 @@
 				"-File",
 				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
+			"options": {
+				"shell": {
+					"executable": "pwsh",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"presentation": {
 				"echo": true,
 				"reveal": "silent",

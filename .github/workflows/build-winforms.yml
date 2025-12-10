@@ -7,6 +7,11 @@ on:
     branches: [main, develop]
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   workflow-lint:
     name: Lint workflows & YAML
@@ -125,7 +130,7 @@ jobs:
           $maxAttempts=2
           for ($i=1; $i -le $maxAttempts; $i++) {
             try {
-              dotnet test WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
+              dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
               exit 0
             } catch {
               Write-Warning "Unit tests attempt $i failed: $_"
@@ -268,9 +273,30 @@ jobs:
             # Optionally: fail the job by changing this to exit 1
           }
 
+      - name: Restore WinForms project (retry)
+        shell: pwsh
+        run: |
+          $maxAttempts = 3
+          $attempt = 0
+          do {
+            $attempt++
+            Write-Host "dotnet restore attempt $attempt (WinForms)"
+            dotnet restore src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --verbosity minimal -clp:PerformanceSummary
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds (5 * $attempt)
+          } while ($attempt -lt $maxAttempts)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "dotnet restore WileyWidget.WinForms failed after $attempt attempts"
+            exit 1
+          }
+
+      - name: Build WinForms Project
+        shell: pwsh
+        run: dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore --verbosity minimal
+
       - name: Publish Application
         shell: pwsh
-        run: dotnet publish WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore
+        run: dotnet publish src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore
 
       - name: Verify startup smoke test (best-effort)
         continue-on-error: true

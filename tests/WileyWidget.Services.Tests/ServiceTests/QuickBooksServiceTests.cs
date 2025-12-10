@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Services.Tests.TestHelpers;
 using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Business.Interfaces;
 
 namespace WileyWidget.Services.Tests.ServiceTests
@@ -19,7 +20,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public async Task QuickBooksService_GetInvoicesAsync_ReturnsExpectedCount()
         {
             // Arrange
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var mockSecretVault = new Mock<ISecretVaultService>();
             var mockLogger = new Mock<ILogger<QuickBooksService>>();
             var mockApiClient = new Mock<IQuickBooksApiClient>();

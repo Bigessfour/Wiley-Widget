@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Abstractions
 {
     /// <summary>
     /// Service for managing Prism region view registrations

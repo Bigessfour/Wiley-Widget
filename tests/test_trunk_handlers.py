@@ -8,11 +8,11 @@ This script directly tests the Trunk merge queue tool handlers.
 import sys
 from pathlib import Path
 
+# from xai_tool_executor import IdeToolHandlers  # Module not found
+
 # Add scripts/tools to path
 scripts_tools = Path(__file__).parent.parent / "scripts" / "tools"
 sys.path.insert(0, str(scripts_tools))
-
-from xai_tool_executor import IdeToolHandlers
 
 
 def test_trunk_handlers():

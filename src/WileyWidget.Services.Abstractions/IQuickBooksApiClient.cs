@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Abstraction for QuickBooks API client operations to enable testing

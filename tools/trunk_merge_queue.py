@@ -25,7 +25,7 @@ class TrunkCliResult:
     exit_code: int
     output: str
     pr_number: Optional[int] = None
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         if self.timestamp is None:

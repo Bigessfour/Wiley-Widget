@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Controls;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
 {

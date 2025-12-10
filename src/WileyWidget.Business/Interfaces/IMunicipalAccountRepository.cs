@@ -82,4 +82,9 @@ public interface IMunicipalAccountRepository
     /// Gets the current active budget period.
     /// </summary>
     System.Threading.Tasks.Task<BudgetPeriod?> GetCurrentActiveBudgetPeriodAsync();
+
+    /// <summary>
+    /// Gets the total count of municipal accounts.
+    /// </summary>
+    System.Threading.Tasks.Task<int> GetCountAsync();
 }

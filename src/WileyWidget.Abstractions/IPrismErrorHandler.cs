@@ -1,6 +1,6 @@
 using System;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Abstractions
 {
     /// <summary>
     /// Interface for centralized error handling in Prism applications.

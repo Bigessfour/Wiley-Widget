@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     public interface IAuditService
     {

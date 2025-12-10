@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Abstraction for Bold Reports integration used by the UI layer.

@@ -1,6 +1,0 @@
-<ResourceDictionary
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Syncfusion ThemeManager removed - using native WinUI theming -->
-    <!-- Configure theme in App.xaml.cs via Application.RequestedTheme -->
-</ResourceDictionary>

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "dependencies": {
-    "net9.0-windows7.0": {
+    "net9.0-windows10.0.26100": {
       "FluentValidation": {
         "type": "Direct",
         "requested": "[11.10.0, )",

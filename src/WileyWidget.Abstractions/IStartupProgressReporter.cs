@@ -1,6 +1,6 @@
 using System;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Abstractions
 {
     public interface IStartupProgressReporter
     {

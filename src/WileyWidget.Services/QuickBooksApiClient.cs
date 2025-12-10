@@ -8,6 +8,7 @@ using Intuit.Ipp.DataService;
 using Intuit.Ipp.QueryFilter;
 using Intuit.Ipp.Security;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
 {
