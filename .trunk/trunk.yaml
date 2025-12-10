@@ -62,3 +62,7 @@ actions:
 tools:
   enabled:
     - dotnet@9.0.306
+merge:
+  required_statuses:
+    - build
+    - GitGuardian Security Checks

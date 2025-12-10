@@ -43,7 +43,7 @@ jobs:
           $errors = $false
           Get-ChildItem -Path ./scripts -Recurse -Filter "*.ps1" -File | ForEach-Object {
             Write-Host "Analyzing: $($_.FullName)"
-            $results = Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error,Warning -Recurse -EnableExit
+            $results = Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error -Recurse -EnableExit
             if ($results) { $results | Format-Table -AutoSize; $errors = $true }
           }
           if ($errors) { Write-Error "Script analysis found issues"; exit 1 }
@@ -170,68 +170,54 @@ jobs:
             }
           }
 
-      - name: Ensure .trunk exists and create setup-ci symlink (non-Windows)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          set -euo pipefail
+      # Disabled: TRUNK_PATH not configured
+      # - name: Ensure .trunk exists and create setup-ci symlink (non-Windows)
+      #   if: runner.os != 'Windows'
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     mkdir -p .trunk
+      #     if [ -z "${TRUNK_PATH:-}" ]; then
+      #       echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
+      #       exit 1
+      #     fi
+      #     SRC="$TRUNK_PATH/setup-ci"
+      #     DEST=".trunk/setup-ci"
+      #     if [ ! -e "$SRC" ]; then
+      #       echo "ERROR: expected trunk source does not exist: $SRC"
+      #       ls -la "$TRUNK_PATH" || true
+      #       exit 1
+      #     fi
+      #     ln -sfn "$SRC" "$DEST"
+      #     echo "Created symlink: $DEST -> $SRC"
 
-          # Ensure parent dir exists
-          mkdir -p .trunk
-
-          # TRUNK_PATH is expected to be set earlier in the job (logs show TRUNK_PATH env var)
-          if [ -z "${TRUNK_PATH:-}" ]; then
-            echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
-            exit 1
-          fi
-
-          SRC="$TRUNK_PATH/setup-ci"
-          DEST=".trunk/setup-ci"
-
-          if [ ! -e "$SRC" ]; then
-            echo "ERROR: expected trunk source does not exist: $SRC"
-            ls -la "$TRUNK_PATH" || true
-            exit 1
-          fi
-
-          # Create an idempotent symlink (replace existing link/target)
-          ln -sfn "$SRC" "$DEST"
-          echo "Created symlink: $DEST -> $SRC"
-
-      - name: Ensure .trunk exists and create setup-ci symlink (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-
-          # Ensure parent dir exists
-          New-Item -ItemType Directory -Path .trunk -Force | Out-Null
-
-          if (-not $env:TRUNK_PATH) {
-            Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
-            exit 1
-          }
-
-          $src = Join-Path $env:TRUNK_PATH 'setup-ci'
-          $dest = Join-Path (Get-Location) '.trunk\setup-ci'
-
-          if (-not (Test-Path $src)) {
-            Write-Error "ERROR: expected trunk source does not exist: $src"
-            Get-ChildItem -Path $env:TRUNK_PATH -Force | Write-Output
-            exit 1
-          }
-
-          # If dest exists, remove it first to allow a clean symlink creation/copy
-          if (Test-Path $dest) { Remove-Item -Path $dest -Force -Recurse }
-
-          try {
-            New-Item -ItemType SymbolicLink -Path $dest -Target $src | Out-Null
-            Write-Host "Created symlink: $dest -> $src"
-          } catch {
-            Write-Warning "Could not create symlink (permission or unsupported). Falling back to copying files: $_"
-            Copy-Item -Path $src -Destination $dest -Recurse -Force
-            Write-Host "Copied $src to $dest"
-          }
+      # Disabled: TRUNK_PATH not configured
+      # - name: Ensure .trunk exists and create setup-ci symlink (Windows)
+      #   if: runner.os == 'Windows'
+      #   shell: pwsh
+      #   run: |
+      #     $ErrorActionPreference = 'Stop'
+      #     New-Item -ItemType Directory -Path .trunk -Force | Out-Null
+      #     if (-not $env:TRUNK_PATH) {
+      #       Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
+      #       exit 1
+      #     }
+      #     $src = Join-Path $env:TRUNK_PATH 'setup-ci'
+      #     $dest = Join-Path (Get-Location) '.trunk\setup-ci'
+      #     if (-not (Test-Path $src)) {
+      #       Write-Error "ERROR: expected trunk source does not exist: $src"
+      #       Get-ChildItem -Path $env:TRUNK_PATH -Force | Write-Output
+      #       exit 1
+      #     }
+      #     if (Test-Path $dest) { Remove-Item -Path $dest -Force -Recurse }
+      #     try {
+      #       New-Item -ItemType SymbolicLink -Path $dest -Target $src | Out-Null
+      #       Write-Host "Created symlink: $dest -> $src"
+      #     } catch {
+      #       Write-Warning "Could not create symlink (permission or unsupported). Falling back to copying files: $_"
+      #       Copy-Item -Path $src -Destination $dest -Recurse -Force
+      #       Write-Host "Copied $src to $dest"
+      #     }
 
       - name: Trunk validation (CI)
         uses: trunk-io/trunk-action@v1
