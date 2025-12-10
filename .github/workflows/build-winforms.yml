@@ -219,10 +219,11 @@ jobs:
       #       Write-Host "Copied $src to $dest"
       #     }
 
-      - name: Trunk validation (CI)
-        uses: trunk-io/trunk-action@v1
-        with:
-          arguments: --ci --upload
+      # Disabled: Requires TRUNK_PATH setup-ci which is not configured
+      # - name: Trunk validation (CI)
+      #   uses: trunk-io/trunk-action@v1
+      #   with:
+      #     arguments: --ci --upload
 
       - name: Collect coverage summary
         if: always()

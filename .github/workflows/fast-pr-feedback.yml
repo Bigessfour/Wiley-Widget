@@ -2,7 +2,7 @@ name: Fast PR Feedback
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   fast-check:
@@ -28,13 +28,14 @@ jobs:
         run: dotnet format --verify-no-changes || true
 
       - name: Restore (fast)
-        run: dotnet restore WileyWidget.sln --verbosity minimal -clp:Summary
+        run: dotnet restore WileyWidget.sln --verbosity minimal
 
       - name: Quick build (core libraries only)
         run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
 
       - name: Quick unit tests
-        run: dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+        run: |
+          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
 
       - name: Upload quick-test results
         if: always()
@@ -44,7 +45,5 @@ jobs:
           path: ./TestResults
           retention-days: 3
 
-      - name: Optional: run additional static checks
-        run: |
-          # can add quick static checks or script analyzers
-          echo "No additional fast checks configured; customize as needed"
+      - name: Optional run additional static checks
+        run: echo "No additional fast checks configured"
