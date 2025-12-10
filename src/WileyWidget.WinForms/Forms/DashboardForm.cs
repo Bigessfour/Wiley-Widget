@@ -2,12 +2,16 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.Services.Abstractions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.Windows.Forms.Chart;
+using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Gauge;
+using Syncfusion.WinForms.Controls;
+using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -51,6 +55,7 @@ namespace WileyWidget.WinForms.Forms
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
             SetupUI();
+            ThemeColors.ApplyTheme(this);
             BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             LoadDashboard();
@@ -85,9 +90,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Toolbar
             var toolStrip = new ToolStrip();
-            var loadButton = new ToolStripButton(DashboardResources.LoadButton, null, async (s, e) => await LoadDashboard()) { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard" }; 
-            var refreshButton = new ToolStripButton(DashboardResources.RefreshButton, null, async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null)) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh" }; 
-            var exportButton = new ToolStripButton(DashboardResources.ExportButton, null, async (s, e) => await ExportDashboard()) { Name = "Toolbar_ExportButton", AccessibleName = "Export" }; 
+            var loadButton = new ToolStripButton(DashboardResources.LoadButton, null, async (s, e) => await LoadDashboard()) { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard" };
+            var refreshButton = new ToolStripButton(DashboardResources.RefreshButton, null, async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null)) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh" };
+            var exportButton = new ToolStripButton(DashboardResources.ExportButton, null, async (s, e) => await ExportDashboard()) { Name = "Toolbar_ExportButton", AccessibleName = "Export" };
 
             // Auto-refresh checkbox
             _autoRefreshCheckbox = new CheckBox { Name = "AutoRefreshCheckbox", Text = "Auto-refresh (30s)", Checked = true, Padding = new Padding(5, 0, 5, 0) };
@@ -108,12 +113,12 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                BackColor = Color.FromArgb(240, 240, 240)
+                BackColor = ThemeColors.Background
             };
 
-            _municipalityLabel = new Label { Name = "MunicipalityLabel", Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            _fiscalYearLabel = new Label { Name = "FiscalYearLabel", Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5), Font = new Font("Segoe UI", 9) }; 
+            _municipalityLabel = new Label { Name = "MunicipalityLabel", Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5) };
+            _fiscalYearLabel = new Label { Name = "FiscalYearLabel", Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5) };
+            _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5) };
 
             headerPanel.Controls.AddRange(new Control[] { _municipalityLabel, _fiscalYearLabel, _lastUpdatedLabel });
             _mainLayout.Controls.Add(headerPanel, 0, 1);
@@ -127,10 +132,10 @@ namespace WileyWidget.WinForms.Forms
                 Padding = new Padding(10)
             };
 
-            _budgetGauge = CreateGauge("Total Budget", Color.FromArgb(0, 120, 215));
-            _revenueGauge = CreateGauge("Revenue", Color.FromArgb(16, 137, 62));
-            _expensesGauge = CreateGauge("Expenses", Color.FromArgb(232, 17, 35));
-            _netPositionGauge = CreateGauge("Net Position", Color.FromArgb(255, 185, 0));
+            _budgetGauge = CreateGauge("Total Budget", ThemeColors.PrimaryAccent);
+            _revenueGauge = CreateGauge("Revenue", ThemeColors.Success);
+            _expensesGauge = CreateGauge("Expenses", ThemeColors.Error);
+            _netPositionGauge = CreateGauge("Net Position", ThemeColors.Warning);
 
             gaugePanel.Controls.AddRange(new Control[] { _budgetGauge, _revenueGauge, _expensesGauge, _netPositionGauge });
             _mainLayout.Controls.Add(gaugePanel, 0, 2);
@@ -147,7 +152,7 @@ namespace WileyWidget.WinForms.Forms
 
             _mainLayout.Controls.Add(_revenueChart, 0, 3);
 
-            // Metrics Grid using Syncfusion SfDataGrid
+            // Metrics Grid using Syncfusion SfDataGrid with performance optimizations
             _metricsGrid = new SfDataGrid
             {
                 Name = "MetricsGrid",
@@ -159,37 +164,116 @@ namespace WileyWidget.WinForms.Forms
                 AllowResizingColumns = true,
                 AllowResizingHiddenColumns = true,
                 SelectionMode = GridSelectionMode.Single,
-                NavigationMode = NavigationMode.Row
+                NavigationMode = NavigationMode.Row,
+                AllowGrouping = true,
+                ShowGroupDropArea = false,
+                // Performance optimizations
+                EnableDataVirtualization = true,
+                AutoSizeColumnsMode = AutoSizeColumnsMode.None,
+                // Enable sorting with initial configuration
+                ShowBusyIndicator = true
+                // Theme inherited from form's SfSkinManager.SetVisualStyle
             };
 
-            // Configure columns
-            _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = "Metric", Width = 200 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Value", HeaderText = "Value", Format = "N2", Width = 120 });
-            _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Unit", HeaderText = "Unit", Width = 80 });
-            _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Trend", HeaderText = "Trend", Width = 80 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "ChangePercent", HeaderText = "Change %", Format = "N1", Width = 100 });
-            _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Description", HeaderText = "Description", Width = 300 });
+            // Configure columns with proper formatting
+            _metricsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "Name",
+                HeaderText = "Metric",
+                Width = 200,
+                AllowSorting = true
+            });
 
-            // Apply modern styling
-            _metricsGrid.Style.HeaderStyle.BackColor = Color.FromArgb(0, 120, 215);
-            _metricsGrid.Style.HeaderStyle.TextColor = Color.White;
-            _metricsGrid.Style.HeaderStyle.Font.Facename = "Segoe UI";
-            _metricsGrid.Style.HeaderStyle.Font.Size = 10;
-            _metricsGrid.Style.HeaderStyle.Font.Bold = true;
+            var valueColumn = new GridNumericColumn
+            {
+                MappingName = "Value",
+                HeaderText = "Value",
+                Width = 120,
+                NumberDecimalDigits = 2,
+                AllowSorting = true
+            };
+            _metricsGrid.Columns.Add(valueColumn);
+
+            _metricsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "Unit",
+                HeaderText = "Unit",
+                Width = 80
+            });
+
+            _metricsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "Trend",
+                HeaderText = "Trend",
+                Width = 80,
+                TextAlignment = ContentAlignment.MiddleCenter
+            });
+
+            var changeColumn = new GridNumericColumn
+            {
+                MappingName = "ChangePercent",
+                HeaderText = "Change %",
+                Width = 100,
+                NumberDecimalDigits = 1,
+                AllowSorting = true
+            };
+            _metricsGrid.Columns.Add(changeColumn);
+
+            _metricsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "Description",
+                HeaderText = "Description",
+                Width = 300,
+                AllowFiltering = true
+            });
+
+            // Configure initial sorting (descending by Value)
+            _metricsGrid.SortColumnDescriptions.Add(new SortColumnDescription
+            {
+                ColumnName = "Value",
+                SortDirection = ListSortDirection.Descending
+            });
+
+            // Note: Styling is now handled by ThemeName property.
+            // All colors, fonts, and styles are managed by SkinManager dynamically.
 
             var metricsPanel = new Panel { Dock = DockStyle.Fill };
-            var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 11, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
+            var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft };
             metricsPanel.Controls.Add(_metricsGrid);
             metricsPanel.Controls.Add(metricsLabel);
 
             _mainLayout.Controls.Add(metricsPanel, 0, 4);
 
             // Status panel
-            var statusPanel = new Panel { Dock = DockStyle.Fill };
-            _loadingLabel = new Label { Text = "", Visible = false, ForeColor = Color.Blue, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            _errorLabel = new Label { Text = "", Visible = false, ForeColor = Color.Red, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            var statusPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(5, 0, 5, 0) };
+            _loadingLabel = new Label
+            {
+                Text = "",
+                Visible = false,
+                ForeColor = ThemeColors.PrimaryAccent,
+                Dock = DockStyle.Left,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true
+            };
+            _errorLabel = new Label
+            {
+                Text = "",
+                Visible = false,
+                ForeColor = ThemeColors.Error,
+                Dock = DockStyle.Left,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true
+            };
+            var statusInfoLabel = new Label
+            {
+                Name = "StatusInfoLabel",
+                Text = "Ready",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = ThemeColors.Success
+            };
 
-            statusPanel.Controls.AddRange(new Control[] { _loadingLabel, _errorLabel });
+            statusPanel.Controls.AddRange(new Control[] { _loadingLabel, _errorLabel, statusInfoLabel });
             _mainLayout.Controls.Add(statusPanel, 0, 5);
 
             Controls.Add(_mainLayout);
@@ -202,7 +286,7 @@ namespace WileyWidget.WinForms.Forms
                 Width = 180,
                 Height = 180,
                 Margin = new Padding(5),
-                VisualStyle = ThemeStyle.Office2016Colorful,
+                // Theme inherited from form's SfSkinManager.SetVisualStyle
                 MinimumValue = 0F,
                 MaximumValue = 100F,
                 MajorDifference = 20F,
@@ -215,11 +299,16 @@ namespace WileyWidget.WinForms.Forms
                 NeedleColor = needleColor,
                 Value = 0F,
                 GaugeLabel = label,
-                ShowNeedle = true
+                ShowNeedle = true,
+                EnableCustomNeedles = false,
+                GaugeArcColor = ThemeColors.GaugeArc,
+                ShowBackgroundFrame = true
             };
 
             return gauge;
         }
+
+
 
         private void BindViewModel()
         {
@@ -247,15 +336,15 @@ namespace WileyWidget.WinForms.Forms
                         }
                         break;
                     case nameof(_viewModel.ErrorMessage):
-                        if (_error_label != null)
+                        if (_errorLabel != null)
                         {
-                            _error_label.Text = _viewModel.ErrorMessage ?? "";
-                            _error_label.Visible = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
+                            _errorLabel.Text = _viewModel.ErrorMessage ?? "";
+                            _errorLabel.Visible = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
                         }
                         break;
-                    case nameof(_view_model.Metrics):
-                        if (_metrics_grid != null)
-                            _metrics_grid.DataSource = _view_model.Metrics;
+                    case nameof(_viewModel.Metrics):
+                        if (_metricsGrid != null)
+                            _metricsGrid.DataSource = _viewModel.Metrics;
                         break;
                     case nameof(_viewModel.TotalBudgetGauge):
                         UpdateGaugeValueSafely(_budgetGauge, _viewModel.TotalBudgetGauge);
@@ -269,6 +358,161 @@ namespace WileyWidget.WinForms.Forms
                     case nameof(_viewModel.NetPositionGauge):
                         UpdateGaugeValueSafely(_netPositionGauge, _viewModel.NetPositionGauge);
                         break;
+                    case nameof(_viewModel.StatusText):
+                        var statusInfoLabel = Controls.Find("StatusInfoLabel", true).FirstOrDefault() as Label;
+                        if (statusInfoLabel != null)
+                        {
+                            statusInfoLabel.Text = _viewModel.StatusText;
+                        }
+                        break;
+                    case nameof(_viewModel.MonthlyRevenueData):
+                        UpdateRevenueChart();
+                        break;
                 }
             };
         }
+
+        private void UpdateRevenueChart()
+        {
+            if (_revenueChart == null || _viewModel.MonthlyRevenueData.Count == 0)
+                return;
+
+            _revenueChart.Series.Clear();
+            var series = new ChartSeries("Revenue", ChartSeriesType.Line);
+            series.Style.Interior = new BrushInfo(GradientStyle.None, ThemeColors.PrimaryAccent);
+
+            foreach (var data in _viewModel.MonthlyRevenueData)
+            {
+                series.Points.Add(data.MonthNumber, (double)data.Amount);
+            }
+
+            _revenueChart.Series.Add(series);
+            _revenueChart.Refresh();
+        }
+
+        private void UpdateGaugeValueSafely(RadialGauge? gauge, float value)
+        {
+            if (gauge != null)
+            {
+                gauge.Value = Math.Max(gauge.MinimumValue, Math.Min(value, gauge.MaximumValue));
+            }
+        }
+
+        private async Task LoadDashboard()
+        {
+            try
+            {
+                if (_loadingLabel != null)
+                {
+                    _loadingLabel.Text = DashboardResources.LoadingText;
+                    _loadingLabel.Visible = true;
+                }
+
+                await _viewModel.LoadCommand.ExecuteAsync(null);
+
+                if (_loadingLabel != null)
+                {
+                    _loadingLabel.Visible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_loadingLabel != null)
+                {
+                    _loadingLabel.Visible = false;
+                }
+
+                if (_errorLabel != null)
+                {
+                    _errorLabel.Text = $"Error: {ex.Message}";
+                    _errorLabel.Visible = true;
+                }
+
+                MessageBox.Show(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message),
+                    DashboardResources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task ExportDashboard()
+        {
+            using var saveDialog = new SaveFileDialog
+            {
+                Filter = "CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx",
+                DefaultExt = "csv",
+                FileName = $"Dashboard_{_viewModel.MunicipalityName.Replace(" ", "_")}_{_viewModel.FiscalYear.Replace(" ", "_")}.csv"
+            };
+
+            if (saveDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    await Task.Run(() =>
+                    {
+                        if (saveDialog.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Export to CSV
+                            var csv = new System.Text.StringBuilder();
+                            csv.AppendLine("Metric,Value,Unit,Trend,Change %,Description");
+
+                            foreach (var metric in _viewModel.Metrics)
+                            {
+                                csv.AppendLine($"{EscapeCsv(metric.Name)},{metric.Value},{EscapeCsv(metric.Unit)},{EscapeCsv(metric.Trend)},{metric.ChangePercent},{EscapeCsv(metric.Description)}");
+                            }
+
+                            System.IO.File.WriteAllText(saveDialog.FileName, csv.ToString());
+                        }
+                        else
+                        {
+                            // Excel export requires Syncfusion.XlsIO - placeholder for now
+                            MessageBox.Show("Excel export requires Syncfusion.XlsIO package. Please use CSV format.",
+                                "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    });
+
+                    MessageBox.Show($"Dashboard exported successfully to {saveDialog.FileName}",
+                        "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export failed: {ex.Message}", "Export Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            if (value.Contains(',', StringComparison.Ordinal) || value.Contains('"', StringComparison.Ordinal) || value.Contains('\n', StringComparison.Ordinal))
+            {
+                return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+            }
+            return value;
+        }
+
+        private void ToggleAutoRefresh(bool enabled)
+        {
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Enabled = enabled;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _refreshTimer?.Dispose();
+                _revenueChart?.Dispose();
+                _metricsGrid?.Dispose();
+                _budgetGauge?.Dispose();
+                _revenueGauge?.Dispose();
+                _expensesGauge?.Dispose();
+                _netPositionGauge?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+}
