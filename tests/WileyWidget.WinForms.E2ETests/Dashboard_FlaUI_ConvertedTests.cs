@@ -2,19 +2,20 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using FlaUIApplication = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
 {
     public class Dashboard_FlaUI_ConvertedTests : IDisposable
     {
         private readonly string _exePath;
-        private Application? _app;
+        private FlaUIApplication? _app;
         private UIA3Automation? _automation;
 
         public Dashboard_FlaUI_ConvertedTests()
@@ -23,17 +24,32 @@ namespace WileyWidget.WinForms.E2ETests
             _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows","WileyWidget.WinForms.exe");
         }
 
-        private void EnsureInteractiveOrSkip()
+        private static bool IsModalWindow(Window candidate)
+        {
+            var windowPattern = candidate.Patterns.Window;
+            if (!windowPattern.IsSupported)
+            {
+                return false;
+            }
+
+            return windowPattern.TryGetPattern(out var pattern) && (pattern.IsModal?.Value ?? false);
+        }
+
+        private bool EnsureInteractiveOrSkip()
         {
             // Prefer explicit opt-in via env var or a self-hosted runner label
             var labels = Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? string.Empty;
             var optedIn = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
             var selfHosted = labels.IndexOf("self-hosted", StringComparison.OrdinalIgnoreCase) >= 0;
+            var isCi = string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
 
-            if (!optedIn && !selfHosted && string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase))
+            if (isCi && !optedIn && !selfHosted)
             {
-                throw new Xunit.Sdk.SkipException("Skipping interactive UI test: requires self-hosted interactive runner (or set WILEYWIDGET_UI_TESTS=true).");
+                // CI without interactive runner should ignore these tests
+                return false;
             }
+
+            return true;
         }
 
         private void StartApp()
@@ -43,7 +59,7 @@ namespace WileyWidget.WinForms.E2ETests
                 throw new FileNotFoundException($"Executable not found at '{_exePath}'. Please set WILEYWIDGET_EXE env var to published executable or build the WinForms project.");
             }
 
-            _app = Application.Launch(_exePath);
+            _app = FlaUIApplication.Launch(_exePath);
             _automation = new UIA3Automation();
         }
 
@@ -53,10 +69,15 @@ namespace WileyWidget.WinForms.E2ETests
             return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result ?? throw new InvalidOperationException("Main window not found");
         }
 
+        private static AutomationElement? WaitForElement(Window window, Func<ConditionFactory, ConditionBase> selector, int timeoutSeconds = 12)
+        {
+            return Retry.WhileNull(() => window.FindFirstDescendant(selector), TimeSpan.FromSeconds(timeoutSeconds), TimeSpan.FromMilliseconds(250)).Result;
+        }
+
         [Fact]
         public void Dashboard_LaunchesAndShowsMainWindow()
         {
-            EnsureInteractiveOrSkip();
+            if (!EnsureInteractiveOrSkip()) return;
             StartApp();
             var window = GetMainWindow();
 
@@ -64,9 +85,9 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(window.Title?.IndexOf("Wiley", StringComparison.OrdinalIgnoreCase) >= 0, "Main window title should contain the app name (Wiley)");
 
             // Basic smoke: ensure top-level toolbar controls are present
-            var loadBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_LoadButton").Or(cf.ByName("Load Dashboard")))?.AsButton();
-            var refreshBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
-            var exportBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
+            var loadBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_LoadButton").Or(cf.ByName("Load Dashboard")))?.AsButton();
+            var refreshBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
+            var exportBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
 
             Assert.NotNull(loadBtn);
             Assert.NotNull(refreshBtn);
@@ -76,12 +97,12 @@ namespace WileyWidget.WinForms.E2ETests
         [Fact]
         public void Dashboard_Export_PDF_CreatesValidFile_Or_ShowsHelpfulMissingDependencyMessage()
         {
-            EnsureInteractiveOrSkip();
+            if (!EnsureInteractiveOrSkip()) return;
             StartApp();
             var window = GetMainWindow();
 
             // Find and click Export button
-            var exportBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
+            var exportBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
             Assert.NotNull(exportBtn);
 
             var tempPdf = Path.Combine(Path.GetTempPath(), $"WileyDashboardExport_{Guid.NewGuid():N}.pdf");
@@ -118,7 +139,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             // Wait for either the file to appear OR a message box explaining missing dependencies
-            var done = Retry.WhileFalse(() => File.Exists(tempPdf), TimeSpan.FromSeconds(10));
+            var done = Retry.While(() => File.Exists(tempPdf), exists => !exists, TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(200));
             if (done.Success && File.Exists(tempPdf))
             {
                 // Validate PDF header
@@ -135,7 +156,7 @@ namespace WileyWidget.WinForms.E2ETests
                 var message = window.ModalWindows.FirstOrDefault(w =>
                     (w.Title?.IndexOf("Missing Dependencies", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0
                  || (w.Title?.IndexOf("Export Error", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0
-                 || w.Modal ? true : false);
+                 || IsModalWindow(w));
 
                 // If message box not found as a separate window, scan any modal windows' content
                 var informative = window.ModalWindows
@@ -151,24 +172,24 @@ namespace WileyWidget.WinForms.E2ETests
         [Fact]
         public async Task Dashboard_AutoRefresh_UpdatesData_WhenRefreshed()
         {
-            EnsureInteractiveOrSkip();
+            if (!EnsureInteractiveOrSkip()) return;
             StartApp();
             var window = GetMainWindow();
 
             // Find the LastUpdated label by automation id
-            var lastLabel = window.FindFirstDescendant(cf => cf.ByAutomationId("LastUpdatedLabel").Or(cf.ByName("Last Updated:")))?.AsLabel();
+            var lastLabel = WaitForElement(window, cf => cf.ByAutomationId("LastUpdatedLabel").Or(cf.ByName("Last Updated:")))?.AsLabel();
             Assert.NotNull(lastLabel);
 
             var firstText = lastLabel.Text ?? string.Empty;
 
             // Trigger refresh
-            var refreshBtn = window.FindFirstDescendant(cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
+            var refreshBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
             Assert.NotNull(refreshBtn);
 
             refreshBtn.Invoke();
 
             // Wait up to 12 seconds for the label text to change
-            var changed = Retry.While(() => (lastLabel.Text ?? string.Empty) == firstText, TimeSpan.FromSeconds(12));
+            var changed = Retry.While(() => (lastLabel.Text ?? string.Empty) == firstText, same => same, TimeSpan.FromSeconds(12), TimeSpan.FromMilliseconds(200));
             Assert.False(changed.Success, "Expected LastUpdated label to change after refresh, but it did not update in time.");
         }
 

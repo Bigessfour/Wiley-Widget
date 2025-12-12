@@ -40,6 +40,7 @@ public sealed class ReportsForm : Form
     private Label? _statusLabel;
     private Label? _pageInfoLabel;
     private DataGridView? _previewGrid;
+    private bool _viewerAvailable;
 
     public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger)
     {
@@ -52,6 +53,7 @@ public sealed class ReportsForm : Form
 
     private void BuildLayout()
     {
+        Name = "ReportsForm";
         Text = "Reports";
         MinimumSize = new System.Drawing.Size(900, 650);
 
@@ -91,12 +93,36 @@ public sealed class ReportsForm : Form
 
         _statusLabel = new Label { Text = "Ready", AutoSize = true, Margin = new Padding(12, 6, 0, 0) };
 
-        _generateButton.Click += async (s, e) => await _viewModel.GenerateReportAsync(_cts.Token);
-        _exportPdfButton.Click += async (s, e) => await _viewModel.ExportToPdfAsync(_cts.Token);
-        _exportExcelButton.Click += async (s, e) => await _viewModel.ExportToExcelAsync(_cts.Token);
-        _printButton.Click += async (s, e) => await _viewModel.PrintAsync(_cts.Token);
-        _toggleParamsButton.Click += async (s, e) => await _viewModel.ToggleParametersPanelAsync(_cts.Token);
-        _findButton.Click += async (s, e) => await _viewModel.FindAsync(_cts.Token);
+        _generateButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.GenerateReportAsync(_cts.Token);
+        };
+        _exportPdfButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.ExportToPdfAsync(_cts.Token);
+        };
+        _exportExcelButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.ExportToExcelAsync(_cts.Token);
+        };
+        _printButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.PrintAsync(_cts.Token);
+        };
+        _toggleParamsButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.ToggleParametersPanelAsync(_cts.Token);
+        };
+        _findButton.Click += async (s, e) =>
+        {
+            if (!EnsureViewer()) return;
+            await _viewModel.FindAsync(_cts.Token);
+        };
         _zoomCombo.SelectedIndexChanged += async (s, e) =>
         {
             if (_zoomCombo?.SelectedItem is string value && int.TryParse(value.TrimEnd('%'), out var pct))
@@ -118,8 +144,7 @@ public sealed class ReportsForm : Form
         Controls.Add(toolbarFlow);
 
         // Viewer placeholder (BoldReports optional)
-        _viewerHost = BuildPlaceholder("BoldReports viewer not available. Install BoldReports.WPF to enable report viewing.");
-        _reportViewer = null;
+        _viewerHost = BuildViewerHost();
         _viewModel.ReportViewer = _reportViewer;
 
         _previewGrid = new DataGridView
@@ -181,6 +206,7 @@ public sealed class ReportsForm : Form
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         RefreshPreviewGrid();
         UpdateStatus();
+        UpdateCommandAvailability();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -189,6 +215,7 @@ public sealed class ReportsForm : Form
         {
             case nameof(ReportsViewModel.IsBusy):
                 SetBusyState(!_viewModel.IsBusy);
+                UpdateCommandAvailability();
                 break;
             case nameof(ReportsViewModel.ErrorMessage):
             case nameof(ReportsViewModel.StatusMessage):
@@ -204,10 +231,11 @@ public sealed class ReportsForm : Form
 
     private void SetBusyState(bool enabled)
     {
-        _generateButton?.SetEnabledSafe(enabled);
-        _exportPdfButton?.SetEnabledSafe(enabled);
-        _exportExcelButton?.SetEnabledSafe(enabled);
-        _printButton?.SetEnabledSafe(enabled);
+        var allowCommands = enabled && _viewerAvailable;
+        _generateButton?.SetEnabledSafe(allowCommands);
+        _exportPdfButton?.SetEnabledSafe(allowCommands);
+        _exportExcelButton?.SetEnabledSafe(allowCommands);
+        _printButton?.SetEnabledSafe(allowCommands);
     }
 
     private void UpdateStatus()
@@ -215,7 +243,21 @@ public sealed class ReportsForm : Form
         if (_statusLabel == null) return;
         var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
         _statusLabel.Text = hasError ? $"Error: {_viewModel.ErrorMessage}" : _viewModel.StatusMessage ?? "Ready";
-            _statusLabel.ForeColor = hasError ? ThemeColors.Error : ThemeColors.Success;
+        _statusLabel.ForeColor = hasError ? ThemeColors.Error : ThemeColors.Success;
+    }
+
+    private void UpdateCommandAvailability()
+    {
+        if (_statusLabel == null)
+        {
+            return;
+        }
+
+        if (!_viewerAvailable)
+        {
+            _statusLabel.Text = "Report viewer not available. Install BoldReports viewer to enable generation.";
+            _statusLabel.ForeColor = ThemeColors.Warning;
+        }
     }
 
     private void RefreshPreviewGrid()
@@ -258,6 +300,48 @@ public sealed class ReportsForm : Form
             Font = new Font("Segoe UI", 10F),
             BackColor = ThemeColors.Background
         };
+    }
+
+    private Control BuildViewerHost()
+    {
+        try
+        {
+            var viewerType = Type.GetType("BoldReports.Windows.ReportViewer, BoldReports.Windows");
+            if (viewerType != null)
+            {
+                var viewerInstance = Activator.CreateInstance(viewerType);
+                if (viewerInstance is Control viewerControl)
+                {
+                    viewerControl.Dock = DockStyle.Fill;
+                    _reportViewer = viewerInstance;
+                    _viewerAvailable = true;
+                    _statusLabel?.SetEnabledSafe(true);
+                    return viewerControl;
+                }
+            }
+
+            _logger.LogWarning("BoldReports viewer assembly not found. Using placeholder view.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize BoldReports viewer; falling back to placeholder");
+        }
+
+        _reportViewer = null;
+        _viewerAvailable = false;
+        return BuildPlaceholder("BoldReports viewer not available. Install BoldReports.WinForms viewer to enable report rendering.");
+    }
+
+    private bool EnsureViewer()
+    {
+        if (_viewerAvailable && _reportViewer != null)
+        {
+            return true;
+        }
+
+        UpdateCommandAvailability();
+        MessageBox.Show(this, "BoldReports viewer is not available. Install BoldReports viewer packages to generate or export reports.", "Viewer Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        return false;
     }
 
     protected override void Dispose(bool disposing)

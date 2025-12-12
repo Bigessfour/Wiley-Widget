@@ -92,7 +92,7 @@ namespace WileyWidget.WinForms.Controls
                     AutoSize = true,
                     ForeColor = ThemeManager.Colors.TextPrimary,
                     Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
-                    Text = "Loading...",
+                    Text = WileyWidget.WinForms.Forms.MainFormResources.LoadingText,
                     TextAlign = ContentAlignment.MiddleCenter,
                     Anchor = AnchorStyles.None,
                     Margin = new Padding(0, 6, 0, 0)

@@ -29,6 +29,7 @@ namespace WileyWidget.WinForms.Forms
         public const string Settings = "Settings";
         public const string Docking = "Docking";
         public const string Mdi = "MDI Mode";
+        public const string LoadingText = "Loading...";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -37,7 +38,6 @@ namespace WileyWidget.WinForms.Forms
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
         private readonly ILogger<MainForm> _logger;
-        private System.Threading.SynchronizationContext? _uiContext;
 
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
@@ -49,15 +49,18 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _statePanel;
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
+        private bool _dashboardAutoShown;
+        private readonly bool _isUiTestHarness;
 
         private Control? _aiChatControl;
         private Panel? _aiChatPanel;
+        private System.ComponentModel.IContainer? components;
+        // Dashboard description labels (populated by CreateDashboardCard)
         private Label? _accountsDescLabel;
         private Label? _chartsDescLabel;
         private Label? _settingsDescLabel;
         private Label? _reportsDescLabel;
         private Label? _infoDescLabel;
-        private System.ComponentModel.IContainer? components;
 
         public MainForm()
             : this(
@@ -73,12 +76,22 @@ namespace WileyWidget.WinForms.Forms
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? NullLogger<MainForm>.Instance;
 
-            // Capture UI synchronization context for marshaling from background threads
-            _uiContext = Program.UISynchronizationContext ?? System.Threading.SynchronizationContext.Current;
+            _isUiTestHarness = string.Equals(
+                Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
 
             _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
             _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
+
+            if (_isUiTestHarness)
+            {
+                _useMdiMode = false;
+                _useTabbedMdi = false;
+                _useSyncfusionDocking = false;
+                _logger.LogInformation("UI test harness detected; disabling MDI and Syncfusion docking for automation stability");
+            }
 
             _logger.LogInformation("UI Config loaded: UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
                 _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
@@ -99,20 +112,6 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 ThemeColors.ApplyTheme(this);
-
-                if (_ribbon != null)
-                {
-                    // Replace deprecated Office2019ColorScheme with ThemeName property
-                    _ribbon.ThemeName = "Office2019Colorful";
-                    SfSkinManager.SetVisualStyle(_ribbon, ThemeColors.DefaultTheme);
-                }
-
-                if (_statusBar != null)
-                {
-                    // Replace deprecated Office2019ColorScheme with ThemeName property
-                    _statusBar.ThemeName = "Office2019Colorful";
-                    SfSkinManager.SetVisualStyle(_statusBar, ThemeColors.DefaultTheme);
-                }
             }
             catch (Exception ex)
             {
@@ -231,23 +230,23 @@ namespace WileyWidget.WinForms.Forms
             placeholder.Controls.Add(lbl);
 
             // Apply SkinManager to placeholder and label to respect theme
-            try { SfSkinManager.SetVisualStyle(placeholder, ThemeColors.DefaultTheme); } catch { }
-            try { SfSkinManager.SetVisualStyle(lbl, ThemeColors.DefaultTheme); } catch { }
+            try { SfSkinManager.SetVisualStyle(placeholder, ThemeColors.DefaultTheme); } catch { /* Theme application is optional - control works with default styling */ }
+            try { SfSkinManager.SetVisualStyle(lbl, ThemeColors.DefaultTheme); } catch { /* Theme application is optional - control works with default styling */ }
 
             return placeholder;
         }
 
         private void BuildRibbon()
         {
-        _ribbon = new RibbonControlAdv
-        {
-            Dock = Syncfusion.Windows.Forms.Tools.DockStyleEx.Top,
-            MenuButtonVisible = false,
-            RibbonStyle = RibbonStyle.Office2016,
-            Height = 140,
-            ShowRibbonDisplayOptionButton = false
-        };
-        SfSkinManager.SetVisualStyle(_ribbon, ThemeColors.DefaultTheme);
+            _ribbon = new RibbonControlAdv
+            {
+                Dock = Syncfusion.Windows.Forms.Tools.DockStyleEx.Top,
+                MenuButtonVisible = false,
+                RibbonStyle = RibbonStyle.Office2016,
+                Height = 140,
+                ShowRibbonDisplayOptionButton = false
+            };
+            SfSkinManager.SetVisualStyle(_ribbon, ThemeColors.DefaultTheme);
             _homeTab = new ToolStripTabItem { Text = "Home" };
             SfSkinManager.SetVisualStyle(_homeTab, ThemeColors.DefaultTheme);
             _navigationStrip = new ToolStripEx
@@ -259,14 +258,15 @@ namespace WileyWidget.WinForms.Forms
             };
             SfSkinManager.SetVisualStyle(_navigationStrip, ThemeColors.DefaultTheme);
 
-            var dashboardButton = CreateRibbonButton(MainFormResources.Dashboard, OnDashboardClicked, "Open dashboard overview");
-            var accountsButton = CreateRibbonButton(MainFormResources.Accounts, OnAccountsClicked, "Open municipal accounts");
-            var chartsButton = CreateRibbonButton(MainFormResources.Charts, OnChartsClicked, "Open charts view");
-            var reportsButton = CreateRibbonButton(MainFormResources.Reports, OnReportsClicked, "Open reports");
-            var settingsButton = CreateRibbonButton(MainFormResources.Settings, OnSettingsClicked, "Application settings");
+            var dashboardButton = CreateRibbonButton(MainFormResources.Dashboard, OnDashboardClicked, "Open dashboard overview", "Nav_Dashboard");
+            var accountsButton = CreateRibbonButton(MainFormResources.Accounts, OnAccountsClicked, "Open municipal accounts", "Nav_Accounts");
+            var chartsButton = CreateRibbonButton(MainFormResources.Charts, OnChartsClicked, "Open charts view", "Nav_Charts");
+            var reportsButton = CreateRibbonButton(MainFormResources.Reports, OnReportsClicked, "Open reports", "Nav_Reports");
+            var settingsButton = CreateRibbonButton(MainFormResources.Settings, OnSettingsClicked, "Application settings", "Nav_Settings");
+            var resetLayoutButton = CreateRibbonButton("Reset Layout", OnResetLayoutClicked, "Reset docking layout to defaults", "Nav_ResetLayout");
 
-            var dockingToggle = CreateRibbonToggle(MainFormResources.Docking, _useSyncfusionDocking, ToggleDockingRequested);
-            var mdiToggle = CreateRibbonToggle(MainFormResources.Mdi, _useMdiMode, ToggleMdiRequested);
+            var dockingToggle = CreateRibbonToggle(MainFormResources.Docking, _useSyncfusionDocking, ToggleDockingRequested, "Nav_DockingToggle");
+            var mdiToggle = CreateRibbonToggle(MainFormResources.Mdi, _useMdiMode, ToggleMdiRequested, "Nav_MdiToggle");
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
@@ -277,7 +277,8 @@ namespace WileyWidget.WinForms.Forms
                 settingsButton,
                 new ToolStripSeparator(),
                 dockingToggle,
-                mdiToggle
+                mdiToggle,
+                resetLayoutButton
             });
 
             _homeTab.Panel.Controls.Add(_navigationStrip);
@@ -353,7 +354,7 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private ToolStripButton CreateRibbonButton(string text, EventHandler onClick, string toolTip)
+        private ToolStripButton CreateRibbonButton(string text, EventHandler onClick, string toolTip, string? automationId = null)
         {
             var button = new ToolStripButton
             {
@@ -363,13 +364,14 @@ namespace WileyWidget.WinForms.Forms
                 Height = 72,
                 DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
                 TextImageRelation = TextImageRelation.ImageAboveText,
-                ToolTipText = toolTip
+                ToolTipText = toolTip,
+                Name = automationId ?? text.Replace(" ", string.Empty)
             };
             button.Click += onClick;
             return button;
         }
 
-        private ToolStripButton CreateRibbonToggle(string text, bool isChecked, EventHandler onClick)
+        private ToolStripButton CreateRibbonToggle(string text, bool isChecked, EventHandler onClick, string? automationId = null)
         {
             var toggle = new ToolStripButton
             {
@@ -380,7 +382,8 @@ namespace WileyWidget.WinForms.Forms
                 Width = 110,
                 Height = 72,
                 DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-                TextImageRelation = TextImageRelation.ImageAboveText
+                TextImageRelation = TextImageRelation.ImageAboveText,
+                Name = automationId ?? $"Toggle_{text.Replace(" ", string.Empty)}"
             };
             toggle.Click += onClick;
             return toggle;
@@ -404,6 +407,12 @@ namespace WileyWidget.WinForms.Forms
         private void OnReportsClicked(object? sender, EventArgs e) => ShowChildForm<ReportsForm, ReportsViewModel>();
         private void OnSettingsClicked(object? sender, EventArgs e) => ShowChildForm<SettingsForm, SettingsViewModel>();
 
+        private void OnResetLayoutClicked(object? sender, EventArgs e)
+        {
+            ResetDockingLayout();
+            UpdateStateText();
+        }
+
         /// <summary>
         /// Closes the settings panel if it's displayed in the current form.
         /// Called by SettingsPanel to hide itself.
@@ -426,15 +435,11 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         public void ClosePanel(string panelName)
         {
-            // Find and close child form or panel by name
-            foreach (Form childForm in this.MdiChildren)
-            {
-                if (childForm.Text.Contains(panelName, StringComparison.OrdinalIgnoreCase))
-                {
-                    childForm.Close();
-                    return;
-                }
-            }
+            // Find and close child form or panel by name using LINQ
+            var matchingForm = this.MdiChildren.FirstOrDefault(f =>
+                f.Text.Contains(panelName, StringComparison.OrdinalIgnoreCase));
+
+            matchingForm?.Close();
         }
 
         private void ApplyStatus(string text)
@@ -443,7 +448,14 @@ namespace WileyWidget.WinForms.Forms
 
                 if (this.InvokeRequired)
                 {
-                    try { this.BeginInvoke(new System.Action(() => ApplyStatus(text))); } catch { }
+                    try
+                    {
+                        this.BeginInvoke(new System.Action(() => ApplyStatus(text)));
+                    }
+                    catch
+                    {
+                        // BeginInvoke can fail if form is disposing - safe to ignore as status update is non-critical
+                    }
                     return;
                 }
 
@@ -461,7 +473,14 @@ namespace WileyWidget.WinForms.Forms
 
             if (this.InvokeRequired)
             {
-                try { this.BeginInvoke(new System.Action(UpdateStateText)); } catch { }
+                try
+                {
+                    this.BeginInvoke(new System.Action(UpdateStateText));
+                }
+                catch
+                {
+                    // BeginInvoke can fail if form is disposing - safe to ignore as status update is non-critical
+                }
                 return;
             }
 
@@ -471,7 +490,7 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private Panel CreateDashboardCard(string title, string description, Color accent, out Label descriptionLabel)
+        private (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, Color accent)
         {
             var panel = new Panel
             {
@@ -491,7 +510,7 @@ namespace WileyWidget.WinForms.Forms
                 Height = 28
             };
 
-            descriptionLabel = new Label
+            var descriptionLabel = new Label
             {
                 Text = description,
                 Dock = DockStyle.Fill,
@@ -502,7 +521,14 @@ namespace WileyWidget.WinForms.Forms
             panel.Controls.Add(descriptionLabel);
             panel.Controls.Add(titleLabel);
 
-            return panel;
+            return (panel, descriptionLabel);
+        }
+
+        private Panel CreateDashboardCard(string title, string description, Color accent, out Label descriptionLabel)
+        {
+            var tuple = CreateDashboardCard(title, description, accent);
+            descriptionLabel = tuple.DescriptionLabel;
+            return tuple.Panel;
         }
 
         private void SetupCardClickHandler(Control card, System.Action onClick)
@@ -533,40 +559,77 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                // For modal/non-MDI windows, avoid opening duplicate windows when allowMultiple=false
-                if (!allowMultiple)
-                {
-                    var existingNonMdi = this.OwnedForms.OfType<TForm>().FirstOrDefault();
-                    if (existingNonMdi != null && !existingNonMdi.IsDisposed)
-                    {
-                        existingNonMdi.Activate();
-                        return;
-                    }
-                }
-
-                IServiceScope? scope = null;
-                TForm? form = null;
-                try
-                {
-                    scope = _serviceProvider.CreateScope();
-                    form = ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
-                    // Ensure scope is released once the form closes
-                    form.FormClosed += (_, _) => { try { scope?.Dispose(); } catch { } };
-                    form.StartPosition = FormStartPosition.CenterParent;
-                    form.Show(this);
-                    ApplyStatus($"{form.Text} opened");
-                }
-                catch
-                {
-                    try { form?.Close(); } catch { }
-                    try { scope?.Dispose(); } catch { }
-                    throw;
-                }
+                ShowNonMdiChildForm<TForm>(allowMultiple);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to open child form {Form}", typeof(TForm).Name);
                 ApplyStatus($"Unable to open {typeof(TForm).Name}");
+            }
+        }
+
+        private void ShowNonMdiChildForm<TForm>(bool allowMultiple) where TForm : Form
+        {
+            // Check for existing non-MDI windows when duplicates not allowed
+            if (!allowMultiple)
+            {
+                var existingNonMdi = this.OwnedForms.OfType<TForm>().FirstOrDefault();
+                if (existingNonMdi != null && !existingNonMdi.IsDisposed)
+                {
+                    existingNonMdi.Activate();
+                    return;
+                }
+            }
+
+            IServiceScope? scope = null;
+            TForm? form = null;
+            try
+            {
+                scope = _serviceProvider.CreateScope();
+                form = ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
+
+                // Ensure scope is released once the form closes
+                form.FormClosed += (_, _) =>
+                {
+                    try
+                    {
+                        scope?.Dispose();
+                    }
+                    catch
+                    {
+                        // Scope disposal during form close is non-critical - safe to ignore
+                    }
+                };
+
+                form.StartPosition = FormStartPosition.CenterParent;
+                form.Show(this);
+                ApplyStatus($"{form.Text} opened");
+            }
+            catch
+            {
+                CleanupFailedFormCreation(form, scope);
+                throw;
+            }
+        }
+
+        private static void CleanupFailedFormCreation(Form? form, IServiceScope? scope)
+        {
+            try
+            {
+                form?.Close();
+            }
+            catch
+            {
+                // Form cleanup during error recovery is best-effort - safe to ignore
+            }
+
+            try
+            {
+                scope?.Dispose();
+            }
+            catch
+            {
+                // Scope cleanup during error recovery is best-effort - safe to ignore
             }
         }
 
@@ -669,7 +732,14 @@ namespace WileyWidget.WinForms.Forms
                                     {
                                         this.BeginInvoke(new System.Action(() =>
                                         {
-                                            try { SaveDockingLayout(); } catch (Exception ex) { _logger.LogWarning(ex, "Background simulated SaveDockingLayout failed"); }
+                                            try
+                                            {
+                                                SaveDockingLayout();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                _logger.LogWarning(ex, "Background simulated SaveDockingLayout failed");
+                                            }
                                         }));
                                     }
                                     catch (Exception ex)
@@ -697,6 +767,26 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
+            }
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            if (_dashboardAutoShown)
+            {
+                return;
+            }
+
+            try
+            {
+                ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
+                _dashboardAutoShown = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-open Dashboard on startup");
             }
         }
 

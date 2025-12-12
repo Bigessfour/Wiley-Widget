@@ -1,3 +1,6 @@
+using System;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Drawing;
 using System.Drawing;
@@ -19,105 +22,233 @@ namespace WileyWidget.WinForms.Forms
     public partial class ChartForm : Form
     {
         private readonly ChartViewModel _vm;
+        private ChartControl? _cartesian;
+        private ChartControl? _pie;
+        private Label? _statusLabel;
 
         public ChartForm(ChartViewModel vm)
         {
-            _vm = vm;
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
             Text = ChartFormResources.FormTitle;
             ThemeColors.ApplyTheme(this);
+
+            _vm.PropertyChanged += VmOnPropertyChanged;
+            WireCollectionChanges();
+
+            FormClosed += (_, _) =>
+            {
+                _vm.PropertyChanged -= VmOnPropertyChanged;
+                UnwireCollectionChanges();
+            };
         }
 
         private void InitializeComponent()
         {
-            // Create a Cartesian Chart using Syncfusion ChartControl
+            Name = "ChartForm";
+            _cartesian = CreateCartesianChart();
+            _pie = CreatePieChart();
+
+            var split = new SplitContainer { Dock = DockStyle.Fill };
+            split.Panel1.Controls.Add(_cartesian);
+            split.Panel2.Controls.Add(_pie);
+
+            _statusLabel = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Text = "Loading charts...",
+                AutoSize = false,
+                Height = 26,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(8, 4, 4, 4)
+            };
+
+            Controls.Add(split);
+            Controls.Add(_statusLabel);
+            Size = new Size(1000, 700);
+            StartPosition = FormStartPosition.CenterParent;
+
+            Load += async (s, e) => await LoadChartDataAsync();
+        }
+
+        private ChartControl CreateCartesianChart()
+        {
             var cartesian = new ChartControl
             {
                 Dock = DockStyle.Fill,
+                Name = "Chart_Cartesian",
                 Text = "Budget Trend"
             };
-            SfSkinManager.SetVisualStyle(cartesian, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SfSkinManager.SetVisualStyle(cartesian, ThemeColors.DefaultTheme);
 
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
 
-            // Create a pie chart using ChartControl with Pie series type
+            return cartesian;
+        }
+
+        private ChartControl CreatePieChart()
+        {
             var pie = new ChartControl
             {
                 Dock = DockStyle.Bottom,
                 Height = 300,
+                Name = "Chart_Pie",
                 Text = "Budget Distribution"
             };
-            SfSkinManager.SetVisualStyle(pie, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SfSkinManager.SetVisualStyle(pie, ThemeColors.DefaultTheme);
 
             // Hide axis for pie chart by setting stroke to transparent
             pie.PrimaryXAxis.DrawGrid = false;
             pie.PrimaryYAxis.DrawGrid = false;
 
-            // Populate initial chart series (loaded later when data is available)
-            var split = new SplitContainer { Dock = DockStyle.Fill };
-            split.Panel1.Controls.Add(cartesian);
-            split.Panel2.Controls.Add(pie);
+            return pie;
+        }
 
-            Controls.Add(split);
-            Size = new Size(1000, 700);
-            StartPosition = FormStartPosition.CenterParent;
+        private async Task LoadChartDataAsync()
+        {
+            try
+            {
+                await _vm.LoadChartDataAsync();
 
-            // After loading data populate chart series
-            Load += async (s, e) =>
+                if (IsDisposed) return;
+
+                if (InvokeRequired)
+                {
+                    try
+                    {
+                        BeginInvoke(UpdateCharts);
+                    }
+                    catch
+                    {
+                        // BeginInvoke can fail if form is disposing - safe to ignore as operation is cosmetic
+                    }
+                }
+                else
+                {
+                    UpdateCharts();
+                }
+            }
+            catch (Exception ex)
             {
                 try
                 {
-                    await _vm.LoadChartDataAsync();
-
-                    if (IsDisposed) return;
-
-                    void updateCharts()
-                    {
-                        try
-                        {
-                            if (cartesian == null || pie == null) return;
-
-                            // Build line series
-                            cartesian.Series.Clear();
-                            var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-                            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
-                            foreach (var data in _vm.MonthlyRevenueData)
-                            {
-                                if (data == null) continue;
-                                series.Points.Add(data.MonthNumber, (double)data.Amount);
-                            }
-                            cartesian.Series.Add(series);
-
-                            // Build pie series
-                            pie.Series.Clear();
-                            var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
-                            foreach (var p in _vm.PieChartData)
-                            {
-                                pieSeries.Points.Add(p.Category, (double)p.Value);
-                            }
-                            pie.Series.Add(pieSeries);
-                        }
-                        catch (Exception ex)
-                        {
-                            try { Serilog.Log.Warning(ex, "ChartForm: updateCharts failed"); } catch { }
-                        }
-                    }
-
-                    if (InvokeRequired)
-                    {
-                        try { BeginInvoke((Action)updateCharts); } catch { }
-                    }
-                    else
-                    {
-                        updateCharts();
-                    }
+                    Log.Error(ex, "ChartForm: Load handler failed");
+                    ShowStatus($"Error: {ex.Message}", isError: true);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    try { Serilog.Log.Error(ex, "ChartForm: Load handler failed"); } catch { }
+                    // Logging failure during exception handling - cannot recover, safe to ignore
                 }
-            };
+            }
+        }
+
+        private void UpdateCharts()
+        {
+            try
+            {
+                if (_cartesian == null || _pie == null) return;
+
+                UpdateCartesianSeries(_cartesian);
+                UpdatePieSeries(_pie);
+                ShowStatus("Charts updated", isError: false);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Log.Warning(ex, "ChartForm: updateCharts failed");
+                }
+                catch
+                {
+                    // Logging failure during exception handling - cannot recover, safe to ignore
+                }
+            }
+        }
+
+        private void WireCollectionChanges()
+        {
+            _vm.MonthlyRevenueData.CollectionChanged += CollectionsChanged;
+            _vm.PieChartData.CollectionChanged += CollectionsChanged;
+            _vm.ChartData.CollectionChanged += CollectionsChanged;
+            _vm.LineChartData.CollectionChanged += CollectionsChanged;
+        }
+
+        private void UnwireCollectionChanges()
+        {
+            _vm.MonthlyRevenueData.CollectionChanged -= CollectionsChanged;
+            _vm.PieChartData.CollectionChanged -= CollectionsChanged;
+            _vm.ChartData.CollectionChanged -= CollectionsChanged;
+            _vm.LineChartData.CollectionChanged -= CollectionsChanged;
+        }
+
+        private void CollectionsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (IsDisposed || _cartesian == null || _pie == null) return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(UpdateCharts);
+            }
+            else
+            {
+                UpdateCharts();
+            }
+        }
+
+        private void VmOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ChartViewModel.ErrorMessage))
+            {
+                var message = string.IsNullOrWhiteSpace(_vm.ErrorMessage) ? "Ready" : _vm.ErrorMessage;
+                ShowStatus(message ?? "Ready", isError: !string.IsNullOrWhiteSpace(_vm.ErrorMessage));
+            }
+            else if (e.PropertyName == nameof(ChartViewModel.IsLoading))
+            {
+                ShowStatus(_vm.IsLoading ? "Loading charts..." : "Charts ready", isError: false);
+            }
+        }
+
+        private void ShowStatus(string message, bool isError)
+        {
+            if (_statusLabel == null) return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(() => ShowStatus(message, isError));
+                return;
+            }
+
+            _statusLabel.Text = message;
+            _statusLabel.ForeColor = isError ? ThemeColors.Error : ThemeColors.Success;
+        }
+
+        private void UpdateCartesianSeries(ChartControl cartesian)
+        {
+            cartesian.Series.Clear();
+            var series = new ChartSeries("Revenue", ChartSeriesType.Line);
+            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
+
+            foreach (var data in _vm.MonthlyRevenueData)
+            {
+                if (data == null) continue;
+                series.Points.Add(data.MonthNumber, (double)data.Amount);
+            }
+
+            cartesian.Series.Add(series);
+        }
+
+        private void UpdatePieSeries(ChartControl pie)
+        {
+            pie.Series.Clear();
+            var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
+
+            foreach (var p in _vm.PieChartData)
+            {
+                pieSeries.Points.Add(p.Category, (double)p.Value);
+            }
+
+            pie.Series.Add(pieSeries);
         }
     }
 }

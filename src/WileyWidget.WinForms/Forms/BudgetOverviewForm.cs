@@ -140,6 +140,7 @@ namespace WileyWidget.WinForms.Forms
 
             // Form settings with modern appearance
             Text = BudgetOverviewFormResources.FormTitle;
+            Name = "BudgetOverviewForm";
             Size = new Size(1100, 800);
             StartPosition = FormStartPosition.CenterParent;
             BackColor = BackgroundColor;
@@ -376,6 +377,7 @@ namespace WileyWidget.WinForms.Forms
             _metricsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
+                Name = "BudgetOverview_MetricsGrid",
                 AllowEditing = false,
                 SelectionUnit = SelectionUnit.Row,
                 SelectionMode = GridSelectionMode.Extended,

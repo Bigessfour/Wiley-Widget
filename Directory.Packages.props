@@ -88,8 +88,8 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
 
     <!-- UI Automation (FlaUI) packages -->
-    <PackageVersion Include="FlaUI.Core" Version="4.1.0" />
-    <PackageVersion Include="FlaUI.UIA3" Version="4.1.0" />
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
 
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />

@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Globalization;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Data;
@@ -47,15 +51,17 @@ namespace WileyWidget.WinForms.Forms
         private ToolStripStatusLabel? _totalsPanel;
         private ToolStripStatusLabel? _selectionPanel;
         private ToolStripButton? _editToggleButton;
+        private BindingSource? _accountsBinding;
 
         public AccountsForm(AccountsViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
             InitializeComponent();
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
             BindViewModel();
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+#pragma warning disable CS4014
             LoadData();
 #pragma warning restore CS4014
         }
@@ -108,14 +114,8 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 GripStyle = ToolStripGripStyle.Hidden,
                 ImageScalingSize = new Size(20, 20),
-                Padding = new Padding(8, 4, 8, 4),
+                Padding = new Padding(8, 4, 8, 4)
             };
-            // Do NOT apply SfSkinManager to standard WinForms ToolStrip controls.
-            // Theme is applied at the Form level via ThemeColors.ApplyTheme(this),
-            // and SfSkinManager is intended for Syncfusion controls. Attempting
-            // to style standard ToolStrip/StatusStrip instances with SfSkinManager
-            // caused a FileNotFoundException for Microsoft.WinForms.Utilities.Shared
-            // on some runtime configurations (net9.0). Avoid calling it here.
 
             var loadButton = new ToolStripButton
             {
@@ -172,14 +172,13 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = true,
                 AllowEditing = true,
                 SelectionMode = GridSelectionMode.Single,
-                NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
+                NavigationMode = NavigationMode.Row,
                 RowHeight = 32,
                 HeaderRowHeight = 36
             };
 
-            SfSkinManager.SetVisualStyle(_dataGrid, ThemeColors.DefaultTheme);
+            ThemeColors.ApplySfDataGridTheme(_dataGrid);
 
-            // Configure columns with proper Syncfusion types and formatting
             _dataGrid.Columns.Add(new GridTextColumn
             {
                 MappingName = "AccountNumber",
@@ -233,7 +232,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 AllowFiltering = true,
                 Format = "C2",
-                NumberFormatInfo = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat
+                NumberFormatInfo = CultureInfo.GetCultureInfo("en-US").NumberFormat
             });
 
             _dataGrid.Columns.Add(new GridNumericColumn
@@ -244,7 +243,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 AllowFiltering = true,
                 Format = "C2",
-                NumberFormatInfo = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat
+                NumberFormatInfo = CultureInfo.GetCultureInfo("en-US").NumberFormat
             });
 
             _dataGrid.Columns.Add(new GridTextColumn
@@ -274,7 +273,6 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = true
             });
 
-            // Add summary row for balance totals
             var summaryRow = new GridTableSummaryRow
             {
                 Name = "TotalSummary",
@@ -304,15 +302,11 @@ namespace WileyWidget.WinForms.Forms
             _dataGrid.CellDoubleClick += DataGrid_CellDoubleClick;
         }
 
-        private void DataGrid_QueryRowStyle(object? sender, Syncfusion.WinForms.DataGrid.Events.QueryRowStyleEventArgs e)
+        private void DataGrid_QueryRowStyle(object? sender, QueryRowStyleEventArgs e)
         {
-            if (e.RowType == Syncfusion.WinForms.DataGrid.Enums.RowType.DefaultRow)
+            if (e.RowType == RowType.DefaultRow && e.RowIndex % 2 == 0)
             {
-                // Alternate row colors for better readability
-                if (e.RowIndex % 2 == 0)
-                {
-                    e.Style.BackColor = ThemeColors.AlternatingRowBackground;
-                }
+                e.Style.BackColor = ThemeColors.AlternatingRowBackground;
             }
         }
 
@@ -327,7 +321,7 @@ namespace WileyWidget.WinForms.Forms
 
                 if (e.Column.MappingName == "BudgetAmount" && account.BudgetAmount == 0)
                 {
-                    e.Style.TextColor = ThemeManager.Colors.TextPrimary;
+                    e.Style.TextColor = SystemColors.ControlText;
                 }
             }
         }
@@ -356,14 +350,16 @@ namespace WileyWidget.WinForms.Forms
         private async Task LoadData()
         {
             if (_dataGrid == null)
+            {
                 return;
+            }
 
             try
             {
                 await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
-                var bindingSource = new BindingSource { DataSource = _viewModel.Accounts };
-                _dataGrid.DataSource = bindingSource;
+                BindGridSource();
                 UpdateStatusTotals();
+
                 if (_statusPanel != null)
                 {
                     _statusPanel.Text = $"{_viewModel.ActiveAccountCount} accounts loaded";
@@ -386,12 +382,8 @@ namespace WileyWidget.WinForms.Forms
                 _statusBar = new StatusStrip
                 {
                     Dock = DockStyle.Fill,
-                    SizingGrip = false,
+                    SizingGrip = false
                 };
-
-                // Note: SfSkinManager is for Syncfusion controls only, not standard WinForms controls like StatusStrip
-                // The call was causing FileNotFoundException for Microsoft.WinForms.Utilities.Shared in .NET 9
-                // Removed: SfSkinManager.SetVisualStyle(_statusBar, "Office2019Colorful");
 
                 _statusPanel = new ToolStripStatusLabel
                 {
@@ -418,37 +410,51 @@ namespace WileyWidget.WinForms.Forms
             }
             catch (Exception ex)
             {
-                // Log error if logger is available
                 var logger = Program.Services.GetService<ILogger<AccountsForm>>();
                 logger?.LogError(ex, "Failed to build accounts status bar");
 
-                // Fallback: Create basic status bar
                 try
                 {
-                _statusBar = new StatusStrip { Dock = DockStyle.Fill };
-                _statusPanel = new ToolStripStatusLabel { Text = "Status bar initialization failed" };
-                _statusBar.Items.Add(_statusPanel);
+                    _statusBar = new StatusStrip { Dock = DockStyle.Fill };
+                    _statusPanel = new ToolStripStatusLabel { Text = "Status bar initialization failed" };
+                    _statusBar.Items.Add(_statusPanel);
                 }
-                catch { }
-            }
-        }        private void BindViewModel()
-        {
-            _viewModel.PropertyChanged += (s, e) =>
-            {
-                switch (e.PropertyName)
+                catch
                 {
-                    case nameof(_viewModel.IsLoading):
-                        if (_statusPanel != null)
-                        {
-                            _statusPanel.Text = _viewModel.IsLoading ? Resources.LoadingText : Resources.FormTitle;
-                        }
-                        break;
-                    case nameof(_viewModel.ActiveAccountCount):
-                    case nameof(_viewModel.TotalBalance):
-                        UpdateStatusTotals();
-                        break;
                 }
-            };
+            }
+        }
+
+        private void BindViewModel()
+        {
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _viewModel.Accounts.CollectionChanged += Accounts_CollectionChanged;
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(AccountsViewModel.IsLoading):
+                    if (_statusPanel != null)
+                    {
+                        _statusPanel.Text = _viewModel.IsLoading ? Resources.LoadingText : Resources.FormTitle;
+                    }
+                    break;
+                case nameof(AccountsViewModel.ActiveAccountCount):
+                case nameof(AccountsViewModel.TotalBalance):
+                    UpdateStatusTotals();
+                    break;
+            }
+        }
+
+        private void Accounts_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            UpdateStatusTotals();
+            if (_dataGrid?.View != null)
+            {
+                _dataGrid.View.Refresh();
+            }
         }
 
         private void UpdateStatusTotals()
@@ -463,6 +469,19 @@ namespace WileyWidget.WinForms.Forms
             {
                 _statusPanel.Text = $"{_viewModel.ActiveAccountCount} accounts loaded";
             }
+        }
+
+        private void BindGridSource()
+        {
+            if (_dataGrid == null)
+            {
+                return;
+            }
+
+            _accountsBinding ??= new BindingSource();
+            _accountsBinding.DataSource = _viewModel.Accounts;
+            _dataGrid.DataSource = _accountsBinding;
+            _accountsBinding.ResetBindings(false);
         }
 
         private void ShowAccountDetails(MunicipalAccountDisplay account)
@@ -483,6 +502,8 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
+                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                _viewModel.Accounts.CollectionChanged -= Accounts_CollectionChanged;
                 _dataGrid?.Dispose();
                 _toolbar?.Dispose();
                 _statusBar?.Dispose();
@@ -491,16 +512,14 @@ namespace WileyWidget.WinForms.Forms
                 _statusPanel?.Dispose();
                 _totalsPanel?.Dispose();
                 _selectionPanel?.Dispose();
-                // components field is declared in designer partial class when present; only dispose when it exists
-                try { /* components?.Dispose(); */ } catch { }
             }
+
             base.Dispose(disposing);
         }
 
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            // DataGridView handles docking automatically
         }
     }
 }

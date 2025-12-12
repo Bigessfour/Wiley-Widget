@@ -46,6 +46,7 @@ public partial class MainForm
     private System.Windows.Forms.Timer? _dockingLayoutSaveTimer;
     // Flag to prevent concurrent saves
     private bool _isSavingLayout = false;
+    private readonly object _dockingSaveLock = new();
     // Track last save time to enforce minimum interval
     private DateTime _lastSaveTime = DateTime.MinValue;
     private static readonly TimeSpan MinimumSaveInterval = TimeSpan.FromMilliseconds(2000); // 2 seconds minimum between saves
@@ -255,31 +256,6 @@ public partial class MainForm
                 try { _centralDocumentPanel.BringToFront(); } catch { }
                 _centralDocumentPanel.BringToFront();
             }
-
-            // When MDI is active and the docking manager is present, try to convert the central panel
-            // to an MDI child via the DockingManager so it properly participates in TabbedMDI or MDI behavior.
-            if (_useMdiMode && IsMdiContainer && _dockingManager != null)
-            {
-                try
-                {
-                    _dockingManager.SetAsMDIChild(_centralDocumentPanel, true);
-                    _logger.LogDebug("Central document panel converted to MDI child via DockingManager.SetAsMDIChild");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to convert central panel to MDI child - using standard docking");
-                    try
-                    {
-                        var mdiClient2 = this.Controls.OfType<MdiClient>().FirstOrDefault();
-                        if (mdiClient2 != null)
-                        {
-                            mdiClient2.Dock = DockStyle.Fill;
-                            mdiClient2.SendToBack();
-                        }
-                    }
-                    catch { }
-                }
-            }
         }
         else
         {
@@ -354,19 +330,19 @@ public partial class MainForm
         }
 
         // Create cards (reuse existing logic from InitializeComponent)
-        var accountsCard = CreateDashboardCard("≡ƒôè Accounts", "Loading...", ThemeColors.PrimaryAccent, out _accountsDescLabel);
+        var accountsCard = CreateDashboardCard("≡ƒôè Accounts", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _accountsDescLabel);
         SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>());
 
-        var chartsCard = CreateDashboardCard("≡ƒôê Charts", "Loading...", ThemeColors.Success, out _chartsDescLabel);
+        var chartsCard = CreateDashboardCard("��ƒôê Charts", MainFormResources.LoadingText, ThemeColors.Success, out _chartsDescLabel);
         SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>());
 
-        var settingsCard = CreateDashboardCard("ΓÜÖ∩╕Å Settings", "Loading...", ThemeColors.Warning, out _settingsDescLabel);
+        var settingsCard = CreateDashboardCard("ΓÜÖ∩╕Å Settings", MainFormResources.LoadingText, ThemeColors.Warning, out _settingsDescLabel);
         SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>());
 
-        var reportsCard = CreateDashboardCard("≡ƒôä Reports", "Loading...", ThemeColors.PrimaryAccent, out _reportsDescLabel);
+        var reportsCard = CreateDashboardCard("≡ƒôä Reports", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _reportsDescLabel);
         SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>());
 
-        var infoCard = CreateDashboardCard("Γä╣∩╕Å Budget Status", "Loading...", ThemeColors.Error, out _infoDescLabel);
+        var infoCard = CreateDashboardCard("Γä╣∩╕Å Budget Status", MainFormResources.LoadingText, ThemeColors.Error, out _infoDescLabel);
 
         dashboardPanel.Controls.Add(accountsCard, 0, 0);
         dashboardPanel.Controls.Add(chartsCard, 0, 1);
@@ -464,19 +440,13 @@ public partial class MainForm
                     _activityGrid.DataSource = activities;
                 }
             }
-
-            _logger.LogDebug("Loaded {Count} activities from database", activities.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading activity data from database");
+            _logger.LogWarning(ex, "Failed to load activity data");
             LoadFallbackActivityData();
         }
     }
-
-    /// <summary>
-    /// Load fallback activity data when database is unavailable.
-    /// </summary>
     private void LoadFallbackActivityData()
     {
         if (_activityGrid == null || _activityGrid.IsDisposed)
@@ -554,6 +524,13 @@ public partial class MainForm
     private void LoadDockingLayout()
     {
         if (_dockingManager == null) return;
+
+        // Syncfusion guidance: skip persistence calls until host handle and message loop are ready
+        if (!IsHandleCreated || !Application.MessageLoop)
+        {
+            _logger.LogDebug("Skipping LoadDockingLayout: handle not created or message loop not running");
+            return;
+        }
 
         if (this.IsDisposed || this.Disposing)
         {
@@ -715,7 +692,16 @@ public partial class MainForm
     /// </summary>
     private void SaveDockingLayout()
     {
-        if (_dockingManager == null) return;
+        if (_dockingManager == null)
+        {
+            return;
+        }
+
+        if (!IsHandleCreated || !Application.MessageLoop)
+        {
+            _logger.LogDebug("Skipping SaveDockingLayout: handle not created or message loop not running");
+            return;
+        }
 
         if (this.IsDisposed || this.Disposing)
         {
@@ -729,89 +715,53 @@ public partial class MainForm
             return;
         }
 
-        // Instrumentation: log basic preconditions and thread info
-        try
+        lock (_dockingSaveLock)
         {
-            var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-            _logger.LogDebug("SaveDockingLayout START - ThreadId={ThreadId}, InvokeRequired={InvokeRequired}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime:o}",
-                threadId, this.InvokeRequired, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
-        }
-        catch { }
-
-        // Prevent concurrent saves
-        if (_isSavingLayout)
-        {
-            _logger.LogDebug("Skipping manual save - debounced save already in progress");
-            return;
-        }
-
-        // Avoid invoking Syncfusion's internal serialization wrapper when there
-        // are no dock panels initialized. Use our tracked panel references to
-        // determine if there's anything meaningful to save; this avoids calling
-        // into Syncfusion when controls may be disposed which can trigger NREs.
-        try
-        {
-            var hasDockControls = false;
-            if (_leftDockPanel != null && !_leftDockPanel.IsDisposed) hasDockControls = true;
-            if (_rightDockPanel != null && !_rightDockPanel.IsDisposed) hasDockControls = true;
-            if (_dynamicDockPanels != null && _dynamicDockPanels.Count > 0) hasDockControls = true;
-
-            if (!hasDockControls)
+            if (_isSavingLayout)
             {
-                // Instrumentation: log reasons for skipping
-                try
+                _logger.LogDebug("Skipping manual save - another save is in progress");
+                return;
+            }
+
+            _isSavingLayout = true;
+        }
+
+        try
+        {
+            try
+            {
+                var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                _logger.LogDebug("SaveDockingLayout START - ThreadId={ThreadId}, InvokeRequired={InvokeRequired}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime:o}",
+                    threadId, this.InvokeRequired, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
+            }
+            catch { }
+
+            // Avoid invoking Syncfusion's internal serialization wrapper when no dock panels exist
+            try
+            {
+                var hasDockControls = false;
+                if (_leftDockPanel != null && !_leftDockPanel.IsDisposed) hasDockControls = true;
+                if (_rightDockPanel != null && !_rightDockPanel.IsDisposed) hasDockControls = true;
+                if (_dynamicDockPanels != null && _dynamicDockPanels.Count > 0) hasDockControls = true;
+
+                if (!hasDockControls)
                 {
                     var now = DateTime.Now;
                     var elapsedMs = _lastSaveTime == DateTime.MinValue ? double.NaN : (now - _lastSaveTime).TotalMilliseconds;
                     _logger.LogDebug("Skipping SaveDockingLayout - hasDockControls={HasDockControls}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, TimeSinceLastSaveMs={ElapsedMs}",
                         hasDockControls, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, elapsedMs);
-                }
-                catch { }
-
-                // Ensure UI is ready and avoid saving while disposing
-                if (this.IsDisposed || this.Disposing)
-                {
-                    _logger.LogDebug("Skipping SaveDockingLayout: form disposing/disposed");
                     return;
                 }
-
-                if (!this.IsHandleCreated || !Application.MessageLoop)
-                {
-                    _logger.LogDebug("Skipping SaveDockingLayout: UI not ready");
-                    return;
-                }
-
-                // Rate-limit saves to avoid triggering Syncfusion serialization races
-                try
-                {
-                    var now = DateTime.Now;
-                    if (_lastSaveTime != DateTime.MinValue && (now - _lastSaveTime) < MinimumSaveInterval)
-                    {
-                        _logger.LogDebug("Skipping SaveDockingLayout: too soon since last save ({Elapsed}ms)", (now - _lastSaveTime).TotalMilliseconds);
-                        return;
-                    }
-                }
-                catch { }
-
-                _logger.LogDebug("No dock controls present - skipping docking layout save");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error inspecting dock panel state - skipping docking layout save to avoid potential Syncfusion NRE");
                 return;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error inspecting dock panel state - skipping docking layout save to avoid potential Syncfusion NRE");
-            return;
-        }
 
-        _isSavingLayout = true;
-
-        string? layoutPath = null;
-        try
-        {
-            layoutPath = GetDockingLayoutPath();
+            string? layoutPath = GetDockingLayoutPath();
             var layoutDir = Path.GetDirectoryName(layoutPath);
 
-            // Ensure directory exists with permission check
             if (!string.IsNullOrEmpty(layoutDir))
             {
                 if (!Directory.Exists(layoutDir))
@@ -823,12 +773,10 @@ public partial class MainForm
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        // Fallback to temp directory if AppData is restricted
                         layoutPath = Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
                         _logger.LogWarning("AppData directory creation failed - using temp directory: {Path}", layoutPath);
                     }
                 }
-                // Verify write permission by attempting to open file for write
                 else
                 {
                     try
@@ -845,34 +793,38 @@ public partial class MainForm
             }
 
             var tempLayoutPath = layoutPath + ".tmp";
-
-            // Save the standard dock state using Syncfusion's serializer
             var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
                 Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, tempLayoutPath);
+
             try
             {
                 var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-                // Instrumentation: log as Info so entries are captured by default log level
                 _logger.LogInformation("Calling _dockingManager.SaveDockState - ThreadId={ThreadId}, tempLayoutPath={TempPath}, finalLayoutPath={FinalPath}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime:o}",
                     threadId, tempLayoutPath, layoutPath, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
                 _dockingManager.SaveDockState(serializer);
             }
             catch (NullReferenceException nre)
             {
-                _logger.LogError(nre, "Syncfusion.SaveDockState raised NullReferenceException - aborting save to avoid crash. ThreadId={ThreadId}, IsDisposed={IsDisposed}", System.Threading.Thread.CurrentThread.ManagedThreadId, this.IsDisposed);
+                _logger.LogWarning(nre, "Syncfusion.SaveDockState raised NullReferenceException - deleting layout to prevent corruption.");
+                TryDeleteLayoutFiles(layoutPath);
+                TryCleanupTempFile(tempLayoutPath);
+                return;
+            }
+            catch (ArgumentException argEx)
+            {
+                _logger.LogWarning(argEx, "Syncfusion.SaveDockState raised ArgumentException - deleting layout to prevent corruption.");
+                TryDeleteLayoutFiles(layoutPath);
                 TryCleanupTempFile(tempLayoutPath);
                 return;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Syncfusion.SaveDockState failed - aborting save. ThreadId={ThreadId}", System.Threading.Thread.CurrentThread.ManagedThreadId);
+                _logger.LogError(ex, "Syncfusion.SaveDockState failed - aborting save.");
                 TryCleanupTempFile(tempLayoutPath);
                 return;
             }
 
-            // Add custom dynamic panel information to the XML
             SaveDynamicPanelMetadata(tempLayoutPath);
-
             ReplaceDockingLayoutFile(tempLayoutPath, layoutPath);
 
             _lastSaveTime = DateTime.Now;
@@ -880,22 +832,22 @@ public partial class MainForm
         }
         catch (UnauthorizedAccessException authEx)
         {
-            _logger.LogError(authEx, "Permission denied saving docking layout to {Path}", layoutPath);
-            TryCleanupTempFile(layoutPath + ".tmp");
+            _logger.LogError(authEx, "Permission denied saving docking layout");
         }
         catch (IOException ioEx)
         {
-            _logger.LogError(ioEx, "I/O error saving docking layout to {Path}", layoutPath);
-            TryCleanupTempFile(layoutPath + ".tmp");
+            _logger.LogError(ioEx, "I/O error saving docking layout");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save docking layout to {Path}", layoutPath);
-            TryCleanupTempFile(layoutPath + ".tmp");
+            _logger.LogError(ex, "Failed to save docking layout");
         }
         finally
         {
-            _isSavingLayout = false;
+            lock (_dockingSaveLock)
+            {
+                _isSavingLayout = false;
+            }
         }
     }
 
@@ -1090,6 +1042,25 @@ public partial class MainForm
         public string Type { get; set; } = "System.Windows.Forms.Panel";
         public string? DockLabel { get; set; }
         public bool IsAutoHide { get; set; }
+    }
+
+    private static void TryDeleteLayoutFiles(string? layoutPath)
+    {
+        if (string.IsNullOrWhiteSpace(layoutPath))
+        {
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(layoutPath))
+            {
+                File.Delete(layoutPath);
+            }
+        }
+        catch { }
+
+        TryCleanupTempFile(layoutPath + ".tmp");
     }
 
     private static void ReplaceDockingLayoutFile(string tempPath, string finalPath)
@@ -1359,8 +1330,6 @@ public partial class MainForm
             return;
         }
 
-        _isSavingLayout = true;
-
         try
         {
             _logger.LogDebug("OnSaveTimerTick - performing debounced save (ThreadId={ThreadId})", System.Threading.Thread.CurrentThread.ManagedThreadId);
@@ -1371,10 +1340,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to auto-save docking layout after debounce period");
-        }
-        finally
-        {
-            _isSavingLayout = false;
         }
     }
 
@@ -1886,6 +1851,28 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "TrySetFloatingMode reflection failed");
+        }
+    }
+
+    private void ResetDockingLayout()
+    {
+        try
+        {
+            var layoutPath = GetDockingLayoutPath();
+            TryDeleteLayoutFiles(layoutPath);
+
+            if (_dockingManager != null)
+            {
+                _dockingManager.LoadDesignerDockState();
+                ApplyThemeToDockingPanels();
+            }
+
+            _lastSaveTime = DateTime.MinValue;
+            _logger.LogInformation("Docking layout reset to defaults");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to reset docking layout");
         }
     }
 }

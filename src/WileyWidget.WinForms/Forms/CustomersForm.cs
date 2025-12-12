@@ -128,6 +128,7 @@ namespace WileyWidget.WinForms.Forms
             Size = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterParent;
             MinimumSize = new Size(1000, 600);
+            Name = "CustomersForm";
             BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background;
             Font = new Font("Segoe UI", 9F);
             KeyPreview = true;
@@ -252,6 +253,7 @@ namespace WileyWidget.WinForms.Forms
                 Font = new Font("Segoe UI", 9F),
                 BackColor = Color.White
             };
+            _dataGrid.Name = "Customers_DataGrid";
 
             // Apply theme to the data grid
             WileyWidget.WinForms.Themes.ThemeColors.ApplySfDataGridTheme(_dataGrid);

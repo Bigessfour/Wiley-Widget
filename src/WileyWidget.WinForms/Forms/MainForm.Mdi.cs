@@ -68,6 +68,14 @@ public partial class MainForm
     /// </summary>
     private void InitializeMdiSupport()
     {
+        if (_isUiTestHarness)
+        {
+            _useMdiMode = false;
+            _useTabbedMdi = false;
+            _logger.LogInformation("UI test harness detected; skipping MDI initialization");
+            return;
+        }
+
         try
         {
             // Read MDI configuration from appsettings.json (don't override existing value)

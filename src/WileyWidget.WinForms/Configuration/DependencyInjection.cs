@@ -6,8 +6,10 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
+using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -46,6 +48,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
             services.AddSingleton<IQuickBooksService, QuickBooksService>();
             services.AddTransient<IDashboardService, DashboardService>();
+            services.AddScoped<IBudgetCategoryService, BudgetCategoryService>();
 
             // Feature Services
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
@@ -62,6 +65,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddScoped<WileyWidget.Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
             services.AddScoped<WileyWidget.Business.Interfaces.IEnterpriseRepository, EnterpriseRepository>();
+            services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
 
             // Infrastructure
             services.AddMemoryCache();
@@ -77,6 +81,11 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<AccountsViewModel>();
             services.AddTransient<DashboardViewModel>();
+            services.AddTransient<BudgetOverviewViewModel>();
+            services.AddTransient<BudgetViewModel>();
+            services.AddTransient<CustomersViewModel>();
+            services.AddTransient<MainViewModel>();
+            services.AddTransient<ReportsViewModel>();
 
             // Forms
             services.AddTransient<MainForm>();
@@ -84,6 +93,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<SettingsForm>();
             services.AddTransient<AccountsForm>();
             services.AddTransient<DashboardForm>();
+            services.AddTransient<BudgetOverviewForm>();
+            services.AddTransient<ReportsForm>();
+            services.AddTransient<CustomersForm>();
         }
     }
 }

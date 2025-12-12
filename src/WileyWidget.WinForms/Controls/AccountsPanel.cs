@@ -25,8 +25,7 @@ namespace WileyWidget.WinForms.Controls
         public const string PanelTitle = "Municipal Accounts";
         /// <summary>Refresh button label.</summary>
         public const string RefreshButton = "Refresh";
-        /// <summary>Loading indicator text.</summary>
-        public const string LoadingText = "Loading...";
+
         /// <summary>Account number column header.</summary>
         public const string AccountNumberHeader = "Account Number";
         /// <summary>Account name column header.</summary>
@@ -259,7 +258,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Controls.Add(gridAccounts);
                 // Add overlays (loading spinner and no-data friendly message)
-                _loadingOverlay = new LoadingOverlay { Message = AccountsPanelResources.LoadingText };
+                _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
                 Controls.Add(_loadingOverlay);
 
                 _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
@@ -1124,7 +1123,7 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(gridAccounts);
 
             // Add overlays (loading spinner and no-data friendly message)
-            _loadingOverlay = new LoadingOverlay { Message = AccountsPanelResources.LoadingText };
+            _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
             Controls.Add(_loadingOverlay);
 
             _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
