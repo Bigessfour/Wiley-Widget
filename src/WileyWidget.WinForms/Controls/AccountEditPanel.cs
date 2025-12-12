@@ -4,11 +4,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Extensions;
+using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -118,6 +120,7 @@ namespace WileyWidget.WinForms.Controls
                 Width = controlWidth,
                 AccessibleName = "Department"
             };
+            SfSkinManager.SetVisualStyle(cmbDepartment, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbDepartment);
             y += rowHeight;
 
@@ -128,6 +131,7 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth
             };
+            SfSkinManager.SetVisualStyle(cmbFund, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbFund);
             y += rowHeight;
 
@@ -138,18 +142,21 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth
             };
+            SfSkinManager.SetVisualStyle(cmbType, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbType);
             y += rowHeight;
 
             // Balance
             Controls.Add(new Label { Text = "Balance:", Location = new Point(padding, y + 4), AutoSize = true });
             numBalance = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
+            SfSkinManager.SetVisualStyle(numBalance, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBalance);
             y += rowHeight;
 
             // Budget
             Controls.Add(new Label { Text = "Budget Amount:", Location = new Point(padding, y + 4), AutoSize = true });
             numBudget = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
+            SfSkinManager.SetVisualStyle(numBudget, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBudget);
             y += rowHeight;
 
@@ -160,7 +167,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Save/Cancel buttons (exposed as methods for tests)
             var btnSave = new Button { Text = "Save", Location = new Point(padding + labelWidth, y + 10), AutoSize = true };
-            btnSave.Click += async (s, e) => await BtnSave_Click(s, e);
+            btnSave.Click += BtnSave_Click;
             Controls.Add(btnSave);
 
             var btnCancel = new Button { Text = "Cancel", Location = new Point(padding + labelWidth + 80, y + 10), AutoSize = true };
@@ -187,12 +194,11 @@ namespace WileyWidget.WinForms.Controls
                 _errorBinding = new ErrorProviderBinding(_errorProvider, _editModel);
 
                 // Map edit model properties to their corresponding controls
-                _errorBinding
-                    .MapControl(nameof(_editModel.AccountNumber), txtAccountNumber)
-                    .MapControl(nameof(_editModel.Name), txtName)
-                    .MapControl(nameof(_editModel.DepartmentId), cmbDepartment)
-                    .MapControl(nameof(_editModel.Balance), numBalance)
-                    .MapControl(nameof(_editModel.BudgetAmount), numBudget);
+                _errorBinding.MapControl(nameof(_editModel.AccountNumber), txtAccountNumber);
+                _errorBinding.MapControl(nameof(_editModel.Name), txtName);
+                _errorBinding.MapControl(nameof(_editModel.DepartmentId), cmbDepartment);
+                _errorBinding.MapControl(nameof(_editModel.Balance), numBalance);
+                _errorBinding.MapControl(nameof(_editModel.BudgetAmount), numBudget);
 
                 // Wire up text changed events to update the edit model
                 txtAccountNumber.TextChanged += (s, e) => _editModel.AccountNumber = txtAccountNumber.Text;
@@ -228,7 +234,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         // This method intentionally mirrors AccountEditForm.BtnSave_Click so tests can call it reflectively
-        private async Task BtnSave_Click(object? sender, EventArgs e)
+        private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
             {

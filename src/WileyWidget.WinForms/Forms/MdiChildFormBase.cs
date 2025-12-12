@@ -22,7 +22,6 @@ public abstract class MdiChildFormBase : Form
 {
     private ILogger? _logger;
     private MenuStrip? _childMenuStrip;
-    private bool _menuMergingConfigured;
 
     /// <summary>
     /// Gets whether this form is currently an MDI child.
@@ -75,7 +74,6 @@ public abstract class MdiChildFormBase : Form
         // In modal mode, show it
         UpdateMenuVisibility();
 
-        _menuMergingConfigured = true;
         _logger?.LogDebug("Menu merging configured for {FormType}", GetType().Name);
     }
 

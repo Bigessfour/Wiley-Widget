@@ -5,8 +5,6 @@ Test Trunk merge queue handlers in xai_tool_executor.
 This script directly tests the Trunk merge queue tool handlers.
 """
 
-from xai_tool_executor import IdeToolHandlers
-
 import sys
 from pathlib import Path
 
@@ -14,7 +12,10 @@ from pathlib import Path
 scripts_tools = Path(__file__).parent.parent / "scripts" / "tools"
 sys.path.insert(0, str(scripts_tools))
 
-from xai_tool_executor import IdeToolHandlers
+try:
+    from xai_tool_executor import IdeToolHandlers  # type: ignore
+except ImportError:
+    from xai_tool_executor import XaiToolHandlers as IdeToolHandlers  # type: ignore
 
 
 def test_trunk_handlers():

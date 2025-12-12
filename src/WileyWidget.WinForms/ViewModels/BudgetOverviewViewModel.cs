@@ -1,22 +1,38 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.ViewModels
 {
+    public readonly record struct BudgetMetric(
+        string Name,
+        decimal Value,
+        string DepartmentName = "",
+        decimal BudgetedAmount = 0m,
+        decimal Amount = 0m,
+        decimal Variance = 0m,
+        decimal VariancePercent = 0m,
+        bool IsOverBudget = false);
+
     public partial class BudgetOverviewViewModel : ObservableObject
     {
         private readonly ILogger<BudgetOverviewViewModel> _logger;
         private readonly IBudgetCategoryService _budgetCategoryService;
 
         public ObservableCollection<BudgetCategoryDto> Categories { get; } = new();
+
+        public ObservableCollection<int> AvailableFiscalYears { get; } = new();
+
+        public ObservableCollection<BudgetMetric> Metrics { get; } = new();
 
         public IAsyncRelayCommand LoadDataCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
@@ -40,6 +56,21 @@ namespace WileyWidget.ViewModels
         private decimal totalEncumbrance;
 
         [ObservableProperty]
+        private decimal totalVariance;
+
+        [ObservableProperty]
+        private decimal overallVariancePercent;
+
+        [ObservableProperty]
+        private int overBudgetCount;
+
+        [ObservableProperty]
+        private int underBudgetCount;
+
+        [ObservableProperty]
+        private DateTime lastUpdated = DateTime.Now;
+
+        [ObservableProperty]
         private bool isLoading;
 
         [ObservableProperty]
@@ -47,10 +78,25 @@ namespace WileyWidget.ViewModels
 
         public decimal Variance => TotalBudget - TotalActual - TotalEncumbrance;
 
+        public decimal TotalBudgeted => TotalBudget;
+
+        public int SelectedFiscalYear
+        {
+            get => FiscalYear;
+            set => FiscalYear = value;
+        }
+
+        public BudgetOverviewViewModel()
+            : this(NullLogger<BudgetOverviewViewModel>.Instance, new FallbackBudgetCategoryService())
+        {
+        }
+
         public BudgetOverviewViewModel(ILogger<BudgetOverviewViewModel> logger, IBudgetCategoryService budgetCategoryService)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _budgetCategoryService = budgetCategoryService ?? throw new ArgumentNullException(nameof(budgetCategoryService));
+            _logger = logger ?? NullLogger<BudgetOverviewViewModel>.Instance;
+            _budgetCategoryService = budgetCategoryService ?? new FallbackBudgetCategoryService();
+
+            InitializeFiscalYearOptions();
 
             LoadDataCommand = new AsyncRelayCommand(async parameter =>
                 await LoadDataAsync(parameter is CancellationToken ct ? ct : CancellationToken.None));
@@ -68,6 +114,11 @@ namespace WileyWidget.ViewModels
                 DeleteCategoryAsync(id, CancellationToken.None));
         }
 
+        public BudgetOverviewViewModel(IBudgetCategoryService budgetCategoryService)
+            : this(NullLogger<BudgetOverviewViewModel>.Instance, budgetCategoryService)
+        {
+        }
+
         public Task InitializeAsync(CancellationToken cancellationToken = default) => LoadDataAsync(cancellationToken);
 
         private async Task LoadDataAsync(CancellationToken cancellationToken)
@@ -78,6 +129,7 @@ namespace WileyWidget.ViewModels
                 IsLoading = true;
                 ErrorMessage = null;
                 Categories.Clear();
+                Metrics.Clear();
 
                 var categories = await _budgetCategoryService.GetAllCategoriesAsync(FiscalYear, cancellationToken);
                 foreach (var category in categories)
@@ -85,7 +137,10 @@ namespace WileyWidget.ViewModels
                     Categories.Add(category);
                 }
 
+                UpdateFiscalYearOptions(categories);
                 await RefreshTotalsAsync(cancellationToken);
+                UpdateMetricsFromCategories();
+                LastUpdated = DateTime.Now;
             }
             catch (OperationCanceledException)
             {
@@ -108,6 +163,8 @@ namespace WileyWidget.ViewModels
             TotalBudget = totalBudget;
             TotalActual = totalActual;
             TotalEncumbrance = totalEncumbrance;
+            TotalVariance = Variance;
+            OverallVariancePercent = TotalBudget == 0 ? 0 : (Variance / TotalBudget) * 100m;
         }
 
         private async Task AddCategoryAsync(BudgetCategoryDto? newCategory, CancellationToken cancellationToken)
@@ -123,6 +180,8 @@ namespace WileyWidget.ViewModels
                 var created = await _budgetCategoryService.CreateCategoryAsync(newCategory, cancellationToken);
                 Categories.Add(created);
                 await RefreshTotalsAsync(cancellationToken);
+                UpdateMetricsFromCategories();
+                LastUpdated = DateTime.Now;
             }
             catch (OperationCanceledException)
             {
@@ -158,6 +217,8 @@ namespace WileyWidget.ViewModels
                 }
 
                 await RefreshTotalsAsync(cancellationToken);
+                UpdateMetricsFromCategories();
+                LastUpdated = DateTime.Now;
             }
             catch (OperationCanceledException)
             {
@@ -187,6 +248,8 @@ namespace WileyWidget.ViewModels
                 }
 
                 await RefreshTotalsAsync(cancellationToken);
+                UpdateMetricsFromCategories();
+                LastUpdated = DateTime.Now;
             }
             catch (OperationCanceledException)
             {
@@ -206,5 +269,39 @@ namespace WileyWidget.ViewModels
         partial void OnTotalActualChanged(decimal value) => OnPropertyChanged(nameof(Variance));
 
         partial void OnTotalEncumbranceChanged(decimal value) => OnPropertyChanged(nameof(Variance));
+
+        private void InitializeFiscalYearOptions()
+        {
+            if (AvailableFiscalYears.Count == 0)
+            {
+                var currentYear = DateTime.Now.Year;
+                AvailableFiscalYears.Add(currentYear - 1);
+                AvailableFiscalYears.Add(currentYear);
+                AvailableFiscalYears.Add(currentYear + 1);
+            }
+        }
+
+        private void UpdateFiscalYearOptions(IEnumerable<BudgetCategoryDto> categories)
+        {
+            foreach (var year in categories.Select(c => c.FiscalYear).Where(y => y > 0).Distinct().OrderBy(y => y))
+            {
+                if (!AvailableFiscalYears.Contains(year))
+                {
+                    AvailableFiscalYears.Add(year);
+                }
+            }
+        }
+
+        private void UpdateMetricsFromCategories()
+        {
+            OverBudgetCount = Categories.Count(c => c.ActualAmount + c.EncumbranceAmount > c.BudgetedAmount);
+            UnderBudgetCount = Categories.Count(c => c.ActualAmount + c.EncumbranceAmount <= c.BudgetedAmount);
+
+            Metrics.Clear();
+            Metrics.Add(new BudgetMetric("Total Budget", TotalBudget));
+            Metrics.Add(new BudgetMetric("Total Actual", TotalActual));
+            Metrics.Add(new BudgetMetric("Encumbrance", TotalEncumbrance));
+            Metrics.Add(new BudgetMetric("Variance", Variance));
+        }
     }
 }

@@ -23,5 +23,12 @@ namespace WileyWidget.WinForms.Services
             File.WriteAllText(filePath, "Export not yet implemented.");
             return Task.CompletedTask;
         }
+
+        public static Task ExportChartToPdfAsync(object chart, string filePath)
+        {
+            _ = chart;
+            File.WriteAllText(filePath, "Chart export not yet implemented.");
+            return Task.CompletedTask;
+        }
     }
 }

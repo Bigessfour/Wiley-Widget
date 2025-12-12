@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
@@ -65,7 +66,7 @@ namespace WileyWidget.WinForms.Forms
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
             SetupUI();
-            SfSkinManager.SetVisualStyle(this, VisualTheme.Office2019Colorful);
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
             BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -165,7 +166,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowResizingColumns = true,
                 AllowResizingHiddenColumns = true,
                 SelectionMode = GridSelectionMode.Single,
-                NavigationMode = NavigationMode.Row,
+                NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
                 AllowGrouping = true,
                 ShowGroupDropArea = false,
                 // Performance optimizations
@@ -175,6 +176,8 @@ namespace WileyWidget.WinForms.Forms
                 ShowBusyIndicator = true
                 // Theme inherited from form's SfSkinManager.SetVisualStyle
             };
+
+            SfSkinManager.SetVisualStyle(_metricsGrid, ThemeColors.DefaultTheme);
 
             // Configure columns with proper formatting
             _metricsGrid.Columns.Add(new GridTextColumn
@@ -190,7 +193,7 @@ namespace WileyWidget.WinForms.Forms
                 MappingName = "Value",
                 HeaderText = "Value",
                 Width = 120,
-                NumberDecimalDigits = 2,
+                NumberFormatInfo = new System.Globalization.NumberFormatInfo { NumberDecimalDigits = 2 },
                 AllowSorting = true
             };
             _metricsGrid.Columns.Add(valueColumn);
@@ -204,10 +207,11 @@ namespace WileyWidget.WinForms.Forms
 
             _metricsGrid.Columns.Add(new GridTextColumn
             {
-                MappingName = "Trend",
-                HeaderText = "Trend",
+                MappingName = "Unit",
+                HeaderText = "Unit",
                 Width = 80,
-                TextAlignment = ContentAlignment.MiddleCenter
+                AllowSorting = false
+                // TextAlignment property not available in this version
             });
 
             var changeColumn = new GridNumericColumn
@@ -215,7 +219,7 @@ namespace WileyWidget.WinForms.Forms
                 MappingName = "ChangePercent",
                 HeaderText = "Change %",
                 Width = 100,
-                NumberDecimalDigits = 1,
+                NumberFormatInfo = new System.Globalization.NumberFormatInfo { NumberDecimalDigits = 1 },
                 AllowSorting = true
             };
             _metricsGrid.Columns.Add(changeColumn);
@@ -234,6 +238,9 @@ namespace WileyWidget.WinForms.Forms
                 ColumnName = "Value",
                 SortDirection = ListSortDirection.Descending
             });
+
+            // Apply theme to the metrics grid
+            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
 
             // Note: Styling is now handled by ThemeName property.
             // All colors, fonts, and styles are managed by SkinManager dynamically.
@@ -262,9 +269,9 @@ namespace WileyWidget.WinForms.Forms
                 GripStyle = ToolStripGripStyle.Hidden,
                 ImageScalingSize = new Size(20, 20),
                 Padding = new Padding(8, 4, 8, 4),
-                ThemeName = "Office2016Colorful",
                 Office12Mode = false
             };
+            try { SfSkinManager.SetVisualStyle(_toolbar, ThemeColors.DefaultTheme); } catch { }
 
             var loadButton = new ToolStripButton
             {
@@ -326,41 +333,56 @@ namespace WileyWidget.WinForms.Forms
 
         private void BuildStatusBar()
         {
-            _statusBar = new StatusBarAdv
+            try
             {
-                Dock = DockStyle.Fill,
-                ShowPanels = true,
-                BeforeTouchSize = new Size(0, 28),
-                SizeGrip = false,
-                ThemeName = "Office2019Colorful"
-            };
+                _statusBar = new StatusBarAdv
+                {
+                    Dock = DockStyle.Fill,
+                    BeforeTouchSize = new Size(0, 28),
+                    SizingGrip = false
+                };
+                try { SfSkinManager.SetVisualStyle(_statusBar, ThemeColors.DefaultTheme); } catch { }
 
-            _statusPanel = new StatusBarAdvPanel
+                _statusPanel = new StatusBarAdvPanel
+                {
+                    Text = DashboardResources.StatusReady,
+                    BorderStyle = BorderStyle.None,
+                    Width = 450
+                };
+
+                _countsPanel = new StatusBarAdvPanel
+                {
+                    Text = "0 metrics",
+                    BorderStyle = BorderStyle.None,
+                    Width = 220
+                };
+
+                _updatedPanel = new StatusBarAdvPanel
+                {
+                    Text = "Updated: --",
+                    BorderStyle = BorderStyle.None,
+                    Width = 220,
+                    Alignment = HorizontalAlignment.Left
+                };
+
+                _statusBar.Panels = new StatusBarAdvPanel[] { _statusPanel, _countsPanel, _updatedPanel };
+            }
+            catch (Exception ex)
             {
-                Text = DashboardResources.StatusReady,
-                BorderStyle = BorderStyle.None,
-                Width = 450
-            };
+                // Log error if logger is available
+                var logger = Program.Services.GetService<ILogger<DashboardForm>>();
+                logger?.LogError(ex, "Failed to build dashboard status bar");
 
-            _countsPanel = new StatusBarAdvPanel
-            {
-                Text = "0 metrics",
-                BorderStyle = BorderStyle.None,
-                Width = 220
-            };
-
-            _updatedPanel = new StatusBarAdvPanel
-            {
-                Text = "Updated: --",
-                BorderStyle = BorderStyle.None,
-                Width = 220,
-                Alignment = HorizontalAlignment.Left
-            };
-
-            _statusBar.Panels.AddRange(new[] { _statusPanel, _countsPanel, _updatedPanel });
-        }
-
-        private RadialGauge CreateGauge(string label, Color needleColor)
+                // Fallback: Create basic status bar
+                try
+                {
+                    _statusBar = new StatusBarAdv { Dock = DockStyle.Fill };
+                    _statusPanel = new StatusBarAdvPanel { Text = "Status bar initialization failed" };
+                    _statusBar.Panels = new StatusBarAdvPanel[] { _statusPanel };
+                }
+                catch { }
+            }
+        }        private RadialGauge CreateGauge(string label, Color needleColor)
         {
             var gauge = new RadialGauge
             {
@@ -376,7 +398,7 @@ namespace WileyWidget.WinForms.Forms
                 MajorTickMarkHeight = 10,
                 NeedleStyle = NeedleStyle.Advanced,
                 ShowScaleLabel = true,
-                LabelPlacement = LabelPlacement.Inside,
+                LabelPlacement = Syncfusion.Windows.Forms.Gauge.LabelPlacement.Inside,
                 NeedleColor = needleColor,
                 Value = 0F,
                 GaugeLabel = label,
@@ -456,7 +478,7 @@ namespace WileyWidget.WinForms.Forms
 
             _revenueChart.Series.Clear();
             var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-            series.Style.Interior = new BrushInfo(GradientStyle.None, ThemeColors.PrimaryAccent);
+            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
 
             foreach (var data in _viewModel.MonthlyRevenueData)
             {
@@ -527,7 +549,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Filter = "CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx",
                 DefaultExt = "csv",
-                FileName = $"Dashboard_{_viewModel.MunicipalityName.Replace(" ", "_")}_{_viewModel.FiscalYear.Replace(" ", "_")}.csv"
+                FileName = $"Dashboard_{_viewModel.MunicipalityName.Replace(" ", "_", StringComparison.Ordinal)}_{_viewModel.FiscalYear.Replace(" ", "_", StringComparison.Ordinal)}.csv"
             };
 
             if (saveDialog.ShowDialog() == DialogResult.OK)
@@ -544,7 +566,15 @@ namespace WileyWidget.WinForms.Forms
 
                             foreach (var metric in _viewModel.Metrics)
                             {
-                                csv.AppendLine($"{EscapeCsv(metric.Name)},{metric.Value},{EscapeCsv(metric.Unit)},{EscapeCsv(metric.Trend)},{metric.ChangePercent},{EscapeCsv(metric.Description)}");
+                                string line = string.Format(CultureInfo.InvariantCulture,
+                                "{0},{1},{2},{3},{4},{5}",
+                                EscapeCsv(metric.Name),
+                                metric.Value,
+                                EscapeCsv(metric.Unit),
+                                EscapeCsv(metric.Trend),
+                                metric.ChangePercent,
+                                EscapeCsv(metric.Description));
+                            csv.AppendLine(line);
                             }
 
                             System.IO.File.WriteAllText(saveDialog.FileName, csv.ToString());

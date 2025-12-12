@@ -14,13 +14,15 @@ namespace WileyWidget.WinForms.Helpers
 
         public static string FormatFriendlyError(Exception exception)
         {
+            if (exception == null) throw new ArgumentNullException(nameof(exception));
+
             return exception switch
             {
-                InvalidOperationException when exception.Message.Contains("API key") => 
+                InvalidOperationException when exception.Message.Contains("API key", StringComparison.OrdinalIgnoreCase) =>
                     "⚠️ AI service is not configured. Please check your API key settings.",
-                TaskCanceledException => 
+                TaskCanceledException =>
                     "⏱️ Request timed out. Please try again.",
-                System.Net.Http.HttpRequestException => 
+                System.Net.Http.HttpRequestException =>
                     "🌐 Network error. Please check your connection and try again.",
                 _ => $"❌ Error: {exception.Message}"
             };

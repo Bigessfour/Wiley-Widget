@@ -1,9 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.ObjectModel;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
-using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -23,13 +24,15 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// Comprehensive dashboard view model with real data from repositories
     /// </summary>
-    public partial class DashboardViewModel : ObservableObject
+    public partial class DashboardViewModel : ObservableObject, IDisposable
     {
-        private readonly IBudgetRepository _budgetRepository;
-        private readonly IMunicipalAccountRepository _accountRepository;
+        private readonly IBudgetRepository? _budgetRepository;
+        private readonly IMunicipalAccountRepository? _accountRepository;
         private readonly ILogger<DashboardViewModel> _logger;
         private CancellationTokenSource? _loadCancellationTokenSource;
+        private readonly System.Threading.SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
+        private bool _disposed;
 
         #region Observable Properties
 
@@ -129,16 +132,19 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand<int> LoadFiscalYearCommand { get; }
 
+        // Legacy alias used by some views
+        public IAsyncRelayCommand LoadDashboardCommand => LoadCommand;
+
         #endregion
 
         public DashboardViewModel(
-            IBudgetRepository budgetRepository,
-            IMunicipalAccountRepository accountRepository,
-            ILogger<DashboardViewModel> logger)
+            IBudgetRepository? budgetRepository,
+            IMunicipalAccountRepository? accountRepository,
+            ILogger<DashboardViewModel>? logger)
         {
-            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-            _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _budgetRepository = budgetRepository;
+            _accountRepository = accountRepository;
+            _logger = logger ?? NullLogger<DashboardViewModel>.Instance;
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
@@ -151,6 +157,11 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        public DashboardViewModel()
+            : this(null, null, NullLogger<DashboardViewModel>.Instance)
+        {
+        }
+
         /// <summary>
         /// Loads complete dashboard data from repositories
         /// </summary>
@@ -161,8 +172,10 @@ namespace WileyWidget.WinForms.ViewModels
             _loadCancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = _loadCancellationTokenSource.Token;
 
-            var retryCount = 0;
-            Exception? lastException = null;
+            await _loadLock.WaitAsync(cancellationToken);
+            try
+            {
+                var retryCount = 0;
 
             while (retryCount < MaxRetryAttempts)
             {
@@ -170,6 +183,12 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     IsLoading = true;
                     ErrorMessage = null;
+
+                    if (_budgetRepository == null || _accountRepository == null)
+                    {
+                        ErrorMessage = "Dashboard repositories are not available";
+                        return;
+                    }
 
                     if (retryCount > 0)
                     {
@@ -267,20 +286,27 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _logger.LogInformation("Dashboard data loaded successfully. Total Budget: {Budget:C}, Total Actual: {Actual:C}, Variance: {Variance:C}",
                     TotalBudgeted, TotalActual, TotalVariance);
+                // Successfully loaded—exit retry loop
+                break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading dashboard data");
                 ErrorMessage = $"Failed to load dashboard: {ex.Message}";
+                // Increment retry count so we don't loop infinitely
+                retryCount++;
             }
             finally
             {
                 IsLoading = false;
             }
         }
-        }
-
-        /// <summary>
+    }
+    finally
+    {
+        _loadLock.Release();
+    }
+}
         /// Refreshes the dashboard data
         /// </summary>
         private async Task RefreshDashboardDataAsync()
@@ -297,6 +323,12 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = true;
                 ErrorMessage = null;
+
+                if (_budgetRepository == null || _accountRepository == null)
+                {
+                    ErrorMessage = "Dashboard repositories are not available";
+                    return;
+                }
 
                 _logger.LogInformation("Loading dashboard data for fiscal year {FiscalYear}", fiscalYear);
 
@@ -484,14 +516,6 @@ namespace WileyWidget.WinForms.ViewModels
             PopulateMonthlyRevenueData(2026);
         }
 
-        /// <summary>
-        /// Dispose pattern for cleanup
-        /// </summary>
-        public void Dispose()
-        {
-            _loadCancellationTokenSource?.Cancel();
-            _loadCancellationTokenSource?.Dispose();
-        }
     }
 
     /// <summary>
@@ -502,5 +526,31 @@ namespace WileyWidget.WinForms.ViewModels
         public string Month { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public int MonthNumber { get; set; }
+    }
+}
+
+// Dispose implementation for DashboardViewModel
+namespace WileyWidget.WinForms.ViewModels
+{
+    public partial class DashboardViewModel
+    {
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _loadCancellationTokenSource?.Cancel();
+                    _loadCancellationTokenSource?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
     }
 }

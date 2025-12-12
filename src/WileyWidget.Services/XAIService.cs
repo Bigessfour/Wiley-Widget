@@ -946,4 +946,18 @@ public class XAIService : IAIService, IDisposable
             return new AIResponseResult($"Error: {ex.Message}", 500, "InternalError", ex.Message);
         }
     }
+
+    /// <summary>
+    /// Send a message to the AI service with conversation history context.
+    /// </summary>
+    public async Task<string> SendMessageAsync(string message, object conversationHistory)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            throw new ArgumentException("Message cannot be null or empty", nameof(message));
+
+        // For now, delegate to GetInsightsAsync with simple context
+        // In the future, this could be extended to use the conversationHistory for multi-turn conversations
+        var context = "Conversational assistant";
+        return await GetInsightsAsync(context, message, CancellationToken.None);
+    }
 }

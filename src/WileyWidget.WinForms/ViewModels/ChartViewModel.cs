@@ -28,7 +28,7 @@ namespace WileyWidget.WinForms.ViewModels
             MonthlyRevenueData.Clear();
             PieChartData.Clear();
 
-            await Task.Delay(100).ConfigureAwait(false);
+            await Task.Delay(100);
 
             var random = new Random();
             var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul" };

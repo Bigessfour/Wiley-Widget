@@ -269,5 +269,15 @@
   },
   "terminal.integrated.env.windows": {
     "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
+  },
+  "chat.mcp.serverSampling": {
+    "Wiley-Widget/.vscode/mcp.json: filesystem": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5",
+        "xai/grok-4-1-fast-reasoning",
+        "copilot/grok-code-fast-1",
+        "copilot/oswe-vscode-prime"
+      ]
+    }
   }
 }

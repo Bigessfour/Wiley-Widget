@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
@@ -71,6 +72,7 @@ namespace WileyWidget.Data
         private bool _disposed;
 
         // Primary constructor for DI with IDbContextFactory
+        [ActivatorUtilitiesConstructor]
         public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -83,7 +85,7 @@ namespace WileyWidget.Data
         // for tests that need an in-memory provider.
 
         // Convenience constructor for unit tests that supply DbContextOptions
-        public MunicipalAccountRepository(DbContextOptions<AppDbContext> options)
+        internal MunicipalAccountRepository(DbContextOptions<AppDbContext> options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 

@@ -41,4 +41,7 @@ public class NullAIService : IAIService
 
     public Task<AIResponseResult> SendPromptAsync(string prompt, System.Threading.CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("[Dev Stub] AI prompt sending is disabled in development. Configure XAI_API_KEY to enable.", 403, "AuthFailure", null));
+
+    public Task<string> SendMessageAsync(string message, object conversationHistory)
+        => Task.FromResult("[Dev Stub] AI messaging is disabled in development. Configure XAI_API_KEY to enable.");
 }

@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -71,18 +72,17 @@ namespace WileyWidget.WinForms.Forms
         private CancellationTokenSource? _cts;
 
         // Color palette (consistent with ChartForm and other forms)
-        private static readonly Color PositiveColor = Color.FromArgb(52, 168, 83);   // Green - under budget
-        private static readonly Color NegativeColor = Color.FromArgb(234, 67, 53);   // Red - over budget
-        private static readonly Color WarningColor = Color.FromArgb(251, 188, 4);    // Yellow - approaching limit
-        private static readonly Color NeutralColor = Color.FromArgb(108, 117, 125);  // Gray
-        private static readonly Color AccentBlue = Color.FromArgb(66, 133, 244);     // Blue
-        private static readonly Color AccentPurple = Color.FromArgb(171, 71, 188);   // Purple
-        private static readonly Color BackgroundColor = Color.FromArgb(245, 245, 250);
-        private static readonly Color CardColor = Color.White;
-        private static readonly Color HeaderBackColor = Color.FromArgb(33, 37, 41);  // Dark header
-        private static readonly Color GridHeaderColor = Color.FromArgb(52, 58, 64);  // Grid header
-        private static readonly Color AlternateRowColor = Color.FromArgb(248, 249, 250);
-        private static readonly Color GridBorderColor = Color.FromArgb(222, 226, 230);
+        private static readonly Color PositiveColor = ThemeColors.Success;   // Green - under budget
+        private static readonly Color NegativeColor = ThemeColors.Error;   // Red - over budget
+        private static readonly Color WarningColor = ThemeColors.Warning;    // Yellow - approaching limit
+        private static readonly Color NeutralColor = ThemeManager.Colors.TextPrimary;  // Gray/text fallback
+        private static readonly Color AccentBlue = ThemeColors.PrimaryAccent;     // Blue
+        private static readonly Color AccentPurple = ThemeColors.PrimaryAccent;   // Purple/fallback
+        private static readonly Color BackgroundColor = ThemeColors.Background;
+        private static readonly Color CardColor = ThemeColors.Background;
+        private static readonly Color HeaderBackColor = ThemeColors.HeaderBackground;  // Header background
+        private static readonly Color AlternateRowColor = ThemeColors.AlternatingRowBackground;
+        private static readonly Color GridBorderColor = ThemeManager.Colors.TextPrimary;
 
         public BudgetOverviewForm(BudgetOverviewViewModel viewModel, ILogger<BudgetOverviewForm> logger)
         {
@@ -171,7 +171,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Period:",
                 Font = new Font("Segoe UI", 10),
-                ForeColor = Color.FromArgb(173, 181, 189),
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 AutoSize = true,
                 Location = new Point(headerPanel.Width - 350, 25)
             };
@@ -343,7 +343,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Budget Utilization",
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                ForeColor = Color.FromArgb(73, 80, 87),
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 AutoSize = true,
                 Location = new Point(20, 5)
             };
@@ -367,7 +367,7 @@ namespace WileyWidget.WinForms.Forms
                 Text = $"  {BudgetOverviewFormResources.CategoryBreakdownTitle}  ",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                ForeColor = Color.FromArgb(73, 80, 87),
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 Padding = new Padding(15),
                 Margin = new Padding(15, 10, 15, 10),
                 BackColor = CardColor
@@ -397,6 +397,9 @@ namespace WileyWidget.WinForms.Forms
                 AllowTriStateSorting = true
             };
 
+            // Apply theme to the metrics grid
+            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+
             // Configure columns with proper formatting
             ConfigureGridColumns();
 
@@ -407,7 +410,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Bottom,
                 Height = 45,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = ThemeColors.Background,
                 Padding = new Padding(15, 8, 15, 8)
             };
 
@@ -443,7 +446,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = BudgetOverviewFormResources.ExportButton,
                 Font = new Font("Segoe UI", 9),
-                BackColor = Color.FromArgb(108, 117, 125),
+                BackColor = ThemeManager.Colors.TextPrimary,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(90, 28),
@@ -541,40 +544,40 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_metricsGrid == null) return;
 
+            // Apply theme to the data grid
+            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+
             // === Header Style ===
-            _metricsGrid.Style.HeaderStyle.BackColor = GridHeaderColor;
-            _metricsGrid.Style.HeaderStyle.TextColor = Color.White;
-            _metricsGrid.Style.HeaderStyle.Font.Bold = true;
             _metricsGrid.Style.HeaderStyle.Font.Size = 10;
             _metricsGrid.Style.HeaderStyle.HorizontalAlignment = HorizontalAlignment.Center;
             _metricsGrid.Style.HeaderStyle.Borders.All = new SfGridBorder(SfGridBorderStyle.Solid, GridBorderColor, SfGridBorderWeight.Thin);
 
             // === Cell Style ===
             _metricsGrid.Style.CellStyle.BackColor = CardColor;
-            _metricsGrid.Style.CellStyle.TextColor = Color.FromArgb(33, 37, 41);
+            _metricsGrid.Style.CellStyle.TextColor = ThemeManager.Colors.TextPrimary;
             _metricsGrid.Style.CellStyle.Font.Size = 10;
             _metricsGrid.Style.CellStyle.Borders.All = new SfGridBorder(SfGridBorderStyle.Solid, GridBorderColor, SfGridBorderWeight.Thin);
             _metricsGrid.Style.CellStyle.VerticalAlignment = System.Windows.Forms.VisualStyles.VerticalAlignment.Center;
 
             // === Selection Style ===
-            _metricsGrid.Style.SelectionStyle.BackColor = Color.FromArgb(232, 240, 254);
-            _metricsGrid.Style.SelectionStyle.TextColor = Color.FromArgb(33, 37, 41);
+            _metricsGrid.Style.SelectionStyle.BackColor = Color.FromArgb(48, ThemeColors.PrimaryAccent);
+            _metricsGrid.Style.SelectionStyle.TextColor = ThemeManager.Colors.TextPrimary;
 
             // === Row Header Style ===
-            _metricsGrid.Style.RowHeaderStyle.BackColor = Color.FromArgb(233, 236, 239);
-            _metricsGrid.Style.RowHeaderStyle.TextColor = Color.FromArgb(73, 80, 87);
+            _metricsGrid.Style.RowHeaderStyle.BackColor = ThemeColors.Background;
+            _metricsGrid.Style.RowHeaderStyle.TextColor = ThemeManager.Colors.TextPrimary;
 
             // === Border Style ===
             _metricsGrid.Style.BorderStyle = BorderStyle.FixedSingle;
             _metricsGrid.Style.BorderColor = GridBorderColor;
 
             // === Scrollbar Style ===
-            _metricsGrid.Style.VerticalScrollBar.ThumbColor = Color.FromArgb(173, 181, 189);
-            _metricsGrid.Style.VerticalScrollBar.ThumbHoverColor = Color.FromArgb(134, 142, 150);
-            _metricsGrid.Style.VerticalScrollBar.ScrollBarBackColor = Color.FromArgb(248, 249, 250);
-            _metricsGrid.Style.HorizontalScrollBar.ThumbColor = Color.FromArgb(173, 181, 189);
-            _metricsGrid.Style.HorizontalScrollBar.ThumbHoverColor = Color.FromArgb(134, 142, 150);
-            _metricsGrid.Style.HorizontalScrollBar.ScrollBarBackColor = Color.FromArgb(248, 249, 250);
+            _metricsGrid.Style.VerticalScrollBar.ThumbColor = ThemeManager.Colors.TextPrimary;
+            _metricsGrid.Style.VerticalScrollBar.ThumbHoverColor = ThemeManager.Colors.TextPrimary;
+            _metricsGrid.Style.VerticalScrollBar.ScrollBarBackColor = ThemeColors.Background;
+            _metricsGrid.Style.HorizontalScrollBar.ThumbColor = ThemeManager.Colors.TextPrimary;
+            _metricsGrid.Style.HorizontalScrollBar.ThumbHoverColor = ThemeManager.Colors.TextPrimary;
+            _metricsGrid.Style.HorizontalScrollBar.ScrollBarBackColor = ThemeColors.Background;
 
             // === Conditional Row Styling - alternate rows and value-based colors ===
             _metricsGrid.QueryRowStyle += MetricsGrid_QueryRowStyle;
@@ -639,18 +642,18 @@ namespace WileyWidget.WinForms.Forms
                     var percentUsed = category.PercentUsed;
                     if (percentUsed > 1.0m) // Over 100%
                     {
-                        e.Style.BackColor = Color.FromArgb(255, 235, 238);
+                        e.Style.BackColor = Color.FromArgb(40, ThemeColors.Error);
                         e.Style.TextColor = NegativeColor;
                         e.Style.Font.Bold = true;
                     }
                     else if (percentUsed > 0.9m) // 90-100%
                     {
-                        e.Style.BackColor = Color.FromArgb(255, 248, 225);
+                        e.Style.BackColor = Color.FromArgb(40, ThemeColors.Warning);
                         e.Style.TextColor = WarningColor;
                     }
                     else if (percentUsed > 0.75m) // 75-90%
                     {
-                        e.Style.BackColor = Color.FromArgb(255, 253, 231);
+                        e.Style.BackColor = Color.FromArgb(40, ThemeColors.Warning);
                     }
                 }
 
@@ -684,11 +687,11 @@ namespace WileyWidget.WinForms.Forms
                 g.FillRectangle(accentBrush, 0, 0, 5, card.Height);
 
                 // Draw subtle border
-                using var borderPen = new Pen(Color.FromArgb(230, 230, 235), 1);
+                using var borderPen = new Pen(ThemeManager.Colors.TextPrimary, 1);
                 g.DrawRectangle(borderPen, 0, 0, card.Width - 1, card.Height - 1);
 
                 // Draw bottom shadow line
-                using var shadowPen = new Pen(Color.FromArgb(15, 0, 0, 0), 2);
+                using var shadowPen = new Pen(Color.FromArgb(15, ThemeManager.Colors.TextPrimary), 2);
                 g.DrawLine(shadowPen, 2, card.Height - 1, card.Width - 2, card.Height - 1);
             };
 
@@ -719,7 +722,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = initialValue,
                 Font = new Font("Segoe UI", 22, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 AutoSize = true,
                 Location = new Point(55, 38)
             };
@@ -730,7 +733,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "vs. prior period",
                 Font = new Font("Segoe UI", 8),
-                ForeColor = Color.FromArgb(173, 181, 189),
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 AutoSize = true,
                 Location = new Point(55, 72)
             };

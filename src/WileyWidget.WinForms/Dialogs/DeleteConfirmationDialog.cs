@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Dialogs
 {
@@ -57,7 +59,7 @@ namespace WileyWidget.WinForms.Dialogs
                 ColumnCount = 2,
                 RowCount = 3,
                 Padding = new Padding(15),
-                BackColor = Color.White
+                BackColor = ThemeColors.Background
             };
 
             // Icon column (fixed 48px)
@@ -107,7 +109,7 @@ namespace WileyWidget.WinForms.Dialogs
                     AutoSize = false,
                     Dock = DockStyle.Fill,
                     Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(64, 64, 64),
+                    ForeColor = ThemeManager.Colors.TextPrimary,
                     Padding = new Padding(0, 0, 0, 10),
                     TextAlign = ContentAlignment.TopLeft
                 };
@@ -149,8 +151,8 @@ namespace WileyWidget.WinForms.Dialogs
                 Size = new Size(90, 32),
                 DialogResult = DialogResult.OK,
                 UseVisualStyleBackColor = false,
-                BackColor = Color.FromArgb(220, 53, 69),  // Bootstrap danger color
-                ForeColor = Color.White,
+                BackColor = ThemeColors.Error,  // Danger color
+                ForeColor = ThemeColors.HeaderText,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 8, 0)

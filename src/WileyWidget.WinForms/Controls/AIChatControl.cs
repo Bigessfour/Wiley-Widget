@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -156,8 +158,6 @@ public partial class AIChatControl : UserControl
     private readonly IFinancialInsightsService? _insightsService;
     private readonly ILogger<AIChatControl> _logger;
     private readonly SemaphoreSlim _executionSemaphore = new(1, 1);
-    private string? _lastResponseId; // Track conversation state for multi-turn dialogs
-    private bool _useStreaming = true; // Enable streaming by default
     private bool _welcomeMessageShown = false;
 
     private RichTextBox? _messagesDisplay;
@@ -215,14 +215,14 @@ public partial class AIChatControl : UserControl
         AutoScaleMode = AutoScaleMode.Dpi;
 
         Size = new Size(450, 650);
-        BackColor = Color.FromArgb(248, 249, 250);
+        BackColor = ThemeColors.Background;
 
         // === Header Panel ===
         _headerPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 45,
-            BackColor = Color.FromArgb(0, 120, 212),
+            BackColor = ThemeColors.PrimaryAccent,
             Padding = new Padding(15, 0, 15, 0)
         };
 
@@ -231,7 +231,7 @@ public partial class AIChatControl : UserControl
             Text = "≡ƒñû AI Assistant",
             Dock = DockStyle.Left,
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            ForeColor = Color.White,
+            ForeColor = ThemeColors.HeaderText,
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(0, 10, 0, 0)
@@ -245,11 +245,11 @@ public partial class AIChatControl : UserControl
             Height = 30,
             FlatStyle = FlatStyle.Flat,
             ForeColor = Color.White,
-            BackColor = Color.FromArgb(0, 120, 212),
+            BackColor = ThemeColors.PrimaryAccent,
             Font = new Font("Segoe UI", 9f),
             Margin = new Padding(5)
         };
-        _clearButton.FlatAppearance.BorderColor = Color.White;
+        _clearButton.FlatAppearance.BorderColor = ThemeColors.HeaderText;
         _clearButton.FlatAppearance.BorderSize = 1;
         _clearButton.Click += (s, e) => ClearMessages();
 
@@ -257,12 +257,12 @@ public partial class AIChatControl : UserControl
         _headerPanel.Controls.Add(_clearButton);
 
         // === Messages Display (RichTextBox for better chat formatting) ===
-        _messagesDisplay = new RichTextBox
+            _messagesDisplay = new RichTextBox
         {
             Dock = DockStyle.Fill,
             ReadOnly = true,
             BorderStyle = BorderStyle.None,
-            BackColor = Color.White,
+                BackColor = ThemeColors.Background,
             Font = new Font("Segoe UI", 10f),
             Padding = new Padding(10),
             ScrollBars = RichTextBoxScrollBars.Vertical,
@@ -285,7 +285,7 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Bottom,
             Height = 35,
-            BackColor = Color.FromArgb(255, 243, 205),
+            BackColor = Color.FromArgb(40, ThemeColors.Warning),
             Visible = false
         };
 
@@ -294,7 +294,7 @@ public partial class AIChatControl : UserControl
             Dock = DockStyle.Fill,
             Text = "ΓÅ│ Executing tool...",
             TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = Color.FromArgb(133, 100, 4),
+            ForeColor = ThemeColors.Warning,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Italic)
         };
         _progressPanel.Controls.Add(_progressLabel);
@@ -304,7 +304,7 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Bottom,
             Height = 120,
-            BackColor = Color.FromArgb(240, 242, 245),
+            BackColor = ThemeColors.Background,
             Padding = new Padding(12)
         };
 
@@ -316,7 +316,7 @@ public partial class AIChatControl : UserControl
             DropDownStyle = ComboBoxStyle.DropDownList,
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9f),
-            BackColor = Color.White
+            BackColor = ThemeColors.Background
         };
         _toolComboBox.AccessibleName = "Tool selector";
         _toolComboBox.AccessibleDescription = "Select a tool to use for parsing commands or leave as auto-detect.";
@@ -325,14 +325,14 @@ public partial class AIChatControl : UserControl
         _toolComboBox.SelectedIndex = 0;
 
         // Enhanced input text box
-        _inputTextBox = new TextBox
+            _inputTextBox = new TextBox
         {
             Location = new Point(12, 45),
             Width = 335,
             Height = 55,
             Multiline = true,
             PlaceholderText = "Type your message... (e.g., 'read MainForm.cs' or 'search for Button')",
-            BackColor = Color.White,
+            BackColor = ThemeColors.Background,
             BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Segoe UI", 10f),
             ScrollBars = ScrollBars.Vertical
@@ -348,8 +348,8 @@ public partial class AIChatControl : UserControl
             Width = 70,
             Height = 55,
             Text = "≡ƒôñ\nSend",
-            BackColor = Color.FromArgb(0, 120, 212),
-            ForeColor = Color.White,
+            BackColor = ThemeColors.PrimaryAccent,
+            ForeColor = ThemeColors.HeaderText,
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold),
             Enabled = true,
@@ -418,7 +418,7 @@ public partial class AIChatControl : UserControl
             // Display in RichTextBox if available
             if (_messagesDisplay != null)
             {
-                _messagesDisplay.SelectionColor = Color.FromArgb(0, 120, 212);
+                _messagesDisplay.SelectionColor = ThemeColors.PrimaryAccent;
                 _messagesDisplay.SelectionFont = new Font(_messagesDisplay.Font, FontStyle.Bold);
                 _messagesDisplay.AppendText("≡ƒñû AI Assistant: ");
                 _messagesDisplay.SelectionColor = Color.Black;
@@ -581,7 +581,7 @@ public partial class AIChatControl : UserControl
                             _logger.LogInformation("Γ£ô Conversational AI response received ({Length} chars)", responseMessage.Length);
                         }
                     }
-                    catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("API key"))
+                    catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("API key", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogError(ioEx, "XAI API key not configured");
                         responseMessage = ConversationalAIHelper.FormatFriendlyError(ioEx);
@@ -709,7 +709,7 @@ public partial class AIChatControl : UserControl
 
             // Timestamp and sender header
             _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            _messagesDisplay.SelectionColor = message.IsUser ? Color.FromArgb(0, 102, 204) : Color.FromArgb(76, 175, 80);
+            _messagesDisplay.SelectionColor = message.IsUser ? ThemeColors.PrimaryAccent : ThemeColors.Success;
             var sender = message.IsUser ? "≡ƒæñ You" : "≡ƒñû AI Assistant";
             var timestamp = message.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
             _messagesDisplay.AppendText($"{sender} ΓÇó {timestamp}\n");
@@ -760,7 +760,7 @@ public partial class AIChatControl : UserControl
                 _messagesDisplay.SelectionStart = _messagesDisplay.TextLength;
                 _messagesDisplay.SelectionLength = 0;
                 _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-                _messagesDisplay.SelectionColor = m.IsUser ? Color.FromArgb(0, 102, 204) : Color.FromArgb(76, 175, 80);
+                _messagesDisplay.SelectionColor = m.IsUser ? ThemeColors.PrimaryAccent : ThemeColors.Success;
                 var sender = m.IsUser ? "≡ƒæñ You" : "≡ƒñû AI Assistant";
                 var timestamp = m.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
                 _messagesDisplay.AppendText($"{sender} ΓÇó {timestamp}\n");

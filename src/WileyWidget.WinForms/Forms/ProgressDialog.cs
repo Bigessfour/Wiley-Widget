@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
@@ -164,10 +165,12 @@ namespace WileyWidget.WinForms.Forms
                 ProgressStyle = ProgressBarStyles.Gradient,
                 FontColor = Color.Black,
                 TextVisible = false, // We'll show percentage separately
-                ThemeName = ThemeColors.DefaultTheme,
                 AccessibleName = "Progress bar",
                 AccessibleDescription = "Operation progress indicator"
             };
+
+            // Ensure progress bar respects the global skin manager
+            try { SfSkinManager.SetVisualStyle(_progressBar, ThemeColors.DefaultTheme); } catch { }
 
             // Apply gradient colors for modern appearance
             _progressBar.ForeColor = ThemeColors.PrimaryAccent;
@@ -202,7 +205,7 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Cancel the current operation"
             };
             _btnCancel.Click += BtnCancel_Click;
-            _btnCancel.ThemeName = ThemeColors.DefaultTheme;
+            try { SfSkinManager.SetVisualStyle(_btnCancel, ThemeColors.DefaultTheme); } catch { }
 
             _mainLayout.Controls.Add(_btnCancel, 0, 5);
 

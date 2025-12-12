@@ -2,8 +2,11 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Drawing;
 using System.Drawing;
 using System.Diagnostics.CodeAnalysis;
+using Syncfusion.WinForms.Controls;
+using Serilog;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -23,7 +26,6 @@ namespace WileyWidget.WinForms.Forms
             InitializeComponent();
             Text = ChartFormResources.FormTitle;
             ThemeColors.ApplyTheme(this);
-            Load += async (s, e) => await _vm.LoadChartDataAsync();
         }
 
         private void InitializeComponent()
@@ -34,6 +36,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Text = "Budget Trend"
             };
+            SfSkinManager.SetVisualStyle(cartesian, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
@@ -45,6 +48,7 @@ namespace WileyWidget.WinForms.Forms
                 Height = 300,
                 Text = "Budget Distribution"
             };
+            SfSkinManager.SetVisualStyle(pie, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             // Hide axis for pie chart by setting stroke to transparent
             pie.PrimaryXAxis.DrawGrid = false;
@@ -62,25 +66,57 @@ namespace WileyWidget.WinForms.Forms
             // After loading data populate chart series
             Load += async (s, e) =>
             {
-                await _vm.LoadChartDataAsync();
-                // Build line series
-                cartesian.Series.Clear();
-                var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-                series.Style.Interior = new BrushInfo(GradientStyle.None, ThemeColors.PrimaryAccent);
-                foreach (var data in _vm.MonthlyRevenueData)
+                try
                 {
-                    series.Points.Add(data.MonthNumber, (double)data.Amount);
-                }
-                cartesian.Series.Add(series);
+                    await _vm.LoadChartDataAsync();
 
-                // Build pie series
-                pie.Series.Clear();
-                var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
-                foreach (var p in _vm.PieChartData)
-                {
-                    pieSeries.Points.Add(p.Category, (double)p.Value);
+                    if (IsDisposed) return;
+
+                    void updateCharts()
+                    {
+                        try
+                        {
+                            if (cartesian == null || pie == null) return;
+
+                            // Build line series
+                            cartesian.Series.Clear();
+                            var series = new ChartSeries("Revenue", ChartSeriesType.Line);
+                            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
+                            foreach (var data in _vm.MonthlyRevenueData)
+                            {
+                                if (data == null) continue;
+                                series.Points.Add(data.MonthNumber, (double)data.Amount);
+                            }
+                            cartesian.Series.Add(series);
+
+                            // Build pie series
+                            pie.Series.Clear();
+                            var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
+                            foreach (var p in _vm.PieChartData)
+                            {
+                                pieSeries.Points.Add(p.Category, (double)p.Value);
+                            }
+                            pie.Series.Add(pieSeries);
+                        }
+                        catch (Exception ex)
+                        {
+                            try { Serilog.Log.Warning(ex, "ChartForm: updateCharts failed"); } catch { }
+                        }
+                    }
+
+                    if (InvokeRequired)
+                    {
+                        try { BeginInvoke((Action)updateCharts); } catch { }
+                    }
+                    else
+                    {
+                        updateCharts();
+                    }
                 }
-                pie.Series.Add(pieSeries);
+                catch (Exception ex)
+                {
+                    try { Serilog.Log.Error(ex, "ChartForm: Load handler failed"); } catch { }
+                }
             };
         }
     }

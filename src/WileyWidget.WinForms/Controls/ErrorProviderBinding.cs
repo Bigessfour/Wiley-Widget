@@ -34,6 +34,16 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        public void RefreshAllErrors()
+        {
+            foreach (var control in _controlMap.Values)
+            {
+                // Force the ErrorProvider to repaint current error state
+                var current = _errorProvider.GetError(control);
+                _errorProvider.SetError(control, current);
+            }
+        }
+
         public void ClearErrors()
         {
             foreach (var control in _controlMap.Values)

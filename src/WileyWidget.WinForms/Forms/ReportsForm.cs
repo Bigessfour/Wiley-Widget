@@ -1,70 +1,221 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
-using System.Windows.Forms.Integration;
-using System.Windows;
 using Microsoft.Extensions.Logging;
-using WileyWidget.WinForms.Themes;
-using Syncfusion.WinForms.Input;
-using Syncfusion.WinForms.Core;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
-/// Reports form displaying BoldReports ReportViewer with WinForms integration via ElementHost.
-/// Supports loading RDL/RDLC reports, exporting to PDF/Excel, and parameter binding.
-///
-/// Architecture:
-/// - ReportViewer: control hosted via ElementHost (interop)
-/// - ViewModel: ReportsViewModel (MVVM via CommunityToolkit.Mvvm)
-/// - Service: IBoldReportService (reflection-based for /Services layer isolation)
+/// Reports form for rendering and exporting reports.
+/// This version keeps the viewer optional: if BoldReports is not available, a placeholder is shown.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", Justification = "WinForms UI")]
-public partial class ReportsForm : Form
+public sealed class ReportsForm : Form
 {
     private readonly ReportsViewModel _viewModel;
-    /// <summary>
-    /// Bind ViewModel properties to UI using INotifyPropertyChanged.
-    /// </summary>
-    private void BindViewModel()
+    private readonly ILogger<ReportsForm> _logger;
+    private readonly CancellationTokenSource _cts = new();
+
+    // UI elements
+    private Control? _viewerHost;
+    private object? _reportViewer;
+    private ComboBox? _reportTypeCombo;
+    private DateTimePicker? _fromDatePicker;
+    private DateTimePicker? _toDatePicker;
+    private NumericUpDown? _pageSizeControl;
+    private Button? _generateButton;
+    private Button? _exportPdfButton;
+    private Button? _exportExcelButton;
+    private Button? _printButton;
+    private Button? _toggleParamsButton;
+    private Button? _findButton;
+    private TextBox? _findTextBox;
+    private ComboBox? _zoomCombo;
+    private Label? _statusLabel;
+    private Label? _pageInfoLabel;
+    private DataGridView? _previewGrid;
+
+    public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger)
     {
-        _viewModel.PropertyChanged += (s, e) =>
+        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        BuildLayout();
+        BindViewModel();
+    }
+
+    private void BuildLayout()
+    {
+        Text = "Reports";
+        MinimumSize = new System.Drawing.Size(900, 650);
+
+        var toolbarFlow = new FlowLayoutPanel
         {
-            if (e.PropertyName == nameof(ReportsViewModel.IsBusy))
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(8),
+            WrapContents = true,
+            FlowDirection = FlowDirection.LeftToRight
+        };
+
+        var typeLabel = new Label { Text = "Report", AutoSize = true, Margin = new Padding(0, 6, 4, 0) };
+        _reportTypeCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 220 };
+        _reportTypeCombo.Items.AddRange(ReportsViewModel.AvailableReportTypes);
+        _reportTypeCombo.DataBindings.Add(new Binding("SelectedItem", _viewModel, nameof(ReportsViewModel.SelectedReportType), true, DataSourceUpdateMode.OnPropertyChanged));
+
+        var fromLabel = new Label { Text = "From", AutoSize = true, Margin = new Padding(12, 6, 4, 0) };
+        _fromDatePicker = new DateTimePicker { Width = 130, Format = DateTimePickerFormat.Short };
+        _fromDatePicker.DataBindings.Add(new Binding("Value", _viewModel, nameof(ReportsViewModel.FromDate), true, DataSourceUpdateMode.OnPropertyChanged));
+
+        var toLabel = new Label { Text = "To", AutoSize = true, Margin = new Padding(12, 6, 4, 0) };
+        _toDatePicker = new DateTimePicker { Width = 130, Format = DateTimePickerFormat.Short };
+        _toDatePicker.DataBindings.Add(new Binding("Value", _viewModel, nameof(ReportsViewModel.ToDate), true, DataSourceUpdateMode.OnPropertyChanged));
+
+        _generateButton = new Button { Text = "Generate", AutoSize = true, Margin = new Padding(12, 3, 4, 3) };
+        _exportPdfButton = new Button { Text = "Export PDF", AutoSize = true };
+        _exportExcelButton = new Button { Text = "Export Excel", AutoSize = true };
+        _printButton = new Button { Text = "Print", AutoSize = true };
+        _toggleParamsButton = new Button { Text = "Params", AutoSize = true };
+        _findButton = new Button { Text = "Find", AutoSize = true };
+        _findTextBox = new TextBox { Width = 160 };
+        _zoomCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
+        _zoomCombo.Items.AddRange(new object[] { "50%", "75%", "100%", "125%", "150%", "200%" });
+        _zoomCombo.SelectedItem = "100%";
+
+        _statusLabel = new Label { Text = "Ready", AutoSize = true, Margin = new Padding(12, 6, 0, 0) };
+
+        _generateButton.Click += async (s, e) => await _viewModel.GenerateReportAsync(_cts.Token);
+        _exportPdfButton.Click += async (s, e) => await _viewModel.ExportToPdfAsync(_cts.Token);
+        _exportExcelButton.Click += async (s, e) => await _viewModel.ExportToExcelAsync(_cts.Token);
+        _printButton.Click += async (s, e) => await _viewModel.PrintAsync(_cts.Token);
+        _toggleParamsButton.Click += async (s, e) => await _viewModel.ToggleParametersPanelAsync(_cts.Token);
+        _findButton.Click += async (s, e) => await _viewModel.FindAsync(_cts.Token);
+        _zoomCombo.SelectedIndexChanged += async (s, e) =>
+        {
+            if (_zoomCombo?.SelectedItem is string value && int.TryParse(value.TrimEnd('%'), out var pct))
             {
-                if (_generateButton != null) _generateButton.Enabled = !_viewModel.IsBusy;
-                if (_exportPdfButton != null) _exportPdfButton.Enabled = !_viewModel.IsBusy;
-                if (_exportExcelButton != null) _exportExcelButton.Enabled = !_viewModel.IsBusy;
-            }
-            else if (e.PropertyName == nameof(ReportsViewModel.ErrorMessage))
-            {
-                if (_statusLabel != null && !string.IsNullOrEmpty(_viewModel.ErrorMessage))
-                {
-                    _statusLabel.Text = $"Error: {_viewModel.ErrorMessage}";
-                    _statusLabel.ForeColor = Color.Red;
-                }
-            }
-            else if (e.PropertyName == nameof(ReportsViewModel.StatusMessage))
-            {
-                if (_statusLabel != null)
-                {
-                    _statusLabel.Text = _viewModel.StatusMessage ?? "Ready";
-                    _statusLabel.ForeColor = string.IsNullOrEmpty(_viewModel.ErrorMessage) ? Color.Green : Color.Red;
-                }
-            }
-            else if (e.PropertyName == nameof(ReportsViewModel.PreviewData) ||
-                     e.PropertyName == nameof(ReportsViewModel.CurrentPage) ||
-                     e.PropertyName == nameof(ReportsViewModel.PageSize))
-            {
-                RefreshPreviewGrid();
+                await _viewModel.SetZoomAsync(pct, _cts.Token);
             }
         };
 
+        toolbarFlow.Controls.AddRange(new Control[]
+        {
+            typeLabel, _reportTypeCombo,
+            fromLabel, _fromDatePicker,
+            toLabel, _toDatePicker,
+            _generateButton, _exportPdfButton, _exportExcelButton, _printButton,
+            _zoomCombo, _findTextBox, _findButton, _toggleParamsButton,
+            _statusLabel
+        });
+
+        Controls.Add(toolbarFlow);
+
+        // Viewer placeholder (BoldReports optional)
+        _viewerHost = BuildPlaceholder("BoldReports viewer not available. Install BoldReports.WPF to enable report viewing.");
+        _reportViewer = null;
+        _viewModel.ReportViewer = _reportViewer;
+
+        _previewGrid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            AccessibleName = "Report Preview",
+            AccessibleDescription = "Shows a preview of the report data"
+        };
+
+        _pageInfoLabel = new Label { AutoSize = true, Margin = new Padding(6, 8, 6, 0) };
+        _pageSizeControl = new NumericUpDown
+        {
+            Minimum = 5,
+            Maximum = 500,
+            Value = _viewModel.PageSize,
+            Width = 80
+        };
+        _pageSizeControl.ValueChanged += (s, e) =>
+        {
+            _viewModel.PageSize = (int)_pageSizeControl.Value;
+            _viewModel.CurrentPage = 1;
+            RefreshPreviewGrid();
+        };
+
+        var previewToolbar = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(6)
+        };
+        previewToolbar.Controls.Add(new Label { Text = "Page Size", AutoSize = true, Margin = new Padding(0, 6, 4, 0) });
+        previewToolbar.Controls.Add(_pageSizeControl);
+        previewToolbar.Controls.Add(_pageInfoLabel);
+
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 380,
+            Panel1MinSize = 300,
+            Panel2MinSize = 150
+        };
+
+        split.Panel1.Controls.Add(_viewerHost);
+        split.Panel2.Controls.Add(_previewGrid);
+        split.Panel2.Controls.Add(previewToolbar);
+
+        Controls.Add(split);
+    }
+
+    private void BindViewModel()
+    {
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         RefreshPreviewGrid();
-        _logger.LogDebug("ViewModel binding established");
+        UpdateStatus();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(ReportsViewModel.IsBusy):
+                SetBusyState(!_viewModel.IsBusy);
+                break;
+            case nameof(ReportsViewModel.ErrorMessage):
+            case nameof(ReportsViewModel.StatusMessage):
+                UpdateStatus();
+                break;
+            case nameof(ReportsViewModel.PreviewData):
+            case nameof(ReportsViewModel.CurrentPage):
+            case nameof(ReportsViewModel.PageSize):
+                RefreshPreviewGrid();
+                break;
+        }
+    }
+
+    private void SetBusyState(bool enabled)
+    {
+        _generateButton?.SetEnabledSafe(enabled);
+        _exportPdfButton?.SetEnabledSafe(enabled);
+        _exportExcelButton?.SetEnabledSafe(enabled);
+        _printButton?.SetEnabledSafe(enabled);
+    }
+
+    private void UpdateStatus()
+    {
+        if (_statusLabel == null) return;
+        var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
+        _statusLabel.Text = hasError ? $"Error: {_viewModel.ErrorMessage}" : _viewModel.StatusMessage ?? "Ready";
+            _statusLabel.ForeColor = hasError ? ThemeColors.Error : ThemeColors.Success;
     }
 
     private void RefreshPreviewGrid()
@@ -97,40 +248,7 @@ public partial class ReportsForm : Form
         }
     }
 
-    private (Control HostControl, object? ViewerInstance) CreateReportViewerHost()
-    {
-        try
-        {
-            var viewerType = Type.GetType("BoldReports.UI.Xaml.ReportViewer, BoldReports.WPF", throwOnError: false);
-            if (viewerType == null)
-            {
-                _logger.LogWarning("BoldReports.UI.Xaml.ReportViewer type not found. Using placeholder host.");
-                return (BuildPlaceholderLabel("BoldReports viewer not found. Restore BoldReports.WPF to enable viewing."), null);
-            }
-
-            var viewerInstance = Activator.CreateInstance(viewerType);
-            if (viewerInstance is not UIElement uiElement)
-            {
-                _logger.LogWarning("BoldReports viewer instance is not a UIElement. Using placeholder host.");
-                return (BuildPlaceholderLabel("BoldReports viewer failed to initialize UI element."), null);
-            }
-
-            var host = new ElementHost
-            {
-                Dock = DockStyle.Fill,
-                Child = uiElement
-            };
-
-            return (host, viewerInstance);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to create BoldReports viewer. Using placeholder host.");
-            return (BuildPlaceholderLabel("Report viewing requires BoldReports.WPF packages. Restore packages and restart."), null);
-        }
-    }
-
-    private static Control BuildPlaceholderLabel(string text)
+    private static Control BuildPlaceholder(string text)
     {
         return new Label
         {
@@ -138,7 +256,7 @@ public partial class ReportsForm : Form
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI", 10F),
-            BackColor = Color.FromArgb(248, 248, 248)
+            BackColor = ThemeColors.Background
         };
     }
 
@@ -146,333 +264,42 @@ public partial class ReportsForm : Form
     {
         if (disposing)
         {
-            _elementHost?.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
+
+            _viewerHost?.Dispose();
             _reportTypeCombo?.Dispose();
             _fromDatePicker?.Dispose();
             _toDatePicker?.Dispose();
+            _pageSizeControl?.Dispose();
             _generateButton?.Dispose();
             _exportPdfButton?.Dispose();
             _exportExcelButton?.Dispose();
+            _printButton?.Dispose();
+            _toggleParamsButton?.Dispose();
+            _findButton?.Dispose();
+            _findTextBox?.Dispose();
+            _zoomCombo?.Dispose();
             _statusLabel?.Dispose();
-
-            Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+            _pageInfoLabel?.Dispose();
+            _previewGrid?.Dispose();
         }
 
         base.Dispose(disposing);
     }
 }
-            _exportPdfButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ExportToPdfCommand.ExecuteAsync(null), _cts, this, _logger, "Exporting to PDF");
-            _exportExcelButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ExportToExcelCommand.ExecuteAsync(null), _cts, this, _logger, "Exporting to Excel");
-            _printButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.PrintCommand.ExecuteAsync(null), _cts, this, _logger, "Printing report");
 
-            // Zoom options
-            _zoomCombo.Items.AddRange(new object[] { "50%", "75%", "100%", "125%", "150%", "200%" });
-            _zoomCombo.SelectedItem = "100%";
-            _zoomCombo.SelectedIndexChanged += async (s, e) =>
-            {
-                if (_zoomCombo?.SelectedItem != null)
-                {
-                    var txt = _zoomCombo.SelectedItem.ToString()?.TrimEnd('%');
-                    if (int.TryParse(txt, out var pct))
-                    {
-                        await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.SetZoomCommand.ExecuteAsync(pct), _cts, this, _logger, "Setting zoom");
-                    }
-                }
-            };
-
-            _findButton.Click += async (s, e) =>
-            {
-                if (_findTextBox != null)
-                {
-                    _viewModel.SearchText = _findTextBox.Text;
-                    await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.FindCommand.ExecuteAsync(null), _cts, this, _logger, "Searching report");
-                }
-            };
-
-            _toggleParamsButton.Click += async (s, e) => await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.ToggleParametersPanelCommand.ExecuteAsync(null), _cts, this, _logger, "Toggling parameters panel");
-
-            _generateButton.Click += async (s, e) =>
-            {
-                // Verify template exists before heavy generation to avoid BoldReports error dialogs
-                var path = _viewModel.GetReportPathIfExists();
-                if (string.IsNullOrEmpty(path))
-                {
-                    var expected = System.IO.Path.Combine(AppContext.BaseDirectory, "Reports", "<report>.rdlc");
-                    var msg = $"Report template not found for '{_viewModel.SelectedReportType}'.\n\nEnsure the correct RDLC/RDL file exists under: {expected}\n\nYou can place templates in the application's 'Reports' folder or add them to the project output.";
-                    _statusLabel.Text = $"Error: report template missing";
-                    _statusLabel.ForeColor = Color.Red;
-                    MessageBox.Show(msg, "Report Template Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                await Utilities.AsyncEventHelper.ExecuteAsync(async ct => await _viewModel.GenerateReportCommand.ExecuteAsync(null), _cts, this, _logger, "Generating report");
-            };
-
-            // Add controls to toolbar flow in logical order
-            toolbarFlow.Controls.Add(typeLabel);
-            toolbarFlow.Controls.Add(_reportTypeCombo);
-            toolbarFlow.Controls.Add(fromLabel);
-            toolbarFlow.Controls.Add(_fromDatePicker);
-            toolbarFlow.Controls.Add(toLabel);
-            toolbarFlow.Controls.Add(_toDatePicker);
-            toolbarFlow.Controls.Add(fiscalLabel);
-            toolbarFlow.Controls.Add(_fiscalYearPicker);
-            toolbarFlow.Controls.Add(_generateButton);
-            toolbarFlow.Controls.Add(_exportPdfButton);
-            toolbarFlow.Controls.Add(_exportExcelButton);
-            toolbarFlow.Controls.Add(_printButton);
-            toolbarFlow.Controls.Add(_zoomCombo);
-            toolbarFlow.Controls.Add(_findTextBox);
-            toolbarFlow.Controls.Add(_findButton);
-            toolbarFlow.Controls.Add(_toggleParamsButton);
-            toolbarFlow.Controls.Add(_prevPageButton);
-            toolbarFlow.Controls.Add(_nextPageButton);
-            toolbarFlow.Controls.Add(_statusLabel);
-
-            Controls.Add(toolbarFlow);
-
-            // === REPORT VIEWER PANEL (Main) ===
-            var reportPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(5)
-            };
-
-            // TODO: Add BoldReports and WindowsFormsIntegration packages to enable report viewing
-            // Create WPF ReportViewer
-            // _reportViewer = new ReportViewer();
-
-            // Host WPF control in WinForms via ElementHost
-            // _elementHost = new ElementHost
-            // {
-            //     Dock = DockStyle.Fill,
-            //     Child = _reportViewer
-            // };
-
-            // reportPanel.Controls.Add(_elementHost);
-
-            // Create BoldReports viewer host (fallbacks to placeholder if viewer is unavailable)
-            var hostResult = CreateReportViewerHost();
-            _elementHost = hostResult.HostControl;
-            _reportViewer = hostResult.ViewerInstance;
-            reportPanel.Controls.Add(_elementHost);
-
-            // Build a split container so users can see the report and a lightweight preview grid
-            var split = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = (int)(Height * 0.65),
-                Panel1MinSize = 300,
-                Panel2MinSize = 150
-            };
-
-            split.Panel1.Controls.Add(_elementHost);
-
-            // Bottom panel: preview grid + paging controls
-            _previewGrid = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AccessibleName = "Report Preview",
-                AccessibleDescription = "Shows a small preview of the report data"
-            };
-
-            var previewToolbar = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 36,
-                Padding = new Padding(6)
-            };
-
-            _pageInfoLabel = new Label
-            {
-                Text = $"Page: {_viewModel.CurrentPage} / {_viewModel.PageSize}",
-                AutoSize = true,
-                Location = new Point(6, 8)
-            };
-
-            _pageSizeControl = new NumericUpDown
-            {
-                Minimum = 5,
-                Maximum = 500,
-                Value = _viewModel.PageSize,
-                Size = new Size(80, 24),
-                Location = new Point(120, 4),
-                AccessibleName = "Preview Page Size",
-                AccessibleDescription = "Number of rows to show in preview pages"
-            };
-            _pageSizeControl.ValueChanged += (s, e) =>
-            {
-                _viewModel.PageSize = (int)_pageSizeControl.Value;
-                _viewModel.CurrentPage = 1;
-                /// <summary>
-                /// Bind ViewModel properties to UI using INotifyPropertyChanged.
-                /// </summary>
-                private void BindViewModel()
-                {
-                    _viewModel.PropertyChanged += (s, e) =>
-                    {
-                        if (e.PropertyName == nameof(ReportsViewModel.IsBusy))
-                        {
-                            if (_generateButton != null) _generateButton.Enabled = !_viewModel.IsBusy;
-                            if (_exportPdfButton != null) _exportPdfButton.Enabled = !_viewModel.IsBusy;
-                            if (_exportExcelButton != null) _exportExcelButton.Enabled = !_viewModel.IsBusy;
-                        }
-                        else if (e.PropertyName == nameof(ReportsViewModel.ErrorMessage))
-                        {
-                            if (_statusLabel != null)
-                            {
-                                if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
-                                {
-                                    _statusLabel.Text = $"Error: {_viewModel.ErrorMessage}";
-                                    _statusLabel.ForeColor = Color.Red;
-                                }
-                            }
-                        }
-                        else if (e.PropertyName == nameof(ReportsViewModel.StatusMessage))
-                        {
-                            if (_statusLabel != null)
-                            {
-                                _statusLabel.Text = _viewModel.StatusMessage ?? "Ready";
-                                _statusLabel.ForeColor = string.IsNullOrEmpty(_viewModel.ErrorMessage) ? Color.Green : Color.Red;
-                            }
-                        }
-                        else if (e.PropertyName == nameof(ReportsViewModel.PreviewData) || e.PropertyName == nameof(ReportsViewModel.CurrentPage) || e.PropertyName == nameof(ReportsViewModel.PageSize))
-                        {
-                            RefreshPreviewGrid();
-                        }
-                    };
-
-                    RefreshPreviewGrid();
-                    _logger.LogDebug("ViewModel binding established");
-                }
-
-                private void RefreshPreviewGrid()
-                {
-                    try
-                    {
-                        if (_previewGrid == null) return;
-
-                        if (InvokeRequired)
-                        {
-                            Invoke(new Action(RefreshPreviewGrid));
-                            return;
-                        }
-
-                        var list = _viewModel.PreviewData?.ToList() ?? new System.Collections.Generic.List<ReportDataItem>();
-                        var binding = new BindingSource
-                        {
-                            DataSource = list.Select(p => new { p.Name, p.Value, p.Category }).ToList()
-                        };
-                        _previewGrid.DataSource = binding;
-
-                        if (_pageInfoLabel != null)
-                        {
-                            _pageInfoLabel.Text = $"Page: {_viewModel.CurrentPage} | Page Size: {_viewModel.PageSize} | Rows: {list.Count}";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to refresh preview grid");
-                    }
-                }
-
-                private (Control HostControl, object? ViewerInstance) CreateReportViewerHost()
-                {
-                    try
-                    {
-                        var viewerType = Type.GetType("BoldReports.UI.Xaml.ReportViewer, BoldReports.WPF", throwOnError: false);
-                        if (viewerType == null)
-                        {
-                            _logger.LogWarning("BoldReports.UI.Xaml.ReportViewer type not found. Using placeholder host.");
-                            return (BuildPlaceholderLabel("BoldReports viewer not found. Restore BoldReports.WPF to enable viewing."), null);
-                        }
-
-                        var viewerInstance = Activator.CreateInstance(viewerType);
-                        if (viewerInstance is not UIElement uiElement)
-                        {
-                            _logger.LogWarning("BoldReports viewer instance is not a UIElement. Using placeholder host.");
-                            return (BuildPlaceholderLabel("BoldReports viewer failed to initialize UI element."), null);
-                        }
-
-                        var host = new ElementHost
-                        {
-                            Dock = DockStyle.Fill,
-                            Child = uiElement
-                        };
-
-                        return (host, viewerInstance);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to create BoldReports viewer. Using placeholder host.");
-                        return (BuildPlaceholderLabel("Report viewing requires BoldReports.WPF packages. Restore packages and restart."), null);
-                    }
-                }
-
-                private static Control BuildPlaceholderLabel(string text)
-                {
-                    return new Label
-                    {
-                        Text = text,
-                        Dock = DockStyle.Fill,
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        Font = new Font("Segoe UI", 10F),
-                        BackColor = Color.FromArgb(248, 248, 248)
-                    };
-                }
-
-                protected override void Dispose(bool disposing)
-                {
-                    if (disposing)
-                    {
-                        _elementHost?.Dispose();
-                        _reportTypeCombo?.Dispose();
-                        _fromDatePicker?.Dispose();
-                        _toDatePicker?.Dispose();
-                        _generateButton?.Dispose();
-                        _exportPdfButton?.Dispose();
-                        _exportExcelButton?.Dispose();
-                        _statusLabel?.Dispose();
-
-                        Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
-                    }
-
-                    base.Dispose(disposing);
-                }
-            }
-                {
-                    _pageInfoLabel.Text = $"Page: {_viewModel.CurrentPage} | Page Size: {_viewModel.PageSize} | Rows: {list.Count}";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to refresh preview grid");
-            }
-        }
-
-    protected override void Dispose(bool disposing)
+internal static class ControlExtensions
+{
+    public static void SetEnabledSafe(this Control control, bool enabled)
     {
-        if (disposing)
+        if (control.InvokeRequired)
         {
-            _elementHost?.Dispose();
-            _reportTypeCombo?.Dispose();
-            _fromDatePicker?.Dispose();
-            _toDatePicker?.Dispose();
-            _generateButton?.Dispose();
-            _exportPdfButton?.Dispose();
-            _exportExcelButton?.Dispose();
-            _statusLabel?.Dispose();
-
-            // Cancel and dispose async operations
-            Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);
+            control.Invoke(new Action<Control, bool>(SetEnabledSafe), control, enabled);
         }
-
-        base.Dispose(disposing);
+        else
+        {
+            control.Enabled = enabled;
+        }
     }
 }

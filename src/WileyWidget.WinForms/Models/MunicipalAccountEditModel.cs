@@ -48,9 +48,9 @@ namespace WileyWidget.WinForms.Models
             return new MunicipalAccountEditModel
             {
                 Id = account.Id,
-                AccountNumber = account.AccountNumber?.Value ?? account.AccountNumber ?? string.Empty,
+                AccountNumber = account.AccountNumber?.Value ?? string.Empty,
                 Name = account.Name,
-                Description = account.FundDescription ?? account.Description,
+                Description = account.FundDescription,
                 Type = account.Type,
                 Fund = account.Fund,
                 DepartmentId = account.DepartmentId,

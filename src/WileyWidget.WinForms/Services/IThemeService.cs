@@ -8,8 +8,9 @@ namespace WileyWidget.WinForms.Services
     public interface IThemeService
     {
         AppTheme CurrentTheme { get; }
+        AppTheme Preference { get; }
         void SetTheme(AppTheme theme);
-        event EventHandler? ThemeChanged;
+        event EventHandler<AppTheme>? ThemeChanged;
     }
 
     /// <summary>
@@ -21,14 +22,16 @@ namespace WileyWidget.WinForms.Services
 
         public AppTheme CurrentTheme => _currentTheme;
 
-        public event EventHandler? ThemeChanged;
+        public AppTheme Preference => _currentTheme;
+
+        public event EventHandler<AppTheme>? ThemeChanged;
 
         public void SetTheme(AppTheme theme)
         {
             if (_currentTheme != theme)
             {
                 _currentTheme = theme;
-                ThemeChanged?.Invoke(this, EventArgs.Empty);
+                ThemeChanged?.Invoke(this, theme);
             }
         }
     }

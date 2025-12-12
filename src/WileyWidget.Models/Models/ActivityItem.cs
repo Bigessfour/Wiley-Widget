@@ -15,6 +15,7 @@ public class ActivityItem : INotifyPropertyChanged
     private string _icon = string.Empty;
     private string _category = string.Empty;
     private string _details = string.Empty;
+    private string _activityType = string.Empty;
 
     /// <summary>
     /// Gets or sets the timestamp when the activity occurred.
@@ -108,6 +109,22 @@ public class ActivityItem : INotifyPropertyChanged
             if (_details != value)
             {
                 _details = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the type of activity (e.g., "ChatMessage", "ChatError").
+    /// </summary>
+    public string ActivityType
+    {
+        get => _activityType;
+        set
+        {
+            if (_activityType != value)
+            {
+                _activityType = value;
                 OnPropertyChanged();
             }
         }

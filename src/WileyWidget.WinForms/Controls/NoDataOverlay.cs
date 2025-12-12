@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.ComponentModel;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -30,7 +31,7 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(16, Color.Gray); // subtle tint to indicate empty state
+            BackColor = Color.FromArgb(16, ThemeManager.Colors.TextPrimary); // subtle tint to indicate empty state
             Visible = false;
 
             _messageLabel = new Label
@@ -39,7 +40,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 11.0f, FontStyle.Regular),
-                ForeColor = Color.DimGray,
+                ForeColor = ThemeManager.Colors.TextPrimary,
                 Text = "No data available",
                 AccessibleName = "No data message"
             };

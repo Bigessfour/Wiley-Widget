@@ -2,12 +2,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -67,8 +70,14 @@ public partial class MainForm
     {
         try
         {
-            // Read MDI configuration from appsettings.json
-            _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", false);
+            // Read MDI configuration from appsettings.json (don't override existing value)
+            var configMdiMode = _configuration.GetValue<bool?>("UI:UseMdiMode");
+            if (configMdiMode.HasValue)
+            {
+                _useMdiMode = configMdiMode.Value;
+            }
+            // Otherwise keep the default set in MainForm constructor
+
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
 
             if (_useMdiMode)
@@ -86,6 +95,20 @@ public partial class MainForm
             _logger.LogWarning(ex, "Failed to initialize MDI support, falling back to modal dialogs");
             _useMdiMode = false;
             _useTabbedMdi = false;
+
+            // User-friendly fallback: Show message and continue with modal dialogs
+            try
+            {
+                MessageBox.Show(
+                    "MDI initialization failed. The application will continue using modal dialog windows instead of MDI.",
+                    "MDI Warning",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            catch (Exception msgEx)
+            {
+                _logger.LogError(msgEx, "Failed to show MDI warning message");
+            }
         }
     }
 
@@ -99,8 +122,8 @@ public partial class MainForm
             // Set this form as an MDI container
             IsMdiContainer = true;
 
-            // Customize the MDI client area background color
-            SetMdiClientBackColor(Color.FromArgb(45, 45, 48)); // Dark theme
+            // Customize the MDI client area background color (theme-aware)
+            SetMdiClientBackColor(ThemeColors.Background);
 
             // Initialize Syncfusion TabbedMDIManager if enabled
             if (_useTabbedMdi)
@@ -150,6 +173,7 @@ public partial class MainForm
 
             // Create TabbedMDIManager instance
             _tabbedMdiManager = new TabbedMDIManager();
+            SfSkinManager.SetVisualStyle(_tabbedMdiManager, ThemeColors.DefaultTheme);
             try
             {
                 var dmType = _tabbedMdiManager!.GetType();
@@ -200,12 +224,24 @@ public partial class MainForm
 
             // Apply theme from configuration (uses SkinManager)
             var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
-            _tabbedMdiManager.ThemeName = themeName;
 
-            // Also apply theme to TabControlAdv (if available via this Syncfusion version)
+            // Attempt to apply theme using SkinManager to the inner TabControlAdv (preferred),
+            // then fall back to setting its ThemeName property if necessary.
             var tabCtrlObj = _tabbedMdiManager?.GetType().GetProperty("TabControlAdv")?.GetValue(_tabbedMdiManager);
             if (tabCtrlObj != null)
             {
+                try
+                {
+                    if (tabCtrlObj is System.Windows.Forms.Control tabControl)
+                    {
+                        SfSkinManager.SetVisualStyle(tabControl, themeName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to apply theme to TabControlAdv via SfSkinManager - falling back to property set");
+                }
+
                 var themeProp = tabCtrlObj.GetType().GetProperty("ThemeName");
                 if (themeProp != null && themeProp.CanWrite)
                     themeProp.SetValue(tabCtrlObj, themeName);
@@ -214,19 +250,40 @@ public partial class MainForm
             // Attach to this MDI container
             try
             {
-                var dmType = _tabbedMdiManager.GetType();
+                if (_tabbedMdiManager != null)
+                {
+                    var dmType = _tabbedMdiManager.GetType();
                 var attach = dmType.GetMethod("AttachToMdiContainer", new[] { typeof(Form) }) ?? dmType.GetMethod("AttachToMdiContainer");
-                attach?.Invoke(_tabbedMdiManager, new object[] { this });
+                if (attach != null)
+                {
+                    attach.Invoke(_tabbedMdiManager, new object[] { this });
 
-                    var ev1 = dmType.GetEvent("TabControlAdded");
-                    if (ev1 != null)
+                    // Ensure MdiClient is properly placed behind other chrome after attaching TabbedMDI
+                    try
                     {
-                        var eventType1 = ev1.EventHandlerType;
-                        if (eventType1 != null)
+                        var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
+                        if (mdiClient != null)
                         {
-                            try { var handler = Delegate.CreateDelegate(eventType1!, this, nameof(OnTabbedMdiTabControlAdded)); ev1.AddEventHandler(_tabbedMdiManager, handler); } catch { }
+                            mdiClient.Dock = DockStyle.Fill;
+                            mdiClient.SendToBack();
+                            _logger.LogDebug("TabbedMDI attached: MdiClient ({Name}) sent to back", mdiClient.Name);
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to adjust MdiClient z-order after TabbedMDI attach");
+                    }
+                }
+
+                var ev1 = dmType.GetEvent("TabControlAdded");
+                if (ev1 != null)
+                {
+                    var eventType1 = ev1.EventHandlerType;
+                    if (eventType1 != null)
+                    {
+                        try { var handler = Delegate.CreateDelegate(eventType1, this, nameof(OnTabbedMdiTabControlAdded)); ev1.AddEventHandler(_tabbedMdiManager, handler); } catch { }
+                    }
+                }
 
                     var ev2 = dmType.GetEvent("BeforeDropDownPopup");
                     if (ev2 != null)
@@ -248,8 +305,19 @@ public partial class MainForm
                         }
                     }
 
+                    var ev4 = dmType.GetEvent("MdiChildRemoved");
+                    if (ev4 != null)
+                    {
+                        var eventType4 = ev4.EventHandlerType;
+                        if (eventType4 != null)
+                        {
+                            try { var handler4 = Delegate.CreateDelegate(eventType4!, this, nameof(OnMdiChildRemoved)); ev4.AddEventHandler(_tabbedMdiManager, handler4); } catch { }
+                        }
+                    }
+
                 // Configure additional features
                 ConfigureTabbedMdiFeatures();
+                }
             }
             catch (Exception ex)
             {
@@ -346,6 +414,12 @@ public partial class MainForm
                 {
                     try { var handler3 = Delegate.CreateDelegate(ev3.EventHandlerType, this, nameof(OnMdiChildActivate)); ev3.RemoveEventHandler(_tabbedMdiManager, handler3); } catch { }
                 }
+
+                var ev4 = dmType.GetEvent("MdiChildRemoved");
+                if (ev4 != null && ev4.EventHandlerType != null)
+                {
+                    try { var handler4 = Delegate.CreateDelegate(ev4.EventHandlerType, this, nameof(OnMdiChildRemoved)); ev4.RemoveEventHandler(_tabbedMdiManager, handler4); } catch { }
+                }
             }
             catch { }
 
@@ -389,12 +463,24 @@ public partial class MainForm
                 var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
                 var themeProp = newTabControl.GetType().GetProperty("ThemeName");
                 if (themeProp != null && themeProp.CanWrite) themeProp.SetValue(newTabControl, themeName);
-                _logger.LogDebug("Applied {ThemeName} theme to TabbedMDI tab control", themeName);
+
+                // Set tab style for proper rendering in docking context
+                var tabStyleProp = newTabControl.GetType().GetProperty("TabStyle");
+                if (tabStyleProp != null && tabStyleProp.CanWrite)
+                {
+                    try { tabStyleProp.SetValue(newTabControl, typeof(Syncfusion.Windows.Forms.Tools.TabRendererDockingWhidbey)); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to set TabStyle to TabRendererDockingWhidbey");
+                    }
+                }
+
+                _logger.LogDebug("Applied {ThemeName} theme and docking tab style to TabbedMDI tab control", themeName);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error applying theme to TabbedMDI tab control");
+            _logger.LogWarning(ex, "Error applying theme and tab style to TabbedMDI tab control");
         }
     }
 
@@ -431,6 +517,23 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Handle MDI child removed event.
+    /// </summary>
+    private void OnMdiChildRemoved(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger.LogDebug("MDI child removed");
+            // Check if form is DockingWrapperForm before any cast
+            // Assuming e has the form, but since reflection, check avoided to prevent issues
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error handling MDI child removed");
+        }
+    }
+
+    /// <summary>
     /// Configure additional TabbedMDI features.
     /// </summary>
     private void ConfigureTabbedMdiFeatures()
@@ -452,7 +555,7 @@ public partial class MainForm
                     if (showTTProp != null && showTTProp.CanWrite) showTTProp.SetValue(tabControl, true);
 
                     var fixedBorderProp = tabControl.GetType().GetProperty("FixedSingleBorderColor");
-                    if (fixedBorderProp != null && fixedBorderProp.CanWrite) fixedBorderProp.SetValue(tabControl, Color.FromArgb(45, 45, 48));
+                    if (fixedBorderProp != null && fixedBorderProp.CanWrite) fixedBorderProp.SetValue(tabControl, ThemeColors.Background);
 
                     var tabStyleProp = tabControl.GetType().GetProperty("TabStyle");
                     if (tabStyleProp != null && tabStyleProp.CanWrite)
@@ -600,8 +703,24 @@ public partial class MainForm
         var menuStrip = Controls.OfType<MenuStrip>().FirstOrDefault();
         if (menuStrip == null)
         {
-            _logger.LogWarning("MenuStrip not found, cannot add Window menu");
-            return;
+            // try the MainForm field
+            menuStrip = _menuStrip;
+        }
+        if (menuStrip == null)
+        {
+            // create a hidden MenuStrip for MDI window list
+            try
+            {
+                menuStrip = new MenuStrip { Name = "MainMenuStrip", Dock = DockStyle.Top, Visible = false, AllowMerge = true };
+                Controls.Add(menuStrip);
+                this.MainMenuStrip = menuStrip;
+                _logger.LogInformation("Created hidden MenuStrip for MDI support");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "MenuStrip not found and creation failed; cannot add Window menu");
+                return;
+            }
         }
 
         // Check if Window menu already exists
@@ -799,7 +918,59 @@ public partial class MainForm
             }
 
             // Configure as MDI child
-            form.MdiParent = this;
+            if (typeof(TForm) == typeof(ChartForm))
+            {
+                // ChartForm causes InvalidCastException with TabbedMDIManager, show as modal dialog instead
+                _logger.LogDebug("Showing ChartForm as modal dialog to avoid TabbedMDIManager casting issues");
+
+                // Handle form closing to clean up scope (not tracked as MDI child)
+                form.FormClosed += (s, e) =>
+                {
+                    try
+                    {
+                        scope.Dispose();
+                        _logger.LogDebug("Modal dialog {FormType} closed and cleaned up", typeof(TForm).Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error cleaning up modal dialog {FormType}", typeof(TForm).Name);
+                    }
+                };
+
+                form.ShowDialog(this);
+                return;
+            }
+
+            try
+            {
+                if (_tabbedMdiManager != null && !form.IsMdiChild)
+                {
+                    // Try to use SetAsMDIChild if available (reflection-safe)
+                    var setAsMdiChildMethod = _tabbedMdiManager.GetType().GetMethod("SetAsMDIChild", new[] { typeof(System.Windows.Forms.Control), typeof(bool) });
+                    if (setAsMdiChildMethod != null)
+                    {
+                        setAsMdiChildMethod.Invoke(_tabbedMdiManager, new object[] { form, true });
+                    }
+                    else
+                    {
+                        form.MdiParent = this;
+                    }
+                }
+                else
+                {
+                    form.MdiParent = this;
+                }
+            }
+            catch (InvalidCastException ice)
+            {
+                _logger.LogWarning(ice, "InvalidCastException setting as TabbedMDI child, falling back to standard MDI");
+                form.MdiParent = this;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set as TabbedMDI child, falling back to standard MDI");
+                form.MdiParent = this;
+            }
 
             // Handle form closing to clean up scope and tracking
             form.FormClosed += (s, e) =>
@@ -912,6 +1083,12 @@ public partial class MainForm
                         if (ev3 != null && ev3.EventHandlerType != null)
                         {
                             try { var handler3 = Delegate.CreateDelegate(ev3.EventHandlerType, this, nameof(OnMdiChildActivate)); ev3.RemoveEventHandler(_tabbedMdiManager, handler3); } catch { }
+                        }
+
+                        var ev4 = dmType.GetEvent("MdiChildRemoved");
+                        if (ev4 != null && ev4.EventHandlerType != null)
+                        {
+                            try { var handler4 = Delegate.CreateDelegate(ev4.EventHandlerType, this, nameof(OnMdiChildRemoved)); ev4.RemoveEventHandler(_tabbedMdiManager, handler4); } catch { }
                         }
                     }
                     catch { }

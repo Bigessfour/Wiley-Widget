@@ -14,7 +14,7 @@ namespace WileyWidget.Services.UnitTests
     /// <summary>
     /// Unit tests for DiValidationService.
     /// Tests DI validation logic without requiring full application context.
-    /// 
+    ///
     /// Test coverage:
     /// - Core service validation (happy path and failures)
     /// - Full registration scanning (with mocked container)
@@ -34,7 +34,7 @@ namespace WileyWidget.Services.UnitTests
         public void Constructor_WithNullServiceProvider_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
+            Assert.Throws<ArgumentNullException>(() =>
                 new DiValidationService(null!, _mockLogger.Object));
         }
 
@@ -45,7 +45,7 @@ namespace WileyWidget.Services.UnitTests
             var services = new ServiceCollection().BuildServiceProvider();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
+            Assert.Throws<ArgumentNullException>(() =>
                 new DiValidationService(services, null!));
         }
 
@@ -54,7 +54,7 @@ namespace WileyWidget.Services.UnitTests
         {
             // Arrange
             var services = new ServiceCollection();
-            
+
             // Register all core services
             services.AddSingleton<ISettingsService>(Mock.Of<ISettingsService>());
             services.AddSingleton<ISecretVaultService>(Mock.Of<ISecretVaultService>());
@@ -88,7 +88,7 @@ namespace WileyWidget.Services.UnitTests
         {
             // Arrange
             var services = new ServiceCollection();
-            
+
             // Register some but not all core services (missing ISettingsService)
             services.AddSingleton<ISecretVaultService>(Mock.Of<ISecretVaultService>());
             services.AddSingleton<IQuickBooksService>(Mock.Of<IQuickBooksService>());
@@ -146,9 +146,9 @@ namespace WileyWidget.Services.UnitTests
             var serviceProvider = services.BuildServiceProvider();
             var validator = new DiValidationService(serviceProvider, _mockLogger.Object);
 
-            var assemblies = new[] { 
+            var assemblies = new[] {
                 typeof(ISettingsService).Assembly,
-                typeof(ICacheService).Assembly 
+                typeof(ICacheService).Assembly
             };
 
             // Act
@@ -156,10 +156,10 @@ namespace WileyWidget.Services.UnitTests
 
             // Assert
             Assert.NotNull(report);
-            Assert.Contains("WileyWidget.Services.ISettingsService", report.ResolvedServices);
-            Assert.Contains("WileyWidget.Services.IAuditService", report.ResolvedServices);
+            Assert.Contains("WileyWidget.Services.Abstractions.ISettingsService", report.ResolvedServices);
+            Assert.Contains("WileyWidget.Services.Abstractions.IAuditService", report.ResolvedServices);
             Assert.Contains("WileyWidget.Abstractions.ICacheService", report.ResolvedServices);
-            
+
             // Should have some missing (not all services registered)
             Assert.True(report.MissingServices.Count > 0);
             Assert.True(report.TotalServices > 3);
@@ -170,7 +170,7 @@ namespace WileyWidget.Services.UnitTests
         {
             // Arrange
             var services = new ServiceCollection();
-            
+
             // Register scoped service (simulating DbContext pattern)
             services.AddScoped<ISettingsService>(sp => Mock.Of<ISettingsService>());
 
@@ -183,7 +183,7 @@ namespace WileyWidget.Services.UnitTests
             var report = validator.ValidateRegistrations(assemblies);
 
             // Assert
-            Assert.Contains("WileyWidget.Services.ISettingsService", report.ResolvedServices);
+            Assert.Contains("WileyWidget.Services.Abstractions.ISettingsService", report.ResolvedServices);
         }
 
         [Fact]
@@ -213,9 +213,9 @@ namespace WileyWidget.Services.UnitTests
         {
             // Arrange
             var services = new ServiceCollection();
-            
+
             // Register service with a dependency that will fail
-            services.AddSingleton<ISettingsService>(sp => 
+            services.AddSingleton<ISettingsService>(sp =>
             {
                 // This will throw when trying to resolve
                 throw new InvalidOperationException("Simulated dependency failure");
@@ -232,7 +232,7 @@ namespace WileyWidget.Services.UnitTests
             // Assert
             Assert.NotNull(report);
             // Should have recorded the error
-            var settingsError = report.Errors.FirstOrDefault(e => 
+            var settingsError = report.Errors.FirstOrDefault(e =>
                 e.ServiceType.Contains("ISettingsService", StringComparison.OrdinalIgnoreCase));
             Assert.NotNull(settingsError);
             Assert.Contains("Simulated dependency failure", settingsError.ErrorMessage, StringComparison.OrdinalIgnoreCase);
@@ -390,7 +390,7 @@ namespace WileyWidget.Services.UnitTests
         {
             // Arrange
             var report = new DiValidationReport();
-            
+
             for (int i = 0; i < resolvedCount; i++)
             {
                 report.ResolvedServices.Add($"Service{i}");

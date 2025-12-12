@@ -160,10 +160,10 @@ public partial class ChatWindow : Form
             // Use the IAIService SendMessageAsync which handles conversation history and tool calls
             var response = await _aiService.SendMessageAsync(userMessage, _conversationHistory!);
 
-            if (_chatControl != null && response != null)
+            if (_chatControl != null && !string.IsNullOrEmpty(response))
             {
                 // AIChatControl already added the user message; only add the AI response here
-                _chatControl.Messages.Add(ChatMessage.CreateAIMessage(response.Content));
+                _chatControl.Messages.Add(ChatMessage.CreateAIMessage(response));
             }
 
             // Extract context entities from user message and AI response
@@ -179,9 +179,9 @@ public partial class ChatWindow : Form
                         {
                             var conversationId = _currentConversationId;
                             await _contextExtractionService.ExtractEntitiesAsync(userMessage, conversationId);
-                            if (response != null)
+                            if (!string.IsNullOrEmpty(response))
                             {
-                                await _contextExtractionService.ExtractEntitiesAsync(response.Content, conversationId);
+                                await _contextExtractionService.ExtractEntitiesAsync(response, conversationId);
                             }
                         }
                         catch (Exception ex)
@@ -203,14 +203,13 @@ public partial class ChatWindow : Form
                 try
                 {
                     var duration = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                    await _activityLogRepository.LogActivityAsync(new ActivityLog
+                    await _activityLogRepository.LogActivityAsync(new WileyWidget.Services.Abstractions.ActivityLog
                     {
                         ActivityType = "ChatMessage",
                         Activity = "AI Chat Interaction",
-                        Details = $"User: {userMessage.Substring(0, Math.Min(50, userMessage.Length))}...",
+                        Details = $"User: {userMessage.Substring(0, Math.Min(50, userMessage.Length))}... (Duration: {duration}ms)",
                         User = Environment.UserName,
                         Status = "Success",
-                        DurationMs = duration,
                         EntityType = "Conversation",
                         EntityId = _currentConversationId,
                         Severity = "Info"
@@ -255,7 +254,7 @@ public partial class ChatWindow : Form
             {
                 try
                 {
-                    await _activityLogRepository.LogActivityAsync(new ActivityLog
+                    await _activityLogRepository.LogActivityAsync(new WileyWidget.Services.Abstractions.ActivityLog
                     {
                         ActivityType = "ChatError",
                         Activity = "AI Chat Error",
@@ -368,9 +367,9 @@ public partial class ChatWindow : Form
             UpdateStatus($"Loading conversation {conversationId}...");
             _logger.LogInformation("Loading conversation: {ConversationId}", conversationId);
 
-            var conversation = await _conversationRepository.GetConversationAsync(conversationId);
+            var conversationObj = await _conversationRepository.GetConversationAsync(conversationId);
 
-            if (conversation == null)
+            if (conversationObj == null || conversationObj is not ConversationHistory conversation)
             {
                 UpdateStatus($"Conversation {conversationId} not found");
                 _logger.LogWarning("Conversation not found: {ConversationId}", conversationId);
@@ -472,7 +471,7 @@ public partial class ChatWindow : Form
         try
         {
             var conversations = await _conversationRepository.GetConversationsAsync(0, limit);
-            return conversations;
+            return conversations?.OfType<ConversationHistory>().ToList() ?? new List<ConversationHistory>();
         }
         catch (Exception ex)
         {

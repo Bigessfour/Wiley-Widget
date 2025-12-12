@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using Syncfusion.Windows.Forms;
+using WileyWidgetThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -33,7 +33,7 @@ namespace WileyWidget.WinForms.Forms
             Text = SettingsFormResources.FormTitle;
 
             // Apply Syncfusion theme to form and all child controls
-            ThemeColors.ApplyTheme(this);
+            WileyWidgetThemeColors.ApplyTheme(this);
         }
 
         private static IThemeService ResolveThemeService()
@@ -66,9 +66,9 @@ namespace WileyWidget.WinForms.Forms
                 if (iconService != null)
                 {
                     var icon = iconService.GetIcon("settings", _themeService.CurrentTheme, 16);
-                    if (icon != null)
+                    if (icon != null && icon is System.Drawing.Bitmap bitmap)
                     {
-                        this.Icon = Icon.FromHandle(icon.GetHicon());
+                        this.Icon = Icon.FromHandle(bitmap.GetHicon());
                     }
                 }
             }

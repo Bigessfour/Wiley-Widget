@@ -11,8 +11,11 @@ using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
@@ -209,11 +212,11 @@ namespace WileyWidget.WinForms.Controls
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
 
             // Create summary tiles
-            _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", Color.FromArgb(66, 133, 244));
-            _lblTotalActual = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalActualLabel, "$0", Color.FromArgb(52, 168, 83));
-            _lblVariance = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.VarianceLabel, "$0", Color.FromArgb(251, 188, 5));
-            _lblOverBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.OverBudgetLabel, "0", Color.FromArgb(234, 67, 53));
-            _lblUnderBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.UnderBudgetLabel, "0", Color.FromArgb(52, 168, 83));
+            _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", ThemeColors.PrimaryAccent);
+            _lblTotalActual = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalActualLabel, "$0", ThemeColors.Success);
+            _lblVariance = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.VarianceLabel, "$0", ThemeColors.Warning);
+            _lblOverBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.OverBudgetLabel, "0", ThemeColors.Error);
+            _lblUnderBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.UnderBudgetLabel, "0", ThemeColors.Success);
 
             _summaryPanel.Controls.Add(summaryFlow);
             Controls.Add(_summaryPanel);
@@ -256,7 +259,12 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Budget metrics grid",
                 AccessibleDescription = "Displays budget metrics by department"
             };
+            SfSkinManager.SetVisualStyle(_metricsGrid, ThemeColors.DefaultTheme);
             ConfigureGridColumns();
+
+            // Apply theme to the metrics grid
+            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+
             mainSplit.Panel2.Controls.Add(_metricsGrid);
 
             Controls.Add(mainSplit);
@@ -511,7 +519,7 @@ namespace WileyWidget.WinForms.Controls
                 if (_lblVariance != null)
                 {
                     _lblVariance.Text = _vm.TotalVariance.ToString("C0", CultureInfo.CurrentCulture);
-                    _lblVariance.ForeColor = _vm.TotalVariance >= 0 ? Color.FromArgb(234, 67, 53) : Color.FromArgb(52, 168, 83);
+                    _lblVariance.ForeColor = _vm.TotalVariance >= 0 ? ThemeColors.Error : ThemeColors.Success;
                 }
                 if (_lblOverBudgetCount != null)
                     _lblOverBudgetCount.Text = _vm.OverBudgetCount.ToString(CultureInfo.CurrentCulture);
@@ -563,8 +571,8 @@ namespace WileyWidget.WinForms.Controls
                     actualSeries.Points.Add(metric.DepartmentName, (double)metric.Amount);
                 }
 
-                budgetSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(66, 133, 244));
-                actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(52, 168, 83));
+                budgetSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeColors.PrimaryAccent);
+                actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeColors.Success);
 
                 _varianceChart.Series.Add(budgetSeries);
                 _varianceChart.Series.Add(actualSeries);

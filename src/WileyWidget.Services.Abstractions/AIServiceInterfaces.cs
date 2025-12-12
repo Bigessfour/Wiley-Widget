@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Models;
@@ -70,6 +71,14 @@ namespace WileyWidget.Services.Abstractions
         Task<MunicipalAccount?> GetAccountAsync(int id);
         Task<MunicipalAccount[]> GetAllAccountsAsync();
         Task SaveAccountAsync(MunicipalAccount account);
+        Task<SaveAccountResult> SaveAccountAsync(MunicipalAccount account, CancellationToken cancellationToken);
+        IEnumerable<string> ValidateAccount(MunicipalAccount account);
+    }
+
+    public class SaveAccountResult
+    {
+        public bool Success { get; set; }
+        public IEnumerable<string>? ValidationErrors { get; set; }
     }
 
     /// <summary>
@@ -79,6 +88,8 @@ namespace WileyWidget.Services.Abstractions
     {
         Task SaveConversationAsync(object conversation);
         Task<object?> GetConversationAsync(string id);
+        Task<List<object>> GetConversationsAsync(int skip, int limit);
+        Task DeleteConversationAsync(string conversationId);
     }
 
     /// <summary>
@@ -87,6 +98,7 @@ namespace WileyWidget.Services.Abstractions
     public interface IAIContextExtractionService
     {
         Task<string> ExtractContextAsync(string input);
+        Task ExtractEntitiesAsync(string message, string conversationId);
     }
 
     /// <summary>
@@ -95,6 +107,20 @@ namespace WileyWidget.Services.Abstractions
     public interface IActivityLogRepository
     {
         Task LogActivityAsync(string activity, string details);
+        Task LogActivityAsync(ActivityLog activityLog);
+    }
+
+    public class ActivityLog
+    {
+        public string ActivityType { get; set; } = string.Empty;
+        public string Activity { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+        public string User { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string EntityType { get; set; } = string.Empty;
+        public string? EntityId { get; set; }
+        public string Severity { get; set; } = "Information";
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>
@@ -111,7 +137,12 @@ namespace WileyWidget.Services.Abstractions
     public class ConversationHistory
     {
         public string Id { get; set; } = string.Empty;
+        public string ConversationId { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
+        public string MessagesJson { get; set; } = string.Empty;
+        public int MessageCount { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }

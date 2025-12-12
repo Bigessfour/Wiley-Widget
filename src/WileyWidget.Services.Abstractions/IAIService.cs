@@ -51,6 +51,11 @@ namespace WileyWidget.Services.Abstractions
     /// Implementations may return additional context in AIResponseResult.
     /// </summary>
     Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Send a message to the AI service with conversation history context.
+    /// </summary>
+    Task<string> SendMessageAsync(string message, object conversationHistory);
     }
 
     /// <summary>

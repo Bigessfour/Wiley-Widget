@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,11 +18,13 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.DataGrid.Styles;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Exporters;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -90,7 +93,7 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                ThemeColors.ApplyTheme(this);
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
 
                 _cts = new CancellationTokenSource();
 
@@ -125,7 +128,7 @@ namespace WileyWidget.WinForms.Forms
             Size = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterParent;
             MinimumSize = new Size(1000, 600);
-            BackColor = Color.White;
+            BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background;
             Font = new Font("Segoe UI", 9F);
             KeyPreview = true;
 
@@ -146,7 +149,7 @@ namespace WileyWidget.WinForms.Forms
                 GripStyle = ToolStripGripStyle.Hidden,
                 ImageScalingSize = new Size(24, 24),
                 Padding = new Padding(4),
-                BackColor = Color.FromArgb(240, 240, 240)
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background
             };
             var loadBtn = new ToolStripButton("Load", loadIcon, async (s, e) => await LoadData())
             {
@@ -218,14 +221,14 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 50,
-                BackColor = Color.FromArgb(255, 244, 204),
+                BackColor = Color.FromArgb(40, WileyWidget.WinForms.Themes.ThemeColors.Warning),
                 Visible = false,
                 Padding = new Padding(10)
             };
             _validationLabel = new Label
             {
                 Dock = DockStyle.Fill,
-                ForeColor = Color.FromArgb(133, 100, 4),
+                ForeColor = WileyWidget.WinForms.Themes.ThemeColors.Warning,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -250,10 +253,9 @@ namespace WileyWidget.WinForms.Forms
                 BackColor = Color.White
             };
 
-            // Apply modern grid styling
-            _dataGrid.Style.HeaderStyle.BackColor = Color.FromArgb(240, 240, 240);
-            _dataGrid.Style.HeaderStyle.Font.Bold = true;
-            _dataGrid.Style.HeaderStyle.Font.Size = 9F;
+            // Apply theme to the data grid
+            WileyWidget.WinForms.Themes.ThemeColors.ApplySfDataGridTheme(_dataGrid);
+            SfSkinManager.SetVisualStyle(_dataGrid, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             // Define columns with proper formatting
             _dataGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", Width = 110 });
@@ -297,6 +299,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 TabStyle = typeof(TabRenderer3D)
             };
+            SfSkinManager.SetVisualStyle(_detailTabs, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             // Tab 1: Basic Information
             var basicTab = new TabPageAdv("Basic Info");
@@ -324,19 +327,31 @@ namespace WileyWidget.WinForms.Forms
 
             // Initialize all input controls with modern styling
             _accountNumberBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_accountNumberBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _firstNameBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_firstNameBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _lastNameBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_lastNameBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _companyBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_companyBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _phoneBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_phoneBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _emailBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_emailBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _meterNumberBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_meterNumberBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             _customerTypeCombo = new ComboBoxAdv { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_customerTypeCombo, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _statusCombo = new ComboBoxAdv { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_statusCombo, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _serviceLocationCombo = new ComboBoxAdv { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_serviceLocationCombo, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             _balanceBox = new SfNumericTextBox { Font = new Font("Segoe UI", 9F), FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency };
+            SfSkinManager.SetVisualStyle(_balanceBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _accountOpenDatePicker = new SfDateTimeEdit { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_accountOpenDatePicker, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             AddRow(basicLayout, "≡ƒÅ╖∩╕Å Account #:", _accountNumberBox, ref row);
             AddRow(basicLayout, "≡ƒæñ First Name:", _firstNameBox, ref row);
@@ -356,9 +371,13 @@ namespace WileyWidget.WinForms.Forms
 
             row = 0;
             _serviceAddressBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_serviceAddressBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _serviceCityBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_serviceCityBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _serviceStateBox = new TextBoxExt { Font = new Font("Segoe UI", 9F), MaxLength = 2 };
+            SfSkinManager.SetVisualStyle(_serviceStateBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _serviceZipBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_serviceZipBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             AddRow(serviceLayout, "≡ƒÅá Address:", _serviceAddressBox, ref row);
             AddRow(serviceLayout, "≡ƒÅ¢∩╕Å City:", _serviceCityBox, ref row);
@@ -377,9 +396,13 @@ namespace WileyWidget.WinForms.Forms
 
             row = 0;
             _mailingAddressBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_mailingAddressBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _mailingCityBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_mailingCityBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _mailingStateBox = new TextBoxExt { Font = new Font("Segoe UI", 9F), MaxLength = 2 };
+            SfSkinManager.SetVisualStyle(_mailingStateBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _mailingZipBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
+            SfSkinManager.SetVisualStyle(_mailingZipBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             AddRow(mailingLayout, "≡ƒô½ Address:", _mailingAddressBox, ref row);
             AddRow(mailingLayout, "≡ƒÅ¢∩╕Å City:", _mailingCityBox, ref row);
@@ -396,6 +419,7 @@ namespace WileyWidget.WinForms.Forms
 
             row = 0;
             _notesBox = new TextBoxExt { Multiline = true, Height = 120, Font = new Font("Segoe UI", 9F), ScrollBars = ScrollBars.Vertical };
+            SfSkinManager.SetVisualStyle(_notesBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             AddRow(accountLayout, "≡ƒÆ░ Balance:", _balanceBox, ref row);
             AddRow(accountLayout, "≡ƒƒó Status:", _statusCombo, ref row);
@@ -413,7 +437,7 @@ namespace WileyWidget.WinForms.Forms
                 AutoSize = true,
                 FlowDirection = FlowDirection.LeftToRight,
                 Padding = new Padding(8),
-                BackColor = Color.FromArgb(245, 245, 245)
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background
             };
             _newButton = new ButtonAdv
             {
@@ -422,9 +446,10 @@ namespace WileyWidget.WinForms.Forms
                 Height = 36,
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(0, 150, 136),
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Success,
                 Width = 100
             };
+            SfSkinManager.SetVisualStyle(_newButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _newButton.Click += async (s, e) => await AddNewCustomer();
 
             _saveButton = new ButtonAdv
@@ -434,9 +459,10 @@ namespace WileyWidget.WinForms.Forms
                 Height = 36,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(0, 120, 212),
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.PrimaryAccent,
                 Width = 100
             };
+            SfSkinManager.SetVisualStyle(_saveButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _saveButton.Click += async (s, e) => await SaveCurrentCustomer();
 
             _deleteButton = new ButtonAdv
@@ -446,9 +472,10 @@ namespace WileyWidget.WinForms.Forms
                 Height = 36,
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(200, 50, 50),
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Error,
                 Width = 100
             };
+            SfSkinManager.SetVisualStyle(_deleteButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _deleteButton.Click += async (s, e) => await DeleteSelectedCustomer();
 
             _refreshButton = new ButtonAdv
@@ -458,9 +485,10 @@ namespace WileyWidget.WinForms.Forms
                 Height = 36,
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(100, 100, 100),
+                BackColor = ThemeManager.Colors.TextPrimary,
                 Width = 100
             };
+            SfSkinManager.SetVisualStyle(_refreshButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _refreshButton.Click += async (s, e) => await RefreshData();
 
             buttonBar.Controls.Add(_newButton);
@@ -474,7 +502,7 @@ namespace WileyWidget.WinForms.Forms
             // Add status strip
             _statusStrip = new StatusStrip
             {
-                BackColor = Color.FromArgb(240, 240, 240),
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background,
                 Font = new Font("Segoe UI", 9F)
             };
             var statusLabel = new ToolStripStatusLabel("Ready") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
@@ -935,21 +963,24 @@ namespace WileyWidget.WinForms.Forms
                         // Data rows
                         foreach (var customer in _viewModel.Customers)
                         {
-                            csv.AppendLine($"\"{customer.AccountNumber}\"," +
-                                         $"\"{customer.DisplayName}\"," +
-                                         $"\"{customer.ServiceAddress}\"," +
-                                         $"\"{customer.ServiceCity}\"," +
-                                         $"\"{customer.ServiceState}\"," +
-                                         $"\"{customer.ServiceZipCode}\"," +
-                                         $"\"{customer.PhoneNumber}\"," +
-                                         $"\"{customer.EmailAddress}\"," +
-                                         $"{customer.CurrentBalance:F2}," +
-                                         $"\"{customer.StatusDescription}\"," +
-                                         $"\"{customer.CustomerType}\"," +
-                                         $"\"{customer.ServiceLocation}\"," +
-                                         $"\"{customer.MeterNumber}\"," +
-                                         $"{customer.AccountOpenDate:yyyy-MM-dd}," +
-                                         $"\"{customer.Notes?.Replace("\"", "\"\"")}\"");
+                            string line = string.Format(CultureInfo.InvariantCulture,
+                                "\"{0}\",\"{1}\",\"{2}\",\"{3}\",\"{4}\",\"{5}\",\"{6}\",\"{7}\",{8:F2},\"{9}\",\"{10}\",\"{11}\",\"{12}\",{13:yyyy-MM-dd},\"{14}\"",
+                                customer.AccountNumber,
+                                customer.DisplayName,
+                                customer.ServiceAddress,
+                                customer.ServiceCity,
+                                customer.ServiceState,
+                                customer.ServiceZipCode,
+                                customer.PhoneNumber,
+                                customer.EmailAddress,
+                                customer.CurrentBalance,
+                                customer.StatusDescription,
+                                customer.CustomerType,
+                                customer.ServiceLocation,
+                                customer.MeterNumber,
+                                customer.AccountOpenDate,
+                                customer.Notes?.Replace("\"", "\"\"", StringComparison.Ordinal));
+                            csv.AppendLine(line);
                         }
 
                         File.WriteAllText(saveDialog.FileName, csv.ToString());
@@ -1070,6 +1101,8 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="e">The event arguments.</param>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            ArgumentNullException.ThrowIfNull(e);
+
             // Check for unsaved changes
             if (_isDirty)
             {

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Dialogs
 {
@@ -68,7 +69,7 @@ namespace WileyWidget.WinForms.Dialogs
                 ColumnCount = 2,
                 RowCount = 3,
                 Padding = new Padding(15),
-                BackColor = Color.White
+                BackColor = ThemeColors.Background
             };
 
             // Icon column (fixed 48px)
@@ -100,7 +101,7 @@ namespace WileyWidget.WinForms.Dialogs
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(192, 0, 0),
+                ForeColor = ThemeColors.Error,
                 Padding = new Padding(0, 5, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -111,7 +112,7 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.FromArgb(255, 250, 250),
+                BackColor = Color.FromArgb(40, ThemeColors.Error),
                 Font = new Font("Segoe UI", 9F),
                 SelectionMode = SelectionMode.MultiExtended,
                 IntegralHeight = false,

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -44,8 +45,8 @@ namespace WileyWidget.WinForms.ViewModels
         public ObservableCollection<AccountType> AvailableAccountTypes { get; } = new(new[]
         {
             AccountType.Asset,
-            AccountType.Liability,
-            AccountType.Equity,
+            AccountType.Payables,
+            AccountType.RetainedEarnings,
             AccountType.Revenue,
             AccountType.Expense
         });
@@ -68,6 +69,14 @@ namespace WileyWidget.WinForms.ViewModels
 
         public IAsyncRelayCommand LoadAccountsCommand { get; }
         public IAsyncRelayCommand FilterAccountsCommand { get; }
+
+        public async Task<List<Department>> GetDepartmentsAsync()
+        {
+            return await _dbContext.Departments
+                .AsNoTracking()
+                .OrderBy(d => d.Name)
+                .ToListAsync();
+        }
 
         private async Task LoadAccountsAsync()
         {

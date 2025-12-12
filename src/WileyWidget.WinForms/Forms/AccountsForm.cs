@@ -2,15 +2,15 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Data;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
-using Syncfusion.WinForms.Themes;
-using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms
@@ -41,18 +41,18 @@ namespace WileyWidget.WinForms.Forms
         private readonly AccountsViewModel _viewModel;
         private TableLayoutPanel? _mainLayout;
         private SfDataGrid? _dataGrid;
-        private ToolStripEx? _toolbar;
-        private StatusBarAdv? _statusBar;
-        private StatusBarAdvPanel? _statusPanel;
-        private StatusBarAdvPanel? _totalsPanel;
-        private StatusBarAdvPanel? _selectionPanel;
+        private ToolStrip? _toolbar;
+        private StatusStrip? _statusBar;
+        private ToolStripStatusLabel? _statusPanel;
+        private ToolStripStatusLabel? _totalsPanel;
+        private ToolStripStatusLabel? _selectionPanel;
         private ToolStripButton? _editToggleButton;
 
         public AccountsForm(AccountsViewModel viewModel)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
-            SfSkinManager.SetVisualStyle(this, VisualTheme.Office2019Colorful);
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
             BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -103,15 +103,19 @@ namespace WileyWidget.WinForms.Forms
 
         private void BuildToolbar()
         {
-            _toolbar = new ToolStripEx
+            _toolbar = new ToolStrip
             {
                 Dock = DockStyle.Fill,
                 GripStyle = ToolStripGripStyle.Hidden,
                 ImageScalingSize = new Size(20, 20),
                 Padding = new Padding(8, 4, 8, 4),
-                ThemeName = "Office2016Colorful",
-                Office12Mode = false
             };
+            // Do NOT apply SfSkinManager to standard WinForms ToolStrip controls.
+            // Theme is applied at the Form level via ThemeColors.ApplyTheme(this),
+            // and SfSkinManager is intended for Syncfusion controls. Attempting
+            // to style standard ToolStrip/StatusStrip instances with SfSkinManager
+            // caused a FileNotFoundException for Microsoft.WinForms.Utilities.Shared
+            // on some runtime configurations (net9.0). Avoid calling it here.
 
             var loadButton = new ToolStripButton
             {
@@ -168,10 +172,12 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = true,
                 AllowEditing = true,
                 SelectionMode = GridSelectionMode.Single,
-                NavigationMode = NavigationMode.Row,
+                NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
                 RowHeight = 32,
                 HeaderRowHeight = 36
             };
+
+            SfSkinManager.SetVisualStyle(_dataGrid, ThemeColors.DefaultTheme);
 
             // Configure columns with proper Syncfusion types and formatting
             _dataGrid.Columns.Add(new GridTextColumn
@@ -305,7 +311,7 @@ namespace WileyWidget.WinForms.Forms
                 // Alternate row colors for better readability
                 if (e.RowIndex % 2 == 0)
                 {
-                    e.Style.BackColor = System.Drawing.Color.FromArgb(250, 250, 250);
+                    e.Style.BackColor = ThemeColors.AlternatingRowBackground;
                 }
             }
         }
@@ -316,12 +322,12 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (e.Column.MappingName == "Balance" && account.Balance < 0)
                 {
-                    e.Style.TextColor = Color.FromArgb(176, 0, 32);
+                    e.Style.TextColor = ThemeColors.Error;
                 }
 
                 if (e.Column.MappingName == "BudgetAmount" && account.BudgetAmount == 0)
                 {
-                    e.Style.TextColor = Color.FromArgb(112, 112, 112);
+                    e.Style.TextColor = ThemeManager.Colors.TextPrimary;
                 }
             }
         }
@@ -375,40 +381,57 @@ namespace WileyWidget.WinForms.Forms
 
         private void BuildStatusBar()
         {
-            _statusBar = new StatusBarAdv
+            try
             {
-                Dock = DockStyle.Fill,
-                ShowPanels = true,
-                BeforeTouchSize = new Size(0, 28),
-                SizeGrip = false,
-                ThemeName = "Office2019Colorful"
-            };
+                _statusBar = new StatusStrip
+                {
+                    Dock = DockStyle.Fill,
+                    SizingGrip = false,
+                };
 
-            _statusPanel = new StatusBarAdvPanel
+                // Note: SfSkinManager is for Syncfusion controls only, not standard WinForms controls like StatusStrip
+                // The call was causing FileNotFoundException for Microsoft.WinForms.Utilities.Shared in .NET 9
+                // Removed: SfSkinManager.SetVisualStyle(_statusBar, "Office2019Colorful");
+
+                _statusPanel = new ToolStripStatusLabel
+                {
+                    Text = Resources.LoadingText,
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
+                    Size = new Size(420, 22)
+                };
+
+                _totalsPanel = new ToolStripStatusLabel
+                {
+                    Text = "Totals: --",
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
+                    Size = new Size(320, 22)
+                };
+
+                _selectionPanel = new ToolStripStatusLabel
+                {
+                    Text = "No selection",
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
+                    Size = new Size(220, 22)
+                };
+
+                _statusBar.Items.AddRange(new ToolStripItem[] { _statusPanel, _totalsPanel, _selectionPanel });
+            }
+            catch (Exception ex)
             {
-                Text = Resources.LoadingText,
-                BorderStyle = BorderStyle.None,
-                Width = 420
-            };
+                // Log error if logger is available
+                var logger = Program.Services.GetService<ILogger<AccountsForm>>();
+                logger?.LogError(ex, "Failed to build accounts status bar");
 
-            _totalsPanel = new StatusBarAdvPanel
-            {
-                Text = "Totals: --",
-                BorderStyle = BorderStyle.None,
-                Width = 320
-            };
-
-            _selectionPanel = new StatusBarAdvPanel
-            {
-                Text = "No selection",
-                BorderStyle = BorderStyle.None,
-                Width = 220
-            };
-
-            _statusBar.Panels.AddRange(new[] { _statusPanel, _totalsPanel, _selectionPanel });
-        }
-
-        private void BindViewModel()
+                // Fallback: Create basic status bar
+                try
+                {
+                _statusBar = new StatusStrip { Dock = DockStyle.Fill };
+                _statusPanel = new ToolStripStatusLabel { Text = "Status bar initialization failed" };
+                _statusBar.Items.Add(_statusPanel);
+                }
+                catch { }
+            }
+        }        private void BindViewModel()
         {
             _viewModel.PropertyChanged += (s, e) =>
             {
@@ -463,6 +486,13 @@ namespace WileyWidget.WinForms.Forms
                 _dataGrid?.Dispose();
                 _toolbar?.Dispose();
                 _statusBar?.Dispose();
+                _editToggleButton?.Dispose();
+                _mainLayout?.Dispose();
+                _statusPanel?.Dispose();
+                _totalsPanel?.Dispose();
+                _selectionPanel?.Dispose();
+                // components field is declared in designer partial class when present; only dispose when it exists
+                try { /* components?.Dispose(); */ } catch { }
             }
             base.Dispose(disposing);
         }

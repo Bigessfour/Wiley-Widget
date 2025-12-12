@@ -67,7 +67,6 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.6.5" />
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
-    <PackageVersion Include="QuestPDF" Version="2025.7.4" />
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageVersion Include="PdfSharpCore" Version="1.3.67" />
@@ -94,18 +93,18 @@
 
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <!-- Syncfusion WinForms packages v31.2.15 (public NuGet) -->
-    <PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Chart.Windows" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.15" />
-    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.15" />
+    <!-- Syncfusion WinForms packages v31.2.18 (public NuGet) -->
+    <PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Chart.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.18" />
     <!-- Bold Reports viewer (WPF) + licensing/runtime for hosting in WinForms -->
     <PackageVersion Include="BoldReports.WPF" Version="12.1.14" />
     <PackageVersion Include="BoldReports.Net.Core" Version="12.1.14" />

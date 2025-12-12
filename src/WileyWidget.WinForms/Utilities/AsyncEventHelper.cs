@@ -185,6 +185,26 @@ namespace WileyWidget.WinForms.Utilities
         }
 
         /// <summary>
+        /// Ensures the provided action executes on the UI thread associated with the given control.
+        /// Safe to call from background threads.
+        /// </summary>
+        public static void EnsureOnUiThread(Control control, Action action)
+        {
+            if (control == null) throw new ArgumentNullException(nameof(control));
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            if (control.IsDisposed || control.Disposing) return;
+
+            if (control.InvokeRequired)
+            {
+                try { control.BeginInvoke(action); } catch { }
+            }
+            else
+            {
+                action();
+            }
+        }
+
+        /// <summary>
         /// Creates a new CancellationTokenSource with optional timeout.
         /// Useful for form-level operations that should auto-cancel after a duration.
         /// </summary>

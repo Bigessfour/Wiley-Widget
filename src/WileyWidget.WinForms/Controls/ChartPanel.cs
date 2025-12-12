@@ -44,7 +44,6 @@ namespace WileyWidget.WinForms.Controls
         private Panel? _topPanel;
         private ErrorProvider? _errorProvider;
         private readonly List<ToolTip> _toolTips = new();
-        private ChartSeries? _series;
 
         // Stored event handlers for proper cleanup
         private EventHandler? _comboSelectedIndexChangedHandler;
@@ -759,9 +758,10 @@ namespace WileyWidget.WinForms.Controls
                 catch { }
                 series.Text = series.Name;
 
+                var index = 0;
                 foreach (var d in list)
                 {
-                    series.Points.Add(d.Key, d.Value);
+                    series.Points.Add(index++, (double)d.Value);
                 }
 
                 // Apply series style per demo patterns (ChartStyles demo)

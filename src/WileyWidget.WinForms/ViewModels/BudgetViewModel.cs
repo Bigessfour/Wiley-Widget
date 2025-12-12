@@ -300,7 +300,7 @@ namespace WileyWidget.WinForms.ViewModels
                 var records = csv.GetRecordsAsync<ImportBudgetRow>();
                 int rowNumber = 0;
 
-                await foreach (var rec in records.ConfigureAwait(false))
+                await foreach (var rec in records)
                 {
                     rowNumber++;
                     try
@@ -337,7 +337,7 @@ namespace WileyWidget.WinForms.ViewModels
                             continue;
                         }
 
-                        await _budgetRepository.AddAsync(entry).ConfigureAwait(false);
+                        await _budgetRepository.AddAsync(entry);
                         BudgetEntries.Add(entry);
                         imported.Add(entry);
                     }
@@ -391,7 +391,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 // Simple export DTO to keep columns stable
                 csv.WriteHeader<ExportBudgetRow>();
-                await csv.NextRecordAsync().ConfigureAwait(false);
+                await csv.NextRecordAsync();
 
                 foreach (var be in BudgetEntries)
                 {
@@ -407,10 +407,10 @@ namespace WileyWidget.WinForms.ViewModels
                     };
 
                     csv.WriteRecord(row);
-                    await csv.NextRecordAsync().ConfigureAwait(false);
+                    await csv.NextRecordAsync();
                 }
 
-                await writer.FlushAsync().ConfigureAwait(false);
+                await writer.FlushAsync();
                 _logger.LogInformation("Exported {Count} budget entries to {File}", BudgetEntries.Count, filePath);
             }
             catch (Exception ex)
@@ -435,7 +435,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _reportExportService.ExportToPdfAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
+                await _reportExportService.ExportToPdfAsync(BudgetEntries.ToList(), filePath);
                 _logger.LogInformation("Exported {Count} budget entries to PDF {File}", BudgetEntries.Count, filePath);
             }
             catch (Exception ex)
@@ -460,7 +460,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _reportExportService.ExportToExcelAsync(BudgetEntries.ToList(), filePath).ConfigureAwait(false);
+                await _reportExportService.ExportToExcelAsync(BudgetEntries.ToList(), filePath);
                 _logger.LogInformation("Exported {Count} budget entries to Excel {File}", BudgetEntries.Count, filePath);
             }
             catch (Exception ex)
@@ -506,7 +506,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         private async Task ApplyFiltersAsync()
         {
-            await Task.Run(() =>
+            var filteredList = await Task.Run(() =>
             {
                 var filtered = BudgetEntries.AsEnumerable();
 
@@ -546,9 +546,11 @@ namespace WileyWidget.WinForms.ViewModels
                     filtered = filtered.Where(e => Math.Abs(e.BudgetedAmount - e.ActualAmount) >= VarianceThreshold.Value);
                 }
 
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filtered);
-                _logger.LogInformation("Applied filters: {Count} entries match criteria", FilteredBudgetEntries.Count);
+                return filtered.ToList();
             });
+
+            FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
+            _logger.LogInformation("Applied filters: {Count} entries match criteria", FilteredBudgetEntries.Count);
 
             await RefreshAnalysisAsync();
         }
@@ -568,24 +570,36 @@ namespace WileyWidget.WinForms.ViewModels
 
         // ============= Analysis Methods =============
 
-        private Task RefreshAnalysisAsync()
+        private async Task RefreshAnalysisAsync()
         {
-            return Task.Run(() =>
+            var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
+
+            // Compute analysis totals on background thread
+            var totals = await Task.Run(() =>
             {
-                var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
-
-                TotalBudgeted = entries.Sum(e => e.BudgetedAmount);
-                TotalActual = entries.Sum(e => e.ActualAmount);
-                TotalVariance = TotalBudgeted - TotalActual;
-                TotalEncumbrance = entries.Sum(e => e.EncumbranceAmount);
-                PercentUsed = TotalBudgeted > 0 ? (TotalActual / TotalBudgeted) * 100 : 0;
-                EntriesOverBudget = entries.Count(e => e.ActualAmount > e.BudgetedAmount);
-                EntriesUnderBudget = entries.Count(e => e.ActualAmount < e.BudgetedAmount);
-
-                _logger.LogInformation(
-                    "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used",
-                    TotalBudgeted, TotalActual, TotalVariance, PercentUsed);
+                var list = entries.ToList();
+                var totalBudgeted = list.Sum(e => e.BudgetedAmount);
+                var totalActual = list.Sum(e => e.ActualAmount);
+                var totalVariance = totalBudgeted - totalActual;
+                var totalEncumbrance = list.Sum(e => e.EncumbranceAmount);
+                var percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
+                var entriesOverBudget = list.Count(e => e.ActualAmount > e.BudgetedAmount);
+                var entriesUnderBudget = list.Count(e => e.ActualAmount < e.BudgetedAmount);
+                return (totalBudgeted, totalActual, totalVariance, totalEncumbrance, percentUsed, entriesOverBudget, entriesUnderBudget);
             });
+
+            // Assign computed values to properties on UI thread
+            TotalBudgeted = totals.totalBudgeted;
+            TotalActual = totals.totalActual;
+            TotalVariance = totals.totalVariance;
+            TotalEncumbrance = totals.totalEncumbrance;
+            PercentUsed = totals.percentUsed;
+            EntriesOverBudget = totals.entriesOverBudget;
+            EntriesUnderBudget = totals.entriesUnderBudget;
+
+            _logger.LogInformation(
+                "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used",
+                TotalBudgeted, TotalActual, TotalVariance, PercentUsed);
         }
 
         private async Task CalculateVariancesAsync()

@@ -16,6 +16,7 @@ using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Dialogs;
 using System.Text.RegularExpressions;
 
 namespace WileyWidget.WinForms.Forms
@@ -155,8 +156,9 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Enter account number (e.g., 405, 405.1, 101-1000)",
                 MaxLength = 20
             };
+            SfSkinManager.SetVisualStyle(_accountNumberTextBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             // Watermark for placeholder text
-            _accountNumberTextBox.Watermark = "e.g., 405, 405.1, 101-1000";
+            // _accountNumberTextBox.Watermark = "e.g., 405, 405.1, 101-1000";  // Not available in Syncfusion v31.2.15
             mainPanel.Controls.Add(_accountNumberTextBox, 1, row++);
 
             // Account Name
@@ -171,7 +173,8 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Enter descriptive account name",
                 MaxLength = 100
             };
-            _nameTextBox.Watermark = "Descriptive account name";
+            SfSkinManager.SetVisualStyle(_nameTextBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            // _nameTextBox.Watermark = "Descriptive account name";  // Not available in Syncfusion v31.2.15
             mainPanel.Controls.Add(_nameTextBox, 1, row++);
 
             // Account Type
@@ -186,6 +189,7 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Select account type",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
             };
+            SfSkinManager.SetVisualStyle(_typeComboBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _typeComboBox.DataSource = Enum.GetNames(typeof(AccountType)).ToList();
             mainPanel.Controls.Add(_typeComboBox, 1, row++);
 
@@ -201,6 +205,7 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Select fund type",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
             };
+            SfSkinManager.SetVisualStyle(_fundComboBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _fundComboBox.DataSource = Enum.GetNames(typeof(MunicipalFundType)).ToList();
             mainPanel.Controls.Add(_fundComboBox, 1, row++);
 
@@ -218,6 +223,7 @@ namespace WileyWidget.WinForms.Forms
                 ValueMember = "Id",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
             };
+            SfSkinManager.SetVisualStyle(_departmentComboBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             mainPanel.Controls.Add(_departmentComboBox, 1, row++);
 
             // Budget Period
@@ -234,6 +240,7 @@ namespace WileyWidget.WinForms.Forms
                 ValueMember = "Id",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
             };
+            SfSkinManager.SetVisualStyle(_budgetPeriodComboBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             mainPanel.Controls.Add(_budgetPeriodComboBox, 1, row++);
 
             // Parent Account
@@ -250,6 +257,7 @@ namespace WileyWidget.WinForms.Forms
                 ValueMember = "Value",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
             };
+            SfSkinManager.SetVisualStyle(_parentAccountComboBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             // Note: Items will be added after DataSource is populated
             mainPanel.Controls.Add(_parentAccountComboBox, 1, row++);
 
@@ -264,11 +272,12 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleName = "Current Balance",
                 AccessibleDescription = "Enter current account balance",
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                CurrencyDecimalDigits = 2,
+                // DecimalPlaces = 2,  // Not available in Syncfusion v31.2.15
                 MinValue = (double)decimal.MinValue,
                 MaxValue = (double)decimal.MaxValue,
                 AllowNull = false
             };
+            SfSkinManager.SetVisualStyle(_balanceNumeric, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             mainPanel.Controls.Add(_balanceNumeric, 1, row++);
 
             // Budget Amount
@@ -282,11 +291,12 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleName = "Budget Amount",
                 AccessibleDescription = "Enter budget amount",
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                CurrencyDecimalDigits = 2,
+                // DecimalPlaces = 2,  // Not available in Syncfusion v31.2.15
                 MinValue = 0,
                 MaxValue = (double)decimal.MaxValue,
                 AllowNull = false
             };
+            SfSkinManager.SetVisualStyle(_budgetAmountNumeric, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             mainPanel.Controls.Add(_budgetAmountNumeric, 1, row++);
 
             // Is Active
@@ -301,6 +311,7 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleName = "Account Active",
                 AccessibleDescription = "Check if account is active"
             };
+            SfSkinManager.SetVisualStyle(_isActiveCheckBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             mainPanel.Controls.Add(_isActiveCheckBox, 1, row++);
 
             // Required field note
@@ -334,6 +345,7 @@ namespace WileyWidget.WinForms.Forms
                 Font = new Font("Segoe UI", 9F),
                 Margin = new Padding(0)
             };
+            SfSkinManager.SetVisualStyle(_cancelButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _cancelButton.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
             buttonPanel.Controls.Add(_cancelButton);
 
@@ -347,6 +359,7 @@ namespace WileyWidget.WinForms.Forms
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 10, 0)
             };
+            SfSkinManager.SetVisualStyle(_saveButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _saveButton.Click += async (s, e) => await SaveButton_Click();
             buttonPanel.Controls.Add(_saveButton);
 
@@ -435,9 +448,9 @@ namespace WileyWidget.WinForms.Forms
                         _typeComboBox.SelectedIndex = 0;
                     if (_fundComboBox!.DataSource is List<string> fundList && fundList.Count > 0)
                         _fundComboBox.SelectedIndex = 0;
-                    if (_departmentComboBox!.Items.Count > 0)
+                    if (_departmentComboBox!.DataSource is System.Collections.IList deptList && deptList.Count > 0)
                         _departmentComboBox.SelectedIndex = 0;
-                    if (_budgetPeriodComboBox!.Items.Count > 0)
+                    if (_budgetPeriodComboBox!.DataSource is System.Collections.IList periodList && periodList.Count > 0)
                         _budgetPeriodComboBox.SelectedIndex = 0;
                     _parentAccountComboBox!.SelectedIndex = 0;  // "(None)"
                 }
@@ -459,7 +472,7 @@ namespace WileyWidget.WinForms.Forms
 
             _accountNumberTextBox!.Text = _existingAccount.AccountNumber?.Value ?? "";
             _nameTextBox!.Text = _existingAccount.Name;
-            
+
             // For SfComboBox with string DataSource (enum values)
             if (_typeComboBox!.DataSource is List<string>)
             {
@@ -555,16 +568,16 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 account.Name = _nameTextBox!.Text.Trim();
-                
+
                 // Parse enum values from SfComboBox SelectedItem
                 var selectedType = _typeComboBox!.SelectedItem?.ToString() ?? "Asset";
                 account.Type = Enum.Parse<AccountType>(selectedType);
-                
+
                 var selectedFund = _fundComboBox!.SelectedItem?.ToString() ?? "General";
                 account.Fund = Enum.Parse<MunicipalFundType>(selectedFund);
-                
-                account.Balance = (decimal)_balanceNumeric!.Value;
-                account.BudgetAmount = (decimal)_budgetAmountNumeric!.Value;
+
+                account.Balance = (decimal)(_balanceNumeric?.Value ?? 0.0);
+                account.BudgetAmount = (decimal)(_budgetAmountNumeric?.Value ?? 0.0);
                 account.IsActive = _isActiveCheckBox!.Checked;
 
                 if (_departmentComboBox!.SelectedItem is Department dept)
@@ -602,8 +615,9 @@ namespace WileyWidget.WinForms.Forms
 
                 if (!result.Success)
                 {
-                    _logger.LogWarning("Account save failed: {Errors}", string.Join(", ", result.ValidationErrors));
-                    var unmapped = ApplyValidationMessages(result.ValidationErrors ?? Enumerable.Empty<string>());
+                    var errors = result.ValidationErrors ?? Enumerable.Empty<string>();
+                    _logger.LogWarning("Account save failed: {Errors}", string.Join(", ", errors));
+                    var unmapped = ApplyValidationMessages(errors);
                     if (unmapped.Any())
                     {
                         ValidationDialog.Show(this, "Save Failed", unmapped, null);

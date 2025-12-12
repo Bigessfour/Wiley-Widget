@@ -1,14 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.ListView.Enums;
+using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -61,8 +64,6 @@ namespace WileyWidget.WinForms.Controls
         /// A simple DataContext property for ViewModel access.
         /// </summary>
         public new object? DataContext { get; private set; }
-
-        private WileyWidget.Models.MunicipalAccount? _selectedAccount;
 
         private SfDataGrid? gridAccounts;
         private PanelHeader? _panelHeader;
@@ -256,6 +257,13 @@ namespace WileyWidget.WinForms.Controls
             // Create a single ToolTip instance used across the panel (disposed in Dispose)
             try
             {
+                Controls.Add(gridAccounts);
+                // Add overlays (loading spinner and no-data friendly message)
+                _loadingOverlay = new LoadingOverlay { Message = AccountsPanelResources.LoadingText };
+                Controls.Add(_loadingOverlay);
+
+                _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
+                Controls.Add(_noDataOverlay);
                 _toolTip = new ToolTip() { AutoPopDelay = 10000, InitialDelay = 500, ReshowDelay = 100, ShowAlways = true };
             }
             catch { }
@@ -917,6 +925,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Accounts data grid",
                 AccessibleDescription = "Grid displaying municipal accounts with filtering and sorting"
             };
+            SfSkinManager.SetVisualStyle(gridAccounts, ThemeColors.DefaultTheme);
             try
             {
                 var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AnalysisLevel>6.0</AnalysisLevel>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
@@ -60,10 +59,11 @@
 
     <!-- Open-source alternatives to Syncfusion -->
     <PackageReference Include="ClosedXML" />
-    <PackageReference Include="QuestPDF" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
     <PackageReference Include="PdfSharpCore" />
+
+    <PackageReference Include="Syncfusion.Pdf.WinForms" />
 
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />

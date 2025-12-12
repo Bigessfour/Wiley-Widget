@@ -35,4 +35,7 @@ public class NullAIServiceDouble : IAIService
 
     public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("[Test Stub] AI prompt disabled in integration tests.", 200, null, null));
+
+    public Task<string> SendMessageAsync(string message, object conversationHistory)
+        => Task.FromResult("[Test Stub] AI messaging disabled in integration tests.");
 }

@@ -367,12 +367,6 @@
           "System.Threading.RateLimiting": "8.0.0"
         }
       },
-      "QuestPDF": {
-        "type": "Direct",
-        "requested": "[2025.7.4, )",
-        "resolved": "2025.7.4",
-        "contentHash": "XeiWilwLnqP2BIvDG+vh1+fjUoNWczPee5qifw8VppVOH7+vmxgoxG/KANcKftgqAfXiRQ++sXOSLPZRvXxD2g=="
-      },
       "Serilog": {
         "type": "Direct",
         "requested": "[4.2.0, )",
@@ -444,6 +438,16 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
+        }
+      },
+      "Syncfusion.Pdf.WinForms": {
+        "type": "Direct",
+        "requested": "[31.2.18, )",
+        "resolved": "31.2.18",
+        "contentHash": "3L5viEOaiTgy6Pccwg4D6r3J+fNtixUe6wwj86g86dV4vuqMHzjQdzOk9q36ZcqA9Q3ecPZA5BPzfOMTP9ccxQ==",
+        "dependencies": {
+          "Syncfusion.Compression.Base": "31.2.18",
+          "Syncfusion.Licensing": "31.2.18"
         }
       },
       "System.Management": {
@@ -1250,6 +1254,11 @@
           "System.Runtime": "4.3.0",
           "System.Text.RegularExpressions": "4.3.0"
         }
+      },
+      "Syncfusion.Compression.Base": {
+        "type": "Transitive",
+        "resolved": "31.2.18",
+        "contentHash": "ZChcEJ5mFSGIbOdNKi3CHFP62ZH9aEGwtScG8rjWysxx2qFcqYu9ZuPwRlBoBPMmrQsaIk3PNoSrwIeE1nYYMw=="
       },
       "System.AppContext": {
         "type": "Transitive",
@@ -2719,6 +2728,12 @@
         "requested": "[3.1.12, )",
         "resolved": "1.0.4",
         "contentHash": "H2rPiEr2ddBOltOuqRYhpLBAsQXDAhbzMMhhuksnBG2oefup1MXMchALe7yYkKJksNbtxbZHKeM6dn/68I75qw=="
+      },
+      "Syncfusion.Licensing": {
+        "type": "CentralTransitive",
+        "requested": "[31.2.18, )",
+        "resolved": "31.2.18",
+        "contentHash": "0F8xDPiebSe4y6AYYRJXihH1Ba3PH0pfMyl/FfdbYIr9qev4wEBgEguO4xxkVRgQJhvV8B+StQXOeNSDyByI/A=="
       },
       "System.Buffers": {
         "type": "CentralTransitive",

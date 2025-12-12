@@ -1,5 +1,6 @@
 using System.Drawing;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Themes
@@ -10,7 +11,7 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Theme name used throughout the application
+        // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful as required)
         public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>
@@ -90,17 +91,40 @@ namespace WileyWidget.WinForms.Themes
 
             try
             {
-                // Load Office2019Theme assembly if not already loaded
+                // Ensure Office2019Theme assembly is loaded
                 EnsureThemeAssemblyLoaded();
 
-                // Apply form-level theme using SfSkinManager
-                // This automatically cascades to ALL Syncfusion child controls
+                // Apply global theme - this cascades to all Syncfusion controls
                 SfSkinManager.SetVisualStyle(form, DefaultTheme);
+
+                // For RibbonControlAdv and StatusBarAdv, also set ThemeName explicitly
+                foreach (Control control in form.Controls)
+                {
+                    if (control is Syncfusion.Windows.Forms.Tools.RibbonControlAdv ribbon)
+                    {
+                        ribbon.ThemeName = DefaultTheme;
+                    }
+                    else if (control is Syncfusion.Windows.Forms.Tools.StatusBarAdv statusBar)
+                    {
+                        statusBar.ThemeName = DefaultTheme;
+                    }
+                }
             }
             catch (Exception ex)
             {
-                // Log theme application error but don't fail
-                System.Diagnostics.Debug.WriteLine($"Theme application warning: {ex.Message}");
+                // Enhanced error handling with specific theme failure logging
+                Serilog.Log.Error(ex, "Failed to apply {Theme} theme to form {FormName}",
+                    DefaultTheme, form.Name);
+
+                // Attempt fallback to default theme
+                try
+                {
+                    SfSkinManager.SetVisualStyle(form, "default");
+                }
+                catch (Exception fallbackEx)
+                {
+                    Serilog.Log.Error(fallbackEx, "Theme fallback failed for form {FormName}", form.Name);
+                }
             }
         }
 
@@ -117,7 +141,32 @@ namespace WileyWidget.WinForms.Themes
             catch (Exception ex)
             {
                 // Theme assembly may already be loaded or not available
-                System.Diagnostics.Debug.WriteLine($"Theme assembly loading: {ex.Message}");
+                Serilog.Log.Warning(ex, "Office2019Theme assembly loading failed - theme features may be limited");
+            }
+        }
+
+        /// <summary>
+        /// Applies consistent theme styling to an SfDataGrid control.
+        /// </summary>
+        /// <param name="grid">The SfDataGrid to theme.</param>
+        public static void ApplySfDataGridTheme(Syncfusion.WinForms.DataGrid.SfDataGrid grid)
+        {
+            if (grid == null) return;
+
+            try
+            {
+                // Apply SfSkinManager theme
+                SfSkinManager.SetVisualStyle(grid, DefaultTheme);
+
+                // Apply custom style properties that SfSkinManager doesn't handle
+                grid.Style.HeaderStyle.BackColor = HeaderBackground;
+                grid.Style.HeaderStyle.TextColor = Color.White;
+                grid.Style.HeaderStyle.Font = new Syncfusion.WinForms.DataGrid.Styles.GridFontInfo(new Font("Segoe UI", 9F, FontStyle.Bold));
+            }
+            catch (Exception ex)
+            {
+                // Log theme application error but don't fail
+                Serilog.Log.Warning(ex, "SfDataGrid theme application failed for grid {GridName}", grid.Name);
             }
         }
     }

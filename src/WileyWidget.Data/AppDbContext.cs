@@ -44,6 +44,7 @@ namespace WileyWidget.Data
         public DbSet<Vendor> Vendors { get; set; } = null!;
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -166,6 +167,20 @@ namespace WileyWidget.Data
             entity.Property(i => i.Amount).HasColumnType("decimal(18,2)");
             entity.Property(i => i.InvoiceNumber).HasMaxLength(50);
             entity.Property(i => i.Status).HasMaxLength(50).HasDefaultValue("Pending");
+        });
+
+        // ActivityLog configuration
+        modelBuilder.Entity<ActivityLog>(entity =>
+        {
+            entity.ToTable("ActivityLog");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Timestamp);
+            entity.Property(e => e.Activity).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Details).HasMaxLength(500);
+            entity.Property(e => e.User).HasMaxLength(100);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Icon).HasMaxLength(100);
+            entity.Property(e => e.Timestamp).HasColumnType("datetime2");
         });
 
         // New: Vendor configuration

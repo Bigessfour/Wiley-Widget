@@ -3,6 +3,7 @@ using System.Drawing;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -37,7 +38,7 @@ namespace WileyWidget.WinForms.Controls
         {
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(160, Color.Black);
+            BackColor = Color.FromArgb(160, ThemeManager.Colors.TextPrimary);
             Visible = false;
             TabStop = false;
 
@@ -53,7 +54,7 @@ namespace WileyWidget.WinForms.Controls
             object? syncControl = null;
             try
             {
-                var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name?.StartsWith("Syncfusion") ?? false);
+                var assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name?.StartsWith("Syncfusion", StringComparison.Ordinal) ?? false);
                 if (assembly != null)
                 {
                     var waitingBarType = assembly.GetType("Syncfusion.Windows.Forms.Tools.WaitingBar");
@@ -89,7 +90,7 @@ namespace WileyWidget.WinForms.Controls
                 _messageLabel = new Label
                 {
                     AutoSize = true,
-                    ForeColor = Color.White,
+                    ForeColor = ThemeManager.Colors.TextPrimary,
                     Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
                     Text = "Loading...",
                     TextAlign = ContentAlignment.MiddleCenter,

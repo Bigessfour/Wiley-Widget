@@ -31,22 +31,16 @@ namespace WileyWidget.WinForms.Controls
         private GroupBox? _themeGroup;
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
         private GroupBox? _aboutGroup;
-        private GroupBox? _exportGroup;
         private Label? _lblVersion;
         private Label? _lblDbStatus;
         private Syncfusion.WinForms.Controls.SfButton? _btnClose;
-        private Syncfusion.WinForms.Controls.SfButton? _btnSave;
         private Syncfusion.WinForms.Controls.SfButton? _btnBrowseExportPath;
         private TextBox? _txtAppTitle;
         private TextBox? _txtExportPath;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numAutoSaveInterval;
-        private Syncfusion.WinForms.ListView.SfComboBox? _comboLogLevel;
-        private Syncfusion.WinForms.ListView.SfComboBox? _comboDateFormat;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbLogLevel;
         private TextBox? _txtDateFormat;
         private TextBox? _txtCurrencyFormat;
-        private CheckBox? _chkAutoSave;
-        private CheckBox? _chkEnableLogging;
         private CheckBox? _chkUseDemoData;
         private ToolTip? _demoDataToolTip;
         private ErrorProvider? _error_provider;
@@ -165,7 +159,7 @@ namespace WileyWidget.WinForms.Controls
             _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try { _themeCombo.DataSource = _vm?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
             try { _themeCombo.SelectedItem = _themeService.Preference; } catch { }
-            _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.Preference = sel; } catch { } };
+            _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.SetTheme(sel); } catch { } };
 
             _themeGroup.Controls.Add(_themeCombo);
             _mainPanel.Controls.Add(_themeGroup);

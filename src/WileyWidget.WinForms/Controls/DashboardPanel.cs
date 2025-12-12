@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.Globalization;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using CommunityToolkit.Mvvm.Input;
 
@@ -515,6 +516,9 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
+            // Apply theme to the details grid
+            ThemeColors.ApplySfDataGridTheme(_detailsGrid);
+
             rightPanel.Controls.Add(_detailsGrid, 0, 0);
 
             // small summary area
@@ -539,9 +543,9 @@ namespace WileyWidget.WinForms.Controls
                 tile.Controls.Add(lbl);
 
                 // Capture references to the value labels for later updates
-                if (title.StartsWith("Total Budget")) _tileBudgetValueLabel = valLbl;
-                else if (title.StartsWith("Expenditure")) _tileExpenditureValueLabel = valLbl;
-                else if (title.StartsWith("Remaining")) _tileRemainingValueLabel = valLbl;
+                if (title.StartsWith("Total Budget", StringComparison.Ordinal)) _tileBudgetValueLabel = valLbl;
+                else if (title.StartsWith("Expenditure", StringComparison.Ordinal)) _tileExpenditureValueLabel = valLbl;
+                else if (title.StartsWith("Remaining", StringComparison.Ordinal)) _tileRemainingValueLabel = valLbl;
 
                 summaryTiles.Controls.Add(tile);
 

@@ -38,7 +38,8 @@ class TrunkCliResult:
             "exit_code": self.exit_code,
             "output": self.output,
             "pr_number": self.pr_number,
-            "timestamp": self.timestamp.isoformat(),
+            # trunk-ignore(pyright/reportOptionalMemberAccess)
+            "timestamp": self.timestamp.isoformat() if self.timestamp else "",
         }
 
 
