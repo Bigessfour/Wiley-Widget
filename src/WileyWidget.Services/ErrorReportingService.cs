@@ -114,9 +114,9 @@ public class ErrorReportingService
         try { ErrorReported?.Invoke(exception, context); } catch { /* do not fail reporting */ }
 
         // Show user-friendly dialog if requested and not suppressed
-        if (showToUser && !SuppressUserDialogs && Application.Current?.Dispatcher != null)
+        if (showToUser && !SuppressUserDialogs && System.Windows.Application.Current?.Dispatcher != null)
         {
-            Application.Current.Dispatcher.InvokeAsync(() =>
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 ShowErrorDialog(exception, context, correlationId));
         }
     }
@@ -475,13 +475,13 @@ public class ErrorReportingService
                          $"Reference ID: {correlationId}\n\n" +
                          "Would you like to continue? (Some features may not work properly)";
 
-            var result = MessageBox.Show(message, "Application Error",
+            var result = System.Windows.MessageBox.Show(message, "Application Error",
                                        MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.No)
             {
                 Log.Information("User chose to exit after error (CorrelationId: {CorrelationId})", correlationId);
-                Application.Current?.Shutdown();
+                System.Windows.Application.Current?.Shutdown();
             }
             else
             {

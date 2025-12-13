@@ -7,7 +7,7 @@ using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Themes;
+using WileyWidgetThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -33,16 +33,19 @@ public partial class ChatWindow : Form
     /// <summary>
     /// Constructor accepting service provider for DI resolution.
     /// </summary>
-    public ChatWindow(IServiceProvider serviceProvider)
+    public ChatWindow(IServiceProvider serviceProvider, MainForm mainForm)
     {
         InitializeComponent();
 
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
+
+        MdiParent = mainForm;
         _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatWindow>>(serviceProvider);
         _aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(serviceProvider);
         _conversationRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(serviceProvider);
 
-        ThemeColors.ApplyTheme(this);
+        WileyWidgetThemeColors.ApplyTheme(this);
 
         // Optional services - may not be available in all configurations
         _contextExtractionService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIContextExtractionService>(serviceProvider);
@@ -354,6 +357,23 @@ public partial class ChatWindow : Form
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error clearing conversation");
+        }
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        if (MdiParent is MainForm mf)
+        {
+            try
+            {
+                mf.RegisterAsDockingMDIChild(this, true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to register ChatWindow with DockingManager");
+            }
         }
     }
 

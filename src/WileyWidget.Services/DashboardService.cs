@@ -38,7 +38,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets dashboard data with caching
         /// </summary>
-        public async Task<IEnumerable<DashboardItem>> GetDashboardDataAsync()
+        public async Task<IEnumerable<DashboardItem>> GetDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -56,7 +56,7 @@ namespace WileyWidget.Services
                 }
 
                 // Fetch fresh data
-                var items = await FetchDashboardDataAsync();
+                var items = await FetchDashboardDataAsync(cancellationToken);
                 var itemsList = items.ToList();
 
                 // Cache the results
@@ -78,15 +78,15 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets dashboard items for display
         /// </summary>
-        public async Task<IEnumerable<DashboardItem>> GetDashboardItemsAsync()
+        public async Task<IEnumerable<DashboardItem>> GetDashboardItemsAsync(CancellationToken cancellationToken = default)
         {
-            return await GetDashboardDataAsync();
+            return await GetDashboardDataAsync(cancellationToken);
         }
 
         /// <summary>
         /// Refreshes dashboard data by clearing cache
         /// </summary>
-        public async Task RefreshDashboardAsync()
+        public async Task RefreshDashboardAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -101,7 +101,7 @@ namespace WileyWidget.Services
                 _lastRefresh = DateTime.MinValue;
 
                 // Fetch fresh data
-                await GetDashboardDataAsync();
+                await GetDashboardDataAsync(cancellationToken);
 
                 _logger.LogInformation("Dashboard data refreshed successfully");
             }
@@ -115,7 +115,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Fetches dashboard data from repositories
         /// </summary>
-        private async Task<IEnumerable<DashboardItem>> FetchDashboardDataAsync()
+        private async Task<IEnumerable<DashboardItem>> FetchDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             var items = new List<DashboardItem>();
             var currentFiscalYear = DateTime.Now.Month >= 7 ? DateTime.Now.Year + 1 : DateTime.Now.Year;
@@ -125,7 +125,7 @@ namespace WileyWidget.Services
             try
             {
                 // Get budget summary
-                var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd);
+                var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
 
                 if (budgetSummary != null)
                 {
@@ -167,7 +167,7 @@ namespace WileyWidget.Services
                 }
 
                 // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
-                var accountList = await _accountRepository.GetAllAsync();
+                var accountList = await _accountRepository.GetAllAsync(cancellationToken);
                 var accountCount = accountList?.Count() ?? 0;
                 items.Add(new DashboardItem
                 {
@@ -178,7 +178,7 @@ namespace WileyWidget.Services
                 });
 
                 // Get recent budget entries
-                var recentEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear);
+                var recentEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken);
                 var revenueAccounts = recentEntries.Count(e => e.AccountNumber.StartsWith("4", StringComparison.Ordinal));
                 var expenseAccounts = recentEntries.Count(e => e.AccountNumber.StartsWith("5", StringComparison.Ordinal) ||
                                                                  e.AccountNumber.StartsWith("6", StringComparison.Ordinal));

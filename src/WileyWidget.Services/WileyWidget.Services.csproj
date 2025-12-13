@@ -11,8 +11,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
     <NoWarn>
-      $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416;NU1902;NU1903</NoWarn>
+      $(NoWarn);NETSDK1206;NU1605;NU1008;CS7022;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8622;CS8625;CS8632;CS8613;CS1061;CS1929;CA1416;NU1902;NU1903;NU1701;NU1603</NoWarn>
     <WarningsNotAsErrors>NU1008</WarningsNotAsErrors>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -65,6 +66,9 @@
 
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
 
+    <PackageReference Include="BoldReports.WPF" />
+    <PackageReference Include="Microsoft.ReportingServices.ReportViewerControl.Winforms" />
+
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
@@ -72,7 +76,7 @@
     <!-- Pin BCL packages to patched versions to address known vulnerabilities -->
     <PackageReference Include="Polly" />
     <!-- AI Integration packages removed from Services project - register per-module when needed -->
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 
@@ -110,7 +114,6 @@
     <Compile Remove="DialogTrackingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
     <Compile Remove="SafeResourceDictionaryLoader.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
     <Compile Remove="ErrorReportingService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <Compile Remove="BoldReportService.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
     <Compile Remove="Threading\DispatcherExtensions.cs" Condition="'$(TargetFramework)' == 'net9.0'" />
   </ItemGroup>
 

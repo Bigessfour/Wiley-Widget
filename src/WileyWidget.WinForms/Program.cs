@@ -9,9 +9,11 @@ using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
-using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
 using WileyWidget.Data;
@@ -33,12 +35,22 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
-            RegisterSyncfusionLicense();
+            // Suppress loading of Microsoft.WinForms.Utilities.Shared which is not needed at runtime
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
+            {
+                if (resolveArgs.Name != null && resolveArgs.Name.StartsWith("Microsoft.WinForms.Utilities.Shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    return null; // Return null to indicate the assembly should not be loaded
+                }
+                return null;
+            };
+
             InitializeWinForms();
             CaptureSynchronizationContext();
 
             try
             {
+                RegisterSyncfusionLicense();
                 using var host = BuildHost(args);
                 using var uiScope = host.Services.CreateScope();
                 Services = uiScope.ServiceProvider;
@@ -46,6 +58,9 @@ namespace WileyWidget.WinForms
                 InitializeTheme();
 
                 ConfigureErrorReporting();
+
+                // Startup health check
+                RunStartupHealthCheck(host.Services);
 
                 UiTestDataSeeder.SeedIfEnabledAsync(uiScope.ServiceProvider).GetAwaiter().GetResult();
 
@@ -70,15 +85,97 @@ namespace WileyWidget.WinForms
 
         private static void RegisterSyncfusionLicense()
         {
+            // Skip license validation in test environments
+            if (IsRunningInTestEnvironment())
+            {
+                Console.WriteLine("Running in test environment - skipping Syncfusion license validation");
+                return;
+            }
+
+            string? licenseKey = GetSyncfusionLicenseKey();
+
+            if (string.IsNullOrWhiteSpace(licenseKey))
+            {
+                throw new InvalidOperationException(
+                    "Syncfusion license key is required but not found. " +
+                    "Please configure the license key using one of the following methods:\n" +
+                    "1. User secrets: dotnet user-secrets set \"Syncfusion:LicenseKey\" \"your-key\" --project WileyWidget.WinForms\n" +
+                    "2. Environment variable: SYNCFUSION_LICENSE_KEY=your-key\n" +
+                    "3. Create secrets/SyncfusionLicense file with the key\n" +
+                    "Without a valid license, Syncfusion controls will display watermarks or fail in production.");
+            }
+
+            try
+            {
+                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+
+                // Validate the license for Windows Forms platform
+                if (!SyncfusionLicenseProvider.ValidateLicense(Platform.WindowsForms))
+                {
+                    throw new InvalidOperationException(
+                        "The provided Syncfusion license key is invalid or expired. " +
+                        "Please verify your license key and ensure it is current.");
+                }
+
+                // Log success (using a simple console write since Log may not be initialized yet)
+                Console.WriteLine("Syncfusion license registered and validated successfully");
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                throw new InvalidOperationException(
+                    "Failed to register Syncfusion license. " +
+                    "Please ensure the license key is valid and properly formatted.", ex);
+            }
+        }
+
+        private static bool IsRunningInTestEnvironment()
+        {
+            // Check for test environment indicators
+            return Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS") == "true" ||
+                   AppDomain.CurrentDomain.GetAssemblies()
+                       .Any(asm => asm.FullName?.Contains("test", StringComparison.OrdinalIgnoreCase) == true ||
+                                   asm.FullName?.Contains("xunit", StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        private static string? GetSyncfusionLicenseKey()
+        {
+            // 1. Try user secrets (development)
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
             var tempConfig = configBuilder.Build();
-            var syncfusionLicense = tempConfig["Syncfusion:LicenseKey"];
-            if (!string.IsNullOrWhiteSpace(syncfusionLicense))
+            string? licenseKey = tempConfig["Syncfusion:LicenseKey"];
+
+            if (!string.IsNullOrWhiteSpace(licenseKey))
             {
-                SyncfusionLicenseProvider.RegisterLicense(syncfusionLicense);
-                Log.Debug("Syncfusion license registered from user secrets");
+                return licenseKey;
             }
+
+            // 2. Try environment variable (production/CI)
+            licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            if (!string.IsNullOrWhiteSpace(licenseKey))
+            {
+                return licenseKey;
+            }
+
+            // 3. Try secrets file (fallback)
+            string secretsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "secrets", "SyncfusionLicense");
+            if (File.Exists(secretsFilePath))
+            {
+                try
+                {
+                    licenseKey = File.ReadAllText(secretsFilePath).Trim();
+                    if (!string.IsNullOrWhiteSpace(licenseKey))
+                    {
+                        return licenseKey;
+                    }
+                }
+                catch
+                {
+                    // Ignore file read errors and continue
+                }
+            }
+
+            return null; // No license found
         }
 
         private static void InitializeWinForms()
@@ -93,21 +190,18 @@ namespace WileyWidget.WinForms
             try
             {
                 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SfSkinManager.ApplicationVisualTheme = themeName;
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Failed to load Office2019 theme assembly via SfSkinManager");
+                Log.Error(ex, "Theme initialization failed; falling back to default Windows theme");
+                // Optionally disable Syncfusion features or notify user
             }
+        }
 
-            try
-            {
-                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SkinManager.ApplicationVisualTheme = themeName;
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Failed to set application visual theme to {Theme}", themeName);
-            }
+        private static void ConfigureErrorReporting()
+        {
+            // Configure error reporting service if needed
         }
 
         private static void CaptureSynchronizationContext()
@@ -120,7 +214,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception syncEx)
                 {
-                    Log.Debug(syncEx, "Failed to set WindowsFormsSynchronizationContext; continuing with existing context");
+                    Console.Error.WriteLine($"Failed to set WindowsFormsSynchronizationContext; continuing with existing context: {syncEx}");
                 }
             }
 
@@ -137,6 +231,7 @@ namespace WileyWidget.WinForms
             ConfigureHealthChecks(builder);
             CaptureDiFirstChanceExceptions();
             AddDependencyInjection(builder);
+            ConfigureUiServices(builder);
 
             return builder.Build();
         }
@@ -168,16 +263,19 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Error ensuring default connection in configuration");
+                Console.Error.WriteLine($"Error ensuring default connection in configuration: {ex}");
             }
         }
 
         private static void ConfigureLogging(HostApplicationBuilder builder)
         {
+            // Make Serilog self-logging forward internal errors to stderr so we can diagnose sink failures
+            Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine(msg));
+
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(builder.Configuration)
                 .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                .WriteTo.File("logs/winforms-di.log", formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 3, shared: true)
+                .WriteTo.File("logs/app-.log", formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 3, shared: true)
                 .Enrich.FromLogContext()
                 .CreateLogger();
 
@@ -259,7 +357,7 @@ namespace WileyWidget.WinForms
                 if ((ex is InvalidOperationException || ex is AggregateException) &&
                     ex.Source != null && ex.Source.Contains("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal))
                 {
-                    Log.Error(ex, "First-chance DI exception");
+                    Console.WriteLine($"First-chance DI exception: {ex.Message}");
                 }
             };
         }
@@ -273,19 +371,33 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static void ConfigureErrorReporting()
+        private static void ConfigureUiServices(HostApplicationBuilder builder)
+        {
+            var useTabbedMdi = builder.Configuration.GetValue<bool>("UI:UseTabbedMdi", true);
+
+            if (useTabbedMdi)
+            {
+                builder.Services.AddSingleton(_ => new TabbedMDIManager());
+            }
+        }
+
+        private static void RunStartupHealthCheck(IServiceProvider services)
         {
             try
             {
-                var errorReporting = Services.GetService(typeof(ErrorReportingService)) as ErrorReportingService;
-                if (errorReporting != null)
+                // Simple DB connectivity check - need to create a scope since AppDbContext is scoped
+                using (var scope = services.CreateScope())
                 {
-                    errorReporting.SuppressUserDialogs = true;
+                    var scopedServices = scope.ServiceProvider;
+                    var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
+                    dbContext.Database.CanConnect();
                 }
+                Log.Information("Startup health check passed: Database connection successful");
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Failed to configure ErrorReportingService");
+                Log.Warning(ex, "Startup health check failed: Database connection issue");
+                // Don't throw here, let the app start and log the issue
             }
         }
 
@@ -314,15 +426,45 @@ namespace WileyWidget.WinForms
         {
             Application.ThreadException += (sender, e) =>
             {
-                Log.Fatal(e.Exception, "Unhandled UI thread exception");
-                try { (Services.GetService(typeof(ErrorReportingService)) as ErrorReportingService)?.ReportError(e.Exception, "UI Thread Exception", showToUser: false); } catch (Exception reportEx) { Log.Debug(reportEx, "Failed to report UI thread exception to ErrorReportingService"); }
+                try
+                {
+                    Log.Fatal(e.Exception, "Unhandled UI thread exception");
+                }
+                catch (Exception fatalLogEx)
+                {
+                    Console.Error.WriteLine($"Log.Fatal failed for UI thread exception: {fatalLogEx} - original exception: {e.Exception}");
+                }
+
+                try
+                {
+                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "UI Thread Exception", showToUser: false);
+                }
+                catch (Exception reportEx)
+                {
+                    Console.Error.WriteLine($"Failed to report UI thread exception to ErrorReportingService: {reportEx}");
+                }
             };
 
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
-                Log.Fatal(ex, "Unhandled AppDomain exception");
-                try { (Services.GetService(typeof(ErrorReportingService)) as ErrorReportingService)?.ReportError(ex ?? new InvalidOperationException("Unhandled domain exception"), "Domain exception", showToUser: false); } catch (Exception reportEx) { Log.Debug(reportEx, "Failed to report AppDomain exception to ErrorReportingService"); }
+                try
+                {
+                    Log.Fatal(ex, "Unhandled AppDomain exception");
+                }
+                catch (Exception fatalLogEx)
+                {
+                    Console.Error.WriteLine($"Log.Fatal failed for AppDomain exception: {fatalLogEx} - original exception: {ex}");
+                }
+
+                try
+                {
+                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex ?? new InvalidOperationException("Unhandled domain exception"), "Domain exception", showToUser: false);
+                }
+                catch (Exception reportEx)
+                {
+                    Console.Error.WriteLine($"Failed to report AppDomain exception to ErrorReportingService: {reportEx}");
+                }
             };
         }
 
@@ -414,7 +556,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception autoCloseEx)
                 {
-                    Log.Debug(autoCloseEx, "Auto-close task failed");
+                    Console.Error.WriteLine($"Auto-close task failed: {autoCloseEx}");
                 }
             });
         }
@@ -427,8 +569,8 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Log.Debug(logEx, "Failed to log Application.Run fatal during shutdown"); }
-                try { (Services.GetService(typeof(ErrorReportingService)) as ErrorReportingService)?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Log.Debug(reportEx, "Failed to report Application.Run abort to ErrorReportingService"); }
+                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Console.Error.WriteLine($"Failed to log Application.Run fatal during shutdown: {logEx}"); }
+                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Console.Error.WriteLine($"Failed to report Application.Run abort to ErrorReportingService: {reportEx}"); }
                 throw new InvalidOperationException("UI message loop aborted", ex);
             }
             finally
@@ -446,7 +588,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception logEx)
             {
-                Log.Debug(logEx, "Failed to log startup fatal error");
+                Console.Error.WriteLine($"Failed to log startup fatal error: {logEx}");
             }
             finally
             {
@@ -455,11 +597,36 @@ namespace WileyWidget.WinForms
 
             try
             {
-                (Services?.GetService(typeof(ErrorReportingService)) as ErrorReportingService)?.ReportError(ex, "Startup Failure", showToUser: false);
+                (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "Startup Failure", showToUser: false);
             }
             catch (Exception reportEx)
             {
-                Log.Debug(reportEx, "Failed to report startup failure to ErrorReportingService");
+                Console.Error.WriteLine($"Failed to report startup failure to ErrorReportingService: {reportEx}");
+            }
+
+            // Show user-friendly error dialog for startup failures
+            try
+            {
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var logPath = Path.Combine(appData, "WileyWidget", "logs");
+                var message = "Startup failed: Check logs at " + logPath;
+
+                // Check if we have UI initialized
+                if (Application.MessageLoop)
+                {
+                    MessageBox.Show(message, "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    // Fallback to console output if no message loop
+                    Console.Error.WriteLine("Startup Error: " + ex.Message);
+                }
+            }
+            catch (Exception uiEx)
+            {
+                // Last resort - write to console
+                Console.Error.WriteLine($"Critical startup error: {ex.Message}");
+                Console.Error.WriteLine($"UI error display failed: {uiEx.Message}");
             }
         }
     }

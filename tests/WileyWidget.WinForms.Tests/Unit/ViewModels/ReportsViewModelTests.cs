@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Reporting.WinForms;
 using Moq;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
@@ -30,9 +31,10 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
 
             var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
+            var fakeViewer = new object();
 
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
-            vm.ReportViewer = new object();
+            vm.ReportViewer = fakeViewer;
             vm.FromDate = new DateTime(2024, 1, 1);
             vm.ToDate = new DateTime(2024, 6, 1);
             vm.SelectedReportType = "Budget Summary";
@@ -55,9 +57,10 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var mockReportSvc = new Mock<IBoldReportService>();
             var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
+            var fakeViewer = new object();
 
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
-            vm.ReportViewer = new object();
+            vm.ReportViewer = fakeViewer;
             vm.FromDate = new DateTime(2025, 1, 1);
             vm.ToDate = new DateTime(2024, 1, 1); // invalid range
 
@@ -67,7 +70,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             // Assert
             mockReportSvc.Verify(x => x.LoadReportAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
-            Assert.Contains("earlier than or equal", vm.ErrorMessage);
+            Assert.Contains("earlier than or equal", vm.ErrorMessage, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -85,8 +88,9 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 .Returns(Task.CompletedTask);
 
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
+            var fakeViewer = new object();
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
-            vm.ReportViewer = new object();
+            vm.ReportViewer = fakeViewer;
             vm.SelectedReportType = "Budget Summary";
 
             // Act
@@ -112,8 +116,9 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 .Returns(Task.CompletedTask);
 
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
+            var fakeViewer = new object();
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
-            vm.ReportViewer = new object();
+            vm.ReportViewer = fakeViewer;
             vm.SelectedReportType = "Budget Summary";
 
             // Act

@@ -52,6 +52,11 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 
   // ============================================================================
   // File Management
@@ -245,6 +250,13 @@
   // Terminal Configuration
   // ============================================================================
   "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.fontSize": 12,
+  "terminal.integrated.lineHeight": 1.2,
+  "terminal.integrated.wordWrap": true,
+  "terminal.integrated.rendererType": "canvas",
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.shellIntegration.enabled": true,
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",

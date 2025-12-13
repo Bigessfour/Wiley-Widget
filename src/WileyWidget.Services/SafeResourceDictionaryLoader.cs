@@ -6,6 +6,7 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Xml;
 using Microsoft.Extensions.Logging;
+using Color = System.Windows.Media.Color;
 
 namespace WileyWidget.Services
 {

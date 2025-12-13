@@ -7,8 +7,7 @@ namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Abstraction for Bold Reports integration used by the UI layer.
-    /// Kept minimal so implementations can interact with a viewer object via reflection
-    /// without requiring references in the Abstractions assembly.
+    /// Uses object type to maintain abstraction from specific ReportViewer implementation.
     /// </summary>
     public interface IBoldReportService
     {

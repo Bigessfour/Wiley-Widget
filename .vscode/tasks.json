@@ -319,6 +319,286 @@
 			"problemMatcher": [
 				"$msbuild"
 			]
+		},
+		{
+			"label": "generate-ai-manifest",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/scripts/generate-ai-manifest.py"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Generate AI Manifest",
+			"type": "shell",
+			"command": "C:/Users/biges/Desktop/Wiley-Widget/.venv/Scripts/python.exe",
+			"args": [
+				"scripts/generate-ai-manifest.py"
+			],
+			"group": "build"
+		},
+		{
+			"label": "run ui tests (FlaUI)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"$env:WILEYWIDGET_UI_TESTS='true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
+			],
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "run ui tests (FlaUI)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"& { $env:WILEYWIDGET_UI_TESTS='true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI }"
+			],
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "run ui tests (FlaUI)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
+			],
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-ui-tests-logged-serial",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI -p:BuildInParallel=false *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "copilot-temp-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"--no-restore",
+				"--verbosity",
+				"minimal",
+				"--configuration",
+				"Debug"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "copilot-temp-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"--no-restore",
+				"--verbosity",
+				"minimal",
+				"--configuration",
+				"Debug"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"--no-restore",
+				"--verbosity",
+				"minimal",
+				"--configuration",
+				"Debug"
+			]
+		},
+		{
+			"label": "ai-temp-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"C:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.sln",
+				"--no-restore",
+				"--verbosity",
+				"minimal",
+				"--configuration",
+				"Debug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "test winforms unit",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
 		}
 	]
 }

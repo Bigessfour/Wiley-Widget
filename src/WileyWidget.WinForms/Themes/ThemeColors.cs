@@ -96,19 +96,6 @@ namespace WileyWidget.WinForms.Themes
 
                 // Apply global theme - this cascades to all Syncfusion controls
                 SfSkinManager.SetVisualStyle(form, DefaultTheme);
-
-                // For RibbonControlAdv and StatusBarAdv, also set ThemeName explicitly
-                foreach (Control control in form.Controls)
-                {
-                    if (control is Syncfusion.Windows.Forms.Tools.RibbonControlAdv ribbon)
-                    {
-                        ribbon.ThemeName = DefaultTheme;
-                    }
-                    else if (control is Syncfusion.Windows.Forms.Tools.StatusBarAdv statusBar)
-                    {
-                        statusBar.ThemeName = DefaultTheme;
-                    }
-                }
             }
             catch (Exception ex)
             {
@@ -124,6 +111,20 @@ namespace WileyWidget.WinForms.Themes
                 catch (Exception fallbackEx)
                 {
                     Serilog.Log.Error(fallbackEx, "Theme fallback failed for form {FormName}", form.Name);
+                }
+
+                // User-friendly fallback: Show message and continue with default theme
+                try
+                {
+                    System.Windows.Forms.MessageBox.Show(
+                        "Theme initialization failed. The application will continue with default styling.",
+                        "Theme Warning",
+                        System.Windows.Forms.MessageBoxButtons.OK,
+                        System.Windows.Forms.MessageBoxIcon.Warning);
+                }
+                catch (Exception msgEx)
+                {
+                    Serilog.Log.Error(msgEx, "Failed to show theme warning message");
                 }
             }
         }

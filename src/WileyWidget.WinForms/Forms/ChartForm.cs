@@ -22,15 +22,19 @@ namespace WileyWidget.WinForms.Forms
     public partial class ChartForm : Form
     {
         private readonly ChartViewModel _vm;
+        private readonly MainForm _mainForm;
         private ChartControl? _cartesian;
         private ChartControl? _pie;
         private Label? _statusLabel;
 
-        public ChartForm(ChartViewModel vm)
+        public ChartForm(ChartViewModel vm, MainForm mainForm)
         {
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+            _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
             InitializeComponent();
+            MdiParent = _mainForm;
             Text = ChartFormResources.FormTitle;
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
 
             _vm.PropertyChanged += VmOnPropertyChanged;
@@ -47,7 +51,9 @@ namespace WileyWidget.WinForms.Forms
         {
             Name = "ChartForm";
             _cartesian = CreateCartesianChart();
+            _cartesian.Dock = DockStyle.Fill;
             _pie = CreatePieChart();
+            _pie.Dock = DockStyle.Fill;
 
             var split = new SplitContainer { Dock = DockStyle.Fill };
             split.Panel1.Controls.Add(_cartesian);
@@ -91,8 +97,7 @@ namespace WileyWidget.WinForms.Forms
         {
             var pie = new ChartControl
             {
-                Dock = DockStyle.Bottom,
-                Height = 300,
+                Dock = DockStyle.Fill,
                 Name = "Chart_Pie",
                 Text = "Budget Distribution"
             };
@@ -103,6 +108,11 @@ namespace WileyWidget.WinForms.Forms
             pie.PrimaryYAxis.DrawGrid = false;
 
             return pie;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
         }
 
         private async Task LoadChartDataAsync()

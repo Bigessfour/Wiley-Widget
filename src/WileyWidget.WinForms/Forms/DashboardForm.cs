@@ -1,8 +1,10 @@
+using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
@@ -15,6 +17,10 @@ using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.Models;
+
+#pragma warning disable CS8604 // Possible null reference argument
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -42,34 +48,65 @@ namespace WileyWidget.WinForms.Forms
     public partial class DashboardForm : Form
     {
         private readonly DashboardViewModel _viewModel;
+        private readonly AnalyticsViewModel _analyticsViewModel;
         private TableLayoutPanel? _mainLayout;
         private SfDataGrid? _metricsGrid;
+        private SfDataGrid? _fundsGrid;
+        private SfDataGrid? _departmentsGrid;
+        private SfDataGrid? _topVariancesGrid;
+        private SfDataGrid? _analysisGrid;
+        private SfDataGrid? _analyticsMetricsGrid;
+        private SfDataGrid? _analyticsVariancesGrid;
+        private SfDataGrid? _scenarioGrid;
+        private ChartControl? _trendChart;
+        private ChartControl? _forecastChart;
         private ChartControl? _revenueChart;
         private RadialGauge? _budgetGauge;
         private RadialGauge? _revenueGauge;
         private RadialGauge? _expensesGauge;
         private RadialGauge? _netPositionGauge;
+        private RadialGauge? _variancePercentGauge;
+        private RadialGauge? _varianceAmountGauge;
+        private RadialGauge? _revenueAmountGauge;
+        private RadialGauge? _expensesAmountGauge;
         private ToolStripEx? _toolbar;
-        private StatusBarAdv? _statusBar;
-        private StatusBarAdvPanel? _statusPanel;
-        private StatusBarAdvPanel? _countsPanel;
-        private StatusBarAdvPanel? _updatedPanel;
+        private StatusStrip? _statusBar;
+        private ToolStripStatusLabel? _statusPanel;
+        private ToolStripStatusLabel? _countsPanel;
+        private ToolStripStatusLabel? _updatedPanel;
         private Label? _municipalityLabel;
         private Label? _fiscalYearLabel;
         private Label? _lastUpdatedLabel;
         private System.Windows.Forms.Timer? _refreshTimer;
         private CheckBox? _autoRefreshCheckbox;
+        private MenuStrip? _menuStrip;
+        private ToolTip _toolTip;
+        private ToolStripProgressBar? _progressBar;
+        private ContextMenuStrip? _gridContextMenu;
         private readonly bool _isUiTestHarness;
+        private TabControl? _detailsTab;
 
         private const int RefreshIntervalMs = 30000;
 
-        public DashboardForm(DashboardViewModel viewModel)
+        public DashboardForm(DashboardViewModel viewModel, AnalyticsViewModel analyticsViewModel, MainForm mainForm)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            _analyticsViewModel = analyticsViewModel ?? throw new ArgumentNullException(nameof(analyticsViewModel));
+            if (mainForm == null)
+            {
+                throw new ArgumentNullException(nameof(mainForm));
+            }
+
+            if (mainForm.IsMdiContainer)
+            {
+                MdiParent = mainForm;
+            }
             _isUiTestHarness = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
+            _toolTip = new ToolTip();
             InitializeComponent();
             SetupUI();
             ThemeColors.ApplyTheme(this);
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             BindViewModel();
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             LoadDashboard();
@@ -91,16 +128,26 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 6,
+                RowCount = 7,
                 Padding = new Padding(10)
             };
 
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));   // Menu
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // Toolbar
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));   // Header info
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));  // KPI Gauges
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Chart
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Metrics Grid
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // Status bar
+
+            if (_isUiTestHarness)
+            {
+                BuildBasicStatusStrip();
+            }
+            else
+            {
+                BuildStatusBar();
+            }
 
             BuildToolbar();
 
@@ -112,7 +159,20 @@ namespace WileyWidget.WinForms.Forms
             };
             _refreshTimer.Start();
 
-            // Header panel
+            BuildMenu();
+
+            _mainLayout.Controls.Add(_menuStrip!, 0, 0);
+
+        _gridContextMenu = new ContextMenuStrip();
+        _gridContextMenu.Items.Add(new ToolStripMenuItem("Copy", null, (s, e) =>
+        {
+            if (ActiveControl is SfDataGrid grid)
+            {
+                grid.ClipboardController.Copy();
+            }
+        }));
+
+        // Header panel
             var headerPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -126,7 +186,13 @@ namespace WileyWidget.WinForms.Forms
             _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5) };
 
             headerPanel.Controls.AddRange(new Control[] { _municipalityLabel, _fiscalYearLabel, _lastUpdatedLabel });
-            _mainLayout.Controls.Add(headerPanel, 0, 1);
+            if (_toolTip != null)
+            {
+                _toolTip.SetToolTip(_municipalityLabel, "Displays the current municipality");
+                _toolTip.SetToolTip(_fiscalYearLabel, "Displays the current fiscal year");
+                _toolTip.SetToolTip(_lastUpdatedLabel, "Shows when the data was last updated");
+            }
+            _mainLayout.Controls.Add(headerPanel, 0, 2);
 
             // KPI Gauges Panel
             var gaugePanel = new FlowLayoutPanel
@@ -138,12 +204,18 @@ namespace WileyWidget.WinForms.Forms
             };
 
             _budgetGauge = CreateGauge("Total Budget", ThemeColors.PrimaryAccent);
-            _revenueGauge = CreateGauge("Revenue", ThemeColors.Success);
-            _expensesGauge = CreateGauge("Expenses", ThemeColors.Error);
+            _revenueGauge = CreateGauge("Revenue %", ThemeColors.Success);
+            _expensesGauge = CreateGauge("Expenses %", ThemeColors.Error);
             _netPositionGauge = CreateGauge("Net Position", ThemeColors.Warning);
+            _variancePercentGauge = CreateGauge("Variance %", ThemeColors.Warning);
+            _varianceAmountGauge = CreateGauge("Total Variance", ThemeColors.Warning);
+            _revenueAmountGauge = CreateGauge("Revenue Amount", ThemeColors.Success);
+            _expensesAmountGauge = CreateGauge("Expenses Amount", ThemeColors.Error);
 
-            gaugePanel.Controls.AddRange(new Control[] { _budgetGauge, _revenueGauge, _expensesGauge, _netPositionGauge });
-            _mainLayout.Controls.Add(gaugePanel, 0, 2);
+            gaugePanel.Controls.AddRange(new Control[] { _budgetGauge, _revenueGauge, _expensesGauge, _netPositionGauge, _variancePercentGauge, _varianceAmountGauge, _revenueAmountGauge, _expensesAmountGauge });
+            var gaugeGroup = new GroupBox { Text = "Key Performance Indicators", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            gaugeGroup.Controls.Add(gaugePanel);
+            _mainLayout.Controls.Add(gaugeGroup, 0, 3);
 
             // Revenue Trend Chart
             _revenueChart = new ChartControl
@@ -155,7 +227,9 @@ namespace WileyWidget.WinForms.Forms
             _revenueChart.PrimaryYAxis.Title = "Amount ($)";
             _revenueChart.Series.Add(new ChartSeries("Revenue", ChartSeriesType.Line));
 
-            _mainLayout.Controls.Add(_revenueChart, 0, 3);
+            var revenueChartGroup = new GroupBox { Text = "Revenue Trend", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            revenueChartGroup.Controls.Add(_revenueChart);
+            _mainLayout.Controls.Add(revenueChartGroup, 0, 4);
 
             // Metrics Grid using Syncfusion SfDataGrid with performance optimizations
             _metricsGrid = new SfDataGrid
@@ -241,27 +315,244 @@ namespace WileyWidget.WinForms.Forms
             // Note: Styling is now handled by ThemeName property.
             // All colors, fonts, and styles are managed by SkinManager dynamically.
 
+            // Create a nested table layout for metrics and a details tab (Fund/Departments/Variances)
+            var metricsContainer = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(0, 6, 0, 6)
+            };
+            metricsContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+            metricsContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+
             var metricsPanel = new Panel { Dock = DockStyle.Fill };
             var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft };
             metricsPanel.Controls.Add(_metricsGrid);
             metricsPanel.Controls.Add(metricsLabel);
 
-            _mainLayout.Controls.Add(metricsPanel, 0, 4);
+            // Details Tab (Funds / Departments / Top Variances / Budget Analysis)
+            _detailsTab = new TabControl { Dock = DockStyle.Fill };
+
+            var fundsTab = new TabPage("Funds") { Padding = new Padding(4) };
+            _fundsGrid = new SfDataGrid
+            {
+                Name = "FundsGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = true,
+                AllowSorting = true,
+                EnableDataVirtualization = true
+            };
+            ThemeColors.ApplySfDataGridTheme(_fundsGrid);
+            _fundsGrid.ContextMenuStrip = _gridContextMenu;
+            _fundsGrid.Columns.Add(new GridTextColumn { MappingName = "FundName", HeaderText = "Fund", Width = 160, AllowSorting = true });
+            _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Budgeted", Width = 120, AllowSorting = true });
+            _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalActual", HeaderText = "Actual", Width = 120, AllowSorting = true });
+            _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", Width = 120, AllowSorting = true });
+            _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "VariancePercentage", HeaderText = "% Variance", Width = 100, AllowSorting = true });
+            _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "AccountCount", HeaderText = "Accounts", Width = 90, AllowSorting = true });
+            fundsTab.Controls.Add(_fundsGrid);
+
+            var departmentsTab = new TabPage("Departments") { Padding = new Padding(4) };
+            _departmentsGrid = new SfDataGrid
+            {
+                Name = "DepartmentsGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = true,
+                AllowSorting = true,
+                EnableDataVirtualization = true
+            };
+            ThemeColors.ApplySfDataGridTheme(_departmentsGrid);
+            _departmentsGrid.ContextMenuStrip = _gridContextMenu;
+            _departmentsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", Width = 160, AllowSorting = true });
+            _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Budgeted", Width = 120, AllowSorting = true });
+            _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalActual", HeaderText = "Actual", Width = 120, AllowSorting = true });
+            _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", Width = 120, AllowSorting = true });
+            _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "VariancePercentage", HeaderText = "% Variance", Width = 100, AllowSorting = true });
+            _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "AccountCount", HeaderText = "Accounts", Width = 90, AllowSorting = true });
+            departmentsTab.Controls.Add(_departmentsGrid);
+
+            var variancesTab = new TabPage("Top Variances") { Padding = new Padding(4) };
+            _topVariancesGrid = new SfDataGrid
+            {
+                Name = "TopVariancesGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = true,
+                AllowSorting = true,
+                EnableDataVirtualization = true
+            };
+            ThemeColors.ApplySfDataGridTheme(_topVariancesGrid);
+            _topVariancesGrid.ContextMenuStrip = _gridContextMenu;
+            _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "AccountNumber", HeaderText = "Acct #", Width = 100, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "AccountName", HeaderText = "Account", Width = 200, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", Width = 100, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridNumericColumn { MappingName = "ActualAmount", HeaderText = "Actual", Width = 100, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridNumericColumn { MappingName = "VarianceAmount", HeaderText = "Variance", Width = 100, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridNumericColumn { MappingName = "VariancePercentage", HeaderText = "% Variance", Width = 90, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "Fund", HeaderText = "Fund", Width = 80, AllowSorting = true });
+            _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "Department", HeaderText = "Department", Width = 120, AllowSorting = true });
+            variancesTab.Controls.Add(_topVariancesGrid);
+
+            var analysisTab = new TabPage("Budget Analysis") { Padding = new Padding(4) };
+            _analysisGrid = new SfDataGrid
+            {
+                Name = "BudgetAnalysisGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = false,
+                AllowSorting = false,
+            };
+            ThemeColors.ApplySfDataGridTheme(_analysisGrid);
+            _analysisGrid.ContextMenuStrip = _gridContextMenu;
+            _analysisGrid.Columns.Add(new GridTextColumn { MappingName = "BudgetPeriod", HeaderText = "Period", Width = 120 });
+            _analysisGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Total Budgeted", Width = 120 });
+            _analysisGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalActual", HeaderText = "Total Actual", Width = 120 });
+            _analysisGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalVariance", HeaderText = "Variance", Width = 120 });
+            _analysisGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalVariancePercentage", HeaderText = "% Variance", Width = 100 });
+            _analysisGrid.Columns.Add(new GridTextColumn { MappingName = "Warnings", HeaderText = "Warnings", Width = 240 });
+            analysisTab.Controls.Add(_analysisGrid);
+
+            // Analytics Tab
+            var analyticsTab = new TabPage("Analytics") { Padding = new Padding(4) };
+            var analyticsLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                Padding = new Padding(5)
+            };
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // Controls
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 30));  // Metrics
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 35));  // Charts
+            analyticsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 35));  // Scenario
+
+            // Analytics controls panel
+            var controlsPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false
+            };
+
+            var runAnalysisButton = new Button { Text = "Run Analysis", Width = 100, Height = 30 };
+            runAnalysisButton.Click += async (s, e) => await _analyticsViewModel.PerformAnalysisCommand.ExecuteAsync(null);
+
+            var runScenarioButton = new Button { Text = "Run Scenario", Width = 100, Height = 30 };
+            runScenarioButton.Click += async (s, e) => await _analyticsViewModel.RunScenarioCommand.ExecuteAsync(null);
+
+            var forecastButton = new Button { Text = "Generate Forecast", Width = 120, Height = 30 };
+            forecastButton.Click += async (s, e) => await _analyticsViewModel.GenerateForecastCommand.ExecuteAsync(null);
+
+            controlsPanel.Controls.AddRange(new Control[] { runAnalysisButton, runScenarioButton, forecastButton });
+            analyticsLayout.Controls.Add(controlsPanel, 0, 0);
+
+            // Analytics metrics grid
+            _analyticsMetricsGrid = new SfDataGrid
+            {
+                Name = "AnalyticsMetricsGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = true,
+                AllowSorting = true
+            };
+            ThemeColors.ApplySfDataGridTheme(_analyticsMetricsGrid);
+            _analyticsMetricsGrid.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = "Category", Width = 150 });
+            _analyticsMetricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Value", HeaderText = "Amount", Width = 120 });
+            _analyticsMetricsGrid.Columns.Add(new GridTextColumn { MappingName = "Unit", HeaderText = "Unit", Width = 80 });
+
+            var analyticsMetricsGroup = new GroupBox { Text = "Category Breakdown", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            analyticsMetricsGroup.Controls.Add(_analyticsMetricsGrid);
+            analyticsLayout.Controls.Add(analyticsMetricsGroup, 0, 1);
+
+            // Trend chart
+            _trendChart = new ChartControl
+            {
+                Dock = DockStyle.Fill,
+                Text = "Budget Trends"
+            };
+            _trendChart.PrimaryXAxis.Title = "Month";
+            _trendChart.PrimaryYAxis.Title = "Amount ($)";
+            _trendChart.Series.Add(new ChartSeries("Budgeted", ChartSeriesType.Line));
+            _trendChart.Series.Add(new ChartSeries("Actual", ChartSeriesType.Line));
+
+            var trendChartGroup = new GroupBox { Text = "Trend Analysis", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            trendChartGroup.Controls.Add(_trendChart);
+            analyticsLayout.Controls.Add(trendChartGroup, 0, 2);
+
+            // Scenario projections
+            _scenarioGrid = new SfDataGrid
+            {
+                Name = "ScenarioGrid",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowFiltering = false,
+                AllowSorting = true
+            };
+            ThemeColors.ApplySfDataGridTheme(_scenarioGrid);
+            _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "Year", HeaderText = "Year", Width = 80 });
+            _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "ProjectedRevenue", HeaderText = "Revenue", Width = 120 });
+            _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "ProjectedExpenses", HeaderText = "Expenses", Width = 120 });
+            _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "ProjectedReserves", HeaderText = "Reserves", Width = 120 });
+
+            var scenarioGroup = new GroupBox { Text = "Scenario Projections", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            scenarioGroup.Controls.Add(_scenarioGrid);
+            analyticsLayout.Controls.Add(scenarioGroup, 0, 3);
+
+            analyticsTab.Controls.Add(analyticsLayout);
+
+            _detailsTab.TabPages.Add(fundsTab);
+            _detailsTab.TabPages.Add(departmentsTab);
+            _detailsTab.TabPages.Add(variancesTab);
+            _detailsTab.TabPages.Add(analysisTab);
+            _detailsTab.TabPages.Add(analyticsTab);
+
+            metricsContainer.Controls.Add(metricsPanel, 0, 0);
+            metricsContainer.Controls.Add(_detailsTab, 1, 0);
+
+            var detailedMetricsGroup = new GroupBox { Text = "Detailed Metrics", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            detailedMetricsGroup.Controls.Add(metricsContainer);
+            _mainLayout.Controls.Add(detailedMetricsGroup, 0, 5);
 
             if (_isUiTestHarness)
             {
-                BuildBasicStatusStrip();
+                if (_statusBar != null)
+                {
+                    _mainLayout.Controls.Add(_statusBar, 0, 6);
+                }
             }
             else
             {
-                BuildStatusBar();
                 if (_statusBar != null)
                 {
-                    _mainLayout.Controls.Add(_statusBar, 0, 5);
+                    _mainLayout.Controls.Add(_statusBar, 0, 6);
                 }
             }
 
             Controls.Add(_mainLayout);
+        }
+
+        private void BuildMenu()
+        {
+            _menuStrip = new MenuStrip();
+            var fileMenu = new ToolStripMenuItem("File");
+            fileMenu.DropDownItems.Add("Load", null, (s, e) => { _ = LoadDashboard(); });
+            fileMenu.DropDownItems.Add("Export", null, (s, e) => { _ = ExportDashboard(); });
+            fileMenu.DropDownItems.Add(new ToolStripSeparator());
+            fileMenu.DropDownItems.Add("Exit", null, (s, e) => Close());
+            var viewMenu = new ToolStripMenuItem("View");
+            viewMenu.DropDownItems.Add("Refresh", null, (s, e) => { _ = _viewModel.RefreshCommand.ExecuteAsync(null); });
+            var helpMenu = new ToolStripMenuItem("Help");
+            helpMenu.DropDownItems.Add("About", null, (s, e) => MessageBox.Show("Wiley Widget Dashboard v1.0", "About"));
+            _menuStrip.Items.AddRange(new ToolStripItem[] { fileMenu, viewMenu, helpMenu });
         }
 
         private void BuildToolbar()
@@ -290,6 +581,7 @@ namespace WileyWidget.WinForms.Forms
                 DisplayStyle = ToolStripItemDisplayStyle.Text
             };
             loadButton.Click += async (s, e) => await LoadDashboard();
+            loadButton.ToolTipText = "Load dashboard data";
 
             var refreshButton = new ToolStripButton
             {
@@ -300,6 +592,7 @@ namespace WileyWidget.WinForms.Forms
                 DisplayStyle = ToolStripItemDisplayStyle.Text
             };
             refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+            refreshButton.ToolTipText = "Refresh dashboard data";
 
             var exportButton = new ToolStripButton
             {
@@ -310,6 +603,7 @@ namespace WileyWidget.WinForms.Forms
                 DisplayStyle = ToolStripItemDisplayStyle.Text
             };
             exportButton.Click += async (s, e) => await ExportDashboard();
+            exportButton.ToolTipText = "Export dashboard data to file";
 
             _autoRefreshCheckbox = new CheckBox
             {
@@ -324,6 +618,10 @@ namespace WileyWidget.WinForms.Forms
                 ToggleAutoRefresh(_autoRefreshCheckbox.Checked);
                 UpdateStatus(string.Format(CultureInfo.CurrentCulture, DashboardResources.StatusAutoRefresh, _autoRefreshCheckbox.Checked ? "On" : "Off"));
             };
+            if (_toolTip != null)
+            {
+                _toolTip.SetToolTip(_autoRefreshCheckbox, "Enable automatic refresh every 30 seconds");
+            }
             var autoRefreshHost = new ToolStripControlHost(_autoRefreshCheckbox)
             {
                 Margin = new Padding(6, 0, 0, 0)
@@ -336,6 +634,9 @@ namespace WileyWidget.WinForms.Forms
             _toolbar.Items.Add(new ToolStripSeparator());
             _toolbar.Items.Add(autoRefreshHost);
 
+            _progressBar = new ToolStripProgressBar { Style = ProgressBarStyle.Marquee, Visible = false, Width = 100 };
+            _toolbar.Items.Add(_progressBar);
+
             _mainLayout?.Controls.Add(_toolbar, 0, 0);
         }
 
@@ -343,55 +644,48 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                _statusBar = new StatusBarAdv
+                _statusBar = new StatusStrip
                 {
-                    Dock = DockStyle.Fill,
-                    BeforeTouchSize = new Size(0, 28),
+                    Dock = DockStyle.Bottom,
                     SizingGrip = false
                 };
-                // Theme application is optional - status bar remains functional if styling fails
-                try { SfSkinManager.SetVisualStyle(_statusBar, ThemeColors.DefaultTheme); }
-                catch (Exception)
-                {
-                    // Ignore - status bar works with default styling
-                }
 
-                _statusPanel = new StatusBarAdvPanel
+                _statusPanel = new ToolStripStatusLabel
                 {
                     Text = DashboardResources.StatusReady,
-                    BorderStyle = BorderStyle.None,
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
                     Width = 450
                 };
 
-                _countsPanel = new StatusBarAdvPanel
+                _countsPanel = new ToolStripStatusLabel
                 {
                     Text = "0 metrics",
-                    BorderStyle = BorderStyle.None,
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
                     Width = 220
                 };
 
-                _updatedPanel = new StatusBarAdvPanel
+                _updatedPanel = new ToolStripStatusLabel
                 {
                     Text = "Updated: --",
-                    BorderStyle = BorderStyle.None,
+                    BorderSides = ToolStripStatusLabelBorderSides.None,
                     Width = 220,
-                    Alignment = HorizontalAlignment.Left
+                    Alignment = ToolStripItemAlignment.Right
                 };
 
-                _statusBar.Panels = new StatusBarAdvPanel[] { _statusPanel, _countsPanel, _updatedPanel };
+                _statusBar.Items.AddRange(new ToolStripItem[] { _statusPanel, _countsPanel, _updatedPanel });
             }
             catch (Exception ex)
             {
                 // Log error if logger is available
-                var logger = Program.Services.GetService<ILogger<DashboardForm>>();
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<DashboardForm>>(Program.Services);
                 logger?.LogError(ex, "Failed to build dashboard status bar");
 
                 // Fallback: Create basic status bar
                 try
                 {
-                    _statusBar = new StatusBarAdv { Dock = DockStyle.Fill };
-                    _statusPanel = new StatusBarAdvPanel { Text = "Status bar initialization failed" };
-                    _statusBar.Panels = new StatusBarAdvPanel[] { _statusPanel };
+                    _statusBar = new StatusStrip { Dock = DockStyle.Bottom };
+                    _statusPanel = new ToolStripStatusLabel { Text = "Status bar initialization failed" };
+                    _statusBar.Items.Add(_statusPanel);
                 }
                 catch (Exception fallbackEx)
                 {
@@ -422,6 +716,7 @@ namespace WileyWidget.WinForms.Forms
         {
             var gauge = new RadialGauge
             {
+                Dock = DockStyle.Fill,
                 Width = 180,
                 Height = 180,
                 Margin = new Padding(5),
@@ -442,9 +737,11 @@ namespace WileyWidget.WinForms.Forms
                 EnableCustomNeedles = false,
                 GaugeArcColor = ThemeColors.GaugeArc,
                 ShowBackgroundFrame = true
-            };
+                };
 
-            return gauge;
+                SfSkinManager.SetVisualStyle(gauge, "Office2019Colorful");
+
+        return gauge;
         }
 
 
@@ -491,8 +788,76 @@ namespace WileyWidget.WinForms.Forms
                     case nameof(_viewModel.MonthlyRevenueData):
                         UpdateRevenueChart();
                         break;
+                    case nameof(_viewModel.FundSummaries):
+                        UpdateFundSummariesGrid();
+                        break;
+                    case nameof(_viewModel.DepartmentSummaries):
+                        UpdateDepartmentSummariesGrid();
+                        break;
+                    case nameof(_viewModel.TopVariances):
+                        UpdateTopVariancesGrid();
+                        break;
+                    case nameof(_viewModel.BudgetAnalysis):
+                        UpdateBudgetAnalysisGrid();
+                        break;
+                    case nameof(_viewModel.TotalBudgeted):
+                        AdjustGaugeMaximums();
+                        break;
+                    case nameof(_viewModel.TotalRevenue):
+                        UpdateRevenueAmountGauge();
+                        break;
+                    case nameof(_viewModel.TotalExpenses):
+                        UpdateExpensesAmountGauge();
+                        break;
+                    case nameof(_viewModel.TotalVariance):
+                        UpdateVarianceAmountGauge();
+                        break;
+                    case nameof(_viewModel.VariancePercentage):
+                        AnimateGaugeValue(_variancePercentGauge, (float)_viewModel.VariancePercentage);
+                        break;
                 }
             };
+
+            // Bind analytics view model
+            _analyticsViewModel.PropertyChanged += (s, e) =>
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(_analyticsViewModel.Metrics):
+                        UpdateAnalyticsMetricsGrid();
+                        break;
+                    case nameof(_analyticsViewModel.TopVariances):
+                        UpdateAnalyticsVariancesGrid();
+                        break;
+                    case nameof(_analyticsViewModel.TrendData):
+                        UpdateTrendChart();
+                        break;
+                    case nameof(_analyticsViewModel.ScenarioProjections):
+                        UpdateScenarioGrid();
+                        break;
+                    case nameof(_analyticsViewModel.ForecastData):
+                        UpdateForecastChart();
+                        break;
+                    case nameof(_analyticsViewModel.IsLoading):
+                        UpdateAnalyticsLoadingStatus();
+                        break;
+                    case nameof(_analyticsViewModel.StatusText):
+                        UpdateAnalyticsStatus(_analyticsViewModel.StatusText);
+                        break;
+                }
+            };
+
+            // Initialize control states with current ViewModel data
+            UpdateMetricsGrid();
+            UpdateRevenueChart();
+            UpdateFundSummariesGrid();
+            UpdateDepartmentSummariesGrid();
+            UpdateTopVariancesGrid();
+            UpdateBudgetAnalysisGrid();
+            AdjustGaugeMaximums();
+            UpdateRevenueAmountGauge();
+            UpdateExpensesAmountGauge();
+            UpdateVarianceAmountGauge();
         }
 
         private void UpdateMunicipalityLabel()
@@ -555,6 +920,101 @@ namespace WileyWidget.WinForms.Forms
             _revenueChart.Refresh();
         }
 
+        private void UpdateFundSummariesGrid()
+        {
+            if (_fundsGrid != null)
+                _fundsGrid.DataSource = _viewModel.FundSummaries;
+        }
+
+        private void UpdateDepartmentSummariesGrid()
+        {
+            if (_departmentsGrid != null)
+                _departmentsGrid.DataSource = _viewModel.DepartmentSummaries;
+        }
+
+        private void UpdateTopVariancesGrid()
+        {
+            if (_topVariancesGrid != null)
+                _topVariancesGrid.DataSource = _viewModel.TopVariances;
+        }
+
+        private void UpdateBudgetAnalysisGrid()
+        {
+            if (_analysisGrid == null)
+                return;
+
+            if (_viewModel.BudgetAnalysis == null)
+            {
+                _analysisGrid.DataSource = Array.Empty<BudgetVarianceAnalysis>();
+                return;
+            }
+
+            _analysisGrid.DataSource = new[] { _viewModel.BudgetAnalysis };
+        }
+
+        private void AdjustGaugeMaximums()
+        {
+            try
+            {
+                float max = 100F;
+                if (_viewModel.TotalBudgeted > 0M)
+                {
+                    // Use TotalBudgeted as a sensible maximum for amount-based gauges
+                    max = Math.Max(1F, (float)_viewModel.TotalBudgeted);
+                }
+
+                if (_revenueAmountGauge != null)
+                    _revenueAmountGauge.MaximumValue = max;
+                if (_expensesAmountGauge != null)
+                    _expensesAmountGauge.MaximumValue = max;
+                if (_varianceAmountGauge != null)
+                    _varianceAmountGauge.MaximumValue = max;
+
+                if (_variancePercentGauge != null)
+                    _variancePercentGauge.MaximumValue = 100F;
+            }
+            catch (Exception)
+            {
+                // Fall back silently - UI should still function with default ranges
+            }
+        }
+
+        private void UpdateRevenueAmountGauge()
+        {
+            if (_revenueAmountGauge == null)
+                return;
+
+            var value = (float)_viewModel.TotalRevenue;
+            if (_revenueAmountGauge.MaximumValue < value)
+                _revenueAmountGauge.MaximumValue = Math.Max(_revenueAmountGauge.MinimumValue + 1F, value);
+
+            AnimateGaugeValue(_revenueAmountGauge, value);
+        }
+
+        private void UpdateExpensesAmountGauge()
+        {
+            if (_expensesAmountGauge == null)
+                return;
+
+            var value = (float)_viewModel.TotalExpenses;
+            if (_expensesAmountGauge.MaximumValue < value)
+                _expensesAmountGauge.MaximumValue = Math.Max(_expensesAmountGauge.MinimumValue + 1F, value);
+
+            AnimateGaugeValue(_expensesAmountGauge, value);
+        }
+
+        private void UpdateVarianceAmountGauge()
+        {
+            if (_varianceAmountGauge == null)
+                return;
+
+            var value = (float)Math.Abs(_viewModel.TotalVariance);
+            if (_varianceAmountGauge.MaximumValue < value)
+                _varianceAmountGauge.MaximumValue = Math.Max(_varianceAmountGauge.MinimumValue + 1F, value);
+
+            AnimateGaugeValue(_varianceAmountGauge, value);
+        }
+
         private void AnimateGaugeValue(RadialGauge? gauge, float value)
         {
             if (gauge == null)
@@ -604,8 +1064,11 @@ namespace WileyWidget.WinForms.Forms
             {
                 UpdateStatus(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message));
 
-                MessageBox.Show(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message),
-                    DashboardResources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!_isUiTestHarness)
+                {
+                    MessageBox.Show(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message),
+                        DashboardResources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
@@ -636,7 +1099,10 @@ namespace WileyWidget.WinForms.Forms
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, $"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        if (!_isUiTestHarness)
+                        {
+                            MessageBox.Show(this, $"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
 
@@ -680,20 +1146,29 @@ namespace WileyWidget.WinForms.Forms
                         else
                         {
                             // Excel export requires Syncfusion.XlsIO - placeholder for now
-                            MessageBox.Show("Excel export requires Syncfusion.XlsIO package. Please use CSV format.",
-                                "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            if (!_isUiTestHarness)
+                            {
+                                MessageBox.Show("Excel export requires Syncfusion.XlsIO package. Please use CSV format.",
+                                    "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
                         }
                     });
 
-                    MessageBox.Show($"Dashboard exported successfully to {saveDialog.FileName}",
-                        "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    if (!_isUiTestHarness)
+                    {
+                        MessageBox.Show($"Dashboard exported successfully to {saveDialog.FileName}",
+                            "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
 
                     UpdateStatus(DashboardResources.StatusExported);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    if (!_isUiTestHarness)
+                    {
+                        MessageBox.Show($"Export failed: {ex.Message}", "Export Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
@@ -726,6 +1201,71 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void UpdateAnalyticsMetricsGrid()
+        {
+            if (_analyticsMetricsGrid != null)
+                _analyticsMetricsGrid.DataSource = _analyticsViewModel.Metrics;
+        }
+
+        private void UpdateAnalyticsVariancesGrid()
+        {
+            if (_analyticsVariancesGrid != null)
+                _analyticsVariancesGrid.DataSource = _analyticsViewModel.TopVariances;
+        }
+
+        private void UpdateTrendChart()
+        {
+            if (_trendChart == null || _analyticsViewModel.TrendData.Count == 0)
+                return;
+
+            _trendChart.Series.Clear();
+            var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
+            var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
+
+            foreach (var trend in _analyticsViewModel.TrendData)
+            {
+                budgetedSeries.Points.Add(trend.Month, (double)trend.Budgeted);
+                actualSeries.Points.Add(trend.Month, (double)trend.Actual);
+            }
+
+            _trendChart.Series.Add(budgetedSeries);
+            _trendChart.Series.Add(actualSeries);
+            _trendChart.Refresh();
+        }
+
+        private void UpdateScenarioGrid()
+        {
+            if (_scenarioGrid != null)
+                _scenarioGrid.DataSource = _analyticsViewModel.ScenarioProjections;
+        }
+
+        private void UpdateForecastChart()
+        {
+            if (_forecastChart == null)
+                return;
+
+            _forecastChart.Series.Clear();
+            var forecastSeries = new ChartSeries("Forecast", ChartSeriesType.Line);
+
+            foreach (var point in _analyticsViewModel.ForecastData)
+            {
+                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture), (double)point.PredictedReserves);
+            }
+
+            _forecastChart.Series.Add(forecastSeries);
+            _forecastChart.Refresh();
+        }
+
+        private void UpdateAnalyticsLoadingStatus()
+        {
+            // Could show loading indicator for analytics
+        }
+
+        private void UpdateAnalyticsStatus(string text)
+        {
+            UpdateStatus($"Analytics: {text}");
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -733,14 +1273,35 @@ namespace WileyWidget.WinForms.Forms
                 _refreshTimer?.Dispose();
                 _revenueChart?.Dispose();
                 _metricsGrid?.Dispose();
+                _fundsGrid?.Dispose();
+                _departmentsGrid?.Dispose();
+                _topVariancesGrid?.Dispose();
+                _analysisGrid?.Dispose();
                 _budgetGauge?.Dispose();
                 _revenueGauge?.Dispose();
                 _expensesGauge?.Dispose();
                 _netPositionGauge?.Dispose();
+                _variancePercentGauge?.Dispose();
+                _varianceAmountGauge?.Dispose();
+                _revenueAmountGauge?.Dispose();
+                _expensesAmountGauge?.Dispose();
                 _toolbar?.Dispose();
                 _statusBar?.Dispose();
             }
             base.Dispose(disposing);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            if (MdiParent is MainForm mainForm)
+            {
+                if (_menuStrip != null)
+                {
+                    mainForm.ConfigureChildMenuMerging(_menuStrip);
+                }
+            }
         }
     }
 }

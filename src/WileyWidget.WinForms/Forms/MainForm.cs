@@ -17,6 +17,10 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
 
+#pragma warning disable CS8604 // Possible null reference argument
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
+#pragma warning disable CS0169 // The field is never used
+
 namespace WileyWidget.WinForms.Forms
 {
     internal static class MainFormResources
@@ -33,12 +37,12 @@ namespace WileyWidget.WinForms.Forms
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : Form
+    public partial class MainForm : Form, IViewManager
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<MainForm> _logger;
-
+        private static int _inFirstChanceHandler = 0;
+        private IServiceProvider? _serviceProvider;
+        private IConfiguration? _configuration;
+        private ILogger<MainForm>? _logger;
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
         private ToolStripTabItem? _homeTab;
@@ -50,17 +54,13 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
-        private readonly bool _isUiTestHarness;
-
+        private bool _isUiTestHarness;
+        private bool _syncfusionDockingInitialized;
+        private bool _initialized;
         private Control? _aiChatControl;
         private Panel? _aiChatPanel;
         private System.ComponentModel.IContainer? components;
-        // Dashboard description labels (populated by CreateDashboardCard)
-        private Label? _accountsDescLabel;
-        private Label? _chartsDescLabel;
-        private Label? _settingsDescLabel;
-        private Label? _reportsDescLabel;
-        private Label? _infoDescLabel;
+        // Dashboard description labels are declared in docking partial
 
         public MainForm()
             : this(
@@ -72,592 +72,175 @@ namespace WileyWidget.WinForms.Forms
 
         public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _logger = logger ?? NullLogger<MainForm>.Instance;
-
-            _isUiTestHarness = string.Equals(
-                Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"),
-                "true",
-                StringComparison.OrdinalIgnoreCase);
-
+            _serviceProvider = serviceProvider;
+            _configuration = configuration;
+            _logger = logger;
+            // Load UI configuration
+            var uiMode = _configuration.GetValue<string>("UI:UIMode");
+            _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
             _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
-            _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
-
-            if (_isUiTestHarness)
+            _isUiTestHarness = _configuration.GetValue<bool>("UI:IsUiTestHarness", false);
+                if (_isUiTestHarness)
             {
                 _useMdiMode = false;
                 _useTabbedMdi = false;
-                _useSyncfusionDocking = false;
-                _logger.LogInformation("UI test harness detected; disabling MDI and Syncfusion docking for automation stability");
+                _useSyncfusionDocking = true; // Keep docking enabled even for UI tests
+                IsMdiContainer = false;
+                _logger.LogInformation("UI test harness detected; disabling MDI but keeping Syncfusion docking enabled");
             }
 
-            _logger.LogInformation("UI Config loaded: UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
-                _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
+            _logger.LogInformation("UI Config loaded: UIMode={UIMode}, UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
+                uiMode ?? "IndividualSettings", _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
 
-            components = new System.ComponentModel.Container();
-            InitializeComponent();
-            ApplyTheme();
+            if (_useMdiMode)
+            {
+                IsMdiContainer = true;
+            }
+
+            ValidateAndSanitizeUiConfiguration();
             InitializeMdiSupport();
-            InitializeSyncfusionDocking();
             UpdateStateText();
 
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
         }
 
-        private void ApplyTheme()
-        {
-            try
-            {
-                ThemeColors.ApplyTheme(this);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to apply Office2019Colorful theme to RibbonControlAdv/StatusBarAdv");
-
-                // Fallback: Try to apply default theme
-                try
-                {
-                    if (_ribbon != null)
-                        SfSkinManager.SetVisualStyle(_ribbon, "default");
-                    if (_statusBar != null)
-                        SfSkinManager.SetVisualStyle(_statusBar, "default");
-                }
-                catch (Exception fallbackEx)
-                {
-                    _logger.LogError(fallbackEx, "Theme fallback also failed");
-                }
-
-                // User-friendly fallback: Show message and continue with default theme
-                try
-                {
-                    MessageBox.Show(
-                        "Theme initialization failed. The application will continue with default styling.",
-                        "Theme Warning",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
-                }
-                catch (Exception msgEx)
-                {
-                    _logger.LogError(msgEx, "Failed to show theme warning message");
-                }
-            }
-        }
-
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
         {
             var ex = e.Exception;
+            if (ex == null) return;
 
-            // Log theme-related exceptions
-            if (ex.Source?.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase) == true || ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase) ||
-                ex.Message.Contains("Office2019", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("SkinManager", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
-            }
-
-            // Log docking-related exceptions
-            if (ex.Source?.Contains("DockingManager", StringComparison.OrdinalIgnoreCase) == true ||
-                ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("DockingManager", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
-            }
-
-            // Log MDI-related exceptions
-            if (ex.Message.Contains("MDI", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
-                ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
-            }
-        }
-
-        private void InitializeComponent()
-        {
-            SuspendLayout();
-
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1200, 820);
-            StartPosition = FormStartPosition.CenterScreen;
-            Text = MainFormResources.FormTitle;
-            KeyPreview = true;
-
-            _aiChatControl = BuildAiPlaceholder();
-            _aiChatPanel = new Panel { Dock = DockStyle.Fill, Visible = false };
-            _aiChatPanel.Controls.Add(_aiChatControl);
-
-            // Create a hidden MenuStrip for MDI window list integration (MenuStrip is required for MDI merging features)
-            _menuStrip = new MenuStrip { Name = "MainMenuStrip", Dock = DockStyle.Top, Visible = false, AllowMerge = true };
-            MainMenuStrip = _menuStrip;
-            Controls.Add(_menuStrip);
-
-            BuildRibbon();
-            BuildStatusBar();
-
-            Controls.Add(_aiChatPanel);
-            if (_statusBar != null)
-            {
-                Controls.Add(_statusBar);
-            }
-
-            if (_ribbon != null)
-            {
-                Controls.Add(_ribbon);
-            }
-
-            ResumeLayout(performLayout: false);
-            PerformLayout();
-        }
-
-        private Control BuildAiPlaceholder()
-        {
-            var placeholder = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ThemeColors.Background,
-                Name = "AiChatPlaceholder"
-            };
-
-            var lbl = new Label
-            {
-                Text = "AI chat panel placeholder",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ThemeColors.HeaderText,
-                Font = new Font("Segoe UI", 14, FontStyle.Bold)
-            };
-
-            placeholder.Controls.Add(lbl);
-
-            // Apply SkinManager to placeholder and label to respect theme
-            try { SfSkinManager.SetVisualStyle(placeholder, ThemeColors.DefaultTheme); } catch { /* Theme application is optional - control works with default styling */ }
-            try { SfSkinManager.SetVisualStyle(lbl, ThemeColors.DefaultTheme); } catch { /* Theme application is optional - control works with default styling */ }
-
-            return placeholder;
-        }
-
-        private void BuildRibbon()
-        {
-            _ribbon = new RibbonControlAdv
-            {
-                Dock = Syncfusion.Windows.Forms.Tools.DockStyleEx.Top,
-                MenuButtonVisible = false,
-                RibbonStyle = RibbonStyle.Office2016,
-                Height = 140,
-                ShowRibbonDisplayOptionButton = false
-            };
-            SfSkinManager.SetVisualStyle(_ribbon, ThemeColors.DefaultTheme);
-            _homeTab = new ToolStripTabItem { Text = "Home" };
-            SfSkinManager.SetVisualStyle(_homeTab, ThemeColors.DefaultTheme);
-            _navigationStrip = new ToolStripEx
-            {
-                GripStyle = ToolStripGripStyle.Hidden,
-                ImageScalingSize = new Size(20, 20),
-                Dock = DockStyle.Left,
-                Padding = new Padding(10, 0, 10, 0)
-            };
-            SfSkinManager.SetVisualStyle(_navigationStrip, ThemeColors.DefaultTheme);
-
-            var dashboardButton = CreateRibbonButton(MainFormResources.Dashboard, OnDashboardClicked, "Open dashboard overview", "Nav_Dashboard");
-            var accountsButton = CreateRibbonButton(MainFormResources.Accounts, OnAccountsClicked, "Open municipal accounts", "Nav_Accounts");
-            var chartsButton = CreateRibbonButton(MainFormResources.Charts, OnChartsClicked, "Open charts view", "Nav_Charts");
-            var reportsButton = CreateRibbonButton(MainFormResources.Reports, OnReportsClicked, "Open reports", "Nav_Reports");
-            var settingsButton = CreateRibbonButton(MainFormResources.Settings, OnSettingsClicked, "Application settings", "Nav_Settings");
-            var resetLayoutButton = CreateRibbonButton("Reset Layout", OnResetLayoutClicked, "Reset docking layout to defaults", "Nav_ResetLayout");
-
-            var dockingToggle = CreateRibbonToggle(MainFormResources.Docking, _useSyncfusionDocking, ToggleDockingRequested, "Nav_DockingToggle");
-            var mdiToggle = CreateRibbonToggle(MainFormResources.Mdi, _useMdiMode, ToggleMdiRequested, "Nav_MdiToggle");
-
-            _navigationStrip.Items.AddRange(new ToolStripItem[]
-            {
-                dashboardButton,
-                accountsButton,
-                chartsButton,
-                reportsButton,
-                settingsButton,
-                new ToolStripSeparator(),
-                dockingToggle,
-                mdiToggle,
-                resetLayoutButton
-            });
-
-            _homeTab.Panel.Controls.Add(_navigationStrip);
-            _ribbon.Header.AddMainItem(_homeTab);
-            _ribbon.SelectedTab = _homeTab;
-        }
-
-        private void BuildStatusBar()
-        {
-            try
-            {
-                _statusBar = new StatusBarAdv
-                {
-                    Dock = DockStyle.Bottom,
-                    BeforeTouchSize = new Size(0, 28),
-                    SizingGrip = true
-                };
-                SfSkinManager.SetVisualStyle(_statusBar, ThemeColors.DefaultTheme);
-
-                _statusTextPanel = new StatusBarAdvPanel
-                {
-                    Text = "Ready",
-                    BorderStyle = BorderStyle.None,
-                    Width = 600
-                };
-                SfSkinManager.SetVisualStyle(_statusTextPanel, ThemeColors.DefaultTheme);
-                _statusLabel = _statusTextPanel;
-
-                _statePanel = new StatusBarAdvPanel
-                {
-                    Text = BuildStateText(),
-                    BorderStyle = BorderStyle.None,
-                    Width = 260
-                };
-                SfSkinManager.SetVisualStyle(_statePanel, ThemeColors.DefaultTheme);
-
-                _clockPanel = new StatusBarAdvPanel
-                {
-                    Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture),
-                    Alignment = HorizontalAlignment.Right,
-                    BorderStyle = BorderStyle.None,
-                    Width = 140
-                };
-                SfSkinManager.SetVisualStyle(_clockPanel, ThemeColors.DefaultTheme);
-
-                _statusBar.Panels = new StatusBarAdvPanel[] { _statusTextPanel, _statePanel, _clockPanel };
-
-                _statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
-                _statusTimer.Tick += (s, e) =>
-                {
-                    if (_clockPanel != null)
-                    {
-                        _clockPanel.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
-                    }
-                };
-                _statusTimer.Start();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to build status bar");
-
-                // Fallback: Create a simple status bar without advanced features
-                try
-                {
-                    _statusBar = new StatusBarAdv { Dock = DockStyle.Bottom };
-                    _statusTextPanel = new StatusBarAdvPanel { Text = "Status bar initialization failed - using basic mode" };
-                    _statusBar.Panels = new StatusBarAdvPanel[] { _statusTextPanel };
-                }
-                catch (Exception fallbackEx)
-                {
-                    _logger.LogError(fallbackEx, "Status bar fallback also failed");
-                }
-            }
-        }
-
-        private ToolStripButton CreateRibbonButton(string text, EventHandler onClick, string toolTip, string? automationId = null)
-        {
-            var button = new ToolStripButton
-            {
-                Text = text,
-                AutoSize = false,
-                Width = 110,
-                Height = 72,
-                DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-                TextImageRelation = TextImageRelation.ImageAboveText,
-                ToolTipText = toolTip,
-                Name = automationId ?? text.Replace(" ", string.Empty)
-            };
-            button.Click += onClick;
-            return button;
-        }
-
-        private ToolStripButton CreateRibbonToggle(string text, bool isChecked, EventHandler onClick, string? automationId = null)
-        {
-            var toggle = new ToolStripButton
-            {
-                Text = text,
-                CheckOnClick = true,
-                Checked = isChecked,
-                AutoSize = false,
-                Width = 110,
-                Height = 72,
-                DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-                TextImageRelation = TextImageRelation.ImageAboveText,
-                Name = automationId ?? $"Toggle_{text.Replace(" ", string.Empty)}"
-            };
-            toggle.Click += onClick;
-            return toggle;
-        }
-
-        private void ToggleDockingRequested(object? sender, EventArgs e)
-        {
-            ToggleDockingMode();
-            UpdateStateText();
-        }
-
-        private void ToggleMdiRequested(object? sender, EventArgs e)
-        {
-            UseMdiMode = !UseMdiMode;
-            UpdateStateText();
-        }
-
-        private void OnAccountsClicked(object? sender, EventArgs e) => ShowChildForm<AccountsForm, AccountsViewModel>();
-        private void OnDashboardClicked(object? sender, EventArgs e) => ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
-        private void OnChartsClicked(object? sender, EventArgs e) => ShowChildForm<ChartForm, ChartViewModel>();
-        private void OnReportsClicked(object? sender, EventArgs e) => ShowChildForm<ReportsForm, ReportsViewModel>();
-        private void OnSettingsClicked(object? sender, EventArgs e) => ShowChildForm<SettingsForm, SettingsViewModel>();
-
-        private void OnResetLayoutClicked(object? sender, EventArgs e)
-        {
-            ResetDockingLayout();
-            UpdateStateText();
-        }
-
-        /// <summary>
-        /// Closes the settings panel if it's displayed in the current form.
-        /// Called by SettingsPanel to hide itself.
-        /// </summary>
-        public void CloseSettingsPanel()
-        {
-            // Find and close any SettingsForm child windows
-            foreach (Form childForm in this.MdiChildren)
-            {
-                if (childForm is SettingsForm settingsForm)
-                {
-                    settingsForm.Close();
-                    return;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Closes a panel by name. Used by panels to close themselves.
-        /// </summary>
-        public void ClosePanel(string panelName)
-        {
-            // Find and close child form or panel by name using LINQ
-            var matchingForm = this.MdiChildren.FirstOrDefault(f =>
-                f.Text.Contains(panelName, StringComparison.OrdinalIgnoreCase));
-
-            matchingForm?.Close();
-        }
-
-        private void ApplyStatus(string text)
-        {
-            if (this.IsDisposed || this.Disposing) return;
-
-                if (this.InvokeRequired)
-                {
-                    try
-                    {
-                        this.BeginInvoke(new System.Action(() => ApplyStatus(text)));
-                    }
-                    catch
-                    {
-                        // BeginInvoke can fail if form is disposing - safe to ignore as status update is non-critical
-                    }
-                    return;
-                }
-
-            if (_statusTextPanel != null)
-            {
-                _statusTextPanel.Text = text;
-            }
-        }
-
-        private string BuildStateText() => $"Docking: {(_useSyncfusionDocking ? "On" : "Off")} | MDI: {(_useMdiMode ? "On" : "Off")}";
-
-        private void UpdateStateText()
-        {
-            if (this.IsDisposed || this.Disposing) return;
-
-            if (this.InvokeRequired)
-            {
-                try
-                {
-                    this.BeginInvoke(new System.Action(UpdateStateText));
-                }
-                catch
-                {
-                    // BeginInvoke can fail if form is disposing - safe to ignore as status update is non-critical
-                }
+            // Prevent recursive re-entry into this handler (which can happen if logging throws)
+            if (System.Threading.Interlocked.Exchange(ref _inFirstChanceHandler, 1) == 1)
                 return;
-            }
 
-            if (_statePanel != null)
-            {
-                _statePanel.Text = BuildStateText();
-            }
-        }
-
-        private (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, Color accent)
-        {
-            var panel = new Panel
-            {
-                BackColor = ThemeColors.Background,
-                Dock = DockStyle.Top,
-                Height = 140,
-                Padding = new Padding(12),
-                Margin = new Padding(4)
-            };
-
-            var titleLabel = new Label
-            {
-                Text = title,
-                Dock = DockStyle.Top,
-                Font = new Font("Segoe UI Semibold", 12, FontStyle.Bold),
-                ForeColor = accent,
-                Height = 28
-            };
-
-            var descriptionLabel = new Label
-            {
-                Text = description,
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10, FontStyle.Regular),
-                ForeColor = ThemeManager.Colors.TextPrimary
-            };
-
-            panel.Controls.Add(descriptionLabel);
-            panel.Controls.Add(titleLabel);
-
-            return (panel, descriptionLabel);
-        }
-
-        private Panel CreateDashboardCard(string title, string description, Color accent, out Label descriptionLabel)
-        {
-            var tuple = CreateDashboardCard(title, description, accent);
-            descriptionLabel = tuple.DescriptionLabel;
-            return tuple.Panel;
-        }
-
-        private void SetupCardClickHandler(Control card, System.Action onClick)
-        {
-            void Wire(Control control)
-            {
-                control.Cursor = Cursors.Hand;
-                control.Click += (_, _) => onClick();
-                foreach (Control child in control.Controls)
-                {
-                    Wire(child);
-                }
-            }
-
-            Wire(card);
-        }
-
-        private void ShowChildForm<TForm, TViewModel>(bool allowMultiple = false)
-            where TForm : Form
-            where TViewModel : class
-        {
             try
             {
-                if (_useMdiMode)
+                // Use a local logger reference to avoid potential property race conditions
+                var logger = _logger;
+
+                // If logger is not available, fallback to console to avoid invoking logging pipeline
+                bool usedConsoleFallback = false;
+
+                try
                 {
-                    ShowChildFormMdi<TForm, TViewModel>(allowMultiple);
-                    UpdateStateText();
-                    return;
+                    // Log theme-related exceptions
+                    if (ex.Source?.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase) == true ||
+                        ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("Office2019", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("SkinManager", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (logger != null)
+                            logger.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
+                        else
+                        {
+                            Console.WriteLine($"First-chance theme exception detected: {ex.Message}");
+                            usedConsoleFallback = true;
+                        }
+                    }
+
+                    // Log docking-related exceptions
+                    if (ex.Source?.Contains("DockingManager", StringComparison.OrdinalIgnoreCase) == true ||
+                        ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("DockingManager", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (logger != null)
+                            logger.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
+                        else
+                        {
+                            Console.WriteLine($"First-chance docking exception detected: {ex.Message}");
+                            usedConsoleFallback = true;
+                        }
+                    }
+
+                    // Log MDI-related exceptions
+                    if (ex.Message.Contains("MDI", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
+                        ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (logger != null)
+                            logger.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
+                        else
+                        {
+                            Console.WriteLine($"First-chance MDI exception detected: {ex.Message}");
+                            usedConsoleFallback = true;
+                        }
+                    }
                 }
-
-                ShowNonMdiChildForm<TForm>(allowMultiple);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to open child form {Form}", typeof(TForm).Name);
-                ApplyStatus($"Unable to open {typeof(TForm).Name}");
-            }
-        }
-
-        private void ShowNonMdiChildForm<TForm>(bool allowMultiple) where TForm : Form
-        {
-            // Check for existing non-MDI windows when duplicates not allowed
-            if (!allowMultiple)
-            {
-                var existingNonMdi = this.OwnedForms.OfType<TForm>().FirstOrDefault();
-                if (existingNonMdi != null && !existingNonMdi.IsDisposed)
+                catch (Exception logEx)
                 {
-                    existingNonMdi.Activate();
-                    return;
-                }
-            }
-
-            IServiceScope? scope = null;
-            TForm? form = null;
-            try
-            {
-                scope = _serviceProvider.CreateScope();
-                form = ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
-
-                // Ensure scope is released once the form closes
-                form.FormClosed += (_, _) =>
-                {
+                    // Avoid logging inside the exception handler as this can create a recursive loop
                     try
                     {
-                        scope?.Dispose();
+                        if (!usedConsoleFallback)
+                        {
+                            Console.WriteLine($"Exception in FirstChanceException handler: {logEx}");
+                        }
+                        else
+                        {
+                            // If we already used console fallback, just write minimal info
+                            Console.WriteLine("Exception in FirstChanceException handler while handling FCE");
+                        }
                     }
-                    catch
-                    {
-                        // Scope disposal during form close is non-critical - safe to ignore
-                    }
-                };
-
-                form.StartPosition = FormStartPosition.CenterParent;
-                form.Show(this);
-                ApplyStatus($"{form.Text} opened");
+                    catch { }
+                }
             }
-            catch
+            finally
             {
-                CleanupFailedFormCreation(form, scope);
-                throw;
-            }
-        }
-
-        private static void CleanupFailedFormCreation(Form? form, IServiceScope? scope)
-        {
-            try
-            {
-                form?.Close();
-            }
-            catch
-            {
-                // Form cleanup during error recovery is best-effort - safe to ignore
-            }
-
-            try
-            {
-                scope?.Dispose();
-            }
-            catch
-            {
-                // Scope cleanup during error recovery is best-effort - safe to ignore
+                System.Threading.Interlocked.Exchange(ref _inFirstChanceHandler, 0);
             }
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+
+            // Designer short-circuit
+            if (DesignMode)
+            {
+                _useMdiMode = false;
+                _useTabbedMdi = false;
+                _useSyncfusionDocking = false;
+                IsMdiContainer = false;
+                return;
+            }
+
+            if (_initialized)
+                return;
+
+            // Lazy-init services when needed
+            if (_serviceProvider == null)
+                _serviceProvider = Program.Services ?? new ServiceCollection().BuildServiceProvider();
+
+            if (_configuration == null)
+                _configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(_serviceProvider) ?? new ConfigurationBuilder().Build();
+
+            if (_logger == null)
+                _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(_serviceProvider) ?? NullLogger<MainForm>.Instance;
+
+            _initialized = true;
+
+            // Deferred docking initialization
+            if (!_syncfusionDockingInitialized && _useSyncfusionDocking)
+            {
+                try
+                {
+                    InitializeSyncfusionDocking();
+                    _syncfusionDockingInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Deferred DockingManager initialization in OnLoad failed");
+                    _useSyncfusionDocking = false;
+                }
+            }
+
             UpdateStateText();
 
             try
             {
-                // =====================================================================================
-                // RELIABLE Z-ORDER MANAGEMENT FOR SYNCFUSION WINFORMS
-                // =====================================================================================
-                // This OnLoad handler ensures proper layering of:
-                // 1. Ribbon (topmost) - Syncfusion RibbonControlAdv
-                // 2. Status Bar - Syncfusion StatusBarAdv
-                // 3. Central Content - AI chat or MDI client area
-                // 4. Docked Panels - Syncfusion DockingManager panels (left/right sides)
-                // 5. MDI Client - Must be sent to back when MDI mode is active
-                //
-                // Key principles:
-                // - MDI client must be handled first when active (SendToBack)
-                // - Ribbon and status bar must be BringToFront to stay above docked panels
-                // - Central content should be visible but below chrome
-                // - Docked panels are managed by DockingManager but chrome takes precedence
-                // =====================================================================================
-
-                // Step 1: Handle MDI client (must be done first when MDI is active)
+                // Z-order: MDI client first
                 if (_useMdiMode && IsMdiContainer)
                 {
                     var mdiClient = Controls.OfType<MdiClient>().FirstOrDefault();
@@ -665,61 +248,45 @@ namespace WileyWidget.WinForms.Forms
                     {
                         mdiClient.Dock = DockStyle.Fill;
                         mdiClient.SendToBack();
-                        _logger.LogDebug("MDI client configured and sent to back");
+                        _logger?.LogDebug("MDI client configured and sent to back");
                     }
                 }
 
-                // Step 2: Ensure ribbon is topmost (Syncfusion ribbon should be above all other chrome)
+                // Ribbon above chrome
                 if (_ribbon != null)
                 {
                     _ribbon.BringToFront();
-                    _logger.LogDebug("Ribbon brought to front");
+                    _logger?.LogDebug("Ribbon brought to front");
                 }
 
-                // Step 3: Ensure status bar is above docked panels but below ribbon
+                // Status bar above panels
                 if (_statusBar != null)
                 {
                     _statusBar.BringToFront();
-                    _logger.LogDebug("Status bar brought to front");
+                    _logger?.LogDebug("Status bar brought to front");
                 }
 
-                // Step 4: Handle docking-specific z-order (Syncfusion DockingManager)
                 if (_useSyncfusionDocking)
                 {
-                    try
-                    {
-                        EnsureDockingZOrder();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to ensure docking z-order in OnLoad");
-                    }
+                    try { EnsureDockingZOrder(); }
+                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order in OnLoad"); }
                 }
                 else
                 {
-                    // Non-docking mode: ensure central content is visible
-                    try
-                    {
-                        EnsureNonDockingVisibility();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to ensure non-docking visibility in OnLoad");
-                    }
+                    try { EnsureNonDockingVisibility(); }
+                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure non-docking visibility in OnLoad"); }
                 }
 
-                // Step 5: Force layout refresh to apply all z-order changes
                 this.Refresh();
                 this.Invalidate();
+                _logger?.LogDebug("Z-order management completed successfully");
 
-                _logger.LogDebug("Z-order management completed successfully");
-
-                // Background simulation to test cross-thread UI updates and docking save
-                System.Threading.Tasks.Task.Run(() =>
+                // Background simulation: save docking layout
+                Task.Run(() =>
                 {
                     try
                     {
-                        System.Threading.Thread.Sleep(500);
+                        Thread.Sleep(500);
                         ApplyStatus("Background load complete");
 
                         if (_useSyncfusionDocking)
@@ -732,102 +299,188 @@ namespace WileyWidget.WinForms.Forms
                                     {
                                         this.BeginInvoke(new System.Action(() =>
                                         {
-                                            try
-                                            {
-                                                SaveDockingLayout();
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                _logger.LogWarning(ex, "Background simulated SaveDockingLayout failed");
-                                            }
+                                            try { SaveDockingLayout(); }
+                                            catch (Exception ex) { _logger?.LogWarning(ex, "Background simulated SaveDockingLayout failed"); }
                                         }));
                                     }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogWarning(ex, "Failed to BeginInvoke background docking save");
-                                    }
+                                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to BeginInvoke background docking save"); }
                                 }
                                 else
                                 {
                                     SaveDockingLayout();
                                 }
                             }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Background docking save simulation failed");
-                            }
+                            catch (Exception ex) { _logger?.LogWarning(ex, "Background docking save simulation failed"); }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Background simulation failed");
-                    }
+                    catch (Exception ex) { _logger?.LogDebug(ex, "Background simulation failed"); }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
+                _logger?.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
             }
+
+            if (!_dashboardAutoShown)
+            {
+                try { ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false); _dashboardAutoShown = true; }
+                catch (Exception ex) { _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup"); }
+            }
+
+            try { EnsureCentralPanelVisibility(); }
+            catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure central panel visibility after dashboard open"); }
         }
 
-        protected override void OnShown(EventArgs e)
+        private void ValidateAndSanitizeUiConfiguration()
         {
-            base.OnShown(e);
-
-            if (_dashboardAutoShown)
+            // Validate UIMode
+            var uiMode = _configuration.GetValue<string>("UI:UIMode");
+            if (!string.IsNullOrEmpty(uiMode))
             {
-                return;
+                var lowerUiMode = uiMode.ToLowerInvariant();
+                if (lowerUiMode != "dockingonly" && lowerUiMode != "mdionly" && lowerUiMode != "tabbedmdionly")
+                {
+                    _logger.LogWarning("Invalid UIMode value '{UIMode}' from configuration. Clearing UIMode to fall back to individual settings.", uiMode);
+                    // Reset to individual settings
+                    _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
+                    _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
+                    _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
+                }
             }
+
+            // Rule 1: TabbedMdi requires MdiMode to be enabled
+            if (_useTabbedMdi && !_useMdiMode)
+            {
+                _logger.LogWarning("Invalid UI configuration: UseTabbedMdi=true requires UseMdiMode=true. Disabling TabbedMdi.");
+                _useTabbedMdi = false;
+            }
+
+            // Rule 2: If both MDI modes are disabled, ensure docking is enabled as fallback
+            if (!_useMdiMode && !_useTabbedMdi && !_useSyncfusionDocking)
+            {
+                _logger.LogWarning("Invalid UI configuration: All UI modes disabled. Enabling DockingManager as fallback.");
+                _useSyncfusionDocking = true;
+            }
+
+            // Rule 3: Ensure IsMdiContainer consistency
+            if (_useMdiMode && !IsMdiContainer)
+            {
+                _logger.LogWarning("UI configuration inconsistency: UseMdiMode=true but IsMdiContainer=false. Setting IsMdiContainer=true.");
+                IsMdiContainer = true;
+            }
+            else if (!_useMdiMode && IsMdiContainer)
+            {
+                _logger.LogWarning("UI configuration inconsistency: UseMdiMode=false but IsMdiContainer=true. Setting IsMdiContainer=false.");
+                IsMdiContainer = false;
+            }
+
+            // Log final validated configuration
+            _logger.LogInformation("UI configuration validated: Docking={Docking}, MDI={Mdi}, TabbedMDI={Tabbed}",
+                _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
+        }
+
+        /// <summary>
+        /// Thread-safe helper to update the status text panel from any thread.
+        /// </summary>
+        /// <param name="text">Status text to display.</param>
+        private void ApplyStatus(string text)
+        {
+            try
+            {
+                if (this.IsHandleCreated && this.InvokeRequired)
+                {
+                    try { this.BeginInvoke(new System.Action(() => ApplyStatus(text))); } catch { }
+                    return;
+                }
+            }
+            catch { }
 
             try
             {
-                ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
-                _dashboardAutoShown = true;
+                if (_statusTextPanel != null)
+                {
+                    _statusTextPanel.Text = text;
+                    return;
+                }
+
+                if (_statusLabel != null)
+                {
+                    _statusLabel.Text = text;
+                    return;
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to auto-open Dashboard on startup");
-            }
+            catch { }
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        // IViewManager implementation
+        public void ShowView<TForm, TViewModel>(bool allowMultiple = false)
+            where TForm : Form
+            where TViewModel : class
         {
-            if (e == null) throw new ArgumentNullException(nameof(e));
-
-            base.OnKeyDown(e);
-            HandleMdiKeyboardShortcuts(e);
+            ShowChildForm<TForm, TViewModel>(allowMultiple);
         }
 
-        protected override void Dispose(bool disposing)
+        public void DockPanel<TControl>(string panelName, DockingStyle style)
+            where TControl : UserControl
         {
-            if (disposing)
+            try
             {
-                _statusTimer?.Dispose();
-                _ribbon?.Dispose();
-                _statusBar?.Dispose();
-                components?.Dispose();
-                DisposeSyncfusionDockingResources();
-                DisposeMdiResources();
-            }
-            base.Dispose(disposing);
-        }
+                if (!_useSyncfusionDocking || _dockingManager == null)
+                {
+                    _logger?.LogWarning("Cannot dock panel '{PanelName}' - Syncfusion docking is not enabled", panelName);
+                    throw new InvalidOperationException("Docking manager is not available");
+                }
 
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
+                if (string.IsNullOrWhiteSpace(panelName))
+                {
+                    throw new ArgumentException("Panel name cannot be null or empty", nameof(panelName));
+                }
 
-            // Ensure central panels remain visible after resize operations
-            // This handles cases where layout changes during resize can affect z-order
-            if (_useSyncfusionDocking)
-            {
+                // Create instance of the user control using DI
+                TControl? control = null;
+                IServiceScope? scope = null;
+
                 try
                 {
-                    EnsureCentralPanelVisibility();
+                    scope = _serviceProvider?.CreateScope();
+                    control = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<TControl>(scope?.ServiceProvider);
+
+                    if (control == null)
+                    {
+                        // Try to create with parameterless constructor if DI fails
+                        control = Activator.CreateInstance<TControl>();
+                        _logger?.LogWarning("Created {ControlType} with parameterless constructor - DI not available", typeof(TControl).Name);
+                    }
+
+                    // Add the control as a dynamic dock panel
+                    var success = AddDynamicDockPanel(panelName, panelName, control, style);
+
+                    if (!success)
+                    {
+                        throw new InvalidOperationException($"Failed to add dock panel '{panelName}'");
+                    }
+
+                    _logger?.LogInformation("Successfully docked panel '{PanelName}' with control {ControlType}", panelName, typeof(TControl).Name);
+
+                    // Transfer ownership to the docking manager
+                    control = null;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Failed to ensure visibility during resize");
+                    _logger?.LogError(ex, "Failed to dock panel '{PanelName}' with control {ControlType}", panelName, typeof(TControl).Name);
+                    throw;
                 }
+                finally
+                {
+                    // Clean up resources
+                    control?.Dispose();
+                    scope?.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "DockPanel operation failed for '{PanelName}': {Message}", panelName, ex.Message);
+                throw new InvalidOperationException($"Unable to dock panel '{panelName}': {ex.Message}", ex);
             }
         }
     }

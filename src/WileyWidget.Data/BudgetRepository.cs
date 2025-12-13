@@ -38,7 +38,7 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets budget hierarchy for a fiscal year
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetBudgetHierarchyAsync(int fiscalYear)
+    public async Task<IEnumerable<BudgetEntry>> GetBudgetHierarchyAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("BudgetRepository.GetBudgetHierarchy");
         activity?.SetTag("fiscal_year", fiscalYear);
@@ -46,8 +46,8 @@ public class BudgetRepository : IBudgetRepository
 
         try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            var result = await context.GetBudgetHierarchy(fiscalYear).ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var result = await context.GetBudgetHierarchy(fiscalYear).ToListAsync(cancellationToken);
 
             activity?.SetTag("result.count", result.Count());
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -65,7 +65,7 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets all budget entries for a fiscal year
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetByFiscalYearAsync(int fiscalYear)
+    public async Task<IEnumerable<BudgetEntry>> GetByFiscalYearAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("BudgetRepository.GetByFiscalYear");
         activity?.SetTag("fiscal_year", fiscalYear);
@@ -79,13 +79,13 @@ public class BudgetRepository : IBudgetRepository
             activity?.SetTag("cache.hit", false);
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync();
+                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
                 budgetEntries = await context.BudgetEntries
                     .Where(be => be.FiscalYear == fiscalYear)
                     .Include(be => be.Department)
                     .Include(be => be.Fund)
                     .AsNoTracking()
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken);
 
                 // Cache for 30 minutes
                 _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
@@ -164,35 +164,82 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets a budget entry by ID
     /// </summary>
-    public async Task<BudgetEntry?> GetByIdAsync(int id)
+    public async Task<BudgetEntry?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
         return await context.BudgetEntries
             .Include(be => be.Parent)
             .Include(be => be.Children)
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .AsNoTracking()
-            .FirstOrDefaultAsync(be => be.Id == id);
+            .FirstOrDefaultAsync(be => be.Id == id, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets budget entries by date range
+    /// </summary>
+    public async Task<IEnumerable<BudgetEntry>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("BudgetRepository.GetByDateRange");
+        activity?.SetTag("start_date", startDate);
+        activity?.SetTag("end_date", endDate);
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
+
+        string cacheKey = $"BudgetEntries_DateRange_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
+
+        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        {
+            activity?.SetTag("cache.hit", false);
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                budgetEntries = await context.BudgetEntries
+                    .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
+                    .Include(be => be.Department)
+                    .Include(be => be.Fund)
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken);
+
+                // Cache for 30 minutes
+                _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+
+                activity?.SetTag("result.count", budgetEntries.Count());
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                _telemetryService?.RecordException(ex, ("start_date", startDate), ("end_date", endDate));
+                throw;
+            }
+        }
+        else
+        {
+            activity?.SetTag("cache.hit", true);
+        }
+
+        return budgetEntries ?? Enumerable.Empty<BudgetEntry>();
     }
 
     /// <summary>
     /// Gets budget entries by fund
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetByFundAsync(int fundId)
+    public async Task<IEnumerable<BudgetEntry>> GetByFundAsync(int fundId, CancellationToken cancellationToken = default)
     {
         string cacheKey = $"BudgetEntries_Fund_{fundId}";
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == fundId)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
@@ -203,20 +250,20 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets budget entries by department
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetByDepartmentAsync(int departmentId)
+    public async Task<IEnumerable<BudgetEntry>> GetByDepartmentAsync(int departmentId, CancellationToken cancellationToken = default)
     {
         string cacheKey = $"BudgetEntries_Department_{departmentId}";
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.DepartmentId == departmentId)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
@@ -227,20 +274,20 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets budget entries by fund and fiscal year
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetByFundAndFiscalYearAsync(int fundId, int fiscalYear)
+    public async Task<IEnumerable<BudgetEntry>> GetByFundAndFiscalYearAsync(int fundId, int fiscalYear, CancellationToken cancellationToken = default)
     {
         string cacheKey = $"BudgetEntries_Fund_{fundId}_Year_{fiscalYear}";
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == fundId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
@@ -251,20 +298,20 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets budget entries by department and fiscal year
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetByDepartmentAndFiscalYearAsync(int departmentId, int fiscalYear)
+    public async Task<IEnumerable<BudgetEntry>> GetByDepartmentAndFiscalYearAsync(int departmentId, int fiscalYear, CancellationToken cancellationToken = default)
     {
         string cacheKey = $"BudgetEntries_Department_{departmentId}_Year_{fiscalYear}";
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.DepartmentId == departmentId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
@@ -275,7 +322,7 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets sewer enterprise fund budget entries for a fiscal year
     /// </summary>
-    public async Task<IEnumerable<BudgetEntry>> GetSewerBudgetEntriesAsync(int fiscalYear)
+    public async Task<IEnumerable<BudgetEntry>> GetSewerBudgetEntriesAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
         // Sewer Enterprise Fund is FundId = 2 (Enterprise Fund)
         const int sewerFundId = 2;
@@ -283,14 +330,14 @@ public class BudgetRepository : IBudgetRepository
 
         if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
                 .Where(be => be.FundId == sewerFundId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
@@ -301,55 +348,55 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Adds a new budget entry
     /// </summary>
-    public async Task AddAsync(BudgetEntry budgetEntry)
+    public async Task AddAsync(BudgetEntry budgetEntry, CancellationToken cancellationToken = default)
     {
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
         context.BudgetEntries.Add(budgetEntry);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
     /// Updates an existing budget entry
     /// </summary>
-    public async Task UpdateAsync(BudgetEntry budgetEntry)
+    public async Task UpdateAsync(BudgetEntry budgetEntry, CancellationToken cancellationToken = default)
     {
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
         context.BudgetEntries.Update(budgetEntry);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
     /// Deletes a budget entry
     /// </summary>
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var budgetEntry = await context.BudgetEntries.FindAsync(id);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var budgetEntry = await context.BudgetEntries.FindAsync(new object[] { id }, cancellationToken);
         if (budgetEntry != null)
         {
             context.BudgetEntries.Remove(budgetEntry);
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 
     /// <summary>
     /// Gets budget summary data for reporting
     /// </summary>
-    public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate)
+    public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         var analysis = new BudgetVarianceAnalysis
         {
@@ -393,24 +440,24 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets variance analysis data for reporting
     /// </summary>
-    public async Task<BudgetVarianceAnalysis> GetVarianceAnalysisAsync(DateTime startDate, DateTime endDate)
+    public async Task<BudgetVarianceAnalysis> GetVarianceAnalysisAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         // For now, return the same as budget summary - in a real implementation this would have more detailed variance analysis
-        return await GetBudgetSummaryAsync(startDate, endDate);
+        return await GetBudgetSummaryAsync(startDate, endDate, cancellationToken);
     }
 
     /// <summary>
     /// Gets department breakdown data for reporting
     /// </summary>
-    public async Task<List<DepartmentSummary>> GetDepartmentBreakdownAsync(DateTime startDate, DateTime endDate)
+    public async Task<List<DepartmentSummary>> GetDepartmentBreakdownAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return budgetEntries
             .GroupBy(be => be.Department)
@@ -429,15 +476,15 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets fund allocations data for reporting
     /// </summary>
-    public async Task<List<FundSummary>> GetFundAllocationsAsync(DateTime startDate, DateTime endDate)
+    public async Task<List<FundSummary>> GetFundAllocationsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return budgetEntries
             .GroupBy(be => be.Fund)
@@ -456,19 +503,17 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets year-end summary data for reporting
     /// </summary>
-    public async Task<BudgetVarianceAnalysis> GetYearEndSummaryAsync(int year)
+    public async Task<BudgetVarianceAnalysis> GetYearEndSummaryAsync(int year, CancellationToken cancellationToken = default)
     {
         var startDate = new DateTime(year, 1, 1);
         var endDate = new DateTime(year, 12, 31);
 
-        return await GetBudgetSummaryAsync(startDate, endDate);
+        return await GetBudgetSummaryAsync(startDate, endDate, cancellationToken);
     }
 
-    // Enterprise-scoped overloads — assumes BudgetEntry has implicit enterprise association via Department/Fund or related tables.
-    // If not available, this falls back to date-only filters (no-op enterprise filter).
-    public async Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
+    public async Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         // Try to filter by Department.EnterpriseId or Fund.EnterpriseId if such properties exist.
         var query = context.BudgetEntries
@@ -480,7 +525,7 @@ public class BudgetRepository : IBudgetRepository
         // Note: Model does not currently expose EnterpriseId on Department/Fund.
         // Keeping the hook for future schema support; currently acts as no-op.
 
-        var budgetEntries = await query.ToListAsync();
+        var budgetEntries = await query.ToListAsync(cancellationToken);
         // Reuse existing aggregation logic via in-memory projection
         var analysis = new BudgetVarianceAnalysis
         {
@@ -518,19 +563,19 @@ public class BudgetRepository : IBudgetRepository
         return analysis;
     }
 
-    public Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
-        => GetBudgetSummaryByEnterpriseAsync(enterpriseId, startDate, endDate);
+    public Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        => GetBudgetSummaryByEnterpriseAsync(enterpriseId, startDate, endDate, cancellationToken);
 
-    public async Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
+    public async Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
 
-        var budgetEntries = await query.ToListAsync();
+        var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries
             .GroupBy(be => be.Department)
             .Where(g => g.Key != null)
@@ -545,16 +590,16 @@ public class BudgetRepository : IBudgetRepository
             .ToList();
     }
 
-    public async Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate)
+    public async Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
             .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
 
-        var budgetEntries = await query.ToListAsync();
+        var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries
             .GroupBy(be => be.Fund)
             .Where(g => g.Key != null)

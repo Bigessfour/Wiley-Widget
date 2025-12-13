@@ -28,6 +28,7 @@ namespace WileyWidget.WinForms.E2ETests
             var services = DependencyInjection.CreateServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection().Build());
+            services.AddSingleton<WileyWidget.Models.HealthCheckConfiguration>();
             services.AddDbContextFactory<AppDbContext>(o => o.UseInMemoryDatabase(databaseName));
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(databaseName));
 

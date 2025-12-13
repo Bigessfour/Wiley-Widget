@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
 using WileyWidget.Models;
-using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -19,8 +18,8 @@ namespace WileyWidget.WinForms.Services
             }
 
             using var scope = services.CreateScope();
-            var logger = ServiceProviderExtensions.GetService<ILoggerFactory>(scope.ServiceProvider)?.CreateLogger("UiTestDataSeeder");
-            var db = ServiceProviderExtensions.GetRequiredService<AppDbContext>(scope.ServiceProvider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILoggerFactory>(scope.ServiceProvider)?.CreateLogger("UiTestDataSeeder");
+            var db = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scope.ServiceProvider);
 
             try
             {

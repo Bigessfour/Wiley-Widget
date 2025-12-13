@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -84,12 +86,13 @@ namespace WileyWidget.WinForms.Forms
         private static readonly Color AlternateRowColor = ThemeColors.AlternatingRowBackground;
         private static readonly Color GridBorderColor = ThemeManager.Colors.TextPrimary;
 
-        public BudgetOverviewForm(BudgetOverviewViewModel viewModel, ILogger<BudgetOverviewForm> logger)
+        public BudgetOverviewForm(BudgetOverviewViewModel viewModel, ILogger<BudgetOverviewForm> logger, MainForm mainForm)
         {
             InitializeComponent();
 
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
 
             ThemeColors.ApplyTheme(this);
 
@@ -309,7 +312,7 @@ namespace WileyWidget.WinForms.Forms
             // === Summary Cards Panel with 4 cards ===
             _summaryCardsPanel = new TableLayoutPanel
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 Height = 150,
                 ColumnCount = 4,
                 RowCount = 1,
@@ -330,6 +333,15 @@ namespace WileyWidget.WinForms.Forms
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(actualCard, 1, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(varianceCard, 2, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(percentCard, 3, 0);
+
+            var summaryHost = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 150,
+                Padding = new Padding(0),
+                BackColor = BackgroundColor
+            };
+            summaryHost.Controls.Add(_summaryCardsPanel);
 
             // === Budget Progress Bar Panel ===
             var progressPanel = new Panel
@@ -401,6 +413,7 @@ namespace WileyWidget.WinForms.Forms
 
             // Apply theme to the metrics grid
             ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+            SfSkinManager.SetVisualStyle(_metricsGrid, "Office2019Colorful");
 
             // Configure columns with proper formatting
             ConfigureGridColumns();
@@ -467,7 +480,7 @@ namespace WileyWidget.WinForms.Forms
             // === Add Controls to Form (order matters for docking) ===
             Controls.Add(metricsGroup);      // Fill (added first, fills remaining space)
             Controls.Add(progressPanel);     // Top (below cards)
-            Controls.Add(_summaryCardsPanel); // Top (below header)
+            Controls.Add(summaryHost);       // Top (below header)
             Controls.Add(headerPanel);       // Top (outermost)
             Controls.Add(statusPanel);       // Bottom
 
@@ -983,6 +996,16 @@ namespace WileyWidget.WinForms.Forms
             }
 
             _logger.LogInformation("CSV export completed: {FileName}", fileName);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            if (MdiParent is MainForm mainForm)
+            {
+                mainForm.RegisterAsDockingMDIChild(this, true);
+            }
         }
 
         protected override void OnResize(EventArgs e)

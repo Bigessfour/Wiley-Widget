@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.E2ETests
         public Dashboard_FlaUI_ConvertedTests()
         {
             // Try environment variable first so CI/test runners can provide published exe.
-            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows","WileyWidget.WinForms.exe");
+            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows10.0.26100.0","WileyWidget.WinForms.exe");
         }
 
         private static bool IsModalWindow(Window candidate)

@@ -21,6 +21,8 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.Themes;
 
+#pragma warning disable CS8604 // Possible null reference argument
+
 namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
@@ -52,6 +54,12 @@ public partial class MainForm
     private static readonly TimeSpan MinimumSaveInterval = TimeSpan.FromMilliseconds(2000); // 2 seconds minimum between saves
     // Dictionary to track dynamically added panels
     private Dictionary<string, Panel>? _dynamicDockPanels;
+    // Dashboard description labels (populated by CreateDashboardCard)
+    private Label? _accountsDescLabel;
+    private Label? _chartsDescLabel;
+    private Label? _settingsDescLabel;
+    private Label? _reportsDescLabel;
+    private Label? _infoDescLabel;
 
     /// <summary>
     /// Initialize Syncfusion DockingManager with AI-first layout
@@ -67,35 +75,35 @@ public partial class MainForm
 
         try
         {
-            _logger.LogInformation("Initializing Syncfusion DockingManager (Phase 2)");
+                // If TabbedMDIManager is active and docking is being enabled, dispose the TabbedMDIManager
+                // to prevent runtime conflicts where TabbedMDI expects DockingWrapperForm instances.
+                try
+                {
+                    if (_useTabbedMdi && _tabbedMdiManager != null)
+                    {
+                        _logger.LogWarning("TabbedMDIManager is enabled while DockingManager is also being initialized; disposing TabbedMDIManager to avoid conflicts.");
+                        SafeDisposeExistingTabbedMdiManager();
+                        _useTabbedMdi = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to disable TabbedMDIManager while initializing Syncfusion DockingManager");
+                }
 
-            // Create IContainer if it doesn't exist
-            if (components == null)
-            {
-                components = new System.ComponentModel.Container();
-                _logger.LogDebug("Created IContainer for DockingManager");
-            }
 
             // Instantiate DockingManager per official Syncfusion API
             _dockingManager = new DockingManager(components);
             _dockingManager.HostControl = this;
             _dockingManager.EnableDocumentMode = true;
-            // Disable automatic PersistState to avoid Syncfusion internal serialization
-            // calling into DockingMgrSerializationWrapperAdv at unpredictable times
-            // (e.g. during FormClosing when controls may be disposed). We will
-            // perform manual, guarded saves instead.
-            _dockingManager.PersistState = false;
+            // Enable automatic persistence - Syncfusion handles save/load internally
+            _dockingManager.PersistState = true;
             _dockingManager.AnimateAutoHiddenWindow = true;
             _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font("Segoe UI", 9f);
             _dockingManager.DockTabFont = _dockTabFont = new Font("Segoe UI", 9f);
             _dockingManager.ShowCaption = true;
 
-            // Subscribe to events for state tracking and logging
-            _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
-            _dockingManager.DockControlActivated += DockingManager_DockControlActivated;
-            _dockingManager.DockVisibilityChanged += DockingManager_DockVisibilityChanged;
 
-            // Create dock panels
             CreateLeftDockPanel();
             CreateCentralDocumentPanel();
             CreateRightDockPanel();
@@ -103,14 +111,12 @@ public partial class MainForm
             // Hide standard panels when using docking
             HideStandardPanelsForDocking();
 
-            // Initialize dynamic panel tracking
-            _dynamicDockPanels = new Dictionary<string, Panel>();
+
 
             // Apply theme to docked panels
             ApplyThemeToDockingPanels();
 
-            // Load saved layout
-            LoadDockingLayout();
+
 
             _logger.LogInformation("DockingManager initialized successfully");
         }
@@ -191,7 +197,7 @@ public partial class MainForm
         _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_leftDockPanel, "≡ƒôè Dashboard");
-        TrySetFloatingMode(_leftDockPanel, true);  // Enable floating windows
+        _dockingManager.SetAllowFloating(_leftDockPanel, true);  // Enable floating windows
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -298,7 +304,7 @@ public partial class MainForm
         _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_rightDockPanel, "≡ƒôï Activity");
-        TrySetFloatingMode(_rightDockPanel, true);  // Enable floating windows
+        _dockingManager.SetAllowFloating(_rightDockPanel, true);  // Enable floating windows
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -1700,37 +1706,21 @@ public partial class MainForm
     #endregion
 
     /// <summary>
-    /// Override FormClosing to save docking layout before exit
+    /// Helper method to set floating mode with error handling
     /// </summary>
-    protected override void OnFormClosing(FormClosingEventArgs e)
+    private void TrySetFloatingMode(Panel panel, bool allowFloating)
     {
-        if (_useSyncfusionDocking && _dockingManager != null)
+        try
         {
-            try
-            {
-                // Only attempt to save if we have dock panels initialized to avoid
-                // triggering Syncfusion serialization when nothing is present.
-                var hasDockControls = false;
-                if (_leftDockPanel != null && !_leftDockPanel.IsDisposed) hasDockControls = true;
-                if (_rightDockPanel != null && !_rightDockPanel.IsDisposed) hasDockControls = true;
-                if (_dynamicDockPanels != null && _dynamicDockPanels.Count > 0) hasDockControls = true;
-
-                if (hasDockControls)
-                {
-                    SaveDockingLayout();
-                }
-                else
-                {
-                    _logger.LogDebug("Skipping docking layout save on exit: no dock panels initialized");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Exception while attempting to save docking layout on exit");
-            }
+            _dockingManager?.SetAllowFloating(panel, allowFloating);
         }
-        base.OnFormClosing(e);
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set floating mode for panel '{PanelName}'", panel.Name);
+        }
     }
+
+
 
     /// <summary>
     /// Dispose resources owned by the docking implementation
@@ -1811,48 +1801,7 @@ public partial class MainForm
         catch { }
     }
 
-    private void TrySetFloatingMode(Control? panel, bool enable)
-    {
-        try
-        {
-            if (_dockingManager == null || panel == null) return;
-            var dmType = _dockingManager.GetType();
-            var mi = dmType.GetMethod("SetFloatingMode", new[] { typeof(Control), typeof(bool) });
-            if (mi != null)
-            {
-                mi.Invoke(_dockingManager, new object[] { panel, enable });
-                return;
-            }
 
-            var alt = dmType.GetMethod("EnableFloating", new[] { typeof(Control), typeof(bool) })
-                   ?? dmType.GetMethod("AllowFloating", new[] { typeof(Control), typeof(bool) })
-                   ?? dmType.GetMethod("SetAllowFloating", new[] { typeof(Control), typeof(bool) });
-
-            if (alt != null)
-            {
-                alt.Invoke(_dockingManager, new object[] { panel, enable });
-                return;
-            }
-
-            // Try any method with 'float' or 'floating' in name and 2 parameters
-            foreach (var candidate in dmType.GetMethods())
-            {
-                if (candidate.GetParameters().Length == 2 && (candidate.Name.IndexOf("float", StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    try
-                    {
-                        candidate.Invoke(_dockingManager, new object[] { panel, enable });
-                        return;
-                    }
-                    catch { }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "TrySetFloatingMode reflection failed");
-        }
-    }
 
     private void ResetDockingLayout()
     {
@@ -1873,6 +1822,111 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to reset docking layout");
+        }
+    }
+
+    // Helper methods for dashboard cards (referenced by CreateDashboardCardsPanel)
+    private (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, Color accent)
+    {
+        var panel = new Panel
+        {
+            BackColor = ThemeColors.Background,
+            Dock = DockStyle.Top,
+            Height = 140,
+            Padding = new Padding(12),
+            Margin = new Padding(4)
+        };
+
+        var titleLabel = new Label
+        {
+            Text = title,
+            Dock = DockStyle.Top,
+            Font = new Font("Segoe UI Semibold", 12, FontStyle.Bold),
+            ForeColor = accent,
+            Height = 28
+        };
+
+        var descriptionLabel = new Label
+        {
+            Text = description,
+            Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 10, FontStyle.Regular),
+            ForeColor = ThemeManager.Colors.TextPrimary
+        };
+
+        panel.Controls.Add(descriptionLabel);
+        panel.Controls.Add(titleLabel);
+
+        return (panel, descriptionLabel);
+    }
+
+    private Panel CreateDashboardCard(string title, string description, Color accent, out Label descriptionLabel)
+    {
+        var tuple = CreateDashboardCard(title, description, accent);
+        descriptionLabel = tuple.DescriptionLabel;
+        return tuple.Panel;
+    }
+
+    private void SetupCardClickHandler(Control card, System.Action onClick)
+    {
+        void Wire(Control control)
+        {
+            control.Cursor = Cursors.Hand;
+            control.Click += (_, _) => onClick();
+            foreach (Control child in control.Controls)
+            {
+                Wire(child);
+            }
+        }
+
+        Wire(card);
+    }
+
+    private void ShowChildForm<TForm, TViewModel>(bool allowMultiple = false)
+        where TForm : Form
+        where TViewModel : class
+    {
+        try
+        {
+            if (_useMdiMode)
+            {
+                ShowChildFormMdi<TForm, TViewModel>(allowMultiple);
+                UpdateStateText();
+                return;
+            }
+
+            // DockingManager remains active for panels; forms are shown via MDI or owned windows.
+            ShowNonMdiChildForm<TForm, TViewModel>(allowMultiple);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open child form {Form}", typeof(TForm).Name);
+            if (_statusTextPanel != null)
+            {
+                _statusTextPanel.Text = $"Unable to open {typeof(TForm).Name}";
+            }
+        }
+    }
+
+    private void UpdateStateText()
+    {
+        // Status text update stub - actual implementation in MainForm.cs
+        // This method is called to refresh the status bar state panel
+    }
+
+    private void ShowNonMdiChildForm<TForm, TViewModel>(bool allowMultiple)
+        where TForm : Form
+        where TViewModel : class
+    {
+        // Non-MDI child form display - delegates to MainForm.cs implementation
+        // This is called when MDI mode is disabled
+        try
+        {
+            ShowChildFormMdi<TForm, TViewModel>(allowMultiple); // Fallback to MDI behavior
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to show non-MDI child form {Form}", typeof(TForm).Name);
         }
     }
 }

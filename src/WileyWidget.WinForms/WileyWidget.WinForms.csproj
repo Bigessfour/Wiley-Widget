@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
-    <NoWarn>$(NoWarn);WFO5001</NoWarn>
+    <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +22,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="BoldReports.WPF" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
@@ -61,7 +62,7 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="Polly" />
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
     <!-- Syncfusion WinForms UI controls -->
     <PackageReference Include="Syncfusion.Licensing" />
@@ -72,6 +73,9 @@
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
     <PackageReference Include="Syncfusion.Office2019Theme.WinForms" />
     <PackageReference Include="CsvHelper" />
+    <PackageReference Include="microsoft.winforms.designer.sdk">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

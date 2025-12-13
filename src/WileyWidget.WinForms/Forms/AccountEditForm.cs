@@ -119,7 +119,6 @@ namespace WileyWidget.WinForms.Forms
             ShowIcon = false;
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.White;
 
             // Main layout
             var mainPanel = new TableLayoutPanel

@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+
     {
       "name": "WinForms: Launch & Debug",
       "type": "coreclr",
@@ -16,25 +17,6 @@
       "enableStepFiltering": false,
       "requireExactSource": false,
       "suppressJITOptimizations": true,
-      "exceptionBreakpointMode": "userUnhandled",
-      "exceptionBreakpoints": {
-        "CLR": {
-          "System.NullReferenceException": "always",
-          "System.ArgumentNullException": "always",
-          "System.InvalidOperationException": "always",
-          "System.ArgumentException": "always",
-          "System.InvalidCastException": "always",
-          "System.ObjectDisposedException": "always",
-          "System.Threading.SynchronizationLockException": "always",
-          "System.IO.IOException": "unhandled",
-          "System.IO.FileNotFoundException": "unhandled",
-          "System.Net.Http.HttpRequestException": "unhandled",
-          "System.UnauthorizedAccessException": "unhandled",
-          "System.NotImplementedException": "always",
-          "System.NotSupportedException": "unhandled",
-          "WileyWidget.*": "always"
-        }
-      },
       "symbolOptions": {
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true,
@@ -49,7 +31,9 @@
         "moduleLoad": true,
         "exceptions": true,
         "programOutput": true,
-        "engineLogging": false,
+        "diagnosticsLog": {
+          "protocolMessages": false
+        },
         "threadExit": false,
         "processExit": true,
         "elapsedTiming": false

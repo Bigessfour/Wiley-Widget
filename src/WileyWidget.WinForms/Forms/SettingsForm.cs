@@ -2,7 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;
+using Syncfusion.WinForms.Themes;
 using WileyWidgetThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms
@@ -24,16 +26,22 @@ namespace WileyWidget.WinForms.Forms
         private readonly IThemeService _themeService;
         private SettingsPanel? _settingsPanel;
 
-        public SettingsForm(SettingsViewModel vm)
+        public SettingsForm(SettingsViewModel vm, MainForm mainForm)
         {
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+            if (mainForm == null)
+            {
+                throw new ArgumentNullException(nameof(mainForm));
+            }
             _themeService = ResolveThemeService();
+            MdiParent = mainForm;
 
             InitializeComponent();
             Text = SettingsFormResources.FormTitle;
 
             // Apply Syncfusion theme to form and all child controls
             WileyWidgetThemeColors.ApplyTheme(this);
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
         }
 
         private static IThemeService ResolveThemeService()
@@ -52,11 +60,8 @@ namespace WileyWidget.WinForms.Forms
             Text = SettingsFormResources.FormTitle;
             Size = new Size(520, 850);
             MinimumSize = new Size(520, 600);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            FormBorderStyle = FormBorderStyle.Sizable;
             AutoScaleMode = AutoScaleMode.Dpi;
 
             // Set form icon if available
@@ -75,12 +80,29 @@ namespace WileyWidget.WinForms.Forms
             catch { /* Icon loading is optional */ }
 
             // Host the SettingsPanel which contains all the actual settings controls
-            _settingsPanel = new SettingsPanel
+            _settingsPanel = new SettingsPanel(_vm, _themeService)
             {
                 Dock = DockStyle.Fill
             };
 
             Controls.Add(_settingsPanel);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            if (MdiParent is MainForm mf)
+            {
+                try
+                {
+                    mf.RegisterMdiChildWithDocking(this);
+                }
+                catch
+                {
+                    // Docking registration is best-effort; fall back to standard MDI when unavailable.
+                }
+            }
         }
 
         protected override void Dispose(bool disposing)

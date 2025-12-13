@@ -6,14 +6,16 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Reporting.WinForms;
+using BoldReports.WPF;
 using Serilog;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
 {
     /// <summary>
-    /// Service for interacting with Bold Reports ReportViewer control via reflection.
-    /// This allows the service layer to work with Bold Reports without direct references.
+    /// Service for interacting with Microsoft Reporting Services ReportViewer control.
+    /// This allows the service layer to work with Microsoft Reporting Services without direct references.
     /// </summary>
     public class BoldReportService : IBoldReportService
     {
@@ -24,9 +26,6 @@ namespace WileyWidget.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>
-        /// Loads a report into the viewer.
-        /// </summary>
         public async Task LoadReportAsync(
             object reportViewer,
             string reportPath,
@@ -35,6 +34,7 @@ namespace WileyWidget.Services
             CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(reportPath)) throw new ArgumentNullException(nameof(reportPath));
 
             try
@@ -43,42 +43,37 @@ namespace WileyWidget.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var viewerType = reportViewer.GetType();
-
                     progress?.Report(0.1);
-                    if (!TrySetProperty(viewerType, reportViewer, "ReportPath", reportPath))
-                        throw new InvalidOperationException("ReportViewer control does not expose ReportPath. Ensure Bold Reports package is referenced.");
+                    rv.LocalReport.ReportPath = reportPath;
 
                     progress?.Report(0.35);
-                    ApplyDataSources(viewerType, reportViewer, dataSources);
+                    ApplyDataSources(rv, dataSources);
 
                     cancellationToken.ThrowIfCancellationRequested();
                     progress?.Report(0.7);
-                    RefreshViewer(viewerType, reportViewer);
+                    rv.RefreshReport();
 
                     progress?.Report(1.0);
                 }, cancellationToken);
 
-                _logger.LogInformation("Bold Reports loaded successfully: {ReportPath}", reportPath);
+                _logger.LogInformation("Report loaded successfully: {ReportPath}", reportPath);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Bold Reports load canceled for {ReportPath}", reportPath);
+                _logger.LogDebug("Report load canceled for {ReportPath}", reportPath);
                 throw;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to load Bold Report: {ReportPath}", reportPath);
+                Log.Error(ex, "Failed to load report: {ReportPath}", reportPath);
                 throw;
             }
         }
 
-        /// <summary>
-        /// Exports the current report to PDF.
-        /// </summary>
         public async Task ExportToPdfAsync(object reportViewer, string filePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
 
             try
@@ -86,17 +81,17 @@ namespace WileyWidget.Services
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    var viewerType = reportViewer.GetType();
                     progress?.Report(0.1);
 
-                    var exportMethod = viewerType.GetMethod("ExportToPdf", new[] { typeof(string) })
-                                    ?? viewerType.GetMethod("ExportToPdf", BindingFlags.Public | BindingFlags.Instance);
+                    // Export using ReportViewer's LocalReport.Render method
+                    string mimeType, encoding, extension;
+                    string[] streams;
+                    Warning[] warnings;
 
-                    if (exportMethod == null)
-                        throw new InvalidOperationException("ReportViewer control does not have ExportToPdf method.");
+                    byte[] pdfBytes = rv.LocalReport.Render(
+                        "PDF", null, out mimeType, out encoding, out extension, out streams, out warnings);
 
-                    exportMethod.Invoke(reportViewer, new object[] { filePath });
+                    System.IO.File.WriteAllBytes(filePath, pdfBytes);
                     progress?.Report(1.0);
                 }, cancellationToken);
 
@@ -114,12 +109,10 @@ namespace WileyWidget.Services
             }
         }
 
-        /// <summary>
-        /// Exports the current report to Excel.
-        /// </summary>
         public async Task ExportToExcelAsync(object reportViewer, string filePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
 
             try
@@ -127,17 +120,17 @@ namespace WileyWidget.Services
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    var viewerType = reportViewer.GetType();
                     progress?.Report(0.1);
 
-                    var exportMethod = viewerType.GetMethod("ExportToExcel", new[] { typeof(string) })
-                                    ?? viewerType.GetMethod("ExportToExcel", BindingFlags.Public | BindingFlags.Instance);
+                    // Export using ReportViewer's LocalReport.Render method
+                    string mimeType, encoding, extension;
+                    string[] streams;
+                    Warning[] warnings;
 
-                    if (exportMethod == null)
-                        throw new InvalidOperationException("ReportViewer control does not have ExportToExcel method.");
+                    byte[] excelBytes = rv.LocalReport.Render(
+                        "EXCELOPENXML", null, out mimeType, out encoding, out extension, out streams, out warnings);
 
-                    exportMethod.Invoke(reportViewer, new object[] { filePath });
+                    System.IO.File.WriteAllBytes(filePath, excelBytes);
                     progress?.Report(1.0);
                 }, cancellationToken);
 
@@ -161,17 +154,17 @@ namespace WileyWidget.Services
         public async Task RefreshReportAsync(object reportViewer, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
 
             try
             {
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var viewerType = reportViewer.GetType();
-                    RefreshViewer(viewerType, reportViewer);
+                    rv.RefreshReport();
                 }, cancellationToken);
 
-                Log.Debug("Bold Report refreshed");
+                _logger.LogDebug("Report refreshed");
             }
             catch (OperationCanceledException)
             {
@@ -180,7 +173,7 @@ namespace WileyWidget.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to refresh Bold Report");
+                Log.Error(ex, "Failed to refresh report");
                 throw;
             }
         }
@@ -191,6 +184,7 @@ namespace WileyWidget.Services
         public async Task SetReportParametersAsync(object reportViewer, Dictionary<string, object> parameters, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
             if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
             try
@@ -199,24 +193,17 @@ namespace WileyWidget.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var viewerType = reportViewer.GetType();
-                    var parametersProp = viewerType.GetProperty("Parameters", BindingFlags.Public | BindingFlags.Instance);
-
-                    if (parametersProp == null)
-                        throw new InvalidOperationException("ReportViewer control does not have Parameters property.");
-
-                    var currentParams = parametersProp.GetValue(reportViewer) as IDictionary;
-                    if (currentParams == null)
-                        throw new InvalidOperationException("ReportViewer.Parameters is not an IDictionary.");
-
-                    currentParams.Clear();
+                    var reportParameters = new List<ReportParameter>();
                     foreach (var kv in parameters)
-                        currentParams[kv.Key] = kv.Value;
+                    {
+                        reportParameters.Add(new ReportParameter(kv.Key, kv.Value?.ToString()));
+                    }
 
-                    RefreshViewer(viewerType, reportViewer);
+                    rv.LocalReport.SetParameters(reportParameters);
+                    rv.RefreshReport();
                 }, cancellationToken);
 
-                Log.Information("Report parameters set successfully");
+                _logger.LogInformation("Report parameters set successfully");
             }
             catch (OperationCanceledException)
             {
@@ -225,7 +212,7 @@ namespace WileyWidget.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to set Bold Report parameters");
+                Log.Error(ex, "Failed to set report parameters");
                 throw;
             }
         }
@@ -236,18 +223,14 @@ namespace WileyWidget.Services
         public async Task PrintAsync(object reportViewer, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
 
             try
             {
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var viewerType = reportViewer.GetType();
-
-                    if (TryInvoke(viewerType, reportViewer, "Print")) return;
-                    if (TryInvoke(viewerType, reportViewer, "PrintReport")) return;
-
-                    throw new InvalidOperationException("ReportViewer control does not expose Print/PrintReport method.");
+                    rv.PrintDialog();
                 }, cancellationToken);
 
                 _logger.LogInformation("Print command dispatched to report viewer");
@@ -264,12 +247,10 @@ namespace WileyWidget.Services
             }
         }
 
-        /// <summary>
-        /// Applies optional viewer configuration (zoom, search text, toggles, etc.).
-        /// </summary>
         public async Task ConfigureViewerAsync(object reportViewer, Dictionary<string, object> options, CancellationToken cancellationToken = default)
         {
             if (reportViewer == null) throw new ArgumentNullException(nameof(reportViewer));
+            if (!(reportViewer is ReportViewer rv)) throw new ArgumentException("ReportViewer must be of type Microsoft.Reporting.WinForms.ReportViewer", nameof(reportViewer));
             if (options == null) throw new ArgumentNullException(nameof(options));
 
             try
@@ -277,40 +258,32 @@ namespace WileyWidget.Services
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var viewerType = reportViewer.GetType();
 
                     foreach (var option in options)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        // First try to map directly to a property
-                        if (TrySetProperty(viewerType, reportViewer, option.Key, option.Value))
+                        switch (option.Key)
                         {
-                            continue;
+                            case "ZoomPercent":
+                                if (option.Value is int zoomPercent)
+                                {
+                                    rv.ZoomMode = ZoomMode.Percent;
+                                    rv.ZoomPercent = zoomPercent;
+                                }
+                                break;
+                            case "SearchText":
+                                // ReportViewer doesn't have built-in search, this might need custom implementation
+                                _logger.LogWarning("SearchText configuration not supported by ReportViewer");
+                                break;
+                            case "ShowParametersPanel":
+                                // ReportViewer shows parameters automatically if they exist
+                                _logger.LogWarning("ShowParametersPanel configuration not directly supported by ReportViewer");
+                                break;
+                            default:
+                                _logger.LogWarning("Unknown configuration option: {Option}", option.Key);
+                                break;
                         }
-
-                        // Try a SetOption(string, object) pattern if available
-                        var setOption = viewerType.GetMethod("SetOption", BindingFlags.Public | BindingFlags.Instance);
-                        if (setOption != null)
-                        {
-                            try
-                            {
-                                setOption.Invoke(reportViewer, new[] { option.Key, option.Value });
-                                continue;
-                            }
-                            catch (TargetParameterCountException)
-                            {
-                                // fall through
-                            }
-                        }
-
-                        // Last attempt: invoke a Configure method if it exists
-                        if (TryInvoke(viewerType, reportViewer, "Configure", option.Value))
-                        {
-                            continue;
-                        }
-
-                        _logger.LogDebug("Viewer option '{OptionName}' could not be applied", option.Key);
                     }
                 }, cancellationToken);
 
@@ -323,62 +296,19 @@ namespace WileyWidget.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to configure Bold Report viewer");
+                Log.Error(ex, "Failed to configure ReportViewer");
                 throw;
             }
         }
 
-        private static void RefreshViewer(Type viewerType, object reportViewer)
-        {
-            if (TryInvoke(viewerType, reportViewer, "RefreshReport")) return;
-            if (TryInvoke(viewerType, reportViewer, "Refresh")) return;
-            throw new InvalidOperationException("ReportViewer control does not expose RefreshReport or Refresh method.");
-        }
-
-        private static void ApplyDataSources(Type viewerType, object reportViewer, Dictionary<string, object>? dataSources)
+        private static void ApplyDataSources(dynamic reportViewer, Dictionary<string, object>? dataSources)
         {
             if (dataSources == null || dataSources.Count == 0) return;
 
-            var dataSourcesProp = viewerType.GetProperty("DataSources", BindingFlags.Public | BindingFlags.Instance);
-            if (dataSourcesProp == null) return;
-
-            var currentDataSources = dataSourcesProp.GetValue(reportViewer) as IDictionary;
-            if (currentDataSources == null) return;
-
-            currentDataSources.Clear();
+            reportViewer.LocalReport.DataSources.Clear();
             foreach (var kv in dataSources)
-                currentDataSources[kv.Key] = kv.Value;
-        }
-
-        private static bool TrySetProperty(Type type, object instance, string propertyName, object value)
-        {
-            var prop = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
-            if (prop == null || !prop.CanWrite) return false;
-
-            try
             {
-                prop.SetValue(instance, value);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool TryInvoke(Type type, object instance, string methodName, params object[] parameters)
-        {
-            var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
-            if (method == null) return false;
-
-            try
-            {
-                method.Invoke(instance, parameters);
-                return true;
-            }
-            catch
-            {
-                return false;
+                reportViewer.LocalReport.DataSources.Add(new ReportDataSource(kv.Key, kv.Value));
             }
         }
     }

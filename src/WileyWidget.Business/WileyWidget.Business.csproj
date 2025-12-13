@@ -38,7 +38,7 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Polly" />
     <!-- QuickBooks SDK packages -->
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 

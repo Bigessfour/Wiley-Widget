@@ -15,7 +15,6 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
-using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.Themes;
@@ -71,10 +70,10 @@ namespace WileyWidget.WinForms.Forms
         private TabControlAdv? _detailTabs;
 
         // Syncfusion action buttons
-        private ButtonAdv? _saveButton;
-        private ButtonAdv? _deleteButton;
-        private ButtonAdv? _newButton;
-        private ButtonAdv? _refreshButton;
+        private SfButton? _saveButton;
+        private SfButton? _deleteButton;
+        private SfButton? _newButton;
+        private SfButton? _refreshButton;
 
         // ToolStrip with Syncfusion theming
         private ToolStrip? _toolStrip;
@@ -250,8 +249,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowResizingColumns = true,
                 SelectionMode = GridSelectionMode.Single,
                 RowHeight = 36,
-                Font = new Font("Segoe UI", 9F),
-                BackColor = Color.White
+                Font = new Font("Segoe UI", 9F)
             };
             _dataGrid.Name = "Customers_DataGrid";
 
@@ -290,10 +288,6 @@ namespace WileyWidget.WinForms.Forms
 
             // Initialize detail panel with tabbed interface for editing customer information
             _detailPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-            if (!Syncfusion.Windows.Forms.SkinManager.ContainsSkinManager)
-            {
-                _detailPanel.BackColor = Color.White;
-            }
 
             // Create tabbed interface for better organization
             _detailTabs = new TabControlAdv
@@ -441,54 +435,50 @@ namespace WileyWidget.WinForms.Forms
                 Padding = new Padding(8),
                 BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background
             };
-            _newButton = new ButtonAdv
+            _newButton = new SfButton
             {
                 Text = "Γ₧ò New",
                 Image = newIcon,
-                Height = 36,
+                Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Success,
-                Width = 100
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Success
             };
             SfSkinManager.SetVisualStyle(_newButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _newButton.Click += async (s, e) => await AddNewCustomer();
 
-            _saveButton = new ButtonAdv
+            _saveButton = new SfButton
             {
                 Text = "≡ƒÆ╛ Save",
                 Image = saveIcon,
-                Height = 36,
+                Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.PrimaryAccent,
-                Width = 100
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.PrimaryAccent
             };
             SfSkinManager.SetVisualStyle(_saveButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _saveButton.Click += async (s, e) => await SaveCurrentCustomer();
 
-            _deleteButton = new ButtonAdv
+            _deleteButton = new SfButton
             {
                 Text = "≡ƒùæ∩╕Å Delete",
                 Image = deleteIcon,
-                Height = 36,
+                Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Error,
-                Width = 100
+                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Error
             };
             SfSkinManager.SetVisualStyle(_deleteButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _deleteButton.Click += async (s, e) => await DeleteSelectedCustomer();
 
-            _refreshButton = new ButtonAdv
+            _refreshButton = new SfButton
             {
                 Text = "≡ƒöä Refresh",
                 Image = refreshIcon,
-                Height = 36,
+                Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.White,
-                BackColor = ThemeManager.Colors.TextPrimary,
-                Width = 100
+                BackColor = ThemeManager.Colors.TextPrimary
             };
             SfSkinManager.SetVisualStyle(_refreshButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _refreshButton.Click += async (s, e) => await RefreshData();

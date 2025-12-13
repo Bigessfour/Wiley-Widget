@@ -289,6 +289,11 @@ namespace WileyWidget.WinForms.ViewModels
                 // Successfully loaded—exit retry loop
                 break;
             }
+            catch (OperationCanceledException)
+            {
+                // Re-throw cancellation exceptions
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading dashboard data");
@@ -364,6 +369,11 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 _logger.LogInformation("Dashboard data for FY {FiscalYear} loaded successfully", fiscalYear);
+            }
+            catch (OperationCanceledException)
+            {
+                // Re-throw cancellation exceptions
+                throw;
             }
             catch (Exception ex)
             {

@@ -6,13 +6,14 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Reporting.WinForms;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels;
 
 /// <summary>
-/// ViewModel for the Reports form, managing BoldReports report generation and export.
+/// ViewModel for the Reports form, managing Microsoft Reporting Services report generation and export.
 /// Uses CommunityToolkit.Mvvm for MVVM pattern with source generators.
 /// Delegates report operations to IBoldReportService.
 /// </summary>
@@ -88,8 +89,9 @@ public partial class ReportsViewModel : ObservableObject
 
     /// <summary>
     /// Reference to the ReportViewer control (set by the Form).
-    /// Using object type to avoid reference in ViewModel.
     /// </summary>
+    /// Reference to the ReportViewer control (set by the Form).
+    /// Use object here to avoid tight coupling to WinForms control in the view model and ease unit testing.
     public object? ReportViewer { get; set; }
 
     /// <summary>

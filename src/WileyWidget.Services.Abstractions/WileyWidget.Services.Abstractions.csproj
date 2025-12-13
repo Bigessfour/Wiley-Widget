@@ -17,7 +17,7 @@
     <!-- Package versions managed centrally in Directory.Packages.props -->
     <PackageReference Include="Microsoft.Extensions.Primitives" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 

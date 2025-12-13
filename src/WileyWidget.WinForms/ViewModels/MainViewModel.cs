@@ -84,14 +84,10 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogInformation("Loading dashboard data");
 
                 // Early cancellation check
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogDebug("Dashboard load canceled before service calls");
-                    return;
-                }
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Load dashboard items
-                var dashboardItems = await _dashboardService.GetDashboardItemsAsync();
+                var dashboardItems = await _dashboardService.GetDashboardItemsAsync(cancellationToken);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -142,6 +138,7 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _logger.LogWarning(ex, "Dashboard data loading canceled");
                 ErrorMessage = null; // Cancellation is expected
+                throw; // Re-throw to propagate cancellation
             }
             catch (Exception ex)
             {
@@ -164,10 +161,6 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _logger.LogInformation("Initializing MainViewModel");
                 await LoadDataAsync(cancellationToken);
-            }
-            catch (OperationCanceledException ex)
-            {
-                _logger.LogWarning(ex, "MainViewModel initialization canceled");
             }
             catch (Exception ex)
             {

@@ -6,12 +6,14 @@ using System.Drawing;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Data;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
@@ -51,11 +53,14 @@ namespace WileyWidget.WinForms.Forms
         private ToolStripStatusLabel? _totalsPanel;
         private ToolStripStatusLabel? _selectionPanel;
         private ToolStripButton? _editToggleButton;
+        private ToolStripComboBox? _fundFilterCombo;
+        private ToolStripComboBox? _accountTypeFilterCombo;
         private BindingSource? _accountsBinding;
 
-        public AccountsForm(AccountsViewModel viewModel)
+        public AccountsForm(AccountsViewModel viewModel, MainForm mainForm)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
 
             InitializeComponent();
             ThemeColors.ApplyTheme(this);
@@ -126,6 +131,40 @@ namespace WileyWidget.WinForms.Forms
             };
             loadButton.Click += async (s, e) => await LoadData();
 
+            var fundLabel = new ToolStripLabel
+            {
+                Text = "Fund",
+                Margin = new Padding(8, 0, 4, 0)
+            };
+
+            _fundFilterCombo = new ToolStripComboBox
+            {
+                AutoSize = false,
+                Width = 150,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            _fundFilterCombo.ComboBox.DataSource = _viewModel.AvailableFunds;
+            _fundFilterCombo.ComboBox.DataBindings.Add(
+                new Binding("SelectedItem", _viewModel, nameof(AccountsViewModel.SelectedFund), true, DataSourceUpdateMode.OnPropertyChanged));
+
+            var accountTypeLabel = new ToolStripLabel
+            {
+                Text = "Account Type",
+                Margin = new Padding(8, 0, 4, 0)
+            };
+
+            _accountTypeFilterCombo = new ToolStripComboBox
+            {
+                AutoSize = false,
+                Width = 150,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            _accountTypeFilterCombo.ComboBox.DataSource = _viewModel.AvailableAccountTypes;
+            _accountTypeFilterCombo.ComboBox.DataBindings.Add(
+                new Binding("SelectedItem", _viewModel, nameof(AccountsViewModel.SelectedAccountType), true, DataSourceUpdateMode.OnPropertyChanged));
+
             var filterButton = new ToolStripButton
             {
                 Text = Resources.ApplyFiltersButton,
@@ -153,6 +192,11 @@ namespace WileyWidget.WinForms.Forms
             };
 
             _toolbar.Items.Add(loadButton);
+            _toolbar.Items.Add(new ToolStripSeparator());
+            _toolbar.Items.Add(fundLabel);
+            _toolbar.Items.Add(_fundFilterCombo);
+            _toolbar.Items.Add(accountTypeLabel);
+            _toolbar.Items.Add(_accountTypeFilterCombo);
             _toolbar.Items.Add(filterButton);
             _toolbar.Items.Add(new ToolStripSeparator());
             _toolbar.Items.Add(_editToggleButton);
@@ -174,10 +218,12 @@ namespace WileyWidget.WinForms.Forms
                 SelectionMode = GridSelectionMode.Single,
                 NavigationMode = NavigationMode.Row,
                 RowHeight = 32,
-                HeaderRowHeight = 36
+                HeaderRowHeight = 36,
+                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill
             };
 
             ThemeColors.ApplySfDataGridTheme(_dataGrid);
+            SfSkinManager.SetVisualStyle(_dataGrid, "Office2019Colorful");
 
             _dataGrid.Columns.Add(new GridTextColumn
             {
@@ -410,7 +456,7 @@ namespace WileyWidget.WinForms.Forms
             }
             catch (Exception ex)
             {
-                var logger = Program.Services.GetService<ILogger<AccountsForm>>();
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<AccountsForm>>(Program.Services);
                 logger?.LogError(ex, "Failed to build accounts status bar");
 
                 try
@@ -498,6 +544,23 @@ namespace WileyWidget.WinForms.Forms
             MessageBox.Show(details, Resources.FormTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            if (MdiParent is MainForm mainForm)
+            {
+                try
+                {
+                    mainForm.RegisterAsDockingMDIChild(this, true);
+                }
+                catch
+                {
+                    // Safe to ignore docking registration failures; form still opens as standard MDI child.
+                }
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -520,6 +583,11 @@ namespace WileyWidget.WinForms.Forms
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+
+            if (_dataGrid != null)
+            {
+                _dataGrid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            }
         }
     }
 }

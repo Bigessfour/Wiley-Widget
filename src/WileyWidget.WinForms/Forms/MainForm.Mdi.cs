@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
+using WileyWidget.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -11,6 +13,9 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Themes;
+using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
+
+#pragma warning disable CS8604 // Possible null reference argument
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -32,8 +37,8 @@ namespace WileyWidget.WinForms.Forms;
 public partial class MainForm
 {
     // MDI configuration flags (can be set via appsettings.json)
-    private bool _useMdiMode = false;
-    private bool _useTabbedMdi = false;
+    private bool _useMdiMode = true;
+    private bool _useTabbedMdi = true;
 
     // Syncfusion TabbedMDIManager for enhanced tabbed MDI interface
     private TabbedMDIManager? _tabbedMdiManager;
@@ -87,6 +92,13 @@ public partial class MainForm
             // Otherwise keep the default set in MainForm constructor
 
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
+
+            // If Syncfusion Docking is enabled, TabbedMDI can conflict with docking-based panels
+            if (_useSyncfusionDocking && _useTabbedMdi)
+            {
+                _logger.LogWarning("Both TabbedMDIManager and Syncfusion Docking are enabled; disabling TabbedMDI to prevent conflicts with DockingManager.");
+                _useTabbedMdi = false;
+            }
 
             if (_useMdiMode)
             {
@@ -167,24 +179,63 @@ public partial class MainForm
     {
         try
         {
+            // If docking is enabled, skip TabbedMDI initialization to avoid Syncfusion conflicts
+            if (_useSyncfusionDocking)
+            {
+                _logger.LogWarning("Skipping TabbedMDIManager initialization because Syncfusion Docking is enabled. TabbedMDI is disabled to prevent conflicts.");
+                _useTabbedMdi = false;
+                return;
+            }
+
             _logger.LogInformation("Initializing Syncfusion TabbedMDIManager");
 
-            // If a previous TabbedMDIManager exists, try to cleanly detach and dispose it
             if (_tabbedMdiManager != null)
             {
                 _logger.LogDebug("Existing TabbedMDIManager found during initialization - detaching/disposing to ensure clean state");
                 SafeDisposeExistingTabbedMdiManager();
             }
 
-            // Ensure any leftover ContextMenu placeholder is cleared before creating a new manager
             ClearTabbedTabControlContextMenu();
 
-            // Create TabbedMDIManager instance
-            _tabbedMdiManager = new TabbedMDIManager();
-            SfSkinManager.SetVisualStyle(_tabbedMdiManager, ThemeColors.DefaultTheme);
+            _tabbedMdiManager = ServiceProviderExtensions.GetService<TabbedMDIManager>(_serviceProvider)
+                ?? new TabbedMDIManager();
+
+            var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
+
             try
             {
-                var dmType = _tabbedMdiManager!.GetType();
+                SfSkinManager.SetVisualStyle(_tabbedMdiManager, themeName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to apply {Theme} theme to TabbedMDIManager", themeName);
+            }
+
+            if (!IsMdiContainer)
+            {
+                IsMdiContainer = true;
+            }
+
+            try
+            {
+                _tabbedMdiManager.AttachToMdiContainer(this);
+
+                var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
+                if (mdiClient != null)
+                {
+                    mdiClient.Dock = DockStyle.Fill;
+                    mdiClient.SendToBack();
+                    _logger.LogDebug("TabbedMDI attached: MdiClient ({Name}) sent to back", mdiClient.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to attach TabbedMDIManager to container");
+            }
+
+            try
+            {
+                var dmType = _tabbedMdiManager.GetType();
 
                 var tabsOrientProp = dmType.GetProperty("TabsTextOrientation");
                 if (tabsOrientProp != null && tabsOrientProp.CanWrite)
@@ -216,6 +267,21 @@ public partial class MainForm
                         }
                         var p4 = tabControl.GetType().GetProperty("TabGap");
                         if (p4 != null && p4.CanWrite) p4.SetValue(tabControl, 2);
+
+                        try
+                        {
+                            SfSkinManager.SetVisualStyle(tabControl as Control, themeName);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Failed to apply {Theme} theme to TabControlAdv", themeName);
+                        }
+
+                        var themeProp = tabControl.GetType().GetProperty("ThemeName");
+                        if (themeProp != null && themeProp.CanWrite)
+                        {
+                            try { themeProp.SetValue(tabControl, themeName); } catch { }
+                        }
                     }
                 }
 
@@ -224,64 +290,6 @@ public partial class MainForm
 
                 var newBtnProp = dmType.GetProperty("ShowNewButton");
                 if (newBtnProp != null && newBtnProp.CanWrite) newBtnProp.SetValue(_tabbedMdiManager, false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "TabbedMDI property reflection failed");
-            }
-
-            // Apply theme from configuration (uses SkinManager)
-            var themeName = _configuration.GetValue<string>("UI:SyncfusionTheme", "Office2019Colorful");
-
-            // Attempt to apply theme using SkinManager to the inner TabControlAdv (preferred),
-            // then fall back to setting its ThemeName property if necessary.
-            var tabCtrlObj = _tabbedMdiManager?.GetType().GetProperty("TabControlAdv")?.GetValue(_tabbedMdiManager);
-            if (tabCtrlObj != null)
-            {
-                try
-                {
-                    if (tabCtrlObj is System.Windows.Forms.Control tabControl)
-                    {
-                        SfSkinManager.SetVisualStyle(tabControl, themeName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Failed to apply theme to TabControlAdv via SfSkinManager - falling back to property set");
-                }
-
-                var themeProp = tabCtrlObj.GetType().GetProperty("ThemeName");
-                if (themeProp != null && themeProp.CanWrite)
-                    themeProp.SetValue(tabCtrlObj, themeName);
-            }
-
-            // Attach to this MDI container
-            try
-            {
-                if (_tabbedMdiManager != null)
-                {
-                    var dmType = _tabbedMdiManager.GetType();
-                var attach = dmType.GetMethod("AttachToMdiContainer", new[] { typeof(Form) }) ?? dmType.GetMethod("AttachToMdiContainer");
-                if (attach != null)
-                {
-                    attach.Invoke(_tabbedMdiManager, new object[] { this });
-
-                    // Ensure MdiClient is properly placed behind other chrome after attaching TabbedMDI
-                    try
-                    {
-                        var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
-                        if (mdiClient != null)
-                        {
-                            mdiClient.Dock = DockStyle.Fill;
-                            mdiClient.SendToBack();
-                            _logger.LogDebug("TabbedMDI attached: MdiClient ({Name}) sent to back", mdiClient.Name);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Failed to adjust MdiClient z-order after TabbedMDI attach");
-                    }
-                }
 
                 var ev1 = dmType.GetEvent("TabControlAdded");
                 if (ev1 != null)
@@ -293,43 +301,41 @@ public partial class MainForm
                     }
                 }
 
-                    var ev2 = dmType.GetEvent("BeforeDropDownPopup");
-                    if (ev2 != null)
+                var ev2 = dmType.GetEvent("BeforeDropDownPopup");
+                if (ev2 != null)
+                {
+                    var eventType2 = ev2.EventHandlerType;
+                    if (eventType2 != null)
                     {
-                        var eventType2 = ev2.EventHandlerType;
-                        if (eventType2 != null)
-                        {
-                            try { var handler2 = Delegate.CreateDelegate(eventType2!, this, nameof(OnBeforeDropDownPopup)); ev2.AddEventHandler(_tabbedMdiManager, handler2); } catch { }
-                        }
+                        try { var handler2 = Delegate.CreateDelegate(eventType2!, this, nameof(OnBeforeDropDownPopup)); ev2.AddEventHandler(_tabbedMdiManager, handler2); } catch { }
                     }
-
-                    var ev3 = dmType.GetEvent("MdiChildActivate");
-                    if (ev3 != null)
-                    {
-                        var eventType3 = ev3.EventHandlerType;
-                        if (eventType3 != null)
-                        {
-                            try { var handler3 = Delegate.CreateDelegate(eventType3!, this, nameof(OnMdiChildActivate)); ev3.AddEventHandler(_tabbedMdiManager, handler3); } catch { }
-                        }
-                    }
-
-                    var ev4 = dmType.GetEvent("MdiChildRemoved");
-                    if (ev4 != null)
-                    {
-                        var eventType4 = ev4.EventHandlerType;
-                        if (eventType4 != null)
-                        {
-                            try { var handler4 = Delegate.CreateDelegate(eventType4!, this, nameof(OnMdiChildRemoved)); ev4.AddEventHandler(_tabbedMdiManager, handler4); } catch { }
-                        }
-                    }
-
-                // Configure additional features
-                ConfigureTabbedMdiFeatures();
                 }
+
+                var ev3 = dmType.GetEvent("MdiChildActivate");
+                if (ev3 != null)
+                {
+                    var eventType3 = ev3.EventHandlerType;
+                    if (eventType3 != null)
+                    {
+                        try { var handler3 = Delegate.CreateDelegate(eventType3!, this, nameof(OnMdiChildActivate)); ev3.AddEventHandler(_tabbedMdiManager, handler3); } catch { }
+                    }
+                }
+
+                var ev4 = dmType.GetEvent("MdiChildRemoved");
+                if (ev4 != null)
+                {
+                    var eventType4 = ev4.EventHandlerType;
+                    if (eventType4 != null)
+                    {
+                        try { var handler4 = Delegate.CreateDelegate(eventType4!, this, nameof(OnMdiChildRemoved)); ev4.AddEventHandler(_tabbedMdiManager, handler4); } catch { }
+                    }
+                }
+
+                ConfigureTabbedMdiFeatures();
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "TabbedMDI attach/event reflection failed");
+                _logger.LogDebug(ex, "TabbedMDI initialization encountered a reflection error");
                 ConfigureTabbedMdiFeatures();
             }
 
@@ -900,7 +906,7 @@ public partial class MainForm
 
             // Create a new scope to get fresh DbContext + ViewModels for each child window
             var scope = _serviceProvider.CreateScope();
-            var form = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TForm>(scope.ServiceProvider);
+            var form = CreateFormInstance<TForm, TViewModel>(scope);
 
             // Enforce TabbedMDI constraints: child forms hosted in a TabbedMDIManager must have default MinimumSize (0,0)
             try
@@ -923,30 +929,6 @@ public partial class MainForm
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error enforcing MinimumSize for TabbedMDI child {FormType}", typeof(TForm).Name);
-            }
-
-            // Configure as MDI child
-            if (typeof(TForm) == typeof(ChartForm))
-            {
-                // ChartForm causes InvalidCastException with TabbedMDIManager, show as modal dialog instead
-                _logger.LogDebug("Showing ChartForm as modal dialog to avoid TabbedMDIManager casting issues");
-
-                // Handle form closing to clean up scope (not tracked as MDI child)
-                form.FormClosed += (s, e) =>
-                {
-                    try
-                    {
-                        scope.Dispose();
-                        _logger.LogDebug("Modal dialog {FormType} closed and cleaned up", typeof(TForm).Name);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error cleaning up modal dialog {FormType}", typeof(TForm).Name);
-                    }
-                };
-
-                form.ShowDialog(this);
-                return;
             }
 
             try
@@ -1031,6 +1013,110 @@ public partial class MainForm
 #endif
             throw;
         }
+    }
+
+    internal void RegisterMdiChildWithDocking(Form child)
+    {
+        if (child == null)
+        {
+            return;
+        }
+
+        // DockingManager.SetAsMDIChild is intentionally not used for Form instances.
+        // TabbedMDIManager handles MDI integration; docking remains for panels only.
+    }
+
+    /// <summary>
+    /// Registers an MDI child form with the docking system (if applicable).
+    /// This is a compatibility method for child forms that use the older API.
+    /// The bool parameter is ignored as docking is not used for Form instances.
+    /// </summary>
+    /// <param name="child">The child form to register</param>
+    /// <param name="enabled">Ignored - kept for API compatibility</param>
+    public void RegisterAsDockingMDIChild(Form child, bool enabled)
+    {
+        // Delegate to the actual implementation (enabled parameter is ignored)
+        RegisterMdiChildWithDocking(child);
+    }
+
+    /// <summary>
+    /// Closes the settings panel if it's displayed in the current form.
+    /// Called by SettingsPanel to hide itself.
+    /// </summary>
+    public void CloseSettingsPanel()
+    {
+        // Find and close any SettingsForm child windows
+        foreach (Form childForm in this.MdiChildren)
+        {
+            if (childForm is SettingsForm settingsForm)
+            {
+                settingsForm.Close();
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Closes a panel by name. Used by panels to close themselves.
+    /// </summary>
+    public void ClosePanel(string panelName)
+    {
+        // Find and close child form or panel by name using LINQ
+        var matchingForm = this.MdiChildren.FirstOrDefault(f =>
+            f.Text.Contains(panelName, StringComparison.OrdinalIgnoreCase));
+
+        matchingForm?.Close();
+    }
+
+    private TForm CreateFormInstance<TForm, TViewModel>(IServiceScope scope)
+        where TForm : Form
+        where TViewModel : class
+    {
+        if (typeof(TForm) == typeof(ChartForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(scope.ServiceProvider);
+            var chartForm = ActivatorUtilities.CreateInstance<ChartForm>(scope.ServiceProvider, vm, this);
+            return (TForm)(Form)chartForm;
+        }
+
+        if (typeof(TForm) == typeof(AccountsForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scope.ServiceProvider);
+            var accountsForm = ActivatorUtilities.CreateInstance<AccountsForm>(scope.ServiceProvider, vm, this);
+            return (TForm)(Form)accountsForm;
+        }
+
+        if (typeof(TForm) == typeof(BudgetOverviewForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<BudgetOverviewViewModel>(scope.ServiceProvider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<BudgetOverviewForm>>(scope.ServiceProvider);
+            var budgetOverviewForm = ActivatorUtilities.CreateInstance<BudgetOverviewForm>(scope.ServiceProvider, vm, logger, this);
+            return (TForm)(Form)budgetOverviewForm;
+        }
+
+        if (typeof(TForm) == typeof(DashboardForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(scope.ServiceProvider);
+            var dashboardForm = ActivatorUtilities.CreateInstance<DashboardForm>(scope.ServiceProvider, vm, this);
+            return (TForm)(Form)dashboardForm;
+        }
+
+        if (typeof(TForm) == typeof(ReportsForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ReportsViewModel>(scope.ServiceProvider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ReportsForm>>(scope.ServiceProvider);
+            var reportsForm = ActivatorUtilities.CreateInstance<ReportsForm>(scope.ServiceProvider, vm, logger, this);
+            return (TForm)(Form)reportsForm;
+        }
+
+        if (typeof(TForm) == typeof(SettingsForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(scope.ServiceProvider);
+            var settingsForm = ActivatorUtilities.CreateInstance<SettingsForm>(scope.ServiceProvider, vm, this);
+            return (TForm)(Form)settingsForm;
+        }
+
+        return ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
     }
 
     /// <summary>

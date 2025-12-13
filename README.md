@@ -19,22 +19,22 @@ Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for 
 
 ## 📑 Table of Contents
 
-- [Overview](#-overview)
-- [Project Structure](#-project-structure)
-- [Quick Start](#-quick-start)
-- [QuickBooks Sandbox Integration](#-quickbooks-sandbox-integration)
-- [Configuration & Secrets](#-configuration--secret-management)
-- [Architecture](#-architecture)
-- [Development](#-development)
-- [Testing](#-testing)
-- [CI/CD](#-cicd)
-- [Documentation](#-documentation)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
+- [Configuration & Secrets](#configuration--secret-management)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 📋 Overview
+## Overview
 
 WileyWidget is a modern Windows desktop application built with **WinForms + .NET 9** and Syncfusion WinForms controls, designed for budget management and financial data analysis. The application features a **pure MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
 
@@ -314,7 +314,7 @@ WileyWidget integrates with **QuickBooks Online (QBO)** via OAuth 2.0 for secure
 **Company:** Town of Wiley Sandbox
 **Realm ID:** 9341455168020461
 **Client ID:** ABWlf3T7raiKwVV8ILahdlGP7E5pblC6pH1i6lXZQoU6wloEOm
-**OAuth Redirect URI:** https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl
+**OAuth Redirect URI:** [Intuit OAuth Playground](https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl)
 **Last Connected:** November 8, 2025
 **Token Status:** ✅ Active (auto-refreshes)
 
@@ -346,7 +346,7 @@ The script will:
 
 #### Intuit Developer Portal Setup
 
-1. **Create App** at https://developer.intuit.com/app/developer/dashboard
+1. **Create App** at [Intuit Developer Dashboard](https://developer.intuit.com/app/developer/dashboard)
 2. **Keys & OAuth** section:
    - Copy **Client ID** and **Client Secret**
    - Add **Redirect URIs**:
@@ -509,9 +509,9 @@ if (!isConnected)
 
 ### 📚 Additional Resources
 
-- **Intuit Docs:** https://developer.intuit.com/app/developer/qbo/docs/get-started
-- **OAuth 2.0 Flow:** https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
-- **API Reference:** https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities
+- **Intuit Docs:** [QuickBooks Online Documentation](https://developer.intuit.com/app/developer/qbo/docs/get-started)
+- **OAuth 2.0 Flow:** [OAuth 2.0 Documentation](https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization)
+- **API Reference:** [QuickBooks API Reference](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities)
 - **Setup Script:** `scripts/quickbooks/setup-oauth.ps1`
 - **Service Tests:** `tests/WileyWidget.Services.Tests/QuickBooksServiceTests.cs`
 
@@ -2186,13 +2186,13 @@ If none of the above register, ensure the key hasn’t expired and you’re on a
 
 Direct raw links to key project artifacts for automation / ingestion:
 
-- Project file: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/WileyWidget.csproj
-- Solution file: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget.sln
-- CI workflow: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/ci.yml
-- Release workflow: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/release.yml
-- Settings service: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/Services/SettingsService.cs
-- License sample: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/LicenseKey.Private.sample.cs
-- Build script: https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/scripts/build.ps1
+- Project file: [WileyWidget.csproj](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/WileyWidget.csproj)
+- Solution file: [WileyWidget.sln](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget.sln)
+- CI workflow: [ci.yml](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/ci.yml)
+- Release workflow: [release.yml](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/release.yml)
+- Settings service: [SettingsService.cs](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/Services/SettingsService.cs)
+- License sample: [LicenseKey.Private.sample.cs](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/LicenseKey.Private.sample.cs)
+- Build script: [build.ps1](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/scripts/build.ps1)
 
 Replace REPO_OWNER/REPO_NAME with the actual GitHub org/repo when published.
 
@@ -2293,7 +2293,7 @@ Ribbon: Home > Help > About shows version (AssemblyInformationalVersion).
 
 Artifacts follow naming pattern: `WileyWidget-vX.Y.Z-win-x64.zip`
 
-Releases: https://github.com/Bigessfour/Wiley-Widget/releases
+Releases: [GitHub Releases](https://github.com/Bigessfour/Wiley-Widget/releases)
 
 ## Project Structure
 

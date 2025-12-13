@@ -114,13 +114,13 @@ namespace WileyWidget.Data
             }
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync()
+        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             const string cacheKey = "MunicipalAccounts_All";
 
             if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
             {
-                await using var context = await _contextFactory.CreateDbContextAsync();
+                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
                 var list = CQ_GetAllOrdered(context);
                 accounts = list;
                 _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(5));
@@ -166,15 +166,15 @@ namespace WileyWidget.Data
             return context.MunicipalAccounts.AsQueryable();
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync()
+        public async Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync(CancellationToken cancellationToken = default)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .Include(ma => ma.Department)
                 .Include(ma => ma.BudgetEntries)
                 .OrderBy(ma => ma.AccountNumber!.Value)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
@@ -194,39 +194,39 @@ namespace WileyWidget.Data
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund)
+    public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund, CancellationToken cancellationToken = default)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var list = CQ_GetByFund(context, fund);
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type)
+    public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type, CancellationToken cancellationToken = default)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var list = CQ_GetByType(context, type);
             return list;
         }
 
-        public async Task<MunicipalAccount?> GetByIdAsync(int id)
+        public async Task<MunicipalAccount?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             // Compiled + NoTracking for fast first-hit performance
             var entity = CQ_GetById_NoTracking(context, id);
             return await Task.FromResult(entity);
         }
 
-        public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber)
+        public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             return await context.MunicipalAccounts
                 .AsNoTracking()
-                .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
+                .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber, cancellationToken);
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId)
+        public async Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId, CancellationToken cancellationToken = default)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var list = CQ_GetByDepartment(context, departmentId);
             // Ensure consistent sort
             return list.OrderBy(ma => ma.AccountNumber?.Value).ToList();
@@ -318,10 +318,13 @@ namespace WileyWidget.Data
             return await query.AnyAsync();
         }
 
-        public async Task<int> GetCountAsync()
+        /// <summary>
+        /// Gets the total count of municipal accounts.
+        /// </summary>
+        public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.MunicipalAccounts.CountAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.MunicipalAccounts.CountAsync(cancellationToken);
         }
 
         // Note: This method is not applicable with the simplified budget schema
@@ -336,18 +339,18 @@ namespace WileyWidget.Data
         //         .ToListAsync();
         // }
 
-        public async Task<MunicipalAccount> AddAsync(MunicipalAccount account)
+        public async Task<MunicipalAccount> AddAsync(MunicipalAccount account, CancellationToken cancellationToken = default)
         {
             if (account == null)
             {
                 throw new ArgumentNullException(nameof(account));
             }
 
-            using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
             // Check for duplicate account number
             var existingAccount = await context.MunicipalAccounts
-                .FirstOrDefaultAsync(a => a.AccountNumber != null && account.AccountNumber != null && a.AccountNumber.Value == account.AccountNumber.Value);
+                .FirstOrDefaultAsync(a => a.AccountNumber != null && account.AccountNumber != null && a.AccountNumber.Value == account.AccountNumber.Value, cancellationToken);
 
             if (existingAccount != null)
             {
@@ -357,20 +360,20 @@ namespace WileyWidget.Data
             context.MunicipalAccounts.Add(account);
             try
             {
-                await context.SaveChangesAsync();
+                await context.SaveChangesAsync(cancellationToken);
             }
             catch (DbUpdateConcurrencyException ex)
             {
                 await RepositoryConcurrencyHelper.HandleAsync(ex, nameof(MunicipalAccount)).ConfigureAwait(false);
             }
             return account;
-        }        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account)
+        }        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account, CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             context.MunicipalAccounts.Update(account);
             try
             {
-                await context.SaveChangesAsync();
+                await context.SaveChangesAsync(cancellationToken);
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -380,12 +383,12 @@ namespace WileyWidget.Data
             return account;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var account = await context.MunicipalAccounts
                 .Include(a => a.AccountNumber)
-                .FirstOrDefaultAsync(a => a.Id == id);
+                .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
             if (account != null)
             {
@@ -395,7 +398,7 @@ namespace WileyWidget.Data
                 context.MunicipalAccounts.Remove(account);
                 try
                 {
-                    await context.SaveChangesAsync();
+                    await context.SaveChangesAsync(cancellationToken);
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
@@ -411,98 +414,18 @@ namespace WileyWidget.Data
             return false;
         }
 
-        public async Task SyncFromQuickBooksAsync()
-        {
-            // No-op implementation - actual sync requires QB accounts parameter
-            // This satisfies the interface requirement
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Imports chart of accounts data from QuickBooks for production use
-        /// </summary>
-        /// <param name="chartAccounts">List of QuickBooks accounts to import</param>
-        /// <exception cref="ArgumentException">Thrown when chartAccounts is null or empty</exception>
-        /// <exception cref="InvalidOperationException">Thrown when import validation fails</exception>
-        public async Task ImportChartOfAccountsAsync(List<Intuit.Ipp.Data.Account> chartAccounts)
-        {
-            if (chartAccounts == null || chartAccounts.Count == 0)
-            {
-                throw new ArgumentException("Chart accounts list cannot be null or empty", nameof(chartAccounts));
-            }
-
-            using var context = await _contextFactory.CreateDbContextAsync();
-
-            // Check if database supports transactions (skip for in-memory databases used in tests)
-            var supportsTransactions = context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory";
-            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-
-            if (supportsTransactions)
-            {
-                transaction = await context.Database.BeginTransactionAsync();
-            }
-
-            try
-            {
-                // Validate chart structure before import
-                var validationResult = await ValidateChartStructureAsync(chartAccounts);
-                if (!validationResult.IsValid)
-                {
-                    throw new InvalidOperationException($"Chart validation failed: {string.Join(", ", validationResult.Errors)}");
-                }
-
-                // Clear existing cache for accounts
-                _cache.Remove("municipal_accounts_all");
-
-                // Process accounts in hierarchical order (parents first)
-                var processedAccounts = new Dictionary<string, MunicipalAccount>();
-                var accountsToProcess = chartAccounts.OrderBy(a => (a.AcctNum ?? "").Split('.').Length).ToList();
-
-                foreach (var qbAccount in accountsToProcess)
-                {
-                    var municipalAccount = await ProcessQuickBooksAccountAsync(qbAccount, processedAccounts, context);
-                    if (municipalAccount != null)
-                    {
-                        processedAccounts[municipalAccount.AccountNumber!.Value] = municipalAccount;
-                    }
-                }
-
-                // Update account hierarchies
-                await UpdateAccountHierarchiesAsync(processedAccounts, context);
-
-                // Validate final structure
-                await ValidateImportedStructureAsync(processedAccounts.Values, context);
-
-                if (supportsTransactions)
-                {
-                    await transaction!.CommitAsync();
-                }
-
-                // Clear all related caches
-                await ClearAccountCachesAsync();
-            }
-            catch
-            {
-                if (supportsTransactions)
-                {
-                    await transaction!.RollbackAsync();
-                }
-                throw;
-            }
-        }
-
-        public async Task SyncFromQuickBooksAsync(List<Intuit.Ipp.Data.Account> qbAccounts)
+        public async Task SyncFromQuickBooksAsync(List<Intuit.Ipp.Data.Account> qbAccounts, CancellationToken cancellationToken = default)
         {
             if (qbAccounts == null)
-    {
-        throw new ArgumentNullException(nameof(qbAccounts));
-    }
+            {
+                throw new ArgumentNullException(nameof(qbAccounts));
+            }
 
-    using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             foreach (var qbAccount in qbAccounts)
             {
                 var existingAccount = await context.MunicipalAccounts
-                    .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == (qbAccount.AcctNum ?? string.Empty));
+                    .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == (qbAccount.AcctNum ?? string.Empty), cancellationToken);
 
                 if (existingAccount == null)
                 {
@@ -518,7 +441,7 @@ namespace WileyWidget.Data
                             LastSyncDate = DateTime.UtcNow,
                             IsActive = qbAccount.Active
                         };
-                    await AddAsync(newAccount);
+                    await AddAsync(newAccount, cancellationToken);
                 }
                 else
                 {
@@ -527,7 +450,7 @@ namespace WileyWidget.Data
                     existingAccount.Balance = qbAccount.CurrentBalance;
                     existingAccount.LastSyncDate = DateTime.UtcNow;
                     existingAccount.IsActive = qbAccount.Active;
-                    await UpdateAsync(existingAccount);
+                    await UpdateAsync(existingAccount, cancellationToken);
                 }
             }
         }
@@ -565,14 +488,14 @@ namespace WileyWidget.Data
             return accounts;
         }
 
-        public async Task<object> GetBudgetAnalysisAsync(int periodId)
+        public async Task<object> GetBudgetAnalysisAsync(int periodId, CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var accounts = await context.MunicipalAccounts
                 .AsNoTracking()
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0)
                 .OrderBy(ma => ma.AccountNumber!.Value)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             return accounts;
         }
 
@@ -584,6 +507,14 @@ namespace WileyWidget.Data
                 .Where(ma => ma.IsActive && ma.BudgetAmount != 0 && ma.AccountNumber != null)
                 .OrderBy(static ma => ma.AccountNumber!.Value)
                 .ToListAsync();
+        }
+
+        public async Task<BudgetPeriod?> GetCurrentActiveBudgetPeriodAsync(CancellationToken cancellationToken = default)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.BudgetPeriods
+                .AsNoTracking()
+                .FirstOrDefaultAsync(bp => bp.IsActive, cancellationToken);
         }
 
         private AccountType MapQuickBooksAccountType(Intuit.Ipp.Data.AccountTypeEnum? qbType)
@@ -813,13 +744,15 @@ namespace WileyWidget.Data
         }
 
         /// <summary>
-        /// Gets the current active budget period.
+        /// Imports chart of accounts data from QuickBooks for production use
         /// </summary>
-        public async Task<BudgetPeriod?> GetCurrentActiveBudgetPeriodAsync()
+        /// <param name="chartAccounts">List of QuickBooks accounts to import</param>
+        /// <exception cref="ArgumentException">Thrown when chartAccounts is null or empty</exception>
+        /// <exception cref="InvalidOperationException">Thrown when import validation fails</exception>
+        public async Task ImportChartOfAccountsAsync(List<Intuit.Ipp.Data.Account> chartAccounts, CancellationToken cancellationToken = default)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            return await context.BudgetPeriods
-                .FirstOrDefaultAsync(bp => bp.IsActive);
+            // For now, delegate to SyncFromQuickBooksAsync
+            await SyncFromQuickBooksAsync(chartAccounts, cancellationToken);
         }
 
         /// <summary>

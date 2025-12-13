@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
+using Microsoft.Reporting.WinForms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
@@ -13,7 +14,7 @@ namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
 /// Reports form for rendering and exporting reports.
-/// This version keeps the viewer optional: if BoldReports is not available, a placeholder is shown.
+/// This version keeps the viewer optional: if Microsoft Reporting Services is not available, a placeholder is shown.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", Justification = "WinForms UI")]
 public sealed class ReportsForm : Form
@@ -24,7 +25,7 @@ public sealed class ReportsForm : Form
 
     // UI elements
     private Control? _viewerHost;
-    private object? _reportViewer;
+    private Microsoft.Reporting.WinForms.ReportViewer? _reportViewer;
     private ComboBox? _reportTypeCombo;
     private DateTimePicker? _fromDatePicker;
     private DateTimePicker? _toDatePicker;
@@ -42,12 +43,14 @@ public sealed class ReportsForm : Form
     private DataGridView? _previewGrid;
     private bool _viewerAvailable;
 
-    public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger)
+    public ReportsForm(ReportsViewModel viewModel, ILogger<ReportsForm> logger, MainForm mainForm)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
 
         BuildLayout();
+        ThemeColors.ApplyTheme(this);
         BindViewModel();
     }
 
@@ -143,8 +146,9 @@ public sealed class ReportsForm : Form
 
         Controls.Add(toolbarFlow);
 
-        // Viewer placeholder (BoldReports optional)
+        // Viewer placeholder (Microsoft Reporting Services optional)
         _viewerHost = BuildViewerHost();
+        _viewerHost.Dock = DockStyle.Fill;
         _viewModel.ReportViewer = _reportViewer;
 
         _previewGrid = new DataGridView
@@ -255,7 +259,7 @@ public sealed class ReportsForm : Form
 
         if (!_viewerAvailable)
         {
-            _statusLabel.Text = "Report viewer not available. Install BoldReports viewer to enable generation.";
+            _statusLabel.Text = "Report viewer not available. Install Microsoft Reporting Services to enable generation.";
             _statusLabel.ForeColor = ThemeColors.Warning;
         }
     }
@@ -306,30 +310,38 @@ public sealed class ReportsForm : Form
     {
         try
         {
-            var viewerType = Type.GetType("BoldReports.Windows.ReportViewer, BoldReports.Windows");
-            if (viewerType != null)
+            var reportViewer = new Microsoft.Reporting.WinForms.ReportViewer
             {
-                var viewerInstance = Activator.CreateInstance(viewerType);
-                if (viewerInstance is Control viewerControl)
-                {
-                    viewerControl.Dock = DockStyle.Fill;
-                    _reportViewer = viewerInstance;
-                    _viewerAvailable = true;
-                    _statusLabel?.SetEnabledSafe(true);
-                    return viewerControl;
-                }
-            }
+                ProcessingMode = Microsoft.Reporting.WinForms.ProcessingMode.Local,
+                ShowToolBar = true,
+                ShowParameterPrompts = true,
+                ShowPromptAreaButton = true,
+                Dock = DockStyle.Fill
+            };
 
-            _logger.LogWarning("BoldReports viewer assembly not found. Using placeholder view.");
+            _reportViewer = reportViewer;
+            _viewerAvailable = true;
+            _statusLabel?.SetEnabledSafe(true);
+            return reportViewer;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to initialize BoldReports viewer; falling back to placeholder");
+            _logger.LogWarning(ex, "Failed to initialize ReportViewer");
         }
 
         _reportViewer = null;
         _viewerAvailable = false;
-        return BuildPlaceholder("BoldReports viewer not available. Install BoldReports.WinForms viewer to enable report rendering.");
+        return BuildPlaceholder("ReportViewer not available. Install Microsoft Reporting Services to enable report rendering.");
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        if (MdiParent is MainForm mainForm)
+        {
+            mainForm.RegisterAsDockingMDIChild(this, true);
+        }
     }
 
     private bool EnsureViewer()
@@ -340,7 +352,7 @@ public sealed class ReportsForm : Form
         }
 
         UpdateCommandAvailability();
-        MessageBox.Show(this, "BoldReports viewer is not available. Install BoldReports viewer packages to generate or export reports.", "Viewer Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        MessageBox.Show(this, "ReportViewer is not available. Install Microsoft.ReportingServices.ReportViewerControl.Winforms to generate or export reports.", "Viewer Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         return false;
     }
 

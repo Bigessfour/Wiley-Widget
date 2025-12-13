@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using DI = Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Services;
@@ -62,10 +63,15 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<IExcelExportService, ExcelExportService>();
             services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
+            services.AddTransient<IAnalyticsService, AnalyticsService>();
             services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddScoped<WileyWidget.Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
             services.AddScoped<WileyWidget.Business.Interfaces.IEnterpriseRepository, EnterpriseRepository>();
             services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
+
+            // Theme Services
+            services.AddSingleton<IThemeService, ThemeService>();
+            services.AddSingleton<IThemeIconService, ThemeIconService>();
 
             // Infrastructure
             services.AddMemoryCache();
@@ -81,6 +87,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<AccountsViewModel>();
             services.AddTransient<DashboardViewModel>();
+            services.AddTransient<AnalyticsViewModel>();
             services.AddTransient<BudgetOverviewViewModel>();
             services.AddTransient<BudgetViewModel>();
             services.AddTransient<CustomersViewModel>();
@@ -88,7 +95,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<ReportsViewModel>();
 
             // Forms
-            services.AddTransient<MainForm>();
+            services.AddSingleton<MainForm>();
+            services.AddSingleton<IViewManager>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(sp));
             services.AddTransient<ChartForm>();
             services.AddTransient<SettingsForm>();
             services.AddTransient<AccountsForm>();
