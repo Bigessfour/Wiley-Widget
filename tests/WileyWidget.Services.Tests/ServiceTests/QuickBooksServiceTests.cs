@@ -8,6 +8,7 @@ using Moq;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using Intuit.Ipp.Data;
@@ -21,7 +22,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public void HasValidAccessToken_ReturnsTrueWhenValid()
         {
             // Arrange
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings
             {
                 QboAccessToken = "valid-token",
@@ -50,7 +51,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public void HasValidAccessToken_ReturnsFalseWhenMissingOrExpired()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = null, QboTokenExpiry = default };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -79,7 +80,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public async Task RefreshTokenAsync_Success_UpdatesSettingsAndSaves()
         {
             // Arrange
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboRefreshToken = "old-refresh", QboAccessToken = null, QboTokenExpiry = default };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -120,7 +121,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public async Task RefreshTokenAsync_Failure_ClearsTokensAndThrows()
         {
             // Arrange
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboRefreshToken = "old-refresh", QboAccessToken = "old", QboTokenExpiry = DateTime.UtcNow.AddHours(-1) };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -159,7 +160,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public async Task RefreshTokenIfNeededAsync_UsesRefreshWhenNeeded()
         {
             // Arrange
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "old", QboRefreshToken = "old-refresh", QboTokenExpiry = DateTime.UtcNow.AddHours(-2) };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -208,7 +209,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task TestConnectionAsync_ReturnsFalseWhenRealmNotSet()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1) };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -247,7 +248,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task SyncDataAsync_ReturnsFailureWhenAccessTokenInvalid()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "", QboRefreshToken = "", QboTokenExpiry = default };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -273,7 +274,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task RefreshTokenIfNeededAsync_NoRefreshToken_SkipsInteractiveWhenWW_SKIP_INTERACTIVESet()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "", QboRefreshToken = "", QboTokenExpiry = default };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -311,7 +312,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task SyncDataAsync_UsesInjectedDataService()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings();
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -344,7 +345,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task GetChartOfAccountsAsync_PaginatesUsingInjectedService()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings();
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -380,7 +381,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
         [Fact]
         public async Task GetJournalEntriesAsync_UsesInjectedDataService()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings();
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -410,7 +411,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task TestConnectionAsync_UsesInjectedDataService()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings();
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -439,7 +440,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task GetBudgetsAsync_UsesInjectedDataService()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings();
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -470,7 +471,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncBudgetsToAppAsync_ValidBudgets_SyncsSuccessfully()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -519,7 +520,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncBudgetsToAppAsync_EmptyList_ReturnsSuccessWithZeroSynced()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -563,7 +564,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncBudgetsToAppAsync_HttpFailure_ReturnsFailureAndLogs()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -626,7 +627,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncBudgetsToAppAsync_Cancellation_ReturnsErrorResult()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -675,7 +676,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncVendorsToAppAsync_ValidVendors_SyncsSuccessfully()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -724,7 +725,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncVendorsToAppAsync_EmptyList_ReturnsSuccessWithZeroSynced()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -769,7 +770,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncVendorsToAppAsync_HttpFailure_ReturnsFailureAndLogs()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -818,7 +819,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         [Fact]
         public async Task SyncVendorsToAppAsync_Cancellation_ReturnsErrorResult()
         {
-            var mockSettings = new Mock<WileyWidget.Services.ISettingsService>();
+            var mockSettings = new Mock<ISettingsService>();
             var appSettings = new AppSettings { QboAccessToken = "valid-token", QboTokenExpiry = DateTime.UtcNow.AddHours(1), QuickBooksRealmId = "realm" };
             mockSettings.SetupGet(x => x.Current).Returns(appSettings);
             mockSettings.Setup(x => x.LoadAsync()).Returns(Task.CompletedTask);
@@ -867,3 +868,4 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
         }
     }
 }
+

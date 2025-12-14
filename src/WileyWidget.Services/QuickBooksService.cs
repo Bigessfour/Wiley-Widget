@@ -18,6 +18,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Services.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.Services;
@@ -29,7 +30,7 @@ namespace WileyWidget.Services;
 public sealed class QuickBooksService : IQuickBooksService, IDisposable
 {
     private readonly ILogger<QuickBooksService> _logger;
-    private readonly WileyWidget.Services.ISettingsService _settings;
+    private readonly ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
     private readonly QuickBooksAuthService _authService;
@@ -63,7 +64,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly IQuickBooksDataService? _injectedDataService;
     private readonly RateLimiter _rateLimiter;
 
-    public QuickBooksService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
+    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -637,8 +638,11 @@ public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnum
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-        // Set base URL for QBO API calls
-        client.BaseAddress = new Uri(_settings.Current.QboApiBaseUrl);
+        // Set base URL for QBO API calls based on environment
+        var baseUrl = _environment == "sandbox" 
+            ? "https://sandbox-quickbooks.api.intuit.com/" 
+            : "https://quickbooks.api.intuit.com/";
+        client.BaseAddress = new Uri(baseUrl);
 
         int syncedCount = 0;
         bool hadFailures = false;
@@ -754,8 +758,11 @@ public async System.Threading.Tasks.Task<SyncResult> SyncVendorsToAppAsync(IEnum
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-        // Set base URL for QBO API calls
-        client.BaseAddress = new Uri(_settings.Current.QboApiBaseUrl);
+        // Set base URL for QBO API calls based on environment
+        var baseUrl = _environment == "sandbox" 
+            ? "https://sandbox-quickbooks.api.intuit.com/" 
+            : "https://quickbooks.api.intuit.com/";
+        client.BaseAddress = new Uri(baseUrl);
 
         int syncedCount = 0;
         bool hadFailures = false;

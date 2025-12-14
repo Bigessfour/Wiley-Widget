@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
 
@@ -20,7 +20,7 @@ namespace WileyWidget.Services;
 internal sealed class QuickBooksAuthService : IDisposable
 {
     private readonly ILogger _logger;
-    private readonly WileyWidget.Services.ISettingsService _settings;
+    private readonly ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
@@ -39,7 +39,7 @@ internal sealed class QuickBooksAuthService : IDisposable
     private const string AuthorizationEndpoint = "https://appcenter.intuit.com/connect/oauth2";
     private const string TokenEndpoint = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
-    public QuickBooksAuthService(WileyWidget.Services.ISettingsService settings, ISecretVaultService keyVaultService, ILogger logger, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksAuthService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger logger, HttpClient httpClient, IServiceProvider serviceProvider)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
