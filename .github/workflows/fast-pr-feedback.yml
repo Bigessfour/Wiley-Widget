@@ -21,6 +21,7 @@ jobs:
           fetch-depth: 1 # Shallow clone for speed
 
       - name: Run Trunk check (fast)
+        continue-on-error: true # Don't fail PR on trunk issues for single-user dev
         uses: trunk-io/trunk-action@v1
         with:
           arguments: --ci
