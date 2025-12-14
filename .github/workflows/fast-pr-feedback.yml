@@ -11,7 +11,7 @@ permissions:
 jobs:
   fast-check:
     name: Fast PR checks (lint, trunk, quick-tests)
-    runs-on: windows-latest  # Windows required for WinForms tests
+    runs-on: windows-latest # Windows required for WinForms tests
     timeout-minutes: 20
 
     steps:
@@ -38,7 +38,7 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: dotnet format (whitespace only)
-        run: dotnet format --verify-no-changes
+        run: dotnet format whitespace --verify-no-changes
 
       - name: Restore (fast)
         run: dotnet restore WileyWidget.sln --verbosity minimal
