@@ -4,6 +4,9 @@
          that may not be present on CI or machines without full VS/MSBuild components. -->
     <DisableRemovePayloadDuplicatesTask>true</DisableRemovePayloadDuplicatesTask>
 
+    <!-- Enable building Windows-targeted projects on Linux runners (CI support) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
     <!-- Suppress NETSDK1206 warnings from legacy Azure DocumentDB dependency (win7-x64 RID) -->
     <NoWarn>$(NoWarn);NETSDK1206;CA1303;CA2213;CA2000</NoWarn>
 
