@@ -50,7 +50,7 @@ jobs:
       - name: Quick unit tests
         shell: pwsh
         run: |
-          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Upload quick-test results
