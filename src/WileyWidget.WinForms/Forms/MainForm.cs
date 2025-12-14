@@ -117,6 +117,18 @@ namespace WileyWidget.WinForms.Forms
 
             ValidateAndSanitizeUiConfiguration();
 
+            // Apply theme to MainForm before creating child controls
+            // This ensures all Syncfusion controls inherit the theme properly
+            try
+            {
+                ThemeColors.ApplyTheme(this);
+                SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to apply theme to MainForm");
+            }
+
             // Initialize UI chrome (Ribbon, StatusBar, Navigation)
             try
             {
