@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Shallow clone for speed
 
       - name: Install jq (required by trunk-action)
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -42,7 +44,7 @@ jobs:
 
       - name: Quick unit tests
         run: |
-          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --no-build --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
 
       - name: Upload quick-test results
         if: always()
