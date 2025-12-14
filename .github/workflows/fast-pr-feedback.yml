@@ -11,7 +11,7 @@ permissions:
 jobs:
   fast-check:
     name: Fast PR checks (lint, trunk, quick-tests)
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Windows required for WinForms tests
     timeout-minutes: 20
 
     steps:
@@ -19,9 +19,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1 # Shallow clone for speed
-
-      - name: Install jq (required by trunk-action)
-        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run Trunk check (fast)
         uses: trunk-io/trunk-action@v1
@@ -50,9 +47,10 @@ jobs:
         run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
 
       - name: Quick unit tests
+        shell: pwsh
         run: |
           dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
-          if [ $? -ne 0 ]; then exit 1; fi
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Upload quick-test results
         if: always()
