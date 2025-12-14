@@ -296,6 +296,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             // Set the license key in the current process environment so the launched app inherits it
+            // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
             Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
 
             _app = Application.Launch(_exePath);

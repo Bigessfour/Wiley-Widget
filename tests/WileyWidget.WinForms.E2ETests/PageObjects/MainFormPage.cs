@@ -212,9 +212,9 @@ public class MainFormPage : BasePage
     /// </summary>
     public bool AreDockingPanelsVisible()
     {
-        return IsVisible(LeftDockPanel) && 
-               IsVisible(CentralDocumentPanel) && 
-               IsVisible(RightDockPanel);
+        return (LeftDockPanel != null && IsVisible(LeftDockPanel)) &&
+               (CentralDocumentPanel != null && IsVisible(CentralDocumentPanel)) &&
+               (RightDockPanel != null && IsVisible(RightDockPanel));
     }
 
     /// <summary>

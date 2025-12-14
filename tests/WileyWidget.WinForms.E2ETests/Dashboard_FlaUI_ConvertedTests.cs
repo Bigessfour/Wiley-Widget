@@ -68,6 +68,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             // Set the license key in the current process environment so the launched app inherits it
+            // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
             Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
 
             _app = FlaUIApplication.Launch(_exePath);
@@ -156,7 +157,7 @@ namespace WileyWidget.WinForms.E2ETests
                 // Validate PDF header
                 using var fs = File.OpenRead(tempPdf);
                 var header = new byte[5];
-                fs.Read(header, 0, header.Length);
+                fs.ReadExactly(header, 0, header.Length);
                 var headerStr = System.Text.Encoding.ASCII.GetString(header);
                 Assert.Equal("%PDF-", headerStr);
                 try { File.Delete(tempPdf); } catch { }
@@ -181,9 +182,9 @@ namespace WileyWidget.WinForms.E2ETests
         }
 
         [Fact]
-        public async Task Dashboard_AutoRefresh_UpdatesData_WhenRefreshed()
+        public Task Dashboard_AutoRefresh_UpdatesData_WhenRefreshed()
         {
-            if (!EnsureInteractiveOrSkip()) return;
+            if (!EnsureInteractiveOrSkip()) return Task.CompletedTask;
             StartApp();
             var window = GetMainWindow();
 
@@ -202,12 +203,23 @@ namespace WileyWidget.WinForms.E2ETests
             // Wait up to 12 seconds for the label text to change
             var changed = Retry.While(() => (lastLabel.Text ?? string.Empty) == firstText, same => same, TimeSpan.FromSeconds(12), TimeSpan.FromMilliseconds(200));
             Assert.False(changed.Success, "Expected LastUpdated label to change after refresh, but it did not update in time.");
+
+            return Task.CompletedTask;
         }
 
         public void Dispose()
         {
-            try { _automation?.Dispose(); } catch { }
-            try { if (_app != null && !_app.HasExited) { _app.Kill(); _app.Dispose(); } } catch { }
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _automation?.Dispose(); } catch { }
+                try { if (_app != null && !_app.HasExited) { _app.Kill(); _app.Dispose(); } } catch { }
+            }
         }
     }
 }

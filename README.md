@@ -779,13 +779,11 @@ private bool ValidateEntropyIntegrity()
 If entropy tampering is detected:
 
 1. **Immediate Actions:**
-
    - Application automatically refuses to load secrets
    - Critical security event logged to system logs
    - User notified of security issue
 
 2. **Investigation Steps:**
-
    - Check Windows Event Viewer for security audit logs
    - Review file system access logs for `Secrets` folder
    - Verify user account integrity
@@ -1663,21 +1661,18 @@ The AssemblyResolve handler automatically logs to Serilog:
 ### Core Functionality
 
 - **📊 Budget Management**
-
   - Multi-year budget tracking
   - Department-wise budget allocation
   - Budget variance analysis
   - Historical data comparison
 
 - **🎨 Modern UI**
-
   - Syncfusion DataGrid with advanced features
   - Interactive charts and visualizations
   - Fluent Design themes (Dark/Light)
   - Responsive layout with docking panels
 
 - **🔗 Enterprise Integration**
-
   - QuickBooks Online API integration
   - Secure OAuth2 authentication
   - Automated data synchronization
@@ -2552,7 +2547,7 @@ Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
 {
   "QboAccessToken": "...",
   "QboRefreshToken": "...",
-  "QboTokenExpiry": "2025-08-12T12:34:56.789Z"
+  "QboTokenExpiry": "2025-08-12T12:34:56.789Z",
 }
 ```
 
@@ -2704,7 +2699,6 @@ If issues persist, re-set the env var and restart your terminal:
 ### Cleanup & Architecture Reports
 
 - **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
-
   - 28 files deleted (themes, services, backups)
   - CommunityToolkit.Mvvm removed
   - Pure architecture established

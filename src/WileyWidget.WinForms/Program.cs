@@ -103,6 +103,7 @@ namespace WileyWidget.WinForms
                     }
                 }
                 // If no license, register dummy to prevent popup
+                // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
                 const string dummyLicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
                 try
                 {

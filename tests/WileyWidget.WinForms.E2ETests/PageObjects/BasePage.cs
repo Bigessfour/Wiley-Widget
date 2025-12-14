@@ -83,28 +83,29 @@ public abstract class BasePage
     protected bool WaitForElement(AutomationElement element, TimeSpan? timeout = null)
     {
         var maxWait = timeout ?? DefaultTimeout;
-        var stopwatch = Stopwatch.StartNew();
 
-        while (stopwatch.Elapsed < maxWait)
+        try
         {
-            try
-            {
-#pragma warning disable CA1062 // Validate arguments of public methods
-                if (element.IsAvailable && element.IsOffscreen == false)
+            var result = FlaUI.Core.Tools.Retry.WhileException(
+                () =>
                 {
+#pragma warning disable CA1062 // Validate arguments of public methods
+                    if (!element.IsAvailable || element.IsOffscreen)
+                    {
+                        throw new InvalidOperationException("Element not ready");
+                    }
                     return true;
-                }
 #pragma warning restore CA1062 // Validate arguments of public methods
-            }
-            catch
-            {
-                // Element not ready yet
-            }
+                },
+                maxWait,
+                TimeSpan.FromMilliseconds(100));
 
-            Thread.Sleep(100);
+            return result.Success && result.Result;
         }
-
-        return false;
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -113,27 +114,22 @@ public abstract class BasePage
     protected void WaitForWindowReady(TimeSpan? timeout = null)
     {
         var maxWait = timeout ?? DefaultTimeout;
-        var stopwatch = Stopwatch.StartNew();
 
-        while (stopwatch.Elapsed < maxWait)
-        {
-            try
+        var result = FlaUI.Core.Tools.Retry.WhileException(
+            () =>
             {
-                if (Window.IsAvailable && !Window.IsModal)
+                if (!Window.IsAvailable || Window.IsModal)
                 {
-                    Thread.Sleep(200); // Small delay to ensure rendering completes
-                    return;
+                    throw new InvalidOperationException("Window not ready");
                 }
-            }
-            catch
-            {
-                // Window not ready yet
-            }
+            },
+            maxWait,
+            TimeSpan.FromMilliseconds(100));
 
-            Thread.Sleep(100);
+        if (!result.Success)
+        {
+            throw new TimeoutException("Window did not become ready within timeout");
         }
-
-        throw new TimeoutException($"Window did not become ready within {maxWait.TotalSeconds} seconds");
     }
 
     /// <summary>
@@ -142,20 +138,22 @@ public abstract class BasePage
     protected void WaitForBusyIndicator(TimeSpan? timeout = null)
     {
         var maxWait = timeout ?? DefaultTimeout;
-        var stopwatch = Stopwatch.StartNew();
 
-        while (stopwatch.Elapsed < maxWait)
+        try
         {
-            var busyIndicator = Window.FindFirstDescendant(cf => cf.ByName("BusyIndicator").Or(cf.ByControlType(ControlType.ProgressBar)));
-            if (busyIndicator == null || busyIndicator.IsOffscreen)
-            {
-                return;
-            }
-
-            Thread.Sleep(100);
+            FlaUI.Core.Tools.Retry.WhileTrue(
+                () =>
+                {
+                    var busyIndicator = Window.FindFirstDescendant(cf => cf.ByName("BusyIndicator").Or(cf.ByControlType(ControlType.ProgressBar)));
+                    return busyIndicator != null && !busyIndicator.IsOffscreen;
+                },
+                maxWait,
+                TimeSpan.FromMilliseconds(100));
         }
-
-        // Don't throw - busy indicator absence is common
+        catch
+        {
+            // Don't throw - busy indicator absence is common
+        }
     }
 
     #endregion
@@ -163,7 +161,7 @@ public abstract class BasePage
     #region Interaction Helpers
 
     /// <summary>
-    /// Click element with retry logic.
+    /// Click element with retry logic and WaitUntilResponsive.
     /// </summary>
     protected void Click(AutomationElement element)
     {
@@ -171,8 +169,14 @@ public abstract class BasePage
 
         WaitForElement(element);
 
-        RetryAction(() =>
+        // Use Retry.WhileException instead of custom retry
+        var result = FlaUI.Core.Tools.Retry.WhileException(() =>
         {
+            if (!element.IsEnabled || element.IsOffscreen)
+            {
+                throw new InvalidOperationException("Element not ready for click");
+            }
+
             if (element.Patterns.Invoke.IsSupported)
             {
                 element.Patterns.Invoke.Pattern.Invoke();
@@ -181,9 +185,12 @@ public abstract class BasePage
             {
                 element.Click();
             }
-        });
+        }, TimeSpan.FromSeconds(3));
 
-        Thread.Sleep(200); // Allow UI to respond
+        if (!result.Success)
+        {
+            throw new InvalidOperationException("Failed to click element");
+        }
     }
 
     /// <summary>
@@ -195,8 +202,13 @@ public abstract class BasePage
 
         WaitForElement(element);
 
-        RetryAction(() =>
+        var result = FlaUI.Core.Tools.Retry.WhileException(() =>
         {
+            if (!element.IsEnabled)
+            {
+                throw new InvalidOperationException("Element not enabled for text entry");
+            }
+
             if (element.Patterns.Value.IsSupported)
             {
                 element.Patterns.Value.Pattern.SetValue(text);
@@ -205,9 +217,12 @@ public abstract class BasePage
             {
                 element.AsTextBox().Text = text;
             }
-        });
+        }, TimeSpan.FromSeconds(3));
 
-        Thread.Sleep(100);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException("Failed to set text on element");
+        }
     }
 
     /// <summary>
@@ -249,61 +264,45 @@ public abstract class BasePage
     #region Retry Logic
 
     /// <summary>
-    /// Retry finding element with exponential backoff.
+    /// Retry finding element with FlaUI's Retry.WhileNull.
     /// </summary>
     protected AutomationElement? RetryFind(Func<AutomationElement?> findAction, TimeSpan timeout)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var delay = 100;
-
-        while (stopwatch.Elapsed < timeout)
-        {
-            try
+        var result = FlaUI.Core.Tools.Retry.WhileNull(
+            () =>
             {
-                var element = findAction();
-                if (element != null && element.IsAvailable)
+                try
                 {
-                    return element;
+                    var element = findAction();
+                    if (element != null && element.IsAvailable)
+                    {
+                        return element;
+                    }
+                    return null;
                 }
-            }
-            catch
-            {
-                // Suppress exceptions during retry
-            }
+                catch
+                {
+                    return null; // Suppress exceptions during retry
+                }
+            },
+            timeout,
+            TimeSpan.FromMilliseconds(100));
 
-            Thread.Sleep(delay);
-            delay = Math.Min(delay * 2, 1000); // Max 1 second delay
-        }
-
-        return null; // Not found within timeout
+        return result.Result;
     }
 
     /// <summary>
-    /// Retry action with exponential backoff.
+    /// Retry action with FlaUI's Retry.WhileException.
     /// </summary>
     private void RetryAction(Action action, int maxAttempts = 3)
     {
-        var attempt = 0;
-        Exception? lastException = null;
+        var timeout = TimeSpan.FromSeconds(maxAttempts);
+        var result = FlaUI.Core.Tools.Retry.WhileException(action, timeout, TimeSpan.FromMilliseconds(200));
 
-        while (attempt < maxAttempts)
+        if (!result.Success)
         {
-            try
-            {
-                action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                attempt++;
-                Thread.Sleep(200 * attempt);
-            }
+            throw new InvalidOperationException("Retry action failed");
         }
-
-        throw new InvalidOperationException(
-            $"Action failed after {maxAttempts} attempts",
-            lastException);
     }
 
     #endregion

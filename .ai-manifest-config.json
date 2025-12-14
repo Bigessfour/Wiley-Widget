@@ -26,12 +26,7 @@
     "^schemas/"
   ],
   "focus_mode": true,
-  "include_only_extensions": [
-    ".cs",
-    ".csproj",
-    ".sln",
-    ".xaml"
-  ],
+  "include_only_extensions": [".cs", ".csproj", ".sln", ".xaml"],
   "max_files": 700,
   "emit_full_tree": false,
   "tree_max_depth": 4,

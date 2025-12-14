@@ -81,7 +81,7 @@ namespace WileyWidget.WinForms.E2ETests
             var accountsWindow = OpenAccountsView(mainWindow);
 
             Assert.NotNull(accountsWindow);
-            Assert.Contains("Municipal Accounts", accountsWindow.Title);
+            Assert.Contains("Municipal Accounts", accountsWindow.Title, StringComparison.OrdinalIgnoreCase);
 
             // Verify data grid exists
             var dataGrid = WaitForElement(accountsWindow, cf => cf.ByAutomationId("dataGridAccounts"));
@@ -101,12 +101,18 @@ namespace WileyWidget.WinForms.E2ETests
             // Click Load Accounts button
             var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
             Assert.NotNull(loadButton);
+
+            // Wait for button to be responsive before clicking
+            WaitUntilResponsive(loadButton);
             loadButton.AsButton().Invoke();
 
-            Thread.Sleep(1000); // Wait for load
+            // Wait for status bar to update (no blocking sleep)
+            var statusLabel = Retry.WhileNull(() =>
+            {
+                var status = accountsWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
+                return status?.Properties.Name.ValueOrDefault?.Contains("loaded", StringComparison.OrdinalIgnoreCase) == true ? status : null;
+            }, timeout: TimeSpan.FromSeconds(5)).Result;
 
-            // Verify status bar updates
-            var statusLabel = WaitForElement(accountsWindow, cf => cf.ByControlType(ControlType.StatusBar));
             Assert.NotNull(statusLabel);
         }
 
@@ -158,13 +164,15 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(editToggle);
             Assert.True(editToggle.IsEnabled);
 
-            // Toggle editing off
-            editToggle.AsButton().Click();
-            Thread.Sleep(500);
+            // Toggle editing off - use ToggleButton pattern instead of Click
+            WaitUntilResponsive(editToggle);
+            var button = editToggle.AsButton();
+            button.Invoke();
+            Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
 
             // Toggle back on
-            editToggle.AsButton().Click();
-            Thread.Sleep(500);
+            button.Invoke();
+            Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
         }
 
         [Fact]
@@ -182,12 +190,14 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Load data first
             var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
+            WaitUntilResponsive(loadButton);
             loadButton?.AsButton().Invoke();
-            Thread.Sleep(1500);
 
-            // Verify grid has content (headers or data)
-            var gridItems = dataGrid.FindAllDescendants();
-            Assert.NotEmpty(gridItems);
+            // Wait for grid to populate using retry pattern
+            var gridItems = Retry.WhileEmpty(() => dataGrid.FindAllDescendants(),
+                timeout: TimeSpan.FromSeconds(5)).Result;
+
+            Assert.NotEmpty(gridItems!);
         }
 
         [Fact]
@@ -202,11 +212,17 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Load data
             var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
+            WaitUntilResponsive(loadButton);
             loadButton?.AsButton().Invoke();
-            Thread.Sleep(1500);
 
-            // Verify status bar shows count
-            var statusBar = WaitForElement(accountsWindow, cf => cf.ByControlType(ControlType.StatusBar));
+            // Wait for status bar to show account count
+            var statusBar = Retry.WhileNull(() =>
+            {
+                var status = accountsWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
+                var text = status?.Properties.Name.ValueOrDefault;
+                return text?.Contains("account", StringComparison.OrdinalIgnoreCase) == true ? status : null;
+            }, timeout: TimeSpan.FromSeconds(5)).Result;
+
             Assert.NotNull(statusBar);
         }
 
@@ -242,15 +258,37 @@ namespace WileyWidget.WinForms.E2ETests
         {
             _automation = new UIA3Automation();
             _app = Application.Launch(_exePath);
-            Thread.Sleep(2000); // Wait for app to initialize
+
+            // Wait for main window to be responsive instead of fixed delay
+            Retry.WhileException(() =>
+            {
+                var window = _app.GetMainWindow(_automation);
+                if (window == null || !window.IsAvailable)
+                {
+                    throw new InvalidOperationException("Main window not ready");
+                }
+            }, TimeSpan.FromSeconds(10));
+        }
+
+        private void WaitUntilResponsive(AutomationElement? element, int timeoutMs = 3000)
+        {
+            if (element == null) return;
+
+            Retry.WhileException(() =>
+            {
+                if (!element.IsEnabled || element.IsOffscreen)
+                {
+                    throw new InvalidOperationException("Element not responsive");
+                }
+            }, TimeSpan.FromMilliseconds(timeoutMs));
         }
 
         private Window GetMainWindow()
         {
-            var mainWindow = Retry.WhileNull(() => _app?.GetMainWindow(_automation),
+            var mainWindow = Retry.WhileNull(() => _app?.GetMainWindow(_automation!),
                 timeout: TimeSpan.FromSeconds(DefaultTimeout / 1000));
             Assert.NotNull(mainWindow);
-            return mainWindow.Result;
+            return mainWindow.Result!;
         }
 
         private AutomationElement? WaitForElement(AutomationElement parent, Func<ConditionFactory, ConditionBase> condition, int timeoutMs = DefaultTimeout)

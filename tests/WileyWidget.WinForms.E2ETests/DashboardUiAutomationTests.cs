@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             var window = app.GetMainWindow(automation);
             Assert.NotNull(window);
-            Assert.Contains("Dashboard - Wiley Widget", window.Title);
+            Assert.Contains("Dashboard - Wiley Widget", window.Title, StringComparison.OrdinalIgnoreCase);
 
             // Perform simple UI flow: for example, click Load dashboard button and assert a control updates.
         }

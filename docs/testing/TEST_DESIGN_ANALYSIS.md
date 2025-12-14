@@ -448,14 +448,12 @@ public class SyncfusionThemingTests
 **Focus:** Core infrastructure validation
 
 1. **MDI Architecture Tests**
-
    - Implement `MdiChildFormTests` for all child forms (SettingsForm, AccountsForm, BudgetForm, etc.)
    - Validate `IsMdiContainer` defensive pattern
    - Test `TabbedMDIManager` integration
    - Verify `DockingManager` panel coordination
 
 2. **Syncfusion Theme Management Tests**
-
    - Implement `SyncfusionThemingTests`
    - Validate `SfSkinManager.LoadAssembly` calls
    - Test theme propagation to all Syncfusion controls
@@ -482,14 +480,12 @@ public class SyncfusionThemingTests
 **Focus:** Data integrity and user interactions
 
 1. **Budget Service Comprehensive Tests**
-
    - Implement variance calculation tests
    - Test fiscal year boundary conditions
    - Validate department-level aggregations
    - Test transaction validation rules
 
 2. **Data Grid Interaction Tests**
-
    - Test sorting (single and multi-column)
    - Validate filtering accuracy
    - Test pagination with large datasets
@@ -515,7 +511,6 @@ public class SyncfusionThemingTests
 **Focus:** External service integration
 
 1. **QuickBooks Integration Tests (with Mocks)**
-
    - Mock `IppDotNetSdkForQuickBooksApiV3`
    - Test OAuth authentication flow
    - Validate token refresh handling
@@ -787,12 +782,10 @@ Ensure all theme tests reference official Syncfusion documentation for `SfSkinMa
 #### Discovered Issues
 
 1. **MainForm Constructor** - Requires properly configured IConfiguration mock
-
    - Line 81: `configuration.GetValue<bool>("UI:IsUiTestHarness")` throws NullReferenceException
    - **Fix Required:** Setup mock configuration with test values
 
 2. **AccountsViewModel** - Requires AppDbContext in constructor
-
    - **Fix Required:** Mock AppDbContext or use in-memory database
 
 3. **SettingsViewModel** - Requires additional service dependencies

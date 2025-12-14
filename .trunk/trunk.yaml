@@ -32,13 +32,13 @@ lint:
     - git-diff-check
     - gitleaks@8.30.0
     - isort@7.0.0
-    - osv-scanner@2.3.0
+    - osv-scanner@2.3.1
     - oxipng@10.0.0
     - prettier@3.7.4
     - pyright@1.1.407
-    - ruff@0.14.8
+    - ruff@0.14.9
     - taplo@0.10.0
-    - trufflehog@3.92.2
+    - trufflehog@3.92.3
     - yamllint@1.37.1
   ignore:
     - linters: [pyright]

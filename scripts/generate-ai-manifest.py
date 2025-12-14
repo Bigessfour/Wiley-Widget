@@ -14,14 +14,14 @@ Requirements:
     - Optional: gitpython for better git integration
 """
 
-import re
-import json
-import sys
-import subprocess
 import hashlib
+import json
+import re
+import subprocess
+import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
 
 
 class AIManifestGenerator:
@@ -49,7 +49,9 @@ class AIManifestGenerator:
             try:
                 patterns.append(re.compile(pattern))
             except re.error as e:
-                print(f"Warning: Invalid regex pattern '{pattern}': {e}", file=sys.stderr)
+                print(
+                    f"Warning: Invalid regex pattern '{pattern}': {e}", file=sys.stderr
+                )
         return patterns
 
     def _should_include_file(self, file_path: Path) -> bool:
@@ -78,21 +80,17 @@ class AIManifestGenerator:
             remote_url = subprocess.check_output(
                 ["git", "config", "--get", "remote.origin.url"],
                 cwd=self.repo_root,
-                text=True
+                text=True,
             ).strip()
 
             # Get current branch
             branch = subprocess.check_output(
-                ["git", "branch", "--show-current"],
-                cwd=self.repo_root,
-                text=True
+                ["git", "branch", "--show-current"], cwd=self.repo_root, text=True
             ).strip()
 
             # Get commit hash
             commit_hash = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                cwd=self.repo_root,
-                text=True
+                ["git", "rev-parse", "HEAD"], cwd=self.repo_root, text=True
             ).strip()
 
             # Check if dirty
@@ -100,7 +98,7 @@ class AIManifestGenerator:
                 ["git", "status", "--porcelain"],
                 cwd=self.repo_root,
                 capture_output=True,
-                text=True
+                text=True,
             )
             is_dirty = bool(status.stdout.strip())
 
@@ -222,7 +220,7 @@ class AIManifestGenerator:
                         "tracked": True,  # Assume tracked for now
                         "extension": file_path.suffix,
                         "sha256": sha256,
-                    }
+                    },
                 }
 
                 files.append(file_info)
@@ -313,6 +311,7 @@ class AIManifestGenerator:
 
     def _generate_folder_tree(self) -> Dict[str, Any]:
         """Generate a folder tree structure."""
+
         def build_tree(path: Path) -> Dict[str, Any]:
             if path.is_file():
                 return {
@@ -320,7 +319,7 @@ class AIManifestGenerator:
                     "type": "file",
                     "path": str(path.relative_to(self.repo_root)),
                 }
-            
+
             children = []
             try:
                 for child in sorted(path.iterdir()):
@@ -366,4 +365,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
