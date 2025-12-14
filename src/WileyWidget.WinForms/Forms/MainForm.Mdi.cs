@@ -587,7 +587,7 @@ public partial class MainForm
     private void ConfigureTabContextMenu()
     {
         var tabControl = GetTabbedTabControl();
-            if (tabControl == null) return;
+        if (tabControl == null) return;
 
         try
         {
@@ -805,18 +805,18 @@ public partial class MainForm
         }
 
         _logger.LogInformation("Added Window menu with MDI management commands");
-        }
+    }
 
-        private object? GetTabbedTabControl()
+    private object? GetTabbedTabControl()
+    {
+        try
         {
-            try
-            {
-                if (_tabbedMdiManager == null) return null;
-                var prop = _tabbedMdiManager.GetType().GetProperty("TabControlAdv");
-                return prop?.GetValue(_tabbedMdiManager);
-            }
-            catch { return null; }
+            if (_tabbedMdiManager == null) return null;
+            var prop = _tabbedMdiManager.GetType().GetProperty("TabControlAdv");
+            return prop?.GetValue(_tabbedMdiManager);
         }
+        catch { return null; }
+    }
 
     /// <summary>
     /// Close all MDI child forms.
@@ -881,19 +881,19 @@ public partial class MainForm
             // In MDI mode, check if we should reuse an existing window
             if (!allowMultiple && _activeMdiChildren.TryGetValue(typeof(TForm), out var existingForm))
             {
-                    if (existingForm != null && !existingForm.IsDisposed)
+                if (existingForm != null && !existingForm.IsDisposed)
+                {
+                    try
                     {
-                        try
-                        {
-                            existingForm.BringToFront();
-                            existingForm.Activate();
-                        }
-                        catch { }
-                        _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
-                        return;
+                        existingForm.BringToFront();
+                        existingForm.Activate();
                     }
+                    catch { }
+                    _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
+                    return;
+                }
 
-                    _activeMdiChildren.Remove(typeof(TForm));
+                _activeMdiChildren.Remove(typeof(TForm));
             }
 
             // Create a new scope to get fresh DbContext + ViewModels for each child window

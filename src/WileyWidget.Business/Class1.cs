@@ -1,4 +1,4 @@
-﻿namespace WileyWidget.Business;
+namespace WileyWidget.Business;
 
 public class Class1
 {

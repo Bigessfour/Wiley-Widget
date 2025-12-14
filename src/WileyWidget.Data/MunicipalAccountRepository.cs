@@ -194,14 +194,14 @@ namespace WileyWidget.Data
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var list = CQ_GetByFund(context, fund);
             return list;
         }
 
-    public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var list = CQ_GetByType(context, type);
@@ -367,7 +367,8 @@ namespace WileyWidget.Data
                 await RepositoryConcurrencyHelper.HandleAsync(ex, nameof(MunicipalAccount)).ConfigureAwait(false);
             }
             return account;
-        }        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account, CancellationToken cancellationToken = default)
+        }
+        public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account, CancellationToken cancellationToken = default)
         {
             using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             context.MunicipalAccounts.Update(account);
@@ -430,17 +431,17 @@ namespace WileyWidget.Data
                 if (existingAccount == null)
                 {
                     // Create new account
-                        var newAccount = new MunicipalAccount
-                        {
-                            AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
-                            Name = qbAccount.Name,
-                            Type = MapQuickBooksAccountType(qbAccount.AccountType),
-                            Fund = DetermineFundFromAccount(qbAccount),
-                            Balance = qbAccount.CurrentBalance,
-                            QuickBooksId = qbAccount.Id,
-                            LastSyncDate = DateTime.UtcNow,
-                            IsActive = qbAccount.Active
-                        };
+                    var newAccount = new MunicipalAccount
+                    {
+                        AccountNumber = new AccountNumber(qbAccount.AcctNum ?? $"QB-{qbAccount.Id}"),
+                        Name = qbAccount.Name,
+                        Type = MapQuickBooksAccountType(qbAccount.AccountType),
+                        Fund = DetermineFundFromAccount(qbAccount),
+                        Balance = qbAccount.CurrentBalance,
+                        QuickBooksId = qbAccount.Id,
+                        LastSyncDate = DateTime.UtcNow,
+                        IsActive = qbAccount.Active
+                    };
                     await AddAsync(newAccount, cancellationToken);
                 }
                 else

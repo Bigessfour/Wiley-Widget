@@ -177,141 +177,141 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 var retryCount = 0;
 
-            while (retryCount < MaxRetryAttempts)
-            {
-                try
+                while (retryCount < MaxRetryAttempts)
                 {
-                    IsLoading = true;
-                    ErrorMessage = null;
-
-                    if (_budgetRepository == null || _accountRepository == null)
+                    try
                     {
-                        ErrorMessage = "Dashboard repositories are not available";
-                        return;
+                        IsLoading = true;
+                        ErrorMessage = null;
+
+                        if (_budgetRepository == null || _accountRepository == null)
+                        {
+                            ErrorMessage = "Dashboard repositories are not available";
+                            return;
+                        }
+
+                        if (retryCount > 0)
+                        {
+                            _logger.LogInformation("Retrying dashboard data load (attempt {Attempt} of {Max})...", retryCount + 1, MaxRetryAttempts);
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Loading dashboard data...");
+                        }
+
+                        // Check for cancellation
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        // Get current fiscal year (hardcoded to 2026 for now, should come from settings)
+                        var currentFiscalYear = 2026;
+                        var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1); // July 1
+                        var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30); // June 30
+
+                        // Check for cancellation before expensive operations
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        // Load budget analysis from repository
+                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd); if (analysis != null)
+                        {
+                            BudgetAnalysis = analysis;
+
+                            // Update top-level summary
+                            TotalBudgeted = analysis.TotalBudgeted;
+                            TotalActual = analysis.TotalActual;
+                            TotalVariance = analysis.TotalVariance;
+                            VariancePercentage = analysis.TotalVariancePercentage;
+
+                            // Update fund summaries
+                            FundSummaries.Clear();
+                            foreach (var fund in analysis.FundSummaries)
+                            {
+                                FundSummaries.Add(fund);
+                            }
+
+                            // Update department summaries
+                            DepartmentSummaries.Clear();
+                            foreach (var dept in analysis.DepartmentSummaries)
+                            {
+                                DepartmentSummaries.Add(dept);
+                            }
+
+                            ActiveDepartments = analysis.DepartmentSummaries.Count;
+
+                            // Get top variances (largest deviations)
+                            TopVariances.Clear();
+                            var topVarList = analysis.AccountVariances
+                                .OrderByDescending(v => Math.Abs(v.VarianceAmount))
+                                .Take(10)
+                                .ToList();
+                            foreach (var variance in topVarList)
+                            {
+                                TopVariances.Add(variance);
+                            }
+                        }
+
+                        // Load account count
+                        AccountCount = await _accountRepository.GetCountAsync();
+
+                        // Calculate revenue and expenses from budget entries
+                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear);
+                        TotalRevenue = budgetEntries
+                            .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
+                            .Sum(be => be.ActualAmount);
+
+                        TotalExpenses = budgetEntries
+                            .Where(be => be.AccountNumber.StartsWith("5", StringComparison.Ordinal) ||
+                                         be.AccountNumber.StartsWith("6", StringComparison.Ordinal)) // Expense accounts typically start with 5 or 6
+                            .Sum(be => be.ActualAmount);
+
+                        NetIncome = TotalRevenue - TotalExpenses;
+
+                        // Update gauge values (0-100 scale representing percentage of budget used)
+                        TotalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
+                        RevenueGauge = TotalBudgeted > 0 ? (float)((TotalRevenue / (TotalBudgeted * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
+                        ExpensesGauge = TotalBudgeted > 0 ? (float)((TotalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
+                        NetPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(NetIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
+
+                        // Update metrics collection for grid display
+                        UpdateMetricsCollection();
+
+                        // Populate monthly revenue data for chart
+                        PopulateMonthlyRevenueData(currentFiscalYear);
+
+                        // Update metadata
+                        MunicipalityName = "Town of Wiley";
+                        FiscalYear = $"FY {currentFiscalYear}";
+                        LastUpdated = DateTime.Now;
+                        StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
+
+                        _logger.LogInformation("Dashboard data loaded successfully. Total Budget: {Budget:C}, Total Actual: {Actual:C}, Variance: {Variance:C}",
+                            TotalBudgeted, TotalActual, TotalVariance);
+                        // Successfully loaded—exit retry loop
+                        break;
                     }
-
-                    if (retryCount > 0)
+                    catch (OperationCanceledException)
                     {
-                        _logger.LogInformation("Retrying dashboard data load (attempt {Attempt} of {Max})...", retryCount + 1, MaxRetryAttempts);
-                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
+                        // Re-throw cancellation exceptions
+                        throw;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _logger.LogInformation("Loading dashboard data...");
+                        _logger.LogError(ex, "Error loading dashboard data");
+                        ErrorMessage = $"Failed to load dashboard: {ex.Message}";
+                        // Increment retry count so we don't loop infinitely
+                        retryCount++;
                     }
-
-                    // Check for cancellation
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // Get current fiscal year (hardcoded to 2026 for now, should come from settings)
-                    var currentFiscalYear = 2026;
-                    var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1); // July 1
-                    var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30); // June 30
-
-                    // Check for cancellation before expensive operations
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // Load budget analysis from repository
-                    var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd);                if (analysis != null)
-                {
-                    BudgetAnalysis = analysis;
-
-                    // Update top-level summary
-                    TotalBudgeted = analysis.TotalBudgeted;
-                    TotalActual = analysis.TotalActual;
-                    TotalVariance = analysis.TotalVariance;
-                    VariancePercentage = analysis.TotalVariancePercentage;
-
-                    // Update fund summaries
-                    FundSummaries.Clear();
-                    foreach (var fund in analysis.FundSummaries)
+                    finally
                     {
-                        FundSummaries.Add(fund);
-                    }
-
-                    // Update department summaries
-                    DepartmentSummaries.Clear();
-                    foreach (var dept in analysis.DepartmentSummaries)
-                    {
-                        DepartmentSummaries.Add(dept);
-                    }
-
-                    ActiveDepartments = analysis.DepartmentSummaries.Count;
-
-                    // Get top variances (largest deviations)
-                    TopVariances.Clear();
-                    var topVarList = analysis.AccountVariances
-                        .OrderByDescending(v => Math.Abs(v.VarianceAmount))
-                        .Take(10)
-                        .ToList();
-                    foreach (var variance in topVarList)
-                    {
-                        TopVariances.Add(variance);
+                        IsLoading = false;
                     }
                 }
-
-                // Load account count
-                AccountCount = await _accountRepository.GetCountAsync();
-
-                // Calculate revenue and expenses from budget entries
-                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear);
-                TotalRevenue = budgetEntries
-                    .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
-                    .Sum(be => be.ActualAmount);
-
-                TotalExpenses = budgetEntries
-                    .Where(be => be.AccountNumber.StartsWith("5", StringComparison.Ordinal) ||
-                                 be.AccountNumber.StartsWith("6", StringComparison.Ordinal)) // Expense accounts typically start with 5 or 6
-                    .Sum(be => be.ActualAmount);
-
-                NetIncome = TotalRevenue - TotalExpenses;
-
-                // Update gauge values (0-100 scale representing percentage of budget used)
-                TotalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
-                RevenueGauge = TotalBudgeted > 0 ? (float)((TotalRevenue / (TotalBudgeted * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
-                ExpensesGauge = TotalBudgeted > 0 ? (float)((TotalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
-                NetPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(NetIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
-
-                // Update metrics collection for grid display
-                UpdateMetricsCollection();
-
-                // Populate monthly revenue data for chart
-                PopulateMonthlyRevenueData(currentFiscalYear);
-
-                // Update metadata
-                MunicipalityName = "Town of Wiley";
-                FiscalYear = $"FY {currentFiscalYear}";
-                LastUpdated = DateTime.Now;
-                StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
-
-                _logger.LogInformation("Dashboard data loaded successfully. Total Budget: {Budget:C}, Total Actual: {Actual:C}, Variance: {Variance:C}",
-                    TotalBudgeted, TotalActual, TotalVariance);
-                // Successfully loaded—exit retry loop
-                break;
-            }
-            catch (OperationCanceledException)
-            {
-                // Re-throw cancellation exceptions
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading dashboard data");
-                ErrorMessage = $"Failed to load dashboard: {ex.Message}";
-                // Increment retry count so we don't loop infinitely
-                retryCount++;
             }
             finally
             {
-                IsLoading = false;
+                _loadLock.Release();
             }
         }
-    }
-    finally
-    {
-        _loadLock.Release();
-    }
-}
         /// Refreshes the dashboard data
         /// </summary>
         private async Task RefreshDashboardDataAsync()

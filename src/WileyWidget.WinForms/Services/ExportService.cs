@@ -28,7 +28,7 @@ namespace WileyWidget.WinForms.Services
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
-            
+
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
@@ -45,7 +45,7 @@ namespace WileyWidget.WinForms.Services
 
                 // Export using SfDataGrid's built-in export functionality
                 grid.ExportToExcel(grid.View, options, worksheet);
-                
+
                 workbook.Version = ExcelVersion.Xlsx;
                 workbook.SaveAs(filePath);
             });
@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.Services
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
-            
+
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
@@ -80,9 +80,9 @@ namespace WileyWidget.WinForms.Services
                 // Export using SfDataGrid's built-in PDF export functionality
                 var pdfGrid = grid.ExportToPdfGrid(grid.View, options);
                 var page = document.Pages.Add();
-                
+
                 pdfGrid.Draw(page, new System.Drawing.PointF(0, 0));
-                
+
                 document.Save(filePath);
             });
         }
@@ -98,7 +98,7 @@ namespace WileyWidget.WinForms.Services
         {
             if (chart == null)
                 throw new ArgumentNullException(nameof(chart));
-            
+
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
@@ -115,22 +115,22 @@ namespace WileyWidget.WinForms.Services
                     {
                         using var chartImage = new System.Drawing.Bitmap(chartControl.Width, chartControl.Height);
                         chartControl.DrawToBitmap(chartImage, new System.Drawing.Rectangle(0, 0, chartControl.Width, chartControl.Height));
-                        
+
                         var pdfImage = PdfImage.FromImage(chartImage);
-                        
+
                         var availableWidth = page.GetClientSize().Width;
                         var availableHeight = page.GetClientSize().Height;
                         var aspectRatio = (float)chartImage.Width / chartImage.Height;
-                        
+
                         float drawWidth = availableWidth;
                         float drawHeight = drawWidth / aspectRatio;
-                        
+
                         if (drawHeight > availableHeight)
                         {
                             drawHeight = availableHeight;
                             drawWidth = drawHeight * aspectRatio;
                         }
-                        
+
                         graphics.DrawImage(pdfImage, 0, 0, drawWidth, drawHeight);
                     }
                     else

@@ -257,12 +257,12 @@ public partial class AIChatControl : UserControl
         _headerPanel.Controls.Add(_clearButton);
 
         // === Messages Display (RichTextBox for better chat formatting) ===
-            _messagesDisplay = new RichTextBox
+        _messagesDisplay = new RichTextBox
         {
             Dock = DockStyle.Fill,
             ReadOnly = true,
             BorderStyle = BorderStyle.None,
-                BackColor = ThemeColors.Background,
+            BackColor = ThemeColors.Background,
             Font = new Font("Segoe UI", 10f),
             Padding = new Padding(10),
             ScrollBars = RichTextBoxScrollBars.Vertical,
@@ -325,7 +325,7 @@ public partial class AIChatControl : UserControl
         _toolComboBox.SelectedIndex = 0;
 
         // Enhanced input text box
-            _inputTextBox = new TextBox
+        _inputTextBox = new TextBox
         {
             Location = new Point(12, 45),
             Width = 335,

@@ -13,7 +13,7 @@ namespace WileyWidget.WinForms.E2ETests
         public void LaunchApp_WhenRun_ShouldOpenMainWindow()
         {
             // This test is a scaffold showing how to start the app with FlaUI.
-            var exePath = Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows","WileyWidget.WinForms.exe");
+            var exePath = Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows", "WileyWidget.WinForms.exe");
             Assert.True(File.Exists(exePath), "Build the WinForms app locally to create the exe before running UI tests.");
 
             using var app = FlaUI.Core.Application.Launch(exePath);

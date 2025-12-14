@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.E2ETests
         public Dashboard_FlaUI_ConvertedTests()
         {
             // Try environment variable first so CI/test runners can provide published exe.
-            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows10.0.26100.0","WileyWidget.WinForms.exe");
+            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
 
             // Disable MDI mode for UI tests so forms open as separate windows
             Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");

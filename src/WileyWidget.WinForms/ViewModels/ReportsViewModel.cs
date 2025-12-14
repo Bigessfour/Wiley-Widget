@@ -614,9 +614,9 @@ public partial class ReportsViewModel : ObservableObject
 
         // Generate sample data based on report type
         // In production, this would come from real services
-            List<ReportDataItem> previewTx = new();
-            await Task.Run(() =>
-            {
+        List<ReportDataItem> previewTx = new();
+        await Task.Run(() =>
+        {
             switch (SelectedReportType)
             {
                 case "Budget Summary":
@@ -625,7 +625,7 @@ public partial class ReportsViewModel : ObservableObject
                 case "Account List":
                     dataSources["AccountData"] = GenerateSampleAccountData();
                     break;
-                    case "Monthly Transactions":
+                case "Monthly Transactions":
                     // Simulate large dataset and update preview with pagination
                     var allTx = GenerateSampleTransactionData(500); // larger set for pagination
                     dataSources["TransactionData"] = allTx;
@@ -633,8 +633,8 @@ public partial class ReportsViewModel : ObservableObject
                     // set preview page
                     var start = (CurrentPage - 1) * PageSize;
                     previewTx.AddRange(allTx.Skip(start).Take(PageSize)
-                        .Select(t => new ReportDataItem(t.Date.ToShortDateString(), t.TransactionId, t.Category))
-                        .ToList());
+                            .Select(t => new ReportDataItem(t.Date.ToShortDateString(), t.TransactionId, t.Category))
+                            .ToList());
 
                     break;
                 case "Category Breakdown":
@@ -646,19 +646,19 @@ public partial class ReportsViewModel : ObservableObject
             }
         }, cancellationToken);
 
-            // Apply preview data to UI-bound collection on the calling context (UI thread)
-            try
-            {
-                PreviewData.Clear();
-                foreach (var p in previewTx) PreviewData.Add(p);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to apply preview data to UI-bound collection");
-            }
+        // Apply preview data to UI-bound collection on the calling context (UI thread)
+        try
+        {
+            PreviewData.Clear();
+            foreach (var p in previewTx) PreviewData.Add(p);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply preview data to UI-bound collection");
+        }
 
-            _logger.LogDebug("Prepared {Count} data sources for {ReportType}", dataSources.Count, SelectedReportType);
-            return dataSources;
+        _logger.LogDebug("Prepared {Count} data sources for {ReportType}", dataSources.Count, SelectedReportType);
+        return dataSources;
     }
 
     [RelayCommand]

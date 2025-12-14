@@ -154,7 +154,7 @@ public class BudgetDetailItem : INotifyPropertyChanged
     private void UpdateVariance()
     {
         Variance = ActualAmount - BudgetAmount;
-        
+
         // Update status based on variance
         if (Variance > 0)
             Status = "Over Budget";

@@ -163,16 +163,16 @@ namespace WileyWidget.WinForms.Forms
 
             _mainLayout.Controls.Add(_menuStrip!, 0, 0);
 
-        _gridContextMenu = new ContextMenuStrip();
-        _gridContextMenu.Items.Add(new ToolStripMenuItem("Copy", null, (s, e) =>
-        {
-            if (ActiveControl is SfDataGrid grid)
+            _gridContextMenu = new ContextMenuStrip();
+            _gridContextMenu.Items.Add(new ToolStripMenuItem("Copy", null, (s, e) =>
             {
-                grid.ClipboardController.Copy();
-            }
-        }));
+                if (ActiveControl is SfDataGrid grid)
+                {
+                    grid.ClipboardController.Copy();
+                }
+            }));
 
-        // Header panel
+            // Header panel
             var headerPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -744,11 +744,11 @@ namespace WileyWidget.WinForms.Forms
                 EnableCustomNeedles = false,
                 GaugeArcColor = ThemeColors.GaugeArc,
                 ShowBackgroundFrame = true
-                };
+            };
 
-                SfSkinManager.SetVisualStyle(gauge, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(gauge, "Office2019Colorful");
 
-        return gauge;
+            return gauge;
         }
 
 
@@ -1145,7 +1145,7 @@ namespace WileyWidget.WinForms.Forms
                                 EscapeCsv(metric.Trend),
                                 metric.ChangePercent,
                                 EscapeCsv(metric.Description));
-                            csv.AppendLine(line);
+                                csv.AppendLine(line);
                             }
 
                             System.IO.File.WriteAllText(saveDialog.FileName, csv.ToString());

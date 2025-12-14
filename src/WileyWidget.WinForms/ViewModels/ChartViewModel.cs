@@ -34,34 +34,34 @@ namespace WileyWidget.WinForms.ViewModels
         private string selectedCategory = "All Categories";
 
         [ObservableProperty]
-    private DateTime selectedStartDate = new(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private DateTime selectedStartDate = new(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    [ObservableProperty]
-    private DateTime selectedEndDate = new(DateTime.UtcNow.Year, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+        [ObservableProperty]
+        private DateTime selectedEndDate = new(DateTime.UtcNow.Year, 12, 31, 23, 59, 59, DateTimeKind.Utc);
 
-    [ObservableProperty]
-    private string selectedChartType = "Line";
+        [ObservableProperty]
+        private string selectedChartType = "Line";
 
-    public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
-    public ObservableCollection<(string Category, decimal Value)> PieChartData { get; } = new();
-    public ObservableCollection<KeyValuePair<string, decimal>> ChartData { get; } = new();
-    public ObservableCollection<ChartDataPoint> LineChartData { get; } = new();
+        public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
+        public ObservableCollection<(string Category, decimal Value)> PieChartData { get; } = new();
+        public ObservableCollection<KeyValuePair<string, decimal>> ChartData { get; } = new();
+        public ObservableCollection<ChartDataPoint> LineChartData { get; } = new();
 
-    public IAsyncRelayCommand RefreshCommand { get; }
-    public IAsyncRelayCommand<int> LoadChartsByYearCommand { get; }
+        public IAsyncRelayCommand RefreshCommand { get; }
+        public IAsyncRelayCommand<int> LoadChartsByYearCommand { get; }
 
-    public ChartViewModel(ILogger<ChartViewModel> logger, IDashboardService dashboardService)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+        public ChartViewModel(ILogger<ChartViewModel> logger, IDashboardService dashboardService)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
 
-        RefreshCommand = new AsyncRelayCommand(LoadChartDataAsync);
-        LoadChartsByYearCommand = new AsyncRelayCommand<int>(async year => await LoadChartsAsync(year));
+            RefreshCommand = new AsyncRelayCommand(LoadChartDataAsync);
+            LoadChartsByYearCommand = new AsyncRelayCommand<int>(async year => await LoadChartsAsync(year));
 
-        _logger.LogInformation("ChartViewModel constructed");
-    }
+            _logger.LogInformation("ChartViewModel constructed");
+        }
 
-    /// <summary>
+        /// <summary>
         /// Load chart data with optional year filter and cancellation support.
         /// </summary>
         public async Task LoadChartsAsync(int? year = null, string? category = null, CancellationToken cancellationToken = default)

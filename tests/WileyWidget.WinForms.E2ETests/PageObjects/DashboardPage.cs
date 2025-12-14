@@ -11,7 +11,7 @@ namespace WileyWidget.WinForms.E2ETests.PageObjects;
 /// </summary>
 public class DashboardPage : BasePage
 {
-    public DashboardPage(AutomationBase automation, Window window) 
+    public DashboardPage(AutomationBase automation, Window window)
         : base(automation, window)
     {
         WaitForWindowReady();
@@ -23,28 +23,28 @@ public class DashboardPage : BasePage
     /// <summary>
     /// Get Load Dashboard button from toolbar.
     /// </summary>
-    public AutomationElement? LoadButton => 
-        FindElementByAutomationId("Toolbar_LoadButton") ?? 
+    public AutomationElement? LoadButton =>
+        FindElementByAutomationId("Toolbar_LoadButton") ??
         FindElementByName("Load Dashboard");
 
     /// <summary>
     /// Get Refresh button from toolbar.
     /// </summary>
-    public AutomationElement? RefreshButton => 
-        FindElementByAutomationId("Toolbar_RefreshButton") ?? 
+    public AutomationElement? RefreshButton =>
+        FindElementByAutomationId("Toolbar_RefreshButton") ??
         FindElementByName("Refresh");
 
     /// <summary>
     /// Get Export button from toolbar.
     /// </summary>
-    public AutomationElement? ExportButton => 
-        FindElementByAutomationId("Toolbar_ExportButton") ?? 
+    public AutomationElement? ExportButton =>
+        FindElementByAutomationId("Toolbar_ExportButton") ??
         FindElementByName("Export");
 
     /// <summary>
     /// Get last updated label from status bar.
     /// </summary>
-    public AutomationElement? LastUpdatedLabel => 
+    public AutomationElement? LastUpdatedLabel =>
         FindElementByAutomationId("LastUpdatedLabel");
 
     #endregion
@@ -54,43 +54,43 @@ public class DashboardPage : BasePage
     /// <summary>
     /// Get Metrics grid (main summary grid).
     /// </summary>
-    public AutomationElement? MetricsGrid => 
+    public AutomationElement? MetricsGrid =>
         FindSfDataGrid("Dashboard_Grid_Metrics", DefaultTimeout);
 
     /// <summary>
     /// Get Funds grid.
     /// </summary>
-    public AutomationElement? FundsGrid => 
+    public AutomationElement? FundsGrid =>
         FindSfDataGrid("Dashboard_Grid_Funds", DefaultTimeout);
 
     /// <summary>
     /// Get Departments grid.
     /// </summary>
-    public AutomationElement? DepartmentsGrid => 
+    public AutomationElement? DepartmentsGrid =>
         FindSfDataGrid("Dashboard_Grid_Departments", DefaultTimeout);
 
     /// <summary>
     /// Get Top Variances grid.
     /// </summary>
-    public AutomationElement? TopVariancesGrid => 
+    public AutomationElement? TopVariancesGrid =>
         FindSfDataGrid("Dashboard_Grid_TopVariances", DefaultTimeout);
 
     /// <summary>
     /// Get Budget Analysis grid.
     /// </summary>
-    public AutomationElement? BudgetAnalysisGrid => 
+    public AutomationElement? BudgetAnalysisGrid =>
         FindSfDataGrid("Dashboard_Grid_BudgetAnalysis", DefaultTimeout);
 
     /// <summary>
     /// Get Analytics Metrics grid.
     /// </summary>
-    public AutomationElement? AnalyticsMetricsGrid => 
+    public AutomationElement? AnalyticsMetricsGrid =>
         FindSfDataGrid("Dashboard_Grid_AnalyticsMetrics", DefaultTimeout);
 
     /// <summary>
     /// Get Scenario grid.
     /// </summary>
-    public AutomationElement? ScenarioGrid => 
+    public AutomationElement? ScenarioGrid =>
         FindSfDataGrid("Dashboard_Grid_Scenario", DefaultTimeout);
 
     #endregion
@@ -170,7 +170,7 @@ public class DashboardPage : BasePage
     {
         if (grid == null) throw new ArgumentNullException(nameof(grid));
 
-        var headerCell = grid.FindFirstDescendant(cf => 
+        var headerCell = grid.FindFirstDescendant(cf =>
             cf.ByControlType(ControlType.HeaderItem)
               .And(cf.ByName(columnHeader)));
 
@@ -266,7 +266,7 @@ public class DashboardPage : BasePage
     /// </summary>
     public bool IsDashboardLoaded()
     {
-        return MetricsGrid != null && 
+        return MetricsGrid != null &&
                IsVisible(MetricsGrid) &&
                LoadButton != null;
     }
@@ -276,8 +276,8 @@ public class DashboardPage : BasePage
     /// </summary>
     public bool AreToolbarButtonsVisible()
     {
-        return LoadButton != null && 
-               RefreshButton != null && 
+        return LoadButton != null &&
+               RefreshButton != null &&
                ExportButton != null;
     }
 

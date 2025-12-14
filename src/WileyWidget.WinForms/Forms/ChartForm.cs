@@ -105,7 +105,9 @@ namespace WileyWidget.WinForms.Forms
             var pie = new ChartControl
             {
                 Dock = DockStyle.Fill,
-                Name = "Chart_Pie",                AccessibleName = "Chart_Pie",                Text = "Budget Distribution"
+                Name = "Chart_Pie",
+                AccessibleName = "Chart_Pie",
+                Text = "Budget Distribution"
             };
             SfSkinManager.SetVisualStyle(pie, ThemeColors.DefaultTheme);
 

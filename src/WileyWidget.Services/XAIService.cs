@@ -57,13 +57,13 @@ public class XAIService : IAIService, IDisposable
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
-    _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _contextService = contextService ?? throw new ArgumentNullException(nameof(contextService));
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _telemetryService = telemetryService;
-    if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
+        if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
         _apiKey = configuration["XAI:ApiKey"];
@@ -74,38 +74,38 @@ public class XAIService : IAIService, IDisposable
 
         var baseUrl = configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";
         var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
-    // Allow tests to override circuit-breaker break duration (seconds) via configuration
-    // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
-    var circuitBreakerBreakSeconds = 60;
-    if (!string.IsNullOrWhiteSpace(configuration["XAI:CircuitBreakerBreakSeconds"]) &&
-        int.TryParse(configuration["XAI:CircuitBreakerBreakSeconds"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedBreak))
-    {
-        circuitBreakerBreakSeconds = parsedBreak;
-    }
+        // Allow tests to override circuit-breaker break duration (seconds) via configuration
+        // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
+        var circuitBreakerBreakSeconds = 60;
+        if (!string.IsNullOrWhiteSpace(configuration["XAI:CircuitBreakerBreakSeconds"]) &&
+            int.TryParse(configuration["XAI:CircuitBreakerBreakSeconds"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedBreak))
+        {
+            circuitBreakerBreakSeconds = parsedBreak;
+        }
 
         // Validate API key format (basic check) - wrapped to handle exceptions gracefully
-            try
+        try
+        {
+            if (_apiKey.Length < 20)
             {
-                if (_apiKey.Length < 20)
-                {
-                    throw new InvalidOperationException("API key appears to be invalid (too short)");
-                }
+                throw new InvalidOperationException("API key appears to be invalid (too short)");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "XAI API key validation failed during construction");
-                throw; // Re-throw to prevent invalid service creation
-            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "XAI API key validation failed during construction");
+            throw; // Re-throw to prevent invalid service creation
+        }
 
         // Initialize concurrency control (limit to 5 concurrent requests to avoid throttling)
         var maxConcurrentRequests = int.Parse(configuration["XAI:MaxConcurrentRequests"] ?? "5", CultureInfo.InvariantCulture);
         _concurrencySemaphore = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
 
-    // Create or fall back to a default HttpClient if the factory returns null (tests may not set up a named client)
-    var createdClient = httpClientFactory.CreateClient("AIServices");
-    _httpClient = createdClient ?? new HttpClient();
-    _httpClient.BaseAddress = new Uri(baseUrl);
-    _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        // Create or fall back to a default HttpClient if the factory returns null (tests may not set up a named client)
+        var createdClient = httpClientFactory.CreateClient("AIServices");
+        _httpClient = createdClient ?? new HttpClient();
+        _httpClient.BaseAddress = new Uri(baseUrl);
+        _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         // Set default headers only if not already set by the named client
         if (!_httpClient.DefaultRequestHeaders.Contains("Authorization"))
@@ -289,9 +289,9 @@ public class XAIService : IAIService, IDisposable
 
             apiCallSpan?.SetTag("ai.cache_hit", false);
 
-    // Acquire concurrency semaphore to limit concurrent requests
-    await _concurrencySemaphore.WaitAsync(cancellationToken);
-    semaphoreEntered = true;
+            // Acquire concurrency semaphore to limit concurrent requests
+            await _concurrencySemaphore.WaitAsync(cancellationToken);
+            semaphoreEntered = true;
 
             var model = _configuration["XAI:Model"] ?? "grok-4-0709";
 

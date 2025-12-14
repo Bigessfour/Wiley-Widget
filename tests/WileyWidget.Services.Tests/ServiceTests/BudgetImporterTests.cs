@@ -30,7 +30,7 @@ public class BudgetImporterTests : IDisposable
         _mockExcelReader = new Mock<IExcelReaderService>();
         _mockLogger = new Mock<ILogger<BudgetImporter>>();
         _mockBudgetRepository = new Mock<IBudgetRepository>();
-        
+
         _importer = new BudgetImporter(
             _mockExcelReader.Object,
             _mockLogger.Object,
@@ -42,7 +42,7 @@ public class BudgetImporterTests : IDisposable
     {
         // Act
         Action act = () => new BudgetImporter(
-            null!, 
+            null!,
             _mockLogger.Object,
             _mockBudgetRepository.Object);
 

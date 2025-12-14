@@ -46,16 +46,16 @@ namespace WileyWidget.Services.Abstractions
         /// </summary>
         Task UpdateApiKeyAsync(string newApiKey);
 
-    /// <summary>
-    /// Sends a raw prompt to the AI provider and returns a structured response result.
-    /// Implementations may return additional context in AIResponseResult.
-    /// </summary>
-    Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Sends a raw prompt to the AI provider and returns a structured response result.
+        /// Implementations may return additional context in AIResponseResult.
+        /// </summary>
+        Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Send a message to the AI service with conversation history context.
-    /// </summary>
-    Task<string> SendMessageAsync(string message, object conversationHistory);
+        /// <summary>
+        /// Send a message to the AI service with conversation history context.
+        /// </summary>
+        Task<string> SendMessageAsync(string message, object conversationHistory);
     }
 
     /// <summary>

@@ -11,7 +11,7 @@ namespace WileyWidget.WinForms.E2ETests.PageObjects;
 /// </summary>
 public class MainFormPage : BasePage
 {
-    public MainFormPage(AutomationBase automation, Window window) 
+    public MainFormPage(AutomationBase automation, Window window)
         : base(automation, window)
     {
         WaitForWindowReady();
@@ -22,48 +22,48 @@ public class MainFormPage : BasePage
     /// <summary>
     /// Get Dashboard navigation button from ribbon or navigation panel.
     /// </summary>
-    public AutomationElement? DashboardButton => 
-        FindElementByAutomationId("Nav_Dashboard") ?? 
+    public AutomationElement? DashboardButton =>
+        FindElementByAutomationId("Nav_Dashboard") ??
         FindElementByName("Dashboard");
 
     /// <summary>
     /// Get Accounts navigation button.
     /// </summary>
-    public AutomationElement? AccountsButton => 
-        FindElementByAutomationId("Nav_Accounts") ?? 
+    public AutomationElement? AccountsButton =>
+        FindElementByAutomationId("Nav_Accounts") ??
         FindElementByName("Accounts");
 
     /// <summary>
     /// Get Charts navigation button.
     /// </summary>
-    public AutomationElement? ChartsButton => 
-        FindElementByAutomationId("Nav_Charts") ?? 
+    public AutomationElement? ChartsButton =>
+        FindElementByAutomationId("Nav_Charts") ??
         FindElementByName("Charts");
 
     /// <summary>
     /// Get Reports navigation button.
     /// </summary>
-    public AutomationElement? ReportsButton => 
-        FindElementByAutomationId("Nav_Reports") ?? 
+    public AutomationElement? ReportsButton =>
+        FindElementByAutomationId("Nav_Reports") ??
         FindElementByName("Reports");
 
     /// <summary>
     /// Get Settings navigation button.
     /// </summary>
-    public AutomationElement? SettingsButton => 
-        FindElementByAutomationId("Nav_Settings") ?? 
+    public AutomationElement? SettingsButton =>
+        FindElementByAutomationId("Nav_Settings") ??
         FindElementByName("Settings");
 
     /// <summary>
     /// Get Docking toggle button.
     /// </summary>
-    public AutomationElement? DockingToggleButton => 
+    public AutomationElement? DockingToggleButton =>
         FindElementByAutomationId("Nav_DockingToggle");
 
     /// <summary>
     /// Get MDI toggle button.
     /// </summary>
-    public AutomationElement? MdiToggleButton => 
+    public AutomationElement? MdiToggleButton =>
         FindElementByAutomationId("Nav_MdiToggle");
 
     #endregion
@@ -73,34 +73,34 @@ public class MainFormPage : BasePage
     /// <summary>
     /// Get left docking panel (Dashboard cards).
     /// </summary>
-    public AutomationElement? LeftDockPanel => 
-        FindElementByAutomationId("LeftDockPanel") ?? 
+    public AutomationElement? LeftDockPanel =>
+        FindElementByAutomationId("LeftDockPanel") ??
         FindDockPanel("Dashboard");
 
     /// <summary>
     /// Get central document panel (AI chat and MDI content).
     /// </summary>
-    public AutomationElement? CentralDocumentPanel => 
+    public AutomationElement? CentralDocumentPanel =>
         FindElementByAutomationId("CentralDocumentPanel");
 
     /// <summary>
     /// Get right docking panel (Activity grid).
     /// </summary>
-    public AutomationElement? RightDockPanel => 
-        FindElementByAutomationId("RightDockPanel") ?? 
+    public AutomationElement? RightDockPanel =>
+        FindElementByAutomationId("RightDockPanel") ??
         FindDockPanel("Activity");
 
     /// <summary>
     /// Get Activity data grid from right dock panel.
     /// </summary>
-    public AutomationElement? ActivityDataGrid => 
-        FindElementByAutomationId("ActivityDataGrid") ?? 
+    public AutomationElement? ActivityDataGrid =>
+        FindElementByAutomationId("ActivityDataGrid") ??
         FindSfDataGrid("ActivityDataGrid");
 
     /// <summary>
     /// Get DockingManager control.
     /// </summary>
-    public AutomationElement? DockingManager => 
+    public AutomationElement? DockingManager =>
         FindElementByAutomationId("DockingManager_Main");
 
     #endregion
@@ -115,7 +115,7 @@ public class MainFormPage : BasePage
         var maxWait = timeout ?? DefaultTimeout;
         var child = RetryFind(() =>
         {
-            var windows = Window.FindAllDescendants(cf => 
+            var windows = Window.FindAllDescendants(cf =>
                 cf.ByControlType(ControlType.Window)
                   .And(cf.ByName(title)));
             return windows.FirstOrDefault();
@@ -236,7 +236,7 @@ public class MainFormPage : BasePage
     /// </summary>
     public bool IsLoaded()
     {
-        return Window.IsAvailable && 
+        return Window.IsAvailable &&
                (DashboardButton != null || AccountsButton != null);
     }
 

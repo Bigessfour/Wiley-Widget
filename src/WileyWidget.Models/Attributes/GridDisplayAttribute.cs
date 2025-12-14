@@ -10,7 +10,7 @@ public class GridDisplayAttribute : Attribute
     public bool Visible { get; set; } = true;
     public int DecimalDigits { get; set; } = -1;
     public string? Format { get; set; }
-    
+
     public GridDisplayAttribute(int displayOrder, int width)
     {
         DisplayOrder = displayOrder;
