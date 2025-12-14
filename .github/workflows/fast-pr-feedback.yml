@@ -33,8 +33,15 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - name: dotnet format (whitespace only)
-        run: dotnet format --verify-no-changes || true
+        run: dotnet format --verify-no-changes
 
       - name: Restore (fast)
         run: dotnet restore WileyWidget.sln --verbosity minimal
@@ -44,7 +51,8 @@ jobs:
 
       - name: Quick unit tests
         run: |
-          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+          if [ $? -ne 0 ]; then exit 1; fi
 
       - name: Upload quick-test results
         if: always()

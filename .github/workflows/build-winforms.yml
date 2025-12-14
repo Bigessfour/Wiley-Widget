@@ -1,33 +1,23 @@
 name: CI/CD Dashboard Enhanced (95% Success Target)
 
+# Single-user municipal application workflow
+# Optimized for local development speed and debugging ease
+# Run locally: dotnet test WileyWidget.sln --configuration Release
+
 on:
   push:
     branches: [main, develop, feature/dashboard-production-ready]
-  pull_request:
-    branches: [main, develop]
+  # PRs use fast-pr-feedback.yml for quick feedback
+  # Full build only runs on push to main/develop or manual trigger
   workflow_dispatch: {}
 
 permissions:
   contents: read
   checks: write
-  pull-requests: write
 
 jobs:
-  workflow-lint:
-    name: Lint workflows & YAML
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run super-linter for workflows (YAML + GitHub Actions)
-        uses: github/super-linter@v4
-        env:
-          VALIDATE_WORKFLOW: true
-          VALIDATE_YAML: true
-          # Reduce scope so linter focuses on workflow files and YAML
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Removed: workflow-lint job - use local trunk check instead
+  # For single-user dev: Run 'trunk check' locally before pushing
 
   ps-script-analyze:
     name: PowerShell scripts - static analysis
@@ -85,7 +75,7 @@ jobs:
       - name: Cache dotnet tools
         uses: actions/cache@v4
         with:
-          path: ${{ env.USERPROFILE }}\.dotnet\tools
+          path: ~/.dotnet/tools
           key: dotnet-tools-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props') }}
           restore-keys: dotnet-tools-${{ runner.os }}-
 
@@ -95,6 +85,7 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Clear NuGet caches (best-effort)
+        shell: pwsh
         run: |
           # Clearing caches sometimes fails if disk locked — ignore failures
           try {
@@ -103,20 +94,12 @@ jobs:
             Write-Host 'clear caches failed - continuing'
           }
 
-      - name: Restore NuGet packages (retry)
+      - name: Restore NuGet packages
         shell: powershell
         run: |
-          $maxAttempts = 3
-          $attempt = 0
-          do {
-            $attempt++
-            Write-Host "dotnet restore attempt $attempt"
-            dotnet restore WileyWidget.sln --verbosity minimal -clp:PerformanceSummary
-            if ($LASTEXITCODE -eq 0) { break }
-            Start-Sleep -Seconds (5 * $attempt)
-          } while ($attempt -lt $maxAttempts)
+          dotnet restore WileyWidget.sln --verbosity minimal
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "dotnet restore failed after $attempt attempts"
+            Write-Error "Restore failed - check NuGet sources"
             exit 1
           }
 
@@ -127,108 +110,25 @@ jobs:
       - name: Test - Unit Tests (with coverage)
         shell: powershell
         run: |
-          $maxAttempts=2
-          for ($i=1; $i -le $maxAttempts; $i++) {
-            try {
-              dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
-              exit 0
-            } catch {
-              Write-Warning "Unit tests attempt $i failed: $_"
-              if ($i -eq $maxAttempts) { exit 1 }
-              Start-Sleep -Seconds (10 * $i)
-            }
-          }
+          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Test - Dashboard Service Tests (filtered)
         shell: powershell
         run: |
-          $maxAttempts=2
-          for ($i=1; $i -le $maxAttempts; $i++) {
-            try {
-              dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --filter "FullyQualifiedName~Dashboard" --configuration Release --logger trx --collect:"XPlat Code Coverage" --results-directory ./TestResults/Dashboard
-              break
-            } catch {
-              Write-Warning "Dashboard tests attempt $i failed: $_"
-              if ($i -eq $maxAttempts) { exit 1 }
-              Start-Sleep -Seconds (10 * $i)
-            }
-          }
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --filter "FullyQualifiedName~Dashboard" --configuration Release --logger trx --collect:"XPlat Code Coverage" --results-directory ./TestResults/Dashboard
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Test - Integration Tests (with coverage)
         shell: powershell
         run: |
-          # Guard: integration tests require QuickBooks/3rd-party secrets. If the necessary secrets are not present, skip gracefully in PRs/forks.
+          # Skip if QuickBooks secrets not available
           if (-not $env:QBO_CLIENT_ID -or -not $env:QBO_CLIENT_SECRET) {
-            Write-Warning "Skipping integration tests: required secrets (QBO_CLIENT_ID/QBO_CLIENT_SECRET) not present in environment. Set repository secrets or run from main for integration checks."
+            Write-Host "Skipping integration tests (no QBO secrets configured)"
             exit 0
           }
-
-          $maxAttempts=2
-          for ($i=1; $i -le $maxAttempts; $i++) {
-            try {
-              dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/Integration
-              break
-            } catch {
-              Write-Warning "Integration tests attempt $i failed: $_"
-              if ($i -eq $maxAttempts) { exit 1 }
-              Start-Sleep -Seconds (10 * $i)
-            }
-          }
-
-      # Disabled: TRUNK_PATH not configured
-      # - name: Ensure .trunk exists and create setup-ci symlink (non-Windows)
-      #   if: runner.os != 'Windows'
-      #   shell: bash
-      #   run: |
-      #     set -euo pipefail
-      #     mkdir -p .trunk
-      #     if [ -z "${TRUNK_PATH:-}" ]; then
-      #       echo "ERROR: TRUNK_PATH is not set. Cannot create symlink"
-      #       exit 1
-      #     fi
-      #     SRC="$TRUNK_PATH/setup-ci"
-      #     DEST=".trunk/setup-ci"
-      #     if [ ! -e "$SRC" ]; then
-      #       echo "ERROR: expected trunk source does not exist: $SRC"
-      #       ls -la "$TRUNK_PATH" || true
-      #       exit 1
-      #     fi
-      #     ln -sfn "$SRC" "$DEST"
-      #     echo "Created symlink: $DEST -> $SRC"
-
-      # Disabled: TRUNK_PATH not configured
-      # - name: Ensure .trunk exists and create setup-ci symlink (Windows)
-      #   if: runner.os == 'Windows'
-      #   shell: pwsh
-      #   run: |
-      #     $ErrorActionPreference = 'Stop'
-      #     New-Item -ItemType Directory -Path .trunk -Force | Out-Null
-      #     if (-not $env:TRUNK_PATH) {
-      #       Write-Error 'ERROR: TRUNK_PATH is not set. Cannot create symlink'
-      #       exit 1
-      #     }
-      #     $src = Join-Path $env:TRUNK_PATH 'setup-ci'
-      #     $dest = Join-Path (Get-Location) '.trunk\setup-ci'
-      #     if (-not (Test-Path $src)) {
-      #       Write-Error "ERROR: expected trunk source does not exist: $src"
-      #       Get-ChildItem -Path $env:TRUNK_PATH -Force | Write-Output
-      #       exit 1
-      #     }
-      #     if (Test-Path $dest) { Remove-Item -Path $dest -Force -Recurse }
-      #     try {
-      #       New-Item -ItemType SymbolicLink -Path $dest -Target $src | Out-Null
-      #       Write-Host "Created symlink: $dest -> $src"
-      #     } catch {
-      #       Write-Warning "Could not create symlink (permission or unsupported). Falling back to copying files: $_"
-      #       Copy-Item -Path $src -Destination $dest -Recurse -Force
-      #       Write-Host "Copied $src to $dest"
-      #     }
-
-      # Disabled: Requires TRUNK_PATH setup-ci which is not configured
-      # - name: Trunk validation (CI)
-      #   uses: trunk-io/trunk-action@v1
-      #   with:
-      #     arguments: --ci --upload
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/Integration
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Collect coverage summary
         if: always()
@@ -273,22 +173,7 @@ jobs:
             # Optionally: fail the job by changing this to exit 1
           }
 
-      - name: Restore WinForms project (retry)
-        shell: pwsh
-        run: |
-          $maxAttempts = 3
-          $attempt = 0
-          do {
-            $attempt++
-            Write-Host "dotnet restore attempt $attempt (WinForms)"
-            dotnet restore src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --verbosity minimal -clp:PerformanceSummary
-            if ($LASTEXITCODE -eq 0) { break }
-            Start-Sleep -Seconds (5 * $attempt)
-          } while ($attempt -lt $maxAttempts)
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "dotnet restore WileyWidget.WinForms failed after $attempt attempts"
-            exit 1
-          }
+      # WinForms restore included in solution restore above
 
       - name: Build WinForms Project
         shell: pwsh
@@ -320,7 +205,7 @@ jobs:
         with:
           name: wiley-widget-winforms
           path: ./publish/
-          retention-days: 30
+          retention-days: 90 # Extended for municipal records
 
       - name: Upload Test Results
         if: always()
