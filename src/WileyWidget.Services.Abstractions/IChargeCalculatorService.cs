@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using WileyWidget.Models;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     public interface IChargeCalculatorService
     {

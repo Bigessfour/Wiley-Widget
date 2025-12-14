@@ -10,14 +10,4 @@
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);NETSDK1206</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
-  <!-- Only essential: Validate unpackaged WinUI configuration -->
-  <Target Name="ValidateUnpackagedWinUIConfiguration" BeforeTargets="BeforeBuild"
-    Condition="'$(UseWinUI)' == 'true' and '$(WindowsPackageType)' == 'None'">
-    <Error
-      Text="WindowsAppSDKSelfContained must be 'true' for unpackaged WinUI 3 apps. See: https://learn.microsoft.com/windows/apps/windows-app-sdk/deploy-unpackaged-apps"
-      Condition="'$(WindowsAppSDKSelfContained)' != 'true'" />
-    <Error Text="WindowsAppSDKBootstrapInitialize must be 'true' for unpackaged WinUI 3 apps"
-      Condition="'$(WindowsAppSDKBootstrapInitialize)' != 'true'" />
-  </Target>
-
 </Project>

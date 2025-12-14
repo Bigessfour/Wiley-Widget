@@ -38,7 +38,7 @@ public static class MockFactory
     /// Creates a mock IDashboardService with configurable behavior.
     /// </summary>
     public static Mock<IDashboardService> CreateDashboardService(
-        IEnumerable<WileyWidget.WinUI.ViewModels.Main.DashboardItem>? items = null,
+        IEnumerable<WileyWidget.Services.Abstractions.DashboardItem>? items = null,
         bool shouldThrow = false,
         Exception? exception = null)
     {
@@ -51,10 +51,10 @@ public static class MockFactory
         }
         else
         {
-            var defaultItems = items ?? new List<WileyWidget.WinUI.ViewModels.Main.DashboardItem>
+            var defaultItems = items ?? new List<WileyWidget.Services.Abstractions.DashboardItem>
             {
-                new() { Title = "Test Item 1", Description = "Description 1", Icon = "icon1.png", Count = 5, Status = "Active" },
-                new() { Title = "Test Item 2", Description = "Description 2", Icon = "icon2.png", Count = 10, Status = "Inactive" }
+                new() { Title = "Test Item 1", Value = "5", Description = "Description 1", Category = "Active" },
+                new() { Title = "Test Item 2", Value = "10", Description = "Description 2", Category = "Inactive" }
             };
 
             mockService.Setup(s => s.GetDashboardItemsAsync())
@@ -131,18 +131,17 @@ public static class MockFactory
     /// </summary>
     public static class TestData
     {
-        public static List<WileyWidget.WinUI.ViewModels.Main.DashboardItem> CreateDashboardItems(int count = 2)
+        public static List<WileyWidget.Services.Abstractions.DashboardItem> CreateDashboardItems(int count = 2)
         {
-            var items = new List<WileyWidget.WinUI.ViewModels.Main.DashboardItem>();
+            var items = new List<WileyWidget.Services.Abstractions.DashboardItem>();
             for (int i = 1; i <= count; i++)
             {
-                items.Add(new WileyWidget.WinUI.ViewModels.Main.DashboardItem
+                items.Add(new WileyWidget.Services.Abstractions.DashboardItem
                 {
                     Title = $"Test Item {i}",
+                    Value = $"{i * 5}",
                     Description = $"Description {i}",
-                    Icon = $"icon{i}.png",
-                    Count = i * 5,
-                    Status = i % 2 == 0 ? "Active" : "Inactive"
+                    Category = i % 2 == 0 ? "Active" : "Inactive"
                 });
             }
             return items;

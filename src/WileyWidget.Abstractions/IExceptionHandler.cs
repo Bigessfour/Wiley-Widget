@@ -1,6 +1,6 @@
 using System;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Abstractions
 {
     /// <summary>
     /// Lightweight exception handler contract used for DI registration and centralized handling.

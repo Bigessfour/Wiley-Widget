@@ -1212,7 +1212,7 @@
       "author": "bigessfour",
       "date": "2025-09-21T21:04:32Z",
       "sha": "d837039d55e1844f49f50f3456b7d6d832c0c75b",
-      "message": "refactor(wpf): harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
+      "message": "refactor: harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
     },
     "recent_commits": [
       {
@@ -1220,7 +1220,7 @@
         "author": "bigessfour",
         "date": "2025-09-21T21:04:32Z",
         "sha": "d837039d55e1844f49f50f3456b7d6d832c0c75b",
-        "message": "refactor(wpf): harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
+        "message": "refactor: harden MainWindow init and auth UI timing; add window-lifetime scope, move auth UI updates to Loaded, use safe FindName lookups for Grid/Buttons; confirm dev-first DB fallback; wire Generic Host already in place; build-only validation"
       },
       {
         "url": "https://github.com/Bigessfour/Wiley-Widget/commit/2f3202b990565635597a5096df474556b43c106a",

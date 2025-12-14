@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Abstractions
 {
     /// <summary>
-    /// Service for managing Prism region view registrations
+    /// Service for managing region view registrations
     /// </summary>
     public interface IViewRegistrationService
     {
-        [Obsolete("RegisterAllViews is deprecated. Register views in Prism modules instead.")]
+        [Obsolete("RegisterAllViews is deprecated. Register views in modules instead.")]
         void RegisterAllViews();
 
         bool RegisterView(string regionName, Type viewType);

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using WileyWidget.Models;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Interface for data anonymization service providing privacy-compliant data masking.

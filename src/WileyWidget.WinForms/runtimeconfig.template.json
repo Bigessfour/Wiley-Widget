@@ -1,0 +1,17 @@
+{
+  "configProperties": {
+    "System.Runtime.Loader.UseRidGraph": true,
+    "Microsoft.NETCore.UnhandledExceptionPolicy": "PassThrough"
+  },
+  "runtimeOptions": {
+    "tfm": "net9.0",
+    "rollForward": "LatestMinor",
+    "framework": {
+      "name": "Microsoft.WindowsDesktop.App",
+      "version": "9.0.0"
+    },
+    "configProperties": {
+      "System.Runtime.CompilerServices.RuntimeFeature.DefaultImplementationsOfInterfaces": true
+    }
+  }
+}

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Intuit.Ipp.Data;
 using QBTask = Intuit.Ipp.Data.Task;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     public interface IQuickBooksService
     {

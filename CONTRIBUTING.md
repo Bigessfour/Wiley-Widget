@@ -86,7 +86,7 @@ dotnet ef database update
 ### Architecture
 
 - **MVVM Pattern**: Strict separation - no code-behind logic in XAML files
-- **Prism.Mvvm**: Use `BindableBase`, `DelegateCommand` for ViewModel bindings and commands
+- **Mvvm**: Use `BindableBase`, `DelegateCommand` for ViewModel bindings and commands
 - **EF Core**: Microsoft.EntityFrameworkCore.SqlServer for Azure SQL integration
 - **Testing**: NUnit with minimum 70% coverage (CI enforced)
 
@@ -99,10 +99,10 @@ dotnet ef database update
 
 ### UI Guidelines
 
-- **Syncfusion Only**: No custom controls - use official Syncfusion WPF 30.2.4
+- **Syncfusion Only**: No custom controls - use official Syncfusion 30.2.4
 - **Themes**: Fluent Dark/Light with persistence
 - **Responsive**: Handle DPI scaling properly
-- **Accessibility**: Follow WPF accessibility guidelines
+- **Accessibility**: Follow accessibility guidelines
 
 ### Azure Integration
 

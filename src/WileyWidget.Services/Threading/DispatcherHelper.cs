@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace WileyWidget.Services.Threading;
 
 /// <summary>
-/// Implementation of IDispatcherHelper for WPF dispatcher operations
+/// Implementation of IDispatcherHelper for dispatcher operations
 /// </summary>
 public class DispatcherHelper : IDispatcherHelper
 {
@@ -21,7 +21,7 @@ public class DispatcherHelper : IDispatcherHelper
     {
         // Use Application.Current.Dispatcher to ensure we always get the main UI dispatcher
         // This is safer than Dispatcher.CurrentDispatcher which depends on which thread creates the instance
-        _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        _dispatcher = System.Windows.Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
     }
 
     public DispatcherHelper(Dispatcher dispatcher)

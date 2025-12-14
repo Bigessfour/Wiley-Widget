@@ -1,4 +1,4 @@
-# .NET / WPF standard ignores
+# .NET standard ignores
 bin/
 obj/
 *.user
@@ -138,14 +138,6 @@ msbuild.binlog
 # Development/debug scripts (temporary)
 check_imports.py
 debug_harness.py
-
-# WPF temporary project files
-*_wpftmp.csproj
-*_wpftmp/
-WileyWidget_*_wpftmp.csproj
-WileyWidget_*_wpftmp/
-*.wpftmp
-wpftmp/
 
 # Installers and large binaries
 *.msi
@@ -356,7 +348,7 @@ docs/integration/syncfusion-mcp*.md
 docs/reference/syncfusion-*.md
 docs/reference/SYNCFUSION_*.md
 
-# Docker infrastructure (removed - not needed for WinUI development)
+# Docker infrastructure (removed - not needed for development)
 docker/
 docker-compose*.yml
 Dockerfile*

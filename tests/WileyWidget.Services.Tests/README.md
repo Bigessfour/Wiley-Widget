@@ -283,7 +283,7 @@ Tests are part of the **CI/CD Feedback Loop** documented in `copilot-instruction
 Planned test categories (not yet implemented):
 
 - [ ] **Integration Tests**: Real sandbox API calls with rate limiting
-- [ ] **UI Tests**: Uno.UITest for WinUI navigation flows
+- [ ] **UI Tests**: WinForms UI testing with TestStack.White or similar
 - [ ] **Performance Tests**: Measure ViewModel initialization time
 - [ ] **Database Tests**: In-memory SQLite for Data layer
 

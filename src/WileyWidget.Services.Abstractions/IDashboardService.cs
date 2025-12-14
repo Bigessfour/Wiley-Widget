@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WileyWidget.Services.Abstractions
@@ -11,17 +12,17 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Gets dashboard data
         /// </summary>
-        Task<IEnumerable<DashboardItem>> GetDashboardDataAsync();
+        Task<IEnumerable<DashboardItem>> GetDashboardDataAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets dashboard items for display
         /// </summary>
-        Task<IEnumerable<DashboardItem>> GetDashboardItemsAsync();
+        Task<IEnumerable<DashboardItem>> GetDashboardItemsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Refreshes dashboard data
         /// </summary>
-        Task RefreshDashboardAsync();
+        Task RefreshDashboardAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>

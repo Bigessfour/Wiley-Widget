@@ -30,7 +30,6 @@ This CSV tracks test coverage for critical components in Wiley Widget.
 - Status: Not yet implemented
 
 ### UI Tests (0 total)
-- Planned: Uno.UITest for navigation
 - Status: Not needed unless UI bugs persist
 
 ## Adding New Rows

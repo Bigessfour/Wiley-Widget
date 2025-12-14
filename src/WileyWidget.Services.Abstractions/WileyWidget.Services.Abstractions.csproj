@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <GenerateWinMD>true</GenerateWinMD>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <GenerateWinMD>false</GenerateWinMD>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <NoWarn>NU1902;NU1903</NoWarn>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Enable WPF APIs (DispatcherPriority etc.) used by some abstractions -->
+    <!-- Enable APIs (DispatcherPriority etc.) used by some abstractions -->
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
@@ -17,7 +17,7 @@
     <!-- Package versions managed centrally in Directory.Packages.props -->
     <PackageReference Include="Microsoft.Extensions.Primitives" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 

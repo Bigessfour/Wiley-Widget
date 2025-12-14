@@ -185,7 +185,7 @@ public class BudgetAccount : INotifyPropertyChanged
     {
         Variance = BudgetAmount - ActualAmount;
         IsOverBudget = Variance < 0;
-        
+
         if (BudgetAmount > 0)
         {
             PercentageUsed = (double)(ActualAmount / BudgetAmount);

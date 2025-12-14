@@ -34,6 +34,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
     <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.ReportingServices.ReportViewerControl.Winforms" Version="150.1652.0" />
     <!-- Third-party – all safe on .NET 9 -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="MailKit" Version="4.14.1" />
@@ -47,19 +48,22 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageVersion Include="Serilog.Sinks.AzureDocumentDB" Version="4.0.0" />
+
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.Azure.DocumentDB" Version="2.22.0" />
-    <PackageVersion Include="Microsoft.Azure.DocumentDB.Core" Version="2.22.0" />
+
+
     <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
+    <!-- Azure DocumentDB packages -->
+    <PackageVersion Include="Serilog.Sinks.AzureDocumentDB" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.Azure.DocumentDB.Core" Version="2.22.0" />
     <!-- Additional packages -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageVersion Include="FluentValidation" Version="11.10.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <PackageVersion Include="IppOAuth2PlatformSdk" Version="13.0.0" />
-    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.2" />
+
+    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageVersion Include="OpenTelemetry" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
@@ -67,7 +71,6 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.6.5" />
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
-    <PackageVersion Include="QuestPDF" Version="2025.7.4" />
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageVersion Include="PdfSharpCore" Version="1.3.67" />
@@ -83,16 +86,38 @@
     <!-- Test packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.v3" Version="1.0.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Xunit.StaFact" Version="1.1.11" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.11.1" />
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <!-- UI Automation (FlaUI) packages -->
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageVersion Include="LiveChartsCore.SkiaSharpView.WinForms" Version="2.0.0-rc2" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="3.116.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.WinUI" Version="3.116.1" />
-    <!-- Other safe ones you probably have -->
+    <!-- Syncfusion WinForms packages v31.2.18 (public NuGet) -->
+    <PackageVersion Include="Syncfusion.Grid.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Chart.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Shared.Base" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.18" />
+    <!-- Bold Reports viewer (WPF) + licensing/runtime for hosting in WinForms -->
+    <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
+    <PackageVersion Include="BoldReports.WPF" Version="12.1.14" />
+    <PackageVersion Include="BoldReports.Net.Core" Version="12.1.14" />
+    <PackageVersion Include="Bold.Licensing" Version="12.1.14" />
+    <!-- Data handling packages -->
+    <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />

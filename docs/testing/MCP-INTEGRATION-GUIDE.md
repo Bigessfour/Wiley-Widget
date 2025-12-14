@@ -8,7 +8,7 @@ This guide documents how Model Context Protocol (MCP) servers enhance the Wiley 
 
 ### 1. **GitHub MCP** (`mcp/github`)
 
-**Purpose:** Repository management, issue/PR automation, code context  
+**Purpose:** Repository management, issue/PR automation, code context
 **Integration Points:**
 
 - Automated test result reporting via GitHub Issues
@@ -35,7 +35,7 @@ docker run --rm -e GITHUB_TOKEN=$env:GITHUB_TOKEN \
 
 ### 2. **Filesystem MCP** (`@modelcontextprotocol/server-filesystem`)
 
-**Purpose:** Secure file operations with git-style diffs  
+**Purpose:** Secure file operations with git-style diffs
 **Integration Points:**
 
 - All test file creation/editing
@@ -68,7 +68,7 @@ mcp_filesystem_edit_file({
 
 ### 3. **C# MCP** (`ghcr.io/infinityflowapp/csharp-mcp:latest`)
 
-**Purpose:** Execute C# scripts for testing and validation  
+**Purpose:** Execute C# scripts for testing and validation
 **Integration Points:**
 
 - Pre-test validation (syntax, compile checks)
@@ -104,7 +104,7 @@ docker run --rm \
 
 ### 4. **Everything MCP** (`@modelcontextprotocol/server-everything`)
 
-**Purpose:** Full MCP protocol testing and validation  
+**Purpose:** Full MCP protocol testing and validation
 **Integration Points:**
 
 - End-to-end test pipeline validation
@@ -131,7 +131,7 @@ npx @modelcontextprotocol/server-everything \
 
 ### 5. **Sequential Thinking MCP** (`@modelcontextprotocol/server-sequential-thinking`)
 
-**Purpose:** Structured problem-solving for complex test scenarios  
+**Purpose:** Structured problem-solving for complex test scenarios
 **Integration Points:**
 
 - Test design and planning
@@ -162,7 +162,7 @@ Problem: Dashboard navigation test fails intermittently
 → Use Sequential Thinking MCP to analyze:
   1. Identify timing issues
   2. Check thread synchronization
-  3. Review WinUI dispatcher usage
+  3. Review UI threading and dispatcher usage
   4. Propose fix with new test cases
 ```
 
@@ -172,7 +172,7 @@ Problem: Dashboard navigation test fails intermittently
 
 ### **`@modelcontextprotocol/server-mssql`** (NOT YET INSTALLED)
 
-**Purpose:** Direct SQL Server access for integration testing  
+**Purpose:** Direct SQL Server access for integration testing
 **Why Needed:**
 
 - Test database initialization (DatabaseInitializer)
@@ -534,6 +534,6 @@ Track MCP effectiveness in testing:
 
 ---
 
-**Last Updated:** November 14, 2025  
-**Status:** Active - Phase 4 Day 1 Complete  
+**Last Updated:** November 14, 2025
+**Status:** Active - Phase 4 Day 1 Complete
 **Validation:** Run `validate-mcp-setup.ps1` weekly

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
 
@@ -246,9 +247,6 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
                 ["XAI-ApiKey"] = Environment.GetEnvironmentVariable("XAI_API_KEY") ?? "",
                 ["XAI-BaseUrl"] = Environment.GetEnvironmentVariable("XAI_BASE_URL") ?? "https://api.x.ai",
 
-                // Prism
-                ["Prism-LicenseKey"] = Environment.GetEnvironmentVariable("PRISM_LICENSE_KEY") ?? "",
-
                 // Database (if needed)
                 ["Database-ConnectionString"] = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING") ?? "",
             };
@@ -292,7 +290,6 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             ["syncfusion-license-key"] = "YOUR_SYNCFUSION_LICENSE_KEY_HERE",
             ["XAI-ApiKey"] = "YOUR_XAI_API_KEY_HERE",
             ["XAI-BaseUrl"] = "https://api.x.ai",
-            ["Prism-LicenseKey"] = "1ZIj71/sRfsl56M/51s3Bc2FjO02xQUpXEI4H2cXo2Qet6irr+1ojRbPIDMCPkjqjG7zV07GuG3ZxskMzkqE/QlXk7vSzhw9DCi9NQGfZqc=",
 
             // QuickBooks integration (Sandbox defaults - update for production)
             ["QuickBooks-ClientId"] = "YOUR_QUICKBOOKS_CLIENT_ID",

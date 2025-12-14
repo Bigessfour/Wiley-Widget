@@ -20,6 +20,7 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
+  "github.copilot.chat.showThoughts": false,
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
@@ -51,6 +52,11 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 
   // ============================================================================
   // File Management
@@ -138,6 +144,7 @@
   // Python Configuration
   // ============================================================================
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
@@ -243,9 +250,26 @@
   // Terminal Configuration
   // ============================================================================
   "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.fontSize": 12,
+  "terminal.integrated.lineHeight": 1.2,
+  "terminal.integrated.wordWrap": true,
+  "terminal.integrated.gpuAcceleration": "off",
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.shellIntegration.enabled": true,
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "PowerShell (No Profile)": {
+      "path": "pwsh.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass"],
+      "icon": "terminal-powershell"
+    },
+    "PowerShell (venv)": {
+      "source": "PowerShell",
+      "args": ["-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "& \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\""],
       "icon": "terminal-powershell"
     },
     "Command Prompt": {
@@ -257,5 +281,15 @@
   },
   "terminal.integrated.env.windows": {
     "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
+  },
+  "chat.mcp.serverSampling": {
+    "Wiley-Widget/.vscode/mcp.json: filesystem": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5",
+        "xai/grok-4-1-fast-reasoning",
+        "copilot/grok-code-fast-1",
+        "copilot/oswe-vscode-prime"
+      ]
+    }
   }
 }

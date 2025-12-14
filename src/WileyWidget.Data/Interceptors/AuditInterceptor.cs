@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Services;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
 
 namespace WileyWidget.Data.Interceptors

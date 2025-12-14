@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions;
 using Serilog;
 
 namespace WileyWidget.Services;
@@ -572,7 +573,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 await SetSecretAsync(envVar, value);
                 migratedSecrets.Add(envVar);
                 _logger.LogInformation("Migrated secret '{SecretName}' from environment to encrypted vault", envVar);
-              }
+            }
         }
 
         if (migratedSecrets.Any())

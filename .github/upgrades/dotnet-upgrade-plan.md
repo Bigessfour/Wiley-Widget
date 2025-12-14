@@ -67,7 +67,7 @@ NuGet packages changes:
 
 Other changes:
 
-- Verify WinUI / Windows App SDK compatibility after framework switch.
+- Verify WinForms / .NET 9 compatibility after framework switch.
 
 #### src\WileyWidget.Models\WileyWidget.Models.csproj
 

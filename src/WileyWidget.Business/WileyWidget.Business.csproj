@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AnalysisLevel>6.0</AnalysisLevel>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <RunAnalyzers>false</RunAnalyzers>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <GenerateWinMD>true</GenerateWinMD>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <GenerateWinMD>false</GenerateWinMD>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
@@ -39,7 +38,7 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Polly" />
     <!-- QuickBooks SDK packages -->
-    <PackageReference Include="IppOAuth2PlatformSdk" />
+
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
   </ItemGroup>
 

@@ -12,10 +12,10 @@ namespace WileyWidget.Services
     /// <summary>
     /// Implementation of DI validation service that scans assemblies and validates
     /// that all service interfaces can be resolved from the DI container.
-    /// 
+    ///
     /// Uses reflection to discover service interfaces and IServiceProvider to test resolution.
     /// Handles scoped services by creating temporary scopes, and provides detailed error reporting.
-    /// 
+    ///
     /// Reference: https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines
     /// </summary>
     public class DiValidationService : IDiValidationService
@@ -37,11 +37,6 @@ namespace WileyWidget.Services
                 typeof(IAuditService),
                 typeof(ICacheService)
             };
-
-            // Add UI services if available (loaded at runtime)
-            TryAddType(types, "WileyWidget.WinUI.Services.INavigationService, WileyWidget.WinUI");
-            TryAddType(types, "WileyWidget.WinUI.Services.IDialogService, WileyWidget.WinUI");
-            TryAddType(types, "WileyWidget.WinUI.Services.IDialogTrackingService, WileyWidget.WinUI");
 
             return types.ToArray();
         }
@@ -66,7 +61,7 @@ namespace WileyWidget.Services
         }
 
         public DiValidationReport ValidateRegistrations(
-            IEnumerable<Assembly>? assembliesToScan = null, 
+            IEnumerable<Assembly>? assembliesToScan = null,
             bool includeGenerics = false)
         {
             _logger.LogInformation("[DI_VALIDATION] Starting DI validation scan");
@@ -140,7 +135,7 @@ namespace WileyWidget.Services
             _logger.LogInformation("[DI_VALIDATION] Validating core services");
 
             var coreServiceTypes = GetCoreServiceTypes();
-            
+
             foreach (var serviceType in coreServiceTypes)
             {
                 try
@@ -243,18 +238,6 @@ namespace WileyWidget.Services
             }
             catch { /* Assembly not loaded */ }
 
-            // Add WinUI services assembly (UI-specific services)
-            try
-            {
-                var winuiServicesAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "WileyWidget.WinUI");
-                if (winuiServicesAssembly != null)
-                {
-                    assemblies.Add(winuiServicesAssembly);
-                }
-            }
-            catch { /* Assembly not loaded */ }
-
             return assemblies;
         }
 
@@ -262,7 +245,7 @@ namespace WileyWidget.Services
         /// Discovers service interfaces in the specified assemblies using reflection.
         /// </summary>
         private static IEnumerable<Type> GetServiceInterfaces(
-            IEnumerable<Assembly> assemblies, 
+            IEnumerable<Assembly> assemblies,
             bool includeGenerics)
         {
             return assemblies

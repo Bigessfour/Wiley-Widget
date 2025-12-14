@@ -1,4 +1,4 @@
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     public interface IBudgetImporter
     {

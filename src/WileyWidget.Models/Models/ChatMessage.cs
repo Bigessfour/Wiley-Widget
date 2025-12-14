@@ -5,7 +5,7 @@ namespace WileyWidget.Models;
 
 /// <summary>
 /// Lightweight chat message model that can be shared across UI and service layers.
-/// Text is mirrored to the <see cref="Message"/> property so existing WPF bindings keep working.
+/// Text is mirrored to the <see cref="Message"/> property so existing bindings keep working.
 /// </summary>
 public class ChatMessage
 {
@@ -27,7 +27,7 @@ public class ChatMessage
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// alias for WPF bindings that expect a Text property (e.g., Syncfusion chat controls).
+    /// alias for bindings that expect a Text property (e.g., Syncfusion chat controls).
     /// </summary>
     public string Text
     {
@@ -36,7 +36,7 @@ public class ChatMessage
     }
 
     /// <summary>
-    /// Optional author metadata; the WPF layer assigns Syncfusion Author instances here.
+    /// Optional author metadata; the layer assigns Syncfusion Author instances here.
     /// </summary>
     public object? Author { get; set; }
 

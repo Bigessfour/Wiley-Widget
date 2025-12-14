@@ -1,0 +1,65 @@
+name: Fast PR Feedback
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  fast-check:
+    name: Fast PR checks (lint, trunk, quick-tests)
+    runs-on: windows-latest # Windows required for WinForms tests
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Shallow clone for speed
+
+      - name: Run Trunk check (fast)
+        continue-on-error: true # Don't fail PR on trunk issues for single-user dev
+        uses: trunk-io/trunk-action@v1
+        with:
+          arguments: --ci
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: dotnet format (whitespace only)
+        run: dotnet format whitespace --verify-no-changes
+
+      - name: Restore (fast)
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Quick build (core libraries only)
+        run: dotnet build src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj --no-restore --verbosity minimal
+
+      - name: Quick unit tests
+        shell: pwsh
+        run: |
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload quick-test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-pr-results
+          path: ./TestResults
+          retention-days: 3
+
+      - name: Optional run additional static checks
+        run: echo "No additional fast checks configured"

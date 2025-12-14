@@ -2,11 +2,11 @@
 
   <PropertyGroup>
     <!-- Match Windows-targeted TFMs used in solution to avoid NETSDK1136 when referencing windows-specific projects -->
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <GenerateWinMD>true</GenerateWinMD>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>NU1902;NU1903</NoWarn>
+    <NoWarn>NU1902;NU1903;NU1701;NU1603</NoWarn>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -25,7 +25,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- Exclude presentation/ViewModel tests that require WinUI types from service test runs -->
+  <!-- Exclude presentation/ViewModel tests that rely on types not available in service test runs -->
   <ItemGroup>
     <Compile Remove="ViewModelTests\\**\\*.cs" />
     <Compile Remove="TestHelpers\\**\\*MockFactory*.cs" />
