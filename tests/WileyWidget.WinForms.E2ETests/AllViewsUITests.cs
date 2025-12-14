@@ -18,6 +18,7 @@ namespace WileyWidget.WinForms.E2ETests
     /// These are opt-in and return early when no interactive UI runner is available.
     /// </summary>
     [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Disposed via cleanup.")]
+    [Collection("UI Tests")]
     public sealed class AllViewsUITests : IDisposable
     {
         private readonly string _exePath;
@@ -29,8 +30,11 @@ namespace WileyWidget.WinForms.E2ETests
             _exePath = ResolveExecutablePath();
 
             // Enable in-memory mode and simplified chrome for UI automation stability.
+            // Disable MDI mode so forms open as separate windows that FlaUI can detect
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
+            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
+            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
         }
 
         private static string ResolveExecutablePath()
@@ -254,7 +258,7 @@ namespace WileyWidget.WinForms.E2ETests
             {
                 if (_app != null && !_app.HasExited)
                 {
-                    _app.Close();
+                    _app.Kill();
                     _app.Dispose();
                 }
             }
@@ -290,6 +294,9 @@ namespace WileyWidget.WinForms.E2ETests
             {
                 throw new FileNotFoundException($"Executable not found at '{_exePath}'. Set WILEYWIDGET_EXE to a published executable before running UI tests.");
             }
+
+            // Set the license key in the current process environment so the launched app inherits it
+            Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
 
             _app = Application.Launch(_exePath);
             _automation = new UIA3Automation();

@@ -1739,6 +1739,83 @@ WileyWidget/
 - **Coverage Target:** 80% by Phase 4 with CI/CD validation
 - **Test Categories:** unit, smoke, integration, slow (marked appropriately)
 
+### **WinForms MDI Child Form Design Requirements**
+
+#### **Critical Pattern for All Child Forms**
+
+WileyWidget uses Windows Forms with MDI (Multiple Document Interface) and Syncfusion controls (`TabbedMDIManager`, `DockingManager`). All child forms **MUST** follow this defensive pattern:
+
+```csharp
+public MyChildForm(MainForm mainForm)
+{
+    InitializeComponent();
+
+    // MANDATORY: Check IsMdiContainer before setting MdiParent
+    if (mainForm.IsMdiContainer)
+    {
+        MdiParent = mainForm;
+    }
+
+    // Rest of initialization...
+}
+```
+
+#### **Why This Is Required**
+
+1. **Test Compatibility:** Unit tests run with `IsMdiContainer = false`
+2. **ArgumentException Prevention:** Setting `MdiParent` without MDI enabled throws exceptions
+3. **Syncfusion Integration:** `TabbedMDIManager` requires standard MDI pattern
+
+#### **Key Rules**
+
+✅ **DO:**
+
+- Accept `MainForm` as constructor parameter
+- Check `mainForm.IsMdiContainer` before setting `MdiParent`
+- Use standard MDI pattern: `form.MdiParent = this;`
+
+❌ **DON'T:**
+
+- Set `MdiParent` without checking `IsMdiContainer`
+- Use reflection-based `SetAsMDIChild()` for `Form` types (only for `UserControl`/`Panel`)
+- Instantiate child forms before `MainForm.IsMdiContainer` is set
+
+#### **MainForm Requirements**
+
+```csharp
+public MainForm(...)
+{
+    InitializeComponent();
+
+    // Set IsMdiContainer FIRST (before any child form instantiation)
+    if (_useMdiMode || _useTabbedMdi)
+    {
+        IsMdiContainer = true;
+    }
+
+    ValidateAndSanitizeUiConfiguration();
+
+    // TabbedMDIManager works automatically with standard MDI
+    if (_useTabbedMdi)
+    {
+        _tabbedMdiManager = new TabbedMDIManager(this);
+    }
+}
+```
+
+#### **Example ShowChildFormMdi Method**
+
+```csharp
+private void ShowChildFormMdi<T>() where T : Form
+{
+    var form = _serviceProvider.GetRequiredService<T>();
+    form.MdiParent = this;  // TabbedMDIManager handles tabbing automatically
+    form.Show();
+}
+```
+
+**Reference:** See [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md) for complete implementation details and violation examples.
+
 ---
 
 ## 🧪 **Testing Framework**

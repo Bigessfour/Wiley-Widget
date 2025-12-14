@@ -599,6 +599,54 @@
 			],
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "test: UiSmokeTests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--filter",
+				"Category=UiSmokeTests",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "test: UiSmokeTests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--filter",
+				"Category=UiSmokeTests",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "test: UiSmokeTests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--filter",
+				"Category=UiSmokeTests",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

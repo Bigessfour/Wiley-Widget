@@ -1,7 +1,9 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +23,38 @@ using SpServices = Microsoft.Extensions.DependencyInjection.ServiceProviderServi
 
 namespace WileyWidget.WinForms.E2ETests
 {
+    internal static class WinFormsTestThread
+    {
+        public static void RunInSta(Action action)
+        {
+            Exception? captured = null;
+
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    _ = Application.OleRequired();
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    captured = ex;
+                }
+            });
+
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+
+            if (captured != null)
+            {
+                throw captured;
+            }
+        }
+    }
+
     public static class DiTestProvider
     {
         public static ServiceProvider BuildProvider(string databaseName)
@@ -29,8 +63,17 @@ namespace WileyWidget.WinForms.E2ETests
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection().Build());
             services.AddSingleton<WileyWidget.Models.HealthCheckConfiguration>();
-            services.AddDbContextFactory<AppDbContext>(o => o.UseInMemoryDatabase(databaseName));
+            services.AddDbContextFactory<AppDbContext>(o => o.UseInMemoryDatabase(databaseName), ServiceLifetime.Scoped);
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(databaseName));
+
+            // Ensure MainForm is registered as Scoped in tests so it can resolve scoped services correctly
+            // Remove production singleton and re-register as scoped for test execution
+            var existingMainFormDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(MainForm));
+            if (existingMainFormDescriptor != null)
+            {
+                services.Remove(existingMainFormDescriptor);
+            }
+            services.AddScoped<MainForm>();
 
             return services.BuildServiceProvider(new ServiceProviderOptions
             {
@@ -43,13 +86,16 @@ namespace WileyWidget.WinForms.E2ETests
     public class DependencyInjectionTests
     {
         [Fact]
+        [Trait("Category", "UiSmokeTests")]
         public void Resolves_all_winforms_services_and_views()
         {
-            using var provider = DiTestProvider.BuildProvider($"di-tests-{Guid.NewGuid():N}");
-            using var scope = provider.CreateScope();
-
-            var types = new[]
+            WinFormsTestThread.RunInSta(() =>
             {
+                using var provider = DiTestProvider.BuildProvider($"di-tests-{Guid.NewGuid():N}");
+                using var scope = provider.CreateScope();
+
+                var types = new[]
+                {
                 typeof(MainForm),
                 typeof(ChartForm),
                 typeof(SettingsForm),
@@ -73,11 +119,12 @@ namespace WileyWidget.WinForms.E2ETests
                 typeof(IDashboardService)
             };
 
-            foreach (var type in types)
-            {
-                var instance = SpServices.GetRequiredService(scope.ServiceProvider, type);
-                Assert.NotNull(instance);
-            }
+                foreach (var type in types)
+                {
+                    var instance = SpServices.GetRequiredService(scope.ServiceProvider, type);
+                    Assert.NotNull(instance);
+                }
+            });
         }
 
         [Fact]
@@ -91,7 +138,7 @@ namespace WileyWidget.WinForms.E2ETests
             var ctx2 = SpServices.GetRequiredService<AppDbContext>(scope2.ServiceProvider);
             Assert.NotSame(ctx1, ctx2);
 
-            var factory = SpServices.GetRequiredService<IDbContextFactory<AppDbContext>>(provider);
+            var factory = SpServices.GetRequiredService<IDbContextFactory<AppDbContext>>(scope1.ServiceProvider);
             await using var ctx3 = await factory.CreateDbContextAsync();
             Assert.NotNull(ctx3);
         }

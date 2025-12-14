@@ -362,9 +362,22 @@ namespace WileyWidget.WinForms.Forms
             _saveButton.Click += async (s, e) => await SaveButton_Click();
             buttonPanel.Controls.Add(_saveButton);
 
-            // TODO: Apply icons via IThemeIconService when implemented
-            // _saveButton.Image = iconService?.GetIcon("save", theme, 16);
-            // _cancelButton.Image = iconService?.GetIcon("cancel", theme, 16);
+            // Apply theme-aware icons if icon service is available
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                    _saveButton.Image = iconService.GetIcon("save", theme, 16);
+                    _cancelButton.Image = iconService.GetIcon("cancel", theme, 16);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Icons are optional enhancement - log but don't fail form construction
+                System.Diagnostics.Debug.WriteLine($"Failed to load button icons: {ex.Message}");
+            }
 
             mainPanel.SetColumnSpan(buttonPanel, 2);
             mainPanel.Controls.Add(buttonPanel, 0, row);

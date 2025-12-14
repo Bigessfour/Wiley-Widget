@@ -135,7 +135,7 @@ namespace WileyWidget.WinForms.Forms
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));   // Menu
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // Toolbar
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));   // Header info
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));  // KPI Gauges
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 280));  // KPI Gauges
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Chart
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Metrics Grid
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // Status bar
@@ -235,6 +235,7 @@ namespace WileyWidget.WinForms.Forms
             _metricsGrid = new SfDataGrid
             {
                 Name = "MetricsGrid",
+                AccessibleName = "Dashboard_Grid_Metrics",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -338,6 +339,7 @@ namespace WileyWidget.WinForms.Forms
             _fundsGrid = new SfDataGrid
             {
                 Name = "FundsGrid",
+                AccessibleName = "Dashboard_Grid_Funds",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -359,6 +361,7 @@ namespace WileyWidget.WinForms.Forms
             _departmentsGrid = new SfDataGrid
             {
                 Name = "DepartmentsGrid",
+                AccessibleName = "Dashboard_Grid_Departments",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -380,6 +383,7 @@ namespace WileyWidget.WinForms.Forms
             _topVariancesGrid = new SfDataGrid
             {
                 Name = "TopVariancesGrid",
+                AccessibleName = "Dashboard_Grid_TopVariances",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -403,6 +407,7 @@ namespace WileyWidget.WinForms.Forms
             _analysisGrid = new SfDataGrid
             {
                 Name = "BudgetAnalysisGrid",
+                AccessibleName = "Dashboard_Grid_BudgetAnalysis",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -457,6 +462,7 @@ namespace WileyWidget.WinForms.Forms
             _analyticsMetricsGrid = new SfDataGrid
             {
                 Name = "AnalyticsMetricsGrid",
+                AccessibleName = "Dashboard_Grid_AnalyticsMetrics",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -491,6 +497,7 @@ namespace WileyWidget.WinForms.Forms
             _scenarioGrid = new SfDataGrid
             {
                 Name = "ScenarioGrid",
+                AccessibleName = "Dashboard_Grid_Scenario",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = false,
@@ -717,8 +724,8 @@ namespace WileyWidget.WinForms.Forms
             var gauge = new RadialGauge
             {
                 Dock = DockStyle.Fill,
-                Width = 180,
-                Height = 180,
+                Width = 240,
+                Height = 240,
                 Margin = new Padding(5),
                 // Theme inherited from form's SfSkinManager.SetVisualStyle
                 MinimumValue = 0F,

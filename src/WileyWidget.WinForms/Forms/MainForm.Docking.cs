@@ -13,6 +13,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Xml.Serialization;
 using System.Xml;
+using System.Windows.Forms;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
@@ -75,33 +76,41 @@ public partial class MainForm
 
         try
         {
-                // If TabbedMDIManager is active and docking is being enabled, dispose the TabbedMDIManager
-                // to prevent runtime conflicts where TabbedMDI expects DockingWrapperForm instances.
-                try
-                {
-                    if (_useTabbedMdi && _tabbedMdiManager != null)
-                    {
-                        _logger.LogWarning("TabbedMDIManager is enabled while DockingManager is also being initialized; disposing TabbedMDIManager to avoid conflicts.");
-                        SafeDisposeExistingTabbedMdiManager();
-                        _useTabbedMdi = false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to disable TabbedMDIManager while initializing Syncfusion DockingManager");
-                }
-
-
             // Instantiate DockingManager per official Syncfusion API
+            components ??= new System.ComponentModel.Container();
             _dockingManager = new DockingManager(components);
             _dockingManager.HostControl = this;
-            _dockingManager.EnableDocumentMode = true;
+
+            // When TabbedMDIManager is active, DockingManager's DocumentMode conflicts with Form-based MDI children.
+            // Use DockingManager for dockable panels and integrate those panels into the MDI container via SetAsMDIChild.
+            _logger.LogInformation("TabbedMDI enabled: DockingManager will use panel mode only (document mode disabled for TabbedMDI integration)");
+            var shouldDisableDocumentMode = _useMdiMode && _useTabbedMdi;
+            _logger.LogInformation("Setting EnableDocumentMode: _useMdiMode={MdiMode}, _useTabbedMdi={TabbedMdi}, shouldDisableDocumentMode={ShouldDisable}",
+                _useMdiMode, _useTabbedMdi, shouldDisableDocumentMode);
+
+            _dockingManager.EnableDocumentMode = !shouldDisableDocumentMode;
+
+            _logger.LogInformation("DockingManager.EnableDocumentMode = {EnableDocumentMode}", _dockingManager.EnableDocumentMode);
+
+            if (!_dockingManager.EnableDocumentMode)
+            {
+                _logger.LogInformation("DockingManager document mode disabled because TabbedMDI is enabled");
+            }
+
             // Enable automatic persistence - Syncfusion handles save/load internally
             _dockingManager.PersistState = true;
             _dockingManager.AnimateAutoHiddenWindow = true;
             _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font("Segoe UI", 9f);
             _dockingManager.DockTabFont = _dockTabFont = new Font("Segoe UI", 9f);
             _dockingManager.ShowCaption = true;
+            try
+            {
+                SfSkinManager.SetVisualStyle(_dockingManager, ThemeColors.DefaultTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to apply theme to DockingManager");
+            }
 
 
             CreateLeftDockPanel();
@@ -184,6 +193,7 @@ public partial class MainForm
         _leftDockPanel = new Panel
         {
             Name = "LeftDockPanel",
+            AccessibleName = "LeftDockPanel",
             BackColor = ThemeColors.Background,
             AutoScroll = true
         };
@@ -196,7 +206,7 @@ public partial class MainForm
         _dockingManager.SetEnableDocking(_leftDockPanel, true);
         _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
-        _dockingManager.SetDockLabel(_leftDockPanel, "≡ƒôè Dashboard");
+        _dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
         _dockingManager.SetAllowFloating(_leftDockPanel, true);  // Enable floating windows
 
         // Set as MDI child to integrate with TabbedMDIManager
@@ -219,6 +229,7 @@ public partial class MainForm
         _centralDocumentPanel = new Panel
         {
             Name = "CentralDocumentPanel",
+            AccessibleName = "CentralDocumentPanel",
             Dock = DockStyle.Fill,
             BackColor = ThemeColors.Background,
             Visible = true
@@ -291,6 +302,7 @@ public partial class MainForm
         _rightDockPanel = new Panel
         {
             Name = "RightDockPanel",
+            AccessibleName = "RightDockPanel",
             BackColor = ThemeColors.Background,
             Padding = new Padding(10)
         };
@@ -303,7 +315,7 @@ public partial class MainForm
         _dockingManager.SetEnableDocking(_rightDockPanel, true);
         _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
-        _dockingManager.SetDockLabel(_rightDockPanel, "≡ƒôï Activity");
+        _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
         _dockingManager.SetAllowFloating(_rightDockPanel, true);  // Enable floating windows
 
         // Set as MDI child to integrate with TabbedMDIManager
@@ -374,7 +386,7 @@ public partial class MainForm
 
         var activityHeader = new Label
         {
-            Text = "≡ƒôï Recent Activity",
+            Text = "Recent Activity",
             Font = new Font("Segoe UI", 12, FontStyle.Bold),
             ForeColor = ThemeManager.Colors.TextPrimary,
             Dock = DockStyle.Top,
@@ -384,6 +396,8 @@ public partial class MainForm
 
         _activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
         {
+            Name = "ActivityDataGrid",
+            AccessibleName = "ActivityDataGrid",
             Dock = DockStyle.Fill,
             AutoGenerateColumns = false,
             AllowEditing = false,
@@ -960,7 +974,6 @@ public partial class MainForm
                     {
                         Name = name,
                         Type = type ?? "System.Windows.Forms.Panel",
-                        DockLabel = dockLabel,
                         IsAutoHide = isAutoHide == "True"
                     });
                 }
@@ -1888,10 +1901,17 @@ public partial class MainForm
     {
         try
         {
+            // Marshal to UI thread if invoked from background threads
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(() => ShowChildForm<TForm, TViewModel>(allowMultiple)));
+                return;
+            }
+
             if (_useMdiMode)
             {
                 ShowChildFormMdi<TForm, TViewModel>(allowMultiple);
-                UpdateStateText();
+                UpdateDockingStateText();
                 return;
             }
 
@@ -1908,21 +1928,96 @@ public partial class MainForm
         }
     }
 
-    private void UpdateStateText()
+    private void UpdateDockingStateText()
     {
-        // Status text update stub - actual implementation in MainForm.cs
-        // This method is called to refresh the status bar state panel
+        try
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(UpdateDockingStateText));
+                return;
+            }
+
+            if (_statePanel == null)
+                return;
+
+            var stateInfo = new System.Text.StringBuilder();
+
+            if (_useMdiMode)
+            {
+                var childCount = MdiChildren?.Length ?? 0;
+                stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"MDI: {childCount} window{(childCount != 1 ? "s" : "")}");
+
+                if (_useTabbedMdi)
+                {
+                    stateInfo.Append(" (Tabbed)");
+                }
+            }
+            else if (_useSyncfusionDocking)
+            {
+                stateInfo.Append("Docking Mode");
+            }
+            else
+            {
+                stateInfo.Append("Standard Mode");
+            }
+
+            _statePanel.Text = stateInfo.ToString();
+            _logger?.LogTrace("Status state updated: {State}", _statePanel.Text);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to update state text");
+        }
     }
 
     private void ShowNonMdiChildForm<TForm, TViewModel>(bool allowMultiple)
         where TForm : Form
         where TViewModel : class
     {
-        // Non-MDI child form display - delegates to MainForm.cs implementation
-        // This is called when MDI mode is disabled
         try
         {
-            ShowChildFormMdi<TForm, TViewModel>(allowMultiple); // Fallback to MDI behavior
+            if (!allowMultiple && _activeMdiChildren.TryGetValue(typeof(TForm), out var existing))
+            {
+                if (existing != null && !existing.IsDisposed)
+                {
+                    try
+                    {
+                        existing.BringToFront();
+                        existing.Activate();
+                    }
+                    catch { }
+                    _logger.LogDebug("Activated existing non-MDI child {FormType}", typeof(TForm).Name);
+                    return;
+                }
+
+                _activeMdiChildren.Remove(typeof(TForm));
+            }
+
+            var scope = _serviceProvider.CreateScope();
+            var form = CreateFormInstance<TForm, TViewModel>(scope);
+
+            form.StartPosition = FormStartPosition.CenterParent;
+            form.FormClosed += (s, e) =>
+            {
+                try
+                {
+                    _activeMdiChildren.Remove(typeof(TForm));
+                    scope.Dispose();
+                }
+                catch (Exception disposeEx)
+                {
+                    _logger.LogDebug(disposeEx, "Failed to dispose scope for non-MDI child {FormType}", typeof(TForm).Name);
+                }
+            };
+
+            if (!allowMultiple)
+            {
+                _activeMdiChildren[typeof(TForm)] = form;
+            }
+
+            form.Show(this);
+            _logger.LogInformation("Non-MDI child form {FormType} shown", typeof(TForm).Name);
         }
         catch (Exception ex)
         {

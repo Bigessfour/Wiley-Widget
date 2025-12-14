@@ -93,13 +93,6 @@ public partial class MainForm
 
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
 
-            // If Syncfusion Docking is enabled, TabbedMDI can conflict with docking-based panels
-            if (_useSyncfusionDocking && _useTabbedMdi)
-            {
-                _logger.LogWarning("Both TabbedMDIManager and Syncfusion Docking are enabled; disabling TabbedMDI to prevent conflicts with DockingManager.");
-                _useTabbedMdi = false;
-            }
-
             if (_useMdiMode)
             {
                 _logger.LogInformation("Initializing MDI container mode (TabbedMDI: {UseTabbedMdi})", _useTabbedMdi);
@@ -179,14 +172,6 @@ public partial class MainForm
     {
         try
         {
-            // If docking is enabled, skip TabbedMDI initialization to avoid Syncfusion conflicts
-            if (_useSyncfusionDocking)
-            {
-                _logger.LogWarning("Skipping TabbedMDIManager initialization because Syncfusion Docking is enabled. TabbedMDI is disabled to prevent conflicts.");
-                _useTabbedMdi = false;
-                return;
-            }
-
             _logger.LogInformation("Initializing Syncfusion TabbedMDIManager");
 
             if (_tabbedMdiManager != null)
@@ -339,6 +324,7 @@ public partial class MainForm
                 ConfigureTabbedMdiFeatures();
             }
 
+            _tabbedMdiAttached = true;
             _logger.LogInformation("TabbedMDIManager initialized successfully");
         }
         catch (Exception ex)
@@ -460,6 +446,7 @@ public partial class MainForm
         finally
         {
             _tabbedMdiManager = null;
+            _tabbedMdiAttached = false;
         }
     }
 
@@ -482,10 +469,10 @@ public partial class MainForm
                 var tabStyleProp = newTabControl.GetType().GetProperty("TabStyle");
                 if (tabStyleProp != null && tabStyleProp.CanWrite)
                 {
-                    try { tabStyleProp.SetValue(newTabControl, typeof(Syncfusion.Windows.Forms.Tools.TabRendererDockingWhidbey)); }
+                    try { tabStyleProp.SetValue(newTabControl, typeof(Syncfusion.Windows.Forms.Tools.TabRendererOffice2016Colorful)); }
                     catch (Exception ex)
                     {
-                        _logger.LogDebug(ex, "Failed to set TabStyle to TabRendererDockingWhidbey");
+                        _logger.LogDebug(ex, "Failed to set TabStyle to TabRendererOffice2016Colorful");
                     }
                 }
 
@@ -882,31 +869,40 @@ public partial class MainForm
 
             if (!_useMdiMode)
             {
-                // Fall back to modal dialog behavior
-                ShowChildForm<TForm, TViewModel>();
+                ShowNonMdiChildForm<TForm, TViewModel>(allowMultiple);
                 return;
+            }
+
+            if (!IsMdiContainer)
+            {
+                IsMdiContainer = true;
             }
 
             // In MDI mode, check if we should reuse an existing window
             if (!allowMultiple && _activeMdiChildren.TryGetValue(typeof(TForm), out var existingForm))
             {
-                // Bring existing form to front
-                if (!existingForm.IsDisposed)
-                {
-                    existingForm.Activate();
-                    _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
-                    return;
-                }
-                else
-                {
-                    // Remove disposed form from tracking
+                    if (existingForm != null && !existingForm.IsDisposed)
+                    {
+                        try
+                        {
+                            existingForm.BringToFront();
+                            existingForm.Activate();
+                        }
+                        catch { }
+                        _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
+                        return;
+                    }
+
                     _activeMdiChildren.Remove(typeof(TForm));
-                }
             }
 
             // Create a new scope to get fresh DbContext + ViewModels for each child window
             var scope = _serviceProvider.CreateScope();
             var form = CreateFormInstance<TForm, TViewModel>(scope);
+
+            // Ensure DockingManager and TabbedMDIManager are configured to coexist safely.
+            // (Docking panels integrate into the MDI container; Form documents remain regular MDI children.)
+            RegisterMdiChildWithDocking(form);
 
             // Enforce TabbedMDI constraints: child forms hosted in a TabbedMDIManager must have default MinimumSize (0,0)
             try
@@ -933,33 +929,32 @@ public partial class MainForm
 
             try
             {
-                if (_tabbedMdiManager != null && !form.IsMdiChild)
-                {
-                    // Try to use SetAsMDIChild if available (reflection-safe)
-                    var setAsMdiChildMethod = _tabbedMdiManager.GetType().GetMethod("SetAsMDIChild", new[] { typeof(System.Windows.Forms.Control), typeof(bool) });
-                    if (setAsMdiChildMethod != null)
-                    {
-                        setAsMdiChildMethod.Invoke(_tabbedMdiManager, new object[] { form, true });
-                    }
-                    else
-                    {
-                        form.MdiParent = this;
-                    }
-                }
-                else
+                // CRITICAL FIX: For TabbedMDIManager, use standard MDI pattern (form.MdiParent = this; form.Show()).
+                // TabbedMDIManager automatically wraps the form in its internal document container.
+                // DO NOT call SetAsMDIChild on Form instances - that method expects UserControls/Panels
+                // and causes InvalidCastException when TabbedMDIManager tries to cast to DockingWrapperForm.
+                //
+                // Syncfusion integration pattern:
+                // - TabbedMDIManager: Handles Form-based MDI documents via standard MDI APIs
+                // - DockingManager.SetAsMDIChild: Only for UserControl/Panel-based dockable documents
+
+                if (!form.IsMdiChild)
                 {
                     form.MdiParent = this;
                 }
             }
-            catch (InvalidCastException ice)
-            {
-                _logger.LogWarning(ice, "InvalidCastException setting as TabbedMDI child, falling back to standard MDI");
-                form.MdiParent = this;
-            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to set as TabbedMDI child, falling back to standard MDI");
-                form.MdiParent = this;
+                _logger.LogWarning(ex, "Failed to set MdiParent for {FormType}, attempting recovery", typeof(TForm).Name);
+                // Recovery: ensure form is at least shown as owned window
+                try
+                {
+                    form.Owner = this;
+                }
+                catch (Exception recoverEx)
+                {
+                    _logger.LogError(recoverEx, "Failed to recover from MdiParent assignment failure for {FormType}", typeof(TForm).Name);
+                }
             }
 
             // Handle form closing to clean up scope and tracking
@@ -1022,8 +1017,46 @@ public partial class MainForm
             return;
         }
 
-        // DockingManager.SetAsMDIChild is intentionally not used for Form instances.
-        // TabbedMDIManager handles MDI integration; docking remains for panels only.
+        if (_dockingManager == null || !_useSyncfusionDocking)
+        {
+            return;
+        }
+
+        // Syncfusion integration guidance:
+        // - Use TabbedMDIManager for Form-based MDI documents
+        // - Use DockingManager for dockable panels (integrated into the MDI container via SetAsMDIChild)
+        // - Keep DockingManager document mode disabled when TabbedMDI is active to avoid wrapper-form assumptions
+
+        // CRITICAL: Force EnableDocumentMode to false if TabbedMDI is active, regardless of initialization state
+        if (_useMdiMode && _useTabbedMdi)
+        {
+            if (_dockingManager.EnableDocumentMode)
+            {
+                try
+                {
+                    _dockingManager.EnableDocumentMode = false;
+                    _logger.LogWarning("DEFENSIVE FIX: Disabled DockingManager.EnableDocumentMode because TabbedMDI is active (was unexpectedly true)");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "CRITICAL: Failed to disable DockingManager.EnableDocumentMode - InvalidCastException likely");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("RegisterMdiChildWithDocking: EnableDocumentMode already disabled (correct state for TabbedMDI)");
+            }
+        }
+
+        // Ensure MDI child Forms are not treated as dockable windows.
+        try
+        {
+            _dockingManager.SetEnableDocking(child, false);
+        }
+        catch
+        {
+            // Some Syncfusion builds may throw when calling SetEnableDocking on top-level Forms.
+        }
     }
 
     /// <summary>
@@ -1210,6 +1243,7 @@ public partial class MainForm
                     catch { }
                     _tabbedMdiManager.Dispose();
                     _tabbedMdiManager = null;
+                    _tabbedMdiAttached = false;
                     _logger.LogDebug("TabbedMDIManager disposed successfully");
                 }
                 catch (Exception ex)

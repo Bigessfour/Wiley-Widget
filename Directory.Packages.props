@@ -105,6 +105,7 @@
     <PackageVersion Include="Syncfusion.Licensing" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.Tools.Windows" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="31.2.18" />
+    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.Gauge.Windows" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.18" />

@@ -56,6 +56,7 @@ namespace WileyWidget.WinForms.Forms
         private bool _dashboardAutoShown;
         private bool _isUiTestHarness;
         private bool _syncfusionDockingInitialized;
+        private bool _tabbedMdiAttached;
         private bool _initialized;
         private Control? _aiChatControl;
         private Panel? _aiChatPanel;
@@ -75,13 +76,34 @@ namespace WileyWidget.WinForms.Forms
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
+
             // Load UI configuration
             var uiMode = _configuration.GetValue<string>("UI:UIMode");
             _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
             _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
             _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
             _isUiTestHarness = _configuration.GetValue<bool>("UI:IsUiTestHarness", false);
-                if (_isUiTestHarness)
+
+            // CRITICAL FIX: Set IsMdiContainer early to prevent ArgumentException during DI resolution
+            // when child forms with designer-generated MdiParent assignments are instantiated.
+            try
+            {
+                if (_useMdiMode || _useTabbedMdi)
+                {
+                    Console.WriteLine($"Setting IsMdiContainer=true (_useMdiMode={_useMdiMode}, _useTabbedMdi={_useTabbedMdi})");
+                    IsMdiContainer = true;
+                    Console.WriteLine("IsMdiContainer set successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"ERROR setting IsMdiContainer: {ex.GetType().Name}: {ex.Message}");
+                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+                _logger?.LogError(ex, "Failed to set IsMdiContainer");
+                throw;
+            }
+
+            if (_isUiTestHarness)
             {
                 _useMdiMode = false;
                 _useTabbedMdi = false;
@@ -93,14 +115,36 @@ namespace WileyWidget.WinForms.Forms
             _logger.LogInformation("UI Config loaded: UIMode={UIMode}, UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
                 uiMode ?? "IndividualSettings", _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
 
-            if (_useMdiMode)
+            ValidateAndSanitizeUiConfiguration();
+
+            // Initialize UI chrome (Ribbon, StatusBar, Navigation)
+            try
             {
-                IsMdiContainer = true;
+                Console.WriteLine("Calling InitializeChrome...");
+                InitializeChrome();
+                Console.WriteLine("InitializeChrome completed");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"ERROR in InitializeChrome: {ex.GetType().Name}: {ex.Message}");
+                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+                _logger?.LogError(ex, "InitializeChrome failed");
+                throw;
             }
 
-            ValidateAndSanitizeUiConfiguration();
-            InitializeMdiSupport();
-            UpdateStateText();
+            try
+            {
+                Console.WriteLine("Calling InitializeMdiSupport...");
+                InitializeMdiSupport();
+                Console.WriteLine("InitializeMdiSupport completed");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"ERROR in InitializeMdiSupport: {ex.GetType().Name}: {ex.Message}");
+                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+                _logger?.LogError(ex, "InitializeMdiSupport failed");
+                throw;
+            }
 
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
@@ -221,6 +265,20 @@ namespace WileyWidget.WinForms.Forms
 
             _initialized = true;
 
+            // Ensure TabbedMDI is attached before any docking/MDI child operations
+            if (_useMdiMode && _useTabbedMdi && !_tabbedMdiAttached)
+            {
+                try
+                {
+                    InitializeTabbedMdiManager();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to attach TabbedMDIManager during OnLoad; continuing without tabbed MDI");
+                    _useTabbedMdi = false;
+                }
+            }
+
             // Deferred docking initialization
             if (!_syncfusionDockingInitialized && _useSyncfusionDocking)
             {
@@ -236,7 +294,7 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
 
-            UpdateStateText();
+            UpdateDockingStateText();
 
             try
             {
@@ -247,19 +305,39 @@ namespace WileyWidget.WinForms.Forms
                     if (mdiClient != null)
                     {
                         mdiClient.Dock = DockStyle.Fill;
-                        mdiClient.SendToBack();
-                        _logger?.LogDebug("MDI client configured and sent to back");
+                        mdiClient.Visible = true;
+
+                        // CRITICAL: When TabbedMDI is enabled, don't SendToBack - it needs to be visible
+                        if (!_useTabbedMdi)
+                        {
+                            mdiClient.SendToBack();
+                        }
+                        else
+                        {
+                            // With TabbedMDI, ensure MDI client is above docking panels but below chrome
+                            // Order should be: Ribbon (front) -> StatusBar -> MDI Client -> Docking Panels (back)
+                            if (_statusBar != null)
+                            {
+                                _statusBar.BringToFront();
+                            }
+                            if (_ribbon != null)
+                            {
+                                _ribbon.BringToFront();
+                            }
+                        }
+
+                        _logger?.LogDebug("MDI client configured (TabbedMDI: {TabbedMDI})", _useTabbedMdi);
                     }
                 }
 
-                // Ribbon above chrome
+                // Ribbon above all
                 if (_ribbon != null)
                 {
                     _ribbon.BringToFront();
                     _logger?.LogDebug("Ribbon brought to front");
                 }
 
-                // Status bar above panels
+                // Status bar above MDI but below ribbon
                 if (_statusBar != null)
                 {
                     _statusBar.BringToFront();
@@ -331,6 +409,46 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure central panel visibility after dashboard open"); }
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            try
+            {
+                if (_useSyncfusionDocking && _dockingManager != null)
+                {
+                    try { SaveDockingLayout(); }
+                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout during form closing"); }
+                }
+
+                if (_tabbedMdiManager != null && _tabbedMdiAttached)
+                {
+                    try
+                    {
+                        var detachNoArg = _tabbedMdiManager.GetType().GetMethod("DetachFromMdiContainer", Type.EmptyTypes);
+                        if (detachNoArg != null)
+                        {
+                            detachNoArg.Invoke(_tabbedMdiManager, null);
+                        }
+                        else
+                        {
+                            var detachBool = _tabbedMdiManager.GetType().GetMethods()
+                                .FirstOrDefault(m => m.Name == "DetachFromMdiContainer" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(bool));
+                            detachBool?.Invoke(_tabbedMdiManager, new object[] { false });
+                        }
+
+                        _tabbedMdiAttached = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "Failed to detach TabbedMDIManager during form closing");
+                    }
+                }
+            }
+            finally
+            {
+                base.OnFormClosing(e);
+            }
+        }
+
         private void ValidateAndSanitizeUiConfiguration()
         {
             // Validate UIMode
@@ -351,8 +469,9 @@ namespace WileyWidget.WinForms.Forms
             // Rule 1: TabbedMdi requires MdiMode to be enabled
             if (_useTabbedMdi && !_useMdiMode)
             {
-                _logger.LogWarning("Invalid UI configuration: UseTabbedMdi=true requires UseMdiMode=true. Disabling TabbedMdi.");
-                _useTabbedMdi = false;
+                _logger.LogWarning("Invalid UI configuration: UseTabbedMdi=true requires UseMdiMode=true. Enabling MDI mode to support TabbedMDI.");
+                _useMdiMode = true;
+                IsMdiContainer = true;
             }
 
             // Rule 2: If both MDI modes are disabled, ensure docking is enabled as fallback
@@ -372,6 +491,15 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger.LogWarning("UI configuration inconsistency: UseMdiMode=false but IsMdiContainer=true. Setting IsMdiContainer=false.");
                 IsMdiContainer = false;
+            }
+
+            // Rule 4: When TabbedMDI is enabled, DockingManager document mode must be disabled
+            // to prevent InvalidCastException when TabbedMDIManager expects DockingWrapperForm but gets plain Forms.
+            // DockingManager should only handle dockable panels, not document windows.
+            if (_useTabbedMdi && _useSyncfusionDocking)
+            {
+                _logger.LogInformation("TabbedMDI enabled: DockingManager will use panel mode only (document mode disabled for TabbedMDI integration)");
+                // Note: _dockingManager.EnableDocumentMode will be set to false in InitializeSyncfusionDocking
             }
 
             // Log final validated configuration

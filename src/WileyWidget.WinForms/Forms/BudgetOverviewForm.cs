@@ -92,7 +92,16 @@ namespace WileyWidget.WinForms.Forms
 
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+            if (mainForm == null)
+            {
+                throw new ArgumentNullException(nameof(mainForm));
+            }
+
+            // Only set MdiParent if the parent form is configured as an MDI container
+            if (mainForm.IsMdiContainer)
+            {
+                MdiParent = mainForm;
+            }
 
             ThemeColors.ApplyTheme(this);
 
@@ -390,6 +399,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Name = "BudgetOverview_MetricsGrid",
+                AccessibleName = "BudgetOverview_MetricsGrid",
                 AllowEditing = false,
                 SelectionUnit = SelectionUnit.Row,
                 SelectionMode = GridSelectionMode.Extended,

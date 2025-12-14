@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using WileyWidget.WinForms.ViewModels;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.Theming;
-// using Syncfusion.Pdf;  // TODO: Add Syncfusion.Pdf.WinForms package for PDF export
-// using Syncfusion.Pdf.Graphics;
+using Syncfusion.Pdf;
+using Syncfusion.Pdf.Graphics;
 using System.IO;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Extensions;
@@ -892,23 +892,21 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // TODO: Add Syncfusion.Pdf.WinForms package to enable PDF export
-                        throw new NotImplementedException("PDF export requires Syncfusion.Pdf.WinForms package");
-                        // using var doc = new PdfDocument();
-                        // var page = doc.Pages.Add();
-                        // using var pdfImage = new PdfBitmap(bmp);
+                        using var doc = new Syncfusion.Pdf.PdfDocument();
+                        var page = doc.Pages.Add();
+                        using var pdfImage = new Syncfusion.Pdf.Graphics.PdfBitmap(bmp);
 
-                        // // Fit the image into page width while preserving aspect
-                        // var client = page.GetClientSize();
-                        // var scale = Math.Min(client.Width / (float)bmp.Width, client.Height / (float)bmp.Height);
-                        // var drawW = bmp.Width * scale;
-                        // var drawH = bmp.Height * scale;
-                        // var rect = new System.Drawing.RectangleF(0, 0, drawW, drawH);
-                        // page.Graphics.DrawImage(pdfImage, rect);
+                        // Fit the image into page width while preserving aspect ratio
+                        var client = page.GetClientSize();
+                        var scale = Math.Min(client.Width / (float)bmp.Width, client.Height / (float)bmp.Height);
+                        var drawW = bmp.Width * scale;
+                        var drawH = bmp.Height * scale;
+                        var rect = new System.Drawing.RectangleF(0, 0, drawW, drawH);
+                        page.Graphics.DrawImage(pdfImage, rect);
 
-                        // using var fs = File.OpenWrite(path);
-                        // doc.Save(fs);
-                        // doc.Close(true);
+                        using var fs = File.OpenWrite(path);
+                        doc.Save(fs);
+                        doc.Close(true);
                     }
                     finally
                     {

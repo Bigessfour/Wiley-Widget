@@ -85,10 +85,34 @@ namespace WileyWidget.WinForms
 
         private static void RegisterSyncfusionLicense()
         {
-            // Skip license validation in test environments
+            // In test environments, still register license but skip validation
             if (IsRunningInTestEnvironment())
             {
-                Console.WriteLine("Running in test environment - skipping Syncfusion license validation");
+                string? testLicenseKey = GetSyncfusionLicenseKey();
+                if (!string.IsNullOrWhiteSpace(testLicenseKey))
+                {
+                    try
+                    {
+                        SyncfusionLicenseProvider.RegisterLicense(testLicenseKey);
+                        Console.WriteLine("Registered Syncfusion license from environment in test mode");
+                        return;
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Failed to register Syncfusion license in test mode");
+                    }
+                }
+                // If no license, register dummy to prevent popup
+                const string dummyLicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
+                try
+                {
+                    SyncfusionLicenseProvider.RegisterLicense(dummyLicenseKey);
+                    Console.WriteLine("Registered test Syncfusion license to prevent trial popup");
+                }
+                catch
+                {
+                    Console.WriteLine("Failed to register test Syncfusion license - trial popup may appear");
+                }
                 return;
             }
 
@@ -269,18 +293,53 @@ namespace WileyWidget.WinForms
 
         private static void ConfigureLogging(HostApplicationBuilder builder)
         {
-            // Make Serilog self-logging forward internal errors to stderr so we can diagnose sink failures
-            Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine(msg));
+            try
+            {
+                // Make Serilog self-logging forward internal errors to stderr so we can diagnose sink failures
+                Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine($"[SERILOG] {msg}"));
 
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(builder.Configuration)
-                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                .WriteTo.File("logs/app-.log", formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 3, shared: true)
-                .Enrich.FromLogContext()
-                .CreateLogger();
+                // Ensure logs directory exists in project root (not bin folder)
+                var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+                var logsPath = Path.Combine(projectRoot, "logs");
 
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSerilog(Log.Logger, dispose: true);
+                Console.WriteLine($"Creating logs directory at: {logsPath}");
+                Directory.CreateDirectory(logsPath);
+
+                var logFile = Path.Combine(logsPath, "app-.log");
+                Console.WriteLine($"Log file pattern: {logFile}");
+
+                Log.Logger = new LoggerConfiguration()
+                    .ReadFrom.Configuration(builder.Configuration)
+                    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.File(logFile, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 3, shared: true)
+                    .Enrich.FromLogContext()
+                    .MinimumLevel.Information()
+                    .CreateLogger();
+
+                builder.Logging.ClearProviders();
+                builder.Logging.AddSerilog(Log.Logger, dispose: true);
+
+                Console.WriteLine("Logging configured successfully");
+                Log.Information("Logging system initialized - writing to {LogPath}", logFile);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"CRITICAL: Failed to configure logging: {ex.GetType().Name}: {ex.Message}");
+                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+
+                // Fallback to console-only logging
+                Log.Logger = new LoggerConfiguration()
+                    .WriteTo.Console()
+                    .WriteTo.Debug()
+                    .MinimumLevel.Information()
+                    .CreateLogger();
+
+                builder.Logging.ClearProviders();
+                builder.Logging.AddSerilog(Log.Logger, dispose: true);
+
+                Console.Error.WriteLine("Logging fallback to console-only mode");
+            }
         }
 
         private static void ConfigureDatabase(HostApplicationBuilder builder)
@@ -374,6 +433,7 @@ namespace WileyWidget.WinForms
         private static void ConfigureUiServices(HostApplicationBuilder builder)
         {
             var useTabbedMdi = builder.Configuration.GetValue<bool>("UI:UseTabbedMdi", true);
+            var useDockingManager = builder.Configuration.GetValue<bool>("UI:UseDockingManager", true);
 
             if (useTabbedMdi)
             {
@@ -442,6 +502,15 @@ namespace WileyWidget.WinForms
                 catch (Exception reportEx)
                 {
                     Console.Error.WriteLine($"Failed to report UI thread exception to ErrorReportingService: {reportEx}");
+                }
+
+                try
+                {
+                    MessageBox.Show($"UI Error: {e.Exception.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch
+                {
+                    // Swallow UI notification failures
                 }
             };
 

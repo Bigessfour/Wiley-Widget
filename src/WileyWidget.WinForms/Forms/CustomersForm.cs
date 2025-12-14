@@ -240,6 +240,8 @@ namespace WileyWidget.WinForms.Forms
             // Configure Syncfusion DataGrid for customer list display
             _dataGrid = new SfDataGrid
             {
+                Name = "Customers_DataGrid",
+                AccessibleName = "Customers_DataGrid",
                 Dock = DockStyle.Left,
                 Width = 750,
                 AutoGenerateColumns = false,
@@ -251,7 +253,6 @@ namespace WileyWidget.WinForms.Forms
                 RowHeight = 36,
                 Font = new Font("Segoe UI", 9F)
             };
-            _dataGrid.Name = "Customers_DataGrid";
 
             // Apply theme to the data grid
             WileyWidget.WinForms.Themes.ThemeColors.ApplySfDataGridTheme(_dataGrid);

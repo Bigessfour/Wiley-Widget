@@ -12,6 +12,10 @@ using FlaUIApplication = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
 {
+    [CollectionDefinition("UI Tests", DisableParallelization = true)]
+    public class UITestsCollection { }
+
+    [Collection("UI Tests")]
     public class Dashboard_FlaUI_ConvertedTests : IDisposable
     {
         private readonly string _exePath;
@@ -22,6 +26,10 @@ namespace WileyWidget.WinForms.E2ETests
         {
             // Try environment variable first so CI/test runners can provide published exe.
             _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..","..","..","WileyWidget.WinForms","bin","Debug","net9.0-windows10.0.26100.0","WileyWidget.WinForms.exe");
+
+            // Disable MDI mode for UI tests so forms open as separate windows
+            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
+            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
         }
 
         private static bool IsModalWindow(Window candidate)
@@ -58,6 +66,9 @@ namespace WileyWidget.WinForms.E2ETests
             {
                 throw new FileNotFoundException($"Executable not found at '{_exePath}'. Please set WILEYWIDGET_EXE env var to published executable or build the WinForms project.");
             }
+
+            // Set the license key in the current process environment so the launched app inherits it
+            Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
 
             _app = FlaUIApplication.Launch(_exePath);
             _automation = new UIA3Automation();
@@ -196,7 +207,7 @@ namespace WileyWidget.WinForms.E2ETests
         public void Dispose()
         {
             try { _automation?.Dispose(); } catch { }
-            try { if (_app != null && !_app.HasExited) { _app.Close(); _app.Dispose(); } } catch { }
+            try { if (_app != null && !_app.HasExited) { _app.Kill(); _app.Dispose(); } } catch { }
         }
     }
 }

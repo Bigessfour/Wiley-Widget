@@ -40,7 +40,12 @@ public partial class ChatWindow : Form
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
 
-        MdiParent = mainForm;
+        // Only set MdiParent if the parent form is configured as an MDI container
+        if (mainForm.IsMdiContainer)
+        {
+            MdiParent = mainForm;
+        }
+
         _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatWindow>>(serviceProvider);
         _aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(serviceProvider);
         _conversationRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(serviceProvider);

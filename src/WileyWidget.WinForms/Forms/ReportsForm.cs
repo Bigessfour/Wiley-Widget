@@ -47,7 +47,16 @@ public sealed class ReportsForm : Form
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+        if (mainForm == null)
+        {
+            throw new ArgumentNullException(nameof(mainForm));
+        }
+
+        // Only set MdiParent if the parent form is configured as an MDI container
+        if (mainForm.IsMdiContainer)
+        {
+            MdiParent = mainForm;
+        }
 
         BuildLayout();
         ThemeColors.ApplyTheme(this);

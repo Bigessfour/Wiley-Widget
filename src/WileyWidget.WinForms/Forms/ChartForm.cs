@@ -32,7 +32,13 @@ namespace WileyWidget.WinForms.Forms
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
             InitializeComponent();
-            MdiParent = _mainForm;
+
+            // Only set MdiParent if the parent form is configured as an MDI container
+            if (_mainForm.IsMdiContainer)
+            {
+                MdiParent = _mainForm;
+            }
+
             Text = ChartFormResources.FormTitle;
             SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
@@ -83,6 +89,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Name = "Chart_Cartesian",
+                AccessibleName = "Chart_Cartesian",
                 Text = "Budget Trend"
             };
             SfSkinManager.SetVisualStyle(cartesian, ThemeColors.DefaultTheme);
@@ -98,8 +105,7 @@ namespace WileyWidget.WinForms.Forms
             var pie = new ChartControl
             {
                 Dock = DockStyle.Fill,
-                Name = "Chart_Pie",
-                Text = "Budget Distribution"
+                Name = "Chart_Pie",                AccessibleName = "Chart_Pie",                Text = "Budget Distribution"
             };
             SfSkinManager.SetVisualStyle(pie, ThemeColors.DefaultTheme);
 

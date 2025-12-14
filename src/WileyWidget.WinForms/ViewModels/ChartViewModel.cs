@@ -91,9 +91,14 @@ namespace WileyWidget.WinForms.ViewModels
                     return;
                 }
 
-                // TODO: Load and filter dashboard data by year/category
-                // For now using sample data generation
-                await _dashboardService.GetDashboardDataAsync();
+                // Load dashboard data from service
+                var dashboardItems = await _dashboardService.GetDashboardDataAsync(cancellationToken);
+
+                if (dashboardItems == null)
+                {
+                    _logger.LogWarning("Dashboard service returned null data");
+                    dashboardItems = Array.Empty<DashboardItem>();
+                }
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -103,8 +108,29 @@ namespace WileyWidget.WinForms.ViewModels
                 PieChartData.Clear();
                 LineChartData.Clear();
 
-                // Generate sample data (replace with real service calls in production)
-                await GenerateSampleDataAsync(yearToLoad, categoryToLoad, cancellationToken);
+                // Transform dashboard items to chart data
+                var filteredItems = dashboardItems.AsEnumerable();
+
+                if (!string.IsNullOrEmpty(categoryToLoad) && categoryToLoad != "All Categories")
+                {
+                    filteredItems = filteredItems.Where(item =>
+                        string.Equals(item.Category, categoryToLoad, StringComparison.OrdinalIgnoreCase));
+                }
+
+                var itemsList = filteredItems.ToList();
+
+                if (itemsList.Count > 0)
+                {
+                    // Use actual dashboard data for charts
+                    await TransformDashboardDataToChartsAsync(itemsList, yearToLoad, cancellationToken);
+                    _logger.LogInformation("Successfully loaded chart data from {ItemCount} dashboard items", itemsList.Count);
+                }
+                else
+                {
+                    // Fallback to sample data if no dashboard data available
+                    _logger.LogInformation("No dashboard data available, generating sample data");
+                    await GenerateSampleDataAsync(yearToLoad, categoryToLoad, cancellationToken);
+                }
 
                 _logger.LogInformation("Successfully loaded chart data");
             }
@@ -166,6 +192,77 @@ namespace WileyWidget.WinForms.ViewModels
                     var value = (decimal)(random.NextDouble() * 100000 + 50000);
                     PieChartData.Add((cat, value));
                     ChartData.Add(new KeyValuePair<string, decimal>(cat, value));
+                }
+            }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Transforms dashboard items into chart-friendly data structures.
+        /// </summary>
+        private Task TransformDashboardDataToChartsAsync(IList<DashboardItem> items, int year, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                var categoryTotals = new Dictionary<string, decimal>();
+                var monthlyTotals = new Dictionary<int, decimal>();
+
+                foreach (var item in items)
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    if (decimal.TryParse(item.Value, out var value))
+                    {
+                        // Aggregate by category for pie chart
+                        if (!string.IsNullOrEmpty(item.Category))
+                        {
+                            if (categoryTotals.ContainsKey(item.Category))
+                                categoryTotals[item.Category] += value;
+                            else
+                                categoryTotals[item.Category] = value;
+                        }
+
+                        // For monthly data, distribute evenly across months (simplified)
+                        // In production, extract actual month from item metadata
+                        var monthValue = value / 12;
+                        for (int month = 1; month <= 12; month++)
+                        {
+                            if (monthlyTotals.ContainsKey(month))
+                                monthlyTotals[month] += monthValue;
+                            else
+                                monthlyTotals[month] = monthValue;
+                        }
+                    }
+                }
+
+                // Populate chart collections
+                var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+                foreach (var kvp in monthlyTotals.OrderBy(m => m.Key))
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    var monthName = monthNames[kvp.Key - 1];
+                    MonthlyRevenueData.Add(new MonthlyRevenue
+                    {
+                        Month = monthName,
+                        MonthNumber = kvp.Key,
+                        Amount = kvp.Value
+                    });
+
+                    LineChartData.Add(new ChartDataPoint
+                    {
+                        XValue = monthName,
+                        YValue = (double)kvp.Value,
+                        Label = monthName
+                    });
+                }
+
+                foreach (var kvp in categoryTotals.OrderByDescending(c => c.Value))
+                {
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    PieChartData.Add((kvp.Key, kvp.Value));
+                    ChartData.Add(new KeyValuePair<string, decimal>(kvp.Key, kvp.Value));
                 }
             }, cancellationToken);
         }

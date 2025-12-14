@@ -60,15 +60,20 @@ namespace WileyWidget.WinForms.Forms
         public AccountsForm(AccountsViewModel viewModel, MainForm mainForm)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            MdiParent = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+            if (mainForm == null)
+            {
+                throw new ArgumentNullException(nameof(mainForm));
+            }
+
+            // Only set MdiParent if the parent form is configured as an MDI container
+            if (mainForm.IsMdiContainer)
+            {
+                MdiParent = mainForm;
+            }
 
             InitializeComponent();
             ThemeColors.ApplyTheme(this);
             BindViewModel();
-
-#pragma warning disable CS4014
-            LoadData();
-#pragma warning restore CS4014
         }
 
         [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
@@ -559,6 +564,9 @@ namespace WileyWidget.WinForms.Forms
                     // Safe to ignore docking registration failures; form still opens as standard MDI child.
                 }
             }
+
+            // Load data after form is fully initialized and visible
+            _ = LoadData();
         }
 
         protected override void Dispose(bool disposing)
