@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Linq;
 using Syncfusion.WinForms.Controls;
@@ -20,6 +21,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 
 #pragma warning disable CS8604 // Possible null reference argument
@@ -199,7 +201,9 @@ public partial class MainForm
             Name = "LeftDockPanel",
             AccessibleName = "LeftDockPanel",
             BackColor = ThemeColors.Background,
-            AutoScroll = true
+            AutoScroll = true,
+            BorderStyle = BorderStyle.None,
+            Padding = new Padding(8, 8, 8, 8)
         };
 
         // Move dashboard cards to left dock (reuse existing dashboard panel logic)
@@ -208,10 +212,11 @@ public partial class MainForm
 
         // Configure docking behavior
         _dockingManager.SetEnableDocking(_leftDockPanel, true);
-        _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
+        _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 280);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
         _dockingManager.SetAllowFloating(_leftDockPanel, true);  // Enable floating windows
+        try { _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(200, 0)); } catch { }
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -308,7 +313,8 @@ public partial class MainForm
             Name = "RightDockPanel",
             AccessibleName = "RightDockPanel",
             BackColor = ThemeColors.Background,
-            Padding = new Padding(10)
+            Padding = new Padding(8, 8, 8, 8),
+            BorderStyle = BorderStyle.None
         };
 
         // Move activity grid to right dock (reuse existing activity panel logic)
@@ -317,10 +323,11 @@ public partial class MainForm
 
         // Configure docking behavior
         _dockingManager.SetEnableDocking(_rightDockPanel, true);
-        _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
+        _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 280);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
         _dockingManager.SetAllowFloating(_rightDockPanel, true);  // Enable floating windows
+        try { _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(200, 0)); } catch { }
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -341,28 +348,29 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             ColumnCount = 1,  // Single column for left dock
             RowCount = 5,
-            Padding = new Padding(10),
-            BackColor = ThemeColors.Background
+            Padding = new Padding(12, 12, 12, 12),  // Professional spacing
+            BackColor = ThemeColors.Background,
+            CellBorderStyle = TableLayoutPanelCellBorderStyle.None
         };
 
-        // Add row styles
+        // Add row styles with proper proportions
         for (int i = 0; i < 5; i++)
         {
             dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
         }
 
-        // Create cards (reuse existing logic from InitializeComponent)
+        // Create cards with professional styling
         var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _accountsDescLabel);
-        SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>());
+        SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false));
 
-        var chartsCard = CreateDashboardCard("Charts", MainFormResources.LoadingText, ThemeColors.Success, out _chartsDescLabel);
-        SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>());
+        var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", ThemeColors.Success, out _chartsDescLabel);
+        SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false));
 
-        var settingsCard = CreateDashboardCard("Settings", MainFormResources.LoadingText, ThemeColors.Warning, out _settingsDescLabel);
-        SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>());
+        var settingsCard = CreateDashboardCard("Settings", "System Config", ThemeColors.Warning, out _settingsDescLabel);
+        SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false));
 
-        var reportsCard = CreateDashboardCard("Reports", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _reportsDescLabel);
-        SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>());
+        var reportsCard = CreateDashboardCard("Reports", "Generate Now", ThemeColors.PrimaryAccent, out _reportsDescLabel);
+        SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false));
 
         var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText, ThemeColors.Error, out _infoDescLabel);
 
@@ -412,11 +420,11 @@ public partial class MainForm
         };
         SfSkinManager.SetVisualStyle(_activityGrid, ThemeColors.DefaultTheme);
 
-        // Map to ActivityLog properties
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 100 });
+        // Map to ActivityLog properties with flexible column sizing
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 80, MinimumWidth = 60 });
 
         // Load initial data from database
         _ = LoadActivityDataAsync();
@@ -1961,11 +1969,12 @@ public partial class MainForm
     {
         var panel = new Panel
         {
-            BackColor = ThemeColors.Background,
+            BackColor = Color.FromArgb(250, 250, 250),
             Dock = DockStyle.Top,
-            Height = 140,
-            Padding = new Padding(12),
-            Margin = new Padding(4)
+            Height = 120,
+            Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(4, 4, 4, 8),
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         var titleLabel = new Label
@@ -1987,6 +1996,9 @@ public partial class MainForm
 
         panel.Controls.Add(descriptionLabel);
         panel.Controls.Add(titleLabel);
+
+        // Apply professional shadow effect
+        ProfessionalUI.ApplyCardShadow(panel);
 
         return (panel, descriptionLabel);
     }

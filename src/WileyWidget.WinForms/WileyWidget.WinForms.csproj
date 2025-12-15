@@ -64,6 +64,7 @@
 
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
     <!-- Syncfusion WinForms UI controls -->
+    <PackageReference Include="Syncfusion.Core.WinForms" />
     <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="Syncfusion.Shared.Base" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
@@ -80,6 +81,12 @@
     <PackageReference Include="FastReport.OpenSource" />
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Reports\\**\\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

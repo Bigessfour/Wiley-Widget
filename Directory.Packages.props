@@ -122,6 +122,7 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageVersion Include="Syncfusion.Core.WinForms" Version="31.2.18" />
     <!-- SixLabors.ImageSharp removed - unused orphaned dependency -->
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
   </ItemGroup>

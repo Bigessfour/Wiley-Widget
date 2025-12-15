@@ -53,9 +53,9 @@ public sealed class ReportsForm : Form
             throw new ArgumentNullException(nameof(mainForm));
         }
 
-        // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
+        // Only set MdiParent if MainForm is in MDI mode
         // In DockingManager mode, forms are shown as owned windows, not MDI children
-        if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
+        if (mainForm.IsMdiContainer)
         {
             MdiParent = mainForm;
         }

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Windows.Forms;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
@@ -16,6 +18,7 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Configuration;
 
 #pragma warning disable CS8604 // Possible null reference argument
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
@@ -48,8 +51,10 @@ namespace WileyWidget.WinForms.Forms
         public IServiceProvider ServiceProvider => _serviceProvider ?? throw new InvalidOperationException("ServiceProvider not initialized");
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
+        private bool _reportViewerLaunched;
         private ToolStripTabItem? _homeTab;
         private ToolStripEx? _navigationStrip;
         private StatusBarAdv? _statusBar;
@@ -72,15 +77,17 @@ namespace WileyWidget.WinForms.Forms
             : this(
                 Program.Services ?? new ServiceCollection().BuildServiceProvider(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance)
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
         {
         }
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
+            _reportViewerLaunchOptions = reportViewerLaunchOptions;
 
             // Load UI configuration
             var uiMode = _configuration.GetValue<string>("UI:UIMode");
@@ -108,13 +115,37 @@ namespace WileyWidget.WinForms.Forms
                 throw;
             }
 
+            // For UI test harness mode, default MDI to disabled to avoid flakiness in headless
+            // environments, but DO NOT override explicit configuration values. Tests that set
+            // UI:UseMdiMode or UI:UseTabbedMdi expect those settings to be honored.
             if (_isUiTestHarness)
             {
-                _useMdiMode = false;
-                _useTabbedMdi = false;
-                _useSyncfusionDocking = true; // Keep docking enabled even for UI tests
-                IsMdiContainer = false;
-                _logger.LogInformation("UI test harness detected; disabling MDI but keeping Syncfusion docking enabled");
+                var explicitMdi = _configuration.GetValue<bool?>("UI:UseMdiMode");
+                var explicitTabbed = _configuration.GetValue<bool?>("UI:UseTabbedMdi");
+                var explicitDocking = _configuration.GetValue<bool?>("UI:UseDockingManager");
+
+                if (!explicitMdi.HasValue)
+                {
+                    _useMdiMode = false;
+                }
+
+                if (!explicitTabbed.HasValue)
+                {
+                    _useTabbedMdi = false;
+                }
+
+                if (!explicitDocking.HasValue)
+                {
+                    _useSyncfusionDocking = true; // default to docking in test harness
+                }
+
+                // Only clear IsMdiContainer if no explicit MDI mode was requested
+                if ((!explicitMdi.HasValue || !_useMdiMode) && (!explicitTabbed.HasValue || !_useTabbedMdi))
+                {
+                    IsMdiContainer = false;
+                }
+
+                _logger.LogInformation("UI test harness detected; defaulting to Docking unless MDI is explicitly requested");
             }
 
             _logger.LogInformation("UI Config loaded: UIMode={UIMode}, UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
@@ -428,6 +459,89 @@ namespace WileyWidget.WinForms.Forms
                     _dashboardAutoShown = true;
                 }
             }
+            TryLaunchReportViewerOnLoad();
+        }
+
+        private void TryLaunchReportViewerOnLoad()
+        {
+            if (_reportViewerLaunchOptions == null || !_reportViewerLaunchOptions.ShowReportViewer)
+            {
+                return;
+            }
+
+            if (_reportViewerLaunched)
+            {
+                _logger?.LogDebug("Report viewer launch already handled for {ReportPath}", _reportViewerLaunchOptions.ReportPath);
+                return;
+            }
+
+            var reportPath = _reportViewerLaunchOptions.ReportPath;
+            if (string.IsNullOrWhiteSpace(reportPath))
+            {
+                _logger?.LogWarning("Report viewer launch requested but no report path was supplied");
+                return;
+            }
+
+            if (!File.Exists(reportPath))
+            {
+                _logger?.LogWarning("Report viewer launch requested but report file was missing: {ReportPath}", reportPath);
+                return;
+            }
+
+            try
+            {
+                ShowReportViewerForm(reportPath);
+                _reportViewerLaunched = true;
+                _logger?.LogInformation("Report viewer opened for CLI path: {ReportPath}", reportPath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to open report viewer for {ReportPath}", reportPath);
+            }
+        }
+
+        private void ShowReportViewerForm(string reportPath)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(() => ShowReportViewerForm(reportPath)));
+                return;
+            }
+
+            if (!File.Exists(reportPath))
+            {
+                _logger?.LogWarning("Report viewer path became unavailable before launch: {ReportPath}", reportPath);
+                return;
+            }
+
+            var reportViewer = new ReportViewerForm(this, reportPath);
+
+            if (_useMdiMode)
+            {
+                if (!IsMdiContainer)
+                {
+                    IsMdiContainer = true;
+                }
+
+                RegisterMdiChildWithDocking(reportViewer);
+
+                try
+                {
+                    if (!reportViewer.IsMdiChild)
+                    {
+                        reportViewer.MdiParent = this;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to assign MdiParent to ReportViewerForm");
+                }
+
+                reportViewer.Show();
+                return;
+            }
+
+            reportViewer.Show(this);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -530,6 +644,9 @@ namespace WileyWidget.WinForms.Forms
             // Log final validated configuration
             _logger.LogInformation("UI configuration validated: Docking={Docking}, MDI={Mdi}, TabbedMDI={Tabbed}",
                 _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
+
+            // Enforce authorized theme: Office2019Colorful
+            this.ThemeName = "Office2019Colorful";
         }
 
         /// <summary>

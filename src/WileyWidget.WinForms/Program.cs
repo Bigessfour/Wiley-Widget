@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.WinForms
 {
@@ -266,6 +267,7 @@ namespace WileyWidget.WinForms
 
         private static IHost BuildHost(string[] args)
         {
+            var reportViewerLaunchOptions = CreateReportViewerLaunchOptions(args);
             var builder = Host.CreateApplicationBuilder(args);
 
             AddConfiguration(builder);
@@ -275,6 +277,8 @@ namespace WileyWidget.WinForms
             CaptureDiFirstChanceExceptions();
             AddDependencyInjection(builder);
             ConfigureUiServices(builder);
+
+            builder.Services.AddSingleton(reportViewerLaunchOptions);
 
             return builder.Build();
         }
@@ -724,6 +728,80 @@ namespace WileyWidget.WinForms
             {
                 Log.Information("Application exited normally.");
                 Log.CloseAndFlush();
+            }
+        }
+
+        private static ReportViewerLaunchOptions CreateReportViewerLaunchOptions(string[] args)
+        {
+            if (args == null || args.Length == 0)
+            {
+                return ReportViewerLaunchOptions.Disabled;
+            }
+
+            var requestArg = args.FirstOrDefault(arg => string.Equals(arg, "--show-report-viewer", StringComparison.OrdinalIgnoreCase));
+            if (requestArg == null)
+            {
+                return ReportViewerLaunchOptions.Disabled;
+            }
+
+            var rawPath = ExtractArgumentValue(args, "--report-path");
+            var normalized = NormalizeReportPath(rawPath);
+            if (string.IsNullOrWhiteSpace(normalized) || !File.Exists(normalized))
+            {
+                return ReportViewerLaunchOptions.Disabled;
+            }
+
+            return new ReportViewerLaunchOptions(true, normalized);
+        }
+
+        private static string? ExtractArgumentValue(string[] args, string prefix)
+        {
+            var match = args.FirstOrDefault(arg => arg.StartsWith(prefix + "=", StringComparison.OrdinalIgnoreCase));
+            if (match == null)
+            {
+                return null;
+            }
+
+            var value = match[(prefix.Length + 1)..].Trim();
+            return TrimQuotes(value);
+        }
+
+        private static string? TrimQuotes(string? value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return value;
+            }
+
+            if ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\'')))
+            {
+                return value[1..^1];
+            }
+
+            return value;
+        }
+
+        private static string? NormalizeReportPath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                var trimmed = path.Trim();
+                if (Path.IsPathRooted(trimmed))
+                {
+                    return Path.GetFullPath(trimmed);
+                }
+
+                var combined = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, trimmed));
+                return combined;
+            }
+            catch
+            {
+                return path;
             }
         }
 

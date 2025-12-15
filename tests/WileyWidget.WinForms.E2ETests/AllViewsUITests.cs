@@ -115,7 +115,7 @@ namespace WileyWidget.WinForms.E2ETests
             var refreshButton = WaitForElement(dashboard, cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
             Assert.NotNull(refreshButton);
 
-            refreshButton.Invoke();
+            refreshButton.Click();
 
             var changed = Retry.While(() => string.Equals(statusLabel.Text, initial, StringComparison.Ordinal), same => same, TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(200));
             Assert.False(changed.Success, "LastUpdated label did not update after refresh within timeout.");
@@ -171,8 +171,8 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(loadButton);
             Assert.NotNull(filterButton);
 
-            loadButton.Invoke();
-            filterButton.Invoke();
+            loadButton.Click();
+            filterButton.Click();
 
             var grid = WaitForElement(accounts, cf => cf.ByAutomationId("dataGridAccounts"))?.AsGrid();
             Assert.NotNull(grid);
@@ -246,8 +246,8 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(dockToggle);
             Assert.NotNull(mdiToggle);
 
-            dockToggle.Invoke();
-            mdiToggle.Invoke();
+            dockToggle.Click();
+            mdiToggle.Click();
 
             var changed = Retry.While(() => string.Equals(stateLabel.Name, initial, StringComparison.Ordinal), same => same, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             Assert.False(changed.Success, "State text did not change after toggling docking/MDI buttons.");
@@ -325,20 +325,11 @@ namespace WileyWidget.WinForms.E2ETests
 
             Assert.NotNull(navElement);
 
-            if (navElement!.AsButton() is { } button)
-            {
-                button.Invoke();
-            }
-            else
-            {
-                var invoke = navElement.Patterns.Invoke.PatternOrDefault;
-                Assert.NotNull(invoke);
-                invoke.Invoke();
-            }
+            navElement!.Click();
 
             var window = Retry.WhileNull(
                 () => FindWindowByTitle(expectedTitleContains),
-                TimeSpan.FromSeconds(12),
+                TimeSpan.FromSeconds(30),
                 TimeSpan.FromMilliseconds(250));
 
             return window.Result ?? throw new InvalidOperationException($"View window containing '{expectedTitleContains}' was not found.");

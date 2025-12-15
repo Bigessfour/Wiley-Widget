@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
@@ -32,6 +33,22 @@ public partial class MainForm
         try
         {
             SuspendLayout();
+
+            // Apply theme from configuration before initializing controls
+            var configuredTheme = _configuration?.GetValue<string>("UI:Theme", ThemeColors.DefaultTheme) ?? ThemeColors.DefaultTheme;
+            try
+            {
+                SfSkinManager.SetVisualStyle(this, configuredTheme);
+                SfSkinManager.ApplicationVisualTheme = configuredTheme;
+                _logger?.LogInformation("Applied theme from configuration: {Theme}", configuredTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to apply configured theme '{Theme}'; using default", configuredTheme);
+            }
+
+            // Validate Syncfusion license status
+            ValidateSyncfusionLicense();
 
             // Set form properties
             Text = MainFormResources.FormTitle;
@@ -127,7 +144,7 @@ public partial class MainForm
             var dashboardBtn = new ToolStripButton
             {
                 Name = "Nav_Dashboard",
-                Text = MainFormResources.Dashboard,
+                Text = "📊 " + MainFormResources.Dashboard,
                 ToolTipText = "Open Dashboard",
                 AutoSize = true
             };
@@ -136,7 +153,7 @@ public partial class MainForm
             var accountsBtn = new ToolStripButton
             {
                 Name = "Nav_Accounts",
-                Text = MainFormResources.Accounts,
+                Text = "💼 " + MainFormResources.Accounts,
                 ToolTipText = "Open Accounts",
                 AutoSize = true
             };
@@ -145,7 +162,7 @@ public partial class MainForm
             var chartsBtn = new ToolStripButton
             {
                 Name = "Nav_Charts",
-                Text = MainFormResources.Charts,
+                Text = "📈 " + MainFormResources.Charts,
                 ToolTipText = "Open Charts",
                 AutoSize = true
             };
@@ -154,7 +171,7 @@ public partial class MainForm
             var reportsBtn = new ToolStripButton
             {
                 Name = "Nav_Reports",
-                Text = MainFormResources.Reports,
+                Text = "📄 " + MainFormResources.Reports,
                 ToolTipText = "Open Reports",
                 AutoSize = true
             };
@@ -163,18 +180,19 @@ public partial class MainForm
             var settingsBtn = new ToolStripButton
             {
                 Name = "Nav_Settings",
-                Text = MainFormResources.Settings,
+                Text = "⚙️ " + MainFormResources.Settings,
                 ToolTipText = "Open Settings",
                 AutoSize = true
             };
             settingsBtn.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false);
 
-            // Theme toggle button
+            // Theme toggle button - set initial text based on current theme
+            var currentTheme = SfSkinManager.ApplicationVisualTheme;
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "Theme_Toggle",
-                Text = "Light Theme",
-                ToolTipText = "Toggle between Dark and Light themes",
+                Text = currentTheme == "Office2019Dark" ? "☀ Light Theme" : "🌙 Dark Theme",
+                ToolTipText = $"Switch to {(currentTheme == "Office2019Dark" ? "Light" : "Dark")} theme",
                 AutoSize = true
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
@@ -340,6 +358,12 @@ public partial class MainForm
             var mdiToggleBtn = new ToolStripButton("MDI") { Name = "Nav_MdiToggle" };
             mdiToggleBtn.Click += (s, e) => ToggleMdiMode();
 
+            // Theme toggle button - add emoji to match ribbon version
+            var currentTheme = SfSkinManager.ApplicationVisualTheme;
+            var themeToggleText = currentTheme == "Office2019Dark" ? "☀ Light Theme" : "🌙 Dark Theme";
+            var themeToggleBtn = new ToolStripButton(themeToggleText) { Name = "Theme_Toggle" };
+            themeToggleBtn.Click += ThemeToggleBtn_Click;
+
             // Grid test helpers (navigation strip)
             var navGridApplyFilter = new ToolStripButton("Apply Grid Filter") { Name = "Nav_ApplyGridFilter" };
             navGridApplyFilter.Click += (s, e) => ApplyTestFilterToActiveGrid();
@@ -359,6 +383,7 @@ public partial class MainForm
                 reportsBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
+                themeToggleBtn,
                 new ToolStripSeparator(),
                 dockingToggleBtn,
                 mdiToggleBtn,
@@ -425,8 +450,8 @@ public partial class MainForm
     /// </summary>
     private void ToggleMdiMode()
     {
-        // Simple toggle for testing - in real usage this would be more complex
-        _useMdiMode = !_useMdiMode;
+        // Simple toggle for testing - use the public property so ApplyMdiMode runs
+        UseMdiMode = !UseMdiMode;
         UpdateDockingStateText();
     }
 
@@ -769,11 +794,15 @@ public partial class MainForm
             // Apply new theme globally
             SfSkinManager.ApplicationVisualTheme = newTheme;
 
+            // Note: Configuration is read-only at runtime. Theme preference persists for session only.
+            // For permanent persistence, implement user settings file or registry storage.
+            _logger?.LogInformation("Theme switched to {NewTheme} (session only)", newTheme);
+
             // Update theme toggle button text
             var themeBtn = sender as ToolStripButton;
             if (themeBtn != null)
             {
-                themeBtn.Text = newTheme == "Office2019Dark" ? "Light Theme" : "Dark Theme";
+                themeBtn.Text = newTheme == "Office2019Dark" ? "☀ Light Theme" : "🌙 Dark Theme";
                 themeBtn.ToolTipText = $"Switch to {(newTheme == "Office2019Dark" ? "Light" : "Dark")} theme";
             }
 
@@ -799,5 +828,32 @@ public partial class MainForm
         }
     }
 
+    /// <summary>
+    /// Validates Syncfusion license status and logs warning if trial/unlicensed.
+    /// </summary>
+    private void ValidateSyncfusionLicense()
+    {
+        try
+        {
+            // Check if Syncfusion license is registered
+            var licenseProvider = typeof(Syncfusion.Licensing.SyncfusionLicenseProvider);
+            var versionField = licenseProvider.GetField("version", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+            if (versionField?.GetValue(null) == null)
+            {
+                _logger?.LogWarning("Syncfusion license not detected. Application may display trial watermarks. " +
+                    "Register license key in Program.cs or secrets/syncfusion_license_key.txt");
+            }
+            else
+            {
+                _logger?.LogInformation("Syncfusion license validated successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Non-critical - log and continue
+            _logger?.LogDebug(ex, "Could not validate Syncfusion license status");
+        }
+    }
 
 }

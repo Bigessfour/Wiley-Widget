@@ -73,12 +73,12 @@ public partial class MainForm
     /// </summary>
     private void InitializeMdiSupport()
     {
+        // In UI test harness mode, honor explicit configuration for MDI modes.
+        // Previously this method returned early when _isUiTestHarness was true which caused
+        // explicit settings (e.g., UI:UseMdiMode=true) to be ignored.
         if (_isUiTestHarness)
         {
-            _useMdiMode = false;
-            _useTabbedMdi = false;
-            _logger.LogInformation("UI test harness detected; skipping MDI initialization");
-            return;
+            _logger.LogInformation("UI test harness detected; honoring explicit MDI configuration if present");
         }
 
         try
@@ -91,7 +91,11 @@ public partial class MainForm
             }
             // Otherwise keep the default set in MainForm constructor
 
-            _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
+            var configTabbed = _configuration.GetValue<bool?>("UI:UseTabbedMdi");
+            if (configTabbed.HasValue)
+            {
+                _useTabbedMdi = configTabbed.Value;
+            }
 
             if (_useMdiMode)
             {

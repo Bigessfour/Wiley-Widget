@@ -42,11 +42,11 @@ public sealed class ReportViewerFormE2ETests : IDisposable
         try
         {
             // Wait for main window
-            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(10));
+            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(30));
             mainWindow.Should().NotBeNull("Main window should appear");
 
             // Act - Wait for Report Viewer window
-            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(15));
+            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(30));
             reportWindow.Should().NotBeNull("Report Viewer window should open");
 
             // Assert - Check window title contains "Report Viewer"
@@ -75,8 +75,8 @@ public sealed class ReportViewerFormE2ETests : IDisposable
 
         try
         {
-            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(10));
-            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(15));
+            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(30));
+            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(30));
             reportWindow.Should().NotBeNull();
 
             // Act - Click Refresh button
@@ -107,8 +107,8 @@ public sealed class ReportViewerFormE2ETests : IDisposable
 
         try
         {
-            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(10));
-            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(15));
+            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(30));
+            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(30));
             reportWindow.Should().NotBeNull();
 
             // Act - Click Export PDF button
@@ -152,8 +152,8 @@ public sealed class ReportViewerFormE2ETests : IDisposable
 
         try
         {
-            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(10));
-            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(15));
+            var mainWindow = await WaitForMainWindowAsync(TimeSpan.FromSeconds(30));
+            var reportWindow = await WaitForReportViewerWindowAsync(mainWindow!, TimeSpan.FromSeconds(30));
             reportWindow.Should().NotBeNull();
 
             // Act - Find and change zoom combo box

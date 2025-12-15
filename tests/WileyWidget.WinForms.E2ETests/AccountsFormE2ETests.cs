@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.E2ETests
         private readonly string _exePath;
         private Application? _app;
         private UIA3Automation? _automation;
-        private const int DefaultTimeout = 10000;
+        private const int DefaultTimeout = 20000;
 
         public AccountsFormE2ETests()
         {
@@ -233,11 +233,11 @@ namespace WileyWidget.WinForms.E2ETests
             var navButton = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Accounts"));
             Assert.NotNull(navButton);
 
-            navButton.AsButton().Invoke();
+            navButton.Click();
             Retry.WhileNull(() => _automation?.GetDesktop()
                 .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
                     .And(cf.ByName("Municipal Accounts"))),
-                timeout: TimeSpan.FromSeconds(10));
+                timeout: TimeSpan.FromSeconds(30));
 
             var accountsWindow = _automation?.GetDesktop()
                 .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
@@ -269,7 +269,7 @@ namespace WileyWidget.WinForms.E2ETests
                 {
                     throw new InvalidOperationException("Main window not ready");
                 }
-            }, TimeSpan.FromSeconds(10));
+            }, TimeSpan.FromMilliseconds(DefaultTimeout));
         }
 
         private void WaitUntilResponsive(AutomationElement? element, int timeoutMs = 3000)

@@ -61,6 +61,36 @@ public class MainFormUiSmokeTests
     }
 
     [Fact]
+    public void MainForm_ToggleMdiMode_Method_Updates_IsMdiContainer()
+    {
+        _ui.Run(() =>
+        {
+            var config = BuildConfig(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseMdiMode"] = "false",
+                ["UI:UseTabbedMdi"] = "false",
+                ["UI:UseDockingManager"] = "false"
+            });
+
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance);
+
+            Assert.False(mainForm.IsMdiContainer);
+
+            var toggle = typeof(MainForm).GetMethod("ToggleMdiMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(toggle);
+
+            // Invoke once - should enable MDI
+            toggle!.Invoke(mainForm, null);
+            Assert.True(mainForm.IsMdiContainer);
+
+            // Invoke again - should disable MDI
+            toggle.Invoke(mainForm, null);
+            Assert.False(mainForm.IsMdiContainer);
+        });
+    }
+
+    [Fact]
     public void MainForm_ShowPanel_IsSafeNoOp_WhenPanelNotAvailable()
     {
         _ui.Run(() =>
