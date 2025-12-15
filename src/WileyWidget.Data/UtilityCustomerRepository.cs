@@ -33,18 +33,41 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     {
         const string cacheKey = "UtilityCustomers_All";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityCustomer>? customers))
-        {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            customers = await context.UtilityCustomers
-                .AsNoTracking()
-                .OrderBy(c => c.AccountNumber)
-                .ToListAsync();
+        IEnumerable<UtilityCustomer>? customers = null;
 
-            _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+        // Attempt to read from cache, with fallback on disposal
+        try
+        {
+            if (_cache.TryGetValue(cacheKey, out IEnumerable<UtilityCustomer>? cachedCustomers))
+            {
+                return cachedCustomers!;
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Cache is disposed; log and proceed to DB fetch
+            _logger.LogWarning("MemoryCache is disposed; fetching utility customers directly from database.");
         }
 
-        return customers!;
+        // Fetch from database
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        customers = await context.UtilityCustomers
+            .AsNoTracking()
+            .OrderBy(c => c.AccountNumber)
+            .ToListAsync();
+
+        // Attempt to cache the result, with fallback on disposal
+        try
+        {
+            _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+        }
+        catch (ObjectDisposedException)
+        {
+            // Cache is disposed; skip caching but don't fail
+            _logger.LogWarning("MemoryCache is disposed; skipping cache update for utility customers.");
+        }
+
+        return customers;
     }
 
     /// <summary>

@@ -1,11 +1,13 @@
 #nullable enable
 using System;
+using System.Runtime;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
@@ -69,14 +71,16 @@ namespace WileyWidget.Data
                 ctx.MunicipalAccounts.AsNoTracking().SingleOrDefault(ma => ma.Id == id));
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
+        private readonly ILogger<MunicipalAccountRepository>? _logger;
         private bool _disposed;
 
         // Primary constructor for DI with IDbContextFactory
         [ActivatorUtilitiesConstructor]
-        public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+        public MunicipalAccountRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache, ILogger<MunicipalAccountRepository>? logger = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _logger = logger;
         }
 
         // NOTE: The constructor that accepted an AppDbContext directly was deprecated and
@@ -114,19 +118,47 @@ namespace WileyWidget.Data
             }
         }
 
+        /// <summary>
+        /// Retrieves all municipal accounts, with caching for performance.
+        /// Falls back to database if cache is disposed.
+        /// </summary>
         public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            const string cacheKey = "MunicipalAccounts_All";
+            const string cacheKey = "MunicipalAccounts";
+            const int cacheExpirationMinutes = 10;
 
-            if (!_cache.TryGetValue(cacheKey, out IEnumerable<MunicipalAccount>? accounts))
+            // Attempt to read from cache, with fallback on disposal
+            try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                var list = CQ_GetAllOrdered(context);
-                accounts = list;
-                _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(5));
+                if (_cache.TryGetValue(cacheKey, out var cachedAccounts))
+                {
+                    return (IEnumerable<MunicipalAccount>)cachedAccounts!;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Cache is disposed; log and proceed to DB fetch
+                _logger?.LogWarning("MemoryCache is disposed; fetching municipal accounts directly from database.");
             }
 
-            return accounts!;
+            // Fetch from database
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var accounts = await context.MunicipalAccounts
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            // Attempt to cache the result, with fallback on disposal
+            try
+            {
+                _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(cacheExpirationMinutes));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Cache is disposed; skip caching but don't fail
+                _logger?.LogWarning("MemoryCache is disposed; skipping cache update for municipal accounts.");
+            }
+
+            return accounts;
         }
 
         /// <summary>
@@ -784,7 +816,7 @@ namespace WileyWidget.Data
                 if (disposing)
                 {
                     // Dispose managed resources
-                    (_cache as IDisposable)?.Dispose();
+                    // Note: Do not dispose _cache as it's a shared singleton service
                 }
 
                 _disposed = true;

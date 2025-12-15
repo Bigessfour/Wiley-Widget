@@ -67,6 +67,9 @@ namespace WileyWidget.Data
                       .OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.ParentId);
                 entity.HasIndex(e => new { e.AccountNumber, e.FiscalYear }).IsUnique();
+                entity.HasIndex(e => e.FiscalYear);
+                entity.HasIndex(e => e.DepartmentId);
+                entity.HasIndex(e => e.FundId);
                 entity.HasIndex(e => e.SourceRowNumber); // New: Excel import queries
                 entity.HasIndex(e => e.ActivityCode); // New: GASB reporting
                 entity.Property(e => e.BudgetedAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0);

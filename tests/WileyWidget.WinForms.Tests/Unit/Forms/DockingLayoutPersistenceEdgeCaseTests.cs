@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SfTools = Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
@@ -24,13 +25,16 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms;
 /// </summary>
 [Trait("Category", "Unit")]
 [Trait("Category", "DockingPersistence")]
+[Collection(WinFormsUiCollection.CollectionName)]
 public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 {
+    private readonly WinFormsUiThreadFixture _ui;
     private string _testLayoutDirectory;
     private string _testLayoutPath;
 
-    public DockingLayoutPersistenceEdgeCaseTests()
+    public DockingLayoutPersistenceEdgeCaseTests(WinFormsUiThreadFixture ui)
     {
+        _ui = ui;
         // Create isolated test directory
         _testLayoutDirectory = Path.Combine(Path.GetTempPath(), $"WileyWidget_Test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_testLayoutDirectory);
@@ -55,31 +59,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static void RunInSta(Action action)
-    {
-        Exception? captured = null;
 
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (captured != null)
-        {
-            throw captured;
-        }
-    }
 
     private static T GetPrivateField<T>(object target, string fieldName)
     {
@@ -115,7 +95,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_WhenConcurrentSavesAttempted_OnlyOneSaveSucceeds()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -194,7 +174,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void DebouncedSave_WhenMultipleRapidChanges_ConsolidatesToSingleSave()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -251,7 +231,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_EnforcesMinimumSaveInterval()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -310,7 +290,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void LoadDockingLayout_WithCorruptXml_DeletesFileAndUsesDefaults()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             // Create corrupt XML file
             File.WriteAllText(_testLayoutPath, "<Invalid><XML>");
@@ -360,7 +340,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void LoadDockingLayout_WithEmptyFile_DeletesFileAndUsesDefaults()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             // Create empty file
             File.WriteAllText(_testLayoutPath, string.Empty);
@@ -407,7 +387,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_WithTempFileStrategy_HandlesPartialWrites()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -462,7 +442,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_WithReadOnlyDirectory_FallsBackToTempDirectory()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -520,7 +500,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void LoadDockingLayout_WithNullReferenceInSyncfusion_RecoversGracefully()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -569,7 +549,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_FromBackgroundThread_MarshalToUIThread()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -629,7 +609,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void LoadDockingLayout_BeforeHandleCreated_SkipsGracefully()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -677,7 +657,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void ResetDockingLayout_DeletesLayoutFilesAndReloadsDefaults()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -734,7 +714,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void DisposeSyncfusionDocking_PerformsFinalSaveAndCleanup()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -789,7 +769,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
     [Fact]
     public void SaveDockingLayout_OnArgumentException_DeletesCorruptLayout()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>

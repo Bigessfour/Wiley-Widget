@@ -34,8 +34,10 @@ namespace WileyWidget.WinForms.E2ETests
             // Enable in-memory mode and simplified chrome for UI automation stability
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
-            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
+            // Use double-underscore style so configuration picks up values in the spawned process
+            Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
+            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
+            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", "false");
         }
 
         private static string ResolveExecutablePath()

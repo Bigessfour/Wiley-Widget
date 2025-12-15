@@ -34,7 +34,6 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
     <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />
-    <PackageVersion Include="Microsoft.ReportingServices.ReportViewerControl.Winforms" Version="150.1652.0" />
     <!-- Third-party – all safe on .NET 9 -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="MailKit" Version="4.14.1" />
@@ -63,17 +62,18 @@
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
 
-    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
+    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="15.0.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageVersion Include="OpenTelemetry" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.6.5" />
-    <PackageVersion Include="ClosedXML" Version="0.105.0" />
+    <!-- ClosedXML removed - replaced with Syncfusion.XlsIO for consistency -->
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
-    <PackageVersion Include="PdfSharpCore" Version="1.3.67" />
+    <!-- PdfSharpCore removed - replaced with Syncfusion.Pdf for consistency -->
+    <!-- BoldReports.WinForms removed - doesn't exist on nuget.org. Use BoldReports.WPF only. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <PackageVersion Include="System.Management" Version="10.0.0" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->
@@ -111,18 +111,18 @@
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="31.2.18" />
     <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="31.2.18" />
-    <!-- Bold Reports viewer (WPF) + licensing/runtime for hosting in WinForms -->
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
-    <PackageVersion Include="BoldReports.WPF" Version="12.1.14" />
-    <PackageVersion Include="BoldReports.Net.Core" Version="12.1.14" />
-    <PackageVersion Include="Bold.Licensing" Version="12.1.14" />
+    <!-- FastReport Open Source packages -->
+    <PackageVersion Include="FastReport.OpenSource" Version="2026.1.3" />
+    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
     <!-- Data handling packages -->
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <!-- SixLabors.ImageSharp removed - unused orphaned dependency -->
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
   </ItemGroup>
 </Project>

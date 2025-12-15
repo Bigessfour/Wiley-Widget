@@ -25,6 +25,7 @@ public sealed class DashboardServiceTests : IDisposable
     private readonly Mock<IMunicipalAccountRepository> _mockAccountRepository;
     private readonly Mock<ILogger<DashboardService>> _mockLogger;
     private readonly Mock<ICacheService> _mockCacheService;
+    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly DashboardService _service;
 
     public DashboardServiceTests()
@@ -33,23 +34,28 @@ public sealed class DashboardServiceTests : IDisposable
         _mockAccountRepository = new Mock<IMunicipalAccountRepository>();
         _mockLogger = new Mock<ILogger<DashboardService>>();
         _mockCacheService = new Mock<ICacheService>();
+        _mockConfiguration = new Mock<IConfiguration>();
 
         _service = new DashboardService(
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             _mockLogger.Object,
-            _mockCacheService.Object);
+            _mockCacheService.Object,
+            _mockConfiguration.Object);
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenBudgetRepositoryIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             null!,
             _mockAccountRepository.Object,
             _mockLogger.Object,
-            _mockCacheService.Object);
+            _mockCacheService.Object,
+            _mockConfiguration.Object);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -60,11 +66,14 @@ public sealed class DashboardServiceTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenAccountRepositoryIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             _mockBudgetRepository.Object,
             null!,
             _mockLogger.Object,
-            _mockCacheService.Object);
+            _mockCacheService.Object,
+            _mockConfiguration.Object);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -75,11 +84,13 @@ public sealed class DashboardServiceTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             null!,
             _mockCacheService.Object);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -90,11 +101,13 @@ public sealed class DashboardServiceTests : IDisposable
     public void Constructor_ShouldNotThrow_WhenCacheServiceIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             _mockLogger.Object,
             null);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().NotThrow("cache service is optional");
@@ -289,7 +302,7 @@ public sealed class DashboardServiceTests : IDisposable
 
         _mockBudgetRepository
             .Setup(r => r.GetBudgetSummaryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((BudgetVarianceAnalysis?)null);
+            .ReturnsAsync((BudgetVarianceAnalysis)null!);
 
         _mockAccountRepository
             .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))

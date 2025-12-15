@@ -17,7 +17,7 @@ namespace WileyWidget.Services.Tests.ServiceTests;
 /// Coverage Target: 70%+ (currently 0%)
 /// High CRAP Methods: ApplySorting (930), GetByFiscalYearAsync (812), GetByDateRangeAsync (702)
 /// </summary>
-public class BudgetRepositoryTests : IDisposable
+public sealed class BudgetRepositoryTests : IDisposable
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
@@ -38,7 +38,18 @@ public class BudgetRepositoryTests : IDisposable
 
     public void Dispose()
     {
-        _cache.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Dispose managed resources
+            _cache?.Dispose();
+        }
+        // Dispose unmanaged resources if any
     }
 
     #region Constructor Tests
@@ -47,7 +58,9 @@ public class BudgetRepositoryTests : IDisposable
     public void Constructor_WithNullContextFactory_ThrowsArgumentNullException()
     {
         // Arrange & Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new BudgetRepository(null!, _cache, _telemetryService);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -58,7 +71,9 @@ public class BudgetRepositoryTests : IDisposable
     public void Constructor_WithNullCache_ThrowsArgumentNullException()
     {
         // Arrange & Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new BudgetRepository(_contextFactory, null!, _telemetryService);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()

@@ -123,7 +123,7 @@ namespace WileyWidget.WinForms.Forms
             SuspendLayout();
 
             // Configure form properties
-            Text = "≡ƒÅó Customer Management";
+            Text = "Customer Management";
             Size = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterParent;
             MinimumSize = new Size(1000, 600);
@@ -181,9 +181,9 @@ namespace WileyWidget.WinForms.Forms
             var searchBox = new ToolStripTextBox
             {
                 Width = 250,
-                ToolTipText = "≡ƒöì Search customers..."
+                ToolTipText = "Search customers..."
             };
-            searchBox.TextBox.PlaceholderText = "≡ƒöì Search customers...";
+            searchBox.TextBox.PlaceholderText = "Search customers...";
             var searchBtn = new ToolStripButton("Search", searchIcon, async (s, e) => await PerformSearch(searchBox.Text))
             {
                 ToolTipText = "Search customers (Ctrl+F)",
@@ -350,13 +350,13 @@ namespace WileyWidget.WinForms.Forms
             _accountOpenDatePicker = new SfDateTimeEdit { Font = new Font("Segoe UI", 9F) };
             SfSkinManager.SetVisualStyle(_accountOpenDatePicker, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
-            AddRow(basicLayout, "≡ƒÅ╖∩╕Å Account #:", _accountNumberBox, ref row);
-            AddRow(basicLayout, "≡ƒæñ First Name:", _firstNameBox, ref row);
-            AddRow(basicLayout, "≡ƒæñ Last Name:", _lastNameBox, ref row);
-            AddRow(basicLayout, "≡ƒÅó Company:", _companyBox, ref row);
-            AddRow(basicLayout, "≡ƒô₧ Phone:", _phoneBox, ref row);
-            AddRow(basicLayout, "≡ƒôº Email:", _emailBox, ref row);
-            AddRow(basicLayout, "≡ƒôà Open Date:", _accountOpenDatePicker, ref row);
+            AddRow(basicLayout, "Account #:", _accountNumberBox, ref row);
+            AddRow(basicLayout, "First Name:", _firstNameBox, ref row);
+            AddRow(basicLayout, "Last Name:", _lastNameBox, ref row);
+            AddRow(basicLayout, "Company:", _companyBox, ref row);
+            AddRow(basicLayout, "Phone:", _phoneBox, ref row);
+            AddRow(basicLayout, "Email:", _emailBox, ref row);
+            AddRow(basicLayout, "Open Date:", _accountOpenDatePicker, ref row);
 
             basicTab.Controls.Add(basicLayout);
 
@@ -376,12 +376,12 @@ namespace WileyWidget.WinForms.Forms
             _serviceZipBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
             SfSkinManager.SetVisualStyle(_serviceZipBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
-            AddRow(serviceLayout, "≡ƒÅá Address:", _serviceAddressBox, ref row);
-            AddRow(serviceLayout, "≡ƒÅ¢∩╕Å City:", _serviceCityBox, ref row);
-            AddRow(serviceLayout, "≡ƒù║∩╕Å State:", _serviceStateBox, ref row);
-            AddRow(serviceLayout, "≡ƒô« ZIP Code:", _serviceZipBox, ref row);
-            AddRow(serviceLayout, "≡ƒôì Location:", _serviceLocationCombo, ref row);
-            AddRow(serviceLayout, "≡ƒöî Meter #:", _meterNumberBox, ref row);
+            AddRow(serviceLayout, "Address:", _serviceAddressBox, ref row);
+            AddRow(serviceLayout, "City:", _serviceCityBox, ref row);
+            AddRow(serviceLayout, "State:", _serviceStateBox, ref row);
+            AddRow(serviceLayout, "ZIP Code:", _serviceZipBox, ref row);
+            AddRow(serviceLayout, "Location:", _serviceLocationCombo, ref row);
+            AddRow(serviceLayout, "Meter #:", _meterNumberBox, ref row);
 
             serviceTab.Controls.Add(serviceLayout);
 
@@ -401,10 +401,10 @@ namespace WileyWidget.WinForms.Forms
             _mailingZipBox = new TextBoxExt { Font = new Font("Segoe UI", 9F) };
             SfSkinManager.SetVisualStyle(_mailingZipBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
-            AddRow(mailingLayout, "≡ƒô½ Address:", _mailingAddressBox, ref row);
-            AddRow(mailingLayout, "≡ƒÅ¢∩╕Å City:", _mailingCityBox, ref row);
-            AddRow(mailingLayout, "≡ƒù║∩╕Å State:", _mailingStateBox, ref row);
-            AddRow(mailingLayout, "≡ƒô« ZIP Code:", _mailingZipBox, ref row);
+            AddRow(mailingLayout, "Address:", _mailingAddressBox, ref row);
+            AddRow(mailingLayout, "City:", _mailingCityBox, ref row);
+            AddRow(mailingLayout, "State:", _mailingStateBox, ref row);
+            AddRow(mailingLayout, "ZIP Code:", _mailingZipBox, ref row);
 
             mailingTab.Controls.Add(mailingLayout);
 
@@ -418,10 +418,10 @@ namespace WileyWidget.WinForms.Forms
             _notesBox = new TextBoxExt { Multiline = true, Height = 120, Font = new Font("Segoe UI", 9F), ScrollBars = ScrollBars.Vertical };
             SfSkinManager.SetVisualStyle(_notesBox, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
-            AddRow(accountLayout, "≡ƒÆ░ Balance:", _balanceBox, ref row);
-            AddRow(accountLayout, "≡ƒƒó Status:", _statusCombo, ref row);
-            AddRow(accountLayout, "≡ƒÅ¡ Type:", _customerTypeCombo, ref row);
-            AddRow(accountLayout, "≡ƒô¥ Notes:", _notesBox, ref row);
+            AddRow(accountLayout, "Balance:", _balanceBox, ref row);
+            AddRow(accountLayout, "Status:", _statusCombo, ref row);
+            AddRow(accountLayout, "Type:", _customerTypeCombo, ref row);
+            AddRow(accountLayout, "Notes:", _notesBox, ref row);
 
             accountTab.Controls.Add(accountLayout);
 
@@ -438,7 +438,7 @@ namespace WileyWidget.WinForms.Forms
             };
             _newButton = new SfButton
             {
-                Text = "Γ₧ò New",
+                Text = "New",
                 Image = newIcon,
                 Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
@@ -450,7 +450,7 @@ namespace WileyWidget.WinForms.Forms
 
             _saveButton = new SfButton
             {
-                Text = "≡ƒÆ╛ Save",
+                Text = "Save",
                 Image = saveIcon,
                 Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
@@ -462,7 +462,7 @@ namespace WileyWidget.WinForms.Forms
 
             _deleteButton = new SfButton
             {
-                Text = "≡ƒùæ∩╕Å Delete",
+                Text = "Delete",
                 Image = deleteIcon,
                 Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
@@ -474,7 +474,7 @@ namespace WileyWidget.WinForms.Forms
 
             _refreshButton = new SfButton
             {
-                Text = "≡ƒöä Refresh",
+                Text = "Refresh",
                 Image = refreshIcon,
                 Size = new Size(100, 36),
                 Font = new Font("Segoe UI", 9F),
@@ -499,7 +499,7 @@ namespace WileyWidget.WinForms.Forms
                 Font = new Font("Segoe UI", 9F)
             };
             var statusLabel = new ToolStripStatusLabel("Ready") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
-            var recordCountLabel = new ToolStripStatusLabel("≡ƒôï Records: 0") { Name = "recordCount" };
+            var recordCountLabel = new ToolStripStatusLabel("Records: 0") { Name = "recordCount" };
             _statusStrip.Items.AddRange(new ToolStripItem[] { statusLabel, recordCountLabel });
 
             // Add controls to form in correct z-order
@@ -614,7 +614,7 @@ namespace WileyWidget.WinForms.Forms
 
             if (_validationLabel != null && _validationPanel != null)
             {
-                _validationLabel.Text = $"ΓÜá∩╕Å {message}";
+                _validationLabel.Text = $"Warning: {message}";
                 _validationPanel.Visible = true;
 
                 // Auto-hide after 6 seconds
@@ -671,8 +671,8 @@ namespace WileyWidget.WinForms.Forms
                 var selectedCount = _dataGrid?.SelectedItems?.Count ?? 0;
                 var totalCount = _viewModel.Customers.Count;
                 recordLabel.Text = selectedCount > 0
-                    ? $"≡ƒôï Records: {totalCount} | Selected: {selectedCount}"
-                    : $"≡ƒôï Records: {totalCount}";
+                    ? $"Records: {totalCount} | Selected: {selectedCount}"
+                    : $"Records: {totalCount}";
             }
         }
 

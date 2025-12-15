@@ -18,7 +18,7 @@ namespace WileyWidget.Services.Tests.ServiceTests;
 /// Tests for BudgetImporter service - file import, validation, and data processing.
 /// Validates business rules for budget data integrity per project requirements.
 /// </summary>
-public class BudgetImporterTests : IDisposable
+public sealed class BudgetImporterTests : IDisposable
 {
     private readonly Mock<IExcelReaderService> _mockExcelReader;
     private readonly Mock<ILogger<BudgetImporter>> _mockLogger;
@@ -41,10 +41,12 @@ public class BudgetImporterTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenExcelReaderIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new BudgetImporter(
             null!,
             _mockLogger.Object,
             _mockBudgetRepository.Object);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -55,10 +57,12 @@ public class BudgetImporterTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
     {
         // Act
+#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new BudgetImporter(
             _mockExcelReader.Object,
             null!,
             _mockBudgetRepository.Object);
+#pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -167,7 +171,17 @@ public class BudgetImporterTests : IDisposable
 
     public void Dispose()
     {
-        // Cleanup if needed
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Dispose managed resources - Mock objects don't need disposal
+            // _mockExcelReader, _mockLogger, _mockBudgetRepository are automatically disposed
+        }
+        // Dispose unmanaged resources if any
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,11 @@ namespace WileyWidget.Services.Abstractions
         /// Refreshes dashboard data
         /// </summary>
         Task RefreshDashboardAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets data statistics for diagnostic purposes
+        /// </summary>
+        Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>

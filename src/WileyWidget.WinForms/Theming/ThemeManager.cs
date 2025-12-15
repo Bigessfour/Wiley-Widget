@@ -13,7 +13,7 @@ namespace WileyWidget.WinForms.Theming
     {
         public const string VisualTheme = ThemeColors.DefaultTheme;
 
-        public static AppTheme CurrentTheme { get; private set; } = AppTheme.Office2019Colorful;
+        public static AppTheme CurrentTheme { get; private set; } = AppTheme.Office2019Dark;
 
         public static ThemePalette Colors { get; } = ThemePalette.CreateDefault();
 

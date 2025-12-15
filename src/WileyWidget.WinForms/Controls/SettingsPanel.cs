@@ -45,7 +45,7 @@ namespace WileyWidget.WinForms.Controls
         private CheckBox? _chkUseDemoData;
         private ToolTip? _demoDataToolTip;
         private ErrorProvider? _error_provider;
-        // ToolTips and binding source hold IDisposable instances ΓÇö keep them as fields so we dispose them
+        // ToolTips and binding source hold IDisposable instances - keep them as fields so we dispose them
         private ToolTip? _txtToolTip;
         private ToolTip? _dockedToolTip;
         private ToolTip? _closeToolTip;

@@ -33,8 +33,10 @@ namespace WileyWidget.WinForms.E2ETests
             // Disable MDI mode so forms open as separate windows that FlaUI can detect
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
-            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
+            // Use double-underscore config keys so the launched process picks up values
+            Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
+            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
+            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", "false");
         }
 
         private static string ResolveExecutablePath()

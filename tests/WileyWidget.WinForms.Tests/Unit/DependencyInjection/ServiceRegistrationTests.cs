@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.ViewModels;
 using FluentAssertions;
 using System;
@@ -13,8 +14,15 @@ namespace WileyWidget.WinForms.Tests.Unit.DependencyInjection;
 /// Tests for Dependency Injection container configuration.
 /// Validates that all services can be resolved without errors per project guidelines.
 /// </summary>
+[Collection(WinFormsUiCollection.CollectionName)]
 public class ServiceRegistrationTests
 {
+    private readonly WinFormsUiThreadFixture _ui;
+
+    public ServiceRegistrationTests(WinFormsUiThreadFixture ui)
+    {
+        _ui = ui;
+    }
     /// <summary>
     /// Helper method to create a new ServiceCollection for testing.
     /// </summary>
@@ -79,7 +87,10 @@ public class ServiceRegistrationTests
         var serviceProvider = services.BuildServiceProvider();
 
         // Act
-        Action act = () => serviceProvider.GetRequiredService<MainForm>();
+        Action act = () => _ui.Run(() =>
+        {
+            using var form = serviceProvider.GetRequiredService<MainForm>();
+        });
 
         // Assert
         act.Should().NotThrow("MainForm should be resolvable with its dependencies");
@@ -124,19 +135,22 @@ public class ServiceRegistrationTests
 
         var serviceProvider = services.BuildServiceProvider();
 
-        // Act
-        var instance1 = serviceProvider.GetService<MainForm>();
-        var instance2 = serviceProvider.GetService<MainForm>();
+        _ui.Run(() =>
+        {
+            // Act
+            var instance1 = serviceProvider.GetService<MainForm>();
+            var instance2 = serviceProvider.GetService<MainForm>();
 
-        // Assert
-        instance1.Should().NotBeNull();
-        instance2.Should().NotBeNull();
-        instance1.Should().NotBeSameAs(instance2,
-            "transient services should create new instances");
+            // Assert
+            instance1.Should().NotBeNull();
+            instance2.Should().NotBeNull();
+            instance1.Should().NotBeSameAs(instance2,
+                "transient services should create new instances");
 
-        // Cleanup
-        instance1?.Dispose();
-        instance2?.Dispose();
+            // Cleanup
+            instance1?.Dispose();
+            instance2?.Dispose();
+        });
     }
 
     [Fact]

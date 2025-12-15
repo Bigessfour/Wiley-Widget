@@ -41,6 +41,11 @@ namespace WileyWidget.WinForms.Forms
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
+
+        /// <summary>
+        /// Public accessor for ServiceProvider used by child forms.
+        /// </summary>
+        public IServiceProvider ServiceProvider => _serviceProvider ?? throw new InvalidOperationException("ServiceProvider not initialized");
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
         private MenuStrip? _menuStrip;
@@ -411,14 +416,30 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
             }
 
-            if (!_dashboardAutoShown)
-            {
-                try { ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false); _dashboardAutoShown = true; }
-                catch (Exception ex) { _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup"); }
-            }
-
             try { EnsureCentralPanelVisibility(); }
             catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure central panel visibility after dashboard open"); }
+
+            // Gate Dashboard auto-show behind config to improve startup UX
+            var autoShowDashboard = _configuration?.GetValue<bool>("UI:AutoShowDashboard", false) ?? false;
+            if (autoShowDashboard && !_dashboardAutoShown)
+            {
+                try
+                {
+                    // FIXED: Use MDI for Forms (not docking generics)
+                    ShowChildFormMdi<DashboardForm, DashboardViewModel>();
+                    _dashboardAutoShown = true;
+                    _logger?.LogInformation("Dashboard auto-shown on startup (UI:AutoShowDashboard=true)");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup");
+                }
+                finally
+                {
+                    // Record that we attempted auto-show so we don't keep retrying on subsequent loads
+                    _dashboardAutoShown = true;
+                }
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -510,8 +531,12 @@ namespace WileyWidget.WinForms.Forms
             // DockingManager should only handle dockable panels, not document windows.
             if (_useTabbedMdi && _useSyncfusionDocking)
             {
-                _logger.LogInformation("TabbedMDI enabled: DockingManager will use panel mode only (document mode disabled for TabbedMDI integration)");
-                // Note: _dockingManager.EnableDocumentMode will be set to false in InitializeSyncfusionDocking
+                _logger.LogWarning("TabbedMDI and Docking DocumentMode are incompatible; forcing DocumentMode=false.");
+                // Note: InitializeSyncfusionDocking computes and applies DocumentMode = _useSyncfusionDocking && _useMdiMode && !_useTabbedMdi
+            }
+            else if (_useSyncfusionDocking)
+            {
+                _logger.LogInformation("TabbedMDI disabled: Using standard docking mode");
             }
 
             // Log final validated configuration

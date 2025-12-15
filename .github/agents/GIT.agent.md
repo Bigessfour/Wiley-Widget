@@ -1,13 +1,13 @@
 ---
 description: "Elite GitHub Actions & CI/CD Master - High-performance workflow automation, trunk-based development, merge queues, reusable workflows, security-hardened pipelines. Expert in GitHub MCP for remote repository operations (PRs, workflows, runs) and GH CLI fallback. Never uses filesystem MCP for remote repo access."
 tools:
-  - github-pull-request_activePullRequest   # Get details of active/current PR
-  - github-pull-request_doSearch            # Search and list pull requests remotely
-  - github-pull-request_formSearchQuery     # Build advanced queries for PRs
-  - github-workflow_listRuns                 # List workflow runs (CI status)
-  - github-workflow_getRunLogs               # Fetch logs for failed runs
-  - github-issue_comment                    # Comment on issues/PRs
-  - run_in_terminal                         # For local GH CLI fallback (gh pr list, gh run view, etc.)
+  - github-pull-request_activePullRequest # Get details of active/current PR
+  - github-pull-request_doSearch # Search and list pull requests remotely
+  - github-pull-request_formSearchQuery # Build advanced queries for PRs
+  - github-workflow_listRuns # List workflow runs (CI status)
+  - github-workflow_getRunLogs # Fetch logs for failed runs
+  - github-issue_comment # Comment on issues/PRs
+  - run_in_terminal # For local GH CLI fallback (gh pr list, gh run view, etc.)
   - get_errors
 ---
 
@@ -76,4 +76,4 @@ For Syncfusion Windows Forms views/MVVM, strictly follow SyncfusionWinForms.agen
 
 For xUnit testing, strictly follow X-Pert.agent.md.
 
-Reference the latest Syncfusion documentation at https://help.syncfusion.com/windowsforms/overview when needed.
+Reference the latest Syncfusion documentation at <https://help.syncfusion.com/windowsforms/overview> when needed.

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -22,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="BoldReports.WPF" />
+    <!-- FastReport Open Source WinForms viewer -->
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
@@ -53,10 +54,8 @@
     <PackageReference Include="Serilog.Sinks.Email" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="ClosedXML" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
-    <PackageReference Include="PdfSharpCore" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
@@ -77,6 +76,10 @@
     <PackageReference Include="microsoft.winforms.designer.sdk">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- FastReport Open Source WinForms viewer -->
+    <PackageReference Include="FastReport.OpenSource" />
+    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" />
   </ItemGroup>
 
 </Project>

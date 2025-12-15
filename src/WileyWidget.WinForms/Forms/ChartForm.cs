@@ -33,8 +33,9 @@ namespace WileyWidget.WinForms.Forms
             _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
             InitializeComponent();
 
-            // Only set MdiParent if the parent form is configured as an MDI container
-            if (_mainForm.IsMdiContainer)
+            // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
+            // In DockingManager mode, forms are shown as owned windows, not MDI children
+            if (_mainForm.IsMdiContainer && _mainForm.UseMdiMode)
             {
                 MdiParent = _mainForm;
             }

@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Abstractions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +22,7 @@ namespace WileyWidget.Services
         private readonly IMunicipalAccountRepository _accountRepository;
         private readonly ILogger<DashboardService> _logger;
         private readonly ICacheService? _cacheService;
+        private readonly IConfiguration _configuration;
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
@@ -27,12 +30,22 @@ namespace WileyWidget.Services
             IBudgetRepository budgetRepository,
             IMunicipalAccountRepository accountRepository,
             ILogger<DashboardService> logger,
-            ICacheService? cacheService = null)
+            ICacheService? cacheService = null,
+            IConfiguration? configuration = null)
         {
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheService = cacheService;
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        }
+
+        /// <summary>
+        /// Gets the configured fiscal year, defaulting to 2025
+        /// </summary>
+        private int GetCurrentFiscalYear()
+        {
+            return _configuration.GetValue<int>("UI:FiscalYear", 2025);
         }
 
         /// <summary>
@@ -118,17 +131,23 @@ namespace WileyWidget.Services
         private async Task<IEnumerable<DashboardItem>> FetchDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             var items = new List<DashboardItem>();
-            var currentFiscalYear = DateTime.Now.Month >= 7 ? DateTime.Now.Year + 1 : DateTime.Now.Year;
+            var currentFiscalYear = GetCurrentFiscalYear();
             var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1);
             var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30);
+
+            _logger.LogInformation("DashboardService: Fetching data for FY {FiscalYear} ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})",
+                currentFiscalYear, fiscalYearStart, fiscalYearEnd);
 
             try
             {
                 // Get budget summary
                 var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
+                _logger.LogInformation("DashboardService: Budget summary retrieved (IsNull={IsNull})", budgetSummary == null);
 
                 if (budgetSummary != null)
                 {
+                    _logger.LogInformation("DashboardService: Budget metrics - Budgeted: {Budgeted:C}, Actual: {Actual:C}, Variance: {Variance:C}",
+                        budgetSummary.TotalBudgeted, budgetSummary.TotalActual, budgetSummary.TotalVariance);
                     items.Add(new DashboardItem
                     {
                         Title = "Total Budget",
@@ -164,11 +183,20 @@ namespace WileyWidget.Services
                             Category = "Funds"
                         });
                     }
+
+                    _logger.LogInformation("DashboardService: Added {FundCount} fund summaries (of {TotalFunds} total)",
+                        Math.Min(5, budgetSummary.FundSummaries.Count), budgetSummary.FundSummaries.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("DashboardService: Budget summary is null - no budget data available for period");
                 }
 
                 // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
                 var accountList = await _accountRepository.GetAllAsync(cancellationToken);
                 var accountCount = accountList?.Count() ?? 0;
+                _logger.LogInformation("DashboardService: Retrieved {AccountCount} municipal accounts", accountCount);
+
                 items.Add(new DashboardItem
                 {
                     Title = "Active Accounts",
@@ -179,9 +207,10 @@ namespace WileyWidget.Services
 
                 // Get recent budget entries
                 var recentEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken);
-                var revenueAccounts = recentEntries.Count(e => e.AccountNumber.StartsWith("4", StringComparison.Ordinal));
-                var expenseAccounts = recentEntries.Count(e => e.AccountNumber.StartsWith("5", StringComparison.Ordinal) ||
-                                                                 e.AccountNumber.StartsWith("6", StringComparison.Ordinal));
+                _logger.LogInformation("DashboardService: Retrieved {EntryCount} budget entries for FY {FiscalYear}",
+                    recentEntries?.Count() ?? 0, currentFiscalYear);
+                var revenueAccounts = await _budgetRepository.GetRevenueAccountCountAsync(currentFiscalYear, cancellationToken);
+                var expenseAccounts = await _budgetRepository.GetExpenseAccountCountAsync(currentFiscalYear, cancellationToken);
 
                 items.Add(new DashboardItem
                 {
@@ -199,15 +228,51 @@ namespace WileyWidget.Services
                     Category = "Activity"
                 });
 
-                _logger.LogInformation("Successfully fetched {ItemCount} dashboard items", items.Count);
+                _logger.LogInformation("DashboardService: Successfully fetched {ItemCount} dashboard items (Revenue accts: {RevenueCount}, Expense accts: {ExpenseCount})",
+                    items.Count, revenueAccounts, expenseAccounts);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching dashboard data from repositories");
+                _logger.LogError(ex, "DashboardService: Error fetching dashboard data from repositories");
                 throw;
             }
 
             return items;
+        }
+
+        /// <summary>
+        /// Gets data statistics for diagnostic purposes
+        /// </summary>
+        public async Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(CancellationToken cancellationToken = default)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                _logger.LogInformation("DashboardService: Retrieving data statistics...");
+
+                var currentFiscalYear = GetCurrentFiscalYear();
+                var (totalRecords, oldestRecord, newestRecord) = await _budgetRepository.GetDataStatisticsAsync(currentFiscalYear, cancellationToken);
+
+                stopwatch.Stop();
+                _logger.LogInformation("DashboardService: Data statistics retrieved in {ElapsedMs}ms - {Count} records, Oldest: {Oldest:yyyy-MM-dd HH:mm:ss}, Newest: {Newest:yyyy-MM-dd HH:mm:ss}",
+                    stopwatch.ElapsedMilliseconds,
+                    totalRecords,
+                    oldestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A",
+                    newestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A");
+
+                if (totalRecords == 0)
+                {
+                    _logger.LogWarning("DashboardService: Database has no budget entries for FY {FiscalYear}. Dashboard will show empty data.", currentFiscalYear);
+                }
+
+                return (totalRecords, oldestRecord, newestRecord);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "DashboardService: Error retrieving data statistics after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+                throw;
+            }
         }
     }
 }

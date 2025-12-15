@@ -7,43 +7,26 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
 [Trait("Category", "Unit")]
+[Collection(WinFormsUiCollection.CollectionName)]
 public class UiModeValidationTests
 {
-    private static void RunInSta(Action action)
+    private readonly WinFormsUiThreadFixture _ui;
+
+    public UiModeValidationTests(WinFormsUiThreadFixture ui)
     {
-        Exception? captured = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (captured != null)
-        {
-            throw captured;
-        }
+        _ui = ui;
     }
 
     [Fact]
     public void MainForm_Construct_WithInvalidUIModeAndInconsistentFlags_DoesNotThrow()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -51,7 +34,8 @@ public class UiModeValidationTests
                     ["UI:UIMode"] = "NotARealMode",
                     ["UI:UseDockingManager"] = "false",
                     ["UI:UseMdiMode"] = "false",
-                    ["UI:UseTabbedMdi"] = "true"
+                    ["UI:UseTabbedMdi"] = "false",
+                    ["UI:IsUiTestHarness"] = "true"
                 })
                 .Build();
 

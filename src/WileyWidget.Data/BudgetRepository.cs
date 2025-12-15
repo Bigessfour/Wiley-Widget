@@ -2,6 +2,8 @@
 
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
@@ -18,6 +20,7 @@ public class BudgetRepository : IBudgetRepository
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
     private readonly ITelemetryService? _telemetryService;
+    private readonly ILogger<BudgetRepository> _logger;
 
     // Activity source for repository-level telemetry
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.BudgetRepository");
@@ -28,11 +31,45 @@ public class BudgetRepository : IBudgetRepository
     public BudgetRepository(
         IDbContextFactory<AppDbContext> contextFactory,
         IMemoryCache cache,
-    ITelemetryService? telemetryService = null)
+        ITelemetryService? telemetryService = null,
+        ILogger<BudgetRepository>? logger = null)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _telemetryService = telemetryService;
+        _logger = logger ?? NullLogger<BudgetRepository>.Instance;
+    }
+
+    /// <summary>
+    /// Safely attempts to get a value from cache, handling disposed cache gracefully
+    /// </summary>
+    private bool TryGetFromCache<T>(string key, out T? value)
+    {
+        try
+        {
+            return _cache.TryGetValue(key, out value);
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; cannot retrieve from cache for key '{Key}'.", key);
+            value = default;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Safely sets a value in cache, handling disposed cache gracefully
+    /// </summary>
+    private void SetInCache(string key, object value, TimeSpan expiration)
+    {
+        try
+        {
+            _cache.Set(key, value, expiration);
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache update for key '{Key}'.", key);
+        }
     }
 
     /// <summary>
@@ -74,39 +111,55 @@ public class BudgetRepository : IBudgetRepository
 
         string cacheKey = $"BudgetEntries_FiscalYear_{fiscalYear}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
-        {
-            activity?.SetTag("cache.hit", false);
-            try
-            {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                budgetEntries = await context.BudgetEntries
-                    .Where(be => be.FiscalYear == fiscalYear)
-                    .Include(be => be.Department)
-                    .Include(be => be.Fund)
-                    .AsNoTracking()
-                    .ToListAsync(cancellationToken);
-
-                // Cache for 30 minutes
-                _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
-
-                activity?.SetTag("result.count", budgetEntries.Count());
-                activity?.SetStatus(ActivityStatusCode.Ok);
-            }
-            catch (Exception ex)
-            {
-                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
-                throw;
-            }
-        }
-        else
+        // Attempt to read from cache, with fallback on disposal
+        IEnumerable<BudgetEntry>? budgetEntries = null;
+        if (TryGetFromCache(cacheKey, out budgetEntries))
         {
             activity?.SetTag("cache.hit", true);
             activity?.SetTag("result.count", budgetEntries?.Count() ?? 0);
+            return budgetEntries ?? Enumerable.Empty<BudgetEntry>();
+        }
+
+        // Cache miss or disposed, fetch from database
+        activity?.SetTag("cache.hit", false);
+        try
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            budgetEntries = await context.BudgetEntries
+                .Where(be => be.FiscalYear == fiscalYear)
+                .Include(be => be.Department)
+                .Include(be => be.Fund)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            // Attempt to cache the result
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+
+            activity?.SetTag("result.count", budgetEntries.Count());
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
+            throw;
         }
 
         return budgetEntries ?? Enumerable.Empty<BudgetEntry>();
+    }
+
+    /// <summary>
+    /// Gets budget entries from database directly (fallback when cache is disposed)
+    /// </summary>
+    private async Task<IEnumerable<BudgetEntry>> GetFromDatabaseAsync(int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.BudgetEntries
+            .Where(be => be.FiscalYear == fiscalYear)
+            .Include(be => be.Department)
+            .Include(be => be.Fund)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 
 
@@ -189,7 +242,7 @@ public class BudgetRepository : IBudgetRepository
 
         string cacheKey = $"BudgetEntries_DateRange_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             activity?.SetTag("cache.hit", false);
             try
@@ -203,7 +256,7 @@ public class BudgetRepository : IBudgetRepository
                     .ToListAsync(cancellationToken);
 
                 // Cache for 30 minutes
-                _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+                SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
 
                 activity?.SetTag("result.count", budgetEntries.Count());
                 activity?.SetStatus(ActivityStatusCode.Ok);
@@ -230,7 +283,7 @@ public class BudgetRepository : IBudgetRepository
     {
         string cacheKey = $"BudgetEntries_Fund_{fundId}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
@@ -241,7 +294,7 @@ public class BudgetRepository : IBudgetRepository
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
 
         return budgetEntries!;
@@ -254,7 +307,7 @@ public class BudgetRepository : IBudgetRepository
     {
         string cacheKey = $"BudgetEntries_Department_{departmentId}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
@@ -265,7 +318,7 @@ public class BudgetRepository : IBudgetRepository
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
 
         return budgetEntries!;
@@ -278,7 +331,7 @@ public class BudgetRepository : IBudgetRepository
     {
         string cacheKey = $"BudgetEntries_Fund_{fundId}_Year_{fiscalYear}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
@@ -289,7 +342,7 @@ public class BudgetRepository : IBudgetRepository
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
 
         return budgetEntries!;
@@ -302,7 +355,7 @@ public class BudgetRepository : IBudgetRepository
     {
         string cacheKey = $"BudgetEntries_Department_{departmentId}_Year_{fiscalYear}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
@@ -313,7 +366,7 @@ public class BudgetRepository : IBudgetRepository
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
 
         return budgetEntries!;
@@ -328,7 +381,7 @@ public class BudgetRepository : IBudgetRepository
         const int sewerFundId = 2;
         string cacheKey = $"BudgetEntries_Sewer_Year_{fiscalYear}";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
+        if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             budgetEntries = await context.BudgetEntries
@@ -339,7 +392,7 @@ public class BudgetRepository : IBudgetRepository
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            _cache.Set(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
+            SetInCache(cacheKey, budgetEntries, TimeSpan.FromMinutes(30));
         }
 
         return budgetEntries!;
@@ -647,5 +700,38 @@ public class BudgetRepository : IBudgetRepository
                 ? query.OrderByDescending(be => be.CreatedAt)
                 : query.OrderBy(be => be.CreatedAt)
         };
+    }
+
+    public async Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var stats = await context.BudgetEntries
+            .Where(be => be.FiscalYear == fiscalYear)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalRecords = g.Count(),
+                OldestRecord = g.Min(be => be.CreatedAt),
+                NewestRecord = g.Max(be => be.CreatedAt)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return stats != null ? (stats.TotalRecords, stats.OldestRecord, stats.NewestRecord) : (0, null, null);
+    }
+
+    public async Task<int> GetRevenueAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.BudgetEntries
+            .Where(be => be.FiscalYear == fiscalYear && be.AccountNumber.StartsWith("4"))
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> GetExpenseAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.BudgetEntries
+            .Where(be => be.FiscalYear == fiscalYear && (be.AccountNumber.StartsWith("5") || be.AccountNumber.StartsWith("6")))
+            .CountAsync(cancellationToken);
     }
 }

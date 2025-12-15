@@ -20,9 +20,10 @@ Master-level xUnit authority for .NET 10+. Creates bulletproof, high-coverage te
 ## Testing Method (Canonical)
 
 Follows MCP-INTEGRATION-GUIDE.md:
+
 - Stack: Filesystem MCP (mandatory file ops), C# MCP (code eval), Everything MCP, Sequential Thinking MCP. SQL Server MCP proposed.
 - Phases: Unit (Days 1-2), Integration/DB (Days 3-4), UI smoke (Day 5), CI/CD (Day 6).
-- Enforcement: Activate filesystem tools first; use only mcp_filesystem_* APIs.
+- Enforcement: Activate filesystem tools first; use only mcp*filesystem*\* APIs.
 - Validation: C# MCP pre-checks, git-style diffs, runTests/run_task.
 
 ## Communication Style (Strict)
@@ -58,19 +59,20 @@ Follows MCP-INTEGRATION-GUIDE.md:
 
 ## Current Testing Posture (Snapshot - 2025-12-14)
 
-| Metric                  | Status                  | Notes |
-|-------------------------|-------------------------|-------|
-| Test Projects           | 20+ (Core, Integration, UI, DB, etc.) | Comprehensive structure |
-| Framework               | xUnit 3.0 + coverlet.collector | Good |
-| Total Tests             | ~4832                   | High volume |
-| Recent Run              | Passed: 4742 / Failed: 90 | Mostly DB/UI threading |
-| Coverage Collection     | Enabled but not publishing | Add --collect:"XPlat Code Coverage" + ReportGenerator |
-| Line Coverage           | ~64% (estimated)        | Gaps in high-CRAP methods (migrations, repositories) |
-| CI Integration          | dotnet test runs; coverage script conditional | Make mandatory |
-| MCP Tasks               | Present in .vscode/tasks.json | Use for pre-validation |
-| CSX Scripts             | Available for eval      | Leverage for exploratory |
+| Metric              | Status                                        | Notes                                                 |
+| ------------------- | --------------------------------------------- | ----------------------------------------------------- |
+| Test Projects       | 20+ (Core, Integration, UI, DB, etc.)         | Comprehensive structure                               |
+| Framework           | xUnit 3.0 + coverlet.collector                | Good                                                  |
+| Total Tests         | ~4832                                         | High volume                                           |
+| Recent Run          | Passed: 4742 / Failed: 90                     | Mostly DB/UI threading                                |
+| Coverage Collection | Enabled but not publishing                    | Add --collect:"XPlat Code Coverage" + ReportGenerator |
+| Line Coverage       | ~64% (estimated)                              | Gaps in high-CRAP methods (migrations, repositories)  |
+| CI Integration      | dotnet test runs; coverage script conditional | Make mandatory                                        |
+| MCP Tasks           | Present in .vscode/tasks.json                 | Use for pre-validation                                |
+| CSX Scripts         | Available for eval                            | Leverage for exploratory                              |
 
 **Prioritized Next:**
+
 - Fix remaining DB failures (in-memory SQLite or LocalDB).
 - Add full coverage publishing to CI.
 - Target untested high-CRAP: MigrationRunner, InvoiceRepository, SettingsForm threading.

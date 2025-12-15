@@ -24,9 +24,9 @@ namespace WileyWidget.WinForms.Forms
     internal static class BudgetOverviewFormResources
     {
         public const string FormTitle = "Budget Overview";
-        public const string RefreshButton = "≡ƒöä Refresh";
-        public const string ExportButton = "≡ƒôè Export";
-        public const string PrintButton = "≡ƒû¿∩╕Å Print";
+            public const string RefreshButton = "Refresh";
+            public const string ExportButton = "Export";
+            public const string PrintButton = "Print";
         public const string TotalBudgetLabel = "Total Budget";
         public const string TotalActualLabel = "Total Actual";
         public const string VarianceLabel = "Variance";
@@ -97,8 +97,9 @@ namespace WileyWidget.WinForms.Forms
                 throw new ArgumentNullException(nameof(mainForm));
             }
 
-            // Only set MdiParent if the parent form is configured as an MDI container
-            if (mainForm.IsMdiContainer)
+            // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
+            // In DockingManager mode, forms are shown as owned windows, not MDI children
+            if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
             {
                 MdiParent = mainForm;
             }
@@ -171,7 +172,7 @@ namespace WileyWidget.WinForms.Forms
 
             var titleLabel = new Label
             {
-                Text = $"≡ƒÆ░ {BudgetOverviewFormResources.FormTitle}",
+                    Text = BudgetOverviewFormResources.FormTitle,
                 Font = new Font("Segoe UI", 20, FontStyle.Bold),
                 ForeColor = Color.White,
                 AutoSize = true,
@@ -214,7 +215,7 @@ namespace WileyWidget.WinForms.Forms
             // Action buttons
             var addCategoryBtn = new Button
             {
-                Text = "Γ₧ò Add Category",
+                    Text = "Add Category",
                 Font = new Font("Segoe UI", 9),
                 BackColor = PositiveColor,
                 ForeColor = Color.White,
@@ -235,7 +236,7 @@ namespace WileyWidget.WinForms.Forms
 
             var editCategoryBtn = new Button
             {
-                Text = "Γ£Å∩╕Å Edit",
+                    Text = "Edit",
                 Font = new Font("Segoe UI", 9),
                 BackColor = AccentPurple,
                 ForeColor = Color.White,
@@ -263,7 +264,7 @@ namespace WileyWidget.WinForms.Forms
 
             var deleteCategoryBtn = new Button
             {
-                Text = "≡ƒùæ∩╕Å Delete",
+                    Text = "Delete",
                 Font = new Font("Segoe UI", 9),
                 BackColor = NegativeColor,
                 ForeColor = Color.White,
@@ -333,10 +334,10 @@ namespace WileyWidget.WinForms.Forms
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
 
-            var budgetCard = CreateSummaryCard(BudgetOverviewFormResources.TotalBudgetLabel, "$0.00", AccentBlue, "≡ƒôè", out _totalBudgetValueLabel);
-            var actualCard = CreateSummaryCard(BudgetOverviewFormResources.TotalActualLabel, "$0.00", AccentPurple, "≡ƒÆ╡", out _totalActualValueLabel);
-            var varianceCard = CreateSummaryCard(BudgetOverviewFormResources.VarianceLabel, "$0.00", NeutralColor, "≡ƒôê", out _varianceValueLabel);
-            var percentCard = CreateSummaryCard(BudgetOverviewFormResources.PercentUsedLabel, "0%", NeutralColor, "ΓÅ▒∩╕Å", out _percentUsedValueLabel);
+                var budgetCard = CreateSummaryCard(BudgetOverviewFormResources.TotalBudgetLabel, "$0.00", AccentBlue, "", out _totalBudgetValueLabel);
+                var actualCard = CreateSummaryCard(BudgetOverviewFormResources.TotalActualLabel, "$0.00", AccentPurple, "", out _totalActualValueLabel);
+                var varianceCard = CreateSummaryCard(BudgetOverviewFormResources.VarianceLabel, "$0.00", NeutralColor, "", out _varianceValueLabel);
+                var percentCard = CreateSummaryCard(BudgetOverviewFormResources.PercentUsedLabel, "0%", NeutralColor, "", out _percentUsedValueLabel);
 
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(budgetCard, 0, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(actualCard, 1, 0);
@@ -823,7 +824,7 @@ namespace WileyWidget.WinForms.Forms
                 _varianceValueLabel.ForeColor = _viewModel.Variance >= 0 ? PositiveColor : NegativeColor;
 
                 // Add indicator arrow
-                var arrow = _viewModel.Variance >= 0 ? "Γû▓" : "Γû╝";
+                var arrow = _viewModel.Variance >= 0 ? "↑" : "↓";
                 _varianceValueLabel.Text = $"{arrow} {_varianceValueLabel.Text}";
             }
 
@@ -886,7 +887,7 @@ namespace WileyWidget.WinForms.Forms
             if (_refreshButton != null)
             {
                 _refreshButton.Enabled = !_viewModel.IsLoading;
-                _refreshButton.Text = _viewModel.IsLoading ? "ΓÅ│ Loading..." : BudgetOverviewFormResources.RefreshButton;
+                _refreshButton.Text = _viewModel.IsLoading ? "Loading..." : BudgetOverviewFormResources.RefreshButton;
             }
 
             if (_exportButton != null)
@@ -911,7 +912,7 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_statusLabel != null && !string.IsNullOrEmpty(_viewModel.ErrorMessage))
             {
-                _statusLabel.Text = $"ΓÜá∩╕Å {BudgetOverviewFormResources.ErrorPrefix}{_viewModel.ErrorMessage}";
+                _statusLabel.Text = $"{BudgetOverviewFormResources.ErrorPrefix}{_viewModel.ErrorMessage}";
                 _statusLabel.ForeColor = NegativeColor;
             }
         }
@@ -920,7 +921,7 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_statusLabel != null)
             {
-                _statusLabel.Text = $"ΓÜá∩╕Å {BudgetOverviewFormResources.ErrorPrefix}{message}";
+                _statusLabel.Text = $"{BudgetOverviewFormResources.ErrorPrefix}{message}";
                 _statusLabel.ForeColor = NegativeColor;
             }
 

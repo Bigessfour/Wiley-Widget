@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.ViewModels;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -42,6 +43,9 @@ public partial class MainForm
 
             // Initialize components container if needed
             components ??= new Container();
+
+            // Initialize Menu Bar (always available)
+            InitializeMenuBar();
 
             // Initialize Ribbon
             if (!_isUiTestHarness)
@@ -106,6 +110,13 @@ public partial class MainForm
                 Text = "&Home"
             };
 
+            // Ensure Panel is initialized
+            if (_homeTab.Panel == null)
+            {
+                _homeTab.Panel = new RibbonPanel();
+                // Note: Theme is inherited from parent ribbon, no need to apply separately
+            }
+
             // Create Home Tab Panel
             var homePanel = new ToolStripEx
             {
@@ -158,6 +169,16 @@ public partial class MainForm
             };
             settingsBtn.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false);
 
+            // Theme toggle button
+            var themeToggleBtn = new ToolStripButton
+            {
+                Name = "Theme_Toggle",
+                Text = "Light Theme",
+                ToolTipText = "Toggle between Dark and Light themes",
+                AutoSize = true
+            };
+            themeToggleBtn.Click += ThemeToggleBtn_Click;
+
             homePanel.Items.AddRange(new ToolStripItem[]
             {
                 dashboardBtn,
@@ -166,8 +187,35 @@ public partial class MainForm
                 chartsBtn,
                 reportsBtn,
                 new ToolStripSeparator(),
-                settingsBtn
+                settingsBtn,
+                themeToggleBtn,
+                new ToolStripSeparator(),
+                // Grid commands
+                new ToolStripLabel { Text = "Grid:" , Name = "Grid_Label" },
+                new ToolStripButton { Name = "Grid_SortAsc", Text = "Sort Asc", AutoSize = true },
+                new ToolStripButton { Name = "Grid_SortDesc", Text = "Sort Desc", AutoSize = true },
+                new ToolStripButton { Name = "Grid_ApplyTestFilter", Text = "Apply Filter", AutoSize = true },
+                new ToolStripButton { Name = "Grid_ClearFilter", Text = "Clear Filter", AutoSize = true },
+                new ToolStripButton { Name = "Grid_ExportExcel", Text = "Export Grid", AutoSize = true }
             });
+
+            // Wire grid command events
+            var sortAscBtn = homePanel.Items.Find("Grid_SortAsc", searchAllChildren: true).FirstOrDefault() as ToolStripButton;
+            var sortDescBtn = homePanel.Items.Find("Grid_SortDesc", searchAllChildren: true).FirstOrDefault() as ToolStripButton;
+            var applyFilterBtn = homePanel.Items.Find("Grid_ApplyTestFilter", searchAllChildren: true).FirstOrDefault() as ToolStripButton;
+            var clearFilterBtn = homePanel.Items.Find("Grid_ClearFilter", searchAllChildren: true).FirstOrDefault() as ToolStripButton;
+            var exportGridBtn = homePanel.Items.Find("Grid_ExportExcel", searchAllChildren: true).FirstOrDefault() as ToolStripButton;
+
+            if (sortAscBtn != null)
+                sortAscBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: false);
+            if (sortDescBtn != null)
+                sortDescBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: true);
+            if (applyFilterBtn != null)
+                applyFilterBtn.Click += (s, e) => ApplyTestFilterToActiveGrid();
+            if (clearFilterBtn != null)
+                clearFilterBtn.Click += (s, e) => ClearActiveGridFilter();
+            if (exportGridBtn != null)
+                exportGridBtn.Click += async (s, e) => await ExportActiveGridToExcel();
 
             _homeTab.Panel.AddToolStrip(homePanel);
             _ribbon.Header.AddMainItem(_homeTab);
@@ -292,6 +340,16 @@ public partial class MainForm
             var mdiToggleBtn = new ToolStripButton("MDI") { Name = "Nav_MdiToggle" };
             mdiToggleBtn.Click += (s, e) => ToggleMdiMode();
 
+            // Grid test helpers (navigation strip)
+            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter") { Name = "Nav_ApplyGridFilter" };
+            navGridApplyFilter.Click += (s, e) => ApplyTestFilterToActiveGrid();
+
+            var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter" };
+            navGridClearFilter.Click += (s, e) => ClearActiveGridFilter();
+
+            var navGridExport = new ToolStripButton("Export Grid") { Name = "Nav_ExportGrid" };
+            navGridExport.Click += async (s, e) => await ExportActiveGridToExcel();
+
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
                 dashboardBtn,
@@ -303,7 +361,11 @@ public partial class MainForm
                 settingsBtn,
                 new ToolStripSeparator(),
                 dockingToggleBtn,
-                mdiToggleBtn
+                mdiToggleBtn,
+                new ToolStripSeparator(),
+                navGridApplyFilter,
+                navGridClearFilter,
+                navGridExport
             });
 
             Controls.Add(_navigationStrip);
@@ -367,5 +429,375 @@ public partial class MainForm
         _useMdiMode = !_useMdiMode;
         UpdateDockingStateText();
     }
+
+    /// <summary>
+    /// Initialize MenuStrip for navigation and commands.
+    /// Provides a traditional menu bar with File, View, Tools, and Help menus.
+    /// Enhanced with Syncfusion theming, Segoe MDL2 Assets icons, and proper renderer configuration.
+    /// </summary>
+    private void InitializeMenuBar()
+    {
+        try
+        {
+            _menuStrip = new MenuStrip
+            {
+                Name = "MainMenuStrip",
+                Dock = DockStyle.Top,
+                Visible = true,
+                AllowMerge = true,
+                Font = new Font("Segoe UI", 9F),
+                RenderMode = ToolStripRenderMode.Professional,
+                ShowItemToolTips = true,
+                AccessibleName = "MainMenuStrip",
+                AccessibleDescription = "Main navigation menu bar"
+            };
+
+            // Apply professional color scheme with theme colors
+            if (_menuStrip.Renderer is ToolStripProfessionalRenderer professionalRenderer)
+            {
+                professionalRenderer.RoundedEdges = true;
+            }
+
+            // File Menu
+            var fileMenu = new ToolStripMenuItem("&File")
+            {
+                Name = "Menu_File",
+                ToolTipText = "File operations"
+            };
+
+            // File > Exit
+            var exitMenuItem = new ToolStripMenuItem("E&xit", null, (s, e) => Close())
+            {
+                Name = "Menu_File_Exit",
+                ShortcutKeys = Keys.Alt | Keys.F4,
+                ToolTipText = "Exit the application (Alt+F4)",
+                Image = CreateIconFromText("\uE8BB", 16), // Exit icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            fileMenu.DropDownItems.Add(exitMenuItem);
+
+            // View Menu - All child forms accessible here
+            var viewMenu = new ToolStripMenuItem("&View")
+            {
+                Name = "Menu_View",
+                ToolTipText = "Open application views"
+            };
+
+            // View > Dashboard
+            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Dashboard",
+                ShortcutKeys = Keys.Control | Keys.D,
+                ToolTipText = "Open Dashboard view (Ctrl+D)",
+                Image = CreateIconFromText("\uE10F", 16), // Dashboard icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // View > Accounts
+            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Accounts",
+                ShortcutKeys = Keys.Control | Keys.A,
+                ToolTipText = "Open Accounts view (Ctrl+A)",
+                Image = CreateIconFromText("\uE8F4", 16), // AccountActivity icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // View > Budget Overview
+            var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Budget",
+                ShortcutKeys = Keys.Control | Keys.B,
+                ToolTipText = "Open Budget Overview (Ctrl+B)",
+                Image = CreateIconFromText("\uE7C8", 16), // Money icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // View > Charts
+            var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Charts",
+                ShortcutKeys = Keys.Control | Keys.H,
+                ToolTipText = "Open Charts view (Ctrl+H)",
+                Image = CreateIconFromText("\uE9D2", 16), // BarChart icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // View > Reports
+            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Reports",
+                ShortcutKeys = Keys.Control | Keys.R,
+                ToolTipText = "Open Reports view (Ctrl+R)",
+                Image = CreateIconFromText("\uE8A5", 16), // Document icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // View > Customers
+            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_View_Customers",
+                ShortcutKeys = Keys.Control | Keys.U,
+                ToolTipText = "Open Customers view (Ctrl+U)",
+                Image = CreateIconFromText("\uE716", 16), // Contact icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            // Add separator for visual grouping
+            var viewSeparator = new ToolStripSeparator
+            {
+                Name = "Menu_View_Separator"
+            };
+
+            // View > Refresh
+            var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) =>
+            {
+                // Refresh active child form if any
+                if (ActiveMdiChild is Form activeChild)
+                {
+                    activeChild.Refresh();
+                }
+            })
+            {
+                Name = "Menu_View_Refresh",
+                ShortcutKeys = Keys.F5,
+                ToolTipText = "Refresh active view (F5)",
+                Image = CreateIconFromText("\uE72C", 16), // Refresh icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            viewMenu.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                dashboardMenuItem,
+                accountsMenuItem,
+                budgetMenuItem,
+                chartsMenuItem,
+                reportsMenuItem,
+                customersMenuItem,
+                viewSeparator,
+                refreshMenuItem
+            });
+
+            // Tools Menu
+            var toolsMenu = new ToolStripMenuItem("&Tools")
+            {
+                Name = "Menu_Tools",
+                ToolTipText = "Application tools and settings"
+            };
+
+            // Tools > Settings
+            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false))
+            {
+                Name = "Menu_Tools_Settings",
+                ShortcutKeys = Keys.Control | Keys.Oemcomma,
+                ToolTipText = "Open Settings (Ctrl+,)",
+                Image = CreateIconFromText("\uE713", 16), // Settings icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            toolsMenu.DropDownItems.Add(settingsMenuItem);
+
+            // Help Menu
+            var helpMenu = new ToolStripMenuItem("&Help")
+            {
+                Name = "Menu_Help",
+                ToolTipText = "Help and application information"
+            };
+
+            // Help > Documentation
+            var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) =>
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/WileyWidget/WileyWidget/wiki",
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception docEx)
+                {
+                    _logger?.LogWarning(docEx, "Failed to open documentation");
+                }
+            })
+            {
+                Name = "Menu_Help_Documentation",
+                ShortcutKeys = Keys.F1,
+                ToolTipText = "Open online documentation (F1)",
+                Image = CreateIconFromText("\uE897", 16), // Help icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            var helpSeparator = new ToolStripSeparator
+            {
+                Name = "Menu_Help_Separator"
+            };
+
+            // Help > About
+            var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) =>
+            {
+                MessageBox.Show(
+                    $"{MainFormResources.FormTitle}\n\n" +
+                    "Version 1.0.0\n" +
+                    "Built with .NET 9 and Syncfusion WinForms\n\n" +
+                    $"© {DateTime.Now.Year} Wiley Widget. All rights reserved.",
+                    $"About {MainFormResources.FormTitle}",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            })
+            {
+                Name = "Menu_Help_About",
+                ToolTipText = "About this application",
+                Image = CreateIconFromText("\uE946", 16), // Info icon (Segoe MDL2)
+                ImageScaling = ToolStripItemImageScaling.None
+            };
+
+            helpMenu.DropDownItems.AddRange(new ToolStripItem[]
+            {
+                documentationMenuItem,
+                helpSeparator,
+                aboutMenuItem
+            });
+
+            // Add all menus to the menu strip
+            _menuStrip.Items.AddRange(new ToolStripItem[]
+            {
+                fileMenu,
+                viewMenu,
+                toolsMenu,
+                helpMenu
+            });
+
+            // Apply theme colors to dropdown menus
+            ApplyMenuTheme(fileMenu);
+            ApplyMenuTheme(viewMenu);
+            ApplyMenuTheme(toolsMenu);
+            ApplyMenuTheme(helpMenu);
+
+            // Set as the form's main menu
+            this.MainMenuStrip = _menuStrip;
+            Controls.Add(_menuStrip);
+
+            _logger?.LogDebug("Enhanced menu bar initialized successfully with icons and theming");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to initialize menu bar");
+            _menuStrip = null;
+        }
+    }
+
+    /// <summary>
+    /// Create a Bitmap icon from Segoe MDL2 Assets text (Unicode character).
+    /// </summary>
+    /// <param name="iconText">Unicode character from Segoe MDL2 Assets font</param>
+    /// <param name="size">Icon size in pixels</param>
+    /// <returns>Bitmap containing the rendered icon</returns>
+    private Bitmap CreateIconFromText(string iconText, int size)
+    {
+        var bitmap = new Bitmap(size, size);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+
+            using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var brush = new SolidBrush(ThemeColors.PrimaryAccent))
+            {
+                var stringFormat = new StringFormat
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+
+                graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), stringFormat);
+            }
+        }
+
+        return bitmap;
+    }
+
+    /// <summary>
+    /// Apply theme colors to menu dropdown items.
+    /// </summary>
+    /// <param name="menuItem">Parent menu item to theme</param>
+    private void ApplyMenuTheme(ToolStripMenuItem menuItem)
+    {
+        if (menuItem?.DropDown == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dropdown = (ToolStripDropDownMenu)menuItem.DropDown;
+            dropdown.ShowImageMargin = true;
+            dropdown.ShowCheckMargin = false;
+            dropdown.Font = new Font("Segoe UI", 9F);
+            dropdown.BackColor = Color.White;
+
+            // Apply theme to child items
+            foreach (ToolStripItem item in dropdown.Items)
+            {
+                if (item is ToolStripMenuItem childMenuItem)
+                {
+                    childMenuItem.BackColor = Color.White;
+                    childMenuItem.ForeColor = Color.FromArgb(32, 32, 32);
+
+                    // Recursively apply to sub-items
+                    ApplyMenuTheme(childMenuItem);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply theme to menu item {MenuName}", menuItem.Name);
+        }
+    }
+
+    /// <summary>
+    /// Handle theme toggle button click - switches between Dark and Light themes.
+    /// </summary>
+    private void ThemeToggleBtn_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            var currentTheme = SfSkinManager.ApplicationVisualTheme;
+            var newTheme = currentTheme == "Office2019Dark" ? "Office2019Colorful" : "Office2019Dark";
+
+            // Apply new theme globally
+            SfSkinManager.ApplicationVisualTheme = newTheme;
+
+            // Update theme toggle button text
+            var themeBtn = sender as ToolStripButton;
+            if (themeBtn != null)
+            {
+                themeBtn.Text = newTheme == "Office2019Dark" ? "Light Theme" : "Dark Theme";
+                themeBtn.ToolTipText = $"Switch to {(newTheme == "Office2019Dark" ? "Light" : "Dark")} theme";
+            }
+
+            // Refresh all open forms to apply new theme
+            foreach (Form form in Application.OpenForms)
+            {
+                try
+                {
+                    SfSkinManager.SetVisualStyle(form, newTheme);
+                    form.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to apply theme to form {FormName}", form.Name);
+                }
+            }
+
+            _logger?.LogInformation("Theme switched from {OldTheme} to {NewTheme}", currentTheme, newTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to toggle theme");
+        }
+    }
+
 
 }

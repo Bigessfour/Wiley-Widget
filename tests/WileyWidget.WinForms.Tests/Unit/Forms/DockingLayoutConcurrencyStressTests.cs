@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SfTools = Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
@@ -27,12 +28,15 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms;
 [Trait("Category", "Unit")]
 [Trait("Category", "DockingConcurrency")]
 [Trait("Category", "Stress")]
+[Collection(WinFormsUiCollection.CollectionName)]
 public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 {
+    private readonly WinFormsUiThreadFixture _ui;
     private string _testLayoutDirectory;
 
-    public DockingLayoutConcurrencyStressTests()
+    public DockingLayoutConcurrencyStressTests(WinFormsUiThreadFixture ui)
     {
+        _ui = ui;
         _testLayoutDirectory = Path.Combine(Path.GetTempPath(), $"WileyWidget_Stress_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_testLayoutDirectory);
     }
@@ -54,31 +58,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static void RunInSta(Action action)
-    {
-        Exception? captured = null;
 
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (captured != null)
-        {
-            throw captured;
-        }
-    }
 
     private static void SetPrivateField(object target, string fieldName, object? value)
     {
@@ -106,7 +86,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void DebouncedSave_UnderHighFrequencyChanges_ConsolidatesEffectively()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -179,7 +159,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void ConcurrentSaveAttempts_AcrossMultipleThreads_MaintainDataIntegrity()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -278,7 +258,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void SimultaneousLoadAndSave_DoNotCauseDeadlock()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -359,7 +339,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void SaveWhileDisposing_HandlesGracefully()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -431,6 +411,72 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
         });
     }
 
+    [Fact]
+    public void SaveWhileDisposing_RepeatedRuns_DoNotCrashOrLeak()
+    {
+        _ui.Run(() =>
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["UI:UseDockingManager"] = "true",
+                    ["UI:IsUiTestHarness"] = "false"
+                })
+                .Build();
+
+            var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            mainForm.CreateControl();
+
+            // Run the race multiple times with fresh container per iteration
+            for (int i = 0; i < 10; i++)
+            {
+                using var components = new Container();
+                var dockingManager = new SfTools.DockingManager(components)
+                {
+                    HostControl = mainForm
+                };
+
+                SetPrivateField(mainForm, "_dockingManager", dockingManager);
+                SetPrivateField(mainForm, "_useSyncfusionDocking", true);
+
+                // Add panel
+                using var panel = new System.Windows.Forms.Panel { Name = $"DisposePanel_{i}" };
+                dockingManager.SetEnableDocking(panel, true);
+
+                var saveTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        Thread.Sleep(10);
+                        InvokePrivateMethod(mainForm, "SaveDockingLayout");
+                    }
+                    catch { }
+                });
+
+                var disposeTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        Thread.Sleep(5);
+                        InvokePrivateMethod(mainForm, "DisposeSyncfusionDockingResources");
+                    }
+                    catch { }
+                });
+
+                Task.WaitAll(new[] { saveTask, disposeTask }, TimeSpan.FromSeconds(3));
+
+                // Ensure the private field is cleared by dispose
+                var disposedManager = GetPrivateField<SfTools.DockingManager>(mainForm, "_dockingManager");
+                Assert.Null(disposedManager);
+
+                // Ensure owner container can be disposed safely
+                components.Dispose();
+            }
+        });
+    }
+
     #endregion
 
     #region File System Race Conditions
@@ -438,7 +484,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void MultipleSavesWithFileSystemDelay_MaintainConsistency()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -501,7 +547,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void CorruptFileCreatedDuringSave_RecoveredOnNextLoad()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -571,7 +617,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void RepeatedSaveLoadCycles_DoNotLeakMemory()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -656,7 +702,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
     [Fact]
     public void DebounceTimer_UnderRapidFireChanges_BehavesCorrectly()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>

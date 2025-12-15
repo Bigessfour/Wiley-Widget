@@ -13,10 +13,13 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
+    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <!-- Force System.Management to 4.0.0 to resolve version conflict -->
+    <PackageReference Include="System.Management" />
   </ItemGroup>
 
   <ItemGroup>

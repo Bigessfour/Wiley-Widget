@@ -534,6 +534,10 @@ public partial class MainForm
         }
     }
 
+    // NOTE: `RegisterAsDockingMDIChild(Form,bool)` delegates to RegisterMdiChildWithDocking.
+    // Any defensive logic to ensure DocumentMode is disabled when TabbedMDI is active
+    // should live inside RegisterMdiChildWithDocking to keep the behavior centralized.
+
     /// <summary>
     /// Configure additional TabbedMDI features.
     /// </summary>
@@ -1129,6 +1133,17 @@ public partial class MainForm
 
         if (typeof(TForm) == typeof(DashboardForm))
         {
+            // Prefer a DI-provided instance when available (tests can register a lightweight stub)
+            try
+            {
+                var provided = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DashboardForm>(scope.ServiceProvider);
+                if (provided != null)
+                {
+                    return (TForm)(Form)provided;
+                }
+            }
+            catch { }
+
             var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(scope.ServiceProvider);
             var dashboardForm = ActivatorUtilities.CreateInstance<DashboardForm>(scope.ServiceProvider, vm, this);
             return (TForm)(Form)dashboardForm;

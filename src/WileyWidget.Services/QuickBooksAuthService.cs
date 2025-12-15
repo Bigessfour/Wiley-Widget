@@ -92,7 +92,7 @@ internal sealed class QuickBooksAuthService : IDisposable
         try
         {
             var v = Environment.GetEnvironmentVariable(name);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => { (v == null ? "<null>" : "<redacted>") }");
+            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => {(v == null ? "<null>" : "<redacted>")}");
             if (!string.IsNullOrWhiteSpace(v)) return v;
         }
         catch { /* ignore */ }

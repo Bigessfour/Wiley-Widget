@@ -390,7 +390,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var mockLogger = new Mock<ILogger<QuickBooksService>>();
             var mockApiClient = new Mock<IQuickBooksApiClient>();
 
-var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.JournalEntry(), new Intuit.Ipp.Data.JournalEntry() };
+            var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.JournalEntry(), new Intuit.Ipp.Data.JournalEntry() };
             var mockDs = new Mock<IQuickBooksDataService>();
             mockDs.Setup(x => x.FindJournalEntries(It.IsAny<DateTime>(), It.IsAny<DateTime>())).Returns(expected);
 
@@ -807,7 +807,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
                 var result = await service.SyncVendorsToAppAsync(vendors, CancellationToken.None);
                 Assert.False(result.Success);
                 Assert.Equal(0, result.RecordsSynced);
-                Assert.Contains("One or more vendors failed to sync", result.ErrorMessage);
+                Assert.Contains("One or more vendors failed to sync", result.ErrorMessage, StringComparison.Ordinal);
             }
             finally
             {
@@ -858,7 +858,7 @@ var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.Jour
 
                 var result = await service.SyncVendorsToAppAsync(vendors, cts.Token);
                 Assert.False(result.Success);
-                Assert.Contains("Operation cancelled", result.ErrorMessage);
+                Assert.Contains("Operation cancelled", result.ErrorMessage, StringComparison.Ordinal);
             }
             finally
             {
