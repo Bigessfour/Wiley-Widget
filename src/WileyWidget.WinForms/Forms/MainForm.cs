@@ -37,7 +37,7 @@ namespace WileyWidget.WinForms.Forms
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : Form, IViewManager
+    public partial class MainForm : SfForm, IViewManager
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
@@ -121,18 +121,6 @@ namespace WileyWidget.WinForms.Forms
                 uiMode ?? "IndividualSettings", _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
 
             ValidateAndSanitizeUiConfiguration();
-
-            // Apply theme to MainForm before creating child controls
-            // This ensures all Syncfusion controls inherit the theme properly
-            try
-            {
-                ThemeColors.ApplyTheme(this);
-                SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to apply theme to MainForm");
-            }
 
             // Initialize UI chrome (Ribbon, StatusBar, Navigation)
             try

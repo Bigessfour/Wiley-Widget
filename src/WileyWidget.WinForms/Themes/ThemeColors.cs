@@ -11,8 +11,8 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Updated theme name for Syncfusion v31.2.15+ (Office2019Dark for modern professional look)
-        public const string DefaultTheme = "Office2019Dark";
+        // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful for modern professional look)
+        public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>
         /// Gets the primary accent color from the current theme.
