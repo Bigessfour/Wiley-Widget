@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using DI = Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Services;
@@ -58,7 +60,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IAuditService, AuditService>();
             services.AddScoped<IAuditRepository, AuditRepository>();
             services.AddSingleton<IReportExportService, ReportExportService>();
-            services.AddSingleton<IBoldReportService, BoldReportService>();
+            services.AddSingleton<IReportService, FastReportService>();
             services.AddTransient<IExcelReaderService, ExcelReaderService>();
             services.AddTransient<IExcelExportService, ExcelExportService>();
             services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
@@ -86,7 +88,12 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<ChartViewModel>();
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<AccountsViewModel>();
-            services.AddTransient<DashboardViewModel>();
+            services.AddTransient<DashboardViewModel>(sp => new DashboardViewModel(
+                DI.ServiceProviderServiceExtensions.GetRequiredService<IBudgetRepository>(sp),
+                DI.ServiceProviderServiceExtensions.GetRequiredService<IMunicipalAccountRepository>(sp),
+                DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<DashboardViewModel>>(sp),
+                DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)
+            ));
             services.AddTransient<AnalyticsViewModel>();
             services.AddTransient<BudgetOverviewViewModel>();
             services.AddTransient<BudgetViewModel>();

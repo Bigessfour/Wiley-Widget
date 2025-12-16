@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.Data;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 using SfTools = Syncfusion.Windows.Forms.Tools;
 
@@ -17,35 +18,14 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
 [Trait("Category", "Unit")]
 [Trait("Category", "UiSmokeTests")]
+[Collection(WinFormsUiCollection.CollectionName)]
 public class MainFormUiSmokeTests
 {
-    private static void RunInSta(Action action)
+    private readonly WinFormsUiThreadFixture _ui;
+
+    public MainFormUiSmokeTests(WinFormsUiThreadFixture ui)
     {
-        Exception? captured = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                _ = Application.OleRequired();
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (captured != null)
-        {
-            throw captured;
-        }
+        _ui = ui;
     }
 
     private static IConfiguration BuildConfig(Dictionary<string, string?> values)
@@ -58,11 +38,11 @@ public class MainFormUiSmokeTests
     [Fact]
     public void MainForm_Construct_And_Toggle_MdiMode_DoesNotThrow()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = BuildConfig(new Dictionary<string, string?>
             {
-                ["UI:IsUiTestHarness"] = "false",
+                ["UI:IsUiTestHarness"] = "true",
                 ["UI:UseMdiMode"] = "true",
                 ["UI:UseTabbedMdi"] = "false",
                 ["UI:UseDockingManager"] = "false"
@@ -81,13 +61,43 @@ public class MainFormUiSmokeTests
     }
 
     [Fact]
-    public void MainForm_ShowPanel_IsSafeNoOp_WhenPanelNotAvailable()
+    public void MainForm_ToggleMdiMode_Method_Updates_IsMdiContainer()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = BuildConfig(new Dictionary<string, string?>
             {
-                ["UI:IsUiTestHarness"] = "false",
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseMdiMode"] = "false",
+                ["UI:UseTabbedMdi"] = "false",
+                ["UI:UseDockingManager"] = "false"
+            });
+
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance);
+
+            Assert.False(mainForm.IsMdiContainer);
+
+            var toggle = typeof(MainForm).GetMethod("ToggleMdiMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(toggle);
+
+            // Invoke once - should enable MDI
+            toggle!.Invoke(mainForm, null);
+            Assert.True(mainForm.IsMdiContainer);
+
+            // Invoke again - should disable MDI
+            toggle.Invoke(mainForm, null);
+            Assert.False(mainForm.IsMdiContainer);
+        });
+    }
+
+    [Fact]
+    public void MainForm_ShowPanel_IsSafeNoOp_WhenPanelNotAvailable()
+    {
+        _ui.Run(() =>
+        {
+            var config = BuildConfig(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
                 ["UI:UseMdiMode"] = "true",
                 ["UI:UseTabbedMdi"] = "false",
                 ["UI:UseDockingManager"] = "true"
@@ -101,13 +111,42 @@ public class MainFormUiSmokeTests
     }
 
     [Fact]
-    public void MainForm_DockPanel_WhenDockingNotInitialized_ThrowsInvalidOperationException()
+    public void MainForm_AutoShows_Dashboard_WhenConfigured()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = BuildConfig(new Dictionary<string, string?>
             {
-                ["UI:IsUiTestHarness"] = "false",
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseMdiMode"] = "true",
+                ["UI:UseTabbedMdi"] = "false",
+                ["UI:UseDockingManager"] = "false",
+                ["UI:AutoShowDashboard"] = "true"
+            });
+
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance);
+
+            // Trigger OnLoad by showing the form
+            mainForm.Show();
+
+            // Verify the auto-show attempt occurred (recorded even if child creation failed)
+            var dashField = typeof(MainForm).GetField("_dashboardAutoShown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(dashField);
+            Assert.True((bool)dashField.GetValue(mainForm)!);
+
+            // Cleanup
+            mainForm.Close();
+        });
+    }
+
+    [Fact]
+    public void MainForm_DockPanel_WhenDockingNotInitialized_ThrowsInvalidOperationException()
+    {
+        _ui.Run(() =>
+        {
+            var config = BuildConfig(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
                 ["UI:UseDockingManager"] = "false",
                 ["UI:UseMdiMode"] = "false",
                 ["UI:UseTabbedMdi"] = "false"
@@ -122,9 +161,9 @@ public class MainFormUiSmokeTests
     [Fact]
     public void DiContainer_Resolves_Core_WinForms_Types_WithoutThrowing()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
-            var services = WileyWidget.WinForms.Tests.Unit.DependencyInjection.ServiceRegistrationTests.CreateServiceCollection();
+            var services = WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(BuildConfig(new Dictionary<string, string?>
             {

@@ -5,8 +5,8 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
+using FastReport;
 using Microsoft.Extensions.Logging;
-using Microsoft.Reporting.WinForms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
@@ -22,10 +22,11 @@ public sealed class ReportsForm : Form
     private readonly ReportsViewModel _viewModel;
     private readonly ILogger<ReportsForm> _logger;
     private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     // UI elements
     private Control? _viewerHost;
-    private Microsoft.Reporting.WinForms.ReportViewer? _reportViewer;
+    private Report? _reportViewer;
     private ComboBox? _reportTypeCombo;
     private DateTimePicker? _fromDatePicker;
     private DateTimePicker? _toDatePicker;
@@ -52,7 +53,8 @@ public sealed class ReportsForm : Form
             throw new ArgumentNullException(nameof(mainForm));
         }
 
-        // Only set MdiParent if the parent form is configured as an MDI container
+        // Only set MdiParent if MainForm is in MDI mode
+        // In DockingManager mode, forms are shown as owned windows, not MDI children
         if (mainForm.IsMdiContainer)
         {
             MdiParent = mainForm;
@@ -319,19 +321,16 @@ public sealed class ReportsForm : Form
     {
         try
         {
-            var reportViewer = new Microsoft.Reporting.WinForms.ReportViewer
-            {
-                ProcessingMode = Microsoft.Reporting.WinForms.ProcessingMode.Local,
-                ShowToolBar = true,
-                ShowParameterPrompts = true,
-                ShowPromptAreaButton = true,
-                Dock = DockStyle.Fill
-            };
+            // Create FastReport WinForms ReportViewer
+            // Note: FastReport.OpenSource doesn't include a ReportViewer control
+            // TODO: Implement report viewing using FastReport.Report directly or upgrade to FastReport.Net
+            // _reportViewer = new ReportViewer { Dock = DockStyle.Fill };
+            _reportViewer = null;
 
-            _reportViewer = reportViewer;
-            _viewerAvailable = true;
-            _statusLabel?.SetEnabledSafe(true);
-            return reportViewer;
+            _viewerAvailable = false;
+            _statusLabel?.SetEnabledSafe(false);
+            _logger.LogInformation("FastReport Open Source viewer not available - ReportViewer control requires FastReport.Net");
+            return BuildPlaceholder("Report viewer requires FastReport.Net. FastReport.OpenSource only supports report generation, not viewing.");
         }
         catch (Exception ex)
         {
@@ -340,17 +339,7 @@ public sealed class ReportsForm : Form
 
         _reportViewer = null;
         _viewerAvailable = false;
-        return BuildPlaceholder("ReportViewer not available. Install Microsoft Reporting Services to enable report rendering.");
-    }
-
-    protected override void OnLoad(EventArgs e)
-    {
-        base.OnLoad(e);
-
-        if (MdiParent is MainForm mainForm)
-        {
-            mainForm.RegisterAsDockingMDIChild(this, true);
-        }
+        return BuildPlaceholder("ReportViewer not available. Install FastReport.OpenSource to enable report rendering.");
     }
 
     private bool EnsureViewer()
@@ -361,12 +350,17 @@ public sealed class ReportsForm : Form
         }
 
         UpdateCommandAvailability();
-        MessageBox.Show(this, "ReportViewer is not available. Install Microsoft.ReportingServices.ReportViewerControl.Winforms to generate or export reports.", "Viewer Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        MessageBox.Show(this, "ReportViewer is not available. Install FastReport.OpenSource to generate or export reports.", "Viewer Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         return false;
     }
 
     protected override void Dispose(bool disposing)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         if (disposing)
         {
             _cts.Cancel();
@@ -390,6 +384,7 @@ public sealed class ReportsForm : Form
             _previewGrid?.Dispose();
         }
 
+        _disposed = true;
         base.Dispose(disposing);
     }
 }

@@ -217,7 +217,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (Exception ex)
             {
-                // Log and show an actionable message ΓÇö fail fast to surface the issue to the caller
+                // Log and show an actionable message - fail fast to surface the issue to the caller
                 Serilog.Log.Error(ex, "Failed to initialize AccountsPanel");
 
                 System.Windows.Forms.MessageBox.Show(
@@ -1307,7 +1307,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                // Sync selected display model locally ΓÇö the view model does not expose a SelectedAccount entity
+                // Sync selected display model locally - the view model does not expose a SelectedAccount entity
                 if (gridAccounts?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay display)
                 {
                     _selectedAccountDisplay = display;
@@ -1337,7 +1337,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                // Trigger edit on double-click of any data row ΓÇö use selected item which is the display DTO
+                // Trigger edit on double-click of any data row - use selected item which is the display DTO
                 if (gridAccounts?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay)
                 {
                     BtnEdit_Click(sender, e);
@@ -1394,7 +1394,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                // Use the currently selected display DTO for tooltip content ΓÇö avoids depending on event args shape
+                // Use the currently selected display DTO for tooltip content - avoids depending on event args shape
                 var grid = gridAccounts;
                 if (grid?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay disp && e.ToolTipInfo?.Items != null && e.ToolTipInfo.Items.Count > 0)
                 {

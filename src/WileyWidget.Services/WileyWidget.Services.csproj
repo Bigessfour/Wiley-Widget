@@ -6,6 +6,7 @@
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
     <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <GenerateWinMD>false</GenerateWinMD>
 
     <ImplicitUsings>enable</ImplicitUsings>
@@ -59,17 +60,19 @@
     <PackageReference Include="FluentValidation" />
 
     <!-- Open-source alternatives to Syncfusion -->
-    <PackageReference Include="ClosedXML" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
-    <PackageReference Include="PdfSharpCore" />
 
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
+    <PackageReference Include="Syncfusion.XlsIO.WinForms" />
 
-    <PackageReference Include="BoldReports.WPF" />
-    <PackageReference Include="Microsoft.ReportingServices.ReportViewerControl.Winforms" />
+    <!-- BoldReports.WPF only - WinForms and Syncfusion.ReportViewer packages don't exist on nuget.org -->
+    <!-- FastReport Open Source packages -->
+    <PackageReference Include="FastReport.OpenSource" />
 
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
     <PackageReference Include="System.Management" />

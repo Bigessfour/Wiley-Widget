@@ -11,38 +11,38 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful as required)
+        // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful for modern professional look)
         public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>
         /// Gets the primary accent color from the current theme.
-        /// Fallback: Blue accent for Office2019Colorful theme.
+        /// Fallback: Blue accent for Office2019Dark theme.
         /// </summary>
         public static Color PrimaryAccent => GetThemeColor("PrimaryAccent", Color.FromArgb(0, 120, 215));
 
         /// <summary>
         /// Gets the success/positive color from the current theme.
-        /// Fallback: Green for Office2019Colorful theme.
+        /// Fallback: Green for Office2019Dark theme.
         /// </summary>
         public static Color Success => GetThemeColor("Success", Color.FromArgb(16, 137, 62));
 
         /// <summary>
         /// Gets the error/negative color from the current theme.
-        /// Fallback: Red for Office2019Colorful theme.
+        /// Fallback: Red for Office2019Dark theme.
         /// </summary>
         public static Color Error => GetThemeColor("Error", Color.FromArgb(232, 17, 35));
 
         /// <summary>
         /// Gets the warning color from the current theme.
-        /// Fallback: Orange for Office2019Colorful theme.
+        /// Fallback: Orange for Office2019Dark theme.
         /// </summary>
         public static Color Warning => GetThemeColor("Warning", Color.FromArgb(255, 185, 0));
 
         /// <summary>
         /// Gets the background color from the current theme.
-        /// Fallback: Light gray for Office2019Colorful theme.
+        /// Fallback: Dark gray for Office2019Dark theme.
         /// </summary>
-        public static Color Background => GetThemeColor("Background", Color.FromArgb(240, 240, 240));
+        public static Color Background => GetThemeColor("Background", Color.FromArgb(32, 32, 32));
 
         /// <summary>
         /// Gets the header background color from the current theme.
@@ -57,7 +57,7 @@ namespace WileyWidget.WinForms.Themes
         /// <summary>
         /// Gets the alternating row background color from the current theme.
         /// </summary>
-        public static Color AlternatingRowBackground => GetThemeColor("AlternatingRow", Color.FromArgb(245, 245, 245));
+        public static Color AlternatingRowBackground => GetThemeColor("AlternatingRow", Color.FromArgb(45, 45, 45));
 
         /// <summary>
         /// Gets the gauge arc background color from the current theme.
@@ -80,9 +80,9 @@ namespace WileyWidget.WinForms.Themes
                 // that align with the Office2019Colorful palette. Future enhancement: parse theme
                 // assembly resources or use Syncfusion's internal color tables if exposed.
 
-                // Map semantic color names to Office2019 theme equivalents
-                // These colors are derived from Syncfusion's Office2019Colorful theme specification
-                // Using DefaultTheme which is currently hardcoded to Office2019Colorful
+                // Map semantic color names to Office2019Dark theme equivalents
+                // These colors are derived from Syncfusion's Office2019Dark theme specification
+                // Using DefaultTheme which is currently hardcoded to Office2019Dark
                 return colorName switch
                 {
                     "Primary" => Color.FromArgb(0, 120, 215),
@@ -91,12 +91,12 @@ namespace WileyWidget.WinForms.Themes
                     "Success" => Color.FromArgb(16, 124, 16),
                     "Warning" => Color.FromArgb(255, 185, 0),
                     "Danger" => Color.FromArgb(232, 17, 35),
-                    "Background" => Color.White,
-                    "Surface" => Color.FromArgb(250, 250, 250),
-                    "Border" => Color.FromArgb(204, 204, 204),
-                    "Text" => Color.FromArgb(51, 51, 51),
-                    "AlternatingRow" => Color.FromArgb(245, 245, 245),
-                    "GaugeArc" => Color.FromArgb(200, 200, 200),
+                    "Background" => Color.FromArgb(32, 32, 32),
+                    "Surface" => Color.FromArgb(45, 45, 45),
+                    "Border" => Color.FromArgb(100, 100, 100),
+                    "Text" => Color.FromArgb(200, 200, 200),
+                    "AlternatingRow" => Color.FromArgb(45, 45, 45),
+                    "GaugeArc" => Color.FromArgb(100, 100, 100),
                     _ => fallback
                 };
             }
@@ -108,10 +108,11 @@ namespace WileyWidget.WinForms.Themes
         }
 
         /// <summary>
-        /// Applies the default theme globally to a form and all its child Syncfusion controls.
-        /// This is the ONLY approved method for applying themes in Wiley Widget.
-        /// All child controls (SfDataGrid, RadialGauge, ChartControl, etc.) automatically
-        /// inherit the theme from this single call - no individual control theme setting is allowed.
+        /// Applies the default theme to a form using Syncfusion's SfSkinManager.
+        /// Per Syncfusion documentation, calling SetVisualStyle on a form automatically
+        /// cascades the theme to all child Syncfusion controls (SfDataGrid, RadialGauge, etc.).
+        /// DO NOT call SetVisualStyle on individual child controls - the cascade handles it.
+        /// Reference: https://help.syncfusion.com/windowsforms/themes/getting-started
         /// </summary>
         /// <param name="form">The form to apply theming to.</param>
         public static void ApplyTheme(Form form)
@@ -123,8 +124,12 @@ namespace WileyWidget.WinForms.Themes
                 // Ensure Office2019Theme assembly is loaded
                 EnsureThemeAssemblyLoaded();
 
-                // Apply global theme - this cascades to all Syncfusion controls
+                // Apply theme to form - Syncfusion automatically cascades to all child controls
+                // This is the ONLY call needed; individual control theming is redundant and can cause issues
                 SfSkinManager.SetVisualStyle(form, DefaultTheme);
+
+                Serilog.Log.Debug("Theme '{Theme}' applied to form '{FormName}' (cascade to all child controls)",
+                    DefaultTheme, form.Name);
             }
             catch (Exception ex)
             {
@@ -176,27 +181,29 @@ namespace WileyWidget.WinForms.Themes
         }
 
         /// <summary>
-        /// Applies consistent theme styling to an SfDataGrid control.
+        /// Applies custom style properties to an SfDataGrid that theme cascade doesn't handle.
+        /// DO NOT call SfSkinManager.SetVisualStyle here - it's already inherited from parent form.
+        /// Only use this for custom styling beyond the theme (e.g., specific header colors).
         /// </summary>
-        /// <param name="grid">The SfDataGrid to theme.</param>
+        /// <param name="grid">The SfDataGrid to style.</param>
         public static void ApplySfDataGridTheme(Syncfusion.WinForms.DataGrid.SfDataGrid grid)
         {
             if (grid == null) return;
 
             try
             {
-                // Apply SfSkinManager theme
-                SfSkinManager.SetVisualStyle(grid, DefaultTheme);
-
-                // Apply custom style properties that SfSkinManager doesn't handle
+                // Theme is already cascaded from parent form - only apply custom overrides
+                // Apply custom style properties that theme doesn't handle
                 grid.Style.HeaderStyle.BackColor = HeaderBackground;
                 grid.Style.HeaderStyle.TextColor = Color.White;
                 grid.Style.HeaderStyle.Font = new Syncfusion.WinForms.DataGrid.Styles.GridFontInfo(new Font("Segoe UI", 9F, FontStyle.Bold));
+
+                Serilog.Log.Debug("Custom grid styling applied to '{GridName}' (theme inherited from parent)", grid.Name);
             }
             catch (Exception ex)
             {
                 // Log theme application error but don't fail
-                Serilog.Log.Warning(ex, "SfDataGrid theme application failed for grid {GridName}", grid.Name);
+                Serilog.Log.Warning(ex, "Custom grid styling failed for grid {GridName}", grid.Name);
             }
         }
     }

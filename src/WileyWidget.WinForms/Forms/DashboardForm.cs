@@ -49,6 +49,7 @@ namespace WileyWidget.WinForms.Forms
     {
         private readonly DashboardViewModel _viewModel;
         private readonly AnalyticsViewModel _analyticsViewModel;
+        private readonly ILogger<DashboardForm> _logger;
         private TableLayoutPanel? _mainLayout;
         private SfDataGrid? _metricsGrid;
         private SfDataGrid? _fundsGrid;
@@ -70,6 +71,8 @@ namespace WileyWidget.WinForms.Forms
         private RadialGauge? _revenueAmountGauge;
         private RadialGauge? _expensesAmountGauge;
         private ToolStripEx? _toolbar;
+        private ToolStripButton? _loadButton;
+        private ToolStripMenuItem? _fileMenuLoadItem;
         private StatusStrip? _statusBar;
         private ToolStripStatusLabel? _statusPanel;
         private ToolStripStatusLabel? _countsPanel;
@@ -88,16 +91,19 @@ namespace WileyWidget.WinForms.Forms
 
         private const int RefreshIntervalMs = 30000;
 
-        public DashboardForm(DashboardViewModel viewModel, AnalyticsViewModel analyticsViewModel, MainForm mainForm)
+        public DashboardForm(DashboardViewModel viewModel, AnalyticsViewModel analyticsViewModel, MainForm mainForm, ILogger<DashboardForm> logger)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             _analyticsViewModel = analyticsViewModel ?? throw new ArgumentNullException(nameof(analyticsViewModel));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             if (mainForm == null)
             {
                 throw new ArgumentNullException(nameof(mainForm));
             }
 
-            if (mainForm.IsMdiContainer)
+            // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
+            // In DockingManager mode, forms are shown as owned windows, not MDI children
+            if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
             {
                 MdiParent = mainForm;
             }
@@ -157,7 +163,8 @@ namespace WileyWidget.WinForms.Forms
                 await _viewModel.RefreshCommand.ExecuteAsync(null);
                 UpdateStatus(DashboardResources.StatusRefreshed);
             };
-            _refreshTimer.Start();
+            // Do not auto-start timer - user must enable via checkbox
+            // _refreshTimer.Start();
 
             BuildMenu();
 
@@ -221,11 +228,14 @@ namespace WileyWidget.WinForms.Forms
             _revenueChart = new ChartControl
             {
                 Dock = DockStyle.Fill,
-                Text = DashboardResources.RevenueTrendTitle
+                Text = DashboardResources.RevenueTrendTitle,
+                ShowLegend = true,
+                ShowToolTips = true
             };
-            _revenueChart.PrimaryXAxis.Title = "Month";
-            _revenueChart.PrimaryYAxis.Title = "Amount ($)";
-            _revenueChart.Series.Add(new ChartSeries("Revenue", ChartSeriesType.Line));
+            SfSkinManager.SetVisualStyle(_revenueChart, "Office2019Colorful");
+
+            var revenueSeries = new ChartSeries("Revenue", ChartSeriesType.Line);
+            _revenueChart.Series.Add(revenueSeries);
 
             var revenueChartGroup = new GroupBox { Text = "Revenue Trend", Dock = DockStyle.Fill, Padding = new Padding(10) };
             revenueChartGroup.Controls.Add(_revenueChart);
@@ -482,12 +492,17 @@ namespace WileyWidget.WinForms.Forms
             _trendChart = new ChartControl
             {
                 Dock = DockStyle.Fill,
-                Text = "Budget Trends"
+                Text = "Budget Trends",
+                ShowLegend = true,
+                ShowToolTips = true
             };
-            _trendChart.PrimaryXAxis.Title = "Month";
-            _trendChart.PrimaryYAxis.Title = "Amount ($)";
-            _trendChart.Series.Add(new ChartSeries("Budgeted", ChartSeriesType.Line));
-            _trendChart.Series.Add(new ChartSeries("Actual", ChartSeriesType.Line));
+            SfSkinManager.SetVisualStyle(_trendChart, "Office2019Colorful");
+
+            var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
+            _trendChart.Series.Add(budgetedSeries);
+
+            var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
+            _trendChart.Series.Add(actualSeries);
 
             var trendChartGroup = new GroupBox { Text = "Trend Analysis", Dock = DockStyle.Fill, Padding = new Padding(5) };
             trendChartGroup.Controls.Add(_trendChart);
@@ -551,7 +566,8 @@ namespace WileyWidget.WinForms.Forms
         {
             _menuStrip = new MenuStrip();
             var fileMenu = new ToolStripMenuItem("File");
-            fileMenu.DropDownItems.Add("Load", null, (s, e) => { _ = LoadDashboard(); });
+            _fileMenuLoadItem = new ToolStripMenuItem("Load", null, (s, e) => { _ = LoadDashboard(); });
+            fileMenu.DropDownItems.Add(_fileMenuLoadItem);
             fileMenu.DropDownItems.Add("Export", null, (s, e) => { _ = ExportDashboard(); });
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add("Exit", null, (s, e) => Close());
@@ -588,6 +604,7 @@ namespace WileyWidget.WinForms.Forms
                 DisplayStyle = ToolStripItemDisplayStyle.Text
             };
             loadButton.Click += async (s, e) => await LoadDashboard();
+            _loadButton = loadButton;
             loadButton.ToolTipText = "Load dashboard data";
 
             var refreshButton = new ToolStripButton
@@ -890,7 +907,37 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateLoadingStatus()
         {
+            if (this.InvokeRequired)
+            {
+                try { this.BeginInvoke(new System.Action(UpdateLoadingStatus)); } catch { }
+                return;
+            }
+
+            // Update status text
             UpdateStatus(_viewModel.IsLoading ? DashboardResources.LoadingText : DashboardResources.StatusReady);
+
+            // Toggle progress indicator
+            try
+            {
+                if (_progressBar != null)
+                {
+                    _progressBar.Visible = _viewModel.IsLoading;
+                }
+
+                if (_loadButton != null)
+                {
+                    _loadButton.Enabled = !_viewModel.IsLoading;
+                }
+
+                if (_fileMenuLoadItem != null)
+                {
+                    _fileMenuLoadItem.Enabled = !_viewModel.IsLoading;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "UpdateLoadingStatus: failed to update loading UI elements");
+            }
         }
 
         private void UpdateErrorStatus()
@@ -911,20 +958,40 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateRevenueChart()
         {
-            if (_revenueChart == null || _viewModel.MonthlyRevenueData.Count == 0)
-                return;
-
-            _revenueChart.Series.Clear();
-            var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
-
-            foreach (var data in _viewModel.MonthlyRevenueData)
+            try
             {
-                series.Points.Add(data.MonthNumber, (double)data.Amount);
-            }
+                _logger.LogDebug("UpdateRevenueChart: Starting update");
 
-            _revenueChart.Series.Add(series);
-            _revenueChart.Refresh();
+                if (_revenueChart == null || _viewModel.MonthlyRevenueData.Count == 0)
+                {
+                    _logger.LogWarning("UpdateRevenueChart: Chart is null or no monthly revenue data available (Count={Count})",
+                        _viewModel.MonthlyRevenueData?.Count ?? 0);
+                    return;
+                }
+
+                _revenueChart.Series.Clear();
+                _logger.LogDebug("UpdateRevenueChart: Creating series with {Count} data points", _viewModel.MonthlyRevenueData.Count);
+
+                // Create Revenue series
+                var series = new ChartSeries("Revenue", ChartSeriesType.Line);
+
+                // Populate data points
+                foreach (var data in _viewModel.MonthlyRevenueData)
+                {
+                    series.Points.Add(data.MonthNumber, (double)data.Amount);
+                }
+
+                _revenueChart.Series.Add(series);
+                _logger.LogInformation("UpdateRevenueChart: Chart updated with {SeriesCount} series and {PointCount} points",
+                    _revenueChart.Series.Count, series.Points.Count);
+
+                // Refresh chart to display updated data
+                _revenueChart.Refresh();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateRevenueChart: Failed to update chart");
+            }
         }
 
         private void UpdateFundSummariesGrid()
@@ -1026,11 +1093,14 @@ namespace WileyWidget.WinForms.Forms
         {
             if (gauge == null)
             {
+                _logger.LogDebug("AnimateGaugeValue: Gauge is null, skipping animation");
                 return;
             }
 
             var target = Math.Max(gauge.MinimumValue, Math.Min(value, gauge.MaximumValue));
             var start = gauge.Value;
+            _logger.LogDebug("AnimateGaugeValue: Animating gauge '{Label}' from {Start:F2} to {Target:F2}",
+                gauge.GaugeLabel, start, target);
             var steps = 15;
             var stepValue = (target - start) / steps;
             var timer = new System.Windows.Forms.Timer { Interval = 16 };
@@ -1063,12 +1133,26 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                _logger.LogInformation("LoadDashboard: Starting dashboard load");
+
                 await _viewModel.LoadCommand.ExecuteAsync(null);
 
+                _logger.LogInformation("LoadDashboard: ViewModel load completed successfully");
+                UpdateStatus(DashboardResources.StatusReady);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("LoadDashboard: Load cancelled");
+                UpdateStatus(DashboardResources.StatusReady);
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogInformation("LoadDashboard: Load aborted due to disposal");
                 UpdateStatus(DashboardResources.StatusReady);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "LoadDashboard: Failed to load dashboard");
                 UpdateStatus(string.Format(CultureInfo.CurrentCulture, DashboardResources.LoadErrorMessage, ex.Message));
 
                 if (!_isUiTestHarness)
@@ -1222,22 +1306,47 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateTrendChart()
         {
-            if (_trendChart == null || _analyticsViewModel.TrendData.Count == 0)
-                return;
-
-            _trendChart.Series.Clear();
-            var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
-            var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
-
-            foreach (var trend in _analyticsViewModel.TrendData)
+            try
             {
-                budgetedSeries.Points.Add(trend.Month, (double)trend.Budgeted);
-                actualSeries.Points.Add(trend.Month, (double)trend.Actual);
-            }
+                _logger.LogDebug("UpdateTrendChart: Starting update");
 
-            _trendChart.Series.Add(budgetedSeries);
-            _trendChart.Series.Add(actualSeries);
-            _trendChart.Refresh();
+                if (_trendChart == null || _analyticsViewModel.TrendData.Count == 0)
+                {
+                    _logger.LogWarning("UpdateTrendChart: Chart is null or no trend data available (Count={Count})",
+                        _analyticsViewModel.TrendData?.Count ?? 0);
+                    return;
+                }
+
+                _logger.LogDebug("UpdateTrendChart: Creating series with {Count} data points", _analyticsViewModel.TrendData.Count);
+
+                _trendChart.Series.Clear();
+
+                // Create Budgeted series
+                var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
+
+                // Create Actual series
+                var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
+
+                // Populate data points with numeric indices
+                int index = 0;
+                foreach (var trend in _analyticsViewModel.TrendData)
+                {
+                    budgetedSeries.Points.Add(index, (double)trend.Budgeted);
+                    actualSeries.Points.Add(index, (double)trend.Actual);
+                    index++;
+                }
+
+                _trendChart.Series.Add(budgetedSeries);
+                _trendChart.Series.Add(actualSeries);
+                _trendChart.Refresh();
+
+                _logger.LogInformation("UpdateTrendChart: Chart updated with {SeriesCount} series and {PointCount} points",
+                    _trendChart.Series.Count, budgetedSeries.Points.Count + actualSeries.Points.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateTrendChart: Failed to update chart");
+            }
         }
 
         private void UpdateScenarioGrid()
@@ -1248,19 +1357,44 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateForecastChart()
         {
-            if (_forecastChart == null)
-                return;
-
-            _forecastChart.Series.Clear();
-            var forecastSeries = new ChartSeries("Forecast", ChartSeriesType.Line);
-
-            foreach (var point in _analyticsViewModel.ForecastData)
+            try
             {
-                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture), (double)point.PredictedReserves);
-            }
+                _logger.LogDebug("UpdateForecastChart: Starting update");
 
-            _forecastChart.Series.Add(forecastSeries);
-            _forecastChart.Refresh();
+                if (_forecastChart == null)
+                {
+                    _logger.LogWarning("UpdateForecastChart: Chart is null");
+                    return;
+                }
+
+                if (_analyticsViewModel.ForecastData.Count == 0)
+                {
+                    _logger.LogWarning("UpdateForecastChart: No forecast data available (Count={Count})",
+                        _analyticsViewModel.ForecastData.Count);
+                }
+
+                _logger.LogDebug("UpdateForecastChart: Creating series with {Count} data points", _analyticsViewModel.ForecastData.Count);
+
+                _forecastChart.Series.Clear();
+                var forecastSeries = new ChartSeries("Forecast", ChartSeriesType.Line);
+
+                int index = 0;
+                foreach (var point in _analyticsViewModel.ForecastData)
+                {
+                    forecastSeries.Points.Add(index, (double)point.PredictedReserves);
+                    index++;
+                }
+
+                _forecastChart.Series.Add(forecastSeries);
+                _forecastChart.Refresh();
+
+                _logger.LogInformation("UpdateForecastChart: Chart updated with {SeriesCount} series and {PointCount} points",
+                    _forecastChart.Series.Count, forecastSeries.Points.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateForecastChart: Failed to update chart");
+            }
         }
 
         private void UpdateAnalyticsLoadingStatus()
@@ -1294,6 +1428,15 @@ namespace WileyWidget.WinForms.Forms
                 _expensesAmountGauge?.Dispose();
                 _toolbar?.Dispose();
                 _statusBar?.Dispose();
+                try
+                {
+                    _viewModel?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<DashboardForm>>(Program.Services);
+                    logger?.LogDebug(ex, "Error disposing DashboardViewModel");
+                }
             }
             base.Dispose(disposing);
         }

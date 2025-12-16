@@ -8,38 +8,21 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SfTools = Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
 [Trait("Category", "Unit")]
 [Trait("Category", "UiSmokeTests")]
+[Collection(WinFormsUiCollection.CollectionName)]
 public class DockingTabbedMdiIntegrationTests
 {
-    private static void RunInSta(System.Action action)
+    private readonly WinFormsUiThreadFixture _ui;
+
+    public DockingTabbedMdiIntegrationTests(WinFormsUiThreadFixture ui)
     {
-        Exception? captured = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (captured != null)
-        {
-            throw captured;
-        }
+        _ui = ui;
     }
 
     private static void SetPrivateField(object target, string fieldName, object? value)
@@ -52,7 +35,7 @@ public class DockingTabbedMdiIntegrationTests
     [Fact]
     public void RegisterAsDockingMDIChild_WhenTabbedMdiEnabled_DisablesDockingDocumentMode()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -96,7 +79,7 @@ public class DockingTabbedMdiIntegrationTests
     [Fact]
     public void RegisterAsDockingMDIChild_WhenTabbedMdiDisabled_DoesNotChangeDocumentMode()
     {
-        RunInSta(() =>
+        _ui.Run(() =>
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>

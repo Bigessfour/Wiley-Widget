@@ -275,7 +275,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Bottom,
                 Height = 24,
                 TextAlign = ContentAlignment.MiddleRight,
-                Text = "Last updated: ΓÇö",
+                Text = "Last updated:",
                 Font = new Font("Segoe UI", 8F, FontStyle.Italic),
                 Padding = new Padding(0, 0, 8, 0)
             };

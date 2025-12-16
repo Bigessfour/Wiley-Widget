@@ -1,0 +1,121 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Reflection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using SfTools = Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
+using Xunit;
+
+namespace WileyWidget.WinForms.Tests.Unit.Forms
+{
+    [Trait("Category", "Unit")]
+    [Trait("Category", "UiSmokeTests")]
+    [Collection(WinFormsUiCollection.CollectionName)]
+    public class DockingDocumentModeTests
+    {
+        private readonly WinFormsUiThreadFixture _ui;
+
+        public DockingDocumentModeTests(WinFormsUiThreadFixture ui)
+        {
+            _ui = ui;
+        }
+
+        [Fact]
+        public void RegisterAsDockingMDIChild_WhenTabbedMdiEnabled_DisablesDockingDocumentMode()
+        {
+            _ui.Run(() =>
+            {
+                var config = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["UI:UseDockingManager"] = "true",
+                        ["UI:UseMdiMode"] = "true",
+                        ["UI:UseTabbedMdi"] = "true",
+                        ["UI:IsUiTestHarness"] = "false"
+                    })
+                    .Build();
+
+                var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+
+                var components = new Container();
+                var dockingManager = new SfTools.DockingManager(components)
+                {
+                    HostControl = mainForm,
+                    EnableDocumentMode = true
+                };
+
+                try
+                {
+                    var field = mainForm.GetType().GetField("_dockingManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                    Assert.NotNull(field);
+                    field!.SetValue(mainForm, dockingManager);
+
+                    using var child = new System.Windows.Forms.Form();
+                    mainForm.RegisterAsDockingMDIChild(child, enabled: true);
+
+                    Assert.False(dockingManager.EnableDocumentMode);
+                }
+                finally
+                {
+                    var field = mainForm.GetType().GetField("_dockingManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                    field!.SetValue(mainForm, null);
+                    dockingManager.Dispose();
+                    components.Dispose();
+                }
+            });
+        }
+
+        [Fact]
+        public void RegisterAsDockingMDIChild_WhenTabbedMdiDisabled_DoesNotChangeDocumentMode()
+        {
+            _ui.Run(() =>
+            {
+                var config = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["UI:UseDockingManager"] = "true",
+                        ["UI:UseMdiMode"] = "true",
+                        ["UI:UseTabbedMdi"] = "false",
+                        ["UI:IsUiTestHarness"] = "false"
+                    })
+                    .Build();
+
+                var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+
+                var components = new Container();
+                var dockingManager = new SfTools.DockingManager(components)
+                {
+                    HostControl = mainForm,
+                    EnableDocumentMode = true
+                };
+
+                try
+                {
+                    var field = mainForm.GetType().GetField("_dockingManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                    Assert.NotNull(field);
+                    field!.SetValue(mainForm, dockingManager);
+
+                    using var child = new System.Windows.Forms.Form();
+                    mainForm.RegisterAsDockingMDIChild(child, enabled: true);
+
+                    Assert.True(dockingManager.EnableDocumentMode);
+                }
+                finally
+                {
+                    var field = mainForm.GetType().GetField("_dockingManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                    field!.SetValue(mainForm, null);
+                    dockingManager.Dispose();
+                    components.Dispose();
+                }
+            });
+        }
+    }
+}

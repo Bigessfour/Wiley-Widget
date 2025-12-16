@@ -8,6 +8,7 @@ namespace WileyWidget.WinForms.Theming
         Light,
         Dark,
         Office2019Colorful,
+        Office2019Dark,
         Office2019Black,
         Office2019DarkGray,
         Office2019White,

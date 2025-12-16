@@ -6,39 +6,28 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Reporting.WinForms;
 using Moq;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
     [Trait("Category", "Unit")]
+    [Collection(WinFormsUiCollection.CollectionName)]
     public class SyncfusionNullRefTests
     {
-        private static void RunInSta(System.Action action)
+        private readonly WinFormsUiThreadFixture _ui;
+
+        public SyncfusionNullRefTests(WinFormsUiThreadFixture ui)
         {
-            Exception? ex = null;
-            var t = new Thread(() =>
-            {
-                try
-                {
-                    action();
-                }
-                catch (Exception e)
-                {
-                    ex = e;
-                }
-            });
-            t.SetApartmentState(ApartmentState.STA);
-            t.Start();
-            t.Join();
-            if (ex != null) throw ex;
+            _ui = ui;
         }
+
 
         private class TestConfigurationSection : IConfigurationSection
         {
@@ -75,7 +64,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 {
                     ["UI:UseMdiMode"] = useMdiMode ? "true" : "false",
                     ["UI:UseTabbedMdi"] = useTabbedMdi ? "true" : "false",
-                    ["UI:UseDockingManager"] = useDockingManager ? "true" : "false"
+                    ["UI:UseDockingManager"] = useDockingManager ? "true" : "false",
+                    ["UI:IsUiTestHarness"] = "true"
                 };
             }
 
@@ -118,14 +108,15 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void DashboardForm_BuildStatusBar_HandlesNullControls()
         {
             // Arrange
-            RunInSta(() =>
+            _ui.Run(() =>
             {
                 var mockVm = new Mock<DashboardViewModel>();
                 var mockAnalyticsSvc = new Mock<IAnalyticsService>();
                 var mockAnalyticsLogger = new Mock<ILogger<AnalyticsViewModel>>();
                 var mockAnalyticsVm = new Mock<AnalyticsViewModel>(mockAnalyticsSvc.Object, mockAnalyticsLogger.Object);
                 using var mainForm = new TestMainForm();
-                using var form = new DashboardForm(mockVm.Object, mockAnalyticsVm.Object, mainForm);
+                var mockLogger = new Mock<ILogger<DashboardForm>>();
+                using var form = new DashboardForm(mockVm.Object, mockAnalyticsVm.Object, mainForm, mockLogger.Object);
 
                 // Assert: Form should still be functional even if status bar creation fails
                 Assert.NotNull(form);
@@ -134,21 +125,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         }
 
         [Fact]
-        public void ReportViewer_SetDataSource_HandlesNullData()
-        {
-            // Arrange: Avoid creating a full ReportViewer control (which requires STA/WinForms and uses BinaryFormatter).
-            var datasource = new Microsoft.Reporting.WinForms.ReportDataSource("Test", (object?)null);
-
-            // Act & Assert: The data source can be created with a null value
-            Assert.NotNull(datasource);
-            Assert.Null(datasource.Value);
-        }
-
-        [Fact]
         public void SyncfusionGrid_BindData_HandlesNullDataSource()
         {
             // Arrange
-            RunInSta(() =>
+            _ui.Run(() =>
             {
                 using var grid = new SfDataGrid();
 

@@ -40,8 +40,9 @@ public partial class ChatWindow : Form
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
 
-        // Only set MdiParent if the parent form is configured as an MDI container
-        if (mainForm.IsMdiContainer)
+        // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
+        // In DockingManager mode, forms are shown as owned windows, not MDI children
+        if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
         {
             MdiParent = mainForm;
         }

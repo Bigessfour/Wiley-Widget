@@ -163,7 +163,7 @@ namespace WileyWidget.WinForms.Controls
                 try
                 {
                     _errorProvider ??= new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
-                    if (_mainChart != null) _errorProvider.SetError(_mainChart, "Failed to load dashboard data ΓÇö check logs");
+                    if (_mainChart != null) _errorProvider.SetError(_mainChart, "Failed to load dashboard data - check logs");
                     MessageBox.Show($"Could not load dashboard data: {ex.Message}", "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 catch { }
@@ -234,7 +234,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
-            _lblLastRefreshed = new Label { AutoSize = true, Text = "Last: ΓÇö", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
+            _lblLastRefreshed = new Label { AutoSize = true, Text = "Last: -", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
 
             // Dashboard label with home icon
             var dashboardLabel = new ToolStripLabel("Dashboard");
@@ -687,6 +687,46 @@ namespace WileyWidget.WinForms.Controls
                     lblRem.Text = $"Remaining: {_vm.RemainingBudget.ToString("C0", CultureInfo.CurrentCulture)}";
                 }
 
+                // Bind loading overlay visibility to view model IsLoading
+                try
+                {
+                    if (_loadingOverlay != null)
+                    {
+                        try { _loadingOverlay.DataBindings.Clear(); } catch { }
+                        var bs = new BindingSource { DataSource = _vm };
+                        _loadingOverlay.DataBindings.Add(new Binding("Visible", bs, nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading), true, DataSourceUpdateMode.OnPropertyChanged));
+                        _loadingOverlay.BringToFront();
+                    }
+                }
+                catch { }
+
+                // Show no-data overlay when not loading and there are no metrics
+                try
+                {
+                    void UpdateNoData()
+                    {
+                        if (_noDataOverlay == null) return;
+                        bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
+                        _noDataOverlay.Visible = show;
+                        if (show) _noDataOverlay.BringToFront();
+                    }
+
+                    _vm.PropertyChanged += (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading) || e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.Metrics))
+                        {
+                            try
+                            {
+                                if (this.InvokeRequired) BeginInvoke(new Action(UpdateNoData)); else UpdateNoData();
+                            }
+                            catch { }
+                        }
+                    };
+
+                    UpdateNoData();
+                }
+                catch { }
+
                 // details grid mapping
                 var prop = _vm.GetType().GetProperty("DepartmentSummaries") ?? _vm.GetType().GetProperty("Metrics");
                 if (prop != null)
@@ -732,7 +772,7 @@ namespace WileyWidget.WinForms.Controls
 
                                 if (!hasDepartment && !hasBudgeted && !hasActual)
                                 {
-                                    // Probably binding to DashboardMetric or other shape ΓÇö switch to safe two-column mapping (Name/Value)
+                                    // Probably binding to DashboardMetric or other shape - switch to safe two-column mapping (Name/Value)
                                     try
                                     {
                                         try { _detailsGrid.SuspendLayout(); } catch { }
@@ -826,8 +866,8 @@ namespace WileyWidget.WinForms.Controls
                         }
                         catch (Exception ex)
                         {
-                            // Protect the UI thread ΓÇö log and skip binding if Syncfusion throws
-                            try { Serilog.Log.Warning(ex, "DashboardPanel: failed to bind details grid ΓÇö skipping grid bind"); } catch { }
+                            // Protect the UI thread - log and skip binding if Syncfusion throws
+                            try { Serilog.Log.Warning(ex, "DashboardPanel: failed to bind details grid - skipping grid bind"); } catch { }
                         }
                     }
                 }
@@ -907,7 +947,7 @@ namespace WileyWidget.WinForms.Controls
                 var parentForm = this.FindForm();
                 if (parentForm == null) return;
 
-                // Prefer direct API on MainForm where possible ΓÇö avoids reflection brittleness.
+                // Prefer direct API on MainForm where possible - avoids reflection brittleness.
                 if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
                 {
                     try { mf.ShowPanel<TPanel>(panelName); return; } catch { }

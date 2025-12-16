@@ -66,6 +66,14 @@ public class MainFormPage : BasePage
     public AutomationElement? MdiToggleButton =>
         FindElementByAutomationId("Nav_MdiToggle");
 
+    /// <summary>
+    /// Get Theme toggle button (light/dark mode switcher).
+    /// </summary>
+    public AutomationElement? ThemeToggleButton =>
+        FindElementByAutomationId("Theme_Toggle") ??
+        FindElementByName("Light Theme") ??
+        FindElementByName("Dark Theme");
+
     #endregion
 
     #region Docking Panels

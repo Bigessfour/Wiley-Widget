@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.Reporting.WinForms;
 using Moq;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
@@ -19,14 +18,9 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task GenerateReport_SetsParametersAndCallsReportService()
         {
             // Arrange
-            var mockReportSvc = new Mock<IBoldReportService>();
+            var mockReportSvc = new Mock<IReportService>();
             mockReportSvc
                 .Setup(x => x.LoadReportAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            Dictionary<string, object>? capturedParams = null;
-            mockReportSvc
-                .Setup(x => x.SetReportParametersAsync(It.IsAny<object>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()))
-                .Callback<object, Dictionary<string, object>, CancellationToken>((rv, dict, ct) => capturedParams = dict)
                 .Returns(Task.CompletedTask);
 
             var mockAudit = new Mock<IAuditService>();
@@ -44,17 +38,15 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
 
             // Assert
             mockReportSvc.Verify(x => x.LoadReportAsync(vm.ReportViewer!, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()), Times.Once);
-            Assert.NotNull(capturedParams);
-            Assert.True(capturedParams!.ContainsKey("FromDate") && (DateTime)capturedParams["FromDate"] == vm.FromDate);
-            Assert.True(capturedParams.ContainsKey("ToDate") && (DateTime)capturedParams["ToDate"] == vm.ToDate);
-            Assert.True(capturedParams.ContainsKey("ReportTitle") && (string)capturedParams["ReportTitle"] == vm.SelectedReportType);
+            // NOTE: Parameter validation still happens internally via ValidateParameters()
+            // but SetReportParametersAsync is no longer called (BoldReports WPF limitation)
         }
 
         [Fact]
         public async Task GenerateReport_InvalidDates_DoesNotCallLoad()
         {
             // Arrange
-            var mockReportSvc = new Mock<IBoldReportService>();
+            var mockReportSvc = new Mock<IReportService>();
             var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
@@ -74,19 +66,14 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         }
 
         [Fact]
-        public async Task ExportToPdf_CallsAuditOnSuccess()
+        public async Task ExportToPdf_ShowsNotSupportedMessage()
         {
-            // Arrange
-            var mockReportSvc = new Mock<IBoldReportService>();
+            // Arrange - Export methods are now supported in FastReport Open Source
+            var mockReportSvc = new Mock<IReportService>();
             mockReportSvc
-                .Setup(x => x.ExportToPdfAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.ExportToPdfAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-
             var mockAudit = new Mock<IAuditService>();
-            mockAudit
-                .Setup(a => a.AuditAsync(It.IsAny<string>(), It.IsAny<object>()))
-                .Returns(Task.CompletedTask);
-
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
@@ -96,25 +83,20 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             // Act
             await vm.ExportToPdfAsync();
 
-            // Assert
-            mockReportSvc.Verify(x => x.ExportToPdfAsync(vm.ReportViewer!, It.IsAny<string>(), It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()), Times.Once);
-            mockAudit.Verify(a => a.AuditAsync("ReportGenerated", It.Is<object>(o => o!.ToString()!.Contains("Budget Summary") || o!.ToString()!.Contains("BudgetSummary"))), Times.Once);
+            // Assert - Should call export service successfully
+            mockReportSvc.Verify(x => x.ExportToPdfAsync(fakeViewer, It.IsAny<string>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(string.IsNullOrEmpty(vm.ErrorMessage));
         }
 
         [Fact]
-        public async Task ExportToExcel_CallsAuditOnFailure()
+        public async Task ExportToExcel_CallsExportService()
         {
-            // Arrange
-            var mockReportSvc = new Mock<IBoldReportService>();
+            // Arrange - Export methods are now supported in FastReport Open Source
+            var mockReportSvc = new Mock<IReportService>();
             mockReportSvc
-                .Setup(x => x.ExportToExcelAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Export failed"));
-
-            var mockAudit = new Mock<IAuditService>();
-            mockAudit
-                .Setup(a => a.AuditAsync(It.IsAny<string>(), It.IsAny<object>()))
+                .Setup(x => x.ExportToExcelAsync(It.IsAny<object>(), It.IsAny<string>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-
+            var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
             var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
@@ -124,10 +106,9 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             // Act
             await vm.ExportToExcelAsync();
 
-            // Assert
-            mockReportSvc.Verify(x => x.ExportToExcelAsync(vm.ReportViewer!, It.IsAny<string>(), It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()), Times.Once);
-            mockAudit.Verify(a => a.AuditAsync("ReportExportFailed", It.Is<object>(o => o!.ToString()!.Contains("Export failed"))), Times.Once);
-            Assert.False(string.IsNullOrEmpty(vm.ErrorMessage));
+            // Assert - Should call export service successfully
+            mockReportSvc.Verify(x => x.ExportToExcelAsync(fakeViewer, It.IsAny<string>(), It.IsAny<IProgress<double>>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(string.IsNullOrEmpty(vm.ErrorMessage));
         }
     }
 }

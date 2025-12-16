@@ -11,138 +11,16 @@ using WileyWidget.Models;
 using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
-
 /// <summary>
-/// AI Chat control for xAI tool execution and conversational interface.
-/// Uses Syncfusion SfDataGrid for message display following AccountsForm patterns.
+/// AI Chat control for tool execution and conversational interface.
+/// Provides a chat UI, tool detection/execution, and an optional conversational fallback.
 ///
-/// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-/// INTEGRATION DOCUMENTATION - AIChatControl
-/// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-///
-/// DEPENDENCY INJECTION:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// 1. Constructor Dependencies:
-///    - IAIAssistantService: Scoped service for tool parsing and execution
-///    - ILogger&lt;AIChatControl&gt;: Scoped logger for diagnostic output
-///
-/// 2. DI Registration (WileyWidget.WinForms.Configuration.DependencyInjection.cs):
-///    services.AddScoped&lt;AIChatControl&gt;();
-///    services.AddScoped&lt;IAIAssistantService, AIAssistantService&gt;();
-///
-/// 3. Instantiation (MainForm.InitializeComponent):
-///    var aiService = ServiceProviderExtensions.GetRequiredService&lt;IAIAssistantService&gt;(_serviceProvider);
-///    var aiLogger = ServiceProviderExtensions.GetRequiredService&lt;ILogger&lt;AIChatControl&gt;&gt;(_serviceProvider);
-///    _aiChatControl = new AIChatControl(aiService, aiLogger);
-///
-/// SERVICE CONNECTION:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// 1. Tool Detection (ParseInputForTool):
-///    - Regex pattern: (read|grep|search|list|get errors)\s+(.+)
-///    - Examples: "read MainForm.cs", "grep SendMessageAsync", "search AI"
-///    - Returns: ToolCall? with Name, Id, Arguments, ToolType
-///
-/// 2. Tool Execution (ExecuteToolAsync):
-///    - Invokes Python bridge: xai_tool_executor.py
-///    - Subprocess communication with JSON serialization
-///    - Timeout: 30 seconds per tool call
-///    - Concurrency: Limited to 1 execution at a time via SemaphoreSlim
-///    - Returns: ToolCallResult with IsError, Content, ErrorMessage
-///
-/// 3. Message Flow:
-///    SendMessageAsync()
-///      Γö£ΓöÇ Parse user input for tool keywords
-///      Γö£ΓöÇ If tool detected:
-///      Γöé  ΓööΓöÇ Call ExecuteToolAsync(toolCall)
-///      Γöé     Γö£ΓöÇ Show progress panel "ΓÅ│ Executing tool..."
-///      Γöé     Γö£ΓöÇ Wait for Python process completion
-///      Γöé     Γö£ΓöÇ Format result or error message
-///      Γöé     ΓööΓöÇ Return to UI thread
-///      ΓööΓöÇ Add ChatMessage to observable collection
-///         ΓööΓöÇ Render in RichTextBox with formatting
-///
-/// CHAT MESSAGE MODEL:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// ChatMessage.cs properties:
-///   - IsUser: bool (true for user messages, false for AI responses)
-///   - Message: string (primary content)
-///   - Text: string (alias for Message, for binding compatibility)
-///   - Timestamp: DateTime (message creation time)
-///   - Author: object? (optional metadata, used for Syncfusion Author)
-///   - Metadata: IDictionary (arbitrary key-value pairs)
-///   - Factory methods: CreateUserMessage(), CreateAIMessage()
-///
-/// UI COMPONENTS:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// - Header Panel: Title, Clear button
-/// - Messages Display: RichTextBox with formatted chat history
-/// - Input Panel: TextBox for user input, Send button, Tool selector dropdown
-/// - Progress Panel: Shows "ΓÅ│ Executing tool..." during async operations
-/// - Keyboard shortcuts: Enter = Send, Shift+Enter = Newline
-///
-/// ENHANCEMENT OPPORTUNITIES:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// A. FALLBACK CONVERSATIONAL AI: Γ£ô IMPLEMENTED
-///    When no tool is detected, XAIService provides conversational responses:
-///
-///    if (toolCall == null && _conversationalAIService != null)
-///    {
-///        responseMessage = await _conversationalAIService.GetInsightsAsync(
-///            context: "User querying codebase via AI Chat interface",
-///            question: input,
-///            cancellationToken: CancellationToken.None);
-///        responseMessage = $"≡ƒÆ¡ Insights:\n{responseMessage}";
-///    }
-///
-///    Feature Behavior:
-///    - Tool commands (read, grep, search, list) ΓåÆ AIAssistantService (Python bridge)
-///    - Natural language queries ΓåÆ XAIService (xAI API with Polly resilience)
-///    - Graceful fallback if XAIService unavailable or rate-limited
-///    - Error handling with user-friendly messages
-///
-/// B. UNIT TESTS: Γ£ô CREATED
-///    Added: tests/AIChatControl_Integration_Analysis.cs
-///    Added: tests/AIChatControl_SendMessageAsync_Tests.cs
-///    - Mock IAIAssistantService and IAIService for unit testing
-///    - Test tool detection: read, grep, search, list, get errors
-///    - Test message collection binding
-///    - Test conversational fallback
-///
-/// C. DUPLICATE AUDIT: Γ£ô COMPLETED
-///    Added: tests/AIServices_Audit_Duplicates.cs
-///    - Verified no duplicate AI service implementations
-///    - Confirmed AIAssistantService and XAIService are complementary:
-///      * AIAssistantService: Tool execution (filesystem, semantic search)
-///      * XAIService: Conversational insights (via xAI API)
-///    - Both properly registered under different interfaces
-///
-/// D. ERROR HANDLING:
-///    - Tool execution errors caught and displayed in chat
-///    - ToolCallResult.IsError flag indicates failure
-///    - Timeout after 30s with user-friendly message
-///    - Concurrency semaphore prevents overlapping executions
-///
-/// E. MESSAGE PERSISTENCE (Future):
-///    - Save/load chat history from local file or database
-///    - Implement IAsyncDisposable for cleanup
-///
-/// TESTING:
-/// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-/// Run integration tests:
-///   dotnet test tests/AIChatControl_Integration_Analysis.cs
-///   dotnet test tests/AIServices_Audit_Duplicates.cs
-///
-/// Manual testing:
-///   1. Launch application (dotnet run --project src/WileyWidget.WinForms)
-///   2. Open AI Chat panel (Ctrl+1 or toolbar button)
-///   3. Try commands:
-///      - "read MainForm.cs" ΓåÆ reads file
-///      - "grep SendMessageAsync" ΓåÆ searches for pattern
-///      - "search AI chat integration" ΓåÆ semantic search
-///      - "list src/" ΓåÆ lists directory
-///      - "hello world" ΓåÆ no tool detected (future: fallback to conversational)
-///
-/// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/// Integration notes:
+/// - DI: Register `AIChatControl`, `IAIAssistantService`, and related services in the DI container.
+/// - Tool execution: Parses commands (read, grep, search, list) and invokes the IAIAssistantService bridge.
+/// - Fallback: If no tool is detected and an `IAIService` is available, uses conversational API responses.
+/// - UI: Header, messages display (RichTextBox), input box, tool selector, send/clear buttons, and progress panel.
+/// - Testing: Unit and integration tests cover tool detection and message handling.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class AIChatControl : UserControl
@@ -228,7 +106,7 @@ public partial class AIChatControl : UserControl
 
         _headerLabel = new Label
         {
-            Text = "≡ƒñû AI Assistant",
+            Text = "AI Assistant",
             Dock = DockStyle.Left,
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             ForeColor = ThemeColors.HeaderText,
@@ -292,7 +170,7 @@ public partial class AIChatControl : UserControl
         _progressLabel = new Label
         {
             Dock = DockStyle.Fill,
-            Text = "ΓÅ│ Executing tool...",
+            Text = "Executing tool...",
             TextAlign = ContentAlignment.MiddleCenter,
             ForeColor = ThemeColors.Warning,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Italic)
@@ -320,8 +198,8 @@ public partial class AIChatControl : UserControl
         };
         _toolComboBox.AccessibleName = "Tool selector";
         _toolComboBox.AccessibleDescription = "Select a tool to use for parsing commands or leave as auto-detect.";
-        _toolComboBox.Items.Add("≡ƒöì Auto-detect tool");
-        _toolComboBox.Items.AddRange(_aiService.GetAvailableTools().Select(t => $"≡ƒ¢á∩╕Å {t.Name} - {t.Description}").ToArray());
+        _toolComboBox.Items.Add("Auto-detect tool");
+        _toolComboBox.Items.AddRange(_aiService.GetAvailableTools().Select(t => $"{t.Name} - {t.Description}").ToArray());
         _toolComboBox.SelectedIndex = 0;
 
         // Enhanced input text box
@@ -347,7 +225,7 @@ public partial class AIChatControl : UserControl
             Location = new Point(355, 45),
             Width = 70,
             Height = 55,
-            Text = "≡ƒôñ\nSend",
+            Text = "Send",
             BackColor = ThemeColors.PrimaryAccent,
             ForeColor = ThemeColors.HeaderText,
             FlatStyle = FlatStyle.Flat,
@@ -420,7 +298,7 @@ public partial class AIChatControl : UserControl
             {
                 _messagesDisplay.SelectionColor = ThemeColors.PrimaryAccent;
                 _messagesDisplay.SelectionFont = new Font(_messagesDisplay.Font, FontStyle.Bold);
-                _messagesDisplay.AppendText("≡ƒñû AI Assistant: ");
+                _messagesDisplay.AppendText("AI Assistant: ");
                 _messagesDisplay.SelectionColor = Color.Black;
                 _messagesDisplay.SelectionFont = new Font(_messagesDisplay.Font, FontStyle.Regular);
                 _messagesDisplay.AppendText(welcomeMessage + Environment.NewLine + Environment.NewLine);
@@ -502,7 +380,7 @@ public partial class AIChatControl : UserControl
                 catch (Exception ex)
                 {
                     // Bubble any event handler failure into the chat display
-                    Messages.Add(new ChatMessage { IsUser = false, Message = $"Γ¥î Event handler error: {ex.Message}", Timestamp = DateTime.Now });
+                    Messages.Add(new ChatMessage { IsUser = false, Message = $"Event handler error: {ex.Message}", Timestamp = DateTime.Now });
                     var lastMsg = Messages.LastOrDefault();
                     if (lastMsg != null)
                         AppendMessageToDisplay(lastMsg);
@@ -545,7 +423,7 @@ public partial class AIChatControl : UserControl
 
                 if (result.IsError)
                 {
-                    responseMessage = $"Γ¥î Error: {result.ErrorMessage}";
+                    responseMessage = $"Error: {result.ErrorMessage}";
                 }
                 else
                 {
@@ -554,7 +432,7 @@ public partial class AIChatControl : UserControl
                     var content = safeContent.Length > 1000
                         ? safeContent[..1000] + "\n\n... (truncated for display)"
                         : safeContent;
-                    responseMessage = $"Γ£à Tool: {toolCall.Name}\n{new string('-', 40)}\n{content}";
+                    responseMessage = $"Tool: {toolCall.Name}\n{new string('-', 40)}\n{content}";
                 }
             }
             else
@@ -572,13 +450,13 @@ public partial class AIChatControl : UserControl
 
                         if (string.IsNullOrWhiteSpace(responseMessage))
                         {
-                            responseMessage = "Γä╣∩╕Å No response from AI service. Try a tool command instead.";
+                            responseMessage = "No response from AI service. Try a tool command instead.";
                             _logger.LogWarning("XAI service returned empty response");
                         }
                         else
                         {
-                            responseMessage = $"≡ƒÆ¡ AI Insights:\n{responseMessage}";
-                            _logger.LogInformation("Γ£ô Conversational AI response received ({Length} chars)", responseMessage.Length);
+                            responseMessage = $"AI Insights:\n{responseMessage}";
+                            _logger.LogInformation("Conversational AI response received ({Length} chars)", responseMessage.Length);
                         }
                     }
                     catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("API key", StringComparison.OrdinalIgnoreCase))
@@ -605,7 +483,7 @@ public partial class AIChatControl : UserControl
                 else
                 {
                     // No conversational AI available; show tool help
-                    responseMessage = "Γä╣∩╕Å No tool detected. Conversational AI not configured.\n\nAvailable commands:\nΓÇó read <file>\nΓÇó grep <pattern>\nΓÇó list <directory>\nΓÇó search <query>\n\nTo enable AI chat: Set XAI_API_KEY environment variable.";
+                    responseMessage = "No tool detected. Conversational AI not configured.\n\nAvailable commands:\n- read <file>\n- grep <pattern>\n- list <directory>\n- search <query>\n\nTo enable AI chat: Set XAI_API_KEY environment variable.";
                     _logger.LogDebug("Conversational AI not configured; showing help message");
                 }
             }
@@ -710,9 +588,9 @@ public partial class AIChatControl : UserControl
             // Timestamp and sender header
             _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
             _messagesDisplay.SelectionColor = message.IsUser ? ThemeColors.PrimaryAccent : ThemeColors.Success;
-            var sender = message.IsUser ? "≡ƒæñ You" : "≡ƒñû AI Assistant";
+            var sender = message.IsUser ? "You" : "AI Assistant";
             var timestamp = message.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-            _messagesDisplay.AppendText($"{sender} ΓÇó {timestamp}\n");
+            _messagesDisplay.AppendText($"{sender} - {timestamp}\n");
 
             // Message content
             _messagesDisplay.SelectionFont = new Font("Segoe UI", 10f, FontStyle.Regular);
@@ -761,9 +639,9 @@ public partial class AIChatControl : UserControl
                 _messagesDisplay.SelectionLength = 0;
                 _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
                 _messagesDisplay.SelectionColor = m.IsUser ? ThemeColors.PrimaryAccent : ThemeColors.Success;
-                var sender = m.IsUser ? "≡ƒæñ You" : "≡ƒñû AI Assistant";
+                var sender = m.IsUser ? "You" : "AI Assistant";
                 var timestamp = m.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-                _messagesDisplay.AppendText($"{sender} ΓÇó {timestamp}\n");
+                _messagesDisplay.AppendText($"{sender} - {timestamp}\n");
                 _messagesDisplay.SelectionFont = new Font("Segoe UI", 10f, FontStyle.Regular);
                 _messagesDisplay.SelectionColor = Color.Black;
                 _messagesDisplay.AppendText($"{m.Message}\n");

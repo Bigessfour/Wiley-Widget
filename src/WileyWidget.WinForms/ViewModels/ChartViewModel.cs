@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -20,6 +21,7 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly ILogger<ChartViewModel> _logger;
         private readonly IDashboardService _dashboardService;
+        private readonly IConfiguration _configuration;
 
         [ObservableProperty]
         private string? errorMessage;
@@ -41,6 +43,8 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private string selectedChartType = "Line";
+        private ILogger<ChartViewModel> object1;
+        private IDashboardService object2;
 
         public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
         public ObservableCollection<(string Category, decimal Value)> PieChartData { get; } = new();
@@ -50,15 +54,27 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand<int> LoadChartsByYearCommand { get; }
 
-        public ChartViewModel(ILogger<ChartViewModel> logger, IDashboardService dashboardService)
+        public ChartViewModel(ILogger<ChartViewModel> logger, IDashboardService dashboardService, IConfiguration configuration)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            // Set default fiscal year from configuration
+            SelectedYear = _configuration.GetValue<int>("UI:FiscalYear", DateTime.UtcNow.Year);
+            SelectedStartDate = new(SelectedYear, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            SelectedEndDate = new(SelectedYear, 12, 31, 23, 59, 59, DateTimeKind.Utc);
 
             RefreshCommand = new AsyncRelayCommand(LoadChartDataAsync);
             LoadChartsByYearCommand = new AsyncRelayCommand<int>(async year => await LoadChartsAsync(year));
 
             _logger.LogInformation("ChartViewModel constructed");
+        }
+
+        public ChartViewModel(ILogger<ChartViewModel> object1, IDashboardService object2)
+        {
+            this.object1 = object1;
+            this.object2 = object2;
         }
 
         /// <summary>

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Windows.Forms;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
@@ -16,6 +18,7 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Configuration;
 
 #pragma warning disable CS8604 // Possible null reference argument
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
@@ -37,14 +40,21 @@ namespace WileyWidget.WinForms.Forms
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : Form, IViewManager
+    public partial class MainForm : SfForm, IViewManager
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
+
+        /// <summary>
+        /// Public accessor for ServiceProvider used by child forms.
+        /// </summary>
+        public IServiceProvider ServiceProvider => _serviceProvider ?? throw new InvalidOperationException("ServiceProvider not initialized");
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
+        private bool _reportViewerLaunched;
         private ToolStripTabItem? _homeTab;
         private ToolStripEx? _navigationStrip;
         private StatusBarAdv? _statusBar;
@@ -67,15 +77,17 @@ namespace WileyWidget.WinForms.Forms
             : this(
                 Program.Services ?? new ServiceCollection().BuildServiceProvider(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance)
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
         {
         }
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
+            _reportViewerLaunchOptions = reportViewerLaunchOptions;
 
             // Load UI configuration
             var uiMode = _configuration.GetValue<string>("UI:UIMode");
@@ -103,13 +115,37 @@ namespace WileyWidget.WinForms.Forms
                 throw;
             }
 
+            // For UI test harness mode, default MDI to disabled to avoid flakiness in headless
+            // environments, but DO NOT override explicit configuration values. Tests that set
+            // UI:UseMdiMode or UI:UseTabbedMdi expect those settings to be honored.
             if (_isUiTestHarness)
             {
-                _useMdiMode = false;
-                _useTabbedMdi = false;
-                _useSyncfusionDocking = true; // Keep docking enabled even for UI tests
-                IsMdiContainer = false;
-                _logger.LogInformation("UI test harness detected; disabling MDI but keeping Syncfusion docking enabled");
+                var explicitMdi = _configuration.GetValue<bool?>("UI:UseMdiMode");
+                var explicitTabbed = _configuration.GetValue<bool?>("UI:UseTabbedMdi");
+                var explicitDocking = _configuration.GetValue<bool?>("UI:UseDockingManager");
+
+                if (!explicitMdi.HasValue)
+                {
+                    _useMdiMode = false;
+                }
+
+                if (!explicitTabbed.HasValue)
+                {
+                    _useTabbedMdi = false;
+                }
+
+                if (!explicitDocking.HasValue)
+                {
+                    _useSyncfusionDocking = true; // default to docking in test harness
+                }
+
+                // Only clear IsMdiContainer if no explicit MDI mode was requested
+                if ((!explicitMdi.HasValue || !_useMdiMode) && (!explicitTabbed.HasValue || !_useTabbedMdi))
+                {
+                    IsMdiContainer = false;
+                }
+
+                _logger.LogInformation("UI test harness detected; defaulting to Docking unless MDI is explicitly requested");
             }
 
             _logger.LogInformation("UI Config loaded: UIMode={UIMode}, UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
@@ -399,14 +435,113 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
             }
 
-            if (!_dashboardAutoShown)
-            {
-                try { ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false); _dashboardAutoShown = true; }
-                catch (Exception ex) { _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup"); }
-            }
-
             try { EnsureCentralPanelVisibility(); }
             catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure central panel visibility after dashboard open"); }
+
+            // Gate Dashboard auto-show behind config to improve startup UX
+            var autoShowDashboard = _configuration?.GetValue<bool>("UI:AutoShowDashboard", false) ?? false;
+            if (autoShowDashboard && !_dashboardAutoShown)
+            {
+                try
+                {
+                    // FIXED: Use MDI for Forms (not docking generics)
+                    ShowChildFormMdi<DashboardForm, DashboardViewModel>();
+                    _dashboardAutoShown = true;
+                    _logger?.LogInformation("Dashboard auto-shown on startup (UI:AutoShowDashboard=true)");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup");
+                }
+                finally
+                {
+                    // Record that we attempted auto-show so we don't keep retrying on subsequent loads
+                    _dashboardAutoShown = true;
+                }
+            }
+            TryLaunchReportViewerOnLoad();
+        }
+
+        private void TryLaunchReportViewerOnLoad()
+        {
+            if (_reportViewerLaunchOptions == null || !_reportViewerLaunchOptions.ShowReportViewer)
+            {
+                return;
+            }
+
+            if (_reportViewerLaunched)
+            {
+                _logger?.LogDebug("Report viewer launch already handled for {ReportPath}", _reportViewerLaunchOptions.ReportPath);
+                return;
+            }
+
+            var reportPath = _reportViewerLaunchOptions.ReportPath;
+            if (string.IsNullOrWhiteSpace(reportPath))
+            {
+                _logger?.LogWarning("Report viewer launch requested but no report path was supplied");
+                return;
+            }
+
+            if (!File.Exists(reportPath))
+            {
+                _logger?.LogWarning("Report viewer launch requested but report file was missing: {ReportPath}", reportPath);
+                return;
+            }
+
+            try
+            {
+                ShowReportViewerForm(reportPath);
+                _reportViewerLaunched = true;
+                _logger?.LogInformation("Report viewer opened for CLI path: {ReportPath}", reportPath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to open report viewer for {ReportPath}", reportPath);
+            }
+        }
+
+        private void ShowReportViewerForm(string reportPath)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(() => ShowReportViewerForm(reportPath)));
+                return;
+            }
+
+            if (!File.Exists(reportPath))
+            {
+                _logger?.LogWarning("Report viewer path became unavailable before launch: {ReportPath}", reportPath);
+                return;
+            }
+
+            var reportViewer = new ReportViewerForm(this, reportPath);
+
+            if (_useMdiMode)
+            {
+                if (!IsMdiContainer)
+                {
+                    IsMdiContainer = true;
+                }
+
+                RegisterMdiChildWithDocking(reportViewer);
+
+                try
+                {
+                    if (!reportViewer.IsMdiChild)
+                    {
+                        reportViewer.MdiParent = this;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to assign MdiParent to ReportViewerForm");
+                }
+
+                reportViewer.Show();
+                return;
+            }
+
+            reportViewer.Show(this);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -498,13 +633,20 @@ namespace WileyWidget.WinForms.Forms
             // DockingManager should only handle dockable panels, not document windows.
             if (_useTabbedMdi && _useSyncfusionDocking)
             {
-                _logger.LogInformation("TabbedMDI enabled: DockingManager will use panel mode only (document mode disabled for TabbedMDI integration)");
-                // Note: _dockingManager.EnableDocumentMode will be set to false in InitializeSyncfusionDocking
+                _logger.LogWarning("TabbedMDI and Docking DocumentMode are incompatible; forcing DocumentMode=false.");
+                // Note: InitializeSyncfusionDocking computes and applies DocumentMode = _useSyncfusionDocking && _useMdiMode && !_useTabbedMdi
+            }
+            else if (_useSyncfusionDocking)
+            {
+                _logger.LogInformation("TabbedMDI disabled: Using standard docking mode");
             }
 
             // Log final validated configuration
             _logger.LogInformation("UI configuration validated: Docking={Docking}, MDI={Mdi}, TabbedMDI={Tabbed}",
                 _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
+
+            // Enforce authorized theme: Office2019Colorful
+            this.ThemeName = "Office2019Colorful";
         }
 
         /// <summary>

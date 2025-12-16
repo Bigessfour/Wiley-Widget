@@ -121,7 +121,7 @@ namespace WileyWidget.WinForms.Dialogs
 
             foreach (var error in errors)
             {
-                _errorListBox.Items.Add($"ΓÇó {error}");
+                _errorListBox.Items.Add($"- {error}");
             }
 
             mainPanel.SetColumnSpan(_errorListBox, 2);

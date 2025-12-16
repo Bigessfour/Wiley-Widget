@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.ObjectModel;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -24,6 +25,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// Comprehensive dashboard view model with real data from repositories
     /// </summary>
+
     public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         private readonly IBudgetRepository? _budgetRepository;
@@ -33,6 +35,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly System.Threading.SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
         private bool _disposed;
+        private readonly IConfiguration? _configuration;
 
         #region Observable Properties
 
@@ -140,11 +143,13 @@ namespace WileyWidget.WinForms.ViewModels
         public DashboardViewModel(
             IBudgetRepository? budgetRepository,
             IMunicipalAccountRepository? accountRepository,
-            ILogger<DashboardViewModel>? logger)
+            ILogger<DashboardViewModel>? logger,
+            IConfiguration? configuration = null)
         {
             _budgetRepository = budgetRepository;
             _accountRepository = accountRepository;
             _logger = logger ?? NullLogger<DashboardViewModel>.Instance;
+            _configuration = configuration;
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
@@ -158,7 +163,7 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         public DashboardViewModel()
-            : this(null, null, NullLogger<DashboardViewModel>.Instance)
+            : this(null, null, NullLogger<DashboardViewModel>.Instance, null)
         {
         }
 
@@ -203,8 +208,48 @@ namespace WileyWidget.WinForms.ViewModels
                         // Check for cancellation
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        // Get current fiscal year (hardcoded to 2026 for now, should come from settings)
-                        var currentFiscalYear = 2026;
+                        // Determine which fiscal year to load.
+                        // Priority:
+                        // 1. Environment variable WILEYWIDGET_DEFAULT_FISCAL_YEAR
+                        // 2. Configuration key "UI:DefaultFiscalYear" or "Dashboard:DefaultFiscalYear"
+                        // 3. Computed fiscal year based on today's date (FY increases on July 1)
+                        int currentFiscalYear;
+                        try
+                        {
+                            var envVal = Environment.GetEnvironmentVariable("WILEYWIDGET_DEFAULT_FISCAL_YEAR");
+                            if (!string.IsNullOrWhiteSpace(envVal) && int.TryParse(envVal, out var envFy))
+                            {
+                                currentFiscalYear = envFy;
+                                _logger.LogInformation("Using fiscal year from environment: {FiscalYear}", currentFiscalYear);
+                            }
+                            else if (_configuration != null)
+                            {
+                                var cfgFy = _configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? _configuration.GetValue<int?>("Dashboard:DefaultFiscalYear");
+                                if (cfgFy.HasValue)
+                                {
+                                    currentFiscalYear = cfgFy.Value;
+                                    _logger.LogInformation("Using fiscal year from configuration: {FiscalYear}", currentFiscalYear);
+                                }
+                                else
+                                {
+                                    var now = DateTime.Now;
+                                    currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                                }
+                            }
+                            else
+                            {
+                                var now = DateTime.Now;
+                                currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+                                _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to determine fiscal year from env/config; falling back to computed value");
+                            var now = DateTime.Now;
+                            currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+                        }
                         var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1); // July 1
                         var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30); // June 30
 
@@ -284,8 +329,13 @@ namespace WileyWidget.WinForms.ViewModels
                         LastUpdated = DateTime.Now;
                         StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
 
-                        _logger.LogInformation("Dashboard data loaded successfully. Total Budget: {Budget:C}, Total Actual: {Actual:C}, Variance: {Variance:C}",
-                            TotalBudgeted, TotalActual, TotalVariance);
+                        _logger.LogInformation("Dashboard data loaded successfully: {ItemCount} metrics, Revenue: {Revenue:C}, Expenses: {Expenses:C}",
+                            Metrics.Count, TotalRevenue, TotalExpenses);
+                        _logger.LogInformation("Dashboard metrics updated: NetPosition={NetPosition:C}, Budgeted={Budgeted:C}, Actual={Actual:C}",
+                            NetIncome, TotalBudgeted, TotalActual);
+                        _logger.LogInformation("Dashboard collections: {FundCount} funds, {DeptCount} departments, {VarianceCount} variances",
+                            FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
+                        _logger.LogInformation("Dashboard load completed successfully");
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -293,6 +343,14 @@ namespace WileyWidget.WinForms.ViewModels
                     {
                         // Re-throw cancellation exceptions
                         throw;
+                    }
+                    catch (ObjectDisposedException odex)
+                    {
+                        // The view model or its dependencies were disposed (likely during shutdown).
+                        // Do not retry on ObjectDisposedException; stop attempts and exit gracefully.
+                        _logger.LogInformation(odex, "Dashboard load aborted due to disposal; stopping retries");
+                        ErrorMessage = "Dashboard load aborted due to shutdown";
+                        break;
                     }
                     catch (Exception ex)
                     {
@@ -391,6 +449,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private void UpdateMetricsCollection()
         {
+            _logger.LogDebug("UpdateMetricsCollection: Starting metrics update");
             Metrics.Clear();
 
             Metrics.Add(new DashboardMetric
@@ -472,6 +531,8 @@ namespace WileyWidget.WinForms.ViewModels
                 ChangePercent = 0.0,
                 Description = "Number of departments with budget entries"
             });
+
+            _logger.LogInformation("UpdateMetricsCollection: Metrics collection populated with {Count} items", Metrics.Count);
         }
 
         /// <summary>
@@ -479,6 +540,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private void PopulateMonthlyRevenueData(int fiscalYear)
         {
+            _logger.LogDebug("PopulateMonthlyRevenueData: Starting for FY {FiscalYear}", fiscalYear);
             MonthlyRevenueData.Clear();
 
             // Generate 12 months of data (July to June for fiscal year)
@@ -495,6 +557,8 @@ namespace WileyWidget.WinForms.ViewModels
                     Amount = TotalRevenue > 0 ? TotalRevenue / 12 * (decimal)(0.8 + random.NextDouble() * 0.4) : 0
                 });
             }
+
+            _logger.LogInformation("PopulateMonthlyRevenueData: Chart data populated with {Count} months", MonthlyRevenueData.Count);
         }
 
         /// <summary>

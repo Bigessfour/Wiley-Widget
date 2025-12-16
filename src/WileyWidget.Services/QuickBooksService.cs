@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.RateLimiting;
 using Intuit.Ipp.Core;
 using Intuit.Ipp.Data;
 using Intuit.Ipp.DataService;
@@ -17,8 +18,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Services.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.Services;
 
@@ -32,6 +33,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
+    private readonly QuickBooksAuthService _authService;
 
     // Values loaded lazily from secret vault or environment
     private string? _clientId;
@@ -59,8 +61,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IQuickBooksDataService? _injectedDataService;
+    private readonly RateLimiter _rateLimiter;
 
-    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider)
+    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -68,6 +72,21 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         _secretVault = keyVaultService; // may be null in some test contexts
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _injectedDataService = dataService;
+
+        // Initialize rate limiter: 10 requests per second to avoid QuickBooks API throttling
+        _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 10,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 100,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            TokensPerPeriod = 10,
+            AutoReplenishment = true
+        });
+
+        // Initialize auth service
+        _authService = new QuickBooksAuthService(settings, keyVaultService, logger, httpClient, serviceProvider);
 
         // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
         EnsureSettingsLoaded();
@@ -75,8 +94,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     public void Dispose()
     {
+        _authService.Dispose();
         _initSemaphore.Dispose();
         _cloudflaredSemaphore.Dispose();
+        _rateLimiter.Dispose();
         try
         {
             if (_cloudflaredProcess is { HasExited: false })
@@ -256,15 +277,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public bool HasValidAccessToken()
-    {
-        var s = EnsureSettingsLoaded();
-        // Consider token valid if set and expires more than 60s from now (renew early to avoid edge expiry in-flight)
-        if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
-        // Default(DateTime) means 'unset'
-        if (s.QboTokenExpiry == default) return false;
-        return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
-    }
+    public bool HasValidAccessToken() => _authService.HasValidAccessToken();
 
     public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()
     {
@@ -282,58 +295,55 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return;
         }
 
-        await RefreshTokenAsync();
+        await _authService.RefreshTokenAsync();
     }
 
-    public async System.Threading.Tasks.Task RefreshTokenAsync()
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        var s = EnsureSettingsLoaded();
-
-        try
-        {
-            var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
-            s.QboAccessToken = result.AccessToken;
-            s.QboRefreshToken = result.RefreshToken;
-            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-            _settings.Save();
-            Serilog.Log.Information("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "Failed to refresh QBO access token");
-            // Clear invalid tokens to force re-authorization
-            s.QboAccessToken = null;
-            s.QboRefreshToken = null;
-            s.QboTokenExpiry = default;
-            _settings.Save();
-            throw new InvalidOperationException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
-        }
-    }
+    public async System.Threading.Tasks.Task RefreshTokenAsync() => await _authService.RefreshTokenAsync();
 
     private (ServiceContext Ctx, DataService Ds) GetDataService()
     {
-        var s = EnsureSettingsLoaded();
-        if (!HasValidAccessToken()) throw new InvalidOperationException("Access token invalid – refresh required.");
-        if (string.IsNullOrWhiteSpace(_realmId))
+        var accessToken = _authService.GetAccessToken();
+        var realmId = _authService.GetRealmId();
+        if (string.IsNullOrWhiteSpace(realmId))
             throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
 
         // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
-        var validator = new OAuth2RequestValidator(s.QboAccessToken);
-        var ctx = new ServiceContext(_realmId!, IntuitServicesType.QBO, validator);
-        ctx.IppConfiguration.BaseUrl.Qbo = _environment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
+        var validator = new OAuth2RequestValidator(accessToken);
+        var ctx = new ServiceContext(realmId!, IntuitServicesType.QBO, validator);
+        ctx.IppConfiguration.BaseUrl.Qbo = _authService.GetEnvironment() == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
         return (ctx, new DataService(ctx));
     }
 
+    /// <summary>
+    /// Resolve an IQuickBooksDataService for use by service methods.
+    /// Returns the injected test double when present; otherwise constructs
+    /// an IntuitDataServiceAdapter after ensuring auth when requested.
+    /// </summary>
+    private async System.Threading.Tasks.Task<IQuickBooksDataService> ResolveDataServiceAsync(bool requireAuth = true)
+    {
+        // Use injected test double if provided (tests can inject a fake implementation)
+        if (_injectedDataService != null) return _injectedDataService;
+
+        if (requireAuth)
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync().ConfigureAwait(false);
+        }
+
+        var p = GetDataService();
+        return new IntuitDataServiceAdapter(p.Ctx);
+    }
+
+
+
     public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
     {
-        await EnsureInitializedAsync().ConfigureAwait(false);
         try
         {
-            await RefreshTokenIfNeededAsync();
-            var p = GetDataService();
+            // Use injected data service when available to avoid requiring auth in tests
+            var ds = _injectedDataService ?? await ResolveDataServiceAsync();
             // Try to fetch a small amount of data to test the connection
-            var customers = p.Ds.FindAll(new Customer(), 1, 1).ToList();
+            var customers = ds.FindCustomers(1, 1);
             return true;
         }
         catch (Exception ex)
@@ -434,11 +444,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-            var p = GetDataService();
-            // Fetch customers from QuickBooks
-            return p.Ds.FindAll(new Customer(), 1, 100).ToList();
+            // Resolve the data service (use injected test double when present)
+            var ds = await ResolveDataServiceAsync();
+            return ds.FindCustomers(1, 100);
         }
         catch (Exception ex)
         {
@@ -447,23 +455,38 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    public async System.Threading.Tasks.Task<List<Vendor>> GetVendorsAsync()
+    {
+        try
+        {
+            // Resolve the data service (use injected test double when present)
+            var ds = await ResolveDataServiceAsync();
+            return ds.FindVendors(1, 100);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO vendors fetch failed");
+            throw;
+        }
+    }
+
     public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null)
     {
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-
-            // Prefer the injected API client so tests can mock QBO calls without network access.
-            var invoices = await _apiClient.GetInvoicesAsync().ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(enterprise))
             {
-                return invoices;
+                var ds = await ResolveDataServiceAsync();
+                return ds.FindInvoices(1, 100);
             }
 
-            return invoices
-                .Where(i => string.Equals(i?.CustomerRef?.name, enterprise, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            // For advanced queries (custom field filter) we require a ServiceContext
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            var p = GetDataService();
+            var query = $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
+            var qs = new QueryService<Invoice>(p.Ctx);
+            return qs.ExecuteIdsQuery(query).ToList();
         }
         catch (Exception ex)
         {
@@ -476,8 +499,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
+            // If a test double has been injected, use it directly to avoid requiring auth
+            var ds = _injectedDataService ?? await ResolveDataServiceAsync();
 
             var allAccounts = new List<Account>();
             const int pageSize = 500; // QuickBooks recommended page size
@@ -489,8 +512,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             while (pageCount < maxPages)
             {
-                var p = GetDataService();
-                var pageAccounts = p.Ds.FindAll(new Account(), startPosition, pageSize).ToList();
+                var pageAccounts = ds.FindAccounts(startPosition, pageSize);
 
                 if (pageAccounts == null || pageAccounts.Count == 0)
                 {
@@ -538,14 +560,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-            var p = GetDataService();
-
-            // Query journal entries within date range
-            var query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
-            var qs = new QueryService<JournalEntry>(p.Ctx);
-            return qs.ExecuteIdsQuery(query).ToList();
+            var ds = _injectedDataService ?? await ResolveDataServiceAsync();
+            return ds.FindJournalEntries(startDate, endDate);
         }
         catch (Exception ex)
         {
@@ -554,17 +570,31 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    // TODO: Re-enable when Budget type is available or custom implementation is created
-    /*
     public async System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync()
     {
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-            var p = GetDataService();
-            // Fetch budgets from QuickBooks
-            return p.Ds.FindAll(new Budget(), 1, 100).ToList();
+            // Use injected data service when available to avoid requiring auth in tests
+            var ds = _injectedDataService ?? await ResolveDataServiceAsync();
+            // Fetch budgets using the data service (paginated)
+            var allBudgets = new List<Budget>();
+            const int pageSize = 100;
+            int startPosition = 1;
+
+            while (true)
+            {
+                var page = ds.FindBudgets(startPosition, pageSize);
+                if (page == null || page.Count == 0)
+                {
+                    break;
+                }
+
+                allBudgets.AddRange(page);
+                if (page.Count < pageSize) break;
+                startPosition += pageSize;
+            }
+
+            return allBudgets;
         }
         catch (Exception ex)
         {
@@ -572,15 +602,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             throw;
         }
     }
-    */
 
-    // TODO: Re-enable when Budget type is available or custom implementation is created
-    /*
-    /// <summary>
-    /// Syncs budgets to QuickBooks Online via REST API.
-    /// Uses IHttpClientFactory to create named 'QBO' client with proper authentication.
-    /// On success, publishes event to refresh UI (e.g., SfDataGrid in SettingsView).
-    /// </summary>
     public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default)
     {
         if (budgets == null)
@@ -594,52 +616,53 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
 
-            // Use configured realmId if available; otherwise fall back to settings (legacy) or allow empty to support test harnesses
-            var realmId = _realmId ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
+            var realmId = _authService.GetRealmId() ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
 
-            var s = EnsureSettingsLoaded();
-            if (!HasValidAccessToken())
-            {
-                return new SyncResult
-                {
-                    Success = false,
-                    ErrorMessage = "Access token invalid – refresh required.",
-                    Duration = stopwatch.Elapsed
-                };
-            }
+            var accessToken = _authService.GetAccessToken();
 
-            // Use IHttpClientFactory to get named 'QBO' client
+            // Prefer the HttpClient injected into the service (tests pass a configured client).
+            // Fall back to a named client from the factory when an injected client is not present.
             var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
-            if (httpClientFactory == null)
+            var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
+            if (client == null)
             {
                 _logger.LogError("IHttpClientFactory not available - cannot sync budgets to QBO");
                 return new SyncResult
                 {
                     Success = false,
-                    ErrorMessage = "IHttpClientFactory not registered in DI container",
+                    ErrorMessage = "IHttpClientFactory not registered in DI container and no HttpClient injected",
                     Duration = stopwatch.Elapsed
                 };
             }
 
-        // Prefer the HttpClient injected into the service (tests pass a configured client).
-        // Fall back to a named client from the factory when an injected client is not present.
-        var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
             client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
+            // Set base URL for QBO API calls based on environment
+            var baseUrl = _environment == "sandbox"
+                ? "https://sandbox-quickbooks.api.intuit.com/"
+                : "https://quickbooks.api.intuit.com/";
+            client.BaseAddress = new Uri(baseUrl);
+
             int syncedCount = 0;
+            bool hadFailures = false;
+
             foreach (var budget in budgets)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // QBO API: POST /v3/company/{realmId}/budget
-                var endpoint = $"v3/company/{realmId}/budget";
-                var json = System.Text.Json.JsonSerializer.Serialize(budget);
-
-                using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+                // Rate limiting: acquire permit before making API call
+                using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false);
+                if (lease.IsAcquired)
                 {
+                    // QBO API: POST /v3/company/{realmId}/budget
+                    var endpoint = $"v3/company/{realmId}/budget";
+                    var json = System.Text.Json.JsonSerializer.Serialize(budget);
+
+                    using var content = new StringContent(json, Encoding.UTF8, "application/json");
                     var endpointUri = new Uri(endpoint, UriKind.Relative);
                     var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
+
                     if (response.IsSuccessStatusCode)
                     {
                         syncedCount++;
@@ -647,20 +670,31 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                     }
                     else
                     {
+                        hadFailures = true;
                         var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                         _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}",
                             budget.Id, response.StatusCode, errorBody);
                     }
                 }
+                else
+                {
+                    hadFailures = true;
+                    _logger.LogWarning("Rate limit exceeded, could not sync budget {BudgetId}", budget.Id);
+                }
             }
 
             stopwatch.Stop();
 
+            // Log sync performance metrics
+            _logger.LogInformation("Budget sync completed: {SyncedCount}/{TotalCount} budgets synced in {DurationMs}ms, Success: {Success}",
+                syncedCount, budgets.Count(), stopwatch.ElapsedMilliseconds, !hadFailures);
+
             return new SyncResult
             {
-                Success = true,
+                Success = !hadFailures,
                 RecordsSynced = syncedCount,
-                Duration = stopwatch.Elapsed
+                Duration = stopwatch.Elapsed,
+                ErrorMessage = hadFailures ? "One or more budgets failed to sync" : null
             };
         }
         catch (OperationCanceledException)
@@ -686,95 +720,128 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             };
         }
     }
-    */
 
-    // TODO: Re-enable when Budget type is available or custom implementation is created
-    /*
-    /// <summary>
-    /// Synchronizes budgets from QuickBooks to the app, handling cancellation gracefully.
-    /// </summary>
-    public async System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(List<Intuit.Ipp.Data.Budget> budgets, CancellationToken cancellationToken = default)
+
+
+    public async System.Threading.Tasks.Task<SyncResult> SyncVendorsToAppAsync(IEnumerable<Vendor> vendors, CancellationToken cancellationToken = default)
     {
-        var startTime = DateTime.UtcNow;
+        if (vendors == null)
+        {
+            throw new ArgumentNullException(nameof(vendors));
+        }
+
+        var stopwatch = Stopwatch.StartNew();
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Reuse HTTP-based sync logic for Intuit budget objects so unit tests that pass Intuit types exercise the same code path.
             await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
 
-            var s = EnsureSettingsLoaded();
-            if (!HasValidAccessToken())
+            var realmId = _authService.GetRealmId() ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
+
+            var accessToken = _authService.GetAccessToken();
+
+            // Prefer the HttpClient injected into the service (tests pass a configured client).
+            // Fall back to a named client from the factory when an injected client is not present.
+            var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
+            var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
+            if (client == null)
             {
+                _logger.LogError("IHttpClientFactory not available - cannot sync vendors to QBO");
                 return new SyncResult
                 {
                     Success = false,
-                    ErrorMessage = "Access token invalid – refresh required.",
-                    Duration = DateTime.UtcNow - startTime
+                    ErrorMessage = "IHttpClientFactory not registered in DI container and no HttpClient injected",
+                    Duration = stopwatch.Elapsed
                 };
             }
 
-            var httpClientFactory = _serviceProvider.GetService<IHttpClientFactory>();
-            var client = _httpClient ?? httpClientFactory?.CreateClient("QBO");
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", s.QboAccessToken);
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
             client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-            int syncedCount = 0;
-            var realmId = _realmId ?? _settings.Current.QuickBooksRealmId ?? _settings.Current.QuickBooksRealmId;
+            // Set base URL for QBO API calls based on environment
+            var baseUrl = _environment == "sandbox"
+                ? "https://sandbox-quickbooks.api.intuit.com/"
+                : "https://quickbooks.api.intuit.com/";
+            client.BaseAddress = new Uri(baseUrl);
 
-            foreach (var budget in budgets)
+            int syncedCount = 0;
+            bool hadFailures = false;
+
+            foreach (var vendor in vendors)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var endpoint = $"v3/company/{realmId}/budget";
-                var json = System.Text.Json.JsonSerializer.Serialize(budget);
-                using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var endpointUri = new Uri(endpoint, UriKind.Relative);
-                var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
+                // Rate limiting: acquire permit before making API call
+                using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false);
+                if (lease.IsAcquired)
                 {
-                    syncedCount++;
-                    _logger.LogInformation("Successfully synced budget {BudgetId} to QBO", budget.Id);
+                    // QBO API: POST /v3/company/{realmId}/vendor
+                    var endpoint = $"v3/company/{realmId}/vendor";
+                    var json = System.Text.Json.JsonSerializer.Serialize(vendor);
+
+                    using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var endpointUri = new Uri(endpoint, UriKind.Relative);
+                    var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        syncedCount++;
+                        _logger.LogInformation("Successfully synced vendor {VendorId} to QBO", vendor.Id);
+                    }
+                    else
+                    {
+                        hadFailures = true;
+                        var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                        _logger.LogWarning("Failed to sync vendor {VendorId} to QBO: {StatusCode} - {Error}",
+                            vendor.Id, response.StatusCode, errorBody);
+                    }
                 }
                 else
                 {
-                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    _logger.LogWarning("Failed to sync budget {BudgetId} to QBO: {StatusCode} - {Error}", budget.Id, response.StatusCode, errorBody);
+                    hadFailures = true;
+                    _logger.LogWarning("Rate limit exceeded, could not sync vendor {VendorId}", vendor.Id);
                 }
             }
 
+            stopwatch.Stop();
+
+            // Log sync performance metrics
+            _logger.LogInformation("Vendor sync completed: {SyncedCount}/{TotalCount} vendors synced in {DurationMs}ms, Success: {Success}",
+                syncedCount, vendors.Count(), stopwatch.ElapsedMilliseconds, !hadFailures);
+
             return new SyncResult
             {
-                Success = true,
+                Success = !hadFailures,
                 RecordsSynced = syncedCount,
-                Duration = DateTime.UtcNow - startTime
+                Duration = stopwatch.Elapsed,
+                ErrorMessage = hadFailures ? "One or more vendors failed to sync" : null
             };
         }
         catch (OperationCanceledException)
         {
-            var duration = DateTime.UtcNow - startTime;
-            _logger.LogInformation("Budget sync was cancelled after {Duration}", duration);
+            stopwatch.Stop();
+            _logger.LogInformation("Vendor sync to QBO was cancelled");
             return new SyncResult
             {
                 Success = false,
-                ErrorMessage = "Budget sync cancelled by user request.",
-                Duration = duration
+                ErrorMessage = "Operation cancelled",
+                Duration = stopwatch.Elapsed
             };
         }
         catch (Exception ex)
         {
-            var duration = DateTime.UtcNow - startTime;
-            _logger.LogError(ex, "Budget sync failed after {Duration}", duration);
+            stopwatch.Stop();
+            Serilog.Log.Error(ex, "QBO vendor sync failed");
             return new SyncResult
             {
                 Success = false,
                 ErrorMessage = ex.Message,
-                Duration = duration
+                Duration = stopwatch.Elapsed
             };
         }
     }
-    */
+
+
 
     public Task<bool> AuthorizeAsync()
     {
@@ -1392,9 +1459,6 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Disconnects from QuickBooks by clearing tokens and connection state.
-    /// </summary>
     public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -1509,9 +1573,13 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-            cancellationToken.ThrowIfCancellationRequested();
+            // If an injected data service is present (tests), skip auth to avoid interactive flows
+            if (_injectedDataService == null)
+            {
+                await EnsureInitializedAsync().ConfigureAwait(false);
+                await RefreshTokenIfNeededAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             _logger.LogInformation("Starting chart of accounts import from QuickBooks");
 
@@ -1641,30 +1709,87 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
-            cancellationToken.ThrowIfCancellationRequested();
+            // If a test injected a data service, use it directly without requiring OAuth initialization
+            IQuickBooksDataService ds;
+            if (_injectedDataService != null)
+            {
+                ds = _injectedDataService;
+            }
+            else
+            {
+                await EnsureInitializedAsync().ConfigureAwait(false);
+                await RefreshTokenIfNeededAsync();
+                cancellationToken.ThrowIfCancellationRequested();
 
-            var p = GetDataService();
+                var p = GetDataService();
+                ds = new IntuitDataServiceAdapter(p.Ctx);
+            }
+
             var totalRecords = 0;
 
             // Sync customers
             cancellationToken.ThrowIfCancellationRequested();
-            var customers = p.Ds.FindAll(new Customer(), 1, 100).ToList();
-            totalRecords += customers.Count;
-            _logger.LogInformation("Synced {Count} customers", customers.Count);
+            using (var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false))
+            {
+                if (lease.IsAcquired)
+                {
+                    var customers = ds.FindCustomers(1, 100);
+                    totalRecords += customers.Count;
+                    _logger.LogInformation("Synced {Count} customers", customers.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Rate limit exceeded, skipping customer sync");
+                }
+            }
 
             // Sync invoices
             cancellationToken.ThrowIfCancellationRequested();
-            var invoices = p.Ds.FindAll(new Invoice(), 1, 100).ToList();
-            totalRecords += invoices.Count;
-            _logger.LogInformation("Synced {Count} invoices", invoices.Count);
+            using (var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false))
+            {
+                if (lease.IsAcquired)
+                {
+                    var invoices = ds.FindInvoices(1, 100);
+                    totalRecords += invoices.Count;
+                    _logger.LogInformation("Synced {Count} invoices", invoices.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Rate limit exceeded, skipping invoice sync");
+                }
+            }
 
             // Sync accounts
             cancellationToken.ThrowIfCancellationRequested();
-            var accounts = p.Ds.FindAll(new Account(), 1, 100).ToList();
-            totalRecords += accounts.Count;
-            _logger.LogInformation("Synced {Count} accounts", accounts.Count);
+            using (var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false))
+            {
+                if (lease.IsAcquired)
+                {
+                    var accounts = ds.FindAccounts(1, 100);
+                    totalRecords += accounts.Count;
+                    _logger.LogInformation("Synced {Count} accounts", accounts.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Rate limit exceeded, skipping account sync");
+                }
+            }
+
+            // Sync vendors
+            cancellationToken.ThrowIfCancellationRequested();
+            using (var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false))
+            {
+                if (lease.IsAcquired)
+                {
+                    var vendors = ds.FindVendors(1, 100);
+                    totalRecords += vendors.Count;
+                    _logger.LogInformation("Synced {Count} vendors", vendors.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Rate limit exceeded, skipping vendor sync");
+                }
+            }
 
             var duration = DateTime.UtcNow - startTime;
             _logger.LogInformation("Data sync completed successfully. Total records: {TotalRecords}, Duration: {Duration}", totalRecords, duration);

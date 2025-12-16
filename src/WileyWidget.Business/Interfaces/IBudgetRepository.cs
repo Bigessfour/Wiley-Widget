@@ -100,4 +100,19 @@ public interface IBudgetRepository
     Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets data statistics for a fiscal year
+    /// </summary>
+    Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(int fiscalYear, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets count of revenue accounts for a fiscal year
+    /// </summary>
+    Task<int> GetRevenueAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets count of expense accounts for a fiscal year
+    /// </summary>
+    Task<int> GetExpenseAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default);
 }

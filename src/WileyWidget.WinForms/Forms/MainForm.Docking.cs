@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Linq;
 using Syncfusion.WinForms.Controls;
@@ -20,6 +21,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 
 #pragma warning disable CS8604 // Possible null reference argument
@@ -81,20 +83,24 @@ public partial class MainForm
             _dockingManager = new DockingManager(components);
             _dockingManager.HostControl = this;
 
-            // When TabbedMDIManager is active, DockingManager's DocumentMode conflicts with Form-based MDI children.
-            // Use DockingManager for dockable panels and integrate those panels into the MDI container via SetAsMDIChild.
-            _logger.LogInformation("TabbedMDI enabled: DockingManager will use panel mode only (document mode disabled for TabbedMDI integration)");
-            var shouldDisableDocumentMode = _useMdiMode && _useTabbedMdi;
-            _logger.LogInformation("Setting EnableDocumentMode: _useMdiMode={MdiMode}, _useTabbedMdi={TabbedMdi}, shouldDisableDocumentMode={ShouldDisable}",
-                _useMdiMode, _useTabbedMdi, shouldDisableDocumentMode);
+            // When using TabbedMDI, DockingManager's DocumentMode must be disabled to avoid
+            // casting MDI child Forms to Syncfusion internal DockingWrapperForm.
+            // Document mode should only be enabled when Docking is in use, MDI mode is enabled,
+            // and TabbedMDI is NOT being used.
+            var shouldEnableDocumentMode = _useSyncfusionDocking && _useMdiMode && !_useTabbedMdi;
+            _logger.LogInformation("Setting EnableDocumentMode: UseDocking={UseDocking}, _useMdiMode={MdiMode}, _useTabbedMdi={TabbedMdi}, shouldEnableDocumentMode={ShouldEnable}",
+                _useSyncfusionDocking, _useMdiMode, _useTabbedMdi, shouldEnableDocumentMode);
 
-            _dockingManager.EnableDocumentMode = !shouldDisableDocumentMode;
+            // Apply computed document-mode once at initialization. Never toggle per-child.
+            _dockingManager.EnableDocumentMode = shouldEnableDocumentMode;
 
-            _logger.LogInformation("DockingManager.EnableDocumentMode = {EnableDocumentMode}", _dockingManager.EnableDocumentMode);
-
-            if (!_dockingManager.EnableDocumentMode)
+            if (_dockingManager.EnableDocumentMode)
             {
-                _logger.LogInformation("DockingManager document mode disabled because TabbedMDI is enabled");
+                _logger.LogInformation("DockingManager document mode enabled (DocumentContainer will host documents)");
+            }
+            else
+            {
+                _logger.LogInformation("DockingManager document mode disabled (using DockingManager for panels only)");
             }
 
             // Enable automatic persistence - Syncfusion handles save/load internally
@@ -195,7 +201,9 @@ public partial class MainForm
             Name = "LeftDockPanel",
             AccessibleName = "LeftDockPanel",
             BackColor = ThemeColors.Background,
-            AutoScroll = true
+            AutoScroll = true,
+            BorderStyle = BorderStyle.None,
+            Padding = new Padding(8, 8, 8, 8)
         };
 
         // Move dashboard cards to left dock (reuse existing dashboard panel logic)
@@ -204,10 +212,11 @@ public partial class MainForm
 
         // Configure docking behavior
         _dockingManager.SetEnableDocking(_leftDockPanel, true);
-        _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 250);
+        _dockingManager.DockControl(_leftDockPanel, this, DockingStyle.Left, 280);
         _dockingManager.SetAutoHideMode(_leftDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
         _dockingManager.SetAllowFloating(_leftDockPanel, true);  // Enable floating windows
+        try { _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(200, 0)); } catch { }
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -304,7 +313,8 @@ public partial class MainForm
             Name = "RightDockPanel",
             AccessibleName = "RightDockPanel",
             BackColor = ThemeColors.Background,
-            Padding = new Padding(10)
+            Padding = new Padding(8, 8, 8, 8),
+            BorderStyle = BorderStyle.None
         };
 
         // Move activity grid to right dock (reuse existing activity panel logic)
@@ -313,10 +323,11 @@ public partial class MainForm
 
         // Configure docking behavior
         _dockingManager.SetEnableDocking(_rightDockPanel, true);
-        _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 200);
+        _dockingManager.DockControl(_rightDockPanel, this, DockingStyle.Right, 280);
         _dockingManager.SetAutoHideMode(_rightDockPanel, true);  // Collapsible
         _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
         _dockingManager.SetAllowFloating(_rightDockPanel, true);  // Enable floating windows
+        try { _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(200, 0)); } catch { }
 
         // Set as MDI child to integrate with TabbedMDIManager
         if (_useMdiMode && IsMdiContainer)
@@ -337,30 +348,31 @@ public partial class MainForm
             Dock = DockStyle.Fill,
             ColumnCount = 1,  // Single column for left dock
             RowCount = 5,
-            Padding = new Padding(10),
-            BackColor = ThemeColors.Background
+            Padding = new Padding(12, 12, 12, 12),  // Professional spacing
+            BackColor = ThemeColors.Background,
+            CellBorderStyle = TableLayoutPanelCellBorderStyle.None
         };
 
-        // Add row styles
+        // Add row styles with proper proportions
         for (int i = 0; i < 5; i++)
         {
             dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
         }
 
-        // Create cards (reuse existing logic from InitializeComponent)
-        var accountsCard = CreateDashboardCard("≡ƒôè Accounts", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _accountsDescLabel);
-        SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>());
+        // Create cards with professional styling
+        var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _accountsDescLabel);
+        SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false));
 
-        var chartsCard = CreateDashboardCard("��ƒôê Charts", MainFormResources.LoadingText, ThemeColors.Success, out _chartsDescLabel);
-        SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>());
+        var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", ThemeColors.Success, out _chartsDescLabel);
+        SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false));
 
-        var settingsCard = CreateDashboardCard("ΓÜÖ∩╕Å Settings", MainFormResources.LoadingText, ThemeColors.Warning, out _settingsDescLabel);
-        SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>());
+        var settingsCard = CreateDashboardCard("Settings", "System Config", ThemeColors.Warning, out _settingsDescLabel);
+        SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false));
 
-        var reportsCard = CreateDashboardCard("≡ƒôä Reports", MainFormResources.LoadingText, ThemeColors.PrimaryAccent, out _reportsDescLabel);
-        SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>());
+        var reportsCard = CreateDashboardCard("Reports", "Generate Now", ThemeColors.PrimaryAccent, out _reportsDescLabel);
+        SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false));
 
-        var infoCard = CreateDashboardCard("Γä╣∩╕Å Budget Status", MainFormResources.LoadingText, ThemeColors.Error, out _infoDescLabel);
+        var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText, ThemeColors.Error, out _infoDescLabel);
 
         dashboardPanel.Controls.Add(accountsCard, 0, 0);
         dashboardPanel.Controls.Add(chartsCard, 0, 1);
@@ -408,11 +420,11 @@ public partial class MainForm
         };
         SfSkinManager.SetVisualStyle(_activityGrid, ThemeColors.DefaultTheme);
 
-        // Map to ActivityLog properties
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 80 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 150 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 200 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 100 });
+        // Map to ActivityLog properties with flexible column sizing
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 80, MinimumWidth = 60 });
 
         // Load initial data from database
         _ = LoadActivityDataAsync();
@@ -1397,16 +1409,27 @@ public partial class MainForm
 
         try
         {
-            // Handle central document panel visibility (z-order handled in OnLoad)
+            // Handle central document panel visibility and z-order
             if (_centralDocumentPanel != null)
             {
-                // Ensure the central panel is visible and properly docked
-                try { _centralDocumentPanel.Visible = true; } catch (Exception ex) { _logger.LogWarning(ex, "Failed to set central document panel visibility"); }
+                // Ensure the central panel is visible and on top (critical for overlaps)
+                try
+                {
+                    _centralDocumentPanel.Visible = true;
+                    _centralDocumentPanel.BringToFront();  // Enforce z-order
+                    _centralDocumentPanel.Invalidate();     // Force repaint
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to set central document panel visibility"); }
 
-                // Ensure AI chat control within central panel is visible
+                // Ensure AI chat control within central panel is visible and on top
                 if (_aiChatControl != null)
                 {
-                    try { _aiChatControl.Visible = true; } catch (Exception ex) { _logger.LogWarning(ex, "Failed to set AI chat control visibility"); }
+                    try
+                    {
+                        _aiChatControl.Visible = true;
+                        _aiChatControl.BringToFront();
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to set AI chat control visibility"); }
                 }
             }
 
@@ -1416,8 +1439,14 @@ public partial class MainForm
                 var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
                 if (mdiClient != null)
                 {
-                    // When both MDI and docking are active, ensure MDI client is visible
-                    try { mdiClient.Visible = true; } catch (Exception ex) { _logger.LogWarning(ex, "Failed to set MDI client visibility"); }
+                    // MDI client must be behind central panel to prevent occlusion
+                    try
+                    {
+                        mdiClient.Visible = true;
+                        mdiClient.SendToBack();  // Behind central panel
+                        mdiClient.Invalidate();   // Force repaint
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to set MDI client visibility"); }
 
                     // If TabbedMDIManager is active, ensure it works with docking
                     if (_tabbedMdiManager != null)
@@ -1436,6 +1465,18 @@ public partial class MainForm
                         }
                     }
                 }
+            }
+
+            // Ensure side panels are behind central content
+            if (_leftDockPanel != null)
+            {
+                try { _leftDockPanel.SendToBack(); }
+                catch (Exception ex) { _logger.LogDebug(ex, "Failed to set left dock panel z-order"); }
+            }
+            if (_rightDockPanel != null)
+            {
+                try { _rightDockPanel.SendToBack(); }
+                catch (Exception ex) { _logger.LogDebug(ex, "Failed to set right dock panel z-order"); }
             }
 
             // Ensure docked side panels don't obscure central content
@@ -1739,26 +1780,111 @@ public partial class MainForm
     /// Dispose resources owned by the docking implementation
     /// Extracted from the original Dispose override to avoid duplicate overrides
     /// and be callable from the single Dispose override in the main partial.
+    ///
+    /// NOTE: To avoid races with concurrent Save operations and to ensure
+    /// fast, predictable teardown (important for unit tests), this method
+    /// clears the `_dockingManager` field immediately and schedules the
+    /// actual disposal work asynchronously (UI-thread or threadpool).
+    /// This prevents double-dispose from a container and avoids Syncfusion
+    /// NullReferenceExceptions during concurrent teardown.
     /// </summary>
     private void DisposeSyncfusionDockingResources()
     {
+        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - _dockingManager present: {HasDockingManager}, _isSavingLayout={IsSaving}", _dockingManager != null, _isSavingLayout);
+        _logger?.LogDebug("Dispose invoked - hasManager={HasDockingManager}, isSavingLayout={IsSaving}", _dockingManager != null, _isSavingLayout);
+
+        // Best-effort: schedule a non-blocking save to persist layout without blocking disposal
+        try
+        {
+            if (this.IsHandleCreated)
+            {
+                try { this.BeginInvoke(new System.Action(() => { try { SaveDockingLayout(); } catch { } })); }
+                catch { }
+            }
+        }
+        catch { }
+
         if (_dockingManager != null)
         {
+            // Capture manager and clear field immediately so callers observe it's gone quickly
+            var mgr = _dockingManager;
+            _dockingManager = null;
+
             try
             {
-                SaveDockingLayout();
+                // Attempt quick detach operations synchronously so owner won't double-dispose
+                try { mgr.PersistState = false; } catch { }
+                try { mgr.HostControl = null; } catch { }
+
+                try
+                {
+                    var owner = mgr.Site?.Container;
+                    if (owner != null)
+                    {
+                        try { owner.Remove(mgr); } catch { }
+                    }
+                }
+                catch { }
             }
-            catch
+            catch { }
+
+            // Schedule the potentially heavy disposal asynchronously on the UI thread (best-effort)
+            try
             {
-                // Swallow failures during disposal; nothing we can do safely here
+                if (this.IsHandleCreated)
+                {
+                    try
+                    {
+                        this.BeginInvoke(new System.Action(() =>
+                        {
+                            try
+                            {
+                                try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
+                                try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
+                                try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
+
+                                try { mgr.Dispose(); } catch (NullReferenceException nre) { _logger?.LogWarning(nre, "NullReferenceException while disposing DockingManager (async); swallowing"); } catch (Exception ex) { _logger?.LogWarning(ex, "Exception while disposing DockingManager (async)"); }
+                            }
+                            catch { }
+                        }));
+                    }
+                    catch
+                    {
+                        // BeginInvoke may throw; fall back to threadpool
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
+                                try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
+                                try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
+
+                                try { mgr.Dispose(); } catch (NullReferenceException nre) { _logger?.LogWarning(nre, "NullReferenceException while disposing DockingManager (fallback); swallowing"); } catch (Exception ex) { _logger?.LogWarning(ex, "Exception while disposing DockingManager (fallback)"); }
+                            }
+                            catch { }
+                        });
+                    }
+                }
+                else
+                {
+                    // No handle - run dispose on threadpool
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
+                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
+                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
+
+                            try { mgr.Dispose(); } catch (NullReferenceException nre) { _logger?.LogWarning(nre, "NullReferenceException while disposing DockingManager (threadpool); swallowing"); } catch (Exception ex) { _logger?.LogWarning(ex, "Exception while disposing DockingManager (threadpool)"); }
+                        }
+                        catch { }
+                    });
+                }
             }
+            catch { }
 
-            _dockingManager.DockStateChanged -= DockingManager_DockStateChanged;
-            _dockingManager.DockControlActivated -= DockingManager_DockControlActivated;
-            _dockingManager.DockVisibilityChanged -= DockingManager_DockVisibilityChanged;
-
-            _dockingManager.Dispose();
-            _dockingManager = null;
+            _logger?.LogDebug("_dockingManager cleared and disposal scheduled");
         }
 
         // Dispose debounce timer
@@ -1843,11 +1969,12 @@ public partial class MainForm
     {
         var panel = new Panel
         {
-            BackColor = ThemeColors.Background,
+            BackColor = Color.FromArgb(250, 250, 250),
             Dock = DockStyle.Top,
-            Height = 140,
-            Padding = new Padding(12),
-            Margin = new Padding(4)
+            Height = 120,
+            Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(4, 4, 4, 8),
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         var titleLabel = new Label
@@ -1869,6 +1996,9 @@ public partial class MainForm
 
         panel.Controls.Add(descriptionLabel);
         panel.Controls.Add(titleLabel);
+
+        // Apply professional shadow effect
+        ProfessionalUI.ApplyCardShadow(panel);
 
         return (panel, descriptionLabel);
     }

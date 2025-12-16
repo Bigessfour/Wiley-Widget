@@ -36,7 +36,8 @@ namespace WileyWidget.WinForms.Forms
             }
             _themeService = ResolveThemeService();
 
-            // Only set MdiParent if the parent form is configured as an MDI container
+            // Only set MdiParent if MainForm is in MDI mode
+            // In DockingManager mode, forms are shown as owned windows, not MDI children
             if (mainForm.IsMdiContainer)
             {
                 MdiParent = mainForm;

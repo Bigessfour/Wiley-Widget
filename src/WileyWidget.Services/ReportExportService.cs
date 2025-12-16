@@ -5,18 +5,18 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using ClosedXML.Excel;
-using PdfSharpCore;
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Pdf;
+using Syncfusion.XlsIO;
+using Syncfusion.Pdf;
+using Syncfusion.Pdf.Graphics;
+using Syncfusion.Drawing;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
 
 /// <summary>
-/// Implementation of report export service using open-source libraries.
-/// Uses ClosedXML for Excel and PdfSharpCore for PDF generation.
+/// Implementation of report export service.
+/// Uses ClosedXML for Excel and Syncfusion.Pdf for PDF generation.
 /// </summary>
 public class ReportExportService : IReportExportService
 {
@@ -28,7 +28,7 @@ public class ReportExportService : IReportExportService
     }
 
     /// <summary>
-    /// Exports data to PDF format using PdfSharpCore
+    /// Exports data to PDF format using Syncfusion.Pdf
     /// </summary>
     public async Task ExportToPdfAsync(object data, string filePath)
     {
@@ -36,14 +36,15 @@ public class ReportExportService : IReportExportService
         {
             using (var document = new PdfDocument())
             {
-                var page = document.AddPage();
-                var gfx = XGraphics.FromPdfPage(page);
-                var font = new XFont("Arial", 12, XFontStyle.Regular);
-                var headerFont = new XFont("Arial", 14, XFontStyle.Bold);
+                var page = document.Pages.Add();
+                var gfx = page.Graphics;
+                var font = new PdfStandardFont(PdfFontFamily.Helvetica, 12);
+                var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 14, PdfFontStyle.Bold);
+                var brush = new PdfSolidBrush(new PdfColor(0, 0, 0));
 
-                double yPosition = 40;
-                double leftMargin = 40;
-                double lineHeight = 20;
+                float yPosition = 40;
+                float leftMargin = 40;
+                float lineHeight = 20;
 
                 // Handle different data types
                 if (data is IEnumerable<object> enumerableData)
@@ -58,11 +59,11 @@ public class ReportExportService : IReportExportService
                             .ToArray();
 
                         // Add headers
-                        double xPosition = leftMargin;
-                        double columnWidth = 100;
+                        float xPosition = leftMargin;
+                        float columnWidth = 100;
                         foreach (var prop in properties)
                         {
-                            gfx.DrawString(prop.Name, headerFont, XBrushes.Black, xPosition, yPosition);
+                            gfx.DrawString(prop.Name, headerFont, brush, new PointF(xPosition, yPosition));
                             xPosition += columnWidth;
                         }
                         yPosition += lineHeight + 5;
@@ -75,16 +76,16 @@ public class ReportExportService : IReportExportService
                             {
                                 var value = prop.GetValue(item)?.ToString() ?? "";
                                 if (value.Length > 20) value = value.Substring(0, 17) + "...";
-                                gfx.DrawString(value, font, XBrushes.Black, xPosition, yPosition);
+                                gfx.DrawString(value, font, brush, new PointF(xPosition, yPosition));
                                 xPosition += columnWidth;
                             }
                             yPosition += lineHeight;
 
                             // Start new page if needed
-                            if (yPosition > page.Height - 100)
+                            if (yPosition > page.GetClientSize().Height - 100)
                             {
-                                page = document.AddPage();
-                                gfx = XGraphics.FromPdfPage(page);
+                                page = document.Pages.Add();
+                                gfx = page.Graphics;
                                 yPosition = 40;
                             }
                         }
@@ -101,14 +102,14 @@ public class ReportExportService : IReportExportService
                     {
                         var value = prop.GetValue(data)?.ToString() ?? "";
                         var text = $"{prop.Name}: {value}";
-                        gfx.DrawString(text, font, XBrushes.Black, leftMargin, yPosition);
+                        gfx.DrawString(text, font, brush, new PointF(leftMargin, yPosition));
                         yPosition += lineHeight;
 
                         // Start new page if needed
-                        if (yPosition > page.Height - 100)
+                        if (yPosition > page.GetClientSize().Height - 100)
                         {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
+                            page = document.Pages.Add();
+                            gfx = page.Graphics;
                             yPosition = 40;
                         }
                     }
@@ -121,15 +122,19 @@ public class ReportExportService : IReportExportService
     }
 
     /// <summary>
-    /// Exports data to Excel format using ClosedXML
+    /// Exports data to Excel format using Syncfusion.XlsIO
     /// </summary>
     public async Task ExportToExcelAsync(object data, string filePath)
     {
         await Task.Run(() =>
         {
-            using (var workbook = new XLWorkbook())
+            using (var excelEngine = new ExcelEngine())
             {
-                var worksheet = workbook.Worksheets.Add("Data");
+                var application = excelEngine.Excel;
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                var workbook = application.Workbooks.Create(1);
+                var worksheet = workbook.Worksheets[0];
+                worksheet.Name = "Data";
                 int rowIndex = 1;
 
                 // Handle different data types
@@ -147,9 +152,10 @@ public class ReportExportService : IReportExportService
                         // Add headers
                         for (int i = 0; i < properties.Length; i++)
                         {
-                            worksheet.Cell(rowIndex, i + 1).Value = properties[i].Name;
-                            worksheet.Cell(rowIndex, i + 1).Style.Font.Bold = true;
-                            worksheet.Cell(rowIndex, i + 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
+                            var cell = worksheet.Range[rowIndex, i + 1];
+                            cell.Text = properties[i].Name;
+                            cell.CellStyle.Font.Bold = true;
+                            cell.CellStyle.Color = System.Drawing.Color.LightBlue;
                         }
                         rowIndex++;
 
@@ -161,14 +167,14 @@ public class ReportExportService : IReportExportService
                                 var value = properties[i].GetValue(item);
                                 if (value != null)
                                 {
-                                    worksheet.Cell(rowIndex, i + 1).Value = value.ToString();
+                                    worksheet.Range[rowIndex, i + 1].Text = value.ToString();
                                 }
                             }
                             rowIndex++;
                         }
 
                         // Auto-fit columns
-                        worksheet.Columns().AdjustToContents();
+                        worksheet.UsedRange.AutofitColumns();
                     }
                 }
                 else
@@ -180,18 +186,21 @@ public class ReportExportService : IReportExportService
 
                     foreach (var prop in properties)
                     {
-                        worksheet.Cell(rowIndex, 1).Value = prop.Name;
-                        worksheet.Cell(rowIndex, 1).Style.Font.Bold = true;
-                        worksheet.Cell(rowIndex, 2).Value = prop.GetValue(data)?.ToString() ?? "";
+                        worksheet.Range[rowIndex, 1].Text = prop.Name;
+                        worksheet.Range[rowIndex, 1].CellStyle.Font.Bold = true;
+                        worksheet.Range[rowIndex, 2].Text = prop.GetValue(data)?.ToString() ?? "";
                         rowIndex++;
                     }
 
                     // Auto-fit columns
-                    worksheet.Columns().AdjustToContents();
+                    worksheet.UsedRange.AutofitColumns();
                 }
 
                 // Save the workbook
-                workbook.SaveAs(filePath);
+                using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                {
+                    workbook.SaveAs(stream);
+                }
             }
         });
     }
@@ -241,7 +250,7 @@ public class ReportExportService : IReportExportService
     }
 
     /// <summary>
-    /// Exports a ComplianceReport to a well-formatted PDF document using PdfSharpCore.
+    /// Exports a ComplianceReport to a well-formatted PDF document using Syncfusion.Pdf.
     /// </summary>
     public async Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath)
     {
@@ -252,34 +261,36 @@ public class ReportExportService : IReportExportService
         {
             using (var document = new PdfDocument())
             {
-                var page = document.AddPage();
-                var gfx = XGraphics.FromPdfPage(page);
+                var page = document.Pages.Add();
+                var gfx = page.Graphics;
 
-                var titleFont = new XFont("Arial", 18, XFontStyle.Bold);
-                var headerFont = new XFont("Arial", 14, XFontStyle.Bold);
-                var bodyFont = new XFont("Arial", 11, XFontStyle.Regular);
+                var titleFont = new PdfStandardFont(PdfFontFamily.Helvetica, 18, PdfFontStyle.Bold);
+                var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 14, PdfFontStyle.Bold);
+                var bodyFont = new PdfStandardFont(PdfFontFamily.Helvetica, 11);
+                var brush = new PdfSolidBrush(new PdfColor(0, 0, 0));
+                var grayBrush = new PdfSolidBrush(new PdfColor(64, 64, 64));
 
-                double y = 40;
-                double leftMargin = 40;
-                double lineHeight = 20;
+                float y = 40;
+                float leftMargin = 40;
+                float lineHeight = 20;
 
                 // Title
-                gfx.DrawString("Compliance Report", titleFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString("Compliance Report", titleFont, brush, new PointF(leftMargin, y));
                 y += 30;
 
                 // Report details
-                gfx.DrawString($"Enterprise ID: {report.EnterpriseId}", bodyFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString($"Enterprise ID: {report.EnterpriseId}", bodyFont, brush, new PointF(leftMargin, y));
                 y += lineHeight;
-                gfx.DrawString($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}", bodyFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm}", bodyFont, brush, new PointF(leftMargin, y));
                 y += lineHeight + 5;
 
-                gfx.DrawString($"Overall Status: {report.OverallStatus}", headerFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString($"Overall Status: {report.OverallStatus}", headerFont, brush, new PointF(leftMargin, y));
                 y += lineHeight + 5;
-                gfx.DrawString($"Compliance Score: {report.ComplianceScore:F2}", bodyFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString($"Compliance Score: {report.ComplianceScore:F2}", bodyFont, brush, new PointF(leftMargin, y));
                 y += lineHeight + 10;
 
                 // Violations section
-                gfx.DrawString("Violations:", headerFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString("Violations:", headerFont, brush, new PointF(leftMargin, y));
                 y += lineHeight;
 
                 if (report.Violations != null && report.Violations.Any())
@@ -288,33 +299,33 @@ public class ReportExportService : IReportExportService
                     {
                         var line = $"- [{v.Severity}] {v.Regulation}: {v.Description}";
                         if (line.Length > 100) line = line.Substring(0, 97) + "...";
-                        gfx.DrawString(line, bodyFont, XBrushes.Black, leftMargin + 10, y);
+                        gfx.DrawString(line, bodyFont, brush, new PointF(leftMargin + 10, y));
                         y += lineHeight;
 
                         var actionLine = $"  Action: {v.CorrectiveAction}";
                         if (actionLine.Length > 100) actionLine = actionLine.Substring(0, 97) + "...";
-                        gfx.DrawString(actionLine, bodyFont, XBrushes.DarkGray, leftMargin + 10, y);
+                        gfx.DrawString(actionLine, bodyFont, grayBrush, new PointF(leftMargin + 10, y));
                         y += lineHeight;
 
                         // Check for new page
-                        if (y > page.Height - 100)
+                        if (y > page.GetClientSize().Height - 100)
                         {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
+                            page = document.Pages.Add();
+                            gfx = page.Graphics;
                             y = 40;
                         }
                     }
                 }
                 else
                 {
-                    gfx.DrawString("No violations.", bodyFont, XBrushes.Black, leftMargin + 10, y);
+                    gfx.DrawString("No violations.", bodyFont, brush, new PointF(leftMargin + 10, y));
                     y += lineHeight;
                 }
 
                 y += 10;
 
                 // Recommendations section
-                gfx.DrawString("Recommendations:", headerFont, XBrushes.Black, leftMargin, y);
+                gfx.DrawString("Recommendations:", headerFont, brush, new PointF(leftMargin, y));
                 y += lineHeight;
 
                 if (report.Recommendations != null && report.Recommendations.Any())
@@ -323,21 +334,21 @@ public class ReportExportService : IReportExportService
                     {
                         var recText = $"- {r}";
                         if (recText.Length > 100) recText = recText.Substring(0, 97) + "...";
-                        gfx.DrawString(recText, bodyFont, XBrushes.Black, leftMargin + 10, y);
+                        gfx.DrawString(recText, bodyFont, brush, new PointF(leftMargin + 10, y));
                         y += lineHeight;
 
                         // Check for new page
-                        if (y > page.Height - 100)
+                        if (y > page.GetClientSize().Height - 100)
                         {
-                            page = document.AddPage();
-                            gfx = XGraphics.FromPdfPage(page);
+                            page = document.Pages.Add();
+                            gfx = page.Graphics;
                             y = 40;
                         }
                     }
                 }
                 else
                 {
-                    gfx.DrawString("No recommendations provided.", bodyFont, XBrushes.Black, leftMargin + 10, y);
+                    gfx.DrawString("No recommendations provided.", bodyFont, brush, new PointF(leftMargin + 10, y));
                 }
 
                 // Save document
@@ -347,7 +358,7 @@ public class ReportExportService : IReportExportService
     }
 
     /// <summary>
-    /// Exports a ComplianceReport to an Excel workbook using ClosedXML.
+    /// Exports a ComplianceReport to an Excel workbook using Syncfusion.XlsIO.
     /// </summary>
     public async Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath)
     {
@@ -356,74 +367,85 @@ public class ReportExportService : IReportExportService
 
         await Task.Run(() =>
         {
-            using (var workbook = new XLWorkbook())
+            using (var excelEngine = new ExcelEngine())
             {
+                var application = excelEngine.Excel;
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                var workbook = application.Workbooks.Create(3);
+
                 // Summary sheet
-                var wsSummary = workbook.Worksheets.Add("Summary");
-                wsSummary.Cell(1, 1).Value = "Compliance Report";
-                wsSummary.Cell(1, 1).Style.Font.Bold = true;
-                wsSummary.Cell(1, 1).Style.Font.FontSize = 16;
+                var wsSummary = workbook.Worksheets[0];
+                wsSummary.Name = "Summary";
+                wsSummary.Range[1, 1].Text = "Compliance Report";
+                wsSummary.Range[1, 1].CellStyle.Font.Bold = true;
+                wsSummary.Range[1, 1].CellStyle.Font.Size = 16;
 
-                wsSummary.Cell(2, 1).Value = "Enterprise ID";
-                wsSummary.Cell(2, 2).Value = report.EnterpriseId;
+                wsSummary.Range[2, 1].Text = "Enterprise ID";
+                wsSummary.Range[2, 2].Text = report.EnterpriseId.ToString();
 
-                wsSummary.Cell(3, 1).Value = "Generated";
-                wsSummary.Cell(3, 2).Value = report.GeneratedDate;
-                wsSummary.Cell(3, 2).Style.DateFormat.Format = "yyyy-MM-dd HH:mm:ss";
+                wsSummary.Range[3, 1].Text = "Generated";
+                wsSummary.Range[3, 2].DateTime = report.GeneratedDate;
+                wsSummary.Range[3, 2].NumberFormat = "yyyy-MM-dd HH:mm:ss";
 
-                wsSummary.Cell(4, 1).Value = "Overall Status";
-                wsSummary.Cell(4, 2).Value = report.OverallStatus.ToString();
+                wsSummary.Range[4, 1].Text = "Overall Status";
+                wsSummary.Range[4, 2].Text = report.OverallStatus.ToString();
 
-                wsSummary.Cell(5, 1).Value = "Compliance Score";
-                wsSummary.Cell(5, 2).Value = report.ComplianceScore;
-                wsSummary.Cell(5, 2).Style.NumberFormat.Format = "0.00";
+                wsSummary.Range[5, 1].Text = "Compliance Score";
+                wsSummary.Range[5, 2].Number = report.ComplianceScore;
+                wsSummary.Range[5, 2].NumberFormat = "0.00";
 
-                wsSummary.Columns().AdjustToContents();
+                wsSummary.UsedRange.AutofitColumns();
 
                 // Violations sheet
-                var wsViolations = workbook.Worksheets.Add("Violations");
-                wsViolations.Cell(1, 1).Value = "Regulation";
-                wsViolations.Cell(1, 2).Value = "Description";
-                wsViolations.Cell(1, 3).Value = "Severity";
-                wsViolations.Cell(1, 4).Value = "Corrective Action";
+                var wsViolations = workbook.Worksheets[1];
+                wsViolations.Name = "Violations";
+                wsViolations.Range[1, 1].Text = "Regulation";
+                wsViolations.Range[1, 2].Text = "Description";
+                wsViolations.Range[1, 3].Text = "Severity";
+                wsViolations.Range[1, 4].Text = "Corrective Action";
 
                 // Style headers
-                wsViolations.Row(1).Style.Font.Bold = true;
-                wsViolations.Row(1).Style.Fill.BackgroundColor = XLColor.LightBlue;
+                var headerRange = wsViolations.Range[1, 1, 1, 4];
+                headerRange.CellStyle.Font.Bold = true;
+                headerRange.CellStyle.Color = System.Drawing.Color.LightBlue;
 
                 int row = 2;
                 if (report.Violations != null)
                 {
                     foreach (var v in report.Violations)
                     {
-                        wsViolations.Cell(row, 1).Value = v.Regulation ?? string.Empty;
-                        wsViolations.Cell(row, 2).Value = v.Description ?? string.Empty;
-                        wsViolations.Cell(row, 3).Value = v.Severity.ToString();
-                        wsViolations.Cell(row, 4).Value = v.CorrectiveAction ?? string.Empty;
+                        wsViolations.Range[row, 1].Text = v.Regulation ?? string.Empty;
+                        wsViolations.Range[row, 2].Text = v.Description ?? string.Empty;
+                        wsViolations.Range[row, 3].Text = v.Severity.ToString();
+                        wsViolations.Range[row, 4].Text = v.CorrectiveAction ?? string.Empty;
                         row++;
                     }
                 }
-                wsViolations.Columns().AdjustToContents();
+                wsViolations.UsedRange.AutofitColumns();
 
                 // Recommendations sheet
-                var wsReco = workbook.Worksheets.Add("Recommendations");
-                wsReco.Cell(1, 1).Value = "Recommendation";
-                wsReco.Row(1).Style.Font.Bold = true;
-                wsReco.Row(1).Style.Fill.BackgroundColor = XLColor.LightBlue;
+                var wsReco = workbook.Worksheets[2];
+                wsReco.Name = "Recommendations";
+                wsReco.Range[1, 1].Text = "Recommendation";
+                wsReco.Range[1, 1].CellStyle.Font.Bold = true;
+                wsReco.Range[1, 1].CellStyle.Color = System.Drawing.Color.LightBlue;
 
                 int rRow = 2;
                 if (report.Recommendations != null)
                 {
                     foreach (var rec in report.Recommendations)
                     {
-                        wsReco.Cell(rRow, 1).Value = rec;
+                        wsReco.Range[rRow, 1].Text = rec;
                         rRow++;
                     }
                 }
-                wsReco.Columns().AdjustToContents();
+                wsReco.UsedRange.AutofitColumns();
 
                 // Save workbook
-                workbook.SaveAs(filePath);
+                using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                {
+                    workbook.SaveAs(stream);
+                }
             }
         });
     }
