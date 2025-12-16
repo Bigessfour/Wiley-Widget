@@ -98,7 +98,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -171,7 +171,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -270,7 +270,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -351,7 +351,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -426,7 +426,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             // Run the race multiple times with fresh container per iteration
@@ -496,7 +496,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -559,7 +559,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -629,7 +629,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -714,7 +714,7 @@ public sealed class DockingLayoutConcurrencyStressTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();

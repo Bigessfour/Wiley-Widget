@@ -58,7 +58,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
@@ -82,7 +82,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -108,7 +108,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -131,7 +131,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
@@ -157,7 +157,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -185,7 +185,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -215,7 +215,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
@@ -242,7 +242,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -271,7 +271,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -302,7 +302,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange & Act
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             _formsToDispose.Add(_mainForm);
 
             // Assert - MainForm should be configurable as MDI container

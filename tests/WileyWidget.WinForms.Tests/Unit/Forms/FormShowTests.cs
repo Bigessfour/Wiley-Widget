@@ -47,7 +47,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                     .Build();
 
                 var serviceProvider = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider();
-                using var mainForm = new MainForm(serviceProvider, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+                using var mainForm = new MainForm(serviceProvider, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
                 var mockLogger = new Mock<ILogger<DashboardForm>>();
                 using var form = new DashboardForm(mockVm.Object, mockAnalyticsVm.Object, mainForm, mockLogger.Object);
                 form.MdiParent = parentForm; // Simulate MDI child
@@ -72,7 +72,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                         ["UI:UseDockingManager"] = "true"
                     })
                     .Build();
-                using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+                using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
                 mainForm.IsMdiContainer = true; // Enable MDI
 
                 // Mock the child form creation to verify Show() is called instead of ShowDialog()

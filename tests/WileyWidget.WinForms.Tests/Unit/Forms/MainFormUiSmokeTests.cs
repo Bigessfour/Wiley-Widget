@@ -48,7 +48,7 @@ public class MainFormUiSmokeTests
                 ["UI:UseDockingManager"] = "false"
             });
 
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             Assert.True(mainForm.IsMdiContainer);
 
@@ -73,7 +73,7 @@ public class MainFormUiSmokeTests
                 ["UI:UseDockingManager"] = "false"
             });
 
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             Assert.False(mainForm.IsMdiContainer);
 
@@ -103,7 +103,7 @@ public class MainFormUiSmokeTests
                 ["UI:UseDockingManager"] = "true"
             });
 
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             // Uses reflection internally and intentionally swallows failures.
             mainForm.ShowPanel<UserControl>("DoesNotExist");
@@ -124,7 +124,7 @@ public class MainFormUiSmokeTests
                 ["UI:AutoShowDashboard"] = "true"
             });
 
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             // Trigger OnLoad by showing the form
             mainForm.Show();
@@ -152,7 +152,7 @@ public class MainFormUiSmokeTests
                 ["UI:UseTabbedMdi"] = "false"
             });
 
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             Assert.Throws<InvalidOperationException>(() => mainForm.DockPanel<UserControl>("TestPanel", SfTools.DockingStyle.Left));
         });

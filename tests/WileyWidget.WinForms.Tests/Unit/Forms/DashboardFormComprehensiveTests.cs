@@ -38,7 +38,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
             var testConfig = CreateTestConfig(useMdiMode: false, useTabbedMdi: false);
             var mockServiceProvider = new Mock<IServiceProvider>();
 
-            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             // Explicitly NOT setting IsMdiContainer = true
 
             var mockVm = new Mock<DashboardViewModel>();
@@ -77,7 +77,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
             // Arrange
             var testConfig = CreateTestConfig();
             var mockServiceProvider = new Mock<IServiceProvider>();
-            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             var mockAnalyticsVm = CreateMockAnalyticsViewModel();
             var mockLogger = new Mock<ILogger<DashboardForm>>();
@@ -100,7 +100,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
             {
                 var testConfig = CreateTestConfig(useMdiMode: false);
                 var mockServiceProvider = new Mock<IServiceProvider>();
-                using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+                using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
                 var mockVm = new Mock<DashboardViewModel>();
                 var mockAnalyticsVm = CreateMockAnalyticsViewModel();
@@ -129,7 +129,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
             using var parentForm = new Form { IsMdiContainer = true };
             var testConfig = CreateTestConfig(useMdiMode: true);
             var mockServiceProvider = new Mock<IServiceProvider>();
-            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             var mockVm = new Mock<DashboardViewModel>();
             var mockAnalyticsVm = CreateMockAnalyticsViewModel();
@@ -165,7 +165,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
                 useDockingManager: true);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
-            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             var mockVm = new Mock<DashboardViewModel>();
             var mockAnalyticsVm = CreateMockAnalyticsViewModel();
@@ -211,7 +211,7 @@ public sealed class DashboardFormComprehensiveTests : IDisposable
             // Arrange
             var testConfig = CreateTestConfig();
             var mockServiceProvider = new Mock<IServiceProvider>();
-            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            using var mainForm = new MainForm(mockServiceProvider.Object, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             var mockVm = new Mock<DashboardViewModel>();
             var mockAnalyticsVm = CreateMockAnalyticsViewModel();
