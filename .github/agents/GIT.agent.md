@@ -62,7 +62,7 @@ tools:
 
 This agent now **prioritizes GitHub MCP for all remote operations** – eliminating filesystem misuse while delivering elite CI/CD mastery. 🚀
 
-# Repository-Wide Copilot Instructions
+## Repository-Wide Copilot Instructions
 
 You are working in the Wiley-Widget repository. Always consult the following agent definitions for specialized expertise:
 
