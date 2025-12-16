@@ -27,6 +27,7 @@ public sealed class DashboardServiceTests : IDisposable
     private readonly Mock<ILogger<DashboardService>> _mockLogger;
     private readonly Mock<ICacheService> _mockCacheService;
     private readonly Mock<IConfiguration> _mockConfiguration;
+    private readonly Mock<IConfigurationSection> _mockConfigSection;
     private readonly DashboardService _service;
 
     public DashboardServiceTests()
@@ -36,6 +37,11 @@ public sealed class DashboardServiceTests : IDisposable
         _mockLogger = new Mock<ILogger<DashboardService>>();
         _mockCacheService = new Mock<ICacheService>();
         _mockConfiguration = new Mock<IConfiguration>();
+        _mockConfigSection = new Mock<IConfigurationSection>();
+
+        // Configure UI:FiscalYear = 2025 for configuration mock
+        _mockConfigSection.Setup(s => s.Value).Returns("2025");
+        _mockConfiguration.Setup(c => c.GetSection("UI:FiscalYear")).Returns(_mockConfigSection.Object);
 
         _service = new DashboardService(
             _mockBudgetRepository.Object,
