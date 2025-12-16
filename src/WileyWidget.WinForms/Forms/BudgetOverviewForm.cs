@@ -24,9 +24,9 @@ namespace WileyWidget.WinForms.Forms
     internal static class BudgetOverviewFormResources
     {
         public const string FormTitle = "Budget Overview";
-            public const string RefreshButton = "Refresh";
-            public const string ExportButton = "Export";
-            public const string PrintButton = "Print";
+        public const string RefreshButton = "Refresh";
+        public const string ExportButton = "Export";
+        public const string PrintButton = "Print";
         public const string TotalBudgetLabel = "Total Budget";
         public const string TotalActualLabel = "Total Actual";
         public const string VarianceLabel = "Variance";
@@ -172,7 +172,7 @@ namespace WileyWidget.WinForms.Forms
 
             var titleLabel = new Label
             {
-                    Text = BudgetOverviewFormResources.FormTitle,
+                Text = BudgetOverviewFormResources.FormTitle,
                 Font = new Font("Segoe UI", 20, FontStyle.Bold),
                 ForeColor = Color.White,
                 AutoSize = true,
@@ -215,7 +215,7 @@ namespace WileyWidget.WinForms.Forms
             // Action buttons
             var addCategoryBtn = new Button
             {
-                    Text = "Add Category",
+                Text = "Add Category",
                 Font = new Font("Segoe UI", 9),
                 BackColor = PositiveColor,
                 ForeColor = Color.White,
@@ -236,7 +236,7 @@ namespace WileyWidget.WinForms.Forms
 
             var editCategoryBtn = new Button
             {
-                    Text = "Edit",
+                Text = "Edit",
                 Font = new Font("Segoe UI", 9),
                 BackColor = AccentPurple,
                 ForeColor = Color.White,
@@ -264,7 +264,7 @@ namespace WileyWidget.WinForms.Forms
 
             var deleteCategoryBtn = new Button
             {
-                    Text = "Delete",
+                Text = "Delete",
                 Font = new Font("Segoe UI", 9),
                 BackColor = NegativeColor,
                 ForeColor = Color.White,
@@ -334,10 +334,10 @@ namespace WileyWidget.WinForms.Forms
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
 
-                var budgetCard = CreateSummaryCard(BudgetOverviewFormResources.TotalBudgetLabel, "$0.00", AccentBlue, "", out _totalBudgetValueLabel);
-                var actualCard = CreateSummaryCard(BudgetOverviewFormResources.TotalActualLabel, "$0.00", AccentPurple, "", out _totalActualValueLabel);
-                var varianceCard = CreateSummaryCard(BudgetOverviewFormResources.VarianceLabel, "$0.00", NeutralColor, "", out _varianceValueLabel);
-                var percentCard = CreateSummaryCard(BudgetOverviewFormResources.PercentUsedLabel, "0%", NeutralColor, "", out _percentUsedValueLabel);
+            var budgetCard = CreateSummaryCard(BudgetOverviewFormResources.TotalBudgetLabel, "$0.00", AccentBlue, "", out _totalBudgetValueLabel);
+            var actualCard = CreateSummaryCard(BudgetOverviewFormResources.TotalActualLabel, "$0.00", AccentPurple, "", out _totalActualValueLabel);
+            var varianceCard = CreateSummaryCard(BudgetOverviewFormResources.VarianceLabel, "$0.00", NeutralColor, "", out _varianceValueLabel);
+            var percentCard = CreateSummaryCard(BudgetOverviewFormResources.PercentUsedLabel, "0%", NeutralColor, "", out _percentUsedValueLabel);
 
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(budgetCard, 0, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(actualCard, 1, 0);

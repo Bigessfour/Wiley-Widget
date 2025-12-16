@@ -328,18 +328,18 @@ namespace WileyWidget.WinForms.Controls
                 {
                     if (t < 0) t += 1;
                     if (t > 1) t -= 1;
-                    if (t < 1f/6) return p + (q - p) * 6 * t;
-                    if (t < 1f/2) return q;
-                    if (t < 2f/3) return p + (q - p) * (2f/3 - t) * 6;
+                    if (t < 1f / 6) return p + (q - p) * 6 * t;
+                    if (t < 1f / 2) return q;
+                    if (t < 2f / 3) return p + (q - p) * (2f / 3 - t) * 6;
                     return p;
                 }
 
                 float q = l < 0.5 ? l * (1 + s) : l + s - l * s;
                 float p = 2 * l - q;
 
-                r = HueToRGB(p, q, h + 1f/3);
+                r = HueToRGB(p, q, h + 1f / 3);
                 g = HueToRGB(p, q, h);
-                b = HueToRGB(p, q, h - 1f/3);
+                b = HueToRGB(p, q, h - 1f / 3);
             }
 
             return Color.FromArgb((int)(r * 255), (int)(g * 255), (int)(b * 255));

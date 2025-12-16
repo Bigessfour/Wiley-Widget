@@ -10,22 +10,22 @@ using WileyWidget.Services.Abstractions;
 namespace WileyWidget.WinForms.Forms
 {
     /// <summary>
-/// MDI child form for displaying FastReport Open Source ReportViewer.
-/// Follows MDI child form guidelines with defensive IsMdiContainer check.
-/// THREAD SAFETY: All operations are called on the UI thread.
-/// </summary>
-public partial class ReportViewerForm : Form
-{
-    private readonly MainForm _mainForm;
-    private readonly IReportService _reportService;
-    private readonly ILogger<ReportViewerForm> _logger;
-    private readonly string _reportPath;
+    /// MDI child form for displaying FastReport Open Source ReportViewer.
+    /// Follows MDI child form guidelines with defensive IsMdiContainer check.
+    /// THREAD SAFETY: All operations are called on the UI thread.
+    /// </summary>
+    public partial class ReportViewerForm : Form
+    {
+        private readonly MainForm _mainForm;
+        private readonly IReportService _reportService;
+        private readonly ILogger<ReportViewerForm> _logger;
+        private readonly string _reportPath;
 
 #pragma warning disable CS0649 // Field '_reportViewer' is never assigned to, and will always have its default value null
-    private Report? _reportViewer;
+        private Report? _reportViewer;
 #pragma warning restore CS0649
-    private ToolStrip? _toolStrip;
-    private ToolStripButton? _btnRefresh;
+        private ToolStrip? _toolStrip;
+        private ToolStripButton? _btnRefresh;
 
         /// <summary>
         /// Creates a new ReportViewerForm following MDI child form pattern.
