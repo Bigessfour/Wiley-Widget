@@ -41,7 +41,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
                 var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
                 var components = new Container();
                 var dockingManager = new SfTools.DockingManager(components)
@@ -88,7 +88,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
                 var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+                using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
                 var components = new Container();
                 var dockingManager = new SfTools.DockingManager(components)

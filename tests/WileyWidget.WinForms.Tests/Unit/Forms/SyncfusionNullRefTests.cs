@@ -83,7 +83,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         private class TestMainForm : MainForm
         {
             public TestMainForm() : this(new TestConfiguration(useDockingManager: false)) { }
-            public TestMainForm(TestConfiguration config) : base(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance) { }
+            public TestMainForm(TestConfiguration config) : base(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled) { }
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
             var testConfig = new TestConfiguration();
             testConfig["UI:UseDockingManager"] = "false"; // Disable docking
-            using var mainForm = new MainForm(serviceProvider, testConfig, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, testConfig, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             // Act & Assert - Calling DockForm when docking is disabled should not throw
             var method = mainForm.GetType().GetMethod("DockForm", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

@@ -41,7 +41,7 @@ public class UiModeValidationTests
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var form = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var form = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
 
             Assert.False(form.IsMdiContainer);
         });

@@ -108,7 +108,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -186,7 +186,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -243,7 +243,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -305,7 +305,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -355,7 +355,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -399,7 +399,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -454,7 +454,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -512,7 +512,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -561,7 +561,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -621,7 +621,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             // Note: Not calling CreateControl() - but MainForm may create handle in constructor
 
             var components = new Container();
@@ -669,7 +669,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -726,7 +726,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
@@ -781,7 +781,7 @@ public sealed class DockingLayoutPersistenceEdgeCaseTests : IDisposable
 
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance);
+            using var mainForm = new MainForm(serviceProvider, config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             mainForm.CreateControl();
 
             var components = new Container();
