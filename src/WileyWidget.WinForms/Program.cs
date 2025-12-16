@@ -334,14 +334,20 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"Creating logs directory at: {logsPath}");
                 Directory.CreateDirectory(logsPath);
 
-                var logFile = Path.Combine(logsPath, "app-.log");
-                Console.WriteLine($"Log file pattern: {logFile}");
+                // Template used by Serilog's rolling file sink (daily rolling uses a date suffix)
+                var logFileTemplate = Path.Combine(logsPath, "app-.log");
+                Console.WriteLine($"Log file pattern: {logFileTemplate}");
+
+                // Resolve the current daily log file that Serilog will write to for today's date
+                // Serilog's daily rolling file uses the yyyyMMdd date format (e.g., app-20251215.log)
+                var logFileCurrent = Path.Combine(logsPath, $"app-{DateTime.Now:yyyyMMdd}.log");
+                Console.WriteLine($"Current daily log file: {logFileCurrent}");
 
                 Log.Logger = new LoggerConfiguration()
                     .ReadFrom.Configuration(builder.Configuration)
                     .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
                     .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.File(logFile, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
+                    .WriteTo.File(logFileTemplate, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
                     .Enrich.FromLogContext()
                     .MinimumLevel.Information()
                     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
@@ -351,7 +357,8 @@ namespace WileyWidget.WinForms
                 builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
                 Console.WriteLine("Logging configured successfully");
-                Log.Information("Logging system initialized - writing to {LogPath}", logFile);
+                // Log both the resolved current file and the template used by the rolling sink so it's clear
+                Log.Information("Logging system initialized - writing to {LogPath} (pattern: {LogPattern})", logFileCurrent, logFileTemplate);
             }
             catch (Exception ex)
             {
