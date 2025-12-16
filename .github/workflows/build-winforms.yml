@@ -110,7 +110,7 @@ jobs:
       - name: Test - Unit Tests (with coverage)
         shell: powershell
         run: |
-          dotnet test tests/WileyWidget.Services.UnitTests/WileyWidget.Services.UnitTests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Test - Dashboard Service Tests (filtered)
