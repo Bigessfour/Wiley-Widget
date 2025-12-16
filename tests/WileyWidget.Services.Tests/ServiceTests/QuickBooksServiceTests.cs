@@ -281,10 +281,14 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var prevSkip = Environment.GetEnvironmentVariable("WW_SKIP_INTERACTIVE");
             var prevPrint = Environment.GetEnvironmentVariable("WW_PRINT_AUTH_URL");
+            var prevClientId = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
+            var prevClientSecret = Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET");
             try
             {
                 Environment.SetEnvironmentVariable("WW_SKIP_INTERACTIVE", "1");
                 Environment.SetEnvironmentVariable("WW_PRINT_AUTH_URL", null);
+                Environment.SetEnvironmentVariable("QBO_CLIENT_ID", "test-client-id");
+                Environment.SetEnvironmentVariable("QBO_CLIENT_SECRET", "test-client-secret");
 
                 var mockSecretVault = new Mock<ISecretVaultService>();
                 var mockLogger = new Mock<ILogger<QuickBooksService>>();
@@ -306,6 +310,8 @@ namespace WileyWidget.Services.Tests.ServiceTests
             {
                 Environment.SetEnvironmentVariable("WW_SKIP_INTERACTIVE", prevSkip);
                 Environment.SetEnvironmentVariable("WW_PRINT_AUTH_URL", prevPrint);
+                Environment.SetEnvironmentVariable("QBO_CLIENT_ID", prevClientId);
+                Environment.SetEnvironmentVariable("QBO_CLIENT_SECRET", prevClientSecret);
             }
         }
 
