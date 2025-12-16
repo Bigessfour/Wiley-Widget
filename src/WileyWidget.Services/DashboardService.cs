@@ -22,7 +22,7 @@ namespace WileyWidget.Services
         private readonly IMunicipalAccountRepository _accountRepository;
         private readonly ILogger<DashboardService> _logger;
         private readonly ICacheService? _cacheService;
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration? _configuration;
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
@@ -37,7 +37,7 @@ namespace WileyWidget.Services
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheService = cacheService;
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace WileyWidget.Services
         /// </summary>
         private int GetCurrentFiscalYear()
         {
-            return _configuration.GetValue<int>("UI:FiscalYear", 2025);
+            return _configuration?.GetValue<int>("UI:FiscalYear", 2025) ?? 2025;
         }
 
         /// <summary>
