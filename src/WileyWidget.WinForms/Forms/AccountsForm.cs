@@ -118,44 +118,44 @@ namespace WileyWidget.WinForms.Forms
 
         [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
         private void InitializeComponent()
+        {
+            Text = Resources.FormTitle;
+            Size = new Size(1400, 900);
+            MinimumSize = new Size(1000, 600);
+            StartPosition = FormStartPosition.CenterScreen;
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+
+            _mainLayout = new TableLayoutPanel
             {
-                Text = Resources.FormTitle;
-                Size = new Size(1400, 900);
-                MinimumSize = new Size(1000, 600);
-                StartPosition = FormStartPosition.CenterScreen;
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3
+            };
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
 
-                _mainLayout = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Fill,
-                    ColumnCount = 1,
-                    RowCount = 3
-                };
-                _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
-                _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-                _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            BuildToolbar();
+            SetupDataGrid();
+            BuildStatusBar();
 
-                BuildToolbar();
-                SetupDataGrid();
-                BuildStatusBar();
-
-                if (_toolbar != null)
-                {
-                    _mainLayout.Controls.Add(_toolbar, 0, 0);
-                }
-
-                if (_dataGrid != null)
-                {
-                    _mainLayout.Controls.Add(_dataGrid, 0, 1);
-                }
-
-                if (_statusBar != null)
-                {
-                    _mainLayout.Controls.Add(_statusBar, 0, 2);
-                }
-
-                Controls.Add(_mainLayout);
+            if (_toolbar != null)
+            {
+                _mainLayout.Controls.Add(_toolbar, 0, 0);
             }
+
+            if (_dataGrid != null)
+            {
+                _mainLayout.Controls.Add(_dataGrid, 0, 1);
+            }
+
+            if (_statusBar != null)
+            {
+                _mainLayout.Controls.Add(_statusBar, 0, 2);
+            }
+
+            Controls.Add(_mainLayout);
+        }
 
         private void BuildToolbar()
         {
