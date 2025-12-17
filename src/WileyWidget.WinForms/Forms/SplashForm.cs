@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Serilog;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
@@ -20,7 +21,7 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     internal sealed class SplashForm : SfForm, IStartupProgressReporter
     {
-        private readonly ILogger<SplashForm>? _logger;
+        private readonly ILogger? _logger;
         private Panel? _contentPanel;
         private Label? _titleLabel;
         private Label? _subtitleLabel;
@@ -47,7 +48,7 @@ namespace WileyWidget.WinForms.Forms
         {
         }
 
-        public SplashForm(ILogger<SplashForm>? logger)
+        public SplashForm(ILogger? logger)
         {
             _logger = logger;
             _logger?.LogDebug("SplashForm constructor started");

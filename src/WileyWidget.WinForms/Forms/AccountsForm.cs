@@ -87,6 +87,21 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnLoad(e);
             _logger.LogInformation("AccountsForm loaded");
+
+            if (MdiParent is MainForm mainForm)
+            {
+                try
+                {
+                    mainForm.RegisterMdiChildWithDocking(this);
+                }
+                catch
+                {
+                    // Docking registration is best-effort; fall back to standard MDI when unavailable.
+                }
+            }
+
+            // Load data after form is fully initialized and visible
+            _ = LoadData();
         }
 
         protected override void OnClosed(EventArgs e)
@@ -572,25 +587,6 @@ namespace WileyWidget.WinForms.Forms
             MessageBox.Show(details, Resources.FormTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
-
-            if (MdiParent is MainForm mainForm)
-            {
-                try
-                {
-                    mainForm.RegisterAsDockingMDIChild(this, true);
-                }
-                catch
-                {
-                    // Safe to ignore docking registration failures; form still opens as standard MDI child.
-                }
-            }
-
-            // Load data after form is fully initialized and visible
-            _ = LoadData();
-        }
 
         protected override void Dispose(bool disposing)
         {

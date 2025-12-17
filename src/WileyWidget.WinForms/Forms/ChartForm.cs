@@ -21,14 +21,14 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class ChartForm : Form
     {
-        private readonly ILogger<ChartForm> _logger;
+        private readonly ILogger _logger;
         private readonly ChartViewModel _vm;
         private readonly MainForm _mainForm;
         private ChartControl? _cartesian;
         private ChartControl? _pie;
         private Label? _statusLabel;
 
-        public ChartForm(ILogger<ChartForm> logger, ChartViewModel vm, MainForm mainForm)
+        public ChartForm(ILogger logger, ChartViewModel vm, MainForm mainForm)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
@@ -138,11 +138,6 @@ namespace WileyWidget.WinForms.Forms
             pie.PrimaryYAxis.DrawGrid = false;
 
             return pie;
-        }
-
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
         }
 
         private async Task LoadChartDataAsync()

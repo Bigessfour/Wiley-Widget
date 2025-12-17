@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Serilog;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
@@ -23,12 +24,12 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class SettingsForm : Form
     {
-        private readonly ILogger<SettingsForm> _logger;
+        private readonly ILogger _logger;
         private readonly SettingsViewModel _vm;
         private readonly IThemeService _themeService;
         private SettingsPanel? _settingsPanel;
 
-        public SettingsForm(ILogger<SettingsForm> logger, SettingsViewModel vm, MainForm mainForm)
+        public SettingsForm(ILogger logger, SettingsViewModel vm, MainForm mainForm)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
@@ -72,6 +73,18 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnLoad(e);
             _logger.LogInformation("SettingsForm loaded");
+
+            if (MdiParent is MainForm mf)
+            {
+                try
+                {
+                    mf.RegisterMdiChildWithDocking(this);
+                }
+                catch
+                {
+                    // Docking registration is best-effort; fall back to standard MDI when unavailable.
+                }
+            }
         }
 
         protected override void OnClosed(EventArgs e)
@@ -133,23 +146,6 @@ namespace WileyWidget.WinForms.Forms
             };
 
             Controls.Add(_settingsPanel);
-        }
-
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
-
-            if (MdiParent is MainForm mf)
-            {
-                try
-                {
-                    mf.RegisterMdiChildWithDocking(this);
-                }
-                catch
-                {
-                    // Docking registration is best-effort; fall back to standard MDI when unavailable.
-                }
-            }
         }
 
         protected override void Dispose(bool disposing)
