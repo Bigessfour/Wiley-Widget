@@ -109,6 +109,10 @@ namespace WileyWidget.WinForms.Forms
             }
             _isUiTestHarness = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
             _toolTip = new ToolTip();
+
+            // Set Name for UI test identification (used as AutomationId in UI Automation)
+            this.Name = "Dashboard";
+
             InitializeComponent();
             SetupUI();
             ThemeColors.ApplyTheme(this);

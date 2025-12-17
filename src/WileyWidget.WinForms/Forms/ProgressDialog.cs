@@ -169,11 +169,7 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Operation progress indicator"
             };
 
-            // NOTE: Theme cascades from form-level SetVisualStyle - no need for individual control theming
-            // REMOVED: Manual color assignments - SfSkinManager owns all color decisions
-            // REMOVED: _progressBar.ForeColor = ThemeColors.PrimaryAccent;
-            // REMOVED: _progressBar.BackColor = ThemeColors.Background;
-
+            // Theme cascades from form-level ThemeColors.ApplyTheme
             _mainLayout.Controls.Add(_progressBar, 0, 2);
 
             // Percentage label
@@ -185,7 +181,6 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
-                // REMOVED: ForeColor = Color.Gray; - SfSkinManager owns all colors
                 AccessibleName = "Percentage complete",
                 AccessibleDescription = "Percentage of operation completed"
             };
@@ -203,9 +198,6 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Cancel the current operation"
             };
             _btnCancel.Click += BtnCancel_Click;
-            // NOTE: Theme cascades from form-level SetVisualStyle - no need for individual control theming
-            // REMOVED: try { SfSkinManager.SetVisualStyle(_btnCancel, ThemeColors.DefaultTheme); } catch { }
-
             _mainLayout.Controls.Add(_btnCancel, 0, 5);
 
             Controls.Add(_mainLayout);

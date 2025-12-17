@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using FlaUI.Core;
@@ -7,9 +6,8 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
-using FlaUI.UIA3;
 using Xunit;
-using Application = FlaUI.Core.Application;
+using WileyWidget.WinForms.E2ETests.Helpers;
 
 namespace WileyWidget.WinForms.E2ETests
 {
@@ -17,26 +15,15 @@ namespace WileyWidget.WinForms.E2ETests
     /// FlaUI smoke tests covering the primary WinForms views opened from MainForm navigation.
     /// These are opt-in and return early when no interactive UI runner is available.
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Disposed via cleanup.")]
     [Collection("UI Tests")]
-    public sealed class AllViewsUITests : IDisposable
+    public sealed class AllViewsUITests
     {
-        private readonly string _exePath;
-        private Application? _app;
-        private UIA3Automation? _automation;
+        private readonly UiTestSessionOptions _options;
+        private UiTestSession.SessionState? _session;
 
         public AllViewsUITests()
         {
-            _exePath = ResolveExecutablePath();
-
-            // Enable in-memory mode and simplified chrome for UI automation stability.
-            // Disable MDI mode so forms open as separate windows that FlaUI can detect
-            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-            Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
-            // Use double-underscore config keys so the launched process picks up values
-            Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", "false");
+            _options = UiTestSessionOptions.UiHarness(ResolveExecutablePath());
         }
 
         private static string ResolveExecutablePath()
@@ -86,13 +73,17 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
 
-            var viewWindow = OpenView(mainWindow, navAutomationId, expectedTitleContains);
+            var viewWindow = NavigationHelper.OpenView(session.Automation, mainWindow, navAutomationId, expectedTitleContains);
             Assert.NotNull(viewWindow);
 
             var target = WaitForElement(viewWindow, cf => BuildElementCondition(cf, elementAutomationId, fallbackElementName));
             Assert.NotNull(target);
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(viewWindow);
         }
 
         [Fact]
@@ -105,8 +96,9 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
-            var dashboard = OpenView(mainWindow, "Nav_Dashboard", "Dashboard");
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
+            var dashboard = NavigationHelper.OpenView(session.Automation, mainWindow, "Nav_Dashboard", "Dashboard");
 
             var statusLabel = WaitForElement(dashboard, cf => cf.ByAutomationId("LastUpdatedLabel").Or(cf.ByName("Last Updated:")))?.AsLabel();
             Assert.NotNull(statusLabel);
@@ -119,6 +111,9 @@ namespace WileyWidget.WinForms.E2ETests
 
             var changed = Retry.While(() => string.Equals(statusLabel.Text, initial, StringComparison.Ordinal), same => same, TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(200));
             Assert.False(changed.Success, "LastUpdated label did not update after refresh within timeout.");
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(dashboard);
         }
 
         [Fact]
@@ -131,8 +126,9 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
-            var settings = OpenView(mainWindow, "Nav_Settings", "Settings");
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
+            var settings = NavigationHelper.OpenView(session.Automation, mainWindow, "Nav_Settings", "Settings");
 
             var themeCombo = WaitForElement(settings, cf => cf.ByAutomationId("themeCombo"))?.AsComboBox();
             Assert.NotNull(themeCombo);
@@ -151,6 +147,9 @@ namespace WileyWidget.WinForms.E2ETests
             {
                 Assert.True(items.Length >= 1, "Theme combo should expose at least one option.");
             }
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(settings);
         }
 
         [Fact]
@@ -163,8 +162,9 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
-            var accounts = OpenView(mainWindow, "Nav_Accounts", "Municipal Accounts");
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
+            var accounts = NavigationHelper.OpenView(session.Automation, mainWindow, "Nav_Accounts", "Municipal Accounts");
 
             var loadButton = WaitForElement(accounts, cf => cf.ByName("Load Accounts"))?.AsButton();
             var filterButton = WaitForElement(accounts, cf => cf.ByName("Apply Filters"))?.AsButton();
@@ -176,6 +176,9 @@ namespace WileyWidget.WinForms.E2ETests
 
             var grid = WaitForElement(accounts, cf => cf.ByAutomationId("dataGridAccounts"))?.AsGrid();
             Assert.NotNull(grid);
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(accounts);
         }
 
         [Fact]
@@ -188,14 +191,18 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
-            var charts = OpenView(mainWindow, "Nav_Charts", "Budget Analytics");
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
+            var charts = NavigationHelper.OpenView(session.Automation, mainWindow, "Nav_Charts", "Budget Analytics");
 
             var cartesian = WaitForElement(charts, cf => cf.ByAutomationId("Chart_Cartesian"));
             var pie = WaitForElement(charts, cf => cf.ByAutomationId("Chart_Pie"));
 
             Assert.NotNull(cartesian);
             Assert.NotNull(pie);
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(charts);
         }
 
         [Fact]
@@ -208,9 +215,10 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
 
-            var reports = OpenView(mainWindow, "Nav_Reports", "Reports");
+            var reports = NavigationHelper.OpenView(session.Automation, mainWindow, "Nav_Reports", "Reports");
 
             var generate = WaitForElement(reports, cf => cf.ByName("Generate"))?.AsButton();
             var exportPdf = WaitForElement(reports, cf => cf.ByName("Export PDF"))?.AsButton();
@@ -221,6 +229,9 @@ namespace WileyWidget.WinForms.E2ETests
             // Viewer placeholder or real viewer should exist; check for any window control under the reports window.
             var viewerHost = WaitForElement(reports, cf => cf.ByControlType(ControlType.Pane).Or(cf.ByControlType(ControlType.Custom)));
             Assert.NotNull(viewerHost);
+
+            // Close the view to ensure test isolation
+            NavigationHelper.CloseView(reports);
         }
 
         [Fact]
@@ -233,7 +244,8 @@ namespace WileyWidget.WinForms.E2ETests
             }
 
             StartApp();
-            var mainWindow = GetMainWindow();
+            var session = RequireSession();
+            var mainWindow = session.GetMainWindow();
 
             var stateLabel = WaitForElementByNameContains(mainWindow, "Docking:", 8);
             Assert.NotNull(stateLabel);
@@ -253,23 +265,6 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.False(changed.Success, "State text did not change after toggling docking/MDI buttons.");
         }
 
-        public void Dispose()
-        {
-            try { _automation?.Dispose(); } catch { }
-            try
-            {
-                if (_app != null && !_app.HasExited)
-                {
-                    _app.Kill();
-                    _app.Dispose();
-                }
-            }
-            catch
-            {
-                // Ignore disposal issues; process may already be closed.
-            }
-        }
-
         private bool EnsureInteractiveOrSkip()
         {
             var labels = Environment.GetEnvironmentVariable("RUNNER_LABELS") ?? string.Empty;
@@ -287,76 +282,75 @@ namespace WileyWidget.WinForms.E2ETests
 
         private void StartApp()
         {
-            if (_app != null && !_app.HasExited)
-            {
-                return;
-            }
-
-            if (!File.Exists(_exePath))
-            {
-                throw new FileNotFoundException($"Executable not found at '{_exePath}'. Set WILEYWIDGET_EXE to a published executable before running UI tests.");
-            }
-
-            // Set the license key in the current process environment so the launched app inherits it
-            // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
-            Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
-
-            _app = Application.Launch(_exePath);
-            _automation = new UIA3Automation();
+            _session = UiTestSession.GetOrStart(_options);
+            DismissLicensePopups(_session);
         }
 
-        private Window GetMainWindow(int timeoutSeconds = 15)
+        private UiTestSession.SessionState RequireSession()
         {
-            if (_app == null || _automation == null)
+            return _session ?? throw new InvalidOperationException("Application has not been started.");
+        }
+
+        private static void DismissLicensePopups(UiTestSession.SessionState session)
+        {
+            // Wait a bit for popups to appear
+            System.Threading.Thread.Sleep(2000);
+
+            try
             {
-                throw new InvalidOperationException("Application has not been started.");
+                // Find all windows
+                var allWindows = session.Automation.GetDesktop().FindAllChildren();
+
+                foreach (var window in allWindows)
+                {
+                    try
+                    {
+                        // Safely access window name (can throw COM exceptions during UI transitions)
+                        var windowName = window?.Name;
+                        if (!string.IsNullOrEmpty(windowName) &&
+                            (windowName.Contains("License", StringComparison.OrdinalIgnoreCase) ||
+                             windowName.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            try
+                            {
+                                // Try to close the popup
+                                var closeButton = window.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button).And(cf.ByName("OK").Or(cf.ByName("Close"))));
+                                if (closeButton != null)
+                                {
+                                    var button = closeButton?.AsButton();
+                                    if (button != null)
+                                    {
+                                        button.Click();
+                                    }
+                                    else
+                                    {
+                                        window.AsWindow().Close();
+                                    }
+                                }
+                                else
+                                {
+                                    window.AsWindow().Close();
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore if can't close
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore COM exceptions when accessing window properties
+                        continue;
+                    }
+                }
             }
-
-            var main = Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds));
-            return main.Result ?? throw new InvalidOperationException("Main window was not found.");
-        }
-
-        private Window OpenView(Window mainWindow, string navAutomationId, string expectedTitleContains)
-        {
-            var navElement = Retry.WhileNull(
-                () => FindNavigationElement(mainWindow, navAutomationId, expectedTitleContains),
-                TimeSpan.FromSeconds(30),
-                TimeSpan.FromMilliseconds(250)).Result;
-
-            Assert.NotNull(navElement);
-
-            navElement!.Click();
-
-            var window = Retry.WhileNull(
-                () => FindWindowByTitle(expectedTitleContains),
-                TimeSpan.FromSeconds(30),
-                TimeSpan.FromMilliseconds(250));
-
-            return window.Result ?? throw new InvalidOperationException($"View window containing '{expectedTitleContains}' was not found.");
-        }
-
-        private Window? FindWindowByTitle(string titleContains)
-        {
-            if (_automation == null)
+            catch
             {
-                return null;
+                // Ignore if desktop enumeration fails - not critical
             }
-
-            var desktop = _automation.GetDesktop();
-            var window = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window))
-                .FirstOrDefault(w => !string.IsNullOrEmpty(w.Name)
-                                     && w.Name.IndexOf(titleContains, StringComparison.OrdinalIgnoreCase) >= 0)
-                ?.AsWindow();
-
-            return window;
         }
 
-        private static AutomationElement? FindNavigationElement(AutomationElement root, string navAutomationId, string expectedTitleContains)
-        {
-            return root.FindFirstDescendant(cf => cf.ByAutomationId(navAutomationId)
-                .Or(cf.ByName(navAutomationId))
-                .Or(cf.ByName(expectedTitleContains)));
-        }
 
         private static ConditionBase BuildElementCondition(ConditionFactory cf, string? automationId, string fallbackName)
         {

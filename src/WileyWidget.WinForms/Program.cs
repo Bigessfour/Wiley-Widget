@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
@@ -66,13 +64,14 @@ namespace WileyWidget.WinForms
             try
             {
                 // Use IStartupProgressReporter.Report() for granular progress tracking
-                splash.Report(0.05, "Registering licenses...", isIndeterminate: true);
-                RegisterSyncfusionLicense();
-
-                splash.Report(0.15, "Building dependency injection container...");
+                splash.Report(0.05, "Building dependency injection container...");
                 using var host = BuildHost(args);
                 using var uiScope = host.Services.CreateScope();
                 Services = uiScope.ServiceProvider;
+
+                splash.Report(0.15, "Registering licenses...");
+                var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
+                RegisterSyncfusionLicense(config);
 
                 splash.Report(0.30, "Applying Office2019 theme...");
                 InitializeTheme();
@@ -113,16 +112,15 @@ namespace WileyWidget.WinForms
                 WireGlobalExceptionHandlers();
 
                 splash.Report(0.85, "Initializing main window...");
-                Console.WriteLine("About to create MainForm...");
+                Console.WriteLine("Creating MainForm...");
                 var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
                 Console.WriteLine("MainForm created successfully");
 
                 // Complete splash screen with fade-out animation
                 splash.Complete("Ready");
-                Console.WriteLine("Splash screen completed");
 
                 ScheduleAutoCloseIfRequested(args, mainForm);
-                Console.WriteLine("About to call Application.Run(mainForm)...");
+                Console.WriteLine("Starting application message loop...");
                 RunUiLoop(mainForm);
             }
             catch (Exception ex)
@@ -132,85 +130,30 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static void RegisterSyncfusionLicense()
+        private static void RegisterSyncfusionLicense(IConfiguration configuration)
         {
-            // In test environments, still register license but skip validation
-            if (IsRunningInTestEnvironment())
-            {
-                string? testLicenseKey = GetSyncfusionLicenseKey();
-                if (!string.IsNullOrWhiteSpace(testLicenseKey))
-                {
-                    try
-                    {
-                        SyncfusionLicenseProvider.RegisterLicense(testLicenseKey);
-                        Console.WriteLine("Registered Syncfusion license from environment in test mode");
-                                    }
-                    catch
-                    {
-                        Console.WriteLine("Failed to register Syncfusion license in test mode");
-                    }
-                }
-                // If no license, register dummy to prevent popup
-                // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
-                const string dummyLicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
-                try
-                {
-                    // BoldReports uses same Syncfusion license key
-                    SyncfusionLicenseProvider.RegisterLicense(dummyLicenseKey);
-                    Console.WriteLine("Registered test Syncfusion license (covers Bold Reports) to prevent trial popup");
-                }
-                catch
-                {
-                    Console.WriteLine("Failed to register test licenses - trial popup may appear");
-                }
-                return;
-            }
-
-            string? licenseKey = GetSyncfusionLicenseKey();
-
-            if (string.IsNullOrWhiteSpace(licenseKey))
-            {
-                throw new InvalidOperationException(
-                    "Syncfusion license key is required but not found. " +
-                    "Please configure the license key using one of the following methods:\n" +
-                    "1. User secrets: dotnet user-secrets set \"Syncfusion:LicenseKey\" \"your-key\" --project WileyWidget.WinForms\n" +
-                    "2. Environment variable: SYNCFUSION_LICENSE_KEY=your-key\n" +
-                    "3. Create secrets/SyncfusionLicense file with the key\n" +
-                    "Without a valid license, Syncfusion controls will display watermarks or fail in production.");
-            }
-
             try
             {
-                Console.WriteLine($"Registering Syncfusion license key (length: {licenseKey.Length})...");
-                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-
-                // Validate the license for Windows Forms platform
-                Console.WriteLine("Validating license for Windows Forms platform...");
-                try
+                var licenseKey = configuration["Syncfusion:LicenseKey"];
+                if (string.IsNullOrEmpty(licenseKey))
                 {
-                    if (!SyncfusionLicenseProvider.ValidateLicense(Platform.WindowsForms))
-                    {
-                        Console.WriteLine("License validation failed for Windows Forms platform - continuing anyway");
-                        // Don't throw exception, just log the warning
-                    }
-                    else
-                    {
-                        Console.WriteLine("License validation passed");
-                    }
+                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
                 }
-                catch (Exception validationEx)
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+
+                // Validate the license key
+                bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
+                if (!isValid)
                 {
-                    Console.WriteLine($"License validation threw exception: {validationEx.Message} - continuing anyway");
+                    throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
                 }
 
-                // Log success (using a simple console write since Log may not be initialized yet)
-                Console.WriteLine("Syncfusion license registered successfully");
+                Log.Information("Syncfusion license registered and validated successfully.");
             }
-            catch (Exception ex) when (ex is not InvalidOperationException)
+            catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    "Failed to register Syncfusion license. " +
-                    "Please ensure the license key is valid and properly formatted.", ex);
+                Log.Error(ex, "Failed to register Syncfusion license.");
+                throw;
             }
         }
 
@@ -221,47 +164,6 @@ namespace WileyWidget.WinForms
                    AppDomain.CurrentDomain.GetAssemblies()
                        .Any(asm => asm.FullName?.Contains("test", StringComparison.OrdinalIgnoreCase) == true ||
                                    asm.FullName?.Contains("xunit", StringComparison.OrdinalIgnoreCase) == true);
-        }
-
-        private static string? GetSyncfusionLicenseKey()
-        {
-            // 1. Try user secrets (development)
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
-            var tempConfig = configBuilder.Build();
-            string? licenseKey = tempConfig["Syncfusion:LicenseKey"];
-
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                return licenseKey;
-            }
-
-            // 2. Try environment variable (production/CI)
-            licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                return licenseKey;
-            }
-
-            // 3. Try secrets file (fallback)
-            string secretsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "secrets", "SyncfusionLicense");
-            if (File.Exists(secretsFilePath))
-            {
-                try
-                {
-                    licenseKey = File.ReadAllText(secretsFilePath).Trim();
-                    if (!string.IsNullOrWhiteSpace(licenseKey))
-                    {
-                        return licenseKey;
-                    }
-                }
-                catch
-                {
-                    // Ignore file read errors and continue
-                }
-            }
-
-            return null; // No license found
         }
 
         /// <summary>
@@ -278,6 +180,7 @@ namespace WileyWidget.WinForms
             {
                 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
                 SfSkinManager.ApplicationVisualTheme = themeName;
+                Log.Information("Theme initialized successfully: {ThemeName}", themeName);
             }
             catch (Exception ex)
             {
@@ -299,6 +202,19 @@ namespace WileyWidget.WinForms
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
+
+            // Set default font for all new controls
+            try
+            {
+                Application.SetDefaultFont(WileyWidget.WinForms.Services.FontService.Instance.CurrentFont);
+                Log.Information("Default font set successfully: {FontName} {FontSize}pt",
+                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Name,
+                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Size);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to set default font");
+            }
         }
 
         private static void CaptureSynchronizationContext()
@@ -398,6 +314,14 @@ namespace WileyWidget.WinForms
                 var logFileCurrent = Path.Combine(logsPath, $"app-{DateTime.Now:yyyyMMdd}.log");
                 Console.WriteLine($"Current daily log file: {logFileCurrent}");
 
+                // Check for SQL logging override environment variable
+                var enableSqlLogging = Environment.GetEnvironmentVariable("WILEYWIDGET_LOG_SQL");
+                var sqlLogLevel = string.Equals(enableSqlLogging, "true", StringComparison.OrdinalIgnoreCase)
+                    ? Serilog.Events.LogEventLevel.Information
+                    : Serilog.Events.LogEventLevel.Warning;
+
+                Console.WriteLine($"SQL logging level: {sqlLogLevel} (WILEYWIDGET_LOG_SQL={enableSqlLogging ?? "not set"})");
+
                 Log.Logger = new LoggerConfiguration()
                     .ReadFrom.Configuration(builder.Configuration)
                     .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
@@ -405,11 +329,8 @@ namespace WileyWidget.WinForms
                     .WriteTo.File(logFileTemplate, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
                     .Enrich.FromLogContext()
                     .MinimumLevel.Information()
-                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", sqlLogLevel)
                     .CreateLogger();
-
-                builder.Logging.ClearProviders();
-                builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
                 Console.WriteLine("Logging configured successfully");
                 // Log both the resolved current file and the template used by the rolling sink so it's clear
@@ -427,8 +348,6 @@ namespace WileyWidget.WinForms
                     .MinimumLevel.Information()
                     .CreateLogger();
 
-                builder.Logging.ClearProviders();
-                builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
                 Console.Error.WriteLine("Logging fallback to console-only mode");
             }
@@ -475,13 +394,7 @@ namespace WileyWidget.WinForms
                 options.EnableDetailedErrors();
                 options.EnableSensitiveDataLogging(builder.Configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
 
-                var loggerFactory = LoggerFactory.Create(logging =>
-                {
-                    logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-                    logging.AddConsole();
-                    logging.AddDebug();
-                });
-                options.UseLoggerFactory(loggerFactory);
+                options.UseLoggerFactory(new SerilogLoggerFactory(Log.Logger));
 
                 Log.Information("Using SQL Server database: {Database}", connectionString.Split(';').FirstOrDefault(s => s.Contains("Database", StringComparison.OrdinalIgnoreCase)) ?? "WileyWidgetDev");
             }
@@ -682,10 +595,7 @@ namespace WileyWidget.WinForms
             };
         }
 
-        private static MainForm CreateMainForm(IServiceProvider serviceProvider)
-        {
-            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(serviceProvider);
-        }
+
 
         private static void ScheduleAutoCloseIfRequested(string[] args, Form mainForm)
         {

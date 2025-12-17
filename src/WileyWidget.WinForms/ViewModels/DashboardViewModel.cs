@@ -174,14 +174,16 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task LoadDashboardDataAsync()
         {
-            // Cancel any existing load operation
-            _loadCancellationTokenSource?.Cancel();
-            _loadCancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = _loadCancellationTokenSource.Token;
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
 
-            await _loadLock.WaitAsync(cancellationToken);
+            await _loadLock.WaitAsync();
             try
             {
+                // Cancel any existing load operation
+                _loadCancellationTokenSource?.Cancel();
+                _loadCancellationTokenSource = cancellationTokenSource;
+
                 var retryCount = 0;
 
                 while (retryCount < MaxRetryAttempts)
@@ -207,8 +209,7 @@ namespace WileyWidget.WinForms.ViewModels
                             _logger.LogInformation("Loading dashboard data...");
                         }
 
-                        // Check for cancellation
-                        cancellationToken.ThrowIfCancellationRequested();
+                        // Removed cancellation check to prevent exceptions in concurrent loads
 
                         // Determine which fiscal year to load.
                         // Priority:
@@ -259,7 +260,7 @@ namespace WileyWidget.WinForms.ViewModels
                         cancellationToken.ThrowIfCancellationRequested();
 
                         // Load budget analysis from repository
-                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd).ConfigureAwait(false);
+                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken).ConfigureAwait(false);
 
                         if (analysis != null)
                         {
@@ -343,10 +344,10 @@ namespace WileyWidget.WinForms.ViewModels
                         }
 
                         // Load account count
-                        AccountCount = await _accountRepository.GetCountAsync().ConfigureAwait(false);
+                        AccountCount = await _accountRepository.GetCountAsync(cancellationToken).ConfigureAwait(false);
 
                         // Calculate revenue and expenses from budget entries
-                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear).ConfigureAwait(false);
+                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken).ConfigureAwait(false);
                         TotalRevenue = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
                             .Sum(be => be.ActualAmount);

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -45,6 +46,9 @@ public abstract class MdiChildFormBase : Form
         ShowInTaskbar = false;
         MinimizeBox = true;
         MaximizeBox = true;
+
+        // Subscribe to font changes for real-time updates
+        Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
     }
 
     /// <summary>
@@ -181,6 +185,44 @@ public abstract class MdiChildFormBase : Form
     {
         Icon = icon;
         ShowIcon = true;
+    }
+
+    /// <summary>
+    /// Handles application font changes by updating this form and all child controls.
+    /// </summary>
+    private void OnApplicationFontChanged(object? sender, Services.FontChangedEventArgs e)
+    {
+        // Update this form and all child controls
+        UpdateControlFont(this, e.NewFont);
+    }
+
+    /// <summary>
+    /// Recursively updates the font of a control and all its children.
+    /// Respects designer-set fonts to avoid breaking explicit overrides.
+    /// </summary>
+    private void UpdateControlFont(Control control, Font newFont)
+    {
+        // Skip if control explicitly overrides font (designer-set)
+        if (control.Font != null && control.Font != control.Parent?.Font)
+        {
+            return;
+        }
+
+        control.Font = newFont;
+
+        foreach (Control child in control.Controls)
+        {
+            UpdateControlFont(child, newFont);
+        }
+    }
+
+    /// <summary>
+    /// Unsubscribes from font service when form closes.
+    /// </summary>
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        Services.FontService.Instance.FontChanged -= OnApplicationFontChanged;
+        base.OnFormClosed(e);
     }
 }
 

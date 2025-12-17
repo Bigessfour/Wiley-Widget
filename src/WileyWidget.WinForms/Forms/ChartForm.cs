@@ -21,16 +21,20 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class ChartForm : Form
     {
+        private readonly ILogger<ChartForm> _logger;
         private readonly ChartViewModel _vm;
         private readonly MainForm _mainForm;
         private ChartControl? _cartesian;
         private ChartControl? _pie;
         private Label? _statusLabel;
 
-        public ChartForm(ChartViewModel vm, MainForm mainForm)
+        public ChartForm(ILogger<ChartForm> logger, ChartViewModel vm, MainForm mainForm)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+
+            _logger.LogDebug("ChartForm constructor started");
             InitializeComponent();
 
             // Only set MdiParent if MainForm is in MDI mode
@@ -44,15 +48,32 @@ namespace WileyWidget.WinForms.Forms
             SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
 
+            // Set minimum size for chart visibility
+            MinimumSize = new Size(600, 400);
+
             _vm.PropertyChanged += VmOnPropertyChanged;
             WireCollectionChanges();
 
             FormClosed += (_, _) =>
             {
+                _logger.LogInformation("ChartForm closed");
                 _vm.PropertyChanged -= VmOnPropertyChanged;
                 UnwireCollectionChanges();
             };
+
+            _logger.LogInformation("ChartForm initialized successfully");
         }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _logger.LogInformation("ChartForm loaded");
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            _logger.LogDebug("ChartForm shown to user");
 
         private void InitializeComponent()
         {
@@ -97,9 +118,6 @@ namespace WileyWidget.WinForms.Forms
 
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
-
-            // Axis label colors handled by SfSkinManager theme cascade
-
             return cartesian;
         }
 
@@ -248,8 +266,6 @@ namespace WileyWidget.WinForms.Forms
         {
             cartesian.Series.Clear();
             var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-
-            // Series styling handled by SfSkinManager theme cascade
             series.Style.Border.Width = 2;
 
             // Create a snapshot to avoid "Collection was modified" exception
@@ -267,9 +283,6 @@ namespace WileyWidget.WinForms.Forms
         {
             pie.Series.Clear();
             var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
-
-            // Label colors handled by chart theme - no manual assignment needed
-            // SfSkinManager themes cascade to chart controls automatically
 
             // Create a snapshot to avoid "Collection was modified" exception
             // PieChartData is ObservableCollection that may be modified during enumeration

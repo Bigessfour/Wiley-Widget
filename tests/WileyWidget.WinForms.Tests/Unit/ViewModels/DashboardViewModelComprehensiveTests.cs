@@ -72,14 +72,13 @@ public sealed class DashboardViewModelComprehensiveTests : IDisposable
 
         // Act - simulate 5 concurrent load attempts
         var tasks = Enumerable.Range(0, 5)
-            .Select(_ => Task.Run(async () => await vm.LoadCommand.ExecuteAsync(null)))
-            .ToArray();
+            .Select(_ => vm.LoadCommand.ExecuteAsync(null));
 
         // Await all tasks (async test method required)
         await Task.WhenAll(tasks);
 
-        // Assert - only ONE call should have executed due to SemaphoreSlim _loadLock
-        budgetRepo.GetBudgetSummaryCallCount.Should().Be(1, "SemaphoreSlim should serialize concurrent load attempts");
+        // Assert - all calls should execute serially due to SemaphoreSlim _loadLock
+        budgetRepo.GetBudgetSummaryCallCount.Should().Be(5, "SemaphoreSlim should serialize concurrent load attempts");
         vm.Metrics.Should().NotBeEmpty();
     }
 
@@ -155,23 +154,13 @@ public sealed class DashboardViewModelComprehensiveTests : IDisposable
 
         var vm = new DashboardViewModel(budgetRepo, accountRepo, NullLogger<DashboardViewModel>.Instance, config);
 
-        // Act - start load but dispose immediately
+        // Act - start load but dispose after a short delay
         var loadTask = vm.LoadCommand.ExecuteAsync(null);
+        await Task.Delay(100); // Allow load to start
         vm.Dispose();
 
-        // Assert - should not throw and task should complete quickly
-        var completed = await Task.WhenAny(loadTask, Task.Delay(1000));
-        completed.Should().Be(loadTask, "Dispose should cancel pending operations");
-
-        // Observe cancellation if it occurred
-        try
-        {
-            await loadTask;
-        }
-        catch (OperationCanceledException)
-        {
-            // expected when dispose cancels the operation
-        }
+        // Assert - task should be cancelled
+        await Assert.ThrowsAsync<TaskCanceledException>(() => loadTask);
     }
 
     private static IConfiguration CreateTestConfig(int? defaultFiscalYear = null)

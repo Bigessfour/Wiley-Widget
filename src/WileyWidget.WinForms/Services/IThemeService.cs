@@ -1,3 +1,4 @@
+using Serilog;
 using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Services
@@ -18,7 +19,14 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public class ThemeService : IThemeService
     {
+        private readonly ILogger _logger;
         private AppTheme _currentTheme = AppTheme.Office2019Colorful;
+
+        public ThemeService(ILogger logger)
+        {
+            _logger = logger?.ForContext<ThemeService>() ?? throw new ArgumentNullException(nameof(logger));
+            _logger.Information("ThemeService initialized with default theme: {Theme}", _currentTheme);
+        }
 
         public AppTheme CurrentTheme => _currentTheme;
 
@@ -30,8 +38,14 @@ namespace WileyWidget.WinForms.Services
         {
             if (_currentTheme != theme)
             {
+                var oldTheme = _currentTheme;
                 _currentTheme = theme;
+                _logger.Information("Theme changed from {OldTheme} to {NewTheme}", oldTheme, theme);
                 ThemeChanged?.Invoke(this, theme);
+            }
+            else
+            {
+                _logger.Debug("Theme {Theme} already active, no change needed", theme);
             }
         }
     }

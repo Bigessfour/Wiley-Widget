@@ -14,6 +14,7 @@
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
     <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />

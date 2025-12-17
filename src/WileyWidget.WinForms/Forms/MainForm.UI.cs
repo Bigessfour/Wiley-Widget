@@ -245,6 +245,46 @@ public partial class MainForm
             };
             reportsBtn.Click += (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false);
 
+            var aiChatBtn = new ToolStripButton
+            {
+                Name = "Nav_AIChat",
+                AccessibleName = "Nav_AIChat",  // Automation ID for UI tests
+                Text = "AI Chat",
+                ToolTipText = "Open AI Chat Assistant",
+                AutoSize = true
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    aiChatBtn.Image = iconService.GetIcon("chat", AppTheme.Office2019Colorful, 16);
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            aiChatBtn.Click += (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false);
+
+            var quickBooksBtn = new ToolStripButton
+            {
+                Name = "Nav_QuickBooks",
+                AccessibleName = "Nav_QuickBooks",  // Automation ID for UI tests
+                Text = "QuickBooks",
+                ToolTipText = "Open QuickBooks Integration",
+                AutoSize = true
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    quickBooksBtn.Image = iconService.GetIcon("quickbooks", AppTheme.Office2019Colorful, 16);
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            quickBooksBtn.Click += (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false);
+
             var settingsBtn = new ToolStripButton
             {
                 Name = "Nav_Settings",
@@ -266,6 +306,8 @@ public partial class MainForm
                 chartsBtn,
                 customersBtn,
                 reportsBtn,
+                aiChatBtn,
+                quickBooksBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
                 new ToolStripSeparator(),
@@ -416,6 +458,12 @@ public partial class MainForm
             var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
             reportsBtn.Click += (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false);
 
+            var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
+            aiChatBtn.Click += (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false);
+
+            var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
+            quickBooksBtn.Click += (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false);
+
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
             settingsBtn.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false);
 
@@ -446,6 +494,8 @@ public partial class MainForm
                 chartsBtn,
                 customersBtn,
                 reportsBtn,
+                aiChatBtn,
+                quickBooksBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
                 new ToolStripSeparator(),
@@ -624,6 +674,44 @@ public partial class MainForm
                 ImageScaling = ToolStripItemImageScaling.None
             };
 
+            // View > AI Chat
+            var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false))
+            {
+                Name = "Menu_View_AIChat",
+                ShortcutKeys = Keys.Control | Keys.I,
+                ToolTipText = "Open AI Chat Assistant (Ctrl+I)"
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    aiChatMenuItem.Image = iconService.GetIcon("chat", AppTheme.Office2019Colorful, 16);
+                    aiChatMenuItem.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+
+            // View > QuickBooks
+            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false))
+            {
+                Name = "Menu_View_QuickBooks",
+                ShortcutKeys = Keys.Control | Keys.Q,
+                ToolTipText = "Open QuickBooks Integration (Ctrl+Q)"
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    quickBooksMenuItem.Image = iconService.GetIcon("quickbooks", AppTheme.Office2019Colorful, 16);
+                    quickBooksMenuItem.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+
             // View > Customers
             var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>(allowMultiple: false))
             {
@@ -664,6 +752,8 @@ public partial class MainForm
                 budgetMenuItem,
                 chartsMenuItem,
                 reportsMenuItem,
+                aiChatMenuItem,
+                quickBooksMenuItem,
                 customersMenuItem,
                 viewSeparator,
                 refreshMenuItem
@@ -903,6 +993,7 @@ public partial class MainForm
     /// </summary>
     private void InitializeSyncfusionDocking()
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             // Skip docking initialization in test harness mode to avoid graphics issues
@@ -921,14 +1012,19 @@ public partial class MainForm
             // Subscribe to theme changes for runtime theme updates
             ThemeManager.ThemeChanged += OnThemeChanged;
 
-            _logger.LogInformation("DockingManager initialized successfully");
+            stopwatch.Stop();
+            _logger.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         }
         catch (Syncfusion.Windows.Forms.Tools.DockingManagerException dockEx)
         {
+            stopwatch.Stop();
+            _logger.LogWarning(dockEx, "DockingManager initialization failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             HandleDockingInitializationError(dockEx, "DockingManagerException during initialization");
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
+            _logger.LogError(ex, "DockingManager initialization failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             HandleDockingInitializationError(ex, "Failed to initialize Syncfusion DockingManager");
         }
     }
@@ -3502,6 +3598,7 @@ public partial class MainForm
 
         // Phase 1 Simplification: Standard MDI with docking (no TabbedMDI)
         // DockingManager handles dockable panels; Forms use standard MDI pattern
+        if (_uiConfig.UseTabbedMdi) { _dockingManager.EnableDocumentMode = false; }
 
         // Ensure MDI child Forms are not treated as dockable windows.
         try
@@ -3600,6 +3697,25 @@ public partial class MainForm
             var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(scope.ServiceProvider);
             var settingsForm = ActivatorUtilities.CreateInstance<SettingsForm>(scope.ServiceProvider, vm, this);
             return (TForm)(Form)settingsForm;
+        }
+
+        if (typeof(TForm) == typeof(ChatWindow))
+        {
+            var chatWindow = ActivatorUtilities.CreateInstance<ChatWindow>(scope.ServiceProvider, this);
+            return (TForm)(Form)chatWindow;
+        }
+
+        if (typeof(TForm) == typeof(QuickBooksForm))
+        {
+            var quickBooksForm = ActivatorUtilities.CreateInstance<QuickBooksForm>(scope.ServiceProvider, this);
+            return (TForm)(Form)quickBooksForm;
+        }
+
+        if (typeof(TForm) == typeof(CustomersForm))
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<CustomersViewModel>(scope.ServiceProvider);
+            var customersForm = ActivatorUtilities.CreateInstance<CustomersForm>(scope.ServiceProvider, vm, this);
+            return (TForm)(Form)customersForm;
         }
 
         return ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace WileyWidget.Data;
 /// </summary>
 public class AccountsRepository : IAccountsRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AccountsRepository");
+
     private readonly AppDbContext _dbContext;
     private readonly ILogger<AccountsRepository> _logger;
 
@@ -29,23 +32,60 @@ public class AccountsRepository : IAccountsRepository
 
     public async Task<IReadOnlyList<MunicipalAccount>> GetAllAccountsAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Retrieving all municipal accounts");
+        using var activity = ActivitySource.StartActivity("AccountsRepository.GetAllAccounts");
+        activity?.SetTag("operation.type", "query");
 
-        return await _dbContext.Set<MunicipalAccount>()
-            .OrderBy(a => a.AccountNumber_Value)
-            .ToListAsync(cancellationToken);
+        try
+        {
+            _logger.LogDebug("Retrieving all municipal accounts");
+
+            var result = await _dbContext.Set<MunicipalAccount>()
+                .OrderBy(a => a.AccountNumber_Value)
+                .ToListAsync(cancellationToken);
+
+            activity?.SetTag("result.count", result.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogInformation("Retrieved {Count} municipal accounts", result.Count);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all municipal accounts");
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<MunicipalAccount>> GetAccountsByFundAsync(
         MunicipalFundType fundType,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Retrieving accounts for fund type: {FundType}", fundType);
+        using var activity = ActivitySource.StartActivity("AccountsRepository.GetAccountsByFund");
+        activity?.SetTag("fund_type", fundType.ToString());
+        activity?.SetTag("operation.type", "query");
 
-        return await _dbContext.Set<MunicipalAccount>()
-            .Where(a => a.Fund == fundType)
-            .OrderBy(a => a.AccountNumber_Value)
-            .ToListAsync(cancellationToken);
+        try
+        {
+            _logger.LogDebug("Retrieving accounts for fund type: {FundType}", fundType);
+
+            var result = await _dbContext.Set<MunicipalAccount>()
+                .Where(a => a.Fund == fundType)
+                .OrderBy(a => a.AccountNumber_Value)
+                .ToListAsync(cancellationToken);
+
+            activity?.SetTag("result.count", result.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogInformation("Retrieved {Count} accounts for fund type {FundType}", result.Count, fundType);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving accounts for fund type {FundType}", fundType);
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<MunicipalAccount>> GetAccountsByTypeAsync(

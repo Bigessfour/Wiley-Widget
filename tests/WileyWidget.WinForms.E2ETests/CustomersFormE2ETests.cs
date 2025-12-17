@@ -10,6 +10,8 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using WileyWidget.WinForms.E2ETests.Helpers;
+using WileyWidget.WinForms.E2ETests.PageObjects;
 using Application = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
@@ -79,13 +81,13 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            Assert.NotNull(customersWindow);
-            Assert.Contains("Customer", customersWindow.Title, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(customersPage);
+            Assert.True(customersPage.IsCustomersGridLoaded(), "Customers grid should be loaded and visible");
 
             // Verify data grid exists
-            var dataGrid = WaitForElement(customersWindow, cf => cf.ByAutomationId("Customers_DataGrid"));
+            var dataGrid = customersPage.CustomersGrid;
             Assert.NotNull(dataGrid);
         }
 
@@ -97,23 +99,13 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            // Find Load button in toolbar
-            var loadButton = WaitForElement(customersWindow, cf => cf.ByName("Load"));
-            Assert.NotNull(loadButton);
+            // Click Load button
+            customersPage.ClickLoad();
 
-            WaitUntilResponsive(loadButton);
-            loadButton.AsButton().Invoke();
-
-            // Wait for status bar to update with record count
-            var statusBar = Retry.WhileNull(() =>
-            {
-                var status = customersWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
-                return status?.Properties.Name.ValueOrDefault?.Contains("Records:", StringComparison.OrdinalIgnoreCase) == true ? status : null;
-            }, timeout: TimeSpan.FromSeconds(5)).Result;
-
-            Assert.NotNull(statusBar);
+            // Verify status bar updated with record count
+            Assert.True(customersPage.IsDataLoaded(), "Status bar should show record count after loading");
         }
 
         [Fact]
@@ -124,22 +116,13 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            // Find New button in toolbar
-            var newButton = WaitForElement(customersWindow, cf => cf.ByName("New"));
-            Assert.NotNull(newButton);
+            // Click New button
+            customersPage.ClickNew();
 
-            WaitUntilResponsive(newButton);
-            newButton.AsButton().Invoke();
-
-            // Wait for Save button to become enabled
-            var saveButton = WaitForElement(customersWindow, cf => cf.ByName("Save"));
-            Assert.NotNull(saveButton);
-
-            // Give UI time to update button state
-            Thread.Sleep(500);
-            Assert.True(saveButton.IsEnabled);
+            // Verify Save button is enabled
+            Assert.True(customersPage.IsSaveButtonEnabled(), "Save button should be enabled after clicking New");
         }
 
         [Fact]
@@ -150,10 +133,10 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            // Find search textbox in toolbar
-            var searchBox = WaitForElement(customersWindow, cf => cf.ByControlType(ControlType.Edit));
+            // Find search textbox
+            var searchBox = customersPage.SearchBox;
             Assert.NotNull(searchBox);
             Assert.True(searchBox.IsEnabled);
         }
@@ -166,9 +149,9 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            var refreshButton = WaitForElement(customersWindow, cf => cf.ByName("Refresh"));
+            var refreshButton = customersPage.RefreshButton;
             Assert.NotNull(refreshButton);
             Assert.True(refreshButton.IsEnabled);
         }
@@ -181,19 +164,15 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
             // Load some data first
-            var loadButton = WaitForElement(customersWindow, cf => cf.ByName("Load"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
-            Thread.Sleep(1000);
+            customersPage.ClickLoad();
 
-            var exportButton = WaitForElement(customersWindow, cf => cf.ByName("Export"));
+            var exportButton = customersPage.ExportButton;
             Assert.NotNull(exportButton);
 
-            WaitUntilResponsive(exportButton);
-            exportButton.AsButton().Invoke();
+            customersPage.ClickExport();
 
             // Wait for SaveFileDialog to appear
             var saveDialog = Retry.WhileNull(() =>
@@ -218,20 +197,10 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            // Check for tab control with expected tabs
-            var tabControl = WaitForElement(customersWindow, cf => cf.ByControlType(ControlType.Tab));
-            Assert.NotNull(tabControl);
-
-            // Verify expected tab names
-            var tabs = tabControl.FindAllDescendants(cf => cf.ByControlType(ControlType.TabItem));
-            var tabNames = tabs.Select(t => t.Name).ToList();
-
-            Assert.Contains(tabNames, name => name.Contains("Basic", StringComparison.OrdinalIgnoreCase));
-            Assert.Contains(tabNames, name => name.Contains("Service", StringComparison.OrdinalIgnoreCase));
-            Assert.Contains(tabNames, name => name.Contains("Mailing", StringComparison.OrdinalIgnoreCase));
-            Assert.Contains(tabNames, name => name.Contains("Account", StringComparison.OrdinalIgnoreCase));
+            // Verify detail tabs are present
+            Assert.True(customersPage.AreDetailTabsVisible(), "Detail tabs should be present and visible");
         }
 
         [Fact]
@@ -242,21 +211,17 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
-            var dataGrid = WaitForElement(customersWindow, cf => cf.ByAutomationId("Customers_DataGrid"));
+            var dataGrid = customersPage.CustomersGrid;
             Assert.NotNull(dataGrid);
 
             // Load data first
-            var loadButton = WaitForElement(customersWindow, cf => cf.ByName("Load"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
+            customersPage.ClickLoad();
 
             // Wait for grid to populate
-            var gridItems = Retry.WhileEmpty(() => dataGrid.FindAllDescendants(),
-                timeout: TimeSpan.FromSeconds(5)).Result;
-
-            Assert.NotEmpty(gridItems!);
+            var rowCount = customersPage.GetCustomersRowCount();
+            Assert.True(rowCount > 0, "Grid should contain data rows after loading");
         }
 
         [Fact]
@@ -267,22 +232,13 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
             // Load data
-            var loadButton = WaitForElement(customersWindow, cf => cf.ByName("Load"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
+            customersPage.ClickLoad();
 
-            // Wait for status bar to show record count
-            var statusBar = Retry.WhileNull(() =>
-            {
-                var status = customersWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
-                var text = status?.Properties.Name.ValueOrDefault;
-                return text?.Contains("Records:", StringComparison.OrdinalIgnoreCase) == true ? status : null;
-            }, timeout: TimeSpan.FromSeconds(5)).Result;
-
-            Assert.NotNull(statusBar);
+            // Verify status bar shows record count
+            Assert.True(customersPage.IsDataLoaded(), "Status bar should show record count after loading");
         }
 
         [Fact]
@@ -293,86 +249,31 @@ namespace WileyWidget.WinForms.E2ETests
 
             StartApp();
             var mainWindow = GetMainWindow();
-            var customersWindow = OpenCustomersView(mainWindow);
+            var customersPage = OpenCustomersView(mainWindow);
 
             // Load data
-            var loadButton = WaitForElement(customersWindow, cf => cf.ByName("Load"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
-            Thread.Sleep(1000);
+            customersPage.ClickLoad();
 
-            // Find grid and select first row
-            var dataGrid = WaitForElement(customersWindow, cf => cf.ByAutomationId("Customers_DataGrid"));
-            Assert.NotNull(dataGrid);
+            // Select first row
+            customersPage.SelectFirstRow();
 
-            // Click on the grid to select first item
-            dataGrid.Click();
-            Thread.Sleep(500);
-
-            // Verify Delete button is now enabled
-            var deleteButton = WaitForElement(customersWindow, cf => cf.ByName("Delete"));
+            // Verify Delete button exists (enabled state may vary based on selection)
+            var deleteButton = customersPage.DeleteButton;
             Assert.NotNull(deleteButton);
         }
 
-        private Window OpenCustomersView(Window mainWindow)
+        private CustomersPage OpenCustomersView(Window mainWindow)
         {
-            // Find Customers navigation button
-            var navButton = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Customers"), timeoutMs: 30000);
+            var customersWindow = NavigationHelper.OpenView(_automation!, mainWindow, "Nav_Customers", "Customer Management");
+            return new CustomersPage(_automation!, customersWindow);
+        }
 
-            if (navButton == null)
-            {
-                // Fallback: try by name if automation ID not found
-                navButton = WaitForElement(mainWindow, cf => cf.ByName("Customers"), timeoutMs: 10000);
-            }
-
-            Assert.NotNull(navButton);
-
-            navButton.Click();
-
-            // Wait for window to appear
-            var customersElement = Retry.WhileNull(() =>
-            {
-                try
-                {
-                    // First try as MDI child (descendant of main window)
-                    var window = mainWindow.FindFirstDescendant(cf =>
-                        cf.ByName("Customer Management"));
-
-                    if (window != null && window.ControlType == ControlType.Window)
-                    {
-                        return window.AsWindow();
-                    }
-
-                    if (window != null)
-                    {
-                        var parent = window.Parent;
-                        while (parent != null && parent.ControlType != ControlType.Window)
-                        {
-                            parent = parent.Parent;
-                        }
-                        return parent?.AsWindow();
-                    }
-
-                    // If not found as MDI child, try as separate window
-                    var desktop = _automation?.GetDesktop();
-                    window = desktop?.FindFirstDescendant(cf =>
-                        cf.ByName("Customer Management").And(cf.ByControlType(ControlType.Window)));
-
-                    if (window != null)
-                    {
-                        var asWindow = window.AsWindow();
-                        if (asWindow != null) return asWindow;
-                    }
-
-                    return null;
-                }
-                catch
-                {
-                    return null;
-                }
-            }, timeout: TimeSpan.FromSeconds(30)).Result;
-
-            return customersElement ?? throw new InvalidOperationException("Customers window did not open");
+        private Window GetMainWindow()
+        {
+            var mainWindow = Retry.WhileNull(() => _app?.GetMainWindow(_automation!),
+                timeout: TimeSpan.FromSeconds(DefaultTimeout / 1000));
+            Assert.NotNull(mainWindow);
+            return mainWindow.Result!;
         }
 
         private bool EnsureInteractiveOrSkip()
@@ -414,41 +315,7 @@ namespace WileyWidget.WinForms.E2ETests
             }, TimeSpan.FromMilliseconds(DefaultTimeout));
         }
 
-        private void WaitUntilResponsive(AutomationElement? element, int timeoutMs = 3000)
-        {
-            if (element == null) return;
 
-            Retry.WhileException(() =>
-            {
-                if (!element.IsEnabled || element.IsOffscreen)
-                {
-                    throw new InvalidOperationException("Element not responsive");
-                }
-            }, TimeSpan.FromMilliseconds(timeoutMs));
-        }
-
-        private Window GetMainWindow()
-        {
-            var mainWindow = Retry.WhileNull(() => _app?.GetMainWindow(_automation!),
-                timeout: TimeSpan.FromSeconds(DefaultTimeout / 1000));
-            Assert.NotNull(mainWindow);
-            return mainWindow.Result!;
-        }
-
-        private AutomationElement? WaitForElement(AutomationElement parent, Func<ConditionFactory, ConditionBase> condition, int timeoutMs = DefaultTimeout)
-        {
-            return Retry.WhileNull(() =>
-            {
-                try
-                {
-                    return parent.FindFirstDescendant(condition);
-                }
-                catch
-                {
-                    return null;
-                }
-            }, timeout: TimeSpan.FromMilliseconds(timeoutMs)).Result;
-        }
 
         public void Dispose()
         {

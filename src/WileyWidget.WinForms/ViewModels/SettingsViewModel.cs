@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,14 +14,20 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public partial class SettingsViewModel : ObservableObject
     {
+        private readonly ILogger<SettingsViewModel> _logger;
         private readonly List<string> _validationMessages = new();
 
-        public SettingsViewModel()
+        public SettingsViewModel(ILogger<SettingsViewModel> logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger.LogDebug("SettingsViewModel constructor started");
+
             LoadCommand = new AsyncRelayCommand(LoadAsync);
             BrowseExportPathCommand = new RelayCommand(() => BrowseExportPathRequested?.Invoke(this, EventArgs.Empty));
             Themes = Enum.GetValues<AppTheme>().ToList();
             DefaultExportPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+            _logger.LogInformation("SettingsViewModel initialized with default export path: {DefaultExportPath}", DefaultExportPath);
         }
 
         public IReadOnlyList<AppTheme> Themes { get; }
@@ -58,14 +65,53 @@ namespace WileyWidget.WinForms.ViewModels
 
         public event EventHandler? BrowseExportPathRequested;
 
-        partial void OnAppTitleChanged(string value) => MarkDirty();
-        partial void OnOpenEditFormsDockedChanged(bool value) => MarkDirty();
-        partial void OnUseDemoDataChanged(bool value) => MarkDirty();
-        partial void OnAutoSaveIntervalMinutesChanged(int value) => MarkDirty();
-        partial void OnLogLevelChanged(string value) => MarkDirty();
-        partial void OnDateFormatChanged(string value) => MarkDirty();
-        partial void OnCurrencyFormatChanged(string value) => MarkDirty();
-        partial void OnDefaultExportPathChanged(string value) => MarkDirty();
+        partial void OnAppTitleChanged(string value)
+        {
+            _logger.LogDebug("AppTitle changed to: {AppTitle}", value);
+            MarkDirty();
+        }
+
+        partial void OnOpenEditFormsDockedChanged(bool value)
+        {
+            _logger.LogInformation("OpenEditFormsDocked changed to: {OpenEditFormsDocked}", value);
+            MarkDirty();
+        }
+
+        partial void OnUseDemoDataChanged(bool value)
+        {
+            _logger.LogInformation("UseDemoData changed to: {UseDemoData}", value);
+            MarkDirty();
+        }
+
+        partial void OnAutoSaveIntervalMinutesChanged(int value)
+        {
+            _logger.LogInformation("AutoSaveIntervalMinutes changed to: {AutoSaveIntervalMinutes}", value);
+            MarkDirty();
+        }
+
+        partial void OnLogLevelChanged(string value)
+        {
+            _logger.LogInformation("LogLevel changed to: {LogLevel}", value);
+            MarkDirty();
+        }
+
+        partial void OnDateFormatChanged(string value)
+        {
+            _logger.LogDebug("DateFormat changed to: {DateFormat}", value);
+            MarkDirty();
+        }
+
+        partial void OnCurrencyFormatChanged(string value)
+        {
+            _logger.LogDebug("CurrencyFormat changed to: {CurrencyFormat}", value);
+            MarkDirty();
+        }
+
+        partial void OnDefaultExportPathChanged(string value)
+        {
+            _logger.LogInformation("DefaultExportPath changed to: {DefaultExportPath}", value);
+            MarkDirty();
+        }
 
         private void MarkDirty()
         {
@@ -74,8 +120,10 @@ namespace WileyWidget.WinForms.ViewModels
 
         private Task LoadAsync()
         {
+            _logger.LogInformation("Loading settings");
             // Placeholder for future persistence integration; currently just clears dirty flag.
             HasUnsavedChanges = false;
+            _logger.LogDebug("Settings loaded successfully");
             return Task.CompletedTask;
         }
 
@@ -84,24 +132,30 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public bool ValidateSettings()
         {
+            _logger.LogDebug("Validating settings");
             _validationMessages.Clear();
 
             if (string.IsNullOrWhiteSpace(DateFormat))
             {
                 _validationMessages.Add("Date format cannot be empty.");
+                _logger.LogWarning("Validation failed: Date format is empty");
             }
 
             if (string.IsNullOrWhiteSpace(CurrencyFormat))
             {
                 _validationMessages.Add("Currency format cannot be empty.");
+                _logger.LogWarning("Validation failed: Currency format is empty");
             }
 
             if (string.IsNullOrWhiteSpace(DefaultExportPath))
             {
                 _validationMessages.Add("Export path is required.");
+                _logger.LogWarning("Validation failed: Export path is empty");
             }
 
-            return _validationMessages.Count == 0;
+            var isValid = _validationMessages.Count == 0;
+            _logger.LogInformation("Settings validation completed: {IsValid}, Errors: {ErrorCount}", isValid, _validationMessages.Count);
+            return isValid;
         }
 
         public List<string> GetValidationSummary() => new(_validationMessages);

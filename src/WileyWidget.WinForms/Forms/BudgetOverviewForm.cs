@@ -143,7 +143,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Form settings with modern appearance
             Text = BudgetOverviewFormResources.FormTitle;
-            Name = "BudgetOverviewForm";
+            // Set Name for UI test identification (used as AutomationId in UI Automation)
+            Name = "BudgetOverview";
+
             Size = new Size(1100, 800);
             StartPosition = FormStartPosition.CenterParent;
             // REMOVED: BackColor - SfSkinManager theme cascade handles form colors
@@ -253,6 +255,7 @@ namespace WileyWidget.WinForms.Forms
 
             var deleteCategoryBtn = new Button
             {
+                Name = "Delete",
                 Text = "Delete",
                 Font = new Font("Segoe UI", 9),
                 // REMOVED: BackColor - SfSkinManager theme cascade handles button colors

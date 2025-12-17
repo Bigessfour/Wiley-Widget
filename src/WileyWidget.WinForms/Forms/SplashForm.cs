@@ -20,6 +20,7 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     internal sealed class SplashForm : SfForm, IStartupProgressReporter
     {
+        private readonly ILogger<SplashForm>? _logger;
         private Panel? _contentPanel;
         private Label? _titleLabel;
         private Label? _subtitleLabel;
@@ -42,18 +43,38 @@ namespace WileyWidget.WinForms.Forms
         private const int MINIMUM_DISPLAY_MS = 1500; // Minimum 1.5 seconds display
         private const int FADE_STEPS = FADE_DURATION_MS / FADE_TIMER_INTERVAL_MS;
 
-        public SplashForm()
+        public SplashForm() : this(null)
         {
+        }
+
+        public SplashForm(ILogger<SplashForm>? logger)
+        {
+            _logger = logger;
+            _logger?.LogDebug("SplashForm constructor started");
+
             // Initialize timers first
             _fadeInTimer = new Timer { Interval = FADE_TIMER_INTERVAL_MS };
             _fadeOutTimer = new Timer { Interval = FADE_TIMER_INTERVAL_MS };
             _minimumDisplayTimer = new Timer { Interval = MINIMUM_DISPLAY_MS, Enabled = false };
 
             InitializeForm();
-            ApplySfSkinManagerTheme();
             InitializeControls();
+            ApplySfSkinManagerTheme(); // Apply theme AFTER controls are created so cascade works
             WireEvents();
+
+            _logger?.LogInformation("SplashForm initialized successfully");
         }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _logger?.LogInformation("SplashForm loaded");
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            _logger?.LogInformation("SplashForm closed");
 
         private void InitializeForm()
         {
@@ -100,8 +121,7 @@ namespace WileyWidget.WinForms.Forms
             // Content panel to hold all controls
             _contentPanel = new Panel
             {
-                Dock = DockStyle.Fill,
-                BackColor = Color.Transparent // Let theme control background
+                Dock = DockStyle.Fill
             };
             Controls.Add(_contentPanel);
 
@@ -110,8 +130,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Size = new Size(120, 120),
                 Location = new Point((Width - 120) / 2, 60),
-                SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Transparent
+                SizeMode = PictureBoxSizeMode.Zoom
             };
 
             // Try to load logo from embedded resources
@@ -139,7 +158,6 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Wiley Widget",
                 Font = new Font("Segoe UI Light", 36F, FontStyle.Regular, GraphicsUnit.Point),
-                BackColor = Color.Transparent,
                 AutoSize = false,
                 Size = new Size(600, 70),
                 Location = new Point((Width - 600) / 2, 190),
@@ -151,7 +169,6 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Municipal Finance Management System",
                 Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point),
-                BackColor = Color.Transparent,
                 AutoSize = false,
                 Size = new Size(600, 30),
                 Location = new Point((Width - 600) / 2, 260),
@@ -163,7 +180,6 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Initializing application...",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point),
-                BackColor = Color.Transparent,
                 AutoSize = false,
                 Size = new Size(600, 30),
                 Location = new Point((Width - 600) / 2, 310),
@@ -189,7 +205,6 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = $"Version {GetApplicationVersion()}",
                 Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point),
-                BackColor = Color.Transparent,
                 AutoSize = true,
                 Location = new Point(Width - 120, Height - 30),
                 TextAlign = ContentAlignment.MiddleRight

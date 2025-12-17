@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace WileyWidget.Services.Telemetry;
 
@@ -11,22 +11,19 @@ namespace WileyWidget.Services.Telemetry;
 /// </summary>
 public sealed class TelemetryStartupService : IHostedService
 {
-    private readonly ILogger<TelemetryStartupService> _logger;
-
-    public TelemetryStartupService(ILogger<TelemetryStartupService> logger)
+    public TelemetryStartupService()
     {
-        _logger = logger;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Telemetry pipeline disabled; startup event logged for diagnostics only.");
+        Log.Information("Telemetry pipeline disabled; startup event logged for diagnostics only.");
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Telemetry pipeline disabled; shutdown event logged for diagnostics only.");
+        Log.Information("Telemetry pipeline disabled; shutdown event logged for diagnostics only.");
         return Task.CompletedTask;
     }
 }

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Syncfusion.XlsIO;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
@@ -20,11 +20,12 @@ namespace WileyWidget.Services;
 /// </summary>
 public class ReportExportService : IReportExportService
 {
-    private readonly ILogger<ReportExportService> _logger;
+    private readonly ILogger _logger;
 
-    public ReportExportService(ILogger<ReportExportService> logger)
+    public ReportExportService(ILogger logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger?.ForContext<ReportExportService>() ?? throw new ArgumentNullException(nameof(logger));
+        _logger.Information("ReportExportService initialized");
     }
 
     /// <summary>
@@ -32,11 +33,13 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToPdfAsync(object data, string filePath)
     {
+        _logger.Information("Exporting data to PDF: {FilePath}", filePath);
+
         await Task.Run(() =>
         {
             using (var document = new PdfDocument())
             {
-                var page = document.Pages.Add();
+var page = document.Pages.Add();
                 var gfx = page.Graphics;
                 var font = new PdfStandardFont(PdfFontFamily.Helvetica, 12);
                 var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 14, PdfFontStyle.Bold);
@@ -117,6 +120,7 @@ public class ReportExportService : IReportExportService
 
                 // Save the document
                 document.Save(filePath);
+                _logger.Information("PDF export completed successfully: {FilePath}", filePath);
             }
         });
     }
@@ -126,6 +130,7 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToExcelAsync(object data, string filePath)
     {
+        _logger.Information("Exporting data to Excel: {FilePath}", filePath);
         await Task.Run(() =>
         {
             using (var excelEngine = new ExcelEngine())
@@ -201,6 +206,8 @@ public class ReportExportService : IReportExportService
                 {
                     workbook.SaveAs(stream);
                 }
+
+                _logger.Information("Excel export completed successfully: {FilePath}", filePath);
             }
         });
     }
@@ -210,6 +217,7 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToCsvAsync(IEnumerable<object> data, string filePath)
     {
+        _logger.Information("Exporting data to CSV: {FilePath}", filePath);
         await Task.Run(() =>
         {
             var items = data.ToList();
@@ -237,6 +245,8 @@ public class ReportExportService : IReportExportService
                     var line = string.Join(",", values);
                     writer.WriteLine(line);
                 }
+
+                _logger.Information("CSV export completed successfully: {FilePath}, Rows: {RowCount}", filePath, items.Count);
             }
         });
     }
@@ -256,6 +266,8 @@ public class ReportExportService : IReportExportService
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
         if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+
+        _logger.Information("Exporting compliance report to PDF: {FilePath}, EnterpriseId: {EnterpriseId}", filePath, report.EnterpriseId);
 
         await Task.Run(() =>
         {
@@ -353,6 +365,8 @@ public class ReportExportService : IReportExportService
 
                 // Save document
                 document.Save(filePath);
+                _logger.Information("Compliance report PDF export completed: {FilePath}, Violations: {ViolationCount}",
+                    filePath, report.Violations?.Count ?? 0);
             }
         });
     }
@@ -364,6 +378,8 @@ public class ReportExportService : IReportExportService
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
         if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+
+        _logger.Information("Exporting compliance report to Excel: {FilePath}, EnterpriseId: {EnterpriseId}", filePath, report.EnterpriseId);
 
         await Task.Run(() =>
         {
@@ -446,6 +462,9 @@ public class ReportExportService : IReportExportService
                 {
                     workbook.SaveAs(stream);
                 }
+
+                _logger.Information("Compliance report Excel export completed: {FilePath}, Violations: {ViolationCount}, Recommendations: {RecCount}",
+                    filePath, report.Violations?.Count ?? 0, report.Recommendations?.Count ?? 0);
             }
         });
     }

@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using Serilog;
 using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Services
@@ -10,16 +11,31 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public sealed class ThemeIconService : IThemeIconService
     {
+        private readonly ILogger _logger;
+
+        public ThemeIconService(ILogger logger)
+        {
+            _logger = logger?.ForContext<ThemeIconService>() ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public Image? GetIcon(string name, AppTheme theme, int size)
         {
             ArgumentNullException.ThrowIfNull(name);
 
+            _logger.Debug("Getting icon {IconName} for theme {Theme} with size {Size}", name, theme, size);
+
             // For Office2019Colorful theme, return appropriate icons
             if (theme == AppTheme.Office2019Colorful)
             {
-                return GetOffice2019ColorfulIcon(name, size);
+                var icon = GetOffice2019ColorfulIcon(name, size);
+                if (icon == null)
+                {
+                    _logger.Warning("Icon {IconName} not found for theme {Theme}", name, theme);
+                }
+                return icon;
             }
 
+            _logger.Debug("Theme {Theme} not supported, returning null", theme);
             // For other themes or unknown names, return null
             return null;
         }
@@ -99,6 +115,16 @@ namespace WileyWidget.WinForms.Services
                 case "menu":
                 case "hamburger":
                     return SystemIcons.Application.ToBitmap().GetThumbnailImage(size, size, null, IntPtr.Zero);
+
+                case "chat":
+                case "ai":
+                case "assistant":
+                    return SystemIcons.Information.ToBitmap().GetThumbnailImage(size, size, null, IntPtr.Zero);
+
+                case "quickbooks":
+                case "accounting":
+                case "finance":
+                    return SystemIcons.Shield.ToBitmap().GetThumbnailImage(size, size, null, IntPtr.Zero);
 
                 default:
                     // Return null for unknown icon names

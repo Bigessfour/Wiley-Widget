@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
@@ -17,13 +17,13 @@ namespace WileyWidget.WinForms.Services
         private const int DefaultRetryCount = 3;
         private readonly IBudgetRepository _budgetRepository;
         private readonly AppDbContext _context;
-        private readonly ILogger<BudgetCategoryService> _logger;
+        private readonly ILogger _logger;
 
-        public BudgetCategoryService(IBudgetRepository budgetRepository, AppDbContext context, ILogger<BudgetCategoryService> logger)
+        public BudgetCategoryService(IBudgetRepository budgetRepository, AppDbContext context, ILogger logger)
         {
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger?.ForContext<BudgetCategoryService>() ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<List<BudgetCategoryDto>> GetAllCategoriesAsync(int fiscalYear, CancellationToken cancellationToken = default)
@@ -158,7 +158,7 @@ namespace WileyWidget.WinForms.Services
                 {
                     lastTimeout = ex;
                     attempt++;
-                    _logger.LogWarning(ex, "Transient failure while retrieving budget categories (attempt {Attempt}/{MaxAttempts})", attempt, DefaultRetryCount);
+                    _logger.Warning(ex, "Transient failure while retrieving budget categories (attempt {Attempt}/{MaxAttempts})", attempt, DefaultRetryCount);
                     if (attempt >= DefaultRetryCount)
                     {
                         throw;

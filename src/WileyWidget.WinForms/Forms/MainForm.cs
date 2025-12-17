@@ -19,6 +19,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Services;
 
 #pragma warning disable CS8604 // Possible null reference argument
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
@@ -99,13 +100,13 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (_uiConfig.UseMdiMode)
                 {
-                    Console.WriteLine("Setting IsMdiContainer=true (MDI enabled in configuration)");
+                    _logger.LogDebug("Setting IsMdiContainer=true (MDI enabled in configuration)");
                     IsMdiContainer = true;
-                    Console.WriteLine("IsMdiContainer set successfully");
+                    _logger.LogDebug("IsMdiContainer set successfully");
                 }
                 else
                 {
-                    Console.WriteLine("MDI mode disabled in configuration - not setting IsMdiContainer");
+                    _logger.LogDebug("MDI mode disabled in configuration - not setting IsMdiContainer");
                 }
             }
             catch (Exception ex)
@@ -125,9 +126,9 @@ namespace WileyWidget.WinForms.Forms
             // Initialize UI chrome (Ribbon, StatusBar, Navigation)
             try
             {
-                Console.WriteLine("Calling InitializeChrome...");
+                _logger.LogDebug("Calling InitializeChrome...");
                 InitializeChrome();
-                Console.WriteLine("InitializeChrome completed");
+                _logger.LogDebug("InitializeChrome completed");
             }
             catch (Exception ex)
             {
@@ -141,9 +142,9 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                Console.WriteLine("Calling InitializeMdiSupport...");
+                _logger.LogDebug("Calling InitializeMdiSupport...");
                 InitializeMdiSupport();
-                Console.WriteLine("InitializeMdiSupport completed");
+                _logger.LogDebug("InitializeMdiSupport completed");
             }
             catch (Exception ex)
             {
@@ -157,6 +158,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
+
+            // Subscribe to font changes for real-time updates
+            Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
         }
 
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
@@ -173,9 +177,6 @@ namespace WileyWidget.WinForms.Forms
                 // Use a local logger reference to avoid potential property race conditions
                 var logger = _logger;
 
-                // If logger is not available, fallback to console to avoid invoking logging pipeline
-                bool usedConsoleFallback = false;
-
                 try
                 {
                     // Log theme-related exceptions
@@ -184,13 +185,7 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("Office2019", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("SkinManager", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance theme exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
                     }
 
                     // Log docking-related exceptions
@@ -198,13 +193,7 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("DockingManager", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance docking exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
                     }
 
                     // Log MDI-related exceptions
@@ -212,31 +201,13 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance MDI exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
                     }
                 }
                 catch (Exception logEx)
                 {
-                    // Avoid logging inside the exception handler as this can create a recursive loop
-                    try
-                    {
-                        if (!usedConsoleFallback)
-                        {
-                            Console.WriteLine($"Exception in FirstChanceException handler: {logEx}");
-                        }
-                        else
-                        {
-                            // If we already used console fallback, just write minimal info
-                            Console.WriteLine("Exception in FirstChanceException handler while handling FCE");
-                        }
-                    }
-                    catch { /* Swallow exceptions in exception handler to prevent infinite loops */ }
+                    // Swallow logging exceptions to prevent recursive loops in exception handler
+                    System.Diagnostics.Debug.WriteLine($"Exception in FirstChanceException handler: {logEx.Message}");
                 }
             }
             finally
@@ -317,6 +288,14 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "OnLoad failed during z-order configuration");
                 throw;
             }
+
+            if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
+            {
+                ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
+                _dashboardAutoShown = true;
+            }
+
+            _logger?.LogInformation("MainForm startup completed successfully");
         }
 
         /// <summary>
@@ -688,6 +667,54 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "DockPanel operation failed for '{PanelName}': {Message}", panelName, ex.Message);
                 throw new InvalidOperationException($"Unable to dock panel '{panelName}': {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Handles application font changes by updating this form and all child controls.
+        /// </summary>
+        private void OnApplicationFontChanged(object? sender, Services.FontChangedEventArgs e)
+        {
+            // Update this form and all child controls
+            UpdateControlFont(this, e.NewFont);
+
+            // Syncfusion DockingManager specific fonts (critical!)
+            if (_dockingManager != null)
+            {
+                _dockingManager.DockTabFont = e.NewFont;
+                _dockingManager.AutoHideTabFont = e.NewFont;
+
+            }
+
+            // Ribbon, grids, etc. will inherit via container update
+        }
+
+        /// <summary>
+        /// Recursively updates the font of a control and all its children.
+        /// Respects designer-set fonts to avoid breaking explicit overrides.
+        /// </summary>
+        private void UpdateControlFont(Control control, Font newFont)
+        {
+            // Skip if control explicitly overrides font (designer-set)
+            if (control.Font != null && control.Font != control.Parent?.Font)
+            {
+                return;
+            }
+
+            control.Font = newFont;
+
+            foreach (Control child in control.Controls)
+            {
+                UpdateControlFont(child, newFont);
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribes from font service when form closes.
+        /// </summary>
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            Services.FontService.Instance.FontChanged -= OnApplicationFontChanged;
+            base.OnFormClosed(e);
         }
 
         protected override void Dispose(bool disposing)

@@ -23,17 +23,21 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class SettingsForm : Form
     {
+        private readonly ILogger<SettingsForm> _logger;
         private readonly SettingsViewModel _vm;
         private readonly IThemeService _themeService;
         private SettingsPanel? _settingsPanel;
 
-        public SettingsForm(SettingsViewModel vm, MainForm mainForm)
+        public SettingsForm(ILogger<SettingsForm> logger, SettingsViewModel vm, MainForm mainForm)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             if (mainForm == null)
             {
                 throw new ArgumentNullException(nameof(mainForm));
             }
+
+            _logger.LogDebug("SettingsForm constructor started");
             _themeService = ResolveThemeService();
 
             // Only set MdiParent if MainForm is in MDI mode
@@ -46,14 +50,40 @@ namespace WileyWidget.WinForms.Forms
             // InitializeComponent is not needed - all controls are created programmatically
             Text = SettingsFormResources.FormTitle;
 
+            // Set Name for UI test identification (used as AutomationId in UI Automation)
+            this.Name = "Settings";
+
             // Apply Syncfusion theme to form and all child controls
             // NOTE: ThemeColors.ApplyTheme internally calls SfSkinManager.SetVisualStyle
             WileyWidgetThemeColors.ApplyTheme(this);
             // REMOVED: SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); // Duplicate - already called by ApplyTheme
 
+            // Set minimum size to prevent the form from being resized too small
+            // SettingsPanel is 500x400, so minimum should account for borders/title bar
+            MinimumSize = new Size(550, 480);
+
             // Initialize form controls and settings panel
             InitializeFormControls();
+
+            _logger.LogInformation("SettingsForm initialized successfully");
         }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _logger.LogInformation("SettingsForm loaded");
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            _logger.LogInformation("SettingsForm closed");
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            _logger.LogDebug("SettingsForm shown to user");
 
         private static IThemeService ResolveThemeService()
         {

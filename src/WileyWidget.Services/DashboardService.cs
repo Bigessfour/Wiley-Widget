@@ -18,24 +18,24 @@ namespace WileyWidget.Services
     /// </summary>
     public class DashboardService : IDashboardService
     {
+        private readonly ILogger<DashboardService> _logger;
         private readonly IBudgetRepository _budgetRepository;
         private readonly IMunicipalAccountRepository _accountRepository;
-        private readonly ILogger<DashboardService> _logger;
         private readonly ICacheService? _cacheService;
         private readonly IConfiguration? _configuration;
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
         public DashboardService(
+            ILogger<DashboardService> logger,
             IBudgetRepository budgetRepository,
             IMunicipalAccountRepository accountRepository,
-            ILogger<DashboardService> logger,
             ICacheService? cacheService = null,
             IConfiguration? configuration = null)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheService = cacheService;
             _configuration = configuration;
         }

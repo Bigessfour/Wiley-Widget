@@ -1,8 +1,9 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -11,6 +12,8 @@ namespace WileyWidget.Data;
 /// </summary>
 public class UtilityBillRepository : IUtilityBillRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.UtilityBillRepository");
+
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly ILogger<UtilityBillRepository> _logger;
     private readonly IMemoryCache _cache;
@@ -34,22 +37,47 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// </summary>
     public async Task<IEnumerable<UtilityBill>> GetAllAsync()
     {
+        using var activity = ActivitySource.StartActivity("UtilityBillRepository.GetAll");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
+
         const string cacheKey = "UtilityBills_All";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityBill>? bills))
+        try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            bills = await context.UtilityBills
-                .Include(b => b.Customer)
-                .Include(b => b.Charges)
-                .AsNoTracking()
-                .OrderByDescending(b => b.BillDate)
-                .ToListAsync();
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<UtilityBill>? bills))
+            {
+                activity?.SetTag("cache.hit", false);
+                _logger.LogDebug("Cache miss for all utility bills, fetching from database");
 
-            _cache.Set(cacheKey, bills, TimeSpan.FromMinutes(5));
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                bills = await context.UtilityBills
+                    .Include(b => b.Customer)
+                    .Include(b => b.Charges)
+                    .AsNoTracking()
+                    .OrderByDescending(b => b.BillDate)
+                    .ToListAsync();
+
+                _cache.Set(cacheKey, bills, TimeSpan.FromMinutes(5));
+                _logger.LogInformation("Cached {Count} utility bills for 5 minutes", bills?.Count() ?? 0);
+            }
+            else
+            {
+                activity?.SetTag("cache.hit", true);
+                _logger.LogDebug("Returning {Count} utility bills from cache", bills?.Count() ?? 0);
+            }
+
+            activity?.SetTag("result.count", bills?.Count() ?? 0);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            return bills!;
         }
-
-        return bills!;
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all utility bills");
+            throw;
+        }
     }
 
     /// <summary>

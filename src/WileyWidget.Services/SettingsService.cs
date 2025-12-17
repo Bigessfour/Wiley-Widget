@@ -5,8 +5,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
 using Microsoft.Extensions.Options;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
@@ -28,7 +27,6 @@ namespace WileyWidget.Services
     public sealed class SettingsService : ISettingsService
     {
         private readonly IConfiguration? _configuration;
-        private readonly ILogger<SettingsService> _logger;
         private string _root = string.Empty;
         private string _file = string.Empty;
 
@@ -52,10 +50,9 @@ namespace WileyWidget.Services
         /// - Environment variable: WILEYWIDGET_SETTINGS_DIR
         /// If neither is set, defaults to %AppData%\WileyWidget
         /// </remarks>
-        public SettingsService(IConfiguration? configuration, ILogger<SettingsService>? logger)
+        public SettingsService(IConfiguration? configuration)
         {
             _configuration = configuration;
-            _logger = logger ?? NullLogger<SettingsService>.Instance;
             InitializePaths();
         }
 
@@ -72,7 +69,7 @@ namespace WileyWidget.Services
                 : overrideDir;
             _file = Path.Combine(_root, "settings.json");
 
-            _logger.LogDebug("Settings directory resolved to {SettingsDirectory}", _root);
+            Log.Debug("Settings directory resolved to {SettingsDirectory}", _root);
         }
 
         /// <summary>
@@ -90,7 +87,7 @@ namespace WileyWidget.Services
                 {
                     Directory.CreateDirectory(_root);
                     Save();
-                    _logger.LogInformation("Settings file not found. Created default settings at {SettingsFile}", _file);
+                    Log.Information("Settings file not found. Created default settings at {SettingsFile}", _file);
                     return;
                 }
 
@@ -112,10 +109,10 @@ namespace WileyWidget.Services
                     {
                         Current.QboTokenExpiry = Current.QuickBooksTokenExpiresUtc.Value;
                     }
-                    _logger.LogInformation("Migrated legacy QuickBooks settings to QBO settings");
+                    Log.Information("Migrated legacy QuickBooks settings to QBO settings");
                 }
 
-                _logger.LogDebug("Settings loaded successfully from {SettingsFile}", _file);
+                Log.Debug("Settings loaded successfully from {SettingsFile}", _file);
             }
             catch (Exception ex)
             {
@@ -136,13 +133,13 @@ namespace WileyWidget.Services
                 {
                     var backupFile = _file + ".bad_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
                     File.Move(_file, backupFile);
-                    _logger.LogWarning(exception,
+                    Log.Warning(exception,
                         "Settings file corrupted. Moved to {BackupFile} and regenerating defaults", backupFile);
                 }
             }
             catch (Exception backupEx)
             {
-                _logger.LogError(backupEx, "Failed to backup corrupted settings file");
+                Log.Error(backupEx, "Failed to backup corrupted settings file");
             }
 
             Current = new AppSettings();
@@ -177,11 +174,11 @@ namespace WileyWidget.Services
                 var json = JsonSerializer.Serialize(Current, options);
                 File.WriteAllText(_file, json);
 
-                _logger.LogDebug("Settings saved successfully to {SettingsFile}", _file);
+                Log.Debug("Settings saved successfully to {SettingsFile}", _file);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to persist settings to {SettingsFile}", _file);
+                Log.Warning(ex, "Failed to persist settings to {SettingsFile}", _file);
                 // Don't throw - allow the application to continue running
             }
         }
@@ -207,7 +204,7 @@ namespace WileyWidget.Services
             {
                 var ex = new ArgumentOutOfRangeException(nameof(month), month,
                     "Fiscal year start month must be between 1 (January) and 12 (December)");
-                _logger.LogError(ex, "Invalid fiscal year month: {Month}", month);
+                Log.Error(ex, "Invalid fiscal year month: {Month}", month);
                 throw ex;
             }
 
@@ -217,7 +214,7 @@ namespace WileyWidget.Services
             {
                 var ex = new ArgumentOutOfRangeException(nameof(day), day,
                     $"Fiscal year start day must be between 1 and {daysInMonth} for month {month}");
-                _logger.LogError(ex, "Invalid fiscal year day: {Day} for month {Month}", day, month);
+                Log.Error(ex, "Invalid fiscal year day: {Day} for month {Month}", day, month);
                 throw ex;
             }
 
@@ -228,7 +225,7 @@ namespace WileyWidget.Services
             }
             catch (ArgumentOutOfRangeException ex)
             {
-                _logger.LogError(ex, "Invalid fiscal year date combination: Month={Month}, Day={Day}", month, day);
+                Log.Error(ex, "Invalid fiscal year date combination: Month={Month}, Day={Day}", month, day);
                 throw new ArgumentException($"Invalid fiscal year date: month {month}, day {day}", ex);
             }
 
@@ -250,13 +247,13 @@ namespace WileyWidget.Services
                 // Persist to disk
                 Save();
 
-                _logger.LogInformation(
+                Log.Information(
                     "Fiscal year settings saved: Month={Month} ({MonthName}), Day={Day}, Start={Start}, End={End}",
                     month, monthName, day, Current.FiscalYearStart, Current.FiscalYearEnd);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save fiscal year settings: Month={Month}, Day={Day}", month, day);
+                Log.Error(ex, "Failed to save fiscal year settings: Month={Month}, Day={Day}", month, day);
                 throw;
             }
         }
@@ -296,7 +293,7 @@ namespace WileyWidget.Services
                 var property = typeof(AppSettings).GetProperty(key);
                 if (property == null)
                 {
-                    _logger.LogWarning("Attempted to get unknown setting key: {Key}", key);
+                    Log.Warning("Attempted to get unknown setting key: {Key}", key);
                     return string.Empty;
                 }
 
@@ -305,7 +302,7 @@ namespace WileyWidget.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get setting value for key: {Key}", key);
+                Log.Error(ex, "Failed to get setting value for key: {Key}", key);
                 return string.Empty;
             }
         }
@@ -333,7 +330,7 @@ namespace WileyWidget.Services
                 var property = typeof(AppSettings).GetProperty(key);
                 if (property == null)
                 {
-                    _logger.LogWarning("Attempted to set unknown setting key: {Key}", key);
+                    Log.Warning("Attempted to set unknown setting key: {Key}", key);
                     return;
                 }
 
@@ -375,11 +372,11 @@ namespace WileyWidget.Services
                 }
 
                 property.SetValue(Current, convertedValue);
-                _logger.LogDebug("Setting {Key} updated to {Value}", key, value);
+                Log.Debug("Setting {Key} updated to {Value}", key, value);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to set setting value for key: {Key} to {Value}", key, value);
+                Log.Error(ex, "Failed to set setting value for key: {Key} to {Value}", key, value);
                 throw;
             }
         }

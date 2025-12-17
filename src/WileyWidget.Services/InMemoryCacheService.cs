@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using Serilog;
 using WileyWidget.Abstractions;
 
 namespace WileyWidget.Services
@@ -12,6 +13,13 @@ namespace WileyWidget.Services
     public class InMemoryCacheService : ICacheService
     {
         private readonly ConcurrentDictionary<string, (object Value, DateTime? Expires)> _store = new();
+        private readonly ILogger? _logger;
+
+        public InMemoryCacheService(ILogger? logger = null)
+        {
+            _logger = logger?.ForContext<InMemoryCacheService>();
+            _logger?.Information("InMemoryCacheService initialized");
+        }
 
         public Task<T?> GetAsync<T>(string key) where T : class
         {
@@ -23,12 +31,15 @@ namespace WileyWidget.Services
                 {
                     // expired
                     _store.TryRemove(key, out _);
+                    _logger?.Debug("InMemoryCacheService: Key {Key} expired and removed", key);
                     return Task.FromResult<T?>(null);
                 }
 
+                _logger?.Debug("InMemoryCacheService: Cache hit for key {Key}", key);
                 return Task.FromResult(entry.Value as T);
             }
 
+            _logger?.Debug("InMemoryCacheService: Cache miss for key {Key}", key);
             return Task.FromResult<T?>(null);
         }
 
@@ -42,6 +53,7 @@ namespace WileyWidget.Services
             }
 
             _store[key] = (value!, expires);
+            _logger?.Debug("InMemoryCacheService: Set key {Key} with TTL {Ttl}", key, ttl);
             return Task.CompletedTask;
         }
 
@@ -79,7 +91,8 @@ namespace WileyWidget.Services
         public Task RemoveAsync(string key)
         {
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
-            _store.TryRemove(key, out _);
+            var removed = _store.TryRemove(key, out _);
+            _logger?.Debug("InMemoryCacheService: Remove key {Key}, Success={Success}", key, removed);
             return Task.CompletedTask;
         }
 
@@ -87,12 +100,15 @@ namespace WileyWidget.Services
         {
             if (string.IsNullOrEmpty(key)) return Task.FromResult(false);
             var exists = _store.TryGetValue(key, out var entry) && (!entry.Expires.HasValue || entry.Expires.Value >= DateTime.UtcNow);
+            _logger?.Debug("InMemoryCacheService: Exists check for key {Key}={Exists}", key, exists);
             return Task.FromResult(exists);
         }
 
         public Task ClearAllAsync()
         {
+            var count = _store.Count;
             _store.Clear();
+            _logger?.Information("InMemoryCacheService: Cleared {Count} cache entries", count);
             return Task.CompletedTask;
         }
     }
