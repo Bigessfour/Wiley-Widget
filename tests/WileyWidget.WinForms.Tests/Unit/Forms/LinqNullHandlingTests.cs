@@ -36,9 +36,9 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             // Arrange: Similar for other forms/ViewModels with LINQ
             var mockLogger = new Mock<ILogger<AccountsViewModel>>();
-            var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase("TestDb").Options;
-            var mockDbContext = new Mock<AppDbContext>(options);
-            var vm = new AccountsViewModel(mockLogger.Object, mockDbContext.Object);
+            var mockAccountsRepo = new Mock<IAccountsRepository>();
+            var mockMunicipalRepo = new Mock<IMunicipalAccountRepository>();
+            var vm = new AccountsViewModel(mockLogger.Object, mockAccountsRepo.Object, mockMunicipalRepo.Object);
             vm.Accounts = null!; // Simulate null data
 
             // Act & Assert

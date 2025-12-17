@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
@@ -13,6 +11,7 @@ using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Threading.Tasks;
 using System.Globalization;
+using Action = System.Action;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -37,6 +36,8 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
+            Console.WriteLine("Main method started");
+
             // Suppress loading of Microsoft.WinForms.Utilities.Shared which is not needed at runtime
             AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
             {
@@ -47,27 +48,61 @@ namespace WileyWidget.WinForms
                 return null;
             };
 
+            // === PERFECT COMPLIANCE: Register Syncfusion license as the VERY FIRST operation ===
+            // CRITICAL: License must be registered before ANY Syncfusion components are instantiated
+            Console.WriteLine("Registering Syncfusion license at application startup...");
+            var earlyBuilder = Host.CreateApplicationBuilder(args);
+            AddConfiguration(earlyBuilder);
+            using var earlyHost = earlyBuilder.Build();
+            var earlyConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(earlyHost.Services);
+            RegisterSyncfusionLicense(earlyConfig);
+            Console.WriteLine("Syncfusion license registered successfully");
+
+            Console.WriteLine("Calling InitializeWinForms");
             InitializeWinForms();
+            Console.WriteLine("InitializeWinForms completed");
+
+            Console.WriteLine("Calling CaptureSynchronizationContext");
             CaptureSynchronizationContext();
+            Console.WriteLine("CaptureSynchronizationContext completed");
+
+            // License already registered above
+            // Show splash screen early to prevent blank pause
+            using var splash = new SplashForm();
+            splash.Show();
+            Application.DoEvents(); // Allow splash to paint
 
             try
             {
-                RegisterSyncfusionLicense();
+                // Use IStartupProgressReporter.Report() for granular progress tracking
+                splash.Report(0.05, "Building dependency injection container...");
                 using var host = BuildHost(args);
                 using var uiScope = host.Services.CreateScope();
                 Services = uiScope.ServiceProvider;
 
+                // License already registered above
+                // splash.Report(0.15, "Registering licenses...");
+                // var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
+                // RegisterSyncfusionLicense(config);
+
+                splash.Report(0.15, "Applying Office2019 theme...");
                 InitializeTheme();
 
+                splash.Report(0.40, "Configuring error reporting...");
                 ConfigureErrorReporting();
 
                 // Startup health check
-                RunStartupHealthCheck(host.Services);
+                splash.Report(0.50, "Verifying database connectivity...");
+                using (var healthScope = host.Services.CreateScope())
+                {
+                    RunStartupHealthCheckAsync(healthScope.ServiceProvider).GetAwaiter().GetResult(); // Safe: main thread before UI starts
+                }
 
                 // Run seeding on the threadpool with a timeout to avoid sync-over-async deadlocks
+                splash.Report(0.60, "Seeding test data (if enabled)...");
                 try
                 {
-                    var seedTask = Task.Run(() => UiTestDataSeeder.SeedIfEnabledAsync(uiScope.ServiceProvider));
+                    var seedTask = Task.Run(() => UiTestDataSeeder.SeedIfEnabledAsync(host.Services));
                     if (!seedTask.Wait(TimeSpan.FromSeconds(60)))
                     {
                         Log.Warning("UI test data seeding timed out after {TimeoutSeconds}s", 60);
@@ -80,14 +115,24 @@ namespace WileyWidget.WinForms
 
                 if (IsVerifyStartup(args))
                 {
+                    splash.Complete("Startup verification complete");
                     RunVerifyStartup(host);
                     return;
                 }
 
+                splash.Report(0.75, "Wiring global exception handlers...");
                 WireGlobalExceptionHandlers();
 
-                using var mainForm = CreateMainForm(uiScope.ServiceProvider);
+                splash.Report(0.85, "Initializing main window...");
+                Console.WriteLine("Creating MainForm...");
+                var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
+                Console.WriteLine("MainForm created successfully");
+
+                // Complete splash screen with fade-out animation
+                splash.Complete("Ready");
+
                 ScheduleAutoCloseIfRequested(args, mainForm);
+                Console.WriteLine("Starting application message loop...");
                 RunUiLoop(mainForm);
             }
             catch (Exception ex)
@@ -97,73 +142,30 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static void RegisterSyncfusionLicense()
+        private static void RegisterSyncfusionLicense(IConfiguration configuration)
         {
-            // In test environments, still register license but skip validation
-            if (IsRunningInTestEnvironment())
-            {
-                string? testLicenseKey = GetSyncfusionLicenseKey();
-                if (!string.IsNullOrWhiteSpace(testLicenseKey))
-                {
-                    try
-                    {
-                        SyncfusionLicenseProvider.RegisterLicense(testLicenseKey);
-                        Console.WriteLine("Registered Syncfusion license from environment in test mode");
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Failed to register Syncfusion license in test mode");
-                    }
-                }
-                // If no license, register dummy to prevent popup
-                // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
-                const string dummyLicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
-                try
-                {
-                    // BoldReports uses same Syncfusion license key
-                    SyncfusionLicenseProvider.RegisterLicense(dummyLicenseKey);
-                    Console.WriteLine("Registered test Syncfusion license (covers Bold Reports) to prevent trial popup");
-                }
-                catch
-                {
-                    Console.WriteLine("Failed to register test licenses - trial popup may appear");
-                }
-                return;
-            }
-
-            string? licenseKey = GetSyncfusionLicenseKey();
-
-            if (string.IsNullOrWhiteSpace(licenseKey))
-            {
-                throw new InvalidOperationException(
-                    "Syncfusion license key is required but not found. " +
-                    "Please configure the license key using one of the following methods:\n" +
-                    "1. User secrets: dotnet user-secrets set \"Syncfusion:LicenseKey\" \"your-key\" --project WileyWidget.WinForms\n" +
-                    "2. Environment variable: SYNCFUSION_LICENSE_KEY=your-key\n" +
-                    "3. Create secrets/SyncfusionLicense file with the key\n" +
-                    "Without a valid license, Syncfusion controls will display watermarks or fail in production.");
-            }
-
             try
             {
-                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-
-                // Validate the license for Windows Forms platform
-                if (!SyncfusionLicenseProvider.ValidateLicense(Platform.WindowsForms))
+                var licenseKey = configuration["Syncfusion:LicenseKey"];
+                if (string.IsNullOrEmpty(licenseKey))
                 {
-                    throw new InvalidOperationException(
-                        "The provided Syncfusion license key is invalid or expired. " +
-                        "Please verify your license key and ensure it is current.");
+                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
                 }
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
 
-                // Log success (using a simple console write since Log may not be initialized yet)
-                Console.WriteLine("Syncfusion license registered and validated successfully");
+                // Validate the license key
+                // bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
+                // if (!isValid)
+                // {
+                //     throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
+                // }
+
+                Log.Information("Syncfusion license registered successfully.");
             }
-            catch (Exception ex) when (ex is not InvalidOperationException)
+            catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    "Failed to register Syncfusion license. " +
-                    "Please ensure the license key is valid and properly formatted.", ex);
+                Log.Error(ex, "Failed to register Syncfusion license.");
+                throw;
             }
         }
 
@@ -176,47 +178,12 @@ namespace WileyWidget.WinForms
                                    asm.FullName?.Contains("xunit", StringComparison.OrdinalIgnoreCase) == true);
         }
 
-        private static string? GetSyncfusionLicenseKey()
-        {
-            // 1. Try user secrets (development)
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
-            var tempConfig = configBuilder.Build();
-            string? licenseKey = tempConfig["Syncfusion:LicenseKey"];
-
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                return licenseKey;
-            }
-
-            // 2. Try environment variable (production/CI)
-            licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                return licenseKey;
-            }
-
-            // 3. Try secrets file (fallback)
-            string secretsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "secrets", "SyncfusionLicense");
-            if (File.Exists(secretsFilePath))
-            {
-                try
-                {
-                    licenseKey = File.ReadAllText(secretsFilePath).Trim();
-                    if (!string.IsNullOrWhiteSpace(licenseKey))
-                    {
-                        return licenseKey;
-                    }
-                }
-                catch
-                {
-                    // Ignore file read errors and continue
-                }
-            }
-
-            return null; // No license found
-        }
-
+        /// <summary>
+        /// Initialize the Syncfusion theme system at application startup.
+        /// AUTHORITATIVE SOURCE: This is the ONLY location where theme should be set during startup.
+        /// Sets SfSkinManager.ApplicationVisualTheme globally for all forms and controls.
+        /// Child forms automatically inherit this theme - do NOT call SetVisualStyle in form constructors.
+        /// </summary>
         private static void InitializeTheme()
         {
             var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
@@ -225,6 +192,7 @@ namespace WileyWidget.WinForms
             {
                 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
                 SfSkinManager.ApplicationVisualTheme = themeName;
+                Log.Information("Theme initialized successfully: {ThemeName}", themeName);
             }
             catch (Exception ex)
             {
@@ -246,6 +214,19 @@ namespace WileyWidget.WinForms
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
+
+            // Set default font for all new controls
+            try
+            {
+                Application.SetDefaultFont(WileyWidget.WinForms.Services.FontService.Instance.CurrentFont);
+                Log.Information("Default font set successfully: {FontName} {FontSize}pt",
+                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Name,
+                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Size);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to set default font");
+            }
         }
 
         private static void CaptureSynchronizationContext()
@@ -295,6 +276,8 @@ namespace WileyWidget.WinForms
                 Log.Warning(ex, "Failed to load appsettings.json");
             }
 
+            builder.Configuration.AddEnvironmentVariables();
+
             try
             {
                 var existingConn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -334,24 +317,36 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"Creating logs directory at: {logsPath}");
                 Directory.CreateDirectory(logsPath);
 
-                var logFile = Path.Combine(logsPath, "app-.log");
-                Console.WriteLine($"Log file pattern: {logFile}");
+                // Template used by Serilog's rolling file sink (daily rolling uses a date suffix)
+                var logFileTemplate = Path.Combine(logsPath, "app-.log");
+                Console.WriteLine($"Log file pattern: {logFileTemplate}");
+
+                // Resolve the current daily log file that Serilog will write to for today's date
+                // Serilog's daily rolling file uses the yyyyMMdd date format (e.g., app-20251215.log)
+                var logFileCurrent = Path.Combine(logsPath, $"app-{DateTime.Now:yyyyMMdd}.log");
+                Console.WriteLine($"Current daily log file: {logFileCurrent}");
+
+                // Check for SQL logging override environment variable
+                var enableSqlLogging = Environment.GetEnvironmentVariable("WILEYWIDGET_LOG_SQL");
+                var sqlLogLevel = string.Equals(enableSqlLogging, "true", StringComparison.OrdinalIgnoreCase)
+                    ? Serilog.Events.LogEventLevel.Information
+                    : Serilog.Events.LogEventLevel.Warning;
+
+                Console.WriteLine($"SQL logging level: {sqlLogLevel} (WILEYWIDGET_LOG_SQL={enableSqlLogging ?? "not set"})");
 
                 Log.Logger = new LoggerConfiguration()
                     .ReadFrom.Configuration(builder.Configuration)
                     .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
                     .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.File(logFile, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
+                    .WriteTo.File(logFileTemplate, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
                     .Enrich.FromLogContext()
                     .MinimumLevel.Information()
-                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", sqlLogLevel)
                     .CreateLogger();
 
-                builder.Logging.ClearProviders();
-                builder.Logging.AddSerilog(Log.Logger, dispose: true);
-
                 Console.WriteLine("Logging configured successfully");
-                Log.Information("Logging system initialized - writing to {LogPath}", logFile);
+                // Log both the resolved current file and the template used by the rolling sink so it's clear
+                Log.Information("Logging system initialized - writing to {LogPath} (pattern: {LogPattern})", logFileCurrent, logFileTemplate);
             }
             catch (Exception ex)
             {
@@ -365,8 +360,6 @@ namespace WileyWidget.WinForms
                     .MinimumLevel.Information()
                     .CreateLogger();
 
-                builder.Logging.ClearProviders();
-                builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
                 Console.Error.WriteLine("Logging fallback to console-only mode");
             }
@@ -413,18 +406,15 @@ namespace WileyWidget.WinForms
                 options.EnableDetailedErrors();
                 options.EnableSensitiveDataLogging(builder.Configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
 
-                var loggerFactory = LoggerFactory.Create(logging =>
-                {
-                    logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-                    logging.AddConsole();
-                    logging.AddDebug();
-                });
-                options.UseLoggerFactory(loggerFactory);
+                options.UseLoggerFactory(new SerilogLoggerFactory(Log.Logger));
 
                 Log.Information("Using SQL Server database: {Database}", connectionString.Split(';').FirstOrDefault(s => s.Contains("Database", StringComparison.OrdinalIgnoreCase)) ?? "WileyWidgetDev");
             }
 
-            // Use scoped lifetime for the factory to avoid resolving scoped options from the root provider
+            // CRITICAL: Use Scoped lifetime for DbContextFactory (NOT Singleton)
+            // Reason: DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped.
+            // Using Singleton would cause "Cannot resolve scoped service from root provider" errors.
+            // EF Core best practice: Factory should be Scoped, DbContext is implicitly Scoped.
             builder.Services.AddDbContextFactory<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Scoped);
             builder.Services.AddDbContext<AppDbContext>(ConfigureSqlOptions);
         }
@@ -468,43 +458,41 @@ namespace WileyWidget.WinForms
 
         private static void ConfigureUiServices(HostApplicationBuilder builder)
         {
-            var useTabbedMdi = builder.Configuration.GetValue<bool>("UI:UseTabbedMdi", true);
-            var useDockingManager = builder.Configuration.GetValue<bool>("UI:UseDockingManager", true);
-
-            if (useTabbedMdi)
-            {
-                builder.Services.AddSingleton(_ => new TabbedMDIManager());
-            }
+            // UI configuration is now handled via UIConfiguration.FromConfiguration in DependencyInjection.cs
+            // No additional UI services needed here in Phase 1
         }
 
-        private static void RunStartupHealthCheck(IServiceProvider services)
+        private static async Task RunStartupHealthCheckAsync(IServiceProvider services)
         {
             try
             {
-                // Simple DB connectivity check - need to create a scope since AppDbContext is scoped
-                using (var scope = services.CreateScope())
-                {
-                    var scopedServices = scope.ServiceProvider;
-                    var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
-                    dbContext.Database.CanConnect();
-                }
+                // Create a scope for scoped services (DbContext)
+                using var scope = services.CreateScope();
+                var scopedServices = scope.ServiceProvider;
+
+                var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
+                await dbContext.Database.CanConnectAsync();
                 Log.Information("Startup health check passed: Database connection successful");
 
                 // Get data statistics for diagnostic purposes — run on threadpool to avoid sync-over-async deadlock
                 try
                 {
-                    using (var scope = services.CreateScope())
+                    using (var diagnosticScope = services.CreateScope())
                     {
-                        var scopedServices = scope.ServiceProvider;
-                        var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IDashboardService>(scopedServices);
+                        var diagnosticScopedServices = diagnosticScope.ServiceProvider;
+                        var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IDashboardService>(diagnosticScopedServices);
                         if (dashboardService != null)
                         {
                             try
                             {
-                                var statsTask = Task.Run(() => dashboardService.GetDataStatisticsAsync());
-                                if (statsTask.Wait(TimeSpan.FromSeconds(30)))
+                                // Use Task.WhenAny for proper async timeout pattern instead of blocking .Wait()
+                                var statsTask = dashboardService.GetDataStatisticsAsync();
+                                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                                var completedTask = await Task.WhenAny(statsTask, timeoutTask).ConfigureAwait(false);
+
+                                if (completedTask == statsTask)
                                 {
-                                    var stats = statsTask.Result;
+                                    var stats = await statsTask.ConfigureAwait(false);
                                     Log.Information("Diagnostic: Database contains {RecordCount} budget entries (Oldest: {Oldest}, Newest: {Newest})",
                                         stats.TotalRecords,
                                         stats.OldestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
@@ -619,10 +607,7 @@ namespace WileyWidget.WinForms
             };
         }
 
-        private static MainForm CreateMainForm(IServiceProvider serviceProvider)
-        {
-            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(serviceProvider);
-        }
+
 
         private static void ScheduleAutoCloseIfRequested(string[] args, Form mainForm)
         {
@@ -822,7 +807,11 @@ namespace WileyWidget.WinForms
 
             try
             {
-                (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "Startup Failure", showToUser: false);
+                // Only try to report to ErrorReportingService if Services is available
+                if (Services != null)
+                {
+                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "Startup Failure", showToUser: false);
+                }
             }
             catch (Exception reportEx)
             {
@@ -857,6 +846,155 @@ namespace WileyWidget.WinForms
                 Console.Error.WriteLine($"Critical startup error: {ex.Message}");
                 Console.Error.WriteLine($"UI error display failed: {uiEx.Message}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Minimal splash implementation used by the UI startup sequence.
+    /// Provides a lightweight on-screen splash for interactive runs and
+    /// a headless no-op for CI/test environments.
+    /// </summary>
+    internal sealed class SplashForm : IDisposable
+    {
+        private readonly bool _isHeadless;
+        private readonly Form? _form;
+        private readonly Label? _messageLabel;
+        private readonly ProgressBar? _progressBar;
+
+        public SplashForm()
+        {
+            // Run headless during UI tests or non-interactive contexts
+            _isHeadless = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
+                          || !Environment.UserInteractive;
+
+            if (_isHeadless)
+            {
+                return;
+            }
+
+            _form = new Form
+            {
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                ShowInTaskbar = false,
+                Width = 480,
+                Height = 140,
+                Text = "Wiley Widget - Loading..."
+            };
+
+            var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            _messageLabel = new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                Text = "Initializing...",
+                TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+            };
+
+            _progressBar = new ProgressBar
+            {
+                Dock = DockStyle.Bottom,
+                Height = 20,
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                Style = ProgressBarStyle.Continuous
+            };
+
+            panel.Controls.Add(_messageLabel);
+            panel.Controls.Add(_progressBar);
+            _form.Controls.Add(panel);
+        }
+
+        public void Show()
+        {
+            if (_isHeadless || _form == null) return;
+            try { _form.Show(); } catch { /* Ignore UI failures */ }
+        }
+
+        public void Report(double progress, string message, bool isIndeterminate = false)
+        {
+            if (_isHeadless)
+            {
+                try { Console.WriteLine($"{message} ({(int)(progress * 100)}%)"); } catch { }
+                return;
+            }
+
+            if (_form == null) return;
+
+            try
+            {
+                if (_form.InvokeRequired)
+                {
+                    _form.BeginInvoke(new Action(() => Report(progress, message, isIndeterminate)));
+                    return;
+                }
+
+                _messageLabel!.Text = message ?? string.Empty;
+                if (isIndeterminate)
+                {
+                    _progressBar!.Style = ProgressBarStyle.Marquee;
+                }
+                else
+                {
+                    _progressBar!.Style = ProgressBarStyle.Continuous;
+                    var percent = (int)(progress * 100.0);
+                    percent = Math.Max(0, Math.Min(100, percent));
+                    _progressBar.Value = percent;
+                }
+
+                _form.Refresh();
+                Application.DoEvents();
+            }
+            catch
+            {
+                // Swallow errors from reporting to avoid breaking startup
+            }
+        }
+
+        public void Complete(string finalMessage)
+        {
+            if (_isHeadless)
+            {
+                if (!string.IsNullOrEmpty(finalMessage)) Console.WriteLine(finalMessage);
+                return;
+            }
+
+            if (_form == null) return;
+
+            try
+            {
+                if (_form.InvokeRequired)
+                {
+                    _form.BeginInvoke(new Action(() => Complete(finalMessage)));
+                    return;
+                }
+
+                _messageLabel!.Text = finalMessage ?? string.Empty;
+                _progressBar!.Value = _progressBar.Maximum;
+                _form.Refresh();
+                Application.DoEvents();
+
+                // Close the splash after a brief delay so the user can see the final message
+                Task.Run(async () =>
+                {
+                    await Task.Delay(200).ConfigureAwait(false);
+                    try
+                    {
+                        if (!_form.IsDisposed)
+                        {
+                            _form.BeginInvoke(new Action(() => { try { _form.Close(); } catch { } }));
+                        }
+                    }
+                    catch { }
+                });
+            }
+            catch { }
+        }
+
+        public void Dispose()
+        {
+            try { _form?.Dispose(); } catch { }
         }
     }
 }

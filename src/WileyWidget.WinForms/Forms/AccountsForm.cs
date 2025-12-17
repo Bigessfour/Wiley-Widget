@@ -44,6 +44,7 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class AccountsForm : Form
     {
+        private readonly ILogger<AccountsForm> _logger;
         private readonly AccountsViewModel _viewModel;
         private TableLayoutPanel? _mainLayout;
         private SfDataGrid? _dataGrid;
@@ -57,13 +58,16 @@ namespace WileyWidget.WinForms.Forms
         private ToolStripComboBox? _accountTypeFilterCombo;
         private BindingSource? _accountsBinding;
 
-        public AccountsForm(AccountsViewModel viewModel, MainForm mainForm)
+        public AccountsForm(ILogger<AccountsForm> logger, AccountsViewModel viewModel, MainForm mainForm)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             if (mainForm == null)
             {
                 throw new ArgumentNullException(nameof(mainForm));
             }
+
+            _logger.LogDebug("AccountsForm constructor started");
 
             // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
             // In DockingManager mode, forms are shown as owned windows, not MDI children
@@ -75,6 +79,41 @@ namespace WileyWidget.WinForms.Forms
             InitializeComponent();
             ThemeColors.ApplyTheme(this);
             BindViewModel();
+
+            _logger.LogInformation("AccountsForm initialized successfully");
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _logger.LogInformation("AccountsForm loaded");
+
+            if (MdiParent is MainForm mainForm)
+            {
+                try
+                {
+                    mainForm.RegisterMdiChildWithDocking(this);
+                }
+                catch
+                {
+                    // Docking registration is best-effort; fall back to standard MDI when unavailable.
+                }
+            }
+
+            // Load data after form is fully initialized and visible
+            _ = LoadData();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            _logger.LogInformation("AccountsForm closed");
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            _logger.LogDebug("AccountsForm shown to user");
         }
 
         [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
@@ -228,8 +267,9 @@ namespace WileyWidget.WinForms.Forms
                 AutoSizeColumnsMode = AutoSizeColumnsMode.Fill
             };
 
-            ThemeColors.ApplySfDataGridTheme(_dataGrid);
-            SfSkinManager.SetVisualStyle(_dataGrid, "Office2019Colorful");
+            // Theme applied automatically by SfSkinManager cascade from parent form
+            // ThemeColors.ApplyTheme(this) in constructor ensures theme cascade to all controls
+            SfSkinManager.SetVisualStyle(_dataGrid, ThemeColors.DefaultTheme);
 
             _dataGrid.Columns.Add(new GridTextColumn
             {
@@ -356,10 +396,7 @@ namespace WileyWidget.WinForms.Forms
 
         private void DataGrid_QueryRowStyle(object? sender, QueryRowStyleEventArgs e)
         {
-            if (e.RowType == RowType.DefaultRow && e.RowIndex % 2 == 0)
-            {
-                e.Style.BackColor = ThemeColors.AlternatingRowBackground;
-            }
+            // Theme cascade handles grid row styling via SfSkinManager
         }
 
         private void DataGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
@@ -368,7 +405,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (e.Column.MappingName == "Balance" && account.Balance < 0)
                 {
-                    e.Style.TextColor = ThemeColors.Error;
+                    e.Style.TextColor = Color.Red;  // Semantic error/negative balance color
                 }
 
                 if (e.Column.MappingName == "BudgetAmount" && account.BudgetAmount == 0)
@@ -550,25 +587,6 @@ namespace WileyWidget.WinForms.Forms
             MessageBox.Show(details, Resources.FormTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
-
-            if (MdiParent is MainForm mainForm)
-            {
-                try
-                {
-                    mainForm.RegisterAsDockingMDIChild(this, true);
-                }
-                catch
-                {
-                    // Safe to ignore docking registration failures; form still opens as standard MDI child.
-                }
-            }
-
-            // Load data after form is fully initialized and visible
-            _ = LoadData();
-        }
 
         protected override void Dispose(bool disposing)
         {

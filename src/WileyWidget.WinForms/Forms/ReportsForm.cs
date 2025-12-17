@@ -7,6 +7,7 @@ using System.Threading;
 using System.Windows.Forms;
 using FastReport;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
@@ -67,9 +68,12 @@ public sealed class ReportsForm : Form
 
     private void BuildLayout()
     {
-        Name = "ReportsForm";
+        // Set Name for UI test identification (used as AutomationId in UI Automation)
+        Name = "Reports";
         Text = "Reports";
-        MinimumSize = new System.Drawing.Size(900, 650);
+
+        // Set minimum size for report functionality
+        MinimumSize = new Size(800, 600);
 
         var toolbarFlow = new FlowLayoutPanel
         {
@@ -94,7 +98,7 @@ public sealed class ReportsForm : Form
         _toDatePicker = new DateTimePicker { Width = 130, Format = DateTimePickerFormat.Short };
         _toDatePicker.DataBindings.Add(new Binding("Value", _viewModel, nameof(ReportsViewModel.ToDate), true, DataSourceUpdateMode.OnPropertyChanged));
 
-        _generateButton = new Button { Text = "Generate", AutoSize = true, Margin = new Padding(12, 3, 4, 3) };
+        _generateButton = new Button { Name = "GenerateReport", Text = "Generate", AutoSize = true, Margin = new Padding(12, 3, 4, 3), AccessibleName = "Generate Report" };
         _exportPdfButton = new Button { Text = "Export PDF", AutoSize = true };
         _exportExcelButton = new Button { Text = "Export Excel", AutoSize = true };
         _printButton = new Button { Text = "Print", AutoSize = true };
@@ -258,7 +262,7 @@ public sealed class ReportsForm : Form
         if (_statusLabel == null) return;
         var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
         _statusLabel.Text = hasError ? $"Error: {_viewModel.ErrorMessage}" : _viewModel.StatusMessage ?? "Ready";
-        _statusLabel.ForeColor = hasError ? ThemeColors.Error : ThemeColors.Success;
+        _statusLabel.ForeColor = hasError ? Color.Red : Color.Green;
     }
 
     private void UpdateCommandAvailability()
@@ -271,7 +275,7 @@ public sealed class ReportsForm : Form
         if (!_viewerAvailable)
         {
             _statusLabel.Text = "Report viewer not available. Install Microsoft Reporting Services to enable generation.";
-            _statusLabel.ForeColor = ThemeColors.Warning;
+            _statusLabel.ForeColor = Color.Orange;
         }
     }
 
@@ -312,8 +316,7 @@ public sealed class ReportsForm : Form
             Text = text,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 10F),
-            BackColor = ThemeColors.Background
+            Font = new Font("Segoe UI", 10F)
         };
     }
 

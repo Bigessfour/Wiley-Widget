@@ -212,11 +212,11 @@ namespace WileyWidget.WinForms.Controls
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
 
             // Create summary tiles
-            _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", ThemeColors.PrimaryAccent);
-            _lblTotalActual = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalActualLabel, "$0", ThemeColors.Success);
-            _lblVariance = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.VarianceLabel, "$0", ThemeColors.Warning);
-            _lblOverBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.OverBudgetLabel, "0", ThemeColors.Error);
-            _lblUnderBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.UnderBudgetLabel, "0", ThemeColors.Success);
+            _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", Color.DodgerBlue);
+            _lblTotalActual = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalActualLabel, "$0", Color.Green);
+            _lblVariance = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.VarianceLabel, "$0", Color.Orange);
+            _lblOverBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.OverBudgetLabel, "0", Color.Red);
+            _lblUnderBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.UnderBudgetLabel, "0", Color.Green);
 
             _summaryPanel.Controls.Add(summaryFlow);
             Controls.Add(_summaryPanel);
@@ -259,11 +259,10 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Budget metrics grid",
                 AccessibleDescription = "Displays budget metrics by department"
             };
-            SfSkinManager.SetVisualStyle(_metricsGrid, ThemeColors.DefaultTheme);
+            // Theme applied automatically by SfSkinManager cascade from parent form
             ConfigureGridColumns();
 
-            // Apply theme to the metrics grid
-            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+            // Grid theming handled by SfSkinManager cascade
 
             mainSplit.Panel2.Controls.Add(_metricsGrid);
 
@@ -519,7 +518,7 @@ namespace WileyWidget.WinForms.Controls
                 if (_lblVariance != null)
                 {
                     _lblVariance.Text = _vm.TotalVariance.ToString("C0", CultureInfo.CurrentCulture);
-                    _lblVariance.ForeColor = _vm.TotalVariance >= 0 ? ThemeColors.Error : ThemeColors.Success;
+                    _lblVariance.ForeColor = _vm.TotalVariance >= 0 ? Color.Red : Color.Green;  // Semantic: red for over, green for under
                 }
                 if (_lblOverBudgetCount != null)
                     _lblOverBudgetCount.Text = _vm.OverBudgetCount.ToString(CultureInfo.CurrentCulture);
@@ -571,8 +570,8 @@ namespace WileyWidget.WinForms.Controls
                     actualSeries.Points.Add(metric.DepartmentName, (double)metric.Amount);
                 }
 
-                budgetSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeColors.PrimaryAccent);
-                actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeColors.Success);
+                budgetSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.DodgerBlue);
+                actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.Green);
 
                 _varianceChart.Series.Add(budgetSeries);
                 _varianceChart.Series.Add(actualSeries);

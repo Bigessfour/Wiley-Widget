@@ -1,10 +1,12 @@
 #nullable enable
 
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -13,16 +15,23 @@ namespace WileyWidget.Data;
 /// </summary>
 public class AuditRepository : IAuditRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AuditRepository");
+
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<AuditRepository> _logger;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public AuditRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+    public AuditRepository(
+        IDbContextFactory<AppDbContext> contextFactory,
+        IMemoryCache cache,
+        ILogger<AuditRepository> logger)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -30,12 +39,34 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(DateTime startDate, DateTime endDate)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.AuditEntries
-            .Where(a => a.Timestamp >= startDate && a.Timestamp <= endDate)
-            .OrderByDescending(a => a.Timestamp)
-            .AsNoTracking()
-            .ToListAsync();
+        using var activity = ActivitySource.StartActivity("AuditRepository.GetAuditTrail");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd"));
+        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd"));
+
+        try
+        {
+            _logger.LogDebug("Retrieving audit trail from {StartDate} to {EndDate}", startDate, endDate);
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var result = await context.AuditEntries
+                .Where(a => a.Timestamp >= startDate && a.Timestamp <= endDate)
+                .OrderByDescending(a => a.Timestamp)
+                .AsNoTracking()
+                .ToListAsync();
+
+            activity?.SetTag("result.count", result.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogInformation("Retrieved {Count} audit entries from {StartDate} to {EndDate}", result.Count, startDate, endDate);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving audit trail from {StartDate} to {EndDate}", startDate, endDate);
+            throw;
+        }
     }
 
     /// <summary>

@@ -50,7 +50,7 @@ public abstract class BasePage
     /// </summary>
     protected AutomationElement? FindElementByTypeAndId(ControlType controlType, string automationId, TimeSpan? timeout = null)
     {
-        var cf = new ConditionFactory((IPropertyLibrary)Automation);
+        var cf = Automation.ConditionFactory;
         var condition = cf.ByControlType(controlType).And(cf.ByAutomationId(automationId));
         return RetryFind(() => Window.FindFirstDescendant(condition), timeout ?? DefaultTimeout);
     }
@@ -60,7 +60,7 @@ public abstract class BasePage
     /// </summary>
     protected AutomationElement? FindElementByTypeAndName(ControlType controlType, string name, TimeSpan? timeout = null)
     {
-        var cf = new ConditionFactory((IPropertyLibrary)Automation);
+        var cf = Automation.ConditionFactory;
         var condition = cf.ByControlType(controlType).And(cf.ByName(name));
         return RetryFind(() => Window.FindFirstDescendant(condition), timeout ?? DefaultTimeout);
     }

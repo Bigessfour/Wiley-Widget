@@ -19,6 +19,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Services;
 
 #pragma warning disable CS8604 // Possible null reference argument
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
@@ -44,6 +45,7 @@ namespace WileyWidget.WinForms.Forms
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
+        private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
 
         /// <summary>
         /// Public accessor for ServiceProvider used by child forms.
@@ -64,13 +66,12 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
-        private bool _isUiTestHarness;
         private bool _syncfusionDockingInitialized;
-        private bool _tabbedMdiAttached;
         private bool _initialized;
-        private Control? _aiChatControl;
-        private Panel? _aiChatPanel;
         private System.ComponentModel.IContainer? components;
+        private UIConfiguration _uiConfig = null!;
+        private int _onShownExecuted = 0;
+        private CancellationTokenSource? _initializationCts;
         // Dashboard description labels are declared in docking partial
 
         public MainForm()
@@ -89,22 +90,23 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
 
-            // Load UI configuration
-            var uiMode = _configuration.GetValue<string>("UI:UIMode");
-            _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
-            _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
-            _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
-            _isUiTestHarness = _configuration.GetValue<bool>("UI:IsUiTestHarness", false);
+            // Initialize centralized UI configuration
+            _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
-            // CRITICAL FIX: Set IsMdiContainer early to prevent ArgumentException during DI resolution
-            // when child forms with designer-generated MdiParent assignments are instantiated.
+            _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
+
+            // CRITICAL FIX: Set IsMdiContainer based on configuration to prevent conflicts
             try
             {
-                if (_useMdiMode || _useTabbedMdi)
+                if (_uiConfig.UseMdiMode)
                 {
-                    Console.WriteLine($"Setting IsMdiContainer=true (_useMdiMode={_useMdiMode}, _useTabbedMdi={_useTabbedMdi})");
+                    _logger.LogDebug("Setting IsMdiContainer=true (MDI enabled in configuration)");
                     IsMdiContainer = true;
-                    Console.WriteLine("IsMdiContainer set successfully");
+                    _logger.LogDebug("IsMdiContainer set successfully");
+                }
+                else
+                {
+                    _logger.LogDebug("MDI mode disabled in configuration - not setting IsMdiContainer");
                 }
             }
             catch (Exception ex)
@@ -112,78 +114,53 @@ namespace WileyWidget.WinForms.Forms
                 Console.Error.WriteLine($"ERROR setting IsMdiContainer: {ex.GetType().Name}: {ex.Message}");
                 Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
                 _logger?.LogError(ex, "Failed to set IsMdiContainer");
-                throw;
+
+                // Rethrow with contextual information so callers can more easily identify
+                // that MDI container configuration failed during MainForm construction.
+                throw new InvalidOperationException("Failed to configure MainForm MDI container during construction", ex);
             }
 
-            // For UI test harness mode, default MDI to disabled to avoid flakiness in headless
-            // environments, but DO NOT override explicit configuration values. Tests that set
-            // UI:UseMdiMode or UI:UseTabbedMdi expect those settings to be honored.
-            if (_isUiTestHarness)
-            {
-                var explicitMdi = _configuration.GetValue<bool?>("UI:UseMdiMode");
-                var explicitTabbed = _configuration.GetValue<bool?>("UI:UseTabbedMdi");
-                var explicitDocking = _configuration.GetValue<bool?>("UI:UseDockingManager");
-
-                if (!explicitMdi.HasValue)
-                {
-                    _useMdiMode = false;
-                }
-
-                if (!explicitTabbed.HasValue)
-                {
-                    _useTabbedMdi = false;
-                }
-
-                if (!explicitDocking.HasValue)
-                {
-                    _useSyncfusionDocking = true; // default to docking in test harness
-                }
-
-                // Only clear IsMdiContainer if no explicit MDI mode was requested
-                if ((!explicitMdi.HasValue || !_useMdiMode) && (!explicitTabbed.HasValue || !_useTabbedMdi))
-                {
-                    IsMdiContainer = false;
-                }
-
-                _logger.LogInformation("UI test harness detected; defaulting to Docking unless MDI is explicitly requested");
-            }
-
-            _logger.LogInformation("UI Config loaded: UIMode={UIMode}, UseDockingManager={Docking}, UseMdiMode={Mdi}, UseTabbedMdi={Tabbed}",
-                uiMode ?? "IndividualSettings", _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
-
-            ValidateAndSanitizeUiConfiguration();
+            // Apply theme and initialize chrome
+            ApplyTheme();
 
             // Initialize UI chrome (Ribbon, StatusBar, Navigation)
             try
             {
-                Console.WriteLine("Calling InitializeChrome...");
+                _logger.LogDebug("Calling InitializeChrome...");
                 InitializeChrome();
-                Console.WriteLine("InitializeChrome completed");
+                _logger.LogDebug("InitializeChrome completed");
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"ERROR in InitializeChrome: {ex.GetType().Name}: {ex.Message}");
                 Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
                 _logger?.LogError(ex, "InitializeChrome failed");
-                throw;
+
+                // Rethrow with context so higher-level handlers know which initialization step failed.
+                throw new InvalidOperationException("Failed to initialize UI chrome (InitializeChrome)", ex);
             }
 
             try
             {
-                Console.WriteLine("Calling InitializeMdiSupport...");
+                _logger.LogDebug("Calling InitializeMdiSupport...");
                 InitializeMdiSupport();
-                Console.WriteLine("InitializeMdiSupport completed");
+                _logger.LogDebug("InitializeMdiSupport completed");
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"ERROR in InitializeMdiSupport: {ex.GetType().Name}: {ex.Message}");
                 Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
                 _logger?.LogError(ex, "InitializeMdiSupport failed");
-                throw;
+
+                // Provide contextual information when rethrowing to aid diagnostics.
+                throw new InvalidOperationException("Failed to initialize MDI support (InitializeMdiSupport)", ex);
             }
 
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
+
+            // Subscribe to font changes for real-time updates
+            Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
         }
 
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
@@ -200,9 +177,6 @@ namespace WileyWidget.WinForms.Forms
                 // Use a local logger reference to avoid potential property race conditions
                 var logger = _logger;
 
-                // If logger is not available, fallback to console to avoid invoking logging pipeline
-                bool usedConsoleFallback = false;
-
                 try
                 {
                     // Log theme-related exceptions
@@ -211,13 +185,7 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("Office2019", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("SkinManager", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance theme exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance theme exception detected: {Message}", ex.Message);
                     }
 
                     // Log docking-related exceptions
@@ -225,13 +193,7 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("DockingManager", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance docking exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
                     }
 
                     // Log MDI-related exceptions
@@ -239,31 +201,13 @@ namespace WileyWidget.WinForms.Forms
                         ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
                         ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (logger != null)
-                            logger.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
-                        else
-                        {
-                            Console.WriteLine($"First-chance MDI exception detected: {ex.Message}");
-                            usedConsoleFallback = true;
-                        }
+                        logger?.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
                     }
                 }
                 catch (Exception logEx)
                 {
-                    // Avoid logging inside the exception handler as this can create a recursive loop
-                    try
-                    {
-                        if (!usedConsoleFallback)
-                        {
-                            Console.WriteLine($"Exception in FirstChanceException handler: {logEx}");
-                        }
-                        else
-                        {
-                            // If we already used console fallback, just write minimal info
-                            Console.WriteLine("Exception in FirstChanceException handler while handling FCE");
-                        }
-                    }
-                    catch { }
+                    // Swallow logging exceptions to prevent recursive loops in exception handler
+                    System.Diagnostics.Debug.WriteLine($"Exception in FirstChanceException handler: {logEx.Message}");
                 }
             }
             finally
@@ -279,9 +223,6 @@ namespace WileyWidget.WinForms.Forms
             // Designer short-circuit
             if (DesignMode)
             {
-                _useMdiMode = false;
-                _useTabbedMdi = false;
-                _useSyncfusionDocking = false;
                 IsMdiContainer = false;
                 return;
             }
@@ -301,41 +242,15 @@ namespace WileyWidget.WinForms.Forms
 
             _initialized = true;
 
-            // Ensure TabbedMDI is attached before any docking/MDI child operations
-            if (_useMdiMode && _useTabbedMdi && !_tabbedMdiAttached)
-            {
-                try
-                {
-                    InitializeTabbedMdiManager();
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to attach TabbedMDIManager during OnLoad; continuing without tabbed MDI");
-                    _useTabbedMdi = false;
-                }
-            }
-
-            // Deferred docking initialization
-            if (!_syncfusionDockingInitialized && _useSyncfusionDocking)
-            {
-                try
-                {
-                    InitializeSyncfusionDocking();
-                    _syncfusionDockingInitialized = true;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Deferred DockingManager initialization in OnLoad failed");
-                    _useSyncfusionDocking = false;
-                }
-            }
+            // DEFERRED: Docking initialization moved to OnShown to prevent UI freeze
+            // Heavy operations (docking setup, layout loading) are now deferred to after form is visible
 
             UpdateDockingStateText();
 
             try
             {
                 // Z-order: MDI client first
-                if (_useMdiMode && IsMdiContainer)
+                if (_uiConfig.UseMdiMode && IsMdiContainer)
                 {
                     var mdiClient = Controls.OfType<MdiClient>().FirstOrDefault();
                     if (mdiClient != null)
@@ -343,26 +258,10 @@ namespace WileyWidget.WinForms.Forms
                         mdiClient.Dock = DockStyle.Fill;
                         mdiClient.Visible = true;
 
-                        // CRITICAL: When TabbedMDI is enabled, don't SendToBack - it needs to be visible
-                        if (!_useTabbedMdi)
-                        {
-                            mdiClient.SendToBack();
-                        }
-                        else
-                        {
-                            // With TabbedMDI, ensure MDI client is above docking panels but below chrome
-                            // Order should be: Ribbon (front) -> StatusBar -> MDI Client -> Docking Panels (back)
-                            if (_statusBar != null)
-                            {
-                                _statusBar.BringToFront();
-                            }
-                            if (_ribbon != null)
-                            {
-                                _ribbon.BringToFront();
-                            }
-                        }
+                        // Phase 1 Simplification: Standard MDI z-order (no TabbedMDI)
+                        mdiClient.SendToBack();
 
-                        _logger?.LogDebug("MDI client configured (TabbedMDI: {TabbedMDI})", _useTabbedMdi);
+                        _logger?.LogDebug("MDI client configured (TabbedMDI: {TabbedMDI})", _uiConfig.UseTabbedMdi);
                     }
                 }
 
@@ -380,86 +279,164 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("Status bar brought to front");
                 }
 
-                if (_useSyncfusionDocking)
-                {
-                    try { EnsureDockingZOrder(); }
-                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order in OnLoad"); }
-                }
-                else
-                {
-                    try { EnsureNonDockingVisibility(); }
-                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure non-docking visibility in OnLoad"); }
-                }
-
                 this.Refresh();
                 this.Invalidate();
                 _logger?.LogDebug("Z-order management completed successfully");
-
-                // Background simulation: save docking layout
-                Task.Run(() =>
-                {
-                    try
-                    {
-                        Thread.Sleep(500);
-                        ApplyStatus("Background load complete");
-
-                        if (_useSyncfusionDocking)
-                        {
-                            try
-                            {
-                                if (this.InvokeRequired)
-                                {
-                                    try
-                                    {
-                                        this.BeginInvoke(new System.Action(() =>
-                                        {
-                                            try { SaveDockingLayout(); }
-                                            catch (Exception ex) { _logger?.LogWarning(ex, "Background simulated SaveDockingLayout failed"); }
-                                        }));
-                                    }
-                                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to BeginInvoke background docking save"); }
-                                }
-                                else
-                                {
-                                    SaveDockingLayout();
-                                }
-                            }
-                            catch (Exception ex) { _logger?.LogWarning(ex, "Background docking save simulation failed"); }
-                        }
-                    }
-                    catch (Exception ex) { _logger?.LogDebug(ex, "Background simulation failed"); }
-                });
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Z-order management failed in OnLoad - controls may overlap");
+                _logger?.LogError(ex, "OnLoad failed during z-order configuration");
+                throw;
             }
 
-            try { EnsureCentralPanelVisibility(); }
-            catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure central panel visibility after dashboard open"); }
-
-            // Gate Dashboard auto-show behind config to improve startup UX
-            var autoShowDashboard = _configuration?.GetValue<bool>("UI:AutoShowDashboard", false) ?? false;
-            if (autoShowDashboard && !_dashboardAutoShown)
+            if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
             {
+                ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
+                _dashboardAutoShown = true;
+            }
+
+            _logger?.LogInformation("MainForm startup completed successfully");
+        }
+
+        /// <summary>
+        /// OnShown override. Deferred initialization for heavy operations to avoid blocking UI thread.
+        /// Microsoft recommendation: "Perform heavy initialization in OnShown to prevent UI blocking during OnLoad."
+        /// Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/advanced/best-practices-for-loading-controls
+        /// </summary>
+        protected override async void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            if (DesignMode)
+                return;
+
+            // Thread-safe guard: Prevent duplicate execution
+            if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
+            {
+                _logger?.LogWarning("OnShown called multiple times - ignoring duplicate call");
+                return;
+            }
+
+            // Create cancellation token source for initialization operations
+            _initializationCts = new CancellationTokenSource();
+            var cancellationToken = _initializationCts.Token;
+
+            try
+            {
+                _logger?.LogInformation("OnShown: Starting deferred initialization");
+
+                // Phase 1: Initialize Syncfusion docking (synchronous UI operation - execute directly on UI thread)
+                ApplyStatus("Initializing...");
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!_syncfusionDockingInitialized)
+                {
+                    try
+                    {
+                        InitializeSyncfusionDocking();
+                        _syncfusionDockingInitialized = true;
+                        _logger?.LogInformation("Docking initialized successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize docking manager in OnShown");
+                        // Continue - not fatal
+                    }
+                }
+
+                // Phase 2: Ensure docking z-order (layout already loaded synchronously in InitializeSyncfusionDocking)
+                if (_uiConfig.UseSyncfusionDocking)
+                {
+                    // REMOVED: Redundant async reload - LoadDockingLayout() already called synchronously in InitializeSyncfusionDocking()
+                    // This eliminates double-load performance hit and simplifies startup flow
+                    try { EnsureDockingZOrder(); }
+                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
+                }
+
+                // Phase 3: Initialize dashboard data asynchronously
+                _logger?.LogInformation("Initializing MainViewModel");
+                ApplyStatus("Loading dashboard data...");
+                cancellationToken.ThrowIfCancellationRequested();
+
+                MainViewModel? mainVm = null;
                 try
                 {
-                    // FIXED: Use MDI for Forms (not docking generics)
-                    ShowChildFormMdi<DashboardForm, DashboardViewModel>();
-                    _dashboardAutoShown = true;
-                    _logger?.LogInformation("Dashboard auto-shown on startup (UI:AutoShowDashboard=true)");
+                    // Create a scope for scoped services - CRITICAL: Keep scope alive for MainViewModel's lifetime
+                    // Disposing the scope immediately causes ObjectDisposedException when MainViewModel uses DbContext
+                    _mainViewModelScope = _serviceProvider.CreateScope();
+                    var scopedServices = _mainViewModelScope.ServiceProvider;
+                    mainVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Failed to auto-open Dashboard on startup");
+                    _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
                 }
-                finally
+
+                if (mainVm != null)
                 {
-                    // Record that we attempted auto-show so we don't keep retrying on subsequent loads
-                    _dashboardAutoShown = true;
+                    try
+                    {
+                        await mainVm.InitializeAsync(cancellationToken).ConfigureAwait(true);
+                        _logger?.LogInformation("MainViewModel initialized successfully");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogInformation("Dashboard initialization cancelled");
+                        ApplyStatus("Initialization cancelled");
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
+                        ApplyStatus("Error loading dashboard data");
+                        // Show user-friendly error message
+                        if (this.IsHandleCreated)
+                        {
+                            try
+                            {
+                                MessageBox.Show(this,
+                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                    "Initialization Error",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+                            }
+                            catch { /* Swallow MessageBox errors */ }
+                        }
+                        return;
+                    }
+                }
+                else
+                {
+                    _logger?.LogWarning("MainViewModel not available in service provider");
+                }
+
+                ApplyStatus("Ready");
+                _logger?.LogInformation("OnShown: Deferred initialization completed");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("OnShown initialization cancelled");
+                ApplyStatus("Initialization cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Unexpected error during OnShown deferred initialization");
+                ApplyStatus("Initialization error");
+
+                // Critical error - show user-friendly message
+                if (this.IsHandleCreated)
+                {
+                    try
+                    {
+                        MessageBox.Show(this,
+                            $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
+                            "Critical Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+                    catch { /* Swallow MessageBox errors */ }
                 }
             }
-            TryLaunchReportViewerOnLoad();
         }
 
         private void TryLaunchReportViewerOnLoad()
@@ -516,7 +493,7 @@ namespace WileyWidget.WinForms.Forms
 
             var reportViewer = new ReportViewerForm(this, reportPath);
 
-            if (_useMdiMode)
+            if (_uiConfig.UseMdiMode)
             {
                 if (!IsMdiContainer)
                 {
@@ -548,35 +525,24 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (_useSyncfusionDocking && _dockingManager != null)
+                // Cancel any ongoing initialization operations
+                try
+                {
+                    _initializationCts?.Cancel();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Exception cancelling initialization during form closing (expected if already completed)");
+                }
+
+                if (_dockingManager != null)
                 {
                     try { SaveDockingLayout(); }
                     catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout during form closing"); }
                 }
 
-                if (_tabbedMdiManager != null && _tabbedMdiAttached)
-                {
-                    try
-                    {
-                        var detachNoArg = _tabbedMdiManager.GetType().GetMethod("DetachFromMdiContainer", Type.EmptyTypes);
-                        if (detachNoArg != null)
-                        {
-                            detachNoArg.Invoke(_tabbedMdiManager, null);
-                        }
-                        else
-                        {
-                            var detachBool = _tabbedMdiManager.GetType().GetMethods()
-                                .FirstOrDefault(m => m.Name == "DetachFromMdiContainer" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(bool));
-                            detachBool?.Invoke(_tabbedMdiManager, new object[] { false });
-                        }
-
-                        _tabbedMdiAttached = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "Failed to detach TabbedMDIManager during form closing");
-                    }
-                }
+                // Phase 1 Simplification: Dispose docking resources
+                DisposeSyncfusionDockingResources();
             }
             finally
             {
@@ -584,69 +550,18 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private void ValidateAndSanitizeUiConfiguration()
+        /// <summary>
+        /// Apply the configured theme from UIConfiguration.
+        /// Phase 1: Hard-coded to Office2019Colorful.
+        /// NOTE: Theme is inherited from Program.InitializeTheme() which sets ApplicationVisualTheme globally.
+        /// No need to call SetVisualStyle here - it cascades automatically from the global setting.
+        /// </summary>
+        private void ApplyTheme()
         {
-            // Validate UIMode
-            var uiMode = _configuration.GetValue<string>("UI:UIMode");
-            if (!string.IsNullOrEmpty(uiMode))
-            {
-                var lowerUiMode = uiMode.ToLowerInvariant();
-                if (lowerUiMode != "dockingonly" && lowerUiMode != "mdionly" && lowerUiMode != "tabbedmdionly")
-                {
-                    _logger.LogWarning("Invalid UIMode value '{UIMode}' from configuration. Clearing UIMode to fall back to individual settings.", uiMode);
-                    // Reset to individual settings
-                    _useSyncfusionDocking = _configuration.GetValue<bool>("UI:UseDockingManager", true);
-                    _useMdiMode = _configuration.GetValue<bool>("UI:UseMdiMode", true);
-                    _useTabbedMdi = _configuration.GetValue<bool>("UI:UseTabbedMdi", true);
-                }
-            }
-
-            // Rule 1: TabbedMdi requires MdiMode to be enabled
-            if (_useTabbedMdi && !_useMdiMode)
-            {
-                _logger.LogWarning("Invalid UI configuration: UseTabbedMdi=true requires UseMdiMode=true. Enabling MDI mode to support TabbedMDI.");
-                _useMdiMode = true;
-                IsMdiContainer = true;
-            }
-
-            // Rule 2: If both MDI modes are disabled, ensure docking is enabled as fallback
-            if (!_useMdiMode && !_useTabbedMdi && !_useSyncfusionDocking)
-            {
-                _logger.LogWarning("Invalid UI configuration: All UI modes disabled. Enabling DockingManager as fallback.");
-                _useSyncfusionDocking = true;
-            }
-
-            // Rule 3: Ensure IsMdiContainer consistency
-            if (_useMdiMode && !IsMdiContainer)
-            {
-                _logger.LogWarning("UI configuration inconsistency: UseMdiMode=true but IsMdiContainer=false. Setting IsMdiContainer=true.");
-                IsMdiContainer = true;
-            }
-            else if (!_useMdiMode && IsMdiContainer)
-            {
-                _logger.LogWarning("UI configuration inconsistency: UseMdiMode=false but IsMdiContainer=true. Setting IsMdiContainer=false.");
-                IsMdiContainer = false;
-            }
-
-            // Rule 4: When TabbedMDI is enabled, DockingManager document mode must be disabled
-            // to prevent InvalidCastException when TabbedMDIManager expects DockingWrapperForm but gets plain Forms.
-            // DockingManager should only handle dockable panels, not document windows.
-            if (_useTabbedMdi && _useSyncfusionDocking)
-            {
-                _logger.LogWarning("TabbedMDI and Docking DocumentMode are incompatible; forcing DocumentMode=false.");
-                // Note: InitializeSyncfusionDocking computes and applies DocumentMode = _useSyncfusionDocking && _useMdiMode && !_useTabbedMdi
-            }
-            else if (_useSyncfusionDocking)
-            {
-                _logger.LogInformation("TabbedMDI disabled: Using standard docking mode");
-            }
-
-            // Log final validated configuration
-            _logger.LogInformation("UI configuration validated: Docking={Docking}, MDI={Mdi}, TabbedMDI={Tabbed}",
-                _useSyncfusionDocking, _useMdiMode, _useTabbedMdi);
-
-            // Enforce authorized theme: Office2019Colorful
-            this.ThemeName = "Office2019Colorful";
+            this.ThemeName = _uiConfig.DefaultTheme;
+            // Theme inherited from ApplicationVisualTheme set in Program.InitializeTheme()
+            // SfSkinManager.SetVisualStyle(this, _uiConfig.DefaultTheme); // REMOVED: Redundant with global theme
+            _logger.LogDebug("Theme inherited from ApplicationVisualTheme: {Theme}", _uiConfig.DefaultTheme);
         }
 
         /// <summary>
@@ -695,7 +610,7 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (!_useSyncfusionDocking || _dockingManager == null)
+                if (!_uiConfig.UseSyncfusionDocking || _dockingManager == null)
                 {
                     _logger?.LogWarning("Cannot dock panel '{PanelName}' - Syncfusion docking is not enabled", panelName);
                     throw new InvalidOperationException("Docking manager is not available");
@@ -752,6 +667,69 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "DockPanel operation failed for '{PanelName}': {Message}", panelName, ex.Message);
                 throw new InvalidOperationException($"Unable to dock panel '{panelName}': {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Handles application font changes by updating this form and all child controls.
+        /// </summary>
+        private void OnApplicationFontChanged(object? sender, Services.FontChangedEventArgs e)
+        {
+            // Update this form and all child controls
+            UpdateControlFont(this, e.NewFont);
+
+            // Syncfusion DockingManager specific fonts (critical!)
+            if (_dockingManager != null)
+            {
+                _dockingManager.DockTabFont = e.NewFont;
+                _dockingManager.AutoHideTabFont = e.NewFont;
+
+            }
+
+            // Ribbon, grids, etc. will inherit via container update
+        }
+
+        /// <summary>
+        /// Recursively updates the font of a control and all its children.
+        /// Respects designer-set fonts to avoid breaking explicit overrides.
+        /// </summary>
+        private void UpdateControlFont(Control control, Font newFont)
+        {
+            // Skip if control explicitly overrides font (designer-set)
+            if (control.Font != null && control.Font != control.Parent?.Font)
+            {
+                return;
+            }
+
+            control.Font = newFont;
+
+            foreach (Control child in control.Controls)
+            {
+                UpdateControlFont(child, newFont);
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribes from font service when form closes.
+        /// </summary>
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            Services.FontService.Instance.FontChanged -= OnApplicationFontChanged;
+            base.OnFormClosed(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Dispose the MainViewModel scope when the form is disposed
+                _mainViewModelScope?.Dispose();
+                _mainViewModelScope = null;
+
+                // Dispose other resources
+                components?.Dispose();
+                _initializationCts?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.WinForms.ViewModels;
@@ -18,12 +19,16 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
     public class AccountsViewModelTests : IDisposable
     {
         private readonly Mock<ILogger<AccountsViewModel>> _mockLogger;
+        private readonly Mock<IAccountsRepository> _mockAccountsRepository;
+        private readonly Mock<IMunicipalAccountRepository> _mockMunicipalAccountRepository;
         private readonly AppDbContext _dbContext;
         private readonly AccountsViewModel _viewModel;
 
         public AccountsViewModelTests()
         {
             _mockLogger = new Mock<ILogger<AccountsViewModel>>();
+            _mockAccountsRepository = new Mock<IAccountsRepository>();
+            _mockMunicipalAccountRepository = new Mock<IMunicipalAccountRepository>();
 
             // Create in-memory database for testing
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -31,14 +36,14 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 .Options;
 
             _dbContext = new AppDbContext(options);
-            _viewModel = new AccountsViewModel(_mockLogger.Object, _dbContext);
+            _viewModel = new AccountsViewModel(_mockLogger.Object, _mockAccountsRepository.Object, _mockMunicipalAccountRepository.Object);
         }
 
         [Fact]
         public void Constructor_WithValidDependencies_InitializesViewModel()
         {
             // Arrange & Act
-            var vm = new AccountsViewModel(_mockLogger.Object, _dbContext);
+            var vm = new AccountsViewModel(_mockLogger.Object, _mockAccountsRepository.Object, _mockMunicipalAccountRepository.Object);
 
             // Assert
             Assert.NotNull(vm);
@@ -55,7 +60,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task LoadAccountsCommand_WhenExecuted_LoadsAccountsFromDatabase()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
 
             // Act
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
@@ -78,7 +83,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 }
             };
 
-            await SeedTestData();
+            SeedTestData();
 
             // Act
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
@@ -93,7 +98,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task LoadAccountsCommand_CalculatesTotalBalance()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
 
             // Act
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
@@ -107,7 +112,54 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task FilterAccountsCommand_WithFundFilter_FiltersCorrectly()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
+            var accounts = new[]
+            {
+                new MunicipalAccount
+                {
+                    Id = 1,
+                    AccountNumber = new AccountNumber("100-001"),
+                    Name = "Cash",
+                    Fund = MunicipalFundType.General,
+                    Type = AccountType.Asset,
+                    Balance = 1000m,
+                    BudgetAmount = 1500m,
+                    IsActive = true,
+                    DepartmentId = 1,
+                    BudgetPeriodId = 1,
+                    FundDescription = "General Fund Cash"
+                },
+                new MunicipalAccount
+                {
+                    Id = 2,
+                    AccountNumber = new AccountNumber("200-002"),
+                    Name = "Accounts Receivable",
+                    Fund = MunicipalFundType.General,
+                    Type = AccountType.Asset,
+                    Balance = 2500m,
+                    BudgetAmount = 3000m,
+                    IsActive = true,
+                    DepartmentId = 1,
+                    BudgetPeriodId = 1,
+                    FundDescription = "General Fund Receivables"
+                },
+                new MunicipalAccount
+                {
+                    Id = 3,
+                    AccountNumber = new AccountNumber("300-003"),
+                    Name = "Revenue",
+                    Fund = MunicipalFundType.Enterprise,
+                    Type = AccountType.Revenue,
+                    Balance = 4000m,
+                    BudgetAmount = 5000m,
+                    IsActive = true,
+                    DepartmentId = 1,
+                    BudgetPeriodId = 1,
+                    FundDescription = "Enterprise Revenue"
+                }
+            };
+            _mockAccountsRepository.Setup(r => r.GetAllAccountsAsync(default)).ReturnsAsync(accounts);
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.General, default)).ReturnsAsync(accounts.Where(a => a.Fund == MunicipalFundType.General).ToList());
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
 
             // Act
@@ -123,7 +175,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task FilterAccountsCommand_WithAccountTypeFilter_FiltersCorrectly()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
 
             // Act
@@ -139,7 +191,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task FilterAccountsCommand_WithMultipleFilters_AppliesBothFilters()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
 
             // Act
@@ -157,7 +209,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public async Task FilterAccountsCommand_ClearsFilter_ShowsAllAccounts()
         {
             // Arrange
-            await SeedTestData();
+            SeedTestData();
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
 
             _viewModel.SelectedFund = MunicipalFundType.General;
@@ -226,20 +278,8 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             Assert.Contains(AccountType.Expense, _viewModel.AvailableAccountTypes);
         }
 
-        private async Task SeedTestData()
+        private void SeedTestData()
         {
-            var department = new Department { Id = 1, Name = "Administration", DepartmentCode = "ADMIN" };
-            var budgetPeriod = new BudgetPeriod
-            {
-                Id = 1,
-                Year = 2026,
-                StartDate = new DateTime(2025, 7, 1),
-                EndDate = new DateTime(2026, 6, 30)
-            };
-
-            _dbContext.Departments.Add(department);
-            _dbContext.BudgetPeriods.Add(budgetPeriod);
-
             var accounts = new[]
             {
                 new MunicipalAccount
@@ -286,8 +326,22 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 }
             };
 
-            _dbContext.MunicipalAccounts.AddRange(accounts);
-            await _dbContext.SaveChangesAsync();
+            var assetAccounts = accounts.Where(a => a.Type == AccountType.Asset).ToArray();
+            var generalFundAccounts = accounts.Where(a => a.Fund == MunicipalFundType.General).ToArray();
+            var revenueAccounts = accounts.Where(a => a.Type == AccountType.Revenue).ToArray();
+
+            _mockAccountsRepository.Setup(r => r.GetAllAccountsAsync(default))
+                .ReturnsAsync(accounts);
+            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Asset, default))
+                .ReturnsAsync(assetAccounts);
+            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Revenue, default))
+                .ReturnsAsync(revenueAccounts);
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.General, default))
+                .ReturnsAsync(generalFundAccounts);
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.Enterprise, default))
+                .ReturnsAsync(accounts.Where(a => a.Fund == MunicipalFundType.Enterprise).ToArray());
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAndTypeAsync(MunicipalFundType.General, AccountType.Asset, default))
+                .ReturnsAsync(accounts.Where(a => a.Fund == MunicipalFundType.General && a.Type == AccountType.Asset).ToArray());
         }
 
         public void Dispose()

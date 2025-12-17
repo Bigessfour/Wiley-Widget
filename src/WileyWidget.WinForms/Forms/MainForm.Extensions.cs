@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Styles;
+using Syncfusion.WinForms.Controls;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -151,7 +153,7 @@ namespace WileyWidget.WinForms.Forms
                 var grid = GetActiveGrid();
                 if (grid == null) return;
 
-                if (_isUiTestHarness)
+                if (_uiConfig.IsUiTestHarness)
                 {
                     using var uiTestDialog = new SaveFileDialog
                     {
@@ -195,7 +197,7 @@ namespace WileyWidget.WinForms.Forms
                     catch (Exception ex)
                     {
                         _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
-                        if (!_isUiTestHarness)
+                        if (!_uiConfig.IsUiTestHarness)
                         {
                             MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
@@ -205,6 +207,33 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
+            }
+        }
+
+        /// <summary>
+        /// Switches the application theme at runtime and refreshes all MDI children.
+        /// Demonstrates SfSkinManager runtime theme switching capability.
+        /// </summary>
+        /// <param name="themeName">Theme name (e.g., "Office2019Colorful", "Office2019Black", "Office2019DarkGray")</param>
+        public void SwitchTheme(string themeName)
+        {
+            try
+            {
+                // Apply theme to main form
+                ThemeColors.ApplyTheme(this, themeName);
+
+                // Refresh all MDI children to pick up theme change
+                foreach (Form child in MdiChildren)
+                {
+                    SfSkinManager.SetVisualStyle(child, themeName);
+                    child.Refresh();
+                }
+
+                _logger?.LogInformation("Theme switched to '{ThemeName}'", themeName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to switch theme to '{ThemeName}'", themeName);
             }
         }
     }

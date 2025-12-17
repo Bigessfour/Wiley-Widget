@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Collections.Generic;
+using System.Drawing;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Services;
@@ -31,6 +33,7 @@ namespace WileyWidget.WinForms.Controls
         private Panel? _mainPanel;
         private GroupBox? _themeGroup;
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
+        private Syncfusion.WinForms.ListView.SfComboBox? _fontCombo;
         private GroupBox? _aboutGroup;
         private Label? _lblVersion;
         private Label? _lblDbStatus;
@@ -154,7 +157,7 @@ namespace WileyWidget.WinForms.Controls
             y += 40;
 
             // Appearance group
-            _themeGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, Location = new Point(padding, y), Size = new Size(440, 100), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _themeGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, Location = new Point(padding, y), Size = new Size(440, 140), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
 
             _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 30), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "Theme selection", AccessibleDescription = "Select application theme" };
             _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
@@ -162,9 +165,19 @@ namespace WileyWidget.WinForms.Controls
             try { _themeCombo.SelectedItem = _themeService.Preference; } catch { }
             _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.SetTheme(sel); } catch { } };
 
+            // Font selection combo
+            var lblFont = new Label { Text = "Application Font:", AutoSize = true, Location = new Point(20, 65), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
+            _fontCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "fontCombo", Location = new Point(20, 85), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 10, AccessibleName = "Font selection", AccessibleDescription = "Select application font" };
+            _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
+            _fontCombo.DataSource = GetAvailableFonts();
+            _fontCombo.SelectedItem = FontService.Instance.CurrentFont;
+            _fontCombo.SelectedIndexChanged += OnFontSelectionChanged;
+
             _themeGroup.Controls.Add(_themeCombo);
+            _themeGroup.Controls.Add(lblFont);
+            _themeGroup.Controls.Add(_fontCombo);
             _mainPanel.Controls.Add(_themeGroup);
-            y += 120;
+            y += 160;
 
             // Behavior settings
             _chkOpenEditFormsDocked = new CheckBox { Text = "Open edit forms docked (as floating tool windows)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.OpenEditFormsDocked ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Open edit forms docked", AccessibleDescription = "Open account edit forms as dockable floating windows" };
@@ -173,7 +186,7 @@ namespace WileyWidget.WinForms.Controls
             y += 30;
 
             // Demo mode toggle
-            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };
+            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
             _demoDataToolTip = new ToolTip(); _demoDataToolTip.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data. Useful for demonstrations or when database is unavailable.");
             _chkUseDemoData.CheckedChanged += (s, e) => { if (_vm != null) _vm.UseDemoData = _chkUseDemoData.Checked; };
             _mainPanel.Controls.Add(_chkUseDemoData);
@@ -294,9 +307,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 ThemeManager.ApplyTheme(parentForm);
             }
-            var colors = ThemeManager.Colors;
-            if (_themeGroup != null) { _themeGroup.ForeColor = colors.TextPrimary; _themeGroup.BackColor = colors.Surface; }
-            if (_aboutGroup != null) { _aboutGroup.ForeColor = colors.TextPrimary; _aboutGroup.BackColor = colors.Surface; }
+            // Group box colors handled by SfSkinManager theme cascade
             // Syncfusion per-form skinning is handled by ThemeManager.ApplyTheme(parentForm) above
         }
 
@@ -345,6 +356,53 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: BtnClose_Click failed"); }
         }
 
+        /// <summary>
+        /// Gets a list of available fonts suitable for UI applications.
+        /// </summary>
+        private List<Font> GetAvailableFonts()
+        {
+            var fonts = new List<Font>();
+            var fontFamilies = new[] { "Segoe UI", "Calibri", "Arial", "Tahoma", "Verdana" };
+
+            foreach (var familyName in fontFamilies)
+            {
+                try
+                {
+                    var family = new FontFamily(familyName);
+                    if (family.IsStyleAvailable(FontStyle.Regular))
+                    {
+                        fonts.Add(new Font(familyName, 9f, FontStyle.Regular));
+                        fonts.Add(new Font(familyName, 10f, FontStyle.Regular));
+                        fonts.Add(new Font(familyName, 11f, FontStyle.Regular));
+                    }
+                }
+                catch
+                {
+                    // Skip fonts that can't be loaded
+                }
+            }
+
+            return fonts;
+        }
+
+        /// <summary>
+        /// Handles font selection changes.
+        /// </summary>
+        private void OnFontSelectionChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (_fontCombo?.SelectedItem is Font selectedFont)
+                {
+                    FontService.Instance.SetApplicationFont(selectedFont);
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "SettingsPanel: Font selection change failed");
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -354,6 +412,7 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_browseExportPathHandler != null) _vm.BrowseExportPathRequested -= _browseExportPathHandler; } catch { }
 
                 try { if (_themeCombo != null && !_themeCombo.IsDisposed) { try { _themeCombo.DataSource = null; } catch { } _themeCombo.Dispose(); } } catch { }
+                try { if (_fontCombo != null && !_fontCombo.IsDisposed) { try { _fontCombo.DataSource = null; } catch { } _fontCombo.Dispose(); } } catch { }
                 try { if (_cmbLogLevel != null && !_cmbLogLevel.IsDisposed) { try { _cmbLogLevel.DataSource = null; } catch { } _cmbLogLevel.Dispose(); } } catch { }
                 try { _mainPanel?.Dispose(); } catch { }
                 try { _themeGroup?.Dispose(); } catch { }

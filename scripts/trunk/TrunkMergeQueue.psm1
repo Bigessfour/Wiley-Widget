@@ -9,6 +9,7 @@
 
 .NOTES
     Requires trunk CLI >= 1.25.0 installed and authenticated (trunk login).
+    To install locally, run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS).
 #>
 
 #Requires -Version 7.0
@@ -81,21 +82,21 @@ function Get-TrunkMergeQueueStatus {
 
     $cliCheck = Test-TrunkCli
     if (-not $cliCheck.Installed) {
-        throw "trunk CLI not installed or not in PATH. Error: $($cliCheck.Error)"
+        throw "trunk CLI not installed or not in PATH. Run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS) to install the CLI. Error: $($cliCheck.Error)"
     }
 
-    $args = @('merge', 'status')
+    $trunkArgs = @('merge', 'status')
     if ($PrNumber) {
-        $args += $PrNumber.ToString()
+        $trunkArgs += $PrNumber.ToString()
     }
     if ($VerboseOutput) {
-        $args += '--verbose'
+        $trunkArgs += '--verbose'
     }
 
-    Write-Verbose "Running: trunk $($args -join ' ')"
+    Write-Verbose "Running: trunk $($trunkArgs -join ' ')"
 
     try {
-        $output = & trunk @args 2>&1
+        $output = & trunk @trunkArgs 2>&1
         $exitCode = $LASTEXITCODE
 
         return [PSCustomObject]@{
@@ -149,19 +150,19 @@ function Submit-TrunkMergeQueuePr {
 
     $cliCheck = Test-TrunkCli
     if (-not $cliCheck.Installed) {
-        throw "trunk CLI not installed. Error: $($cliCheck.Error)"
+        throw "trunk CLI not installed. Run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS) to install the CLI. Error: $($cliCheck.Error)"
     }
 
-    $args = @('merge', $PrNumber.ToString())
+    $trunkArgs = @('merge', $PrNumber.ToString())
     if ($PSBoundParameters.ContainsKey('Priority')) {
-        $args += '--priority', $Priority.ToString()
+        $trunkArgs += '--priority', $Priority.ToString()
     }
 
     if ($PSCmdlet.ShouldProcess("PR #$PrNumber", "Submit to merge queue")) {
-        Write-Verbose "Running: trunk $($args -join ' ')"
+        Write-Verbose "Running: trunk $($trunkArgs -join ' ')"
 
         try {
-            $output = & trunk @args 2>&1
+            $output = & trunk @trunkArgs 2>&1
             $exitCode = $LASTEXITCODE
 
             return [PSCustomObject]@{
@@ -207,16 +208,16 @@ function Remove-TrunkMergeQueuePr {
 
     $cliCheck = Test-TrunkCli
     if (-not $cliCheck.Installed) {
-        throw "trunk CLI not installed. Error: $($cliCheck.Error)"
+        throw "trunk CLI not installed. Run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS) to install the CLI. Error: $($cliCheck.Error)"
     }
 
-    $args = @('merge', 'cancel', $PrNumber.ToString())
+    $trunkArgs = @('merge', 'cancel', $PrNumber.ToString())
 
     if ($PSCmdlet.ShouldProcess("PR #$PrNumber", "Cancel from merge queue")) {
-        Write-Verbose "Running: trunk $($args -join ' ')"
+        Write-Verbose "Running: trunk $($trunkArgs -join ' ')"
 
         try {
-            $output = & trunk @args 2>&1
+            $output = & trunk @trunkArgs 2>&1
             $exitCode = $LASTEXITCODE
 
             return [PSCustomObject]@{
@@ -254,7 +255,7 @@ function Suspend-TrunkMergeQueue {
 
     $cliCheck = Test-TrunkCli
     if (-not $cliCheck.Installed) {
-        throw "trunk CLI not installed. Error: $($cliCheck.Error)"
+        throw "trunk CLI not installed. Run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS) to install the CLI. Error: $($cliCheck.Error)"
     }
 
     if ($PSCmdlet.ShouldProcess("Merge Queue", "Pause")) {
@@ -299,7 +300,7 @@ function Resume-TrunkMergeQueue {
 
     $cliCheck = Test-TrunkCli
     if (-not $cliCheck.Installed) {
-        throw "trunk CLI not installed. Error: $($cliCheck.Error)"
+        throw "trunk CLI not installed. Run 'pwsh scripts/trunk/setup-trunk.ps1' (Windows) or 'bash scripts/trunk/setup-trunk.sh' (Linux/macOS) to install the CLI. Error: $($cliCheck.Error)"
     }
 
     if ($PSCmdlet.ShouldProcess("Merge Queue", "Resume")) {

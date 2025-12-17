@@ -56,7 +56,13 @@
           "**/bin": true,
           "**/obj": true,
           "**/.vs": true
-        }
+        },
+        // MANDATORY: SfSkinManager Theme Enforcement
+        "github.copilot.chat.codeGeneration.instructions": [
+          {
+            "text": "CRITICAL RULE: SfSkinManager has sole proprietorship over ALL theme and color management. VIOLATIONS FORBIDDEN: (1) Custom color properties/methods (2) Manual BackColor/ForeColor assignments (3) Custom theme application methods (4) Any code competing with SfSkinManager. ONLY ALLOWED: SfSkinManager.SetVisualStyle() or ThemeColors.ApplyTheme(). Exception: Semantic status colors using Color.Red/Green/Orange. See .vscode/copilot-instructions.md for complete rules."
+          }
+        ]
       }
     }
   },

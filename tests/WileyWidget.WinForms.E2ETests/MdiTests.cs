@@ -19,7 +19,8 @@ namespace WileyWidget.WinForms.E2ETests
     /// Verifies child form creation, tab management, and MDI container behavior.
     /// </summary>
     [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Disposed via cleanup.")]
-    [Collection("UI Tests")]
+    [Collection("MDI Tests")]
+    [Trait("Category", "MDI")]
     public sealed class MdiTests : IDisposable
     {
         private readonly string _exePath;

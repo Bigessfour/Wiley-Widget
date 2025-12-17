@@ -2,6 +2,46 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "prettier:write-all",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"prettier",
+				"--write",
+				"."
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"group": "none"
+		},
+		{
+			"label": "prettier:write-current-file",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"prettier",
+				"--write",
+				"${file}"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"group": "none"
+		},
+		{
 			"label": "kill-dotnet",
 			"type": "shell",
 			"command": "pwsh",
@@ -345,6 +385,70 @@
 			"group": "build"
 		},
 		{
+			"label": "mcp:build-ui-server",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--configuration",
+				"Debug"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "mcp:validate-form-theme",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--",
+				"validate_form_theme",
+				"${input:formTypeName}",
+				"Office2019Colorful"
+			],
+			"group": "test",
+			"dependsOn": "mcp:build-ui-server",
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "mcp:inspect-sfdatagrid",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--",
+				"inspect_sfdatagrid",
+				"${input:formTypeName}"
+			],
+			"group": "test",
+			"dependsOn": "mcp:build-ui-server",
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
 			"label": "run ui tests (FlaUI)",
 			"type": "shell",
 			"command": "pwsh",
@@ -647,6 +751,22 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		}
+	],
+	"inputs": [
+		{
+			"id": "formTypeName",
+			"type": "pickString",
+			"description": "Select form to validate/inspect:",
+			"options": [
+				"WileyWidget.WinForms.Forms.AccountsForm",
+				"WileyWidget.WinForms.Forms.BudgetOverviewForm",
+				"WileyWidget.WinForms.Forms.ChartForm",
+				"WileyWidget.WinForms.Forms.DashboardForm",
+				"WileyWidget.WinForms.Forms.ReportsForm",
+				"WileyWidget.WinForms.Forms.SettingsForm"
+			],
+			"default": "WileyWidget.WinForms.Forms.AccountsForm"
 		}
 	]
 }

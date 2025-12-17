@@ -1,7 +1,9 @@
 using Xunit;
 using Xunit.Sdk;
+using Xunit.Abstractions;
 using Moq;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using FluentAssertions;
 using WileyWidget.WinForms.Tests.Infrastructure;
+using WileyWidget.WinForms.Tests.Utilities;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
@@ -21,35 +24,32 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms;
 public class MdiChildFormTests : IDisposable
 {
     private readonly WinFormsUiThreadFixture _ui;
+    private readonly ITestOutputHelper _output;
     private readonly Mock<IServiceProvider> _mockServiceProvider;
-    private readonly Mock<IConfiguration> _mockConfiguration;
+    private readonly IConfiguration _mockConfiguration;
     private readonly Mock<ILogger<MainForm>> _mockLogger;
     private MainForm? _mainForm;
     private readonly List<Form> _formsToDispose = new();
 
-    public MdiChildFormTests(WinFormsUiThreadFixture ui)
+    public MdiChildFormTests(WinFormsUiThreadFixture ui, ITestOutputHelper output)
     {
         _ui = ui;
+        _output = output;
         _mockServiceProvider = new Mock<IServiceProvider>();
-        _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<MainForm>>();
 
-        // Setup required configuration values for MainForm constructor
-        // MainForm.cs line 81 uses GetValue<T> with key lookups, so mock the section access
-        var mockSection = new Mock<IConfigurationSection>();
-        mockSection.Setup(s => s.Value).Returns("false");
-
-        _mockConfiguration.Setup(c => c.GetSection("UI:UIMode")).Returns(mockSection.Object);
-        _mockConfiguration.Setup(c => c.GetSection("UI:UseDockingManager")).Returns(mockSection.Object);
-        _mockConfiguration.Setup(c => c.GetSection("UI:UseMdiMode")).Returns(mockSection.Object);
-        _mockConfiguration.Setup(c => c.GetSection("UI:UseTabbedMdi")).Returns(mockSection.Object);
-        _mockConfiguration.Setup(c => c.GetSection("UI:IsUiTestHarness")).Returns(mockSection.Object);
-
-        // Also mock the key-value access for older config patterns
-        _mockConfiguration.Setup(c => c["UI:IsUiTestHarness"]).Returns("true");
-        _mockConfiguration.Setup(c => c["UI:UseMdiMode"]).Returns("false");
-        _mockConfiguration.Setup(c => c["UI:UseTabbedMdi"]).Returns("false");
-        _mockConfiguration.Setup(c => c["UI:UseDockingManager"]).Returns("false");
+        // FIX: Use real ConfigurationBuilder instead of mocking
+        // MainForm constructor calls UIConfiguration.FromConfiguration which uses GetValue<T>
+        // Mocking GetValue<T> is complex, so use real configuration with in-memory values
+        _mockConfiguration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseMdiMode"] = "false",
+                ["UI:UseTabbedMdi"] = "false",
+                ["UI:UseDockingManager"] = "false"
+            })
+            .Build() as IConfiguration;
     }
 
     [Fact]
@@ -58,16 +58,18 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output, Serilog.Events.LogEventLevel.Debug);
 
             // Act
-            var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+            var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -82,18 +84,20 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
             Action act = () =>
             {
-                var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+                var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
                 _formsToDispose.Add(childForm);
             };
 
@@ -108,16 +112,18 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+            var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -131,7 +137,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
@@ -140,9 +146,10 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             var vm = new ChartViewModel(mockLogger.Object, mockDashboardSvc.Object);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new ChartForm(vm, _mainForm);
+            var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -157,7 +164,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -166,11 +173,12 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             var vm = new ChartViewModel(mockLogger.Object, mockDashboardSvc.Object);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
             Action act = () =>
             {
-                var childForm = new ChartForm(vm, _mainForm);
+                var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
                 _formsToDispose.Add(childForm);
             };
 
@@ -185,7 +193,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -194,9 +202,10 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             ChartViewModel vm = NewMethod(mockLogger, mockDashboardSvc);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new ChartForm(vm, _mainForm);
+            var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -215,7 +224,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = true
             };
@@ -242,7 +251,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -271,7 +280,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled)
             {
                 IsMdiContainer = false
             };
@@ -302,7 +311,7 @@ public class MdiChildFormTests : IDisposable
         _ui.Run(() =>
         {
             // Arrange & Act
-            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration.Object, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+            _mainForm = new MainForm(_mockServiceProvider.Object, _mockConfiguration, _mockLogger.Object, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
             _formsToDispose.Add(_mainForm);
 
             // Assert - MainForm should be configurable as MDI container

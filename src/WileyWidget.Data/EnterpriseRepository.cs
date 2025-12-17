@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using WileyWidget.Models.DTOs;
 using WileyWidget.Business.Interfaces;
 using System.Globalization;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -13,6 +14,8 @@ namespace WileyWidget.Data;
 /// </summary>
 public class EnterpriseRepository : IEnterpriseRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.EnterpriseRepository");
+
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly ILogger<EnterpriseRepository> _logger;
     private readonly IMemoryCache _cache;
@@ -33,27 +36,52 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// </summary>
     public async Task<IEnumerable<Enterprise>> GetAllAsync()
     {
+        using var activity = ActivitySource.StartActivity("EnterpriseRepository.GetAll");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
+
         const string cacheKey = "Enterprises_All";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<Enterprise>? enterprises))
+        try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            enterprises = await context.Enterprises
-                .Where(e => !e.IsDeleted)
-                .AsNoTracking()
-                .OrderBy(e => e.Name)
-                .ToListAsync();
-
-            // Set cache with proper size specification (required when SizeLimit is configured)
-            var cacheOptions = new MemoryCacheEntryOptions
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<Enterprise>? enterprises))
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
-                Size = 1 // Logical size unit for cache eviction
-            };
-            _cache.Set(cacheKey, enterprises, cacheOptions);
-        }
+                activity?.SetTag("cache.hit", false);
+                _logger.LogDebug("Cache miss for all enterprises, fetching from database");
 
-        return enterprises!;
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                enterprises = await context.Enterprises
+                    .Where(e => !e.IsDeleted)
+                    .AsNoTracking()
+                    .OrderBy(e => e.Name)
+                    .ToListAsync();
+
+                // Set cache with proper size specification (required when SizeLimit is configured)
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+                    Size = 1 // Logical size unit for cache eviction
+                };
+                _cache.Set(cacheKey, enterprises, cacheOptions);
+                _logger.LogInformation("Cached {Count} enterprises for 10 minutes", enterprises?.Count() ?? 0);
+            }
+            else
+            {
+                activity?.SetTag("cache.hit", true);
+                _logger.LogDebug("Returning {Count} enterprises from cache", enterprises?.Count() ?? 0);
+            }
+
+            activity?.SetTag("result.count", enterprises?.Count() ?? 0);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            return enterprises!;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all enterprises");
+            throw;
+        }
     }
 
     /// <summary>

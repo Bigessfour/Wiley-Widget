@@ -2,8 +2,7 @@
 
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
@@ -20,7 +19,6 @@ public class BudgetRepository : IBudgetRepository
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
     private readonly ITelemetryService? _telemetryService;
-    private readonly ILogger<BudgetRepository> _logger;
 
     // Activity source for repository-level telemetry
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.BudgetRepository");
@@ -31,13 +29,11 @@ public class BudgetRepository : IBudgetRepository
     public BudgetRepository(
         IDbContextFactory<AppDbContext> contextFactory,
         IMemoryCache cache,
-        ITelemetryService? telemetryService = null,
-        ILogger<BudgetRepository>? logger = null)
+        ITelemetryService? telemetryService = null)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _telemetryService = telemetryService;
-        _logger = logger ?? NullLogger<BudgetRepository>.Instance;
     }
 
     /// <summary>
@@ -51,7 +47,7 @@ public class BudgetRepository : IBudgetRepository
         }
         catch (ObjectDisposedException)
         {
-            _logger.LogWarning("MemoryCache is disposed; cannot retrieve from cache for key '{Key}'.", key);
+            Log.Warning("MemoryCache is disposed; cannot retrieve from cache for key '{Key}'.", key);
             value = default;
             return false;
         }
@@ -68,7 +64,7 @@ public class BudgetRepository : IBudgetRepository
         }
         catch (ObjectDisposedException)
         {
-            _logger.LogWarning("MemoryCache is disposed; skipping cache update for key '{Key}'.", key);
+            Log.Warning("MemoryCache is disposed; skipping cache update for key '{Key}'.", key);
         }
     }
 
@@ -714,6 +710,7 @@ public class BudgetRepository : IBudgetRepository
                 OldestRecord = g.Min(be => be.CreatedAt),
                 NewestRecord = g.Max(be => be.CreatedAt)
             })
+            .OrderBy(x => 1)  // Fix: Add OrderBy before FirstOrDefaultAsync to suppress EF warning
             .FirstOrDefaultAsync(cancellationToken);
 
         return stats != null ? (stats.TotalRecords, stats.OldestRecord, stats.NewestRecord) : (0, null, null);

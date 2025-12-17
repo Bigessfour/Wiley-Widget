@@ -1,75 +1,31 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Conditions;
-using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
-using Application = FlaUI.Core.Application;
+using WileyWidget.WinForms.E2ETests.Helpers;
+using WileyWidget.WinForms.E2ETests.PageObjects;
 
 namespace WileyWidget.WinForms.E2ETests
 {
     /// <summary>
     /// FlaUI E2E tests for AccountsForm - Municipal Accounts view.
     /// Tests account loading, filtering, grid interactions, and data editing.
+    /// Uses per-test app launch with stabilized environment setup.
     /// </summary>
-    [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Disposed via cleanup.")]
+    [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Process disposed in Cleanup.")]
     [Collection("UI Tests")]
-    public sealed class AccountsFormE2ETests : IDisposable
+    public sealed class AccountsFormE2ETests
     {
-        private readonly string _exePath;
-        private Application? _app;
+        private Process? _testProcess;
         private UIA3Automation? _automation;
-        private const int DefaultTimeout = 20000;
 
         public AccountsFormE2ETests()
         {
-            _exePath = ResolveExecutablePath();
-
-            // Enable in-memory mode and simplified chrome for UI automation stability
-            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-            Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
-            // Use double-underscore style so configuration picks up values in the spawned process
-            Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", "false");
-        }
-
-        private static string ResolveExecutablePath()
-        {
-            var envPath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE");
-            if (!string.IsNullOrWhiteSpace(envPath))
-            {
-                return envPath;
-            }
-
-            var baseDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", "Debug"));
-            if (!Directory.Exists(baseDir))
-            {
-                throw new DirectoryNotFoundException($"Build output directory not found at '{baseDir}'. Build WileyWidget.WinForms or set WILEYWIDGET_EXE.");
-            }
-
-            var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
-            if (File.Exists(standard))
-            {
-                return standard;
-            }
-
-            var versioned = Directory.GetDirectories(baseDir, "net9.0-windows*")
-                .Select(dir => Path.Combine(dir, "WileyWidget.WinForms.exe"))
-                .FirstOrDefault(File.Exists);
-
-            if (!string.IsNullOrEmpty(versioned))
-            {
-                return versioned;
-            }
-
-            throw new FileNotFoundException($"Executable not found. Build Debug output under '{baseDir}'.");
+            // Each test gets its own app instance
         }
 
         [Fact]
@@ -78,16 +34,23 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
+            try
+            {
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            Assert.NotNull(accountsWindow);
-            Assert.Contains("Municipal Accounts", accountsWindow.Title, StringComparison.OrdinalIgnoreCase);
+                Assert.NotNull(accountsPage);
+                Assert.True(accountsPage.IsAccountsGridLoaded(), "Accounts grid should be loaded and visible");
 
-            // Verify data grid exists
-            var dataGrid = WaitForElement(accountsWindow, cf => cf.ByAutomationId("dataGridAccounts"));
-            Assert.NotNull(dataGrid);
+                // Verify data grid exists
+                var dataGrid = accountsPage.AccountsGrid;
+                Assert.NotNull(dataGrid);
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -96,26 +59,25 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
-
-            // Click Load Accounts button
-            var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
-            Assert.NotNull(loadButton);
-
-            // Wait for button to be responsive before clicking
-            WaitUntilResponsive(loadButton);
-            loadButton.AsButton().Invoke();
-
-            // Wait for status bar to update (no blocking sleep)
-            var statusLabel = Retry.WhileNull(() =>
+            try
             {
-                var status = accountsWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
-                return status?.Properties.Name.ValueOrDefault?.Contains("loaded", StringComparison.OrdinalIgnoreCase) == true ? status : null;
-            }, timeout: TimeSpan.FromSeconds(5)).Result;
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            Assert.NotNull(statusLabel);
+                // Click Load Accounts button
+                accountsPage.ClickLoad();
+
+                // Verify data loaded via status bar (wait a bit for status update)
+                Retry.WhileException(() =>
+                {
+                    Assert.True(accountsPage.IsDataLoaded(), "Status bar should indicate data is loaded");
+                }, TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -124,17 +86,24 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
+            try
+            {
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            // Find fund filter combo box
-            var fundCombo = WaitForElement(accountsWindow, cf => cf.ByControlType(ControlType.ComboBox));
-            Assert.NotNull(fundCombo);
+                // Find fund filter combo box
+                var fundCombo = accountsPage.FundFilterComboBox;
+                Assert.NotNull(fundCombo);
 
-            // Verify it's enabled
-            var comboBox = fundCombo.AsComboBox();
-            Assert.True(comboBox.IsEnabled);
+                // Verify it's enabled
+                var comboBox = fundCombo.AsComboBox();
+                Assert.True(comboBox.IsEnabled);
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -143,13 +112,20 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
+            try
+            {
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            var filterButton = WaitForElement(accountsWindow, cf => cf.ByName("Apply Filters"));
-            Assert.NotNull(filterButton);
-            Assert.True(filterButton.IsEnabled);
+                var filterButton = accountsPage.ApplyFiltersButton;
+                Assert.NotNull(filterButton);
+                Assert.True(filterButton.IsEnabled);
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -158,23 +134,27 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
+            try
+            {
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            var editToggle = WaitForElement(accountsWindow, cf => cf.ByName("Allow Editing"));
-            Assert.NotNull(editToggle);
-            Assert.True(editToggle.IsEnabled);
+                var editToggle = accountsPage.AllowEditingToggle;
+                Assert.NotNull(editToggle);
+                Assert.True(editToggle.IsEnabled);
 
-            // Toggle editing off - use ToggleButton pattern instead of Click
-            WaitUntilResponsive(editToggle);
-            var button = editToggle.AsButton();
-            button.Invoke();
-            Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
+                // Toggle editing off then on
+                accountsPage.ToggleEditing();
+                Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
 
-            // Toggle back on
-            button.Invoke();
-            Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
+                accountsPage.ToggleEditing();
+                Retry.WhileException(() => Assert.True(editToggle.IsAvailable), TimeSpan.FromSeconds(2));
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -183,23 +163,26 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
+            try
+            {
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            var dataGrid = WaitForElement(accountsWindow, cf => cf.ByAutomationId("dataGridAccounts"));
-            Assert.NotNull(dataGrid);
+                var dataGrid = accountsPage.AccountsGrid;
+                Assert.NotNull(dataGrid);
 
-            // Load data first
-            var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
+                // Load data first
+                accountsPage.ClickLoad();
 
-            // Wait for grid to populate using retry pattern
-            var gridItems = Retry.WhileEmpty(() => dataGrid.FindAllDescendants(),
-                timeout: TimeSpan.FromSeconds(5)).Result;
-
-            Assert.NotEmpty(gridItems!);
+                // Wait for grid to populate
+                var rowCount = accountsPage.GetAccountsRowCount();
+                Assert.True(rowCount > 0, "Grid should contain data rows after loading");
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
         [Fact]
@@ -208,42 +191,104 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (!EnsureInteractiveOrSkip()) return;
 
-            StartApp();
-            var mainWindow = GetMainWindow();
-            var accountsWindow = OpenAccountsView(mainWindow);
-
-            // Load data
-            var loadButton = WaitForElement(accountsWindow, cf => cf.ByName("Load Accounts"));
-            WaitUntilResponsive(loadButton);
-            loadButton?.AsButton().Invoke();
-
-            // Wait for status bar to show account count
-            var statusBar = Retry.WhileNull(() =>
+            try
             {
-                var status = accountsWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.StatusBar));
-                var text = status?.Properties.Name.ValueOrDefault;
-                return text?.Contains("account", StringComparison.OrdinalIgnoreCase) == true ? status : null;
-            }, timeout: TimeSpan.FromSeconds(5)).Result;
+                LaunchApp();
+                var mainWindow = GetMainWindow();
+                var accountsPage = OpenAccountsView(mainWindow);
 
-            Assert.NotNull(statusBar);
+                // Load data
+                accountsPage.ClickLoad();
+
+                // Verify status bar shows account count (with retry for status bar update)
+                Retry.WhileException(() =>
+                {
+                    Assert.True(accountsPage.IsDataLoaded(), "Status bar should contain account count after loading");
+                }, TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                Cleanup();
+            }
         }
 
-        private Window OpenAccountsView(Window mainWindow)
+        private void LaunchApp()
         {
-            var navButton = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Accounts"));
-            Assert.NotNull(navButton);
+            Cleanup();
 
-            navButton.Click();
-            Retry.WhileNull(() => _automation?.GetDesktop()
-                .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
-                    .And(cf.ByName("Municipal Accounts"))),
-                timeout: TimeSpan.FromSeconds(30));
+            var exePath = TestAppHelper.GetWileyWidgetExePath();
+            var env = TestAppHelper.BuildTestEnvironment(isTestHarness: true, useMdiMode: true, useTabbedMdi: true);
 
-            var accountsWindow = _automation?.GetDesktop()
-                .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
-                    .And(cf.ByName("Municipal Accounts")))?.AsWindow();
+            _testProcess = TestAppHelper.LaunchApp(exePath, env);
+            _automation = new UIA3Automation();
 
-            return accountsWindow ?? throw new InvalidOperationException("Accounts window did not open");
+            // Wait for main window with very generous timeout (app startup can be slow)
+            Retry.WhileNull(
+                () =>
+                {
+                    try
+                    {
+                        // Search for window by title or by class name
+                        var desktop = _automation.GetDesktop();
+                        var window = desktop.FindFirstChild(cf => cf.ByName("Wiley Widget"))
+                                     ?? desktop.FindFirstChild(cf => cf.ByClassName("WindowsForms10.Window"));
+
+                        // Ensure window is actually available before returning
+                        if (window != null && window.IsAvailable)
+                        {
+                            System.Threading.Thread.Sleep(1000); // Extra stabilization time
+                            return window;
+                        }
+                        return null;
+                    }
+                    catch
+                    {
+                        // Ignore transient UIA errors
+                        return null;
+                    }
+                },
+                TimeSpan.FromSeconds(45), // Much longer timeout for slow CI/VM environments
+                TimeSpan.FromMilliseconds(500),
+                throwOnTimeout: true,
+                timeoutMessage: "Could not find main window after 45 seconds - application may have failed to launch"
+            );
+        }
+
+        private void Cleanup()
+        {
+            if (_testProcess != null && !_testProcess.HasExited)
+            {
+                try
+                {
+                    _testProcess.Kill();
+                    _testProcess.WaitForExit(5000);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+            _testProcess?.Dispose();
+            _automation?.Dispose();
+        }
+
+        private AccountsPage OpenAccountsView(Window mainWindow)
+        {
+            if (_automation == null) throw new InvalidOperationException("Automation not initialized");
+
+            var accountsWindow = NavigationHelper.OpenView(_automation, mainWindow, "Nav_Accounts", "Municipal Accounts");
+            return new AccountsPage(_automation, accountsWindow);
+        }
+
+        private Window GetMainWindow()
+        {
+            if (_automation == null) throw new InvalidOperationException("Automation not initialized");
+
+            var mainElement = _automation.GetDesktop().FindFirstChild(cf => cf.ByName("Wiley Widget"));
+            Assert.NotNull(mainElement);
+            var mainWindow = mainElement.AsWindow();
+            Assert.NotNull(mainWindow);
+            return mainWindow;
         }
 
         private bool EnsureInteractiveOrSkip()
@@ -254,74 +299,6 @@ namespace WileyWidget.WinForms.E2ETests
                 return false;
             }
             return true;
-        }
-
-        private void StartApp()
-        {
-            _automation = new UIA3Automation();
-            _app = Application.Launch(_exePath);
-
-            // Wait for main window to be responsive instead of fixed delay
-            Retry.WhileException(() =>
-            {
-                var window = _app.GetMainWindow(_automation);
-                if (window == null || !window.IsAvailable)
-                {
-                    throw new InvalidOperationException("Main window not ready");
-                }
-            }, TimeSpan.FromMilliseconds(DefaultTimeout));
-        }
-
-        private void WaitUntilResponsive(AutomationElement? element, int timeoutMs = 3000)
-        {
-            if (element == null) return;
-
-            Retry.WhileException(() =>
-            {
-                if (!element.IsEnabled || element.IsOffscreen)
-                {
-                    throw new InvalidOperationException("Element not responsive");
-                }
-            }, TimeSpan.FromMilliseconds(timeoutMs));
-        }
-
-        private Window GetMainWindow()
-        {
-            var mainWindow = Retry.WhileNull(() => _app?.GetMainWindow(_automation!),
-                timeout: TimeSpan.FromSeconds(DefaultTimeout / 1000));
-            Assert.NotNull(mainWindow);
-            return mainWindow.Result!;
-        }
-
-        private AutomationElement? WaitForElement(AutomationElement parent, Func<ConditionFactory, ConditionBase> condition, int timeoutMs = DefaultTimeout)
-        {
-            return Retry.WhileNull(() =>
-            {
-                try
-                {
-                    return parent.FindFirstDescendant(condition);
-                }
-                catch
-                {
-                    return null;
-                }
-            }, timeout: TimeSpan.FromMilliseconds(timeoutMs)).Result;
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                _app?.Close();
-                _app?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                _automation?.Dispose();
-            }
-            catch { }
         }
     }
 }

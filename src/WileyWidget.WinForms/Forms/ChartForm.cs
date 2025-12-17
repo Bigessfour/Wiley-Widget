@@ -21,16 +21,20 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class ChartForm : Form
     {
+        private readonly ILogger _logger;
         private readonly ChartViewModel _vm;
         private readonly MainForm _mainForm;
         private ChartControl? _cartesian;
         private ChartControl? _pie;
         private Label? _statusLabel;
 
-        public ChartForm(ChartViewModel vm, MainForm mainForm)
+        public ChartForm(ILogger logger, ChartViewModel vm, MainForm mainForm)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+
+            _logger.Debug("ChartForm constructor started");
             InitializeComponent();
 
             // Only set MdiParent if MainForm is in MDI mode
@@ -44,14 +48,32 @@ namespace WileyWidget.WinForms.Forms
             SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
             ThemeColors.ApplyTheme(this);
 
+            // Set minimum size for chart visibility
+            MinimumSize = new Size(600, 400);
+
             _vm.PropertyChanged += VmOnPropertyChanged;
             WireCollectionChanges();
 
             FormClosed += (_, _) =>
             {
+                _logger.Information("ChartForm closed");
                 _vm.PropertyChanged -= VmOnPropertyChanged;
                 UnwireCollectionChanges();
             };
+
+            _logger.Information("ChartForm initialized successfully");
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _logger.Information("ChartForm loaded");
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            _logger.Debug("ChartForm shown to user");
         }
 
         private void InitializeComponent()
@@ -97,7 +119,6 @@ namespace WileyWidget.WinForms.Forms
 
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
-
             return cartesian;
         }
 
@@ -117,11 +138,6 @@ namespace WileyWidget.WinForms.Forms
             pie.PrimaryYAxis.DrawGrid = false;
 
             return pie;
-        }
-
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
         }
 
         private async Task LoadChartDataAsync()
@@ -239,16 +255,18 @@ namespace WileyWidget.WinForms.Forms
             }
 
             _statusLabel.Text = message;
-            _statusLabel.ForeColor = isError ? ThemeColors.Error : ThemeColors.Success;
+            _statusLabel.ForeColor = isError ? Color.Red : Color.Green;  // Semantic status colors
         }
 
         private void UpdateCartesianSeries(ChartControl cartesian)
         {
             cartesian.Series.Clear();
             var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
+            series.Style.Border.Width = 2;
 
-            foreach (var data in _vm.MonthlyRevenueData)
+            // Create a snapshot to avoid "Collection was modified" exception
+            var snapshot = _vm.MonthlyRevenueData.ToList();
+            foreach (var data in snapshot)
             {
                 if (data == null) continue;
                 series.Points.Add(data.MonthNumber, (double)data.Amount);
@@ -262,7 +280,10 @@ namespace WileyWidget.WinForms.Forms
             pie.Series.Clear();
             var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
 
-            foreach (var p in _vm.PieChartData)
+            // Create a snapshot to avoid "Collection was modified" exception
+            // PieChartData is ObservableCollection that may be modified during enumeration
+            var snapshot = _vm.PieChartData.ToList();
+            foreach (var p in snapshot)
             {
                 pieSeries.Points.Add(p.Category, (double)p.Value);
             }

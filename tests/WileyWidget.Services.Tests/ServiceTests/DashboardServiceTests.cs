@@ -22,9 +22,9 @@ namespace WileyWidget.Services.Tests.ServiceTests;
 /// </summary>
 public sealed class DashboardServiceTests : IDisposable
 {
+    private readonly Mock<ILogger<DashboardService>> _mockLogger;
     private readonly Mock<IBudgetRepository> _mockBudgetRepository;
     private readonly Mock<IMunicipalAccountRepository> _mockAccountRepository;
-    private readonly Mock<ILogger<DashboardService>> _mockLogger;
     private readonly Mock<ICacheService> _mockCacheService;
     private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<IConfigurationSection> _mockConfigSection;
@@ -32,41 +32,41 @@ public sealed class DashboardServiceTests : IDisposable
 
     public DashboardServiceTests()
     {
+        _mockLogger = new Mock<ILogger<DashboardService>>();
         _mockBudgetRepository = new Mock<IBudgetRepository>();
         _mockAccountRepository = new Mock<IMunicipalAccountRepository>();
-        _mockLogger = new Mock<ILogger<DashboardService>>();
         _mockCacheService = new Mock<ICacheService>();
         _mockConfiguration = new Mock<IConfiguration>();
         _mockConfigSection = new Mock<IConfigurationSection>();
 
-        // Configure UI:FiscalYear = 2025 for configuration mock
+        // Configure UI:DefaultFiscalYear = 2025 for configuration mock
         _mockConfigSection.Setup(s => s.Value).Returns("2025");
-        _mockConfiguration.Setup(c => c.GetSection("UI:FiscalYear")).Returns(_mockConfigSection.Object);
+        _mockConfiguration.Setup(c => c.GetSection("UI:DefaultFiscalYear")).Returns(_mockConfigSection.Object);
 
         _service = new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
-            _mockLogger.Object,
             _mockCacheService.Object,
             _mockConfiguration.Object);
     }
 
     [Fact]
-    public void Constructor_ShouldThrowArgumentNullException_WhenBudgetRepositoryIsNull()
+    public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
     {
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             null!,
+            _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
-            _mockLogger.Object,
             _mockCacheService.Object,
             _mockConfiguration.Object);
 #pragma warning restore CA1806
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("budgetRepository");
+            .WithParameterName("logger");
     }
 
     [Fact]
@@ -75,9 +75,9 @@ public sealed class DashboardServiceTests : IDisposable
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             null!,
-            _mockLogger.Object,
             _mockCacheService.Object,
             _mockConfiguration.Object);
 #pragma warning restore CA1806
@@ -88,32 +88,16 @@ public sealed class DashboardServiceTests : IDisposable
     }
 
     [Fact]
-    public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
-    {
-        // Act
-#pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
-        Action act = () => new DashboardService(
-            _mockBudgetRepository.Object,
-            _mockAccountRepository.Object,
-            null!,
-            _mockCacheService.Object);
-#pragma warning restore CA1806
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("logger");
-    }
-
-    [Fact]
     public void Constructor_ShouldNotThrow_WhenCacheServiceIsNull()
     {
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
-            _mockLogger.Object,
-            null);
+            null,
+            _mockConfiguration.Object);
 #pragma warning restore CA1806
 
         // Assert

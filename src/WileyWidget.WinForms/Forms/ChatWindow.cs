@@ -97,19 +97,11 @@ public partial class ChatWindow : Form
         _statusPanel.Controls.Add(_statusLabel);
 
         // === Main Chat Control (Middle - fills remaining space) ===
+        // Use DI-resolved AIChatControl for proper dependency injection
         try
         {
-            var aiAssistantService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIAssistantService>(_serviceProvider);
-            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
-
-            // Resolve optional personality and insights services
-            var personalityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIPersonalityService>(_serviceProvider);
-            var insightsService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IFinancialInsightsService>(_serviceProvider);
-
-            _chatControl = new AIChatControl(aiAssistantService, logger, _aiService, personalityService, insightsService)
-            {
-                Dock = DockStyle.Fill
-            };
+            _chatControl = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AIChatControl>(_serviceProvider);
+            _chatControl.Dock = DockStyle.Fill;
 
             // Handle send message from chat control
             _chatControl.MessageSent += async (sender, e) => await HandleMessageSentAsync(e);

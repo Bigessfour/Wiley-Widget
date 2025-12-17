@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using WileyWidget.Abstractions;
 
 namespace WileyWidget.Services
@@ -16,12 +16,12 @@ namespace WileyWidget.Services
     public class MemoryCacheService : ICacheService, IDisposable
     {
         private readonly IMemoryCache _memoryCache;
-        private readonly ILogger<MemoryCacheService>? _logger;
+        private readonly ILogger? _logger;
 
-        public MemoryCacheService(IMemoryCache memoryCache, ILogger<MemoryCacheService>? logger = null)
+        public MemoryCacheService(IMemoryCache memoryCache, ILogger? logger = null)
         {
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
-            _logger = logger;
+            _logger = logger?.ForContext<MemoryCacheService>();
         }
 
         public Task<T?> GetAsync<T>(string key) where T : class
@@ -30,13 +30,13 @@ namespace WileyWidget.Services
 
             if (_memoryCache.TryGetValue(key, out var obj) && obj is T typed)
             {
-                _logger?.LogDebug("MemoryCacheService: GET hit for key {Key}", key);
+                _logger?.Debug("MemoryCacheService: GET hit for key {Key}", key);
                 // Deep clone to avoid returning a mutable reference
                 var cloned = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(typed));
                 return Task.FromResult(cloned);
             }
 
-            _logger?.LogDebug("MemoryCacheService: GET miss for key {Key}", key);
+            _logger?.Debug("MemoryCacheService: GET miss for key {Key}", key);
 
             return Task.FromResult<T?>(null);
         }
@@ -48,7 +48,7 @@ namespace WileyWidget.Services
 
             if (_memoryCache.TryGetValue(key, out var existing) && existing is T existingT)
             {
-                _logger?.LogDebug("MemoryCacheService: GetOrCreate - returning cached value for {Key}", key);
+                _logger?.Debug("MemoryCacheService: GetOrCreate - returning cached value for {Key}", key);
                 return existingT;
             }
 
@@ -57,7 +57,7 @@ namespace WileyWidget.Services
             {
                 var memOptions = MapOptions(options);
                 _memoryCache.Set(key, value, memOptions);
-                _logger?.LogDebug("MemoryCacheService: GetOrCreate - cached new value for {Key}", key);
+                _logger?.Debug("MemoryCacheService: GetOrCreate - cached new value for {Key}", key);
             }
 
             return value;
@@ -78,14 +78,14 @@ namespace WileyWidget.Services
             {
                 var memOptions = MapOptions(options);
                 _memoryCache.Set(key, value, memOptions);
-                _logger?.LogDebug("MemoryCacheService: SET key {Key} (TTL={Ttl}, Size={Size})",
+                _logger?.Debug("MemoryCacheService: SET key {Key} (TTL={Ttl}, Size={Size})",
                     key,
                     options?.AbsoluteExpirationRelativeToNow,
                     memOptions.Size);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "MemoryCacheService: Failed to SET key {Key} - cache entry skipped", key);
+                _logger?.Error(ex, "MemoryCacheService: Failed to SET key {Key} - cache entry skipped", key);
                 // Non-fatal: cache miss is acceptable, don't propagate exception
             }
 
@@ -96,7 +96,7 @@ namespace WileyWidget.Services
         {
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
             _memoryCache.Remove(key);
-            _logger?.LogDebug("MemoryCacheService: REMOVE key {Key}", key);
+            _logger?.Debug("MemoryCacheService: REMOVE key {Key}", key);
             return Task.CompletedTask;
         }
 
@@ -104,7 +104,7 @@ namespace WileyWidget.Services
         {
             if (string.IsNullOrEmpty(key)) return Task.FromResult(false);
             var exists = _memoryCache.TryGetValue(key, out _);
-            _logger?.LogDebug("MemoryCacheService: EXISTS key {Key} => {Exists}", key, exists);
+            _logger?.Debug("MemoryCacheService: EXISTS key {Key} => {Exists}", key, exists);
             return Task.FromResult(exists);
         }
 
@@ -116,17 +116,17 @@ namespace WileyWidget.Services
                 if (_memoryCache is MemoryCache concrete)
                 {
                     concrete.Compact(1.0);
-                    _logger?.LogInformation("MemoryCacheService: Cleared all entries via MemoryCache.Compact(1.0)");
+                    _logger?.Information("MemoryCacheService: Cleared all entries via MemoryCache.Compact(1.0)");
                     return Task.CompletedTask;
                 }
 
                 // If we don't have the concrete type, fall back to a no-op but log a warning.
-                _logger?.LogWarning("MemoryCacheService: IMemoryCache is not MemoryCache; ClearAllAsync is a no-op.");
+                _logger?.Warning("MemoryCacheService: IMemoryCache is not MemoryCache; ClearAllAsync is a no-op.");
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "MemoryCacheService: Failed to ClearAllAsync");
+                _logger?.Error(ex, "MemoryCacheService: Failed to ClearAllAsync");
                 throw;
             }
         }

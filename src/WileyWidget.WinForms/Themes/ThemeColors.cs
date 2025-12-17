@@ -2,12 +2,17 @@ using System.Drawing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.Drawing;
 
 namespace WileyWidget.WinForms.Themes
 {
     /// <summary>
-    /// Provides theme-aware colors for Syncfusion controls that don't support ThemeName property.
-    /// Uses SkinManager to retrieve colors dynamically based on the active theme.
+    /// Provides access to Syncfusion theme colors and brush resources.
+    /// Acts as a thin wrapper around SfSkinManager theme system.
+    /// CRITICAL: SfSkinManager is the SOLE PROPRIETOR of all theme and color decisions.
+    /// This class provides orchestration methods AND theme-aware color accessors.
+    /// Per Syncfusion documentation: SetVisualStyle on a form automatically cascades to all child controls.
+    /// DO NOT manually set BackColor, ForeColor - use theme accessors only when styling elements like charts.
     /// </summary>
     internal static class ThemeColors
     {
@@ -15,196 +20,174 @@ namespace WileyWidget.WinForms.Themes
         public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>
-        /// Gets the primary accent color from the current theme.
-        /// Fallback: Blue accent for Office2019Dark theme.
+        /// DEPRECATED: Custom color properties removed. Use SfSkinManager themes exclusively.
+        /// If you need semantic colors (success, error, warning), use Syncfusion's built-in theme colors.
+        /// For special cases, query the theme system directly rather than bypassing it.
         /// </summary>
-        public static Color PrimaryAccent => GetThemeColor("PrimaryAccent", Color.FromArgb(0, 120, 215));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color PrimaryAccent => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the success/positive color from the current theme.
-        /// Fallback: Green for Office2019Dark theme.
-        /// </summary>
-        public static Color Success => GetThemeColor("Success", Color.FromArgb(16, 137, 62));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color Success => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the error/negative color from the current theme.
-        /// Fallback: Red for Office2019Dark theme.
-        /// </summary>
-        public static Color Error => GetThemeColor("Error", Color.FromArgb(232, 17, 35));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color Error => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the warning color from the current theme.
-        /// Fallback: Orange for Office2019Dark theme.
-        /// </summary>
-        public static Color Warning => GetThemeColor("Warning", Color.FromArgb(255, 185, 0));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color Warning => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the background color from the current theme.
-        /// Fallback: Dark gray for Office2019Dark theme.
-        /// </summary>
-        public static Color Background => GetThemeColor("Background", Color.FromArgb(32, 32, 32));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color Background => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the header background color from the current theme.
-        /// </summary>
-        public static Color HeaderBackground => PrimaryAccent;
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color CardBackground => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the header text color from the current theme.
-        /// </summary>
-        public static Color HeaderText => Color.White;
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color TextPrimary => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the alternating row background color from the current theme.
-        /// </summary>
-        public static Color AlternatingRowBackground => GetThemeColor("AlternatingRow", Color.FromArgb(45, 45, 45));
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color HeaderBackground => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Gets the gauge arc background color from the current theme.
-        /// </summary>
-        public static Color GaugeArc => GetThemeColor("GaugeArc", Color.LightGray);
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color HeaderText => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-        /// <summary>
-        /// Retrieves a color from the active theme with fallback support.
-        /// Attempts to query SkinManager for theme colors, falling back to semantic defaults.
-        /// </summary>
-        /// <param name="colorName">The semantic name of the color.</param>
-        /// <param name="fallback">Fallback color if theme color cannot be retrieved.</param>
-        /// <returns>Theme-aware color or fallback.</returns>
-        private static Color GetThemeColor(string colorName, Color fallback)
-        {
-            try
-            {
-                // Attempt to retrieve color from active theme via reflection or known properties
-                // SkinManager doesn't expose a direct color lookup API, so we use semantic fallbacks
-                // that align with the Office2019Colorful palette. Future enhancement: parse theme
-                // assembly resources or use Syncfusion's internal color tables if exposed.
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color AlternatingRowBackground => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
-                // Map semantic color names to Office2019Dark theme equivalents
-                // These colors are derived from Syncfusion's Office2019Dark theme specification
-                // Using DefaultTheme which is currently hardcoded to Office2019Dark
-                return colorName switch
-                {
-                    "Primary" => Color.FromArgb(0, 120, 215),
-                    "PrimaryAccent" => Color.FromArgb(0, 120, 215),
-                    "Secondary" => Color.FromArgb(72, 72, 72),
-                    "Success" => Color.FromArgb(16, 124, 16),
-                    "Warning" => Color.FromArgb(255, 185, 0),
-                    "Danger" => Color.FromArgb(232, 17, 35),
-                    "Background" => Color.FromArgb(32, 32, 32),
-                    "Surface" => Color.FromArgb(45, 45, 45),
-                    "Border" => Color.FromArgb(100, 100, 100),
-                    "Text" => Color.FromArgb(200, 200, 200),
-                    "AlternatingRow" => Color.FromArgb(45, 45, 45),
-                    "GaugeArc" => Color.FromArgb(100, 100, 100),
-                    _ => fallback
-                };
-            }
-            catch
-            {
-                // If theme query fails, use the provided fallback
-                return fallback;
-            }
-        }
+        [Obsolete("Custom colors compete with SfSkinManager. Use SfSkinManager.SetVisualStyle and let theme control colors.", true)]
+        public static Color GaugeArc => throw new InvalidOperationException("Custom colors removed. Use SfSkinManager themes.");
 
         /// <summary>
         /// Applies the default theme to a form using Syncfusion's SfSkinManager.
         /// Per Syncfusion documentation, calling SetVisualStyle on a form automatically
-        /// cascades the theme to all child Syncfusion controls (SfDataGrid, RadialGauge, etc.).
+        /// cascades the theme to ALL child Syncfusion controls (SfDataGrid, RadialGauge, etc.).
         /// DO NOT call SetVisualStyle on individual child controls - the cascade handles it.
-        /// Reference: https://help.syncfusion.com/windowsforms/themes/getting-started
+        /// DO NOT manually set BackColor, ForeColor - SfSkinManager owns all color decisions.
+        /// Reference: Syncfusion WinForms Office2019 Theme Documentation
         /// </summary>
         /// <param name="form">The form to apply theming to.</param>
-        public static void ApplyTheme(Form form)
+        /// <param name="themeName">Optional theme name override (defaults to Office2019Colorful)</param>
+        public static void ApplyTheme(Form form, string? themeName = null)
         {
             if (form == null) return;
 
+            var theme = themeName ?? DefaultTheme;
+
             try
             {
-                // Ensure Office2019Theme assembly is loaded
+                // Ensure Office2019Theme assembly is loaded (idempotent)
                 EnsureThemeAssemblyLoaded();
 
-                // Apply theme to form - Syncfusion automatically cascades to all child controls
-                // This is the ONLY call needed; individual control theming is redundant and can cause issues
-                SfSkinManager.SetVisualStyle(form, DefaultTheme);
+                // CRITICAL: This single call themes the form AND all child controls automatically
+                // Per Syncfusion: "SetVisualStyle on window applies theme to ALL controls inside it"
+                SfSkinManager.SetVisualStyle(form, theme);
 
-                Serilog.Log.Debug("Theme '{Theme}' applied to form '{FormName}' (cascade to all child controls)",
-                    DefaultTheme, form.Name);
+                Serilog.Log.Debug("SfSkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
+                    theme, form.Name);
             }
             catch (Exception ex)
             {
-                // Enhanced error handling with specific theme failure logging
-                Serilog.Log.Error(ex, "Failed to apply {Theme} theme to form {FormName}",
-                    DefaultTheme, form.Name);
+                Serilog.Log.Error(ex, "SfSkinManager failed to apply {Theme} theme to form {FormName}",
+                    theme, form.Name);
 
-                // Attempt fallback to default theme
-                try
-                {
-                    SfSkinManager.SetVisualStyle(form, "default");
-                }
-                catch (Exception fallbackEx)
-                {
-                    Serilog.Log.Error(fallbackEx, "Theme fallback failed for form {FormName}", form.Name);
-                }
-
-                // User-friendly fallback: Show message and continue with default theme
+                // Minimal fallback - let form use default rendering
                 try
                 {
                     System.Windows.Forms.MessageBox.Show(
-                        "Theme initialization failed. The application will continue with default styling.",
+                        $"Theme '{theme}' failed to load. Using default styling.",
                         "Theme Warning",
                         System.Windows.Forms.MessageBoxButtons.OK,
                         System.Windows.Forms.MessageBoxIcon.Warning);
                 }
-                catch (Exception msgEx)
-                {
-                    Serilog.Log.Error(msgEx, "Failed to show theme warning message");
-                }
+                catch { /* Suppress message box errors */ }
             }
         }
 
         /// <summary>
         /// Ensures the Office2019Theme assembly is loaded into the SkinManager.
+        /// This is idempotent - safe to call multiple times.
         /// </summary>
         private static void EnsureThemeAssemblyLoaded()
         {
             try
             {
-                // Load the Office2019Theme assembly for extended theme support
                 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             }
             catch (Exception ex)
             {
-                // Theme assembly may already be loaded or not available
-                Serilog.Log.Warning(ex, "Office2019Theme assembly loading failed - theme features may be limited");
+                // Assembly may already be loaded (not an error)
+                Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
             }
         }
 
+        // NOTE: The following methods were deprecated and removed.
+        // SfSkinManager should be used exclusively for theme management.
+        // For semantic status colors, use standard .NET colors (Color.Red, Color.Green, Color.Orange).
+        // Charts and controls receive theming automatically through SfSkinManager cascade.
+
         /// <summary>
-        /// Applies custom style properties to an SfDataGrid that theme cascade doesn't handle.
-        /// DO NOT call SfSkinManager.SetVisualStyle here - it's already inherited from parent form.
-        /// Only use this for custom styling beyond the theme (e.g., specific header colors).
+        /// DEPRECATED: Do not use. SfSkinManager handles all theme colors.
+        /// For semantic colors, use standard Color.DodgerBlue, Color.Red, Color.Green, etc.
         /// </summary>
-        /// <param name="grid">The SfDataGrid to style.</param>
+        [Obsolete("Use standard .NET colors (Color.DodgerBlue, Color.Red, etc.) instead. SfSkinManager handles theme colors.", error: true)]
+        public static Color GetPrimaryColor() => throw new NotSupportedException("Use standard .NET colors instead");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. SfSkinManager handles all theme colors.
+        /// </summary>
+        [Obsolete("Use standard .NET colors instead. SfSkinManager handles theme colors.", error: true)]
+        public static Color GetSecondaryColor() => throw new NotSupportedException("Use standard .NET colors instead");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. SfSkinManager handles all theme colors.
+        /// </summary>
+        [Obsolete("Use standard .NET colors instead. SfSkinManager handles theme colors.", error: true)]
+        public static Color GetForeColor() => throw new NotSupportedException("Use standard .NET colors instead");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. SfSkinManager handles all theme colors.
+        /// </summary>
+        [Obsolete("Use standard .NET colors instead. SfSkinManager handles theme colors.", error: true)]
+        public static Color GetBackColor() => throw new NotSupportedException("Use standard .NET colors instead");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. SfSkinManager handles all theme colors.
+        /// </summary>
+        [Obsolete("Use standard .NET colors instead. SfSkinManager handles theme colors.", error: true)]
+        public static Color GetBorderColor() => throw new NotSupportedException("Use standard .NET colors instead");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. For chart brushes, let SfSkinManager handle theming.
+        /// </summary>
+        [Obsolete("Let SfSkinManager handle chart theming through cascade.", error: true)]
+        public static BrushInfo GetPrimaryBrush() => throw new NotSupportedException("Let SfSkinManager handle chart theming");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. For chart brushes, let SfSkinManager handle theming.
+        /// </summary>
+        [Obsolete("Let SfSkinManager handle chart theming through cascade.", error: true)]
+        public static BrushInfo GetSecondaryBrush() => throw new NotSupportedException("Let SfSkinManager handle chart theming");
+
+        /// <summary>
+        /// DEPRECATED: Do not use. For chart brushes, let SfSkinManager handle theming.
+        /// </summary>
+        [Obsolete("Let SfSkinManager handle chart theming through cascade.", error: true)]
+        public static BrushInfo GetGradientBrush(Color color1, Color color2, GradientStyle style = GradientStyle.Vertical)
+        {
+            throw new NotSupportedException("Let SfSkinManager handle chart theming");
+        }
+
+        /// <summary>
+        /// DEPRECATED: Custom grid styling removed. SfSkinManager themes SfDataGrid automatically.
+        /// Theme cascade from parent form handles ALL styling - no manual color overrides needed.
+        /// If you need custom grid appearance, customize the Office2019 theme itself, don't bypass it.
+        /// </summary>
+        [Obsolete("Custom grid styling removed. SfSkinManager themes grids automatically via cascade. Do not manually set colors.", true)]
         public static void ApplySfDataGridTheme(Syncfusion.WinForms.DataGrid.SfDataGrid grid)
         {
-            if (grid == null) return;
-
-            try
-            {
-                // Theme is already cascaded from parent form - only apply custom overrides
-                // Apply custom style properties that theme doesn't handle
-                grid.Style.HeaderStyle.BackColor = HeaderBackground;
-                grid.Style.HeaderStyle.TextColor = Color.White;
-                grid.Style.HeaderStyle.Font = new Syncfusion.WinForms.DataGrid.Styles.GridFontInfo(new Font("Segoe UI", 9F, FontStyle.Bold));
-
-                Serilog.Log.Debug("Custom grid styling applied to '{GridName}' (theme inherited from parent)", grid.Name);
-            }
-            catch (Exception ex)
-            {
-                // Log theme application error but don't fail
-                Serilog.Log.Warning(ex, "Custom grid styling failed for grid {GridName}", grid.Name);
-            }
+            throw new InvalidOperationException(
+                "ApplySfDataGridTheme is deprecated. SfSkinManager automatically themes SfDataGrid via cascade. " +
+                "Do not manually set BackColor, ForeColor, or other style properties - let SfSkinManager control everything.");
         }
     }
 }

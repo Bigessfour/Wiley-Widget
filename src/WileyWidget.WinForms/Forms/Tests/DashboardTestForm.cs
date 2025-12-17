@@ -66,9 +66,7 @@ public sealed class DashboardTestForm : Form
         {
             Dock = DockStyle.Fill,
             ReadOnly = true,
-            Font = new Font("Consolas", 9),
-            BackColor = Color.FromArgb(30, 30, 30),
-            ForeColor = Color.LightGreen
+            Font = new Font("Consolas", 9)
         };
 
         _testAllBtn = new Button { Text = "▶ Test All", Width = 150, Height = 40 };

@@ -128,7 +128,6 @@ namespace WileyWidget.WinForms.Forms
             StartPosition = FormStartPosition.CenterParent;
             MinimumSize = new Size(1000, 600);
             Name = "CustomersForm";
-            BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background;
             Font = new Font("Segoe UI", 9F);
             KeyPreview = true;
 
@@ -148,8 +147,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Top,
                 GripStyle = ToolStripGripStyle.Hidden,
                 ImageScalingSize = new Size(24, 24),
-                Padding = new Padding(4),
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background
+                Padding = new Padding(4)
             };
             var loadBtn = new ToolStripButton("Load", loadIcon, async (s, e) => await LoadData())
             {
@@ -221,14 +219,12 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 50,
-                BackColor = Color.FromArgb(40, WileyWidget.WinForms.Themes.ThemeColors.Warning),
                 Visible = false,
                 Padding = new Padding(10)
             };
             _validationLabel = new Label
             {
                 Dock = DockStyle.Fill,
-                ForeColor = WileyWidget.WinForms.Themes.ThemeColors.Warning,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -255,7 +251,6 @@ namespace WileyWidget.WinForms.Forms
             };
 
             // Apply theme to the data grid
-            WileyWidget.WinForms.Themes.ThemeColors.ApplySfDataGridTheme(_dataGrid);
             SfSkinManager.SetVisualStyle(_dataGrid, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             // Define columns with proper formatting
@@ -433,17 +428,14 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Bottom,
                 AutoSize = true,
                 FlowDirection = FlowDirection.LeftToRight,
-                Padding = new Padding(8),
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background
+                Padding = new Padding(8)
             };
             _newButton = new SfButton
             {
                 Text = "New",
                 Image = newIcon,
                 Size = new Size(100, 36),
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Success
+                Font = new Font("Segoe UI", 9F)
             };
             SfSkinManager.SetVisualStyle(_newButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _newButton.Click += async (s, e) => await AddNewCustomer();
@@ -453,9 +445,7 @@ namespace WileyWidget.WinForms.Forms
                 Text = "Save",
                 Image = saveIcon,
                 Size = new Size(100, 36),
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.PrimaryAccent
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
             };
             SfSkinManager.SetVisualStyle(_saveButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _saveButton.Click += async (s, e) => await SaveCurrentCustomer();
@@ -465,9 +455,7 @@ namespace WileyWidget.WinForms.Forms
                 Text = "Delete",
                 Image = deleteIcon,
                 Size = new Size(100, 36),
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.White,
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Error
+                Font = new Font("Segoe UI", 9F)
             };
             SfSkinManager.SetVisualStyle(_deleteButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _deleteButton.Click += async (s, e) => await DeleteSelectedCustomer();
@@ -477,9 +465,7 @@ namespace WileyWidget.WinForms.Forms
                 Text = "Refresh",
                 Image = refreshIcon,
                 Size = new Size(100, 36),
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.White,
-                BackColor = ThemeManager.Colors.TextPrimary
+                Font = new Font("Segoe UI", 9F)
             };
             SfSkinManager.SetVisualStyle(_refreshButton, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             _refreshButton.Click += async (s, e) => await RefreshData();
@@ -495,7 +481,6 @@ namespace WileyWidget.WinForms.Forms
             // Add status strip
             _statusStrip = new StatusStrip
             {
-                BackColor = WileyWidget.WinForms.Themes.ThemeColors.Background,
                 Font = new Font("Segoe UI", 9F)
             };
             var statusLabel = new ToolStripStatusLabel("Ready") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };

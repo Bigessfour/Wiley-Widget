@@ -1,8 +1,9 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -11,14 +12,19 @@ namespace WileyWidget.Data;
 /// </summary>
 public class UtilityCustomerRepository : IUtilityCustomerRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.UtilityCustomerRepository");
+
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
-    private readonly Microsoft.Extensions.Logging.ILogger<UtilityCustomerRepository> _logger;
+    private readonly ILogger<UtilityCustomerRepository> _logger;
     private readonly IMemoryCache _cache;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public UtilityCustomerRepository(IDbContextFactory<AppDbContext> contextFactory, Microsoft.Extensions.Logging.ILogger<UtilityCustomerRepository> logger, IMemoryCache cache)
+    public UtilityCustomerRepository(
+        IDbContextFactory<AppDbContext> contextFactory,
+        ILogger<UtilityCustomerRepository> logger,
+        IMemoryCache cache)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -31,43 +37,65 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// </summary>
     public async Task<IEnumerable<UtilityCustomer>> GetAllAsync()
     {
-        const string cacheKey = "UtilityCustomers_All";
+        using var activity = ActivitySource.StartActivity("UtilityCustomerRepository.GetAll");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
 
+        const string cacheKey = "UtilityCustomers_All";
         IEnumerable<UtilityCustomer>? customers = null;
 
-        // Attempt to read from cache, with fallback on disposal
         try
         {
-            if (_cache.TryGetValue(cacheKey, out IEnumerable<UtilityCustomer>? cachedCustomers))
+            // Attempt to read from cache, with fallback on disposal
+            try
             {
-                return cachedCustomers!;
+                if (_cache.TryGetValue(cacheKey, out IEnumerable<UtilityCustomer>? cachedCustomers))
+                {
+                    activity?.SetTag("cache.hit", true);
+                    activity?.SetTag("result.count", cachedCustomers?.Count() ?? 0);
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _logger.LogDebug("Returning {Count} utility customers from cache", cachedCustomers?.Count() ?? 0);
+                    return cachedCustomers!;
+                }
             }
-        }
-        catch (ObjectDisposedException)
-        {
-            // Cache is disposed; log and proceed to DB fetch
-            _logger.LogWarning("MemoryCache is disposed; fetching utility customers directly from database.");
-        }
+            catch (ObjectDisposedException)
+            {
+                // Cache is disposed; log and proceed to DB fetch
+                _logger.LogWarning("MemoryCache is disposed; fetching utility customers directly from database.");
+            }
 
-        // Fetch from database
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        customers = await context.UtilityCustomers
-            .AsNoTracking()
-            .OrderBy(c => c.AccountNumber)
-            .ToListAsync();
+            // Fetch from database
+            activity?.SetTag("cache.hit", false);
+            _logger.LogDebug("Cache miss for all utility customers, fetching from database");
 
-        // Attempt to cache the result, with fallback on disposal
-        try
-        {
-            _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
-        }
-        catch (ObjectDisposedException)
-        {
-            // Cache is disposed; skip caching but don't fail
-            _logger.LogWarning("MemoryCache is disposed; skipping cache update for utility customers.");
-        }
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            customers = await context.UtilityCustomers
+                .AsNoTracking()
+                .OrderBy(c => c.AccountNumber)
+                .ToListAsync();
 
-        return customers;
+            // Attempt to cache the result, with fallback on disposal
+            try
+            {
+                _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Cache is disposed; skip caching but don't fail
+                _logger.LogWarning("MemoryCache is disposed; skipping cache update for utility customers.");
+            }
+
+            activity?.SetTag("result.count", customers.Count());
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogDebug("Returning {Count} utility customers from database", customers.Count());
+            return customers;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all utility customers");
+            throw;
+        }
     }
 
     /// <summary>
@@ -214,6 +242,18 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         customer.LastModifiedDate = now;
         context.UtilityCustomers.Add(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after add.");
+        }
+
+        _logger.LogInformation("Added customer {Account} (ID: {Id})", customer.AccountNumber, customer.Id);
         return customer;
     }
 
@@ -228,6 +268,18 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         customer.LastModifiedDate = DateTime.Now;
         context.UtilityCustomers.Update(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after update.");
+        }
+
+        _logger.LogInformation("Updated customer {Account} (ID: {Id})", customer.AccountNumber, customer.Id);
         return customer;
     }
 
@@ -239,10 +291,25 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         var customer = await context.UtilityCustomers.FindAsync(id);
         if (customer == null)
+        {
+            _logger.LogWarning("Attempted to delete non-existent customer ID: {Id}", id);
             return false;
+        }
 
         context.UtilityCustomers.Remove(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after delete.");
+        }
+
+        _logger.LogInformation("Deleted customer {Account} (ID: {Id})", customer.AccountNumber, id);
         return true;
     }
 

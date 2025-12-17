@@ -31,9 +31,7 @@
     {
       "name": "example_category",
       "sub_category": "example_sub",
-      "patterns": [
-        "custom/path/**/*.ext"
-      ]
+      "patterns": ["custom/path/**/*.ext"]
     }
   ]
 }

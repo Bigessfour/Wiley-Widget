@@ -1,10 +1,12 @@
 #nullable enable
 
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 // Clean Architecture: Interfaces defined in Business layer, implemented in Data layer
 using WileyWidget.Business.Interfaces;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace WileyWidget.Data;
 
@@ -13,16 +15,23 @@ namespace WileyWidget.Data;
 /// </summary>
 public class DepartmentRepository : IDepartmentRepository
 {
+    private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.DepartmentRepository");
+
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<DepartmentRepository> _logger;
 
     /// <summary>
     /// Constructor with dependency injection
     /// </summary>
-    public DepartmentRepository(IDbContextFactory<AppDbContext> contextFactory, IMemoryCache cache)
+    public DepartmentRepository(
+        IDbContextFactory<AppDbContext> contextFactory,
+        IMemoryCache cache,
+        ILogger<DepartmentRepository> logger)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -30,20 +39,45 @@ public class DepartmentRepository : IDepartmentRepository
     /// </summary>
     public async Task<IEnumerable<Department>> GetAllAsync()
     {
+        using var activity = ActivitySource.StartActivity("DepartmentRepository.GetAll");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
+
         const string cacheKey = "Departments_All";
 
-        if (!_cache.TryGetValue(cacheKey, out IEnumerable<Department>? departments))
+        try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            departments = await context.Departments
-                .AsNoTracking()
-                .OrderBy(d => d.Name)
-                .ToListAsync();
+            if (!_cache.TryGetValue(cacheKey, out IEnumerable<Department>? departments))
+            {
+                activity?.SetTag("cache.hit", false);
+                _logger.LogDebug("Cache miss for all departments, fetching from database");
 
-            _cache.Set(cacheKey, departments, TimeSpan.FromMinutes(15));
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                departments = await context.Departments
+                    .AsNoTracking()
+                    .OrderBy(d => d.Name)
+                    .ToListAsync();
+
+                _cache.Set(cacheKey, departments, TimeSpan.FromMinutes(15));
+                _logger.LogInformation("Cached {Count} departments for 15 minutes", departments?.Count() ?? 0);
+            }
+            else
+            {
+                activity?.SetTag("cache.hit", true);
+                _logger.LogDebug("Returning {Count} departments from cache", departments?.Count() ?? 0);
+            }
+
+            activity?.SetTag("result.count", departments?.Count() ?? 0);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            return departments!;
         }
-
-        return departments!;
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all departments");
+            throw;
+        }
     }
 
     /// <summary>
