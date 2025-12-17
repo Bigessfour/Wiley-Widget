@@ -318,7 +318,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "* Required fields",
                 Font = new Font("Segoe UI", 8F, FontStyle.Italic),
-                ForeColor = Color.Gray,
+                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
                 AutoSize = true,
                 Margin = new Padding(0, 5, 0, 10)
             };

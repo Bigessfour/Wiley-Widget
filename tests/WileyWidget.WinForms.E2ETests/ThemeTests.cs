@@ -98,20 +98,21 @@ namespace WileyWidget.WinForms.E2ETests
             var window = _app.GetMainWindow(_automation);
 
             // Find theme button by name containing "Theme"
-            var allButtons = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-            var themeButton = allButtons.FirstOrDefault(btn =>
-                btn.Name != null && btn.Name.Contains("Theme", StringComparison.OrdinalIgnoreCase));
+            var allButtons = window?.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
+            Assert.NotNull(allButtons);
+            var themeButton = allButtons!.FirstOrDefault(btn =>
+                btn.Name?.Contains("Theme", StringComparison.OrdinalIgnoreCase) == true);
 
             Assert.NotNull(themeButton);
-            var initialText = themeButton!.Name;
-            if (initialText == null) throw new InvalidOperationException("Theme button name is null");
+            var initialText = themeButton?.Name;
+            Assert.NotNull(initialText);
 
             // Act - Click theme toggle using Click() for better compatibility
-            themeButton!.Click();
+            themeButton?.Click();
             System.Threading.Thread.Sleep(2000);
 
             // Assert - Button text should change
-            var updatedText = themeButton.Name;
+            var updatedText = themeButton?.Name;
             Assert.NotNull(updatedText);
             Assert.NotEqual(initialText, updatedText);
 
@@ -137,25 +138,26 @@ namespace WileyWidget.WinForms.E2ETests
             var window = _app.GetMainWindow(_automation);
 
             // Find theme button by name containing "Theme"
-            var allButtons = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-            var themeButton = allButtons.FirstOrDefault(btn =>
-                btn.Name != null && btn.Name.Contains("Theme", StringComparison.OrdinalIgnoreCase));
+            var allButtons = window?.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
+            Assert.NotNull(allButtons);
+            var themeButton = allButtons!.FirstOrDefault(btn =>
+                btn.Name?.Contains("Theme", StringComparison.OrdinalIgnoreCase) == true);
 
             Assert.NotNull(themeButton);
-            var originalText = themeButton!.Name;
-            if (originalText == null) throw new InvalidOperationException("Theme button name is null");
+            var originalText = themeButton?.Name;
+            Assert.NotNull(originalText);
 
             // Act - Toggle twice using Click()
-            themeButton!.Click();
+            themeButton?.Click();
             System.Threading.Thread.Sleep(1500);
 
-            themeButton.Click();
+            themeButton?.Click();
             System.Threading.Thread.Sleep(1500);
 
             // Assert - Should return to original theme text (may include emoji)
-            var finalText = themeButton.Name;
+            var finalText = themeButton?.Name;
             // Both texts should contain same theme name (Light or Dark)
-            var originalContainsLight = originalText.Contains("Light", StringComparison.OrdinalIgnoreCase);
+            var originalContainsLight = originalText?.Contains("Light", StringComparison.OrdinalIgnoreCase) ?? false;
             var finalContainsLight = finalText?.Contains("Light", StringComparison.OrdinalIgnoreCase) ?? false;
             Assert.Equal(originalContainsLight, finalContainsLight);
         }

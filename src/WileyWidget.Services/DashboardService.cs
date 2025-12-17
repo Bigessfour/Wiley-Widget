@@ -41,11 +41,12 @@ namespace WileyWidget.Services
         }
 
         /// <summary>
-        /// Gets the configured fiscal year, defaulting to 2025
+        /// Gets the configured fiscal year, defaulting to 2026
         /// </summary>
         private int GetCurrentFiscalYear()
         {
-            return _configuration?.GetValue<int>("UI:FiscalYear", 2025) ?? 2025;
+            // Read the configured default fiscal year to keep UI and services consistent
+            return _configuration?.GetValue<int>("UI:DefaultFiscalYear", 2026) ?? 2026;
         }
 
         /// <summary>

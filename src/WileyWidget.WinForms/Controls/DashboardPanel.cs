@@ -516,8 +516,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
-            // Apply theme to the details grid
-            ThemeColors.ApplySfDataGridTheme(_detailsGrid);
+            // Theme applied automatically by SfSkinManager cascade from parent form
 
             rightPanel.Controls.Add(_detailsGrid, 0, 0);
 

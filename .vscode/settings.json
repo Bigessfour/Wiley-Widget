@@ -5,6 +5,9 @@
     },
     {
       "file": ".vscode/copilot-mcp-rules.md"
+    },
+    {
+      "text": "MANDATORY THEME RULE: SfSkinManager has SOLE PROPRIETORSHIP over all theme and color management. STRICTLY FORBIDDEN: (1) Custom color properties/dictionaries/methods (2) Manual BackColor/ForeColor assignments (3) Custom theme application methods (4) Any competing theme systems. ONLY AUTHORIZED: (1) SfSkinManager.SetVisualStyle() (2) ThemeColors.ApplyTheme() which wraps SfSkinManager (3) Program.InitializeTheme() at startup. EXCEPTION: Semantic status colors using Color.Red/Green/Orange only. Violations cause compilation errors and are architectural violations. See copilot-instructions.md SfSkinManager section for complete rules."
     }
   ],
   "github.copilot.chat.localeOverride": "en",

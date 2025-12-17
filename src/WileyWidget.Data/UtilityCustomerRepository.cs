@@ -214,6 +214,18 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         customer.LastModifiedDate = now;
         context.UtilityCustomers.Add(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after add.");
+        }
+
+        _logger.LogInformation("Added customer {Account} (ID: {Id})", customer.AccountNumber, customer.Id);
         return customer;
     }
 
@@ -228,6 +240,18 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         customer.LastModifiedDate = DateTime.Now;
         context.UtilityCustomers.Update(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after update.");
+        }
+
+        _logger.LogInformation("Updated customer {Account} (ID: {Id})", customer.AccountNumber, customer.Id);
         return customer;
     }
 
@@ -239,10 +263,25 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         var customer = await context.UtilityCustomers.FindAsync(id);
         if (customer == null)
+        {
+            _logger.LogWarning("Attempted to delete non-existent customer ID: {Id}", id);
             return false;
+        }
 
         context.UtilityCustomers.Remove(customer);
         await context.SaveChangesAsync();
+
+        // Clear cache after modification
+        try
+        {
+            _cache.Remove("UtilityCustomers_All");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogWarning("MemoryCache is disposed; skipping cache clear after delete.");
+        }
+
+        _logger.LogInformation("Deleted customer {Account} (ID: {Id})", customer.AccountNumber, id);
         return true;
     }
 

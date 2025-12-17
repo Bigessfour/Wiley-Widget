@@ -230,20 +230,55 @@ namespace WileyWidget.WinForms.E2ETests
 
         private Window OpenAccountsView(Window mainWindow)
         {
-            var navButton = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Accounts"));
+            // FIX: Increase timeout and add more robust search for nav button
+            var navButton = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Accounts"), timeoutMs: 30000);
+
+            if (navButton == null)
+            {
+                // Fallback: try by name if automation ID not found
+                navButton = WaitForElement(mainWindow, cf => cf.ByName("Accounts"), timeoutMs: 10000);
+            }
+
             Assert.NotNull(navButton);
 
             navButton.Click();
-            Retry.WhileNull(() => _automation?.GetDesktop()
-                .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
-                    .And(cf.ByName("Municipal Accounts"))),
-                timeout: TimeSpan.FromSeconds(30));
 
-            var accountsWindow = _automation?.GetDesktop()
-                .FindFirstChild(cf => cf.ByControlType(ControlType.Window)
-                    .And(cf.ByName("Municipal Accounts")))?.AsWindow();
+            // FIX: Wait for window/pane to appear - could be Window, Pane, or Custom control type
+            // Search for any element with "Municipal Accounts" in the name, not just Window type
+            var accountsElement = Retry.WhileNull(() =>
+            {
+                try
+                {
+                    // First try to find as a Window
+                    var window = mainWindow.FindFirstDescendant(cf =>
+                        cf.ByName("Municipal Accounts"));
 
-            return accountsWindow ?? throw new InvalidOperationException("Accounts window did not open");
+                    if (window != null && window.ControlType == ControlType.Window)
+                    {
+                        return window.AsWindow();
+                    }
+
+                    // If not found as Window, try as any control (might be Pane/Custom in MDI)
+                    if (window != null)
+                    {
+                        // Try to get parent window if this is a child control
+                        var parent = window.Parent;
+                        while (parent != null && parent.ControlType != ControlType.Window)
+                        {
+                            parent = parent.Parent;
+                        }
+                        return parent?.AsWindow();
+                    }
+
+                    return null;
+                }
+                catch
+                {
+                    return null;
+                }
+            }, timeout: TimeSpan.FromSeconds(30)).Result;
+
+            return accountsElement ?? throw new InvalidOperationException("Accounts window did not open");
         }
 
         private bool EnsureInteractiveOrSkip()

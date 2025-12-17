@@ -195,13 +195,15 @@ namespace WileyWidget.WinForms.Controls
         {
             if (form == null) return;
 
+            ArgumentNullException.ThrowIfNull(themeName);
+
             try
             {
                 // Apply base Syncfusion theme
                 SfSkinManager.SetVisualStyle(form, themeName);
 
                 // Boost vibrancy for OfficeColorful (like Excel/PowerPoint)
-                if (themeName.Contains("Colorful"))
+                if (themeName.Contains("Colorful", StringComparison.Ordinal))
                 {
                     BoostThemeVibrancy(form);
                 }

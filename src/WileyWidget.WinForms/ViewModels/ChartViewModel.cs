@@ -60,8 +60,8 @@ namespace WileyWidget.WinForms.ViewModels
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-            // Set default fiscal year from configuration
-            SelectedYear = _configuration.GetValue<int>("UI:FiscalYear", DateTime.UtcNow.Year);
+            // Set default fiscal year from configuration (use DefaultFiscalYear for consistency)
+            SelectedYear = _configuration.GetValue<int>("UI:DefaultFiscalYear", DateTime.UtcNow.Year);
             SelectedStartDate = new(SelectedYear, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             SelectedEndDate = new(SelectedYear, 12, 31, 23, 59, 59, DateTimeKind.Utc);
 

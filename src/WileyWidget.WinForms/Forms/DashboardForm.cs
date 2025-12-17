@@ -42,6 +42,7 @@ namespace WileyWidget.WinForms.Forms
         public const string StatusExported = "Dashboard exported";
         public const string StatusRefreshed = "Dashboard refreshed";
         public const string StatusAutoRefresh = "Auto-refresh: {0}";
+        public const string DefaultTheme = "Office2019Colorful";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -57,10 +58,8 @@ namespace WileyWidget.WinForms.Forms
         private SfDataGrid? _topVariancesGrid;
         private SfDataGrid? _analysisGrid;
         private SfDataGrid? _analyticsMetricsGrid;
-        private SfDataGrid? _analyticsVariancesGrid;
         private SfDataGrid? _scenarioGrid;
         private ChartControl? _trendChart;
-        private ChartControl? _forecastChart;
         private ChartControl? _revenueChart;
         private RadialGauge? _budgetGauge;
         private RadialGauge? _revenueGauge;
@@ -83,7 +82,7 @@ namespace WileyWidget.WinForms.Forms
         private System.Windows.Forms.Timer? _refreshTimer;
         private CheckBox? _autoRefreshCheckbox;
         private MenuStrip? _menuStrip;
-        private ToolTip _toolTip;
+        private readonly ToolTip _toolTip;
         private ToolStripProgressBar? _progressBar;
         private ContextMenuStrip? _gridContextMenu;
         private readonly bool _isUiTestHarness;
@@ -101,9 +100,10 @@ namespace WileyWidget.WinForms.Forms
                 throw new ArgumentNullException(nameof(mainForm));
             }
 
-            // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
-            // In DockingManager mode, forms are shown as owned windows, not MDI children
-            if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
+            // REQUIRED MDI pattern per .vscode WinForms MDI guidelines:
+            // Only set MdiParent if MainForm.IsMdiContainer is true (defensive for tests).
+            // Standard MDI pattern works with both TabbedMDIManager and regular MDI.
+            if (mainForm.IsMdiContainer)
             {
                 MdiParent = mainForm;
             }
@@ -112,11 +112,61 @@ namespace WileyWidget.WinForms.Forms
             InitializeComponent();
             SetupUI();
             ThemeColors.ApplyTheme(this);
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(this, DashboardResources.DefaultTheme);
             BindViewModel();
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            LoadDashboard();
-#pragma warning restore CS4014
+
+            // Load dashboard data after form is shown to prevent UI thread blocking
+            // Use Shown event instead of Load to ensure form is fully initialized
+            this.Shown += async (s, e) => await LoadDashboard();
+        }
+
+        /// <summary>
+        /// Safely updates UI controls from any thread using InvokeRequired pattern
+        /// </summary>
+        private void SafeUIUpdate(System.Action action)
+        {
+            if (action == null) return;
+
+            if (InvokeRequired)
+            {
+                try
+                {
+                    BeginInvoke(action);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Form disposed during async invocation - safe to ignore
+                }
+            }
+            else
+            {
+                action();
+            }
+        }
+
+        /// <summary>
+        /// Safely updates UI controls and returns a value from any thread
+        /// </summary>
+        private T? SafeUIUpdate<T>(System.Func<T> func)
+        {
+            if (func == null) return default;
+
+            if (InvokeRequired)
+            {
+                try
+                {
+                    return (T?)Invoke(func);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Form disposed during async invocation
+                    return default;
+                }
+            }
+            else
+            {
+                return func();
+            }
         }
 
         [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
@@ -140,8 +190,8 @@ namespace WileyWidget.WinForms.Forms
 
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));   // Menu
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // Toolbar
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));   // Header info
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 280));  // KPI Gauges
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));   // Header info
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 350));  // KPI Gauges
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Chart
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));    // Metrics Grid
             _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // Status bar
@@ -184,13 +234,13 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                BackColor = ThemeColors.Background
+                WrapContents = false
+                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
             };
 
-            _municipalityLabel = new Label { Name = "MunicipalityLabel", Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5) };
-            _fiscalYearLabel = new Label { Name = "FiscalYearLabel", Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5) };
-            _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5) };
+            _municipalityLabel = new Label { Name = "MunicipalityLabel", Text = $"{DashboardResources.MunicipalityLabel} Loading...", AutoSize = true, Margin = new Padding(10, 5, 20, 5), Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold) };
+            _fiscalYearLabel = new Label { Name = "FiscalYearLabel", Text = $"{DashboardResources.FiscalYearLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 20, 5), Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold) };
+            _lastUpdatedLabel = new Label { Name = "LastUpdatedLabel", Text = $"{DashboardResources.LastUpdatedLabel} Loading...", AutoSize = true, Margin = new Padding(0, 5, 0, 5), Font = new System.Drawing.Font("Segoe UI", 10F) };
 
             headerPanel.Controls.AddRange(new Control[] { _municipalityLabel, _fiscalYearLabel, _lastUpdatedLabel });
             if (_toolTip != null)
@@ -210,17 +260,17 @@ namespace WileyWidget.WinForms.Forms
                 Padding = new Padding(10)
             };
 
-            _budgetGauge = CreateGauge("Total Budget", ThemeColors.PrimaryAccent);
-            _revenueGauge = CreateGauge("Revenue %", ThemeColors.Success);
-            _expensesGauge = CreateGauge("Expenses %", ThemeColors.Error);
-            _netPositionGauge = CreateGauge("Net Position", ThemeColors.Warning);
-            _variancePercentGauge = CreateGauge("Variance %", ThemeColors.Warning);
-            _varianceAmountGauge = CreateGauge("Total Variance", ThemeColors.Warning);
-            _revenueAmountGauge = CreateGauge("Revenue Amount", ThemeColors.Success);
-            _expensesAmountGauge = CreateGauge("Expenses Amount", ThemeColors.Error);
+            _budgetGauge = CreateGauge("Total Budget");
+            _revenueGauge = CreateGauge("Revenue %");
+            _expensesGauge = CreateGauge("Expenses %");
+            _netPositionGauge = CreateGauge("Net Position");
+            _variancePercentGauge = CreateGauge("Variance %");
+            _varianceAmountGauge = CreateGauge("Total Variance");
+            _revenueAmountGauge = CreateGauge("Revenue Amount");
+            _expensesAmountGauge = CreateGauge("Expenses Amount");
 
             gaugePanel.Controls.AddRange(new Control[] { _budgetGauge, _revenueGauge, _expensesGauge, _netPositionGauge, _variancePercentGauge, _varianceAmountGauge, _revenueAmountGauge, _expensesAmountGauge });
-            var gaugeGroup = new GroupBox { Text = "Key Performance Indicators", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            var gaugeGroup = new GroupBox { Text = "Key Performance Indicators", Dock = DockStyle.Fill, Padding = new Padding(10), Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold) };
             gaugeGroup.Controls.Add(gaugePanel);
             _mainLayout.Controls.Add(gaugeGroup, 0, 3);
 
@@ -230,14 +280,15 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Text = DashboardResources.RevenueTrendTitle,
                 ShowLegend = true,
-                ShowToolTips = true
+                ShowToolTips = true,
+                Font = new System.Drawing.Font("Segoe UI", 10F),
+                MinimumSize = new Size(600, 250)
             };
             SfSkinManager.SetVisualStyle(_revenueChart, "Office2019Colorful");
 
-            var revenueSeries = new ChartSeries("Revenue", ChartSeriesType.Line);
-            _revenueChart.Series.Add(revenueSeries);
+            // Series will be populated dynamically in UpdateRevenueChart()
 
-            var revenueChartGroup = new GroupBox { Text = "Revenue Trend", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            var revenueChartGroup = new GroupBox { Text = "Revenue Trend", Dock = DockStyle.Fill, Padding = new Padding(10), Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold) };
             revenueChartGroup.Controls.Add(_revenueChart);
             _mainLayout.Controls.Add(revenueChartGroup, 0, 4);
 
@@ -320,8 +371,7 @@ namespace WileyWidget.WinForms.Forms
                 SortDirection = ListSortDirection.Descending
             });
 
-            // Apply theme to the metrics grid
-            ThemeColors.ApplySfDataGridTheme(_metricsGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
 
             // Note: Styling is now handled by ThemeName property.
             // All colors, fonts, and styles are managed by SkinManager dynamically.
@@ -338,7 +388,7 @@ namespace WileyWidget.WinForms.Forms
             metricsContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
 
             var metricsPanel = new Panel { Dock = DockStyle.Fill };
-            var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleLeft };
+            var metricsLabel = new Label { Text = DashboardResources.MetricsGridTitle, Dock = DockStyle.Top, Height = 35, TextAlign = ContentAlignment.MiddleLeft, Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold) };
             metricsPanel.Controls.Add(_metricsGrid);
             metricsPanel.Controls.Add(metricsLabel);
 
@@ -357,7 +407,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 EnableDataVirtualization = true
             };
-            ThemeColors.ApplySfDataGridTheme(_fundsGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _fundsGrid.ContextMenuStrip = _gridContextMenu;
             _fundsGrid.Columns.Add(new GridTextColumn { MappingName = "FundName", HeaderText = "Fund", Width = 160, AllowSorting = true });
             _fundsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Budgeted", Width = 120, AllowSorting = true });
@@ -379,7 +429,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 EnableDataVirtualization = true
             };
-            ThemeColors.ApplySfDataGridTheme(_departmentsGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _departmentsGrid.ContextMenuStrip = _gridContextMenu;
             _departmentsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", Width = 160, AllowSorting = true });
             _departmentsGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Budgeted", Width = 120, AllowSorting = true });
@@ -401,7 +451,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowSorting = true,
                 EnableDataVirtualization = true
             };
-            ThemeColors.ApplySfDataGridTheme(_topVariancesGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _topVariancesGrid.ContextMenuStrip = _gridContextMenu;
             _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "AccountNumber", HeaderText = "Acct #", Width = 100, AllowSorting = true });
             _topVariancesGrid.Columns.Add(new GridTextColumn { MappingName = "AccountName", HeaderText = "Account", Width = 200, AllowSorting = true });
@@ -424,7 +474,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = false,
                 AllowSorting = false,
             };
-            ThemeColors.ApplySfDataGridTheme(_analysisGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _analysisGrid.ContextMenuStrip = _gridContextMenu;
             _analysisGrid.Columns.Add(new GridTextColumn { MappingName = "BudgetPeriod", HeaderText = "Period", Width = 120 });
             _analysisGrid.Columns.Add(new GridNumericColumn { MappingName = "TotalBudgeted", HeaderText = "Total Budgeted", Width = 120 });
@@ -479,7 +529,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = true,
                 AllowSorting = true
             };
-            ThemeColors.ApplySfDataGridTheme(_analyticsMetricsGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _analyticsMetricsGrid.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = "Category", Width = 150 });
             _analyticsMetricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Value", HeaderText = "Amount", Width = 120 });
             _analyticsMetricsGrid.Columns.Add(new GridTextColumn { MappingName = "Unit", HeaderText = "Unit", Width = 80 });
@@ -519,7 +569,7 @@ namespace WileyWidget.WinForms.Forms
                 AllowFiltering = false,
                 AllowSorting = true
             };
-            ThemeColors.ApplySfDataGridTheme(_scenarioGrid);
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
             _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "Year", HeaderText = "Year", Width = 80 });
             _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "ProjectedRevenue", HeaderText = "Revenue", Width = 120 });
             _scenarioGrid.Columns.Add(new GridNumericColumn { MappingName = "ProjectedExpenses", HeaderText = "Expenses", Width = 120 });
@@ -540,7 +590,7 @@ namespace WileyWidget.WinForms.Forms
             metricsContainer.Controls.Add(metricsPanel, 0, 0);
             metricsContainer.Controls.Add(_detailsTab, 1, 0);
 
-            var detailedMetricsGroup = new GroupBox { Text = "Detailed Metrics", Dock = DockStyle.Fill, Padding = new Padding(10) };
+            var detailedMetricsGroup = new GroupBox { Text = "Detailed Metrics", Dock = DockStyle.Fill, Padding = new Padding(10), Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold) };
             detailedMetricsGroup.Controls.Add(metricsContainer);
             _mainLayout.Controls.Add(detailedMetricsGroup, 0, 5);
 
@@ -736,14 +786,14 @@ namespace WileyWidget.WinForms.Forms
             _mainLayout?.Controls.Add(strip, 0, 5);
         }
 
-        private RadialGauge CreateGauge(string label, Color needleColor)
+        private RadialGauge CreateGauge(string label)
         {
             var gauge = new RadialGauge
             {
                 Dock = DockStyle.Fill,
-                Width = 240,
-                Height = 240,
-                Margin = new Padding(5),
+                Width = 180,
+                Height = 180,
+                Margin = new Padding(8),
                 // Theme inherited from form's SfSkinManager.SetVisualStyle
                 MinimumValue = 0F,
                 MaximumValue = 100F,
@@ -754,12 +804,12 @@ namespace WileyWidget.WinForms.Forms
                 NeedleStyle = NeedleStyle.Advanced,
                 ShowScaleLabel = true,
                 LabelPlacement = Syncfusion.Windows.Forms.Gauge.LabelPlacement.Inside,
-                NeedleColor = needleColor,
+                // REMOVED: NeedleColor, GaugeArcColor - SfSkinManager theme handles gauge colors
                 Value = 0F,
                 GaugeLabel = label,
                 ShowNeedle = true,
                 EnableCustomNeedles = false,
-                GaugeArcColor = ThemeColors.GaugeArc,
+                // REMOVED: GaugeArcColor - obsolete property that competes with SfSkinManager
                 ShowBackgroundFrame = true
             };
 
@@ -873,7 +923,7 @@ namespace WileyWidget.WinForms.Forms
 
             // Initialize control states with current ViewModel data
             UpdateMetricsGrid();
-            UpdateRevenueChart();
+            // UpdateRevenueChart(); // Removed: PropertyChanged handler will update chart when MonthlyRevenueData is loaded
             UpdateFundSummariesGrid();
             UpdateDepartmentSummariesGrid();
             UpdateTopVariancesGrid();
@@ -886,30 +936,39 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateMunicipalityLabel()
         {
-            if (_municipalityLabel != null)
-                _municipalityLabel.Text = $"{DashboardResources.MunicipalityLabel} {_viewModel.MunicipalityName}";
+            SafeUIUpdate(() =>
+            {
+                if (_municipalityLabel != null)
+                    _municipalityLabel.Text = $"{DashboardResources.MunicipalityLabel} {_viewModel.MunicipalityName}";
+            });
         }
 
         private void UpdateFiscalYearLabel()
         {
-            if (_fiscalYearLabel != null)
-                _fiscalYearLabel.Text = $"{DashboardResources.FiscalYearLabel} {_viewModel.FiscalYear}";
+            SafeUIUpdate(() =>
+            {
+                if (_fiscalYearLabel != null)
+                    _fiscalYearLabel.Text = $"{DashboardResources.FiscalYearLabel} {_viewModel.FiscalYear}";
+            });
         }
 
         private void UpdateLastUpdatedLabels()
         {
-            var lastUpdatedText = _viewModel.LastUpdated == default ? "--" : _viewModel.LastUpdated.ToString("g", CultureInfo.CurrentCulture);
-            if (_lastUpdatedLabel != null)
-                _lastUpdatedLabel.Text = $"{DashboardResources.LastUpdatedLabel} {lastUpdatedText}";
-            if (_updatedPanel != null)
-                _updatedPanel.Text = $"Updated: {lastUpdatedText}";
+            SafeUIUpdate(() =>
+            {
+                var lastUpdatedText = _viewModel.LastUpdated == default ? "--" : _viewModel.LastUpdated.ToString("g", CultureInfo.CurrentCulture);
+                if (_lastUpdatedLabel != null)
+                    _lastUpdatedLabel.Text = $"{DashboardResources.LastUpdatedLabel} {lastUpdatedText}";
+                if (_updatedPanel != null)
+                    _updatedPanel.Text = $"Updated: {lastUpdatedText}";
+            });
         }
 
         private void UpdateLoadingStatus()
         {
             if (this.InvokeRequired)
             {
-                try { this.BeginInvoke(new System.Action(UpdateLoadingStatus)); } catch { }
+                try { this.BeginInvoke(new System.Action(UpdateLoadingStatus)); } catch { /* Form disposed during async invocation */ }
                 return;
             }
 
@@ -950,143 +1009,185 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateMetricsGrid()
         {
-            if (_metricsGrid != null)
-                _metricsGrid.DataSource = _viewModel.Metrics;
-            if (_countsPanel != null)
-                _countsPanel.Text = $"{_viewModel.Metrics.Count} metrics";
+            SafeUIUpdate(() =>
+            {
+                if (_metricsGrid != null)
+                    _metricsGrid.DataSource = _viewModel.Metrics;
+                if (_countsPanel != null)
+                    _countsPanel.Text = $"{_viewModel.Metrics.Count} metrics";
+            });
         }
 
         private void UpdateRevenueChart()
         {
-            try
+            SafeUIUpdate(() =>
             {
-                _logger.LogDebug("UpdateRevenueChart: Starting update");
-
-                if (_revenueChart == null || _viewModel.MonthlyRevenueData.Count == 0)
+                try
                 {
-                    _logger.LogWarning("UpdateRevenueChart: Chart is null or no monthly revenue data available (Count={Count})",
-                        _viewModel.MonthlyRevenueData?.Count ?? 0);
-                    return;
+                    _logger.LogDebug("UpdateRevenueChart: Starting update");
+
+                    if (_revenueChart == null || _viewModel.MonthlyRevenueData.Count == 0)
+                    {
+                        _logger.LogDebug("UpdateRevenueChart: Chart is null or no monthly revenue data available yet (Count={Count}) - skipping update",
+                            _viewModel.MonthlyRevenueData?.Count ?? 0);
+                        return;
+                    }
+
+                    _revenueChart.Series.Clear();
+                    _logger.LogDebug("UpdateRevenueChart: Creating series with {Count} data points", _viewModel.MonthlyRevenueData.Count);
+
+                    // Create Revenue series with better styling
+                    var series = new ChartSeries("Revenue", ChartSeriesType.Line);
+                    series.Style.Border.Width = 3;
+                    series.Style.DisplayText = true;
+
+                    // Populate data points
+                    int index = 1;
+                    foreach (var data in _viewModel.MonthlyRevenueData)
+                    {
+                        series.Points.Add(index, (double)data.Amount);
+                        index++;
+                    }
+
+                    _revenueChart.Series.Add(series);
+
+                    // Configure chart appearance for better visualization
+                    _revenueChart.PrimaryXAxis.Title = "Month";
+                    _revenueChart.PrimaryYAxis.Title = "Revenue ($)";
+                    _revenueChart.PrimaryXAxis.ValueType = ChartValueType.Custom;
+                    _revenueChart.Indexed = true;
+                    _revenueChart.Margin = new Padding(15);
+
+                    _logger.LogInformation("UpdateRevenueChart: Chart updated with {SeriesCount} series and {PointCount} points",
+                        _revenueChart.Series.Count, series.Points.Count);
+
+                    // Refresh chart to display updated data
+                    _revenueChart.Refresh();
                 }
-
-                _revenueChart.Series.Clear();
-                _logger.LogDebug("UpdateRevenueChart: Creating series with {Count} data points", _viewModel.MonthlyRevenueData.Count);
-
-                // Create Revenue series
-                var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-
-                // Populate data points
-                foreach (var data in _viewModel.MonthlyRevenueData)
+                catch (Exception ex)
                 {
-                    series.Points.Add(data.MonthNumber, (double)data.Amount);
+                    _logger.LogError(ex, "UpdateRevenueChart: Failed to update chart");
                 }
-
-                _revenueChart.Series.Add(series);
-                _logger.LogInformation("UpdateRevenueChart: Chart updated with {SeriesCount} series and {PointCount} points",
-                    _revenueChart.Series.Count, series.Points.Count);
-
-                // Refresh chart to display updated data
-                _revenueChart.Refresh();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "UpdateRevenueChart: Failed to update chart");
-            }
+            });
         }
 
         private void UpdateFundSummariesGrid()
         {
-            if (_fundsGrid != null)
-                _fundsGrid.DataSource = _viewModel.FundSummaries;
+            SafeUIUpdate(() =>
+            {
+                if (_fundsGrid != null)
+                    _fundsGrid.DataSource = _viewModel.FundSummaries;
+            });
         }
 
         private void UpdateDepartmentSummariesGrid()
         {
-            if (_departmentsGrid != null)
-                _departmentsGrid.DataSource = _viewModel.DepartmentSummaries;
+            SafeUIUpdate(() =>
+            {
+                if (_departmentsGrid != null)
+                    _departmentsGrid.DataSource = _viewModel.DepartmentSummaries;
+            });
         }
 
         private void UpdateTopVariancesGrid()
         {
-            if (_topVariancesGrid != null)
-                _topVariancesGrid.DataSource = _viewModel.TopVariances;
+            SafeUIUpdate(() =>
+            {
+                if (_topVariancesGrid != null)
+                    _topVariancesGrid.DataSource = _viewModel.TopVariances;
+            });
         }
 
         private void UpdateBudgetAnalysisGrid()
         {
-            if (_analysisGrid == null)
-                return;
-
-            if (_viewModel.BudgetAnalysis == null)
+            SafeUIUpdate(() =>
             {
-                _analysisGrid.DataSource = Array.Empty<BudgetVarianceAnalysis>();
-                return;
-            }
+                if (_analysisGrid == null)
+                    return;
 
-            _analysisGrid.DataSource = new[] { _viewModel.BudgetAnalysis };
+                if (_viewModel.BudgetAnalysis == null)
+                {
+                    _analysisGrid.DataSource = Array.Empty<BudgetVarianceAnalysis>();
+                    return;
+                }
+
+                _analysisGrid.DataSource = new[] { _viewModel.BudgetAnalysis };
+            });
         }
 
         private void AdjustGaugeMaximums()
         {
-            try
+            SafeUIUpdate(() =>
             {
-                float max = 100F;
-                if (_viewModel.TotalBudgeted > 0M)
+                try
                 {
-                    // Use TotalBudgeted as a sensible maximum for amount-based gauges
-                    max = Math.Max(1F, (float)_viewModel.TotalBudgeted);
+                    float max = 100F;
+                    if (_viewModel.TotalBudgeted > 0M)
+                    {
+                        // Use TotalBudgeted as a sensible maximum for amount-based gauges
+                        max = Math.Max(1F, (float)_viewModel.TotalBudgeted);
+                    }
+
+                    if (_revenueAmountGauge != null)
+                        _revenueAmountGauge.MaximumValue = max;
+                    if (_expensesAmountGauge != null)
+                        _expensesAmountGauge.MaximumValue = max;
+                    if (_varianceAmountGauge != null)
+                        _varianceAmountGauge.MaximumValue = max;
+
+                    if (_variancePercentGauge != null)
+                        _variancePercentGauge.MaximumValue = 100F;
                 }
-
-                if (_revenueAmountGauge != null)
-                    _revenueAmountGauge.MaximumValue = max;
-                if (_expensesAmountGauge != null)
-                    _expensesAmountGauge.MaximumValue = max;
-                if (_varianceAmountGauge != null)
-                    _varianceAmountGauge.MaximumValue = max;
-
-                if (_variancePercentGauge != null)
-                    _variancePercentGauge.MaximumValue = 100F;
-            }
-            catch (Exception)
-            {
-                // Fall back silently - UI should still function with default ranges
-            }
+                catch (Exception)
+                {
+                    // Fall back silently - UI should still function with default ranges
+                }
+            });
         }
 
         private void UpdateRevenueAmountGauge()
         {
-            if (_revenueAmountGauge == null)
-                return;
+            SafeUIUpdate(() =>
+            {
+                if (_revenueAmountGauge == null)
+                    return;
 
-            var value = (float)_viewModel.TotalRevenue;
-            if (_revenueAmountGauge.MaximumValue < value)
-                _revenueAmountGauge.MaximumValue = Math.Max(_revenueAmountGauge.MinimumValue + 1F, value);
+                var value = (float)_viewModel.TotalRevenue;
+                if (_revenueAmountGauge.MaximumValue < value)
+                    _revenueAmountGauge.MaximumValue = Math.Max(_revenueAmountGauge.MinimumValue + 1F, value);
 
-            AnimateGaugeValue(_revenueAmountGauge, value);
+                AnimateGaugeValue(_revenueAmountGauge, value);
+            });
         }
 
         private void UpdateExpensesAmountGauge()
         {
-            if (_expensesAmountGauge == null)
-                return;
+            SafeUIUpdate(() =>
+            {
+                if (_expensesAmountGauge == null)
+                    return;
 
-            var value = (float)_viewModel.TotalExpenses;
-            if (_expensesAmountGauge.MaximumValue < value)
-                _expensesAmountGauge.MaximumValue = Math.Max(_expensesAmountGauge.MinimumValue + 1F, value);
+                var value = (float)_viewModel.TotalExpenses;
+                if (_expensesAmountGauge.MaximumValue < value)
+                    _expensesAmountGauge.MaximumValue = Math.Max(_expensesAmountGauge.MinimumValue + 1F, value);
 
-            AnimateGaugeValue(_expensesAmountGauge, value);
+                AnimateGaugeValue(_expensesAmountGauge, value);
+            });
         }
 
         private void UpdateVarianceAmountGauge()
         {
-            if (_varianceAmountGauge == null)
-                return;
+            SafeUIUpdate(() =>
+            {
+                if (_varianceAmountGauge == null)
+                    return;
 
-            var value = (float)Math.Abs(_viewModel.TotalVariance);
-            if (_varianceAmountGauge.MaximumValue < value)
-                _varianceAmountGauge.MaximumValue = Math.Max(_varianceAmountGauge.MinimumValue + 1F, value);
+                var value = (float)Math.Abs(_viewModel.TotalVariance);
+                if (_varianceAmountGauge.MaximumValue < value)
+                    _varianceAmountGauge.MaximumValue = Math.Max(_varianceAmountGauge.MinimumValue + 1F, value);
 
-            AnimateGaugeValue(_varianceAmountGauge, value);
+                AnimateGaugeValue(_varianceAmountGauge, value);
+            });
         }
 
         private void AnimateGaugeValue(RadialGauge? gauge, float value)
@@ -1286,114 +1387,104 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdateStatus(string text)
         {
-            if (_statusPanel != null)
+            SafeUIUpdate(() =>
             {
-                _statusPanel.Text = text;
-            }
+                if (_statusPanel != null)
+                {
+                    _statusPanel.Text = text;
+                }
+            });
         }
 
         private void UpdateAnalyticsMetricsGrid()
         {
-            if (_analyticsMetricsGrid != null)
-                _analyticsMetricsGrid.DataSource = _analyticsViewModel.Metrics;
+            SafeUIUpdate(() =>
+            {
+                if (_analyticsMetricsGrid != null)
+                    _analyticsMetricsGrid.DataSource = _analyticsViewModel.Metrics;
+            });
         }
 
         private void UpdateAnalyticsVariancesGrid()
         {
-            if (_analyticsVariancesGrid != null)
-                _analyticsVariancesGrid.DataSource = _analyticsViewModel.TopVariances;
+            // Grid removed during UI cleanup
         }
 
         private void UpdateTrendChart()
         {
-            try
+            SafeUIUpdate(() =>
             {
-                _logger.LogDebug("UpdateTrendChart: Starting update");
-
-                if (_trendChart == null || _analyticsViewModel.TrendData.Count == 0)
+                try
                 {
-                    _logger.LogWarning("UpdateTrendChart: Chart is null or no trend data available (Count={Count})",
-                        _analyticsViewModel.TrendData?.Count ?? 0);
-                    return;
+                    _logger.LogDebug("UpdateTrendChart: Starting update");
+
+                    if (_trendChart == null || _analyticsViewModel.TrendData.Count == 0)
+                    {
+                        _logger.LogWarning("UpdateTrendChart: Chart is null or no trend data available (Count={Count})",
+                            _analyticsViewModel.TrendData?.Count ?? 0);
+                        return;
+                    }
+
+                    _logger.LogDebug("UpdateTrendChart: Creating series with {Count} data points", _analyticsViewModel.TrendData.Count);
+
+                    _trendChart.Series.Clear();
+
+                    // Create Budgeted series
+                    var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
+
+                    // Create Actual series
+                    var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
+
+                    // Populate data points with numeric indices
+                    int index = 0;
+                    foreach (var trend in _analyticsViewModel.TrendData)
+                    {
+                        budgetedSeries.Points.Add(index, (double)trend.Budgeted);
+                        actualSeries.Points.Add(index, (double)trend.Actual);
+                        index++;
+                    }
+
+                    _trendChart.Series.Add(budgetedSeries);
+                    _trendChart.Series.Add(actualSeries);
+                    _trendChart.Refresh();
+
+                    _logger.LogInformation("UpdateTrendChart: Chart updated with {SeriesCount} series and {PointCount} points",
+                        _trendChart.Series.Count, budgetedSeries.Points.Count + actualSeries.Points.Count);
                 }
-
-                _logger.LogDebug("UpdateTrendChart: Creating series with {Count} data points", _analyticsViewModel.TrendData.Count);
-
-                _trendChart.Series.Clear();
-
-                // Create Budgeted series
-                var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
-
-                // Create Actual series
-                var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
-
-                // Populate data points with numeric indices
-                int index = 0;
-                foreach (var trend in _analyticsViewModel.TrendData)
+                catch (Exception ex)
                 {
-                    budgetedSeries.Points.Add(index, (double)trend.Budgeted);
-                    actualSeries.Points.Add(index, (double)trend.Actual);
-                    index++;
+                    _logger.LogError(ex, "UpdateTrendChart: Failed to update chart");
                 }
-
-                _trendChart.Series.Add(budgetedSeries);
-                _trendChart.Series.Add(actualSeries);
-                _trendChart.Refresh();
-
-                _logger.LogInformation("UpdateTrendChart: Chart updated with {SeriesCount} series and {PointCount} points",
-                    _trendChart.Series.Count, budgetedSeries.Points.Count + actualSeries.Points.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "UpdateTrendChart: Failed to update chart");
-            }
+            });
         }
 
         private void UpdateScenarioGrid()
         {
-            if (_scenarioGrid != null)
-                _scenarioGrid.DataSource = _analyticsViewModel.ScenarioProjections;
+            SafeUIUpdate(() =>
+            {
+                if (_scenarioGrid != null)
+                    _scenarioGrid.DataSource = _analyticsViewModel.ScenarioProjections;
+            });
         }
 
         private void UpdateForecastChart()
         {
             try
             {
-                _logger.LogDebug("UpdateForecastChart: Starting update");
-
-                if (_forecastChart == null)
-                {
-                    _logger.LogWarning("UpdateForecastChart: Chart is null");
-                    return;
-                }
+                _logger.LogDebug("UpdateForecastChart: Starting update (chart removed during UI cleanup)");
 
                 if (_analyticsViewModel.ForecastData.Count == 0)
                 {
                     _logger.LogWarning("UpdateForecastChart: No forecast data available (Count={Count})",
                         _analyticsViewModel.ForecastData.Count);
+                    return;
                 }
 
-                _logger.LogDebug("UpdateForecastChart: Creating series with {Count} data points", _analyticsViewModel.ForecastData.Count);
-
-                _forecastChart.Series.Clear();
-                var forecastSeries = new ChartSeries("Forecast", ChartSeriesType.Line);
-
-                int index = 0;
-                foreach (var point in _analyticsViewModel.ForecastData)
-                {
-                    forecastSeries.Points.Add(index, (double)point.PredictedReserves);
-                    index++;
-                }
-
-                _forecastChart.Series.Add(forecastSeries);
-                _forecastChart.Refresh();
-
-                _logger.LogInformation("UpdateForecastChart: Chart updated with {SeriesCount} series and {PointCount} points",
-                    _forecastChart.Series.Count, forecastSeries.Points.Count);
+                _logger.LogInformation("UpdateForecastChart: Forecast data available with {Count} data points (chart implementation pending)", _analyticsViewModel.ForecastData.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "UpdateForecastChart: Failed to update chart");
+                _logger.LogError(ex, "UpdateForecastChart: Failed to process forecast data");
             }
         }
 

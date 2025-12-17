@@ -173,7 +173,7 @@ namespace WileyWidget.WinForms.Controls
             y += 30;
 
             // Demo mode toggle
-            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };
+            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
             _demoDataToolTip = new ToolTip(); _demoDataToolTip.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data. Useful for demonstrations or when database is unavailable.");
             _chkUseDemoData.CheckedChanged += (s, e) => { if (_vm != null) _vm.UseDemoData = _chkUseDemoData.Checked; };
             _mainPanel.Controls.Add(_chkUseDemoData);
@@ -294,9 +294,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 ThemeManager.ApplyTheme(parentForm);
             }
-            var colors = ThemeManager.Colors;
-            if (_themeGroup != null) { _themeGroup.ForeColor = colors.TextPrimary; _themeGroup.BackColor = colors.Surface; }
-            if (_aboutGroup != null) { _aboutGroup.ForeColor = colors.TextPrimary; _aboutGroup.BackColor = colors.Surface; }
+            // Group box colors handled by SfSkinManager theme cascade
             // Syncfusion per-form skinning is handled by ThemeManager.ApplyTheme(parentForm) above
         }
 

@@ -36,7 +36,28 @@ public class MainFormUiSmokeTests
     }
 
     [Fact]
-    public void MainForm_Construct_And_Toggle_MdiMode_DoesNotThrow()
+    public void MainForm_Construct_And_Verify_MdiMode_IsConstTrue()
+    {
+        _ui.Run(() =>
+        {
+            var config = BuildConfig(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseMdiMode"] = "true",
+                ["UI:UseTabbedMdi"] = "false",
+                ["UI:UseDockingManager"] = "false"
+            });
+
+            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
+
+            // Phase 1: UseMdiMode is const true (property is read-only)
+            Assert.True(mainForm.UseMdiMode);
+            Assert.True(mainForm.IsMdiContainer);
+        });
+    }
+
+    [Fact]
+    public void MainForm_ToggleMdiMode_Method_IsNoop_WhenMdiIsConst()
     {
         _ui.Run(() =>
         {
@@ -52,41 +73,15 @@ public class MainFormUiSmokeTests
 
             Assert.True(mainForm.IsMdiContainer);
 
-            mainForm.UseMdiMode = false;
-            Assert.False(mainForm.IsMdiContainer);
-
-            mainForm.UseMdiMode = true;
-            Assert.True(mainForm.IsMdiContainer);
-        });
-    }
-
-    [Fact]
-    public void MainForm_ToggleMdiMode_Method_Updates_IsMdiContainer()
-    {
-        _ui.Run(() =>
-        {
-            var config = BuildConfig(new Dictionary<string, string?>
-            {
-                ["UI:IsUiTestHarness"] = "true",
-                ["UI:UseMdiMode"] = "false",
-                ["UI:UseTabbedMdi"] = "false",
-                ["UI:UseDockingManager"] = "false"
-            });
-
-            using var mainForm = new MainForm(new ServiceCollection().BuildServiceProvider(), config, NullLogger<MainForm>.Instance, WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled);
-
-            Assert.False(mainForm.IsMdiContainer);
-
             var toggle = typeof(MainForm).GetMethod("ToggleMdiMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(toggle);
 
-            // Invoke once - should enable MDI
+            // Phase 1: ToggleMdiMode is now a no-op because UseMdiMode is const true
             toggle!.Invoke(mainForm, null);
-            Assert.True(mainForm.IsMdiContainer);
+            Assert.True(mainForm.IsMdiContainer); // Still true (toggle is no-op)
 
-            // Invoke again - should disable MDI
             toggle.Invoke(mainForm, null);
-            Assert.False(mainForm.IsMdiContainer);
+            Assert.True(mainForm.IsMdiContainer); // Still true (toggle is no-op)
         });
     }
 

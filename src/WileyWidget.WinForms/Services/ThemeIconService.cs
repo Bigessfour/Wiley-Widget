@@ -12,6 +12,8 @@ namespace WileyWidget.WinForms.Services
     {
         public Image? GetIcon(string name, AppTheme theme, int size)
         {
+            ArgumentNullException.ThrowIfNull(name);
+
             // For Office2019Colorful theme, return appropriate icons
             if (theme == AppTheme.Office2019Colorful)
             {

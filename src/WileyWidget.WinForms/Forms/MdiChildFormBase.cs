@@ -126,11 +126,9 @@ public abstract class MdiChildFormBase : Form
     /// </summary>
     private void ApplyParentTheme()
     {
-        if (MdiParent != null)
-        {
-            // Inherit background color from MDI parent
-            BackColor = MdiParent.BackColor;
-        }
+        // Note: Theme inheritance now handled by SfSkinManager cascade from MainForm
+        // ThemeColors.ApplyTheme(this) is called by each form's constructor
+        _logger?.LogDebug("Theme inheritance managed by SfSkinManager for {FormType}", GetType().Name);
     }
 
     /// <summary>

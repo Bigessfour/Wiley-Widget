@@ -36,6 +36,7 @@ namespace WileyWidget.WinForms.ViewModels
         private const int MaxRetryAttempts = 3;
         private bool _disposed;
         private readonly IConfiguration? _configuration;
+        private readonly System.Threading.SynchronizationContext? _uiContext;
 
         #region Observable Properties
 
@@ -150,6 +151,7 @@ namespace WileyWidget.WinForms.ViewModels
             _accountRepository = accountRepository;
             _logger = logger ?? NullLogger<DashboardViewModel>.Instance;
             _configuration = configuration;
+            _uiContext = System.Threading.SynchronizationContext.Current; // Capture UI thread context
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
@@ -257,7 +259,9 @@ namespace WileyWidget.WinForms.ViewModels
                         cancellationToken.ThrowIfCancellationRequested();
 
                         // Load budget analysis from repository
-                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd); if (analysis != null)
+                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd).ConfigureAwait(false);
+
+                        if (analysis != null)
                         {
                             BudgetAnalysis = analysis;
 
@@ -267,39 +271,82 @@ namespace WileyWidget.WinForms.ViewModels
                             TotalVariance = analysis.TotalVariance;
                             VariancePercentage = analysis.TotalVariancePercentage;
 
-                            // Update fund summaries
-                            FundSummaries.Clear();
-                            foreach (var fund in analysis.FundSummaries)
+                            // Update fund summaries on UI thread (use Send to block until complete)
+                            if (_uiContext != null)
                             {
-                                FundSummaries.Add(fund);
+                                _uiContext.Send(_ =>
+                                {
+                                    FundSummaries.Clear();
+                                    foreach (var fund in analysis.FundSummaries)
+                                    {
+                                        FundSummaries.Add(fund);
+                                    }
+                                }, null);
+                            }
+                            else
+                            {
+                                FundSummaries.Clear();
+                                foreach (var fund in analysis.FundSummaries)
+                                {
+                                    FundSummaries.Add(fund);
+                                }
                             }
 
-                            // Update department summaries
-                            DepartmentSummaries.Clear();
-                            foreach (var dept in analysis.DepartmentSummaries)
+                            // Update department summaries on UI thread (use Send to block until complete)
+                            if (_uiContext != null)
                             {
-                                DepartmentSummaries.Add(dept);
+                                _uiContext.Send(_ =>
+                                {
+                                    DepartmentSummaries.Clear();
+                                    foreach (var dept in analysis.DepartmentSummaries)
+                                    {
+                                        DepartmentSummaries.Add(dept);
+                                    }
+                                    ActiveDepartments = analysis.DepartmentSummaries.Count;
+                                }, null);
+                            }
+                            else
+                            {
+                                DepartmentSummaries.Clear();
+                                foreach (var dept in analysis.DepartmentSummaries)
+                                {
+                                    DepartmentSummaries.Add(dept);
+                                }
+                                ActiveDepartments = analysis.DepartmentSummaries.Count;
                             }
 
-                            ActiveDepartments = analysis.DepartmentSummaries.Count;
-
-                            // Get top variances (largest deviations)
-                            TopVariances.Clear();
+                            // Get top variances (largest deviations) and update on UI thread
                             var topVarList = analysis.AccountVariances
                                 .OrderByDescending(v => Math.Abs(v.VarianceAmount))
                                 .Take(10)
                                 .ToList();
-                            foreach (var variance in topVarList)
+
+                            if (_uiContext != null)
                             {
-                                TopVariances.Add(variance);
+                                _uiContext.Send(_ =>
+                                {
+                                    TopVariances.Clear();
+                                    foreach (var variance in topVarList)
+                                    {
+                                        TopVariances.Add(variance);
+                                    }
+                                }, null);
+                            }
+                            else
+                            {
+                                TopVariances.Clear();
+                                foreach (var variance in topVarList)
+                                {
+                                    TopVariances.Add(variance);
+                                }
                             }
                         }
 
                         // Load account count
-                        AccountCount = await _accountRepository.GetCountAsync();
+                        AccountCount = await _accountRepository.GetCountAsync().ConfigureAwait(false);
 
                         // Calculate revenue and expenses from budget entries
-                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear);
+                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear).ConfigureAwait(false);
                         TotalRevenue = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
                             .Sum(be => be.ActualAmount);
@@ -317,11 +364,31 @@ namespace WileyWidget.WinForms.ViewModels
                         ExpensesGauge = TotalBudgeted > 0 ? (float)((TotalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
                         NetPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(NetIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
 
-                        // Update metrics collection for grid display
-                        UpdateMetricsCollection();
-
-                        // Populate monthly revenue data for chart
-                        PopulateMonthlyRevenueData(currentFiscalYear);
+                        // Update metrics collection for grid display (must be on UI thread)
+                        // Use Send to ensure completion before method returns
+                        if (_uiContext != null)
+                        {
+                            _uiContext.Send(_ =>
+                            {
+                                try
+                                {
+                                    UpdateMetricsCollection();
+                                    PopulateMonthlyRevenueData(currentFiscalYear);
+                                    _logger.LogInformation("Dashboard UI updates completed: {MetricsCount} metrics, {RevenueCount} revenue data points",
+                                        Metrics.Count, MonthlyRevenueData.Count);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Failed to update UI collections on UI thread");
+                                }
+                            }, null);
+                        }
+                        else
+                        {
+                            // Direct call (already on UI thread)
+                            UpdateMetricsCollection();
+                            PopulateMonthlyRevenueData(currentFiscalYear);
+                        }
 
                         // Update metadata
                         MunicipalityName = "Town of Wiley";

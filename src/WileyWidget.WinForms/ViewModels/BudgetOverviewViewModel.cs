@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.ViewModels
 {
@@ -87,16 +88,18 @@ namespace WileyWidget.ViewModels
         }
 
         public BudgetOverviewViewModel()
-            : this(NullLogger<BudgetOverviewViewModel>.Instance, new FallbackBudgetCategoryService())
+            : this(NullLogger<BudgetOverviewViewModel>.Instance, new FallbackBudgetCategoryService(), null)
         {
         }
 
-        public BudgetOverviewViewModel(ILogger<BudgetOverviewViewModel> logger, IBudgetCategoryService budgetCategoryService)
+        public BudgetOverviewViewModel(ILogger<BudgetOverviewViewModel> logger, IBudgetCategoryService budgetCategoryService, UIConfiguration? uiConfig = null)
         {
             _logger = logger ?? NullLogger<BudgetOverviewViewModel>.Instance;
             _budgetCategoryService = budgetCategoryService ?? new FallbackBudgetCategoryService();
 
+            // Initialize fiscal year options and set default from UI configuration when present
             InitializeFiscalYearOptions();
+            FiscalYear = uiConfig?.DefaultFiscalYear ?? FiscalYear;
 
             LoadDataCommand = new AsyncRelayCommand(async parameter =>
                 await LoadDataAsync(parameter is CancellationToken ct ? ct : CancellationToken.None));
@@ -115,7 +118,7 @@ namespace WileyWidget.ViewModels
         }
 
         public BudgetOverviewViewModel(IBudgetCategoryService budgetCategoryService)
-            : this(NullLogger<BudgetOverviewViewModel>.Instance, budgetCategoryService)
+            : this(NullLogger<BudgetOverviewViewModel>.Instance, budgetCategoryService, null)
         {
         }
 

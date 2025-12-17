@@ -258,7 +258,7 @@ public sealed class ReportsForm : Form
         if (_statusLabel == null) return;
         var hasError = !string.IsNullOrEmpty(_viewModel.ErrorMessage);
         _statusLabel.Text = hasError ? $"Error: {_viewModel.ErrorMessage}" : _viewModel.StatusMessage ?? "Ready";
-        _statusLabel.ForeColor = hasError ? ThemeColors.Error : ThemeColors.Success;
+        _statusLabel.ForeColor = hasError ? Color.Red : Color.Green;
     }
 
     private void UpdateCommandAvailability()
@@ -271,7 +271,7 @@ public sealed class ReportsForm : Form
         if (!_viewerAvailable)
         {
             _statusLabel.Text = "Report viewer not available. Install Microsoft Reporting Services to enable generation.";
-            _statusLabel.ForeColor = ThemeColors.Warning;
+            _statusLabel.ForeColor = Color.Orange;
         }
     }
 
@@ -312,8 +312,7 @@ public sealed class ReportsForm : Form
             Text = text,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 10F),
-            BackColor = ThemeColors.Background
+            Font = new Font("Segoe UI", 10F)
         };
     }
 

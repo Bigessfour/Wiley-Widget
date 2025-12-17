@@ -714,6 +714,7 @@ public class BudgetRepository : IBudgetRepository
                 OldestRecord = g.Min(be => be.CreatedAt),
                 NewestRecord = g.Max(be => be.CreatedAt)
             })
+            .OrderBy(x => 1)  // Fix: Add OrderBy before FirstOrDefaultAsync to suppress EF warning
             .FirstOrDefaultAsync(cancellationToken);
 
         return stats != null ? (stats.TotalRecords, stats.OldestRecord, stats.NewestRecord) : (0, null, null);

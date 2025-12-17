@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Syncfusion.WinForms.Controls;
@@ -53,11 +54,12 @@ namespace WileyWidget.WinForms.Controls
     /// for data binding with INotifyPropertyChanged notifications. Button clicks delegate
     /// to ViewModel commands where available. Implements data validation with ErrorProvider
     /// and control validation events (Validating/Validated).
+    /// Inherits from ScopedPanelBase to ensure proper scope management for scoped dependencies.
     /// </remarks>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class AccountsPanel : UserControl
+    public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
-        private readonly AccountsViewModel _viewModel;
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
         /// <summary>
         /// A simple DataContext property for ViewModel access.
@@ -110,69 +112,33 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler? _comboAccountTypeValidatedHandler;
 
         /// <summary>
-        /// Parameterless constructor for DI/designer support.
-        /// Guards against null Program.Services.
+        /// Initializes a new instance of <see cref="AccountsPanel"/> using dependency injection.
         /// </summary>
-        public AccountsPanel() : this(ResolveAccountsViewModel(), ResolveDispatcherHelper())
+        /// <param name="scopeFactory">The service scope factory for creating scopes to resolve scoped dependencies.</param>
+        /// <param name="logger">The logger instance for diagnostic logging.</param>
+        /// <param name="dispatcherHelper">Optional dispatcher helper for cross-thread UI operations.</param>
+        public AccountsPanel(
+            IServiceScopeFactory scopeFactory,
+            ILogger<ScopedPanelBase<AccountsViewModel>> logger,
+            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+            : base(scopeFactory, logger)
         {
-        }
-
-        private static AccountsViewModel ResolveAccountsViewModel()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Error("AccountsPanel: Program.Services is null - cannot resolve AccountsViewModel");
-                throw new InvalidOperationException("AccountsPanel requires DI services to be initialized. Ensure Program.Services is set before creating AccountsPanel.");
-            }
-            try
-            {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(Program.Services);
-                Serilog.Log.Debug("AccountsPanel: AccountsViewModel resolved from DI container");
-                return vm;
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "AccountsPanel: Failed to resolve AccountsViewModel from DI");
-                throw;
-            }
-        }
-
-        private static WileyWidget.Services.Threading.IDispatcherHelper? ResolveDispatcherHelper()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Warning("AccountsPanel: Program.Services is null - IDispatcherHelper unavailable");
-                return null;
-            }
-            try
-            {
-                var helper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services);
-                if (helper == null)
-                {
-                    Serilog.Log.Warning("AccountsPanel: IDispatcherHelper not registered in DI container");
-                }
-                return helper;
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "AccountsPanel: Failed to resolve IDispatcherHelper");
-                return null;
-            }
+            _dispatcherHelper = dispatcherHelper;
+            Serilog.Log.Debug("AccountsPanel: constructor completed (ViewModel will be resolved in OnViewModelResolved)");
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="AccountsPanel"/> with the specified view model.
+        /// Called by ScopedPanelBase after the ViewModel has been resolved from the service scope.
+        /// This is where we initialize UI components that depend on the ViewModel.
         /// </summary>
-        /// <param name="viewModel">The accounts view model providing data and commands.</param>
-        /// <exception cref="ArgumentNullException">Thrown when viewModel is null.</exception>
-        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
-
-        public AccountsPanel(AccountsViewModel viewModel, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+        protected override void OnViewModelResolved(AccountsViewModel viewModel)
         {
+            ArgumentNullException.ThrowIfNull(viewModel);
+            base.OnViewModelResolved(viewModel);
+
             try
             {
-                Serilog.Log.Debug("AccountsPanel: constructor starting");
-                _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+                Serilog.Log.Debug("AccountsPanel: OnViewModelResolved starting");
 
                 // Keep a DataContext reference
                 DataContext = viewModel;
@@ -190,20 +156,18 @@ namespace WileyWidget.WinForms.Controls
                     try { gridAccounts.SuspendLayout(); } catch { }
                     try
                     {
-                        if (viewModel.Accounts is System.Collections.IEnumerable en)
+                        if (viewModel?.Accounts is System.Collections.IEnumerable en)
                         {
                             // Take a snapshot to avoid "Collection was modified" during enumeration/paint
-                            try { gridAccounts.DataSource = en.Cast<object?>().ToList(); } catch { gridAccounts.DataSource = viewModel.Accounts; }
+                            try { gridAccounts.DataSource = en.Cast<object?>().ToList(); } catch { gridAccounts.DataSource = viewModel?.Accounts; }
                         }
                         else
                         {
-                            gridAccounts.DataSource = viewModel.Accounts;
+                            gridAccounts.DataSource = viewModel?.Accounts;
                         }
                     }
                     finally { try { gridAccounts.ResumeLayout(); } catch { } }
                 }
-
-                _dispatcherHelper = dispatcherHelper;
 
                 // Apply current theme
                 ApplyCurrentTheme();
@@ -212,13 +176,13 @@ namespace WileyWidget.WinForms.Controls
                 _panelThemeChangedHandler = OnThemeChanged;
                 ThemeManager.ThemeChanged += _panelThemeChangedHandler;
 
-                Serilog.Log.Information("AccountsPanel initialized with {Count} accounts", viewModel.Accounts?.Count ?? 0);
-                Serilog.Log.Debug("AccountsPanel: constructor finished");
+                Serilog.Log.Information("AccountsPanel initialized with {Count} accounts", viewModel?.Accounts?.Count ?? 0);
+                Serilog.Log.Debug("AccountsPanel: OnViewModelResolved finished");
             }
             catch (Exception ex)
             {
                 // Log and show an actionable message - fail fast to surface the issue to the caller
-                Serilog.Log.Error(ex, "Failed to initialize AccountsPanel");
+                Serilog.Log.Error(ex, "Failed to initialize AccountsPanel in OnViewModelResolved");
 
                 System.Windows.Forms.MessageBox.Show(
                     $"Error loading accounts panel:\n\n{ex.Message}\n\nCheck logs at: logs/wileywidget-{DateTime.UtcNow:yyyyMMdd}.log",
@@ -275,8 +239,8 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (_viewModel.LoadAccountsCommand != null)
-                    await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
+                if (ViewModel?.LoadAccountsCommand != null)
+                    await ViewModel.LoadAccountsCommand.ExecuteAsync(null);
             }
             catch (Exception ex)
             {
@@ -318,9 +282,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                Serilog.Log.Debug("AccountsPanel_Load: starting - ViewModel.IsLoading={IsLoading}", _viewModel?.IsLoading);
+                Serilog.Log.Debug("AccountsPanel_Load: starting - ViewModel.IsLoading={IsLoading}", ViewModel?.IsLoading);
                 // Ensure ViewModel is loaded when panel is shown
-                var vm = _viewModel;
+                var vm = ViewModel;
                 if (vm != null)
                 {
                     if (vm.LoadAccountsCommand != null && !vm.IsLoading)
@@ -331,7 +295,7 @@ namespace WileyWidget.WinForms.Controls
 
                 if (IsDisposed) return;
 
-                Serilog.Log.Debug("AccountsPanel_Load: finished load attempt - ViewModel.IsLoading={IsLoading}", _viewModel?.IsLoading);
+                Serilog.Log.Debug("AccountsPanel_Load: finished load attempt - ViewModel.IsLoading={IsLoading}", ViewModel?.IsLoading);
 
                 // Set up data validation for combo boxes
                 if (comboFund != null)
@@ -495,9 +459,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 try
                 {
-                    if (_viewModel.FilterAccountsCommand != null)
+                    if (ViewModel?.FilterAccountsCommand != null)
                     {
-                        await _viewModel.FilterAccountsCommand.ExecuteAsync(null);
+                        await ViewModel.FilterAccountsCommand.ExecuteAsync(null);
                     }
                 }
                 catch (Exception ex)
@@ -1172,37 +1136,37 @@ namespace WileyWidget.WinForms.Controls
 
         private void BindViewModel()
         {
-            if (_viewModel == null) return;
+            if (ViewModel == null) return;
 
             try
             {
-                accountsBindingSource = new BindingSource { DataSource = _viewModel };
+                accountsBindingSource = new BindingSource { DataSource = ViewModel };
 
                 // Bind comboboxes to viewmodel filter properties
-                if (comboFund != null && _viewModel.AvailableFunds != null)
+                if (comboFund != null && ViewModel.AvailableFunds != null)
                 {
-                    comboFund.DataSource = _viewModel.AvailableFunds;
+                    comboFund.DataSource = ViewModel.AvailableFunds;
                 }
 
-                if (comboAccountType != null && _viewModel.AvailableAccountTypes != null)
+                if (comboAccountType != null && ViewModel.AvailableAccountTypes != null)
                 {
-                    comboAccountType.DataSource = _viewModel.AvailableAccountTypes;
+                    comboAccountType.DataSource = ViewModel.AvailableAccountTypes;
                 }
 
                 // Subscribe to property changes for summary updates and loading state
                 // Keep a handler reference for proper cleanup
                 // ViewModel implements INotifyPropertyChanged; subscribe directly to avoid analyzer 'always true' diagnostics
                 {
-                    var npc = (System.ComponentModel.INotifyPropertyChanged)_viewModel;
+                    var npc = (System.ComponentModel.INotifyPropertyChanged)ViewModel;
                     _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
                     npc.PropertyChanged += _viewModelPropertyChangedHandler;
                     // Also observe the Accounts collection for empty-state UI
                     try
                     {
-                        if (_viewModel.Accounts != null)
+                        if (ViewModel.Accounts != null)
                         {
                             _accountsCollectionChangedHandler = (s, a) => UpdateNoDataOverlay();
-                            _viewModel.Accounts.CollectionChanged += _accountsCollectionChangedHandler;
+                            ViewModel.Accounts.CollectionChanged += _accountsCollectionChangedHandler;
                         }
                     }
                     catch { }
@@ -1211,8 +1175,8 @@ namespace WileyWidget.WinForms.Controls
                 // Initialize overlays from viewmodel state
                 try
                 {
-                    if (_loadingOverlay != null) _loadingOverlay.Visible = _viewModel.IsLoading;
-                    if (_noDataOverlay != null) _noDataOverlay.Visible = (_viewModel.Accounts == null || _viewModel.Accounts.Count == 0);
+                    if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
+                    if (_noDataOverlay != null) _noDataOverlay.Visible = (ViewModel.Accounts == null || ViewModel.Accounts.Count == 0);
                 }
                 catch { }
             }
@@ -1242,16 +1206,16 @@ namespace WileyWidget.WinForms.Controls
                 }
 
                 // Handle loading overlay
-                if (e.PropertyName == nameof(_viewModel.IsLoading))
+                if (e.PropertyName == nameof(ViewModel.IsLoading))
                 {
-                    try { if (_loadingOverlay != null) _loadingOverlay.Visible = _viewModel.IsLoading; } catch { }
+                    try { if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel?.IsLoading ?? false; } catch { }
                 }
 
                 // Update summary labels and empty-data overlay
-                if (e.PropertyName == nameof(_viewModel.Accounts) || e.PropertyName == nameof(_viewModel.TotalBalance))
+                if (e.PropertyName == nameof(ViewModel.Accounts) || e.PropertyName == nameof(ViewModel.TotalBalance))
                 {
                     UpdateSummary();
-                    try { if (_noDataOverlay != null) _noDataOverlay.Visible = (_viewModel.Accounts == null || _viewModel.Accounts.Count == 0); } catch { }
+                    try { if (_noDataOverlay != null) _noDataOverlay.Visible = (ViewModel?.Accounts == null || ViewModel.Accounts.Count == 0); } catch { }
                     // Update grid datasource safely when the Accounts collection changes.
                     try
                     {
@@ -1260,13 +1224,13 @@ namespace WileyWidget.WinForms.Controls
                             try { gridAccounts.SuspendLayout(); } catch { }
                             try
                             {
-                                if (_viewModel.Accounts is System.Collections.IEnumerable en)
+                                if (ViewModel?.Accounts is System.Collections.IEnumerable en)
                                 {
                                     gridAccounts.DataSource = en.Cast<object?>().ToList();
                                 }
                                 else
                                 {
-                                    gridAccounts.DataSource = _viewModel.Accounts;
+                                    gridAccounts.DataSource = ViewModel?.Accounts;
                                 }
                             }
                             finally { try { gridAccounts.ResumeLayout(); } catch { } }
@@ -1287,12 +1251,12 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (lblTotalBalance != null)
                 {
-                    lblTotalBalance.Text = $"Total Balance: {_viewModel.TotalBalance:C2}";
+                    lblTotalBalance.Text = $"Total Balance: {ViewModel?.TotalBalance:C2}";
                 }
 
                 if (lblAccountCount != null)
                 {
-                    lblAccountCount.Text = $"Accounts: {_viewModel.Accounts?.Count ?? 0}";
+                    lblAccountCount.Text = $"Accounts: {ViewModel?.Accounts?.Count ?? 0}";
                 }
             }
             catch { }
@@ -1455,7 +1419,7 @@ namespace WileyWidget.WinForms.Controls
                     modal.Controls.Add(editPanel);
                     if (modal.ShowDialog(this.FindForm()) == DialogResult.OK)
                     {
-                        _viewModel.LoadAccountsCommand?.Execute(null);
+                        _ = ViewModel?.LoadAccountsCommand?.ExecuteAsync(null);
                     }
                 }
                 finally
@@ -1492,7 +1456,7 @@ namespace WileyWidget.WinForms.Controls
                     modal.Controls.Add(editPanel);
                     if (modal.ShowDialog(this.FindForm()) == DialogResult.OK)
                     {
-                        _viewModel.LoadAccountsCommand?.Execute(null);
+                        _ = ViewModel?.LoadAccountsCommand?.ExecuteAsync(null);
                     }
                 }
                 finally
@@ -1527,7 +1491,7 @@ namespace WileyWidget.WinForms.Controls
                 if (result == DialogResult.Yes)
                 {
                     // Note: DeleteAccountCommand does not exist on AccountsViewModel; reloading accounts after delete as a workaround
-                    _viewModel.LoadAccountsCommand?.Execute(null);
+                    ViewModel?.LoadAccountsCommand?.Execute(null);
                 }
             }
             catch (Exception ex)
@@ -1619,8 +1583,8 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_btnDeleteThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnDeleteThemeChangedHandler; } catch { }
                 try { if (_btnExportExcelThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportExcelThemeChangedHandler; } catch { }
                 try { if (_btnExportPdfThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportPdfThemeChangedHandler; } catch { }
-                try { if (_viewModelPropertyChangedHandler != null) ((System.ComponentModel.INotifyPropertyChanged)_viewModel).PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
-                try { if (_accountsCollectionChangedHandler != null && _viewModel?.Accounts != null) _viewModel.Accounts.CollectionChanged -= _accountsCollectionChangedHandler; } catch { }
+                try { if (_viewModelPropertyChangedHandler != null && ViewModel != null) ((System.ComponentModel.INotifyPropertyChanged)ViewModel).PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
+                try { if (_accountsCollectionChangedHandler != null && ViewModel?.Accounts != null) ViewModel.Accounts.CollectionChanged -= _accountsCollectionChangedHandler; } catch { }
                 try { if (_comboFundValidatingHandler != null && comboFund != null) comboFund.Validating -= _comboFundValidatingHandler; } catch { }
                 try { if (_comboFundValidatedHandler != null && comboFund != null) comboFund.Validated -= _comboFundValidatedHandler; } catch { }
                 try { if (_comboAccountTypeValidatingHandler != null && comboAccountType != null) comboAccountType.Validating -= _comboAccountTypeValidatingHandler; } catch { }
@@ -1704,12 +1668,12 @@ namespace WileyWidget.WinForms.Controls
                 }
 
                 bool noData = true;
-                if (_viewModel != null)
+                if (ViewModel != null)
                 {
-                    var accountsProp = _viewModel.GetType().GetProperty("Accounts");
+                    var accountsProp = ViewModel.GetType().GetProperty("Accounts");
                     if (accountsProp != null)
                     {
-                        var val = accountsProp.GetValue(_viewModel);
+                        var val = accountsProp.GetValue(ViewModel);
                         if (val is System.Collections.ICollection coll && coll.Count > 0) noData = false;
                     }
                 }

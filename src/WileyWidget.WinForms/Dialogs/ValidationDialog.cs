@@ -68,8 +68,8 @@ namespace WileyWidget.WinForms.Dialogs
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 3,
-                Padding = new Padding(15),
-                BackColor = ThemeColors.Background
+                Padding = new Padding(15)
+                // BackColor handled by SfSkinManager theme cascade
             };
 
             // Icon column (fixed 48px)
@@ -101,7 +101,7 @@ namespace WileyWidget.WinForms.Dialogs
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = ThemeColors.Error,
+                ForeColor = Color.Red,  // Semantic error color
                 Padding = new Padding(0, 5, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -112,7 +112,7 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.FromArgb(40, ThemeColors.Error),
+                BackColor = Color.FromArgb(40, Color.Red),  // Light red tint for error list
                 Font = new Font("Segoe UI", 9F),
                 SelectionMode = SelectionMode.MultiExtended,
                 IntegralHeight = false,

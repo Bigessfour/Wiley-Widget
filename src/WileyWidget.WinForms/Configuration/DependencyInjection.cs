@@ -66,6 +66,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
             services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
+            services.AddScoped<IGrokSupercomputer, NullGrokSupercomputer>();
             services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddScoped<WileyWidget.Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
             services.AddScoped<WileyWidget.Business.Interfaces.IEnterpriseRepository, EnterpriseRepository>();
@@ -75,12 +77,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IThemeService, ThemeService>();
             services.AddSingleton<IThemeIconService, ThemeIconService>();
 
+            // UI Configuration
+            services.AddSingleton<UIConfiguration>(sp =>
+                UIConfiguration.FromConfiguration(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
+
             // Infrastructure
             services.AddMemoryCache();
             // services.AddDbContextFactory<WileyWidget.Data.AppDbContext>(); // Moved to Program.cs for proper configuration
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
             // Repositories
+            services.AddScoped<IAccountsRepository, AccountsRepository>();
             services.AddScoped<IBudgetRepository, BudgetRepository>();
             services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
 
@@ -111,6 +118,11 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<BudgetOverviewForm>();
             services.AddTransient<ReportsForm>();
             services.AddTransient<CustomersForm>();
+
+            // Controls
+            // NOTE: AIChatControl registration disabled - requires IAIAssistantService implementation
+            // TODO: Implement IAIAssistantService and re-enable AIChatControl registration
+            // services.AddTransient<WileyWidget.WinForms.Controls.AIChatControl>();
         }
     }
 }

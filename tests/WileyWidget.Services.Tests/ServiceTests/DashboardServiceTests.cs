@@ -39,9 +39,9 @@ public sealed class DashboardServiceTests : IDisposable
         _mockConfiguration = new Mock<IConfiguration>();
         _mockConfigSection = new Mock<IConfigurationSection>();
 
-        // Configure UI:FiscalYear = 2025 for configuration mock
+        // Configure UI:DefaultFiscalYear = 2025 for configuration mock
         _mockConfigSection.Setup(s => s.Value).Returns("2025");
-        _mockConfiguration.Setup(c => c.GetSection("UI:FiscalYear")).Returns(_mockConfigSection.Object);
+        _mockConfiguration.Setup(c => c.GetSection("UI:DefaultFiscalYear")).Returns(_mockConfigSection.Object);
 
         _service = new DashboardService(
             _mockBudgetRepository.Object,

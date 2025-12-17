@@ -60,8 +60,9 @@ actions:
   enabled:
     - trunk-upgrade-available
 tools:
-  enabled:
-    - dotnet@9.0.306
+  disabled:
+    - dotnet  # Use system-installed .NET instead
+  # enabled:
 merge:
   required_statuses:
     - build

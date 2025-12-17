@@ -98,6 +98,8 @@ namespace WileyWidget.WinForms.Forms
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
 
+            // Axis label colors handled by SfSkinManager theme cascade
+
             return cartesian;
         }
 
@@ -239,16 +241,20 @@ namespace WileyWidget.WinForms.Forms
             }
 
             _statusLabel.Text = message;
-            _statusLabel.ForeColor = isError ? ThemeColors.Error : ThemeColors.Success;
+            _statusLabel.ForeColor = isError ? Color.Red : Color.Green;  // Semantic status colors
         }
 
         private void UpdateCartesianSeries(ChartControl cartesian)
         {
             cartesian.Series.Clear();
             var series = new ChartSeries("Revenue", ChartSeriesType.Line);
-            series.Style.Interior = new BrushInfo(ThemeColors.PrimaryAccent);
 
-            foreach (var data in _vm.MonthlyRevenueData)
+            // Series styling handled by SfSkinManager theme cascade
+            series.Style.Border.Width = 2;
+
+            // Create a snapshot to avoid "Collection was modified" exception
+            var snapshot = _vm.MonthlyRevenueData.ToList();
+            foreach (var data in snapshot)
             {
                 if (data == null) continue;
                 series.Points.Add(data.MonthNumber, (double)data.Amount);
@@ -262,7 +268,13 @@ namespace WileyWidget.WinForms.Forms
             pie.Series.Clear();
             var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
 
-            foreach (var p in _vm.PieChartData)
+            // Label colors handled by chart theme - no manual assignment needed
+            // SfSkinManager themes cascade to chart controls automatically
+
+            // Create a snapshot to avoid "Collection was modified" exception
+            // PieChartData is ObservableCollection that may be modified during enumeration
+            var snapshot = _vm.PieChartData.ToList();
+            foreach (var p in snapshot)
             {
                 pieSeries.Points.Add(p.Category, (double)p.Value);
             }

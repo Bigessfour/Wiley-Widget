@@ -47,8 +47,9 @@ namespace WileyWidget.WinForms.Forms
             Text = SettingsFormResources.FormTitle;
 
             // Apply Syncfusion theme to form and all child controls
+            // NOTE: ThemeColors.ApplyTheme internally calls SfSkinManager.SetVisualStyle
             WileyWidgetThemeColors.ApplyTheme(this);
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+            // REMOVED: SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); // Duplicate - already called by ApplyTheme
 
             // Initialize form controls and settings panel
             InitializeFormControls();

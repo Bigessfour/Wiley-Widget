@@ -41,7 +41,7 @@ try {
     }
     else {
         Write-Host "  ✗ Trunk CLI not found or error" -ForegroundColor Red
-        Write-Host "  Run: npm install -g @trunkio/launcher" -ForegroundColor Yellow
+        Write-Host "  Run: pwsh scripts/trunk/setup-trunk.ps1 -InstallVSCodeExtension (Windows) or bash scripts/trunk/setup-trunk.sh --install-vscode (macOS/Linux)" -ForegroundColor Yellow
         exit 1
     }
 }

@@ -228,8 +228,9 @@ namespace WileyWidget.WinForms.Forms
                 AutoSizeColumnsMode = AutoSizeColumnsMode.Fill
             };
 
-            ThemeColors.ApplySfDataGridTheme(_dataGrid);
-            SfSkinManager.SetVisualStyle(_dataGrid, "Office2019Colorful");
+            // Theme applied automatically by SfSkinManager cascade from parent form
+            // ThemeColors.ApplyTheme(this) in constructor ensures theme cascade to all controls
+            SfSkinManager.SetVisualStyle(_dataGrid, ThemeColors.DefaultTheme);
 
             _dataGrid.Columns.Add(new GridTextColumn
             {
@@ -356,10 +357,11 @@ namespace WileyWidget.WinForms.Forms
 
         private void DataGrid_QueryRowStyle(object? sender, QueryRowStyleEventArgs e)
         {
-            if (e.RowType == RowType.DefaultRow && e.RowIndex % 2 == 0)
-            {
-                e.Style.BackColor = ThemeColors.AlternatingRowBackground;
-            }
+            // REMOVED: Manual alternating row BackColor - SfSkinManager theme handles grid row styling
+            // if (e.RowType == RowType.DefaultRow && e.RowIndex % 2 == 0)
+            // {
+            //     e.Style.BackColor = ThemeColors.AlternatingRowBackground;
+            // }
         }
 
         private void DataGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
@@ -368,7 +370,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (e.Column.MappingName == "Balance" && account.Balance < 0)
                 {
-                    e.Style.TextColor = ThemeColors.Error;
+                    e.Style.TextColor = Color.Red;  // Semantic error/negative balance color
                 }
 
                 if (e.Column.MappingName == "BudgetAmount" && account.BudgetAmount == 0)

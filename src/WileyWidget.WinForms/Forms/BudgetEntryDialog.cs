@@ -32,7 +32,7 @@ namespace WileyWidget.WinForms.Forms
         private readonly ComboBox _fundType = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
         private readonly DateTimePicker _startDate = new() { Format = DateTimePickerFormat.Short, Width = 140 };
         private readonly DateTimePicker _endDate = new() { Format = DateTimePickerFormat.Short, Width = 140 };
-        private readonly Button _saveButton = new() { Text = "Save", AutoSize = true, BackColor = ThemeColors.PrimaryAccent, ForeColor = Color.White };
+        private readonly Button _saveButton = new() { Text = "Save", AutoSize = true }; // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles button colors
         private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true };
         private readonly ErrorProvider _errors = new() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
 

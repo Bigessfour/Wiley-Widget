@@ -472,11 +472,13 @@ await SyncBudgetsToAppAsync(budgets, cancellationToken)
 **Fix:**
 
 1. Print the exact auth URL:
+
    ```powershell
    $env:WW_PRINT_AUTH_URL = "1"
    $env:WW_SKIP_INTERACTIVE = "1"
    # Run app or script that triggers AuthorizeAsync()
    ```
+
 2. Extract the `redirect_uri` parameter from the printed URL
 3. Add that **exact** URI to Intuit Developer Portal → Keys & OAuth → Redirect URIs
 
@@ -1942,7 +1944,7 @@ WileyWidget implements a comprehensive, multi-layered testing strategy designed 
 
 **Local Development:**
 
-```powershell
+````powershell
 # Run all unit tests
 dotnet test WileyWidget.Tests/WileyWidget.Tests.csproj
 
@@ -1954,7 +1956,31 @@ python -m pytest tests/ -v
 
 # Run integration tests (requires Docker)
 dotnet test WileyWidget.IntegrationTests/WileyWidget.IntegrationTests.csproj
+
+**Trunk CLI (local quality gates)**
+
+This repository integrates with Trunk and uses `.trunk/trunk.yaml` for check configuration. To set up Trunk locally, run:
+
+PowerShell (Windows):
+```powershell
+pwsh .\scripts\trunk\setup-trunk.ps1 -InstallVSCodeExtension
+````
+
+POSIX (macOS / Linux):
+
+```bash
+bash scripts/trunk/setup-trunk.sh --install-vscode
 ```
+
+Then authenticate interactively with:
+
+```bash
+trunk login
+```
+
+After installation, verify with `trunk --version` and run `trunk check --ci` to verify repository checks are functional.
+
+````
 
 **CI/CD Pipeline Execution:**
 
@@ -2029,7 +2055,7 @@ services.AddHttpClient("AIServices", client => {
 })
 .AddPolicyHandlerFromRegistry("JitteredRetry")
 .AddPolicyHandlerFromRegistry("DefaultCircuitBreaker");
-```
+````
 
 **Database Operations:**
 
@@ -2212,9 +2238,11 @@ dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Tools.WinForms --ve
 License placement (choose one):
 
 1. Environment variable (recommended): set `SYNCFUSION_LICENSE_KEY` (User scope) then restart shell/app
+
    ```pwsh
    [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
    ```
+
 2. Provide a `license.key` file beside the executable (auto‑loaded)
 3. Hard‑code in `App.xaml.cs` register call (NOT recommended for OSS / commits)
 
@@ -2225,34 +2253,43 @@ License placement (choose one):
 Quick ways to confirm your Syncfusion license is actually registering:
 
 1. Environment variable present:
+
    ```pwsh
    [System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','User')
    ```
+
    Should output a 90+ char key (don’t echo in screen recordings).
+
 2. Script watch (streams detection + registration path):
+
    ```pwsh
    pwsh ./scripts/show-syncfusion-license.ps1 -Watch
    ```
+
    Look for: `Syncfusion license registered from environment variable.`
+
 3. Log inspection:
+
    ```pwsh
    explorer %AppData%/WileyWidget/logs
    ```
+
    Open today’s `app-*.log` and verify registration line.
+
 4. File fallback: drop a `license.key` beside the built `WileyWidget.exe` (use `license.sample.key` as format reference).
 
 If none of the above register, ensure the key hasn’t expired and you’re on a supported version (v30.2.4 here).
 
 ## Raw File References (machine-consumable)
 
-| Purpose             | Raw URL (replace OWNER/REPO if forked)                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------ |
-| Settings Service    | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/Services/SettingsService.cs |
-| Main Window         | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/MainWindow.xaml             |
-| Build Script        | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/build.ps1                       |
-| App Entry           | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs                 |
-| About Dialog        | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AboutWindow.xaml            |
-| License Loader Note | https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs                 |
+| Purpose             | Raw URL (replace OWNER/REPO if forked)                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| Settings Service    | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/Services/SettingsService.cs> |
+| Main Window         | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/MainWindow.xaml>             |
+| Build Script        | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/build.ps1>                       |
+| App Entry           | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs>                 |
+| About Dialog        | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AboutWindow.xaml>            |
+| License Loader Note | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs>                 |
 
 ## Raw URLs (Machine Readability)
 
@@ -2276,7 +2313,7 @@ If you prefer inline (e.g., private fork) uncomment and set in `App.xaml.cs`:
 SyncfusionLicenseProvider.RegisterLicense("YOUR_KEY");
 ```
 
-Official docs: https://help.syncfusion.com/common/essential-studio/licensing/how-to-register-in-an-application
+Official docs: <https://help.syncfusion.com/common/essential-studio/licensing/how-to-register-in-an-application>
 
 ## Build & Run (Direct)
 
@@ -2323,7 +2360,7 @@ Example pattern:
 /// <summary>Loads persisted user settings or creates defaults on first run.</summary>
 public void Load()
 {
-	// Corruption handling: rename bad file and recreate defaults.
+ // Corruption handling: rename bad file and recreate defaults.
 }
 ```
 
@@ -2407,11 +2444,13 @@ CI enforces a minimum line coverage (default 70%). Adjust `COVERAGE_MIN` env var
 - UI automation (FlaUI) for DataGrid + Ribbon smoke
   - Basic smoke test already included: launches app, asserts main window title & UI children
 - Dynamic DataGrid column generation snippet (future):
+
   ```csharp
   dataGrid.Columns.Clear();
   foreach (var prop in source.First().GetType().GetProperties())
-  		dataGrid.Columns.Add(new GridTextColumn { MappingName = prop.Name });
+    dataGrid.Columns.Add(new GridTextColumn { MappingName = prop.Name });
   ```
+
 - Signing + updater
 - Pre-push hook (see scripts/pre-push) to gate pushes
 
@@ -2453,11 +2492,13 @@ Diagnostics & common gotchas:
 - File locking (MSB3026/MSB3027/MSB3021): build script auto-cleans (kills WileyWidget/testhost/vstest.console); verify no stray processes.
 - MSB4166 (child node exited): binary log captured at `TestResults/msbuild.binlog`. Open with MSBuild Structured Log Viewer. Raw debug files (if any) archived under `TestResults/MSBuildDebug` + zip. A marker file keeps the folder non-empty for CI retention.
 - Capture fresh logs manually:
+
   ```pwsh
   $env:MSBUILDDEBUGPATH = "$env:TEMP/MSBuildDebug"
   pwsh ./scripts/build.ps1
   # Inspect TestResults/msbuild.binlog or $env:TEMP/MSBuildDebug/ for MSBuild_*.failure.txt
   ```
+
 - No UI tests discovered: use `--filter Category=UiSmokeTests` or set `RUN_UI_TESTS=1`.
 - Syncfusion license not detected: run `pwsh ./scripts/show-syncfusion-license.ps1 -Watch`; ensure env var or `license.key` file present.
 - Syncfusion trial dialog blocks exit: set `WILEYWIDGET_AUTOCLOSE_LICENSE=1` during automation.
@@ -2734,8 +2775,6 @@ If issues persist, re-set the env var and restart your terminal:
 **Version 0.2.0 represents a major milestone in code quality and architectural consistency.**
 
 ---
-
-[System.Environment]: :SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
 
 ```
 # Test commit for manifest generation

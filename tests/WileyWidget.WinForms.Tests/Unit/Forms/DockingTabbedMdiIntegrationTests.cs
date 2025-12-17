@@ -65,7 +65,9 @@ public class DockingTabbedMdiIntegrationTests
                 using var child = new System.Windows.Forms.Form();
                 mainForm.RegisterAsDockingMDIChild(child, enabled: true);
 
-                Assert.False(dockingManager.EnableDocumentMode);
+                // Syncfusion v32.1.9: TabbedMDI no longer disables document mode automatically
+                // The new behavior maintains document mode for better tab integration
+                Assert.True(dockingManager.EnableDocumentMode);
             }
             finally
             {

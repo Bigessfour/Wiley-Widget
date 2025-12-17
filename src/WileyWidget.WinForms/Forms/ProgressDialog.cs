@@ -169,12 +169,10 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Operation progress indicator"
             };
 
-            // Ensure progress bar respects the global skin manager
-            try { SfSkinManager.SetVisualStyle(_progressBar, ThemeColors.DefaultTheme); } catch { }
-
-            // Apply gradient colors for modern appearance
-            _progressBar.ForeColor = ThemeColors.PrimaryAccent;
-            _progressBar.BackColor = ThemeColors.Background;
+            // NOTE: Theme cascades from form-level SetVisualStyle - no need for individual control theming
+            // REMOVED: Manual color assignments - SfSkinManager owns all color decisions
+            // REMOVED: _progressBar.ForeColor = ThemeColors.PrimaryAccent;
+            // REMOVED: _progressBar.BackColor = ThemeColors.Background;
 
             _mainLayout.Controls.Add(_progressBar, 0, 2);
 
@@ -187,7 +185,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = Color.Gray,
+                // REMOVED: ForeColor = Color.Gray; - SfSkinManager owns all colors
                 AccessibleName = "Percentage complete",
                 AccessibleDescription = "Percentage of operation completed"
             };
@@ -205,7 +203,8 @@ namespace WileyWidget.WinForms.Forms
                 AccessibleDescription = "Cancel the current operation"
             };
             _btnCancel.Click += BtnCancel_Click;
-            try { SfSkinManager.SetVisualStyle(_btnCancel, ThemeColors.DefaultTheme); } catch { }
+            // NOTE: Theme cascades from form-level SetVisualStyle - no need for individual control theming
+            // REMOVED: try { SfSkinManager.SetVisualStyle(_btnCancel, ThemeColors.DefaultTheme); } catch { }
 
             _mainLayout.Controls.Add(_btnCancel, 0, 5);
 

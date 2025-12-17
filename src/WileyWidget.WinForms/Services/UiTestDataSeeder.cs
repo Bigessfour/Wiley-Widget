@@ -17,9 +17,12 @@ namespace WileyWidget.WinForms.Services
                 return;
             }
 
+            // Create a scope for scoped services
             using var scope = services.CreateScope();
-            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILoggerFactory>(scope.ServiceProvider)?.CreateLogger("UiTestDataSeeder");
-            var db = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scope.ServiceProvider);
+            var scopedServices = scope.ServiceProvider;
+
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILoggerFactory>(scopedServices)?.CreateLogger("UiTestDataSeeder");
+            var db = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
 
             try
             {

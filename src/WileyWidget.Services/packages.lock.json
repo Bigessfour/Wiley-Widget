@@ -412,22 +412,22 @@
       },
       "Syncfusion.Pdf.WinForms": {
         "type": "Direct",
-        "requested": "[31.2.18, )",
-        "resolved": "31.2.18",
-        "contentHash": "3L5viEOaiTgy6Pccwg4D6r3J+fNtixUe6wwj86g86dV4vuqMHzjQdzOk9q36ZcqA9Q3ecPZA5BPzfOMTP9ccxQ==",
+        "requested": "[32.1.19, )",
+        "resolved": "32.1.19",
+        "contentHash": "81OJGMc4qUqVRQ+HewcgIwRbAb0FGAHevQd/lQbI0NGCY46kkBCcjKjHv1W1I0KpppsK4rkN/X2bZorzZgZN7w==",
         "dependencies": {
-          "Syncfusion.Compression.Base": "31.2.18",
-          "Syncfusion.Licensing": "31.2.18"
+          "Syncfusion.Compression.Base": "32.1.19",
+          "Syncfusion.Licensing": "32.1.19"
         }
       },
       "Syncfusion.XlsIO.WinForms": {
         "type": "Direct",
-        "requested": "[31.2.18, )",
-        "resolved": "31.2.18",
-        "contentHash": "aEujJyCNt4/HhchQESvTJqCDGVAFt1xBvz7NNjJgq4C5MkbH4D4riAKVItOoGo1GDgyoGuV6867BRBZas8MFig==",
+        "requested": "[32.1.19, )",
+        "resolved": "32.1.19",
+        "contentHash": "TJ5pN1yzwXkrdp6VV0iTTNR5Q7yEi6efFpVgt7cO6qFeJ8nNNAgOerxbnvbiwaMKOaYW8TffO64d5kyYubbAAw==",
         "dependencies": {
-          "Syncfusion.Compression.Base": "31.2.18",
-          "Syncfusion.Licensing": "31.2.18"
+          "Syncfusion.Compression.Base": "32.1.19",
+          "Syncfusion.Licensing": "32.1.19"
         }
       },
       "System.Management": {
@@ -1168,8 +1168,8 @@
       },
       "Syncfusion.Compression.Base": {
         "type": "Transitive",
-        "resolved": "31.2.18",
-        "contentHash": "ZChcEJ5mFSGIbOdNKi3CHFP62ZH9aEGwtScG8rjWysxx2qFcqYu9ZuPwRlBoBPMmrQsaIk3PNoSrwIeE1nYYMw=="
+        "resolved": "32.1.19",
+        "contentHash": "sEkWeyCpRhiCxdiX90HR5sxHPOzSpPdAOO25JmU3AU/ovTQQc1EncMc2PmXinC/3xoJnACYMsLLUY86WJXlHwQ=="
       },
       "System.AppContext": {
         "type": "Transitive",
@@ -2355,9 +2355,9 @@
       },
       "Syncfusion.Licensing": {
         "type": "CentralTransitive",
-        "requested": "[31.2.18, )",
-        "resolved": "31.2.18",
-        "contentHash": "0F8xDPiebSe4y6AYYRJXihH1Ba3PH0pfMyl/FfdbYIr9qev4wEBgEguO4xxkVRgQJhvV8B+StQXOeNSDyByI/A=="
+        "requested": "[32.1.19, )",
+        "resolved": "32.1.19",
+        "contentHash": "03EHqdR7+2XGxcESKOSEfInBu/FwfBo/6QdA9skv8iuDd4BDJAs5M2nxbimVDTr5Ox7T3omEk2KcHbaUaOfkOw=="
       },
       "System.Buffers": {
         "type": "CentralTransitive",
