@@ -2890,109 +2890,109 @@ public partial class MainForm
         {
             if (this.IsHandleCreated)
             {
-                    try
-                    {
-                        _ = SafeInvokeAsync(() =>
-                        {
-                            try { SaveDockingLayout(); }
-                            catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to SaveDockingLayout in scheduled invoke"); }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "BeginInvoke scheduling SaveDockingLayout failed - invoking directly as fallback");
-                        try { SaveDockingLayout(); } catch (Exception ex2) { _logger?.LogDebug(ex2, "Direct SaveDockingLayout fallback failed"); }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Unexpected error while attempting to schedule SaveDockingLayout");
-            }
-            var mgr = _dockingManager;
-            _dockingManager = null;
-
-            if (mgr == null)
-            {
-                _logger?.LogDebug("DockingManager was already null during dispose");
-                return;
-            }
-
-            try
-            {
-                // Attempt quick detach operations synchronously so owner won't double-dispose
-                try { mgr.PersistState = false; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to set PersistState=false on DockingManager during dispose"); }
-                try { mgr.HostControl = null; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to clear HostControl on DockingManager during dispose"); }
-
                 try
                 {
-                    var owner = mgr.Site?.Container;
-                    if (owner != null)
+                    _ = SafeInvokeAsync(() =>
                     {
-                        try { owner.Remove(mgr); } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to remove DockingManager from container owner during dispose"); }
-                    }
+                        try { SaveDockingLayout(); }
+                        catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to SaveDockingLayout in scheduled invoke"); }
+                    });
                 }
-                catch (Exception ex) { _logger!.LogDebug(ex, "Failed during owner detach attempt for docking manager"); }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "BeginInvoke scheduling SaveDockingLayout failed - invoking directly as fallback");
+                    try { SaveDockingLayout(); } catch (Exception ex2) { _logger?.LogDebug(ex2, "Direct SaveDockingLayout fallback failed"); }
+                }
             }
-            catch { }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Unexpected error while attempting to schedule SaveDockingLayout");
+        }
+        var mgr = _dockingManager;
+        _dockingManager = null;
 
-            // Schedule the potentially heavy disposal asynchronously on the UI thread (best-effort)
+        if (mgr == null)
+        {
+            _logger?.LogDebug("DockingManager was already null during dispose");
+            return;
+        }
+
+        try
+        {
+            // Attempt quick detach operations synchronously so owner won't double-dispose
+            try { mgr.PersistState = false; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to set PersistState=false on DockingManager during dispose"); }
+            try { mgr.HostControl = null; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to clear HostControl on DockingManager during dispose"); }
+
             try
             {
-                if (this.IsHandleCreated)
+                var owner = mgr.Site?.Container;
+                if (owner != null)
                 {
-                    try
-                    {
-                        this.BeginInvoke(new System.Action(() =>
-                        {
-                            try
-                            {
-                                try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
-                                try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
-                                try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
-
-                                try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (async)"); }
-                            }
-                            catch { }
-                        }));
-                    }
-                    catch
-                    {
-                        // BeginInvoke may throw; fall back to threadpool
-                        Task.Run(() =>
-                        {
-                            try
-                            {
-                                try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
-                                try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
-                                try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
-
-                                try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (fallback)"); }
-                            }
-                            catch { }
-                        });
-                    }
+                    try { owner.Remove(mgr); } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to remove DockingManager from container owner during dispose"); }
                 }
-                else
+            }
+            catch (Exception ex) { _logger!.LogDebug(ex, "Failed during owner detach attempt for docking manager"); }
+        }
+        catch { }
+
+        // Schedule the potentially heavy disposal asynchronously on the UI thread (best-effort)
+        try
+        {
+            if (this.IsHandleCreated)
+            {
+                try
                 {
-                    // No handle - run dispose on threadpool
+                    this.BeginInvoke(new System.Action(() =>
+                    {
+                        try
+                        {
+                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
+                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
+                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
+
+                            try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (async)"); }
+                        }
+                        catch { }
+                    }));
+                }
+                catch
+                {
+                    // BeginInvoke may throw; fall back to threadpool
                     Task.Run(() =>
                     {
                         try
                         {
-                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockStateChanged during threadpool dispose"); }
-                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockControlActivated during threadpool dispose"); }
-                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockVisibilityChanged during threadpool dispose"); }
+                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
+                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
+                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
 
-                            try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (threadpool)"); }
+                            try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (fallback)"); }
                         }
-                        catch (Exception ex) { _logger!.LogDebug(ex, "Unexpected error during threadpool docking disposal (outer)"); }
+                        catch { }
                     });
                 }
             }
-            catch { }
+            else
+            {
+                // No handle - run dispose on threadpool
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockStateChanged during threadpool dispose"); }
+                        try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockControlActivated during threadpool dispose"); }
+                        try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockVisibilityChanged during threadpool dispose"); }
 
-            _logger?.LogDebug("_dockingManager cleared and disposal scheduled");
+                        try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (threadpool)"); }
+                    }
+                    catch (Exception ex) { _logger!.LogDebug(ex, "Unexpected error during threadpool docking disposal (outer)"); }
+                });
+            }
+        }
+        catch { }
+
+        _logger?.LogDebug("_dockingManager cleared and disposal scheduled");
 
         // Dispose debounce timer
         if (_dockingLayoutSaveTimer != null)
@@ -3741,9 +3741,9 @@ public partial class MainForm
     {
         try
         {
-        // Phase 1 Simplification: TabbedMDIManager permanently removed - no disposal needed
+            // Phase 1 Simplification: TabbedMDIManager permanently removed - no disposal needed
 
-        // Close all MDI children before disposal
+            // Close all MDI children before disposal
             if (_uiConfig.UseMdiMode && MdiChildren.Length > 0)
             {
                 CloseAllMdiChildren();

@@ -39,7 +39,7 @@ public class ReportExportService : IReportExportService
         {
             using (var document = new PdfDocument())
             {
-var page = document.Pages.Add();
+                var page = document.Pages.Add();
                 var gfx = page.Graphics;
                 var font = new PdfStandardFont(PdfFontFamily.Helvetica, 12);
                 var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 14, PdfFontStyle.Bold);

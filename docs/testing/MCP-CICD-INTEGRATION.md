@@ -162,7 +162,7 @@ jobs:
 
           foreach ($form in $forms) {
             Write-Host "Validating $form..."
-            
+
             # Note: Requires JSON-RPC wrapper script (see PowerShell Helpers below)
             $result = & scripts/testing/invoke-mcp-tool.ps1 `
               -Tool "ValidateFormTheme" `
@@ -170,7 +170,7 @@ jobs:
                 formTypeName = "WileyWidget.WinForms.Forms.$form"
                 expectedTheme = "Office2019Colorful"
               }
-            
+
             if ($result.Contains("❌")) {
               $failures += $form
               Write-Host "::error::$form failed theme validation"
@@ -254,7 +254,7 @@ jobs:
             $result = & scripts/testing/invoke-mcp-tool.ps1 `
               -Tool "ValidateFormTheme" `
               -Params @{ formTypeName = "WileyWidget.WinForms.Forms.$form" }
-            
+
             $report += @{
               form = $form
               passed = -not $result.Contains("❌")
