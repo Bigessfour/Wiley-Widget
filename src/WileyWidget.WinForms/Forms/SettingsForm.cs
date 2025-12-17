@@ -84,6 +84,7 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnShown(e);
             _logger.LogDebug("SettingsForm shown to user");
+        }
 
         private static IThemeService ResolveThemeService()
         {

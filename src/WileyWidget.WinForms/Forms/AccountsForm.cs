@@ -99,9 +99,10 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnShown(e);
             _logger.LogDebug("AccountsForm shown to user");
+        }
 
-            [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
-            private void InitializeComponent()
+        [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters", MessageId = "System.Windows.Forms.Form.set_Text")]
+        private void InitializeComponent()
             {
                 Text = Resources.FormTitle;
                 Size = new Size(1400, 900);

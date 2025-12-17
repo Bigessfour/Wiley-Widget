@@ -75,6 +75,7 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnClosed(e);
             _logger?.LogInformation("SplashForm closed");
+        }
 
         private void InitializeForm()
         {

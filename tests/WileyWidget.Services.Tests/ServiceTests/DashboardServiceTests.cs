@@ -22,6 +22,7 @@ namespace WileyWidget.Services.Tests.ServiceTests;
 /// </summary>
 public sealed class DashboardServiceTests : IDisposable
 {
+    private readonly Mock<ILogger<DashboardService>> _mockLogger;
     private readonly Mock<IBudgetRepository> _mockBudgetRepository;
     private readonly Mock<IMunicipalAccountRepository> _mockAccountRepository;
     private readonly Mock<ICacheService> _mockCacheService;
@@ -31,6 +32,7 @@ public sealed class DashboardServiceTests : IDisposable
 
     public DashboardServiceTests()
     {
+        _mockLogger = new Mock<ILogger<DashboardService>>();
         _mockBudgetRepository = new Mock<IBudgetRepository>();
         _mockAccountRepository = new Mock<IMunicipalAccountRepository>();
         _mockCacheService = new Mock<ICacheService>();
@@ -42,6 +44,7 @@ public sealed class DashboardServiceTests : IDisposable
         _mockConfiguration.Setup(c => c.GetSection("UI:DefaultFiscalYear")).Returns(_mockConfigSection.Object);
 
         _service = new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             _mockCacheService.Object,
@@ -49,12 +52,13 @@ public sealed class DashboardServiceTests : IDisposable
     }
 
     [Fact]
-    public void Constructor_ShouldThrowArgumentNullException_WhenBudgetRepositoryIsNull()
+    public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
     {
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
             null!,
+            _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             _mockCacheService.Object,
             _mockConfiguration.Object);
@@ -62,7 +66,7 @@ public sealed class DashboardServiceTests : IDisposable
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("budgetRepository");
+            .WithParameterName("logger");
     }
 
     [Fact]
@@ -71,6 +75,7 @@ public sealed class DashboardServiceTests : IDisposable
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             null!,
             _mockCacheService.Object,
@@ -88,6 +93,7 @@ public sealed class DashboardServiceTests : IDisposable
         // Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
         Action act = () => new DashboardService(
+            _mockLogger.Object,
             _mockBudgetRepository.Object,
             _mockAccountRepository.Object,
             null,

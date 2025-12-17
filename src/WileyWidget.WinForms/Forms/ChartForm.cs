@@ -74,6 +74,7 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnShown(e);
             _logger.LogDebug("ChartForm shown to user");
+        }
 
         private void InitializeComponent()
         {
