@@ -76,16 +76,26 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
 
             // Attempt to cache the result, with fallback on disposal
             try
-        {
-            _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
-        }
-        catch (ObjectDisposedException)
-        {
-            // Cache is disposed; skip caching but don't fail
-            _logger.LogWarning("MemoryCache is disposed; skipping cache update for utility customers.");
-        }
+            {
+                _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Cache is disposed; skip caching but don't fail
+                _logger.LogWarning("MemoryCache is disposed; skipping cache update for utility customers.");
+            }
 
-        return customers;
+            activity?.SetTag("result.count", customers.Count());
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogDebug("Returning {Count} utility customers from database", customers.Count());
+            return customers;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error retrieving all utility customers");
+            throw;
+        }
     }
 
     /// <summary>
