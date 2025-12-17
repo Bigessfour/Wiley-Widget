@@ -38,7 +38,7 @@ namespace WileyWidget.WinForms.Forms
                 throw new ArgumentNullException(nameof(mainForm));
             }
 
-            _logger.LogDebug("SettingsForm constructor started");
+            _logger.Debug("SettingsForm constructor started");
             _themeService = ResolveThemeService();
 
             // Only set MdiParent if MainForm is in MDI mode
@@ -66,13 +66,13 @@ namespace WileyWidget.WinForms.Forms
             // Initialize form controls and settings panel
             InitializeFormControls();
 
-            _logger.LogInformation("SettingsForm initialized successfully");
+            _logger.Information("SettingsForm initialized successfully");
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            _logger.LogInformation("SettingsForm loaded");
+            _logger.Information("SettingsForm loaded");
 
             if (MdiParent is MainForm mf)
             {
@@ -90,13 +90,13 @@ namespace WileyWidget.WinForms.Forms
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            _logger.LogInformation("SettingsForm closed");
+            _logger.Information("SettingsForm closed");
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            _logger.LogDebug("SettingsForm shown to user");
+            _logger.Debug("SettingsForm shown to user");
         }
 
         private static IThemeService ResolveThemeService()

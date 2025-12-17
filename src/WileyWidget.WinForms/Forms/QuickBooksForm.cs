@@ -16,7 +16,6 @@ public partial class QuickBooksForm : Form
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<QuickBooksForm> _logger;
     private readonly IQuickBooksService _quickBooksService;
-    private bool _isConnected;
 
     // UI Controls
     private Label? _statusLabel;
@@ -423,17 +422,17 @@ public partial class QuickBooksForm : Form
             Invoke(() =>
             {
                 _connectButton!.Enabled = enabled;
-                _disconnectButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
-                _syncButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
-                _importAccountsButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
+                _disconnectButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
+                _syncButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
+                _importAccountsButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
             });
         }
         else
         {
             _connectButton!.Enabled = enabled;
-            _disconnectButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
-            _syncButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
-            _importAccountsButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected"));
+            _disconnectButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
+            _syncButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
+            _importAccountsButton!.Enabled = enabled && (_statusLabel!.Text.Contains("Connected", StringComparison.OrdinalIgnoreCase));
         }
     }
 

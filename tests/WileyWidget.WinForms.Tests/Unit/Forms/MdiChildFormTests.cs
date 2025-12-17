@@ -1,5 +1,6 @@
 using Xunit;
 using Xunit.Sdk;
+using Xunit.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using FluentAssertions;
 using WileyWidget.WinForms.Tests.Infrastructure;
+using WileyWidget.WinForms.Tests.Utilities;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
@@ -22,15 +24,17 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms;
 public class MdiChildFormTests : IDisposable
 {
     private readonly WinFormsUiThreadFixture _ui;
+    private readonly ITestOutputHelper _output;
     private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly IConfiguration _mockConfiguration;
     private readonly Mock<ILogger<MainForm>> _mockLogger;
     private MainForm? _mainForm;
     private readonly List<Form> _formsToDispose = new();
 
-    public MdiChildFormTests(WinFormsUiThreadFixture ui)
+    public MdiChildFormTests(WinFormsUiThreadFixture ui, ITestOutputHelper output)
     {
         _ui = ui;
+        _output = output;
         _mockServiceProvider = new Mock<IServiceProvider>();
         _mockLogger = new Mock<ILogger<MainForm>>();
 
@@ -60,10 +64,12 @@ public class MdiChildFormTests : IDisposable
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output, Serilog.Events.LogEventLevel.Debug);
 
             // Act
-            var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+            var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -84,12 +90,14 @@ public class MdiChildFormTests : IDisposable
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
             Action act = () =>
             {
-                var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+                var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
                 _formsToDispose.Add(childForm);
             };
 
@@ -110,10 +118,12 @@ public class MdiChildFormTests : IDisposable
             };
             _formsToDispose.Add(_mainForm);
 
-            var mockViewModel = new Mock<SettingsViewModel>();
+            var mockViewModelLogger = new Mock<ILogger<SettingsViewModel>>();
+            var mockViewModel = new SettingsViewModel(mockViewModelLogger.Object);
+            var mockSettingsLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new SettingsForm(mockViewModel.Object, _mainForm);
+            var childForm = new SettingsForm(mockSettingsLogger, mockViewModel, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -136,9 +146,10 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             var vm = new ChartViewModel(mockLogger.Object, mockDashboardSvc.Object);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new ChartForm(vm, _mainForm);
+            var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert
@@ -162,11 +173,12 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             var vm = new ChartViewModel(mockLogger.Object, mockDashboardSvc.Object);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
             Action act = () =>
             {
-                var childForm = new ChartForm(vm, _mainForm);
+                var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
                 _formsToDispose.Add(childForm);
             };
 
@@ -190,9 +202,10 @@ public class MdiChildFormTests : IDisposable
             var mockLogger = new Mock<ILogger<ChartViewModel>>();
             var mockDashboardSvc = new Mock<IDashboardService>();
             ChartViewModel vm = NewMethod(mockLogger, mockDashboardSvc);
+            var mockChartLogger = XUnitTestLoggerHelper.CreateXUnitTestLogger(_output);
 
             // Act
-            var childForm = new ChartForm(vm, _mainForm);
+            var childForm = new ChartForm(mockChartLogger, vm, _mainForm);
             _formsToDispose.Add(childForm);
 
             // Assert

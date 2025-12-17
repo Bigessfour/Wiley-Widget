@@ -51,7 +51,7 @@ namespace WileyWidget.WinForms.Forms
         public SplashForm(ILogger? logger)
         {
             _logger = logger;
-            _logger?.LogDebug("SplashForm constructor started");
+            _logger?.Debug("SplashForm constructor started");
 
             // Initialize timers first
             _fadeInTimer = new Timer { Interval = FADE_TIMER_INTERVAL_MS };
@@ -63,19 +63,19 @@ namespace WileyWidget.WinForms.Forms
             ApplySfSkinManagerTheme(); // Apply theme AFTER controls are created so cascade works
             WireEvents();
 
-            _logger?.LogInformation("SplashForm initialized successfully");
+            _logger?.Information("SplashForm initialized successfully");
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            _logger?.LogInformation("SplashForm loaded");
+            _logger?.Information("SplashForm loaded");
         }
 
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            _logger?.LogInformation("SplashForm closed");
+            _logger?.Information("SplashForm closed");
         }
 
         private void InitializeForm()

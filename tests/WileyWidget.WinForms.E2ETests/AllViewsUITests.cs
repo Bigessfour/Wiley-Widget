@@ -315,17 +315,10 @@ namespace WileyWidget.WinForms.E2ETests
                             {
                                 // Try to close the popup
                                 var closeButton = window.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button).And(cf.ByName("OK").Or(cf.ByName("Close"))));
-                                if (closeButton != null)
+                                var button = closeButton?.AsButton();
+                                if (button != null)
                                 {
-                                    var button = closeButton?.AsButton();
-                                    if (button != null)
-                                    {
-                                        button.Click();
-                                    }
-                                    else
-                                    {
-                                        window.AsWindow().Close();
-                                    }
+                                    button.Click();
                                 }
                                 else
                                 {

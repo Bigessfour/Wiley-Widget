@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
@@ -29,17 +30,20 @@ public static class FlaUITestLoggerHelper
         string testName,
         LogEventLevel minimumLevel = LogEventLevel.Debug)
     {
+        if (testName == null) throw new ArgumentNullException(nameof(testName));
+
         Directory.CreateDirectory(TestLogsPath);
 
         var sanitizedTestName = SanitizeFileName(testName);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         var logFilePath = Path.Combine(TestLogsPath, $"{sanitizedTestName}_{timestamp}.log");
 
         return new LoggerConfiguration()
             .MinimumLevel.Is(minimumLevel)
-            .WriteTo.Console()
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .WriteTo.File(
                 logFilePath,
+                formatProvider: CultureInfo.InvariantCulture,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .Enrich.FromLogContext()
             .Enrich.WithProperty("TestName", testName)
@@ -102,6 +106,8 @@ public static class FlaUITestLoggerHelper
     /// <param name="elementName">UI element name</param>
     public static void LogAutomationAction(Serilog.ILogger logger, string action, string elementName)
     {
+        if (logger == null) throw new ArgumentNullException(nameof(logger));
+
         logger.Information("UI Automation: {Action} on element '{ElementName}'", action, elementName);
     }
 
@@ -120,6 +126,8 @@ public static class FlaUITestLoggerHelper
         object actual,
         bool success)
     {
+        if (logger == null) throw new ArgumentNullException(nameof(logger));
+
         if (success)
         {
             logger.Information("Assertion PASSED: {AssertionType} - Expected: {Expected}, Actual: {Actual}",
@@ -140,6 +148,8 @@ public static class FlaUITestLoggerHelper
     /// <param name="elapsedMs">Elapsed milliseconds</param>
     public static void LogTestTiming(Serilog.ILogger logger, string phaseName, long elapsedMs)
     {
+        if (logger == null) throw new ArgumentNullException(nameof(logger));
+
         logger.Information("Test Phase '{Phase}' completed in {ElapsedMs}ms", phaseName, elapsedMs);
     }
 

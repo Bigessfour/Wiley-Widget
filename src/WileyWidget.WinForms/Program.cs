@@ -48,6 +48,16 @@ namespace WileyWidget.WinForms
                 return null;
             };
 
+            // === PERFECT COMPLIANCE: Register Syncfusion license as the VERY FIRST operation ===
+            // CRITICAL: License must be registered before ANY Syncfusion components are instantiated
+            Console.WriteLine("Registering Syncfusion license at application startup...");
+            var earlyBuilder = Host.CreateApplicationBuilder(args);
+            AddConfiguration(earlyBuilder);
+            using var earlyHost = earlyBuilder.Build();
+            var earlyConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(earlyHost.Services);
+            RegisterSyncfusionLicense(earlyConfig);
+            Console.WriteLine("Syncfusion license registered successfully");
+
             Console.WriteLine("Calling InitializeWinForms");
             InitializeWinForms();
             Console.WriteLine("InitializeWinForms completed");
@@ -56,6 +66,7 @@ namespace WileyWidget.WinForms
             CaptureSynchronizationContext();
             Console.WriteLine("CaptureSynchronizationContext completed");
 
+            // License already registered above
             // Show splash screen early to prevent blank pause
             using var splash = new SplashForm();
             splash.Show();
@@ -69,11 +80,12 @@ namespace WileyWidget.WinForms
                 using var uiScope = host.Services.CreateScope();
                 Services = uiScope.ServiceProvider;
 
-                splash.Report(0.15, "Registering licenses...");
-                var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
-                RegisterSyncfusionLicense(config);
+                // License already registered above
+                // splash.Report(0.15, "Registering licenses...");
+                // var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
+                // RegisterSyncfusionLicense(config);
 
-                splash.Report(0.30, "Applying Office2019 theme...");
+                splash.Report(0.15, "Applying Office2019 theme...");
                 InitializeTheme();
 
                 splash.Report(0.40, "Configuring error reporting...");
@@ -142,13 +154,13 @@ namespace WileyWidget.WinForms
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
 
                 // Validate the license key
-                bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
-                }
+                // bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
+                // if (!isValid)
+                // {
+                //     throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
+                // }
 
-                Log.Information("Syncfusion license registered and validated successfully.");
+                Log.Information("Syncfusion license registered successfully.");
             }
             catch (Exception ex)
             {

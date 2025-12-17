@@ -1,39 +1,42 @@
 using Microsoft.Extensions.Logging;
-using NUnit.Framework;
+using Xunit.Abstractions;
 using Serilog;
 using Serilog.Events;
 
 namespace WileyWidget.WinForms.Tests.Utilities;
 
 /// <summary>
-/// Helper class for configuring Serilog logging in NUnit tests.
-/// Forwards Serilog output to NUnit's TestContext for test diagnostics.
+/// Helper class for configuring Serilog logging in XUnit tests.
+/// Forwards Serilog output to XUnit's ITestOutputHelper for test diagnostics.
 /// </summary>
-public static class NUnitTestLoggerHelper
+public static class XUnitTestLoggerHelper
 {
     /// <summary>
-    /// Creates a Serilog logger configured to output to NUnit test output.
+    /// Creates a Serilog logger configured to output to XUnit test output.
     /// </summary>
+    /// <param name="output">XUnit test output helper</param>
     /// <param name="minimumLevel">Minimum log level (default: Debug)</param>
     /// <returns>Configured Serilog ILogger</returns>
-    public static Serilog.ILogger CreateNUnitTestLogger(LogEventLevel minimumLevel = LogEventLevel.Debug)
+    public static Serilog.ILogger CreateXUnitTestLogger(ITestOutputHelper output, LogEventLevel minimumLevel = LogEventLevel.Debug)
     {
         return new LoggerConfiguration()
             .MinimumLevel.Is(minimumLevel)
-            .WriteTo.NUnitOutput()
+            .WriteTo.TestOutput(output, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", formatProvider: System.Globalization.CultureInfo.InvariantCulture)
             .CreateLogger();
     }
 
     /// <summary>
-    /// Creates a Microsoft.Extensions.Logging.ILoggerFactory configured for NUnit tests.
+    /// Creates a Microsoft.Extensions.Logging.ILoggerFactory configured for XUnit tests.
     /// Use this to create ILogger&lt;T&gt; instances for dependency injection in tests.
     /// </summary>
+    /// <param name="output">XUnit test output helper</param>
     /// <param name="minimumLevel">Minimum log level (default: Debug)</param>
     /// <returns>Configured ILoggerFactory</returns>
-    public static ILoggerFactory CreateNUnitLoggerFactory(
+    public static ILoggerFactory CreateXUnitLoggerFactory(
+        ITestOutputHelper output,
         Microsoft.Extensions.Logging.LogLevel minimumLevel = Microsoft.Extensions.Logging.LogLevel.Debug)
     {
-        var serilogLogger = CreateNUnitTestLogger(ConvertLogLevel(minimumLevel));
+        var serilogLogger = CreateXUnitTestLogger(output, ConvertLogLevel(minimumLevel));
 
         return LoggerFactory.Create(builder =>
         {
@@ -43,37 +46,48 @@ public static class NUnitTestLoggerHelper
     }
 
     /// <summary>
-    /// Creates a strongly-typed ILogger&lt;T&gt; for use in NUnit tests.
+    /// Creates a strongly-typed ILogger&lt;T&gt; for use in XUnit tests.
     /// </summary>
     /// <typeparam name="T">Type to associate with the logger</typeparam>
+    /// <param name="output">XUnit test output helper</param>
     /// <param name="minimumLevel">Minimum log level (default: Debug)</param>
     /// <returns>Configured ILogger&lt;T&gt;</returns>
-    public static ILogger<T> CreateNUnitLogger<T>(
+    public static ILogger<T> CreateXUnitLogger<T>(
+        ITestOutputHelper output,
         Microsoft.Extensions.Logging.LogLevel minimumLevel = Microsoft.Extensions.Logging.LogLevel.Debug)
     {
-        var factory = CreateNUnitLoggerFactory(minimumLevel);
+#pragma warning disable CA2000 // ILoggerFactory should be disposed, but loggers created from it are used throughout test lifetime
+        var factory = CreateXUnitLoggerFactory(output, minimumLevel);
+#pragma warning restore CA2000
         return factory.CreateLogger<T>();
     }
 
     /// <summary>
-    /// Configures the global Serilog.Log.Logger for NUnit test scenarios.
-    /// Call this in [SetUp] method.
-    /// IMPORTANT: Call Serilog.Log.CloseAndFlush() in [TearDown] to avoid resource leaks.
+    /// Configures the global Serilog.Log.Logger for XUnit test scenarios.
+    /// Call this in test constructor or [SetUp] method.
+    /// IMPORTANT: Call Serilog.Log.CloseAndFlush() in test cleanup to avoid resource leaks.
     /// </summary>
+    /// <param name="output">XUnit test output helper</param>
     /// <param name="minimumLevel">Minimum log level (default: Debug)</param>
-    public static void ConfigureGlobalNUnitLogger(LogEventLevel minimumLevel = LogEventLevel.Debug)
+    public static void ConfigureGlobalXUnitLogger(ITestOutputHelper output, LogEventLevel minimumLevel = LogEventLevel.Debug)
     {
-        Log.Logger = CreateNUnitTestLogger(minimumLevel);
+        Log.Logger = CreateXUnitTestLogger(output, minimumLevel);
     }
 
     /// <summary>
-    /// Writes a log message directly to NUnit TestContext.
+    /// Writes a log message directly to XUnit TestOutput.
     /// Use this for quick diagnostic messages without full Serilog setup.
     /// </summary>
+    /// <param name="output">XUnit test output helper</param>
     /// <param name="message">Message to write</param>
-    public static void WriteToNUnit(string message)
+    public static void WriteToXUnit(ITestOutputHelper output, string message)
     {
-        TestContext.WriteLine(message);
+        if (output is null)
+        {
+            throw new ArgumentNullException(nameof(output));
+        }
+
+        output.WriteLine(message);
     }
 
     /// <summary>
@@ -95,38 +109,32 @@ public static class NUnitTestLoggerHelper
 }
 
 /// <summary>
-/// Example usage class demonstrating NUnit test logging patterns.
+/// Example usage class demonstrating XUnit test logging patterns.
 /// </summary>
 /// <example>
 /// <code>
-/// [TestFixture]
 /// public class MyServiceTests
 /// {
+///     private readonly ITestOutputHelper _output;
 ///     private ILogger&lt;MyService&gt; _logger;
 ///
-///     [SetUp]
-///     public void Setup()
+///     public MyServiceTests(ITestOutputHelper output)
 ///     {
-///         _logger = NUnitTestLoggerHelper.CreateNUnitLogger&lt;MyService&gt;();
+///         _output = output;
+///         _logger = XUnitTestLoggerHelper.CreateXUnitLogger&lt;MyService&gt;(_output);
 ///     }
 ///
-///     [TearDown]
-///     public void TearDown()
+///     [Fact]
+///     public void TestMethod()
 ///     {
-///         Log.CloseAndFlush();
-///     }
-///
-///     [Test]
-///     public async Task TestMethod()
-///     {
-///         // Logger output will appear in NUnit test output
+///         // Logger output will appear in XUnit test output
 ///         var service = new MyService(_logger);
-///         await service.DoWorkAsync();
+///         // ... test logic
 ///     }
 /// }
 /// </code>
 /// </example>
-internal static class NUnitTestLoggerExamples
+internal static class XUnitTestLoggerExamples
 {
     // Example patterns documented in XML doc above
 }

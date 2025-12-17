@@ -23,7 +23,7 @@ public static class TestLoggerHelper
     {
         return new LoggerConfiguration()
             .MinimumLevel.Is(minimumLevel)
-            .WriteTo.TestOutput(testOutputHelper)
+            .WriteTo.TestOutput(testOutputHelper, formatProvider: System.Globalization.CultureInfo.InvariantCulture)
             .CreateLogger();
     }
 
@@ -58,7 +58,9 @@ public static class TestLoggerHelper
         ITestOutputHelper testOutputHelper,
         Microsoft.Extensions.Logging.LogLevel minimumLevel = Microsoft.Extensions.Logging.LogLevel.Debug)
     {
+#pragma warning disable CA2000 // ILoggerFactory should be disposed, but loggers created from it are used throughout test lifetime
         var factory = CreateTestLoggerFactory(testOutputHelper, minimumLevel);
+#pragma warning restore CA2000
         return factory.CreateLogger<T>();
     }
 

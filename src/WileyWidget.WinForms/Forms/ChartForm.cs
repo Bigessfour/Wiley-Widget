@@ -34,7 +34,7 @@ namespace WileyWidget.WinForms.Forms
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
 
-            _logger.LogDebug("ChartForm constructor started");
+            _logger.Debug("ChartForm constructor started");
             InitializeComponent();
 
             // Only set MdiParent if MainForm is in MDI mode
@@ -56,24 +56,24 @@ namespace WileyWidget.WinForms.Forms
 
             FormClosed += (_, _) =>
             {
-                _logger.LogInformation("ChartForm closed");
+                _logger.Information("ChartForm closed");
                 _vm.PropertyChanged -= VmOnPropertyChanged;
                 UnwireCollectionChanges();
             };
 
-            _logger.LogInformation("ChartForm initialized successfully");
+            _logger.Information("ChartForm initialized successfully");
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            _logger.LogInformation("ChartForm loaded");
+            _logger.Information("ChartForm loaded");
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            _logger.LogDebug("ChartForm shown to user");
+            _logger.Debug("ChartForm shown to user");
         }
 
         private void InitializeComponent()
