@@ -1,0 +1,76 @@
+name: Basic CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-test:
+    name: Build & Unit Tests (basic)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    concurrency:
+      group: basic-ci-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet
+          key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            nuget-packages-${{ runner.os }}-
+
+      - name: dotnet format (whitespace)
+        run: dotnet format whitespace --verify-no-changes
+        continue-on-error: true
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Build solution
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run unit tests - Services
+        shell: pwsh
+        run: |
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --logger "trx;LogFileName=services-tests.trx" --results-directory ./TestResults/Services
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Run unit tests - WinForms
+        shell: pwsh
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --logger "trx;LogFileName=winforms-tests.trx" --results-directory ./TestResults/WinForms
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-ci-test-results
+          path: TestResults
+          retention-days: 7
+
+      - name: Announce success
+        if: success()
+        run: echo "Basic CI completed successfully"
