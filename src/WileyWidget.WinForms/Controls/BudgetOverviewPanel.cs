@@ -259,10 +259,10 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Budget metrics grid",
                 AccessibleDescription = "Displays budget metrics by department"
             };
-            // Theme applied automatically by SfSkinManager cascade from parent form
+            // Theme applied automatically by SkinManager cascade from parent form
             ConfigureGridColumns();
 
-            // Grid theming handled by SfSkinManager cascade
+            // Grid theming handled by SkinManager cascade
 
             mainSplit.Panel2.Controls.Add(_metricsGrid);
 

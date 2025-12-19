@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using System.Drawing;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Theming
@@ -11,7 +12,7 @@ namespace WileyWidget.WinForms.Theming
     /// </summary>
     public static class ThemeManager
     {
-        public const string VisualTheme = ThemeColors.DefaultTheme;
+        public const string VisualTheme = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
         public static AppTheme CurrentTheme { get; private set; } = AppTheme.Office2019Dark;
 
@@ -26,13 +27,13 @@ namespace WileyWidget.WinForms.Theming
             if (control is Form form)
             {
                 // Apply theme to the form; SkinManager cascades to child Syncfusion controls.
-                ThemeColors.ApplyTheme(form);
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(form);
                 return;
             }
 
             try
             {
-                SfSkinManager.SetVisualStyle(control, ThemeColors.DefaultTheme);
+                SkinManager.SetVisualStyle(control, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             }
             catch
             {

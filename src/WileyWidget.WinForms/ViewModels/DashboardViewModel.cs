@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using Microsoft.Extensions.Configuration;
+using WileyWidget.WinForms.Logging;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -36,7 +37,7 @@ namespace WileyWidget.WinForms.ViewModels
         private const int MaxRetryAttempts = 3;
         private bool _disposed;
         private readonly IConfiguration? _configuration;
-        private readonly System.Threading.SynchronizationContext? _uiContext;
+        private System.Threading.SynchronizationContext? _uiContext;
 
         #region Observable Properties
 
@@ -51,6 +52,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private bool isLoading;
+
+        [ObservableProperty]
+        private bool hasError;
 
         [ObservableProperty]
         private string? errorMessage;
@@ -147,11 +151,33 @@ namespace WileyWidget.WinForms.ViewModels
             ILogger<DashboardViewModel>? logger,
             IConfiguration? configuration = null)
         {
+            // CRITICAL: Use NullLogger fallback to prevent null reference in error handlers
+            _logger = logger ?? WileyWidget.WinForms.Logging.NullLogger<DashboardViewModel>.Instance;
+
+            // Log if fallback was used (indicates DI misconfiguration)
+            if (logger == null)
+            {
+                Console.WriteLine("[WARNING] DashboardViewModel: ILogger<DashboardViewModel> is null - using NullLogger fallback");
+            }
+
+            // Store repositories (will validate in LoadDashboardDataAsync)
             _budgetRepository = budgetRepository;
             _accountRepository = accountRepository;
-            _logger = logger ?? NullLogger<DashboardViewModel>.Instance;
             _configuration = configuration;
-            _uiContext = System.Threading.SynchronizationContext.Current; // Capture UI thread context
+
+            // Capture UI context (may be null if called off UI thread - will be set via SetUiContext)
+            _uiContext = System.Threading.SynchronizationContext.Current;
+
+            if (_uiContext == null)
+            {
+                _logger.LogWarning("SynchronizationContext.Current is null in constructor - SetUiContext() must be called from UI thread");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] DashboardViewModel ctor: SynchronizationContext.Current is NULL (expected - will be set by form)");
+            }
+            else
+            {
+                _logger.LogInformation("SynchronizationContext captured in constructor: {ContextType}", _uiContext.GetType().Name);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] DashboardViewModel ctor: SynchronizationContext captured - Type: {_uiContext.GetType().Name}");
+            }
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
@@ -162,11 +188,24 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 InitializeSampleData();
             }
+
+            _logger.LogDebug("DashboardViewModel initialized");
         }
 
         public DashboardViewModel()
-            : this(null, null, NullLogger<DashboardViewModel>.Instance, null)
+            : this(null, null, WileyWidget.WinForms.Logging.NullLogger<DashboardViewModel>.Instance, null)
         {
+        }
+
+        /// <summary>
+        /// Sets the UI SynchronizationContext for marshaling collection updates.
+        /// Must be called from the UI thread before any async operations.
+        /// </summary>
+        public void SetUiContext(System.Threading.SynchronizationContext context)
+        {
+            _uiContext = context ?? throw new ArgumentNullException(nameof(context));
+            _logger.LogInformation("DashboardViewModel: UI SynchronizationContext set (Type: {ContextType})", context.GetType().Name);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] DashboardViewModel: SetUiContext called - Type: {context.GetType().Name}");
         }
 
         /// <summary>
@@ -174,10 +213,34 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task LoadDashboardDataAsync()
         {
+            _logger.LogInformation("=== LoadDashboardDataAsync STARTED ===");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: ENTRY");
+
+            // Validate dependencies defensively
+            ValidateCriticalDependencies();
+
+            // If critical dependencies are missing, stop loading
+            if (HasError)
+            {
+                IsLoading = false;
+                _logger.LogError("Critical dependencies missing - aborting dashboard load");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Critical dependencies missing - aborting");
+                return;
+            }
+
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Dependencies validated successfully");
+
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
 
-            await _loadLock.WaitAsync();
+            _logger.LogDebug("Acquiring load lock...");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Acquiring semaphore");
+
+            // Keep on UI thread to ensure property updates work correctly
+            await _loadLock.WaitAsync().ConfigureAwait(true);
+
+            _logger.LogDebug("Load lock acquired");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Semaphore acquired");
             try
             {
                 // Cancel any existing load operation
@@ -264,19 +327,17 @@ namespace WileyWidget.WinForms.ViewModels
 
                         if (analysis != null)
                         {
-                            BudgetAnalysis = analysis;
-
-                            // Update top-level summary
-                            TotalBudgeted = analysis.TotalBudgeted;
-                            TotalActual = analysis.TotalActual;
-                            TotalVariance = analysis.TotalVariance;
-                            VariancePercentage = analysis.TotalVariancePercentage;
-
-                            // Update fund summaries on UI thread (use Send to block until complete)
+                            // Update all properties on UI thread (use Post to avoid deadlock and ensure PropertyChanged fires on UI thread)
                             if (_uiContext != null)
                             {
-                                _uiContext.Send(_ =>
+                                _uiContext.Post(_ =>
                                 {
+                                    BudgetAnalysis = analysis;
+                                    TotalBudgeted = analysis.TotalBudgeted;
+                                    TotalActual = analysis.TotalActual;
+                                    TotalVariance = analysis.TotalVariance;
+                                    VariancePercentage = analysis.TotalVariancePercentage;
+
                                     FundSummaries.Clear();
                                     foreach (var fund in analysis.FundSummaries)
                                     {
@@ -286,17 +347,16 @@ namespace WileyWidget.WinForms.ViewModels
                             }
                             else
                             {
-                                FundSummaries.Clear();
-                                foreach (var fund in analysis.FundSummaries)
-                                {
-                                    FundSummaries.Add(fund);
-                                }
+                                _logger.LogError("DashboardViewModel: _uiContext is null! Cannot update collections safely from background thread.");
+                                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ERROR: _uiContext is NULL - cannot update collections");
+                                ErrorMessage = "UI context not available - cannot update dashboard";
+                                return;
                             }
 
-                            // Update department summaries on UI thread (use Send to block until complete)
+                            // Update department summaries on UI thread (use Post to avoid deadlock)
                             if (_uiContext != null)
                             {
-                                _uiContext.Send(_ =>
+                                _uiContext.Post(_ =>
                                 {
                                     DepartmentSummaries.Clear();
                                     foreach (var dept in analysis.DepartmentSummaries)
@@ -305,15 +365,6 @@ namespace WileyWidget.WinForms.ViewModels
                                     }
                                     ActiveDepartments = analysis.DepartmentSummaries.Count;
                                 }, null);
-                            }
-                            else
-                            {
-                                DepartmentSummaries.Clear();
-                                foreach (var dept in analysis.DepartmentSummaries)
-                                {
-                                    DepartmentSummaries.Add(dept);
-                                }
-                                ActiveDepartments = analysis.DepartmentSummaries.Count;
                             }
 
                             // Get top variances (largest deviations) and update on UI thread
@@ -324,7 +375,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                             if (_uiContext != null)
                             {
-                                _uiContext.Send(_ =>
+                                _uiContext.Post(_ =>
                                 {
                                     TopVariances.Clear();
                                     foreach (var variance in topVarList)
@@ -333,48 +384,60 @@ namespace WileyWidget.WinForms.ViewModels
                                     }
                                 }, null);
                             }
-                            else
-                            {
-                                TopVariances.Clear();
-                                foreach (var variance in topVarList)
-                                {
-                                    TopVariances.Add(variance);
-                                }
-                            }
                         }
 
                         // Load account count
-                        AccountCount = await _accountRepository.GetCountAsync(cancellationToken).ConfigureAwait(false);
+                        var accountCount = await _accountRepository.GetCountAsync(cancellationToken).ConfigureAwait(false);
 
                         // Calculate revenue and expenses from budget entries
                         var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken).ConfigureAwait(false);
-                        TotalRevenue = budgetEntries
+                        var totalRevenue = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
                             .Sum(be => be.ActualAmount);
 
-                        TotalExpenses = budgetEntries
+                        var totalExpenses = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("5", StringComparison.Ordinal) ||
                                          be.AccountNumber.StartsWith("6", StringComparison.Ordinal)) // Expense accounts typically start with 5 or 6
                             .Sum(be => be.ActualAmount);
 
-                        NetIncome = TotalRevenue - TotalExpenses;
+                        var netIncome = totalRevenue - totalExpenses;
 
-                        // Update gauge values (0-100 scale representing percentage of budget used)
-                        TotalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
-                        RevenueGauge = TotalBudgeted > 0 ? (float)((TotalRevenue / (TotalBudgeted * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
-                        ExpensesGauge = TotalBudgeted > 0 ? (float)((TotalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
-                        NetPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(NetIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
+                        // Calculate gauge values (0-100 scale representing percentage of budget used)
+                        var totalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
+                        var revenueGauge = TotalBudgeted > 0 ? (float)((totalRevenue / (TotalBudgeted * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
+                        var expensesGauge = TotalBudgeted > 0 ? (float)((totalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
+                        var netPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(netIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
 
-                        // Update metrics collection for grid display (must be on UI thread)
-                        // Use Send to ensure completion before method returns
+                        // Update all properties on UI thread (must be on UI thread to avoid cross-thread exceptions)
+                        // Use Post to avoid deadlock and ensure PropertyChanged fires on UI thread
                         if (_uiContext != null)
                         {
-                            _uiContext.Send(_ =>
+                            _uiContext.Post(_ =>
                             {
                                 try
                                 {
+                                    // Update calculated values
+                                    AccountCount = accountCount;
+                                    TotalRevenue = totalRevenue;
+                                    TotalExpenses = totalExpenses;
+                                    NetIncome = netIncome;
+
+                                    // Update gauge values
+                                    TotalBudgetGauge = totalBudgetGauge;
+                                    RevenueGauge = revenueGauge;
+                                    ExpensesGauge = expensesGauge;
+                                    NetPositionGauge = netPositionGauge;
+
+                                    // Update metrics and revenue data
                                     UpdateMetricsCollection();
                                     PopulateMonthlyRevenueData(currentFiscalYear);
+
+                                    // Update metadata
+                                    MunicipalityName = "Town of Wiley";
+                                    FiscalYear = $"FY {currentFiscalYear}";
+                                    LastUpdated = DateTime.Now;
+                                    StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
+
                                     _logger.LogInformation("Dashboard UI updates completed: {MetricsCount} metrics, {RevenueCount} revenue data points",
                                         Metrics.Count, MonthlyRevenueData.Count);
                                 }
@@ -387,23 +450,30 @@ namespace WileyWidget.WinForms.ViewModels
                         else
                         {
                             // Direct call (already on UI thread)
+                            AccountCount = accountCount;
+                            TotalRevenue = totalRevenue;
+                            TotalExpenses = totalExpenses;
+                            NetIncome = netIncome;
+                            TotalBudgetGauge = totalBudgetGauge;
+                            RevenueGauge = revenueGauge;
+                            ExpensesGauge = expensesGauge;
+                            NetPositionGauge = netPositionGauge;
                             UpdateMetricsCollection();
                             PopulateMonthlyRevenueData(currentFiscalYear);
+                            MunicipalityName = "Town of Wiley";
+                            FiscalYear = $"FY {currentFiscalYear}";
+                            LastUpdated = DateTime.Now;
+                            StatusText = $"Loaded {accountCount} accounts, {ActiveDepartments} departments";
                         }
 
-                        // Update metadata
-                        MunicipalityName = "Town of Wiley";
-                        FiscalYear = $"FY {currentFiscalYear}";
-                        LastUpdated = DateTime.Now;
-                        StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
-
                         _logger.LogInformation("Dashboard data loaded successfully: {ItemCount} metrics, Revenue: {Revenue:C}, Expenses: {Expenses:C}",
-                            Metrics.Count, TotalRevenue, TotalExpenses);
+                            Metrics.Count, totalRevenue, totalExpenses);
                         _logger.LogInformation("Dashboard metrics updated: NetPosition={NetPosition:C}, Budgeted={Budgeted:C}, Actual={Actual:C}",
-                            NetIncome, TotalBudgeted, TotalActual);
+                            netIncome, TotalBudgeted, TotalActual);
                         _logger.LogInformation("Dashboard collections: {FundCount} funds, {DeptCount} departments, {VarianceCount} variances",
                             FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
-                        _logger.LogInformation("Dashboard load completed successfully");
+                        _logger.LogInformation("=== Dashboard load COMPLETED SUCCESSFULLY ===");
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -435,6 +505,8 @@ namespace WileyWidget.WinForms.ViewModels
             }
             finally
             {
+                _logger.LogDebug("Releasing load lock");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Releasing semaphore");
                 _loadLock.Release();
             }
         }
@@ -442,7 +514,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task RefreshDashboardDataAsync()
         {
-            await LoadDashboardDataAsync();
+            await LoadDashboardDataAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -466,32 +538,46 @@ namespace WileyWidget.WinForms.ViewModels
                 var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1);
                 var fiscalYearEnd = new DateTime(fiscalYear, 6, 30);
 
-                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd);
+                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd).ConfigureAwait(false);
 
                 if (analysis != null)
                 {
-                    BudgetAnalysis = analysis;
-                    TotalBudgeted = analysis.TotalBudgeted;
-                    TotalActual = analysis.TotalActual;
-                    TotalVariance = analysis.TotalVariance;
-                    VariancePercentage = analysis.TotalVariancePercentage;
-
-                    FundSummaries.Clear();
-                    foreach (var fund in analysis.FundSummaries)
+                    // All property and collection updates must be on UI thread
+                    var updateAction = new Action(() =>
                     {
-                        FundSummaries.Add(fund);
-                    }
+                        BudgetAnalysis = analysis;
+                        TotalBudgeted = analysis.TotalBudgeted;
+                        TotalActual = analysis.TotalActual;
+                        TotalVariance = analysis.TotalVariance;
+                        VariancePercentage = analysis.TotalVariancePercentage;
 
-                    DepartmentSummaries.Clear();
-                    foreach (var dept in analysis.DepartmentSummaries)
+                        FundSummaries.Clear();
+                        foreach (var fund in analysis.FundSummaries)
+                        {
+                            FundSummaries.Add(fund);
+                        }
+
+                        DepartmentSummaries.Clear();
+                        foreach (var dept in analysis.DepartmentSummaries)
+                        {
+                            DepartmentSummaries.Add(dept);
+                        }
+
+                        UpdateMetricsCollection();
+
+                        FiscalYear = $"FY {fiscalYear}";
+                        LastUpdated = DateTime.Now;
+                    });
+
+                    if (_uiContext != null)
                     {
-                        DepartmentSummaries.Add(dept);
+                        _uiContext.Post(_ => updateAction(), null);
                     }
-
-                    UpdateMetricsCollection();
-
-                    FiscalYear = $"FY {fiscalYear}";
-                    LastUpdated = DateTime.Now;
+                    else
+                    {
+                        // No UI context - must be on UI thread already or fail
+                        updateAction();
+                    }
                 }
 
                 _logger.LogInformation("Dashboard data for FY {FiscalYear} loaded successfully", fiscalYear);
@@ -694,5 +780,109 @@ namespace WileyWidget.WinForms.ViewModels
                 _disposed = true;
             }
         }
+
+        #region Null Safety & Validation
+
+        /// <summary>
+        /// Guards against null reference by throwing with detailed context.
+        /// Use this to validate critical dependencies before async operations.
+        /// </summary>
+        /// <typeparam name="T">Type of the value to check</typeparam>
+        /// <param name="value">Value to validate</param>
+        /// <param name="parameterName">Name of the parameter (auto-captured)</param>
+        /// <exception cref="InvalidOperationException">Thrown when value is null</exception>
+        private void GuardAgainstNull<T>(T? value, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(value))] string? parameterName = null) where T : class
+        {
+            if (value == null)
+            {
+                var message = $"CRITICAL: Null reference in DashboardViewModel - {parameterName} is null. Check DI registration and initialization order.";
+                _logger.LogCritical(message);
+
+                // Also log to console for immediate visibility during debugging
+                Console.WriteLine($"[CRITICAL NULL] {message}");
+
+                throw new InvalidOperationException(message);
+            }
+        }
+
+        /// <summary>
+        /// Validates all critical dependencies before async data loading operations.
+        /// This prevents null reference exceptions during dashboard load.
+        /// Sets error state if dependencies are missing instead of throwing.
+        /// </summary>
+        private void ValidateCriticalDependencies()
+        {
+            _logger.LogDebug("=== ValidateCriticalDependencies STARTED ===");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: ENTRY");
+
+            // _logger is always valid (falls back to NullLogger)
+            // But verify repositories which are required for data loading
+            if (_budgetRepository == null)
+            {
+                var message = "BudgetRepository is null - dashboard will show error state";
+                _logger.LogWarning(message);
+                Console.WriteLine($"[WARNING] {message}");
+                ErrorMessage = "Budget data unavailable - repository not configured";
+                HasError = true;
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null BudgetRepository");
+            }
+            else
+            {
+                _logger.LogDebug("BudgetRepository is available");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: BudgetRepository OK");
+            }
+
+            if (_accountRepository == null)
+            {
+                var message = "AccountRepository is null - dashboard will show error state";
+                _logger.LogWarning(message);
+                Console.WriteLine($"[WARNING] {message}");
+                if (!HasError)
+                {
+                    ErrorMessage = "Account data unavailable - repository not configured";
+                }
+                HasError = true;
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null AccountRepository");
+            }
+            else
+            {
+                _logger.LogDebug("AccountRepository is available");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: AccountRepository OK");
+            }
+
+            // UI context is CRITICAL - without it, UI updates will fail
+            if (_uiContext == null)
+            {
+                var message = "UI SynchronizationContext is null - UI updates may fail. Call SetUiContext() from DashboardForm constructor.";
+                _logger.LogWarning(message);
+                Console.WriteLine($"[WARNING] {message}");
+                if (!HasError)
+                {
+                    ErrorMessage = "UI context not available - some updates may not display";
+                }
+                HasError = true;
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null UI SynchronizationContext");
+            }
+            else
+            {
+                _logger.LogDebug("UI SynchronizationContext is available (Type: {ContextType})", _uiContext.GetType().Name);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: UI SynchronizationContext OK (Type: {_uiContext.GetType().Name})");
+            }
+
+            if (HasError)
+            {
+                _logger.LogError("Critical dependencies validation failed - HasError=true, ErrorMessage: {ErrorMessage}", ErrorMessage);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: FAILED - HasError=true, ErrorMessage: {ErrorMessage}");
+            }
+            else
+            {
+                _logger.LogDebug("All critical dependencies validated successfully");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: SUCCESS - All dependencies OK");
+            }
+
+            _logger.LogDebug("=== ValidateCriticalDependencies COMPLETED ===");
+        }
+
+        #endregion
     }
 }

@@ -305,7 +305,7 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_topPanel);
 
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
-            // Let SfSkinManager handle theming instead of hardcoded colors
+            // Let SkinManager handle theming instead of hardcoded colors
             _chartControl = new ChartControl { Dock = DockStyle.Fill };
 
             // Apply Metro skin first per demos (chart.Skins = Skins.Metro)
@@ -973,6 +973,8 @@ namespace WileyWidget.WinForms.Controls
                 try { _topPanel?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
                 try { foreach (var t in _toolTips) { try { t?.Dispose(); } catch { } } _toolTips.Clear(); } catch { }
+                // Dispose Syncfusion controls safely
+                _comboDepartmentFilter?.SafeDispose();
             }
 
             base.Dispose(disposing);

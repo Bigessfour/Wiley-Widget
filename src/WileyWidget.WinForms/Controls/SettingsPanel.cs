@@ -307,7 +307,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 ThemeManager.ApplyTheme(parentForm);
             }
-            // Group box colors handled by SfSkinManager theme cascade
+            // Group box colors handled by SkinManager theme cascade
             // Syncfusion per-form skinning is handled by ThemeManager.ApplyTheme(parentForm) above
         }
 
@@ -439,6 +439,10 @@ namespace WileyWidget.WinForms.Controls
                 try { _logLevelToolTip?.Dispose(); } catch { }
                 try { _chkUseDemoData?.Dispose(); } catch { }
                 try { _demoDataToolTip?.Dispose(); } catch { }
+                // Dispose Syncfusion controls safely
+                _themeCombo?.SafeDispose();
+                _fontCombo?.SafeDispose();
+                _cmbLogLevel?.SafeDispose();
             }
             base.Dispose(disposing);
         }

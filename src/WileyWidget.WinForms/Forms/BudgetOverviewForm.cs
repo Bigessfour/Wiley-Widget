@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Themes;
-using WileyWidget.WinForms.Themes;
+using Syncfusion.Windows.Forms;
+using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
@@ -73,8 +75,8 @@ namespace WileyWidget.WinForms.Forms
         // Cancellation token source for async operations
         private CancellationTokenSource? _cts;
 
-        // REMOVED: All custom color properties - SfSkinManager has sole proprietorship over theme/color management
-        // Colors are now managed exclusively through ThemeColors.ApplyTheme() which wraps SfSkinManager
+        // REMOVED: All custom color properties - SkinManager has sole proprietorship over theme/color management
+        // Colors are now managed exclusively through ThemeColors.ApplyTheme() which wraps SkinManager
 
         public BudgetOverviewForm(BudgetOverviewViewModel viewModel, ILogger<BudgetOverviewForm> logger, MainForm mainForm)
         {
@@ -94,7 +96,7 @@ namespace WileyWidget.WinForms.Forms
                 MdiParent = mainForm;
             }
 
-            ThemeColors.ApplyTheme(this);
+            WwThemeColors.ApplyTheme(this);
 
             try
             {
@@ -105,7 +107,7 @@ namespace WileyWidget.WinForms.Forms
                 // Initialize cancellation token source
                 _cts = new CancellationTokenSource();
 
-                Load += async (s, e) =>
+                Load += (s, e) => BeginInvoke(async () =>
                 {
                     await Utilities.AsyncEventHelper.ExecuteAsync(
                         async ct =>
@@ -118,7 +120,7 @@ namespace WileyWidget.WinForms.Forms
                         this,
                         _logger,
                         "Loading budget overview data");
-                };
+                });
 
                 FormClosing += (s, e) =>
                 {
@@ -148,7 +150,7 @@ namespace WileyWidget.WinForms.Forms
 
             Size = new Size(1100, 800);
             StartPosition = FormStartPosition.CenterParent;
-            // REMOVED: BackColor - SfSkinManager theme cascade handles form colors
+            // REMOVED: BackColor - SkinManager theme cascade handles form colors
             MinimumSize = new Size(900, 600);
             FormBorderStyle = FormBorderStyle.Sizable;
             DoubleBuffered = true;
@@ -159,7 +161,7 @@ namespace WileyWidget.WinForms.Forms
                 Name = "HeaderPanel", // Added for proper panel identification
                 Dock = DockStyle.Top,
                 Height = 70,
-                // REMOVED: Manual BackColor override - let SfSkinManager theme handle header colors
+                // REMOVED: Manual BackColor override - let SkinManager theme handle header colors
                 Padding = new Padding(20, 12, 20, 12)
             };
 
@@ -167,7 +169,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = BudgetOverviewFormResources.FormTitle,
                 Font = new Font("Segoe UI", 20, FontStyle.Bold),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(20, 18)
             };
@@ -178,7 +180,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Period:",
                 Font = new Font("Segoe UI", 10),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(headerPanel.Width - 350, 25)
             };
@@ -210,7 +212,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Add Category",
                 Font = new Font("Segoe UI", 9),
-                // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles button colors
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles button colors
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(120, 35),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
@@ -230,7 +232,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "Edit",
                 Font = new Font("Segoe UI", 9),
-                // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles button colors
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles button colors
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(80, 35),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
@@ -258,7 +260,7 @@ namespace WileyWidget.WinForms.Forms
                 Name = "Delete",
                 Text = "Delete",
                 Font = new Font("Segoe UI", 9),
-                // REMOVED: BackColor - SfSkinManager theme cascade handles button colors
+                // REMOVED: BackColor - SkinManager theme cascade handles button colors
                 ForeColor = Color.Red,  // Semantic status color for destructive action
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(80, 35),
@@ -291,7 +293,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = BudgetOverviewFormResources.RefreshButton,
                 Font = new Font("Segoe UI", 10),
-                // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles button colors
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles button colors
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(100, 35),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
@@ -318,7 +320,7 @@ namespace WileyWidget.WinForms.Forms
                 ColumnCount = 4,
                 RowCount = 1,
                 Padding = new Padding(15, 15, 15, 10)
-                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor - SkinManager theme cascade handles panel colors
             };
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             ((TableLayoutPanel)_summaryCardsPanel).ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
@@ -330,6 +332,12 @@ namespace WileyWidget.WinForms.Forms
             var varianceCard = CreateSummaryCard(BudgetOverviewFormResources.VarianceLabel, "$0.00", "", out _varianceValueLabel);
             var percentCard = CreateSummaryCard(BudgetOverviewFormResources.PercentUsedLabel, "0%", "", out _percentUsedValueLabel);
 
+            // Set accessibility names for summary value labels
+            _totalBudgetValueLabel.AccessibleName = "Total Budget Value";
+            _totalActualValueLabel.AccessibleName = "Total Actual Value";
+            _varianceValueLabel.AccessibleName = "Variance Value";
+            _percentUsedValueLabel.AccessibleName = "Percent Used Value";
+
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(budgetCard, 0, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(actualCard, 1, 0);
             ((TableLayoutPanel)_summaryCardsPanel).Controls.Add(varianceCard, 2, 0);
@@ -340,7 +348,7 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Top,
                 Height = 150,
                 Padding = new Padding(0)
-                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor - SkinManager theme cascade handles panel colors
             };
             summaryHost.Controls.Add(_summaryCardsPanel);
 
@@ -350,14 +358,14 @@ namespace WileyWidget.WinForms.Forms
                 Dock = DockStyle.Top,
                 Height = 60,
                 Padding = new Padding(20, 5, 20, 10)
-                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor - SkinManager theme cascade handles panel colors
             };
 
             var progressLabel = new Label
             {
                 Text = "Budget Utilization",
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(20, 5)
             };
@@ -381,7 +389,7 @@ namespace WileyWidget.WinForms.Forms
                 Text = $"  {BudgetOverviewFormResources.CategoryBreakdownTitle}  ",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                // REMOVED: ForeColor, BackColor - SfSkinManager theme cascade handles GroupBox colors
+                // REMOVED: ForeColor, BackColor - SkinManager theme cascade handles GroupBox colors
                 Padding = new Padding(15),
                 Margin = new Padding(15, 10, 15, 10)
             };
@@ -396,7 +404,7 @@ namespace WileyWidget.WinForms.Forms
                 SelectionMode = GridSelectionMode.Extended,
                 AutoGenerateColumns = false,
                 ShowGroupDropArea = false,
-                // REMOVED: BackColor - SfSkinManager.SetVisualStyle handles grid colors
+                // REMOVED: BackColor - SkinManager.SetVisualStyle handles grid colors
                 RowHeight = 40,
                 HeaderRowHeight = 45,
                 AllowSorting = true,
@@ -412,8 +420,8 @@ namespace WileyWidget.WinForms.Forms
                 AllowTriStateSorting = true
             };
 
-            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
-            SfSkinManager.SetVisualStyle(_metricsGrid, "Office2019Colorful");
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SkinManager themes grids automatically via cascade
+            SkinManager.SetVisualStyle(_metricsGrid, "Office2019Colorful");
 
             // Configure columns with proper formatting
             ConfigureGridColumns();
@@ -425,11 +433,11 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Bottom,
                 Height = 45,
-                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor - SkinManager theme cascade handles panel colors
                 Padding = new Padding(15, 8, 15, 8)
             };
 
-            // REMOVED: Custom border drawing - SfSkinManager theme handles panel borders
+            // REMOVED: Custom border drawing - SkinManager theme handles panel borders
 
             _loadingProgress = new ProgressBar
             {
@@ -439,16 +447,18 @@ namespace WileyWidget.WinForms.Forms
                 Visible = false,
                 Location = new Point(15, 12)
             };
+            _loadingProgress.AccessibleName = "Loading Progress";
             statusPanel.Controls.Add(_loadingProgress);
 
             _statusLabel = new Label
             {
                 Text = BudgetOverviewFormResources.LoadingMessage,
                 Font = new Font("Segoe UI", 9),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(145, 14)
             };
+            _statusLabel.AccessibleName = "Status Label";
             statusPanel.Controls.Add(_statusLabel);
 
             // Export button in status bar
@@ -456,7 +466,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = BudgetOverviewFormResources.ExportButton,
                 Font = new Font("Segoe UI", 9),
-                // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles button colors
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles button colors
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(90, 28),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
@@ -553,7 +563,7 @@ namespace WileyWidget.WinForms.Forms
         {
             if (_metricsGrid == null) return;
 
-            // REMOVED: ApplySfDataGridTheme - obsolete method, SfSkinManager themes grids automatically via cascade
+            // REMOVED: ApplySfDataGridTheme - obsolete method, SkinManager themes grids automatically via cascade
 
             // === Header Style ===
             _metricsGrid.Style.HeaderStyle.Font.Size = 10;
@@ -561,30 +571,26 @@ namespace WileyWidget.WinForms.Forms
             // REMOVED: Borders with GridBorderColor - theme handles border styling
 
             // === Cell Style ===
-            // REMOVED: Manual BackColor override - let SfSkinManager theme handle cell colors
-            _metricsGrid.Style.CellStyle.TextColor = ThemeManager.Colors.TextPrimary;
+            // REMOVED: Manual BackColor override - let SkinManager theme handle cell colors
+            // REMOVED: TextColor - theme handles cell text colors
             _metricsGrid.Style.CellStyle.Font.Size = 10;
             // REMOVED: Borders with GridBorderColor - theme handles border styling
             _metricsGrid.Style.CellStyle.VerticalAlignment = System.Windows.Forms.VisualStyles.VerticalAlignment.Center;
 
             // === Selection Style ===
             // REMOVED: Manual BackColor override for selection - theme handles selection colors
-            _metricsGrid.Style.SelectionStyle.TextColor = ThemeManager.Colors.TextPrimary;
+            // REMOVED: TextColor - theme handles selection text colors
 
             // === Row Header Style ===
-            // REMOVED: Manual BackColor override - let SfSkinManager theme handle row header colors
-            _metricsGrid.Style.RowHeaderStyle.TextColor = ThemeManager.Colors.TextPrimary;
+            // REMOVED: Manual BackColor override - let SkinManager theme handle row header colors
+            // REMOVED: TextColor - theme handles row header text colors
 
             // === Border Style ===
             _metricsGrid.Style.BorderStyle = BorderStyle.FixedSingle;
             // REMOVED: BorderColor with GridBorderColor - theme handles border colors
 
             // === Scrollbar Style ===
-            // REMOVED: Manual color overrides for scrollbars - let SfSkinManager theme handle scrollbar colors
-            _metricsGrid.Style.VerticalScrollBar.ThumbColor = ThemeManager.Colors.TextPrimary;
-            _metricsGrid.Style.VerticalScrollBar.ThumbHoverColor = ThemeManager.Colors.TextPrimary;
-            _metricsGrid.Style.HorizontalScrollBar.ThumbColor = ThemeManager.Colors.TextPrimary;
-            _metricsGrid.Style.HorizontalScrollBar.ThumbHoverColor = ThemeManager.Colors.TextPrimary;
+            // REMOVED: Manual color overrides for scrollbars - let SkinManager theme handle scrollbar colors
 
             // === Conditional Row Styling - alternate rows and value-based colors ===
             _metricsGrid.QueryRowStyle += MetricsGrid_QueryRowStyle;
@@ -595,7 +601,7 @@ namespace WileyWidget.WinForms.Forms
         {
             if (e.RowType == RowType.DefaultRow)
             {
-                // REMOVED: Manual alternate row BackColor - let SfSkinManager theme handle row alternation
+                // REMOVED: Manual alternate row BackColor - let SkinManager theme handle row alternation
                 // Theme cascade provides consistent row colors automatically
             }
         }
@@ -675,34 +681,19 @@ namespace WileyWidget.WinForms.Forms
             var card = new Panel
             {
                 Dock = DockStyle.Fill,
-                // REMOVED: BackColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor - SkinManager theme cascade handles panel colors
                 Margin = new Padding(8),
                 Padding = new Padding(15)
             };
 
-            // Custom paint for modern card appearance with shadow effect
-            card.Paint += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-                // REMOVED: Accent bar drawing - let theme handle card styling
-
-                // Draw subtle border
-                using var borderPen = new Pen(ThemeManager.Colors.TextPrimary, 1);
-                g.DrawRectangle(borderPen, 0, 0, card.Width - 1, card.Height - 1);
-
-                // Draw bottom shadow line
-                using var shadowPen = new Pen(Color.FromArgb(15, ThemeManager.Colors.TextPrimary), 2);
-                g.DrawLine(shadowPen, 2, card.Height - 1, card.Width - 2, card.Height - 1);
-            };
+            // REMOVED: Custom paint for modern card appearance - let SkinManager theme handle card styling
 
             // Icon label
             var iconLbl = new Label
             {
                 Text = icon,
                 Font = new Font("Segoe UI", 24),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(15, 12)
             };
@@ -713,7 +704,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = title.ToUpperInvariant(),
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(55, 15)
             };
@@ -724,7 +715,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = initialValue,
                 Font = new Font("Segoe UI", 22, FontStyle.Bold),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(55, 38)
             };
@@ -735,7 +726,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Text = "vs. prior period",
                 Font = new Font("Segoe UI", 8),
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
                 AutoSize = true,
                 Location = new Point(55, 72)
             };
@@ -758,6 +749,9 @@ namespace WileyWidget.WinForms.Forms
                     HandlePropertyChanged(e.PropertyName);
                 }
             };
+
+            // Set initial data bindings
+            UpdateUI();
         }
 
         private void HandlePropertyChanged(string? propertyName)
@@ -832,7 +826,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 _statusLabel.Text = string.Format(CultureInfo.CurrentCulture,
                     BudgetOverviewFormResources.LastUpdatedFormat, DateTime.Now);
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
             }
         }
 
@@ -874,7 +868,7 @@ namespace WileyWidget.WinForms.Forms
             if (_statusLabel != null && _viewModel.IsLoading)
             {
                 _statusLabel.Text = BudgetOverviewFormResources.LoadingMessage;
-                // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+                // REMOVED: ForeColor - SkinManager theme cascade handles label colors
             }
 
             // Disable grid during loading
@@ -1043,19 +1037,19 @@ namespace WileyWidget.WinForms.Forms
                     _metricsGrid.QueryCellStyle -= MetricsGrid_QueryCellStyle;
                 }
 
-                // Dispose controls
-                _metricsGrid?.Dispose();
-                _totalBudgetValueLabel?.Dispose();
-                _totalActualValueLabel?.Dispose();
-                _varianceValueLabel?.Dispose();
-                _percentUsedValueLabel?.Dispose();
-                _statusLabel?.Dispose();
-                _loadingProgress?.Dispose();
-                _budgetProgressBar?.Dispose();
-                _refreshButton?.Dispose();
-                _exportButton?.Dispose();
-                _periodSelector?.Dispose();
-                _summaryCardsPanel?.Dispose();
+                // Use SafeDispose for all controls to prevent Syncfusion crashes
+                _metricsGrid.SafeDispose();
+                _totalBudgetValueLabel.SafeDispose();
+                _totalActualValueLabel.SafeDispose();
+                _varianceValueLabel.SafeDispose();
+                _percentUsedValueLabel.SafeDispose();
+                _statusLabel.SafeDispose();
+                _loadingProgress.SafeDispose();
+                _budgetProgressBar.SafeDispose();
+                _refreshButton.SafeDispose();
+                _exportButton.SafeDispose();
+                _periodSelector.SafeDispose();
+                _summaryCardsPanel.SafeDispose();
 
                 // Cancel and dispose async operations
                 Utilities.AsyncEventHelper.CancelAndDispose(ref _cts);

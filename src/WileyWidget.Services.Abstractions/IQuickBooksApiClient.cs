@@ -14,8 +14,7 @@ namespace WileyWidget.Services.Abstractions
         Task<List<Invoice>> GetInvoicesAsync();
         Task<List<Account>> GetChartOfAccountsAsync();
         Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
-        // TODO: Re-enable when Budget type is available or custom implementation is created
-        // Task<List<Budget>> GetBudgetsAsync();
+        Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync();
         Task<bool> TestConnectionAsync();
     }
 }

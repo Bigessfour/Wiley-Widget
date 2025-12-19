@@ -12,6 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
     <ProjectReference Include="..\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\WileyWidget.Data\WileyWidget.Data.csproj" />

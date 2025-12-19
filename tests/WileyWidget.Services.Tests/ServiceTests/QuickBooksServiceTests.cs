@@ -455,9 +455,8 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var mockLogger = new Mock<ILogger<QuickBooksService>>();
             var mockApiClient = new Mock<IQuickBooksApiClient>();
 
-            var expected = new List<Intuit.Ipp.Data.Budget> { new Intuit.Ipp.Data.Budget { Id = "QB-1" } };
-            var mockDs = new Mock<IQuickBooksDataService>();
-            mockDs.Setup(x => x.FindBudgets(It.IsAny<int>(), It.IsAny<int>())).Returns(expected);
+            var expected = new List<WileyWidget.Models.QuickBooksBudget> { new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "QB-1", Name = "Budget", FiscalYear = 2024 } };
+            mockApiClient.Setup(x => x.GetBudgetsAsync()).ReturnsAsync(expected);
 
             using var service = new QuickBooksService(
                 mockSettings.Object,
@@ -465,13 +464,12 @@ namespace WileyWidget.Services.Tests.ServiceTests
                 mockLogger.Object,
                 mockApiClient.Object,
                 new HttpClient(),
-                new Mock<IServiceProvider>().Object,
-                mockDs.Object
+                new Mock<IServiceProvider>().Object
             );
 
             var budgets = await service.GetBudgetsAsync();
             Assert.Equal(expected.Count, budgets.Count);
-            Assert.Equal("QB-1", budgets[0].Id);
+            Assert.Equal("QB-1", budgets[0].QuickBooksId);
         }
 
         [Fact]
@@ -490,10 +488,10 @@ namespace WileyWidget.Services.Tests.ServiceTests
             using var httpClient = new HttpClient(handler);
             httpClient.BaseAddress = new Uri("http://localhost/");
 
-            var budgets = new List<Intuit.Ipp.Data.Budget>
+            var budgets = new List<WileyWidget.Models.QuickBooksBudget>
             {
-                new Intuit.Ipp.Data.Budget { Id = "B1" },
-                new Intuit.Ipp.Data.Budget { Id = "B2" }
+                new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "B1", Name = "Budget 1", FiscalYear = 2024 },
+                new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "B2", Name = "Budget 2", FiscalYear = 2024 }
             };
 
             var prevClientId = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
@@ -538,7 +536,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var handler = new WileyWidget.Services.Tests.TestHelpers.FakeHttpMessageHandler(WileyWidget.Services.Tests.TestHelpers.FakeHttpMessageHandler.JsonResponse("{}"));
             using var httpClient = new HttpClient(handler);
 
-            var budgets = new List<Intuit.Ipp.Data.Budget>();
+            var budgets = new List<WileyWidget.Models.QuickBooksBudget>();
 
             var prevClientId = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
             var prevClientSecret = Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET");
@@ -596,10 +594,10 @@ namespace WileyWidget.Services.Tests.ServiceTests
             using var httpClient = new HttpClient(handler);
             httpClient.BaseAddress = new Uri("http://localhost/");
 
-            var budgets = new List<Intuit.Ipp.Data.Budget>
+            var budgets = new List<WileyWidget.Models.QuickBooksBudget>
             {
-                new Intuit.Ipp.Data.Budget { Id = "B1" },
-                new Intuit.Ipp.Data.Budget { Id = "B2" }
+                new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "B1", Name = "Budget 1", FiscalYear = 2024 },
+                new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "B2", Name = "Budget 2", FiscalYear = 2024 }
             };
 
             var prevClientId = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
@@ -645,9 +643,9 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var handler = new WileyWidget.Services.Tests.TestHelpers.FakeHttpMessageHandler(WileyWidget.Services.Tests.TestHelpers.FakeHttpMessageHandler.JsonResponse("{}"));
             using var httpClient = new HttpClient(handler);
 
-            var budgets = new List<Intuit.Ipp.Data.Budget>
+            var budgets = new List<WileyWidget.Models.QuickBooksBudget>
             {
-                new Intuit.Ipp.Data.Budget { Id = "B1" }
+                new WileyWidget.Models.QuickBooksBudget { QuickBooksId = "B1", Name = "Budget 1", FiscalYear = 2024 }
             };
 
             var prevClientId = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");

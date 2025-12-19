@@ -1,4 +1,8 @@
 using System.Windows.Forms;
+using System.IO;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Forms;
 
@@ -12,40 +16,234 @@ public static class FormInstantiationHelper
 {
     /// <summary>
     /// Instantiates a form with proper constructor parameter handling.
-    /// Prioritizes MainForm constructor parameter over parameterless constructor.
+    /// Supports DI-style constructors with automatic mock parameter injection.
     /// </summary>
-    public static Form InstantiateForm(Type formType, MockMainForm mockMainForm)
+    public static Form InstantiateForm(Type formType, MainForm mockMainForm)
     {
         if (formType == null)
             throw new ArgumentNullException(nameof(formType));
         if (mockMainForm == null)
             throw new ArgumentNullException(nameof(mockMainForm));
 
-        // Priority 1: Constructor with MainForm parameter
-        var ctorWithMainForm = formType.GetConstructor(new[] { typeof(MainForm) });
-        if (ctorWithMainForm != null)
-        {
-            return (Form)ctorWithMainForm.Invoke(new object[] { mockMainForm });
-        }
+        // Get all public constructors ordered by parameter count (prefer simpler constructors)
+        var constructors = formType.GetConstructors()
+            .OrderBy(c => c.GetParameters().Length)
+            .ToArray();
 
-        // Priority 2: Parameterless constructor (fallback)
-        var parameterlessCtor = formType.GetConstructor(Type.EmptyTypes);
-        if (parameterlessCtor != null)
+        Exception? lastEx = null;
+        foreach (var ctor in constructors)
         {
-            return (Form)Activator.CreateInstance(formType)!;
+            var parameters = ctor.GetParameters();
+
+            // Try to create mock parameters for all constructor parameters
+            var args = new object?[parameters.Length];
+            bool canInstantiate = true;
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var paramType = parameters[i].ParameterType;
+
+                // Provide MainForm mock
+                if (paramType == typeof(MainForm) || paramType.IsAssignableFrom(typeof(MainForm)))
+                {
+                    args[i] = mockMainForm;
+                }
+                // Provide ILogger<T> via Mock.Of<T>() where possible, fallback to NullLogger
+                else if (paramType.IsGenericType &&
+                         paramType.GetGenericTypeDefinition() == typeof(ILogger<>))
+                {
+                    try
+                    {
+                        var ofMethod = typeof(Mock).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                            .FirstOrDefault(m => m.Name == "Of" && m.IsGenericMethod && m.GetParameters().Length == 0);
+                        if (ofMethod != null)
+                        {
+                            args[i] = ofMethod.MakeGenericMethod(paramType).Invoke(null, null);
+                        }
+                        else
+                        {
+                            args[i] = NullLogger.Instance;
+                        }
+                    }
+                    catch
+                    {
+                        args[i] = NullLogger.Instance;
+                    }
+                }
+                // Provide null for non-generic ILogger
+                else if (paramType == typeof(ILogger))
+                {
+                    args[i] = NullLogger.Instance;
+                }
+                // Provide default non-empty string for string params (file/report paths etc.)
+                else if (paramType == typeof(string))
+                {
+                    var pname = parameters[i].Name ?? string.Empty;
+                    if (pname.IndexOf("path", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        pname.IndexOf("file", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        pname.IndexOf("report", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        try
+                        {
+                            args[i] = Path.GetTempFileName();
+                        }
+                        catch
+                        {
+                            args[i] = "dummy-report-path";
+                        }
+                    }
+                    else
+                    {
+                        args[i] = $"dummy-{i}";
+                    }
+                }
+                else if (paramType == typeof(IServiceProvider))
+                {
+                    args[i] = MockFactory.CreateTestServiceProvider();
+                }
+                // Try to create mock ViewModel with constructor parameter mocking
+                else if (paramType.Name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        // Try parameterless constructor first
+                        var parameterlessCtor = paramType.GetConstructor(Type.EmptyTypes);
+                        if (parameterlessCtor != null)
+                        {
+                            args[i] = Activator.CreateInstance(paramType);
+                        }
+                        else
+                        {
+                            // ViewModel has dependencies - create it with mocked dependencies
+                            var viewModelCtor = paramType.GetConstructors().OrderBy(c => c.GetParameters().Length).FirstOrDefault();
+                            if (viewModelCtor != null)
+                            {
+                                var viewModelParams = viewModelCtor.GetParameters();
+                                var viewModelArgs = new object?[viewModelParams.Length];
+
+                                for (int j = 0; j < viewModelParams.Length; j++)
+                                {
+                                    var vpType = viewModelParams[j].ParameterType;
+
+                                    // Create NullLogger for ILogger<T>
+                                    if (vpType.IsGenericType && vpType.GetGenericTypeDefinition() == typeof(ILogger<>))
+                                    {
+                                        var loggerType = typeof(NullLogger<>).MakeGenericType(vpType.GetGenericArguments()[0]);
+                                        var instanceProperty = loggerType.GetProperty("Instance",
+                                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                                        viewModelArgs[j] = instanceProperty?.GetValue(null);
+                                    }
+                                    // Mock other interfaces (repositories, services, etc.)
+                                    else if (vpType.IsInterface)
+                                    {
+                                        try
+                                        {
+                                            // Special-case IServiceProvider to provide a test provider that returns mocks for services
+                                            if (vpType == typeof(IServiceProvider))
+                                            {
+                                                viewModelArgs[j] = MockFactory.CreateTestServiceProvider();
+                                            }
+                                            else
+                                            {
+                                                // Prefer Mock.Of<T>() to avoid AmbiguousMatch issues
+                                                var ofMethod = typeof(Mock).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                                                    .FirstOrDefault(m => m.Name == "Of" && m.IsGenericMethod && m.GetParameters().Length == 0);
+                                                if (ofMethod != null)
+                                                {
+                                                    viewModelArgs[j] = ofMethod.MakeGenericMethod(vpType).Invoke(null, null);
+                                                }
+                                                else
+                                                {
+                                                    var mockType = typeof(Mock<>).MakeGenericType(vpType);
+                                                    var mock = Activator.CreateInstance(mockType);
+                                                    var objectProperty = mockType.GetProperty("Object");
+                                                    viewModelArgs[j] = objectProperty?.GetValue(mock);
+                                                }
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            viewModelArgs[j] = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        viewModelArgs[j] = null;
+                                    }
+                                }
+
+                                args[i] = viewModelCtor.Invoke(viewModelArgs);
+                            }
+                            else
+                            {
+                                args[i] = null;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        args[i] = null;
+                    }
+                }
+                // Use Moq for other interfaces/repositories
+                else if (paramType.IsInterface)
+                {
+                    try
+                    {
+                        // Prefer Mock.Of<T>() to avoid AmbiguousMatch issues
+                        var ofMethod = typeof(Mock).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                            .FirstOrDefault(m => m.Name == "Of" && m.IsGenericMethod && m.GetParameters().Length == 0);
+                        if (ofMethod != null)
+                        {
+                            args[i] = ofMethod.MakeGenericMethod(paramType).Invoke(null, null);
+                        }
+                        else
+                        {
+                            var mockType = typeof(Mock<>).MakeGenericType(paramType);
+                            var mock = Activator.CreateInstance(mockType);
+                            var objectProperty = mockType.GetProperty("Object");
+                            args[i] = objectProperty?.GetValue(mock);
+                        }
+                    }
+                    catch
+                    {
+                        args[i] = null;
+                    }
+                }
+                // Can't mock this parameter type
+                else
+                {
+                    canInstantiate = false;
+                    break;
+                }
+            }
+
+            if (canInstantiate)
+            {
+                try
+                {
+                    return (Form)ctor.Invoke(args);
+                }
+                catch (Exception ex)
+                {
+                    // Constructor threw exception with mock parameters - record and try next constructor
+                    lastEx = ex;
+                    continue;
+                }
+            }
         }
 
         // No suitable constructor found
         throw new InvalidOperationException(
             $"Form type '{formType.FullName}' does not have a suitable constructor. " +
-            $"Expected: ctor(MainForm) or ctor()");
+            $"Tried {constructors.Length} constructor(s) but none could be instantiated with mock parameters. Last error: {(lastEx == null ? "(no details)" : lastEx.ToString())}");
     }
 
     /// <summary>
     /// Safely disposes a form and its associated mock MainForm.
     /// Handles cleanup errors gracefully.
     /// </summary>
-    public static void SafeDispose(Form? form, MockMainForm? mockMainForm)
+    public static void SafeDispose(Form? form, MainForm? mockMainForm)
     {
         if (form != null)
         {
@@ -133,7 +331,10 @@ public static class FormInstantiationHelper
             }
         });
 
-        thread.SetApartmentState(ApartmentState.STA);
+        if (OperatingSystem.IsWindows())
+        {
+            thread.SetApartmentState(ApartmentState.STA);
+        }
         thread.Start();
 
         var completed = thread.Join(TimeSpan.FromSeconds(timeoutSeconds));
@@ -164,7 +365,7 @@ public static class FormInstantiationHelper
             // Load theme assembly (if not already loaded)
             try
             {
-                Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                Syncfusion.Windows.Forms.SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             }
             catch
             {
@@ -174,7 +375,7 @@ public static class FormInstantiationHelper
             // Apply theme to form (cascades to all children)
             try
             {
-                Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(form, themeName);
+                Syncfusion.Windows.Forms.SkinManager.SetVisualStyle(form, themeName);
             }
             catch
             {

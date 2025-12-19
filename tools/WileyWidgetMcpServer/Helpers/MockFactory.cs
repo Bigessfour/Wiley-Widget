@@ -10,44 +10,59 @@ namespace WileyWidget.McpServer.Helpers;
 public static class MockFactory
 {
     /// <summary>
-    /// Creates a mock MainForm for isolated form testing.
+    /// Lightweight IServiceProvider used for tests. Returns a Mock.Of<T>() for requested interfaces.
     /// </summary>
-    public static MockMainForm CreateMockMainForm(bool enableMdi = false)
+    private class TestServiceProvider : IServiceProvider
     {
-        var mockMainForm = new MockMainForm();
-
-        if (enableMdi)
+        public object? GetService(Type serviceType)
         {
-            mockMainForm.EnableMdiMode();
+            try
+            {
+                if (serviceType == typeof(IServiceProvider)) return this;
+
+                // Prefer Mock.Of<T>() to generate a lightweight mock instance
+                var ofMethod = typeof(Moq.Mock).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                    .FirstOrDefault(m => m.Name == "Of" && m.IsGenericMethod && m.GetParameters().Length == 0);
+
+                if (ofMethod != null)
+                {
+                    return ofMethod.MakeGenericMethod(serviceType).Invoke(null, null);
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Creates a mock MainForm for isolated form testing using the parameterless constructor.
+    /// The MainForm will have a TestServiceProvider injected so GetRequiredService returns mocks.
+    /// </summary>
+    public static MainForm CreateMockMainForm(bool enableMdi = false)
+    {
+        var mainForm = new MainForm();
+
+        // Inject a simple test IServiceProvider (mock-backed) so calls to GetRequiredService don't throw
+        try
+        {
+            var sp = new TestServiceProvider();
+            var field = typeof(MainForm).GetField("_serviceProvider", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field?.SetValue(mainForm, sp);
+        }
+        catch
+        {
+            // If reflection fails, proceed without a ServiceProvider and rely on constructor-level mocks
         }
 
-        return mockMainForm;
-    }
-}
-
-/// <summary>
-/// Mock MainForm for testing child forms in isolation.
-/// </summary>
-public class MockMainForm : System.Windows.Forms.Form
-{
-    public bool UseMdiMode { get; private set; }
-    public bool UseTabbedMdi { get; private set; }
-
-    public MockMainForm()
-    {
-        UseMdiMode = false;
-        UseTabbedMdi = false;
-        IsMdiContainer = false;
+        return mainForm;
     }
 
-    public void EnableMdiMode()
-    {
-        UseMdiMode = true;
-        IsMdiContainer = true;
-    }
-
-    public void RegisterAsDockingMDIChild(System.Windows.Forms.Control control)
-    {
-        // No-op for tests
-    }
+    /// <summary>
+    /// Returns a test IServiceProvider that will supply Mock.Of<T>() instances for requested services.
+    /// </summary>
+    public static IServiceProvider CreateTestServiceProvider() => new TestServiceProvider();
 }

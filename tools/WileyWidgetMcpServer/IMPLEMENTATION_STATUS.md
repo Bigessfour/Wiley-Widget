@@ -38,7 +38,7 @@ The WileyWidget MCP server is **fully functional** and ready for production use.
   - Configurable MDI mode
   - Proper IDisposable implementation
 
-### 3. MCP Tools (4 Production Tools)
+### 3. MCP Tools (5 Production Tools)
 
 #### ✅ ValidateFormThemeTool
 
@@ -69,7 +69,7 @@ The WileyWidget MCP server is **fully functional** and ready for production use.
 - **Returns:** Pass/fail + compilation/runtime errors
 - **Use Case:** Automated test execution, CI/CD integration
 
-#### ✅ EvalCSharpTool (🆕 NEW!)
+#### ✅ EvalCSharpTool
 
 - **Purpose:** Dynamic C# code evaluation (equivalent to `mcp_csharp-mcp_eval_c_sharp`)
 - **Parameters:**
@@ -96,6 +96,34 @@ The WileyWidget MCP server is **fully functional** and ready for production use.
   - Compilation + runtime error reporting
   - Return value extraction
 - **Use Case:** Rapid prototyping, interactive debugging, exploratory testing
+
+#### ✅ RunDependencyInjectionTestsTool (🆕 NEW!)
+
+- **Purpose:** Comprehensive dependency injection validation
+- **Parameters:**
+  - `testName` (optional): Specific test or "All" (default: "All")
+  - `outputFormat` (optional): "text" or "json" (default: "text")
+  - `timeoutSeconds` (optional): Max execution time (default: 60)
+- **Available Tests:**
+  - ServiceLifetimes - Validates Transient/Scoped/Singleton behavior
+  - ConstructorInjection - Validates automatic constructor injection
+  - ServiceDisposal - Validates IDisposable services are disposed
+  - CircularDependency - Validates circular dependency detection
+  - MultipleImplementations - Validates IEnumerable<T> resolution
+  - FactoryMethods - Validates factory-based registration
+  - OptionalDependencies - Validates optional parameter handling
+  - ServiceValidation - Validates ValidateOnBuild and ValidateScopes
+  - WileyWidgetDiContainer - Validates MainForm/ViewModels/Services
+  - WileyWidgetScopedServices - Validates repository lifetimes
+  - WileyWidgetSingletonServices - Validates singleton consistency
+  - WileyWidgetTransientServices - Validates transient instances
+- **Features:**
+  - Runs all Microsoft DI best practice tests
+  - Validates WileyWidget-specific DI configuration
+  - Structured JSON or human-readable text output
+  - Individual test execution or full suite
+  - Detailed error reporting with compilation/runtime errors
+- **Use Case:** CI/CD DI validation, pre-commit checks, DI refactoring verification
 
 ### 4. VS Code Integration
 
@@ -134,6 +162,7 @@ The WileyWidget MCP server is **fully functional** and ready for production use.
 Successfully migrated from custom API to official SDK:
 
 **Before (Custom API - Failed):**
+
 ```csharp
 public class MyTool : IMcpTool  // Interface didn't exist
 {
@@ -143,6 +172,7 @@ public class MyTool : IMcpTool  // Interface didn't exist
 ```
 
 **After (Official SDK - Working):**
+
 ```csharp
 [McpServerToolType]
 public static class MyTool
@@ -159,6 +189,7 @@ public static class MyTool
 ```
 
 **Key API Patterns:**
+
 - `[McpServerToolType]` - Marks class containing tools (static)
 - `[McpServerTool]` - Marks method as MCP tool
 - `[Description(...)]` - Provides descriptions for AI
@@ -208,6 +239,7 @@ dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --no
 **Setup Required:**
 
 1. Create/edit `.vscode/mcp.json`:
+
    ```json
    {
      "servers": {
@@ -228,6 +260,7 @@ dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --no
 2. Restart VS Code
 
 3. Test in Copilot Chat:
+
    ```
    "Using wileywidget-ui-mcp, validate AccountsForm theme"
    ```
@@ -298,6 +331,7 @@ Directory.Packages.props                 ✅ Added ModelContextProtocol + Moq
 **Workaround:** MockFactory provides mock MainForm for testing.
 
 **Example:**
+
 ```csharp
 public class MyForm : Form
 {
@@ -362,6 +396,7 @@ public class MyForm : Form
 **Cause:** Build failed or server crashed on startup.
 
 **Fix:** Run manually to see error output:
+
 ```powershell
 dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj
 ```
@@ -375,8 +410,8 @@ dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj
 
 ### Resources
 
-- **MCP Spec:** https://modelcontextprotocol.io/
-- **C# SDK:** https://github.com/modelcontextprotocol/csharp-sdk
+- **MCP Spec:** <https://modelcontextprotocol.io/>
+- **C# SDK:** <https://github.com/modelcontextprotocol/csharp-sdk>
 - **Tool Source:** `tools/WileyWidgetMcpServer/Tools/*.cs`
 - **Helper Source:** `tools/WileyWidgetMcpServer/Helpers/*.cs`
 

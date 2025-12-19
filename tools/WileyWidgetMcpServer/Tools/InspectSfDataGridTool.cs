@@ -4,6 +4,7 @@ using System.Text;
 using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.McpServer.Helpers;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.McpServer.Tools;
 
@@ -25,7 +26,7 @@ public static class InspectSfDataGridTool
         bool includeSampleData = true)
     {
         Form? form = null;
-        MockMainForm? mockMainForm = null;
+        MainForm? mockMainForm = null;
 
         try
         {

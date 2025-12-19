@@ -17,6 +17,9 @@
       "enableStepFiltering": false,
       "requireExactSource": false,
       "suppressJITOptimizations": true,
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}/src"
+      },
       "symbolOptions": {
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true,
@@ -32,12 +35,27 @@
         "exceptions": true,
         "programOutput": true,
         "diagnosticsLog": {
-          "protocolMessages": false
+          "protocolMessages": false,
+          "startDebugging": true,
+          "engineLogging": true
         },
-        "threadExit": false,
+        "threadExit": true,
         "processExit": true,
-        "elapsedTiming": false
+        "elapsedTiming": true,
+        "trace": true,
+        "traceResponse": true
       },
+      "debuggerEventFilter": {
+        "disableTypeLoadMessages": false,
+        "disableThreadExitMessages": false
+      },
+      "expressionEvaluationOptions": {
+        "allowImplicitFuncEval": true,
+        "allowToString": true,
+        "allowFastEvaluate": true,
+        "showRawValues": false
+      },
+      "internalConsoleOptions": "openOnSessionStart",
       "env": {
         "DOTNET_ENVIRONMENT": "Development",
         "ASPNETCORE_ENVIRONMENT": "Development",

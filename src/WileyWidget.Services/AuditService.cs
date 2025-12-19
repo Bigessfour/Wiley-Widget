@@ -20,7 +20,9 @@ namespace WileyWidget.Services
         public AuditService(ILogger<AuditService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            var logs = Path.Combine(AppContext.BaseDirectory ?? ".", "logs");
+            // Use root logs folder for centralized logging
+            var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
+            var logs = Path.Combine(projectRoot, "logs");
             Directory.CreateDirectory(logs);
             _auditPath = Path.Combine(logs, "audit.log");
         }

@@ -54,6 +54,8 @@ namespace WileyWidget.Services
         /// </summary>
         public async Task<IEnumerable<DashboardItem>> GetDashboardDataAsync(CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("DashboardService: GetDashboardDataAsync called for FY {FiscalYear}", GetCurrentFiscalYear());
+
             try
             {
                 const string cacheKey = "dashboard_items";
@@ -64,14 +66,16 @@ namespace WileyWidget.Services
                     var cached = await _cacheService.GetAsync<List<DashboardItem>>(cacheKey);
                     if (cached != null && DateTime.UtcNow - _lastRefresh < _cacheExpiration)
                     {
-                        _logger.LogDebug("Returning dashboard data from cache");
+                        _logger.LogDebug("DashboardService: Returning {Count} dashboard items from cache", cached.Count);
                         return cached;
                     }
                 }
 
                 // Fetch fresh data
+                _logger.LogDebug("DashboardService: Fetching fresh dashboard data from repository");
                 var items = await FetchDashboardDataAsync(cancellationToken);
                 var itemsList = items.ToList();
+                _logger.LogInformation("DashboardService: Retrieved {Count} dashboard items from repository", itemsList.Count);
 
                 // Cache the results
                 if (_cacheService != null)
@@ -142,6 +146,7 @@ namespace WileyWidget.Services
             try
             {
                 // Get budget summary
+                _logger.LogDebug("DashboardService: Calling GetBudgetSummaryAsync for date range {Start} to {End}", fiscalYearStart, fiscalYearEnd);
                 var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
                 _logger.LogInformation("DashboardService: Budget summary retrieved (IsNull={IsNull})", budgetSummary == null);
 

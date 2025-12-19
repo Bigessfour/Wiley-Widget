@@ -5,6 +5,7 @@ using Xunit.Sdk;
 using System;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Themes;
 using FluentAssertions;
 using System.Diagnostics.CodeAnalysis;
@@ -14,7 +15,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Theming;
 
 /// <summary>
 /// Tests for Syncfusion theme management.
-/// Validates that SfSkinManager correctly applies and propagates themes per project guidelines.
+/// Validates that SkinManager correctly applies and propagates themes per project guidelines.
 /// </summary>
 [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly", Justification = "Test cleanup only")]
 [Collection(WinFormsUiCollection.CollectionName)]
@@ -29,17 +30,17 @@ public sealed class SyncfusionThemingTests : IDisposable
     }
 
     [Fact]
-    public void SfSkinManager_ShouldApplyOffice2019Theme_ToForm()
+    public void SkinManager_ShouldApplyOffice2019Theme_ToForm()
     {
         _ui.Run(() =>
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             var testForm = new Form();
             _formsToDispose.Add(testForm);
 
             // Act
-            SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful");
+            SkinManager.SetVisualStyle(testForm, "Office2019Colorful");
 
             // Assert
             // Theme is applied to form - verify no exceptions thrown
@@ -49,12 +50,12 @@ public sealed class SyncfusionThemingTests : IDisposable
 
     [Fact]
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Form disposal handled by test cleanup")]
-    public void SfSkinManager_ShouldPropagateTheme_ToSyncfusionButton()
+    public void SkinManager_ShouldPropagateTheme_ToSyncfusionButton()
     {
         _ui.Run(() =>
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             var testForm = new Form();
             _formsToDispose.Add(testForm);
 
@@ -65,7 +66,7 @@ public sealed class SyncfusionThemingTests : IDisposable
             };
 
             // Act
-            SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful");
+            SkinManager.SetVisualStyle(testForm, "Office2019Colorful");
 
             // Assert
             button.ThemeName.Should().Be("Office2019Colorful",
@@ -75,12 +76,12 @@ public sealed class SyncfusionThemingTests : IDisposable
 
     [Fact]
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Form disposal handled by test cleanup")]
-    public void SfSkinManager_ShouldPropagateTheme_ToMultipleSyncfusionControls()
+    public void SkinManager_ShouldPropagateTheme_ToMultipleSyncfusionControls()
     {
         _ui.Run(() =>
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             var parentForm = new Form();
             _formsToDispose.Add(parentForm);
 
@@ -91,7 +92,7 @@ public sealed class SyncfusionThemingTests : IDisposable
             var button3 = new SfButton { Parent = panel, Text = "Button 3" };
 
             // Act
-            SfSkinManager.SetVisualStyle(parentForm, "Office2019Colorful");
+            SkinManager.SetVisualStyle(parentForm, "Office2019Colorful");
 
             // Assert
             button1.ThemeName.Should().Be("Office2019Colorful", "direct child should have theme");
@@ -101,12 +102,12 @@ public sealed class SyncfusionThemingTests : IDisposable
     }
 
     [Fact]
-    public void SfSkinManager_ShouldLoadThemeAssembly_WithoutException()
+    public void SkinManager_ShouldLoadThemeAssembly_WithoutException()
     {
         _ui.Run(() =>
         {
             // Act
-            Action act = () => SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            Action act = () => SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
 
             // Assert
             act.Should().NotThrow("theme assembly should load successfully");
@@ -115,16 +116,16 @@ public sealed class SyncfusionThemingTests : IDisposable
 
     [Fact]
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Form disposal handled by test cleanup")]
-    public void SfSkinManager_ShouldApplyTheme_ToNewlyAddedControls()
+    public void SkinManager_ShouldApplyTheme_ToNewlyAddedControls()
     {
         _ui.Run(() =>
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             var testForm = new Form();
             _formsToDispose.Add(testForm);
 
-            SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful");
+            SkinManager.SetVisualStyle(testForm, "Office2019Colorful");
 
             // Act - Add button AFTER theme is applied
             var lateButton = new SfButton
@@ -133,10 +134,10 @@ public sealed class SyncfusionThemingTests : IDisposable
                 Text = "Late Button"
             };
 
-            // NOTE: Syncfusion SfSkinManager does NOT automatically apply theme to
+            // NOTE: Syncfusion SkinManager does NOT automatically apply theme to
             // dynamically added controls. Must call SetVisualStyle/ApplyFormTheme again.
             // This is documented Syncfusion behavior, not a bug.
-            SfSkinManager.SetVisualStyle(lateButton, "Office2019Colorful");
+            SkinManager.SetVisualStyle(lateButton, "Office2019Colorful");
 
             // Assert
             lateButton.ThemeName.Should().Be("Office2019Colorful",
@@ -146,20 +147,20 @@ public sealed class SyncfusionThemingTests : IDisposable
 
     [Fact]
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Form disposal handled by test cleanup")]
-    public void SfSkinManager_ShouldHandleMultipleSetVisualStyleCalls()
+    public void SkinManager_ShouldHandleMultipleSetVisualStyleCalls()
     {
         _ui.Run(() =>
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             var testForm = new Form();
             _formsToDispose.Add(testForm);
 
             var button = new SfButton { Parent = testForm, Text = "Test" };
 
             // Act
-            SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful");
-            SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful"); // Apply again
+            SkinManager.SetVisualStyle(testForm, "Office2019Colorful");
+            SkinManager.SetVisualStyle(testForm, "Office2019Colorful"); // Apply again
 
             // Assert - Should not throw
             button.ThemeName.Should().Be("Office2019Colorful");

@@ -701,6 +701,25 @@ public class BudgetRepository : IBudgetRepository
     public async Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Debug: Check database connection and data
+        string? connectionString = null;
+        try
+        {
+            // Only try to get connection string if using relational provider
+            if (context.Database.IsRelational())
+            {
+                connectionString = context.Database.GetConnectionString();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not retrieve database connection string - may be using in-memory provider");
+        }
+
+        Log.Information("BudgetRepository: Getting data statistics for FY {FiscalYear} using provider: {Provider}, Connection: {Connection}",
+            fiscalYear, context.Database.ProviderName, connectionString ?? "N/A");
+
         var stats = await context.BudgetEntries
             .Where(be => be.FiscalYear == fiscalYear)
             .GroupBy(_ => 1)
@@ -712,6 +731,9 @@ public class BudgetRepository : IBudgetRepository
             })
             .OrderBy(x => 1)  // Fix: Add OrderBy before FirstOrDefaultAsync to suppress EF warning
             .FirstOrDefaultAsync(cancellationToken);
+
+        Log.Information("BudgetRepository: Query result - TotalRecords: {TotalRecords}, Oldest: {Oldest}, Newest: {Newest}",
+            stats?.TotalRecords ?? 0, stats?.OldestRecord, stats?.NewestRecord);
 
         return stats != null ? (stats.TotalRecords, stats.OldestRecord, stats.NewestRecord) : (0, null, null);
     }

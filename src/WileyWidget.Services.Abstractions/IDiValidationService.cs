@@ -6,7 +6,7 @@ namespace WileyWidget.Services.Abstractions
     /// Service for validating dependency injection container registrations at runtime.
     /// Scans assemblies for service interfaces and attempts to resolve each one,
     /// identifying missing or misconfigured registrations before they cause runtime failures.
-    /// 
+    ///
     /// Reference: https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection
     /// </summary>
     public interface IDiValidationService
@@ -47,6 +47,39 @@ namespace WileyWidget.Services.Abstractions
         /// <returns>List of full type names for all service interfaces found.</returns>
         IEnumerable<string> GetDiscoveredServiceInterfaces(
             IEnumerable<System.Reflection.Assembly>? assembliesToScan = null);
+
+        /// <summary>
+        /// Validates specific service categories (repositories, business services, etc.)
+        /// with detailed timing and categorized results.
+        /// </summary>
+        /// <param name="serviceProvider">Service provider to validate against.</param>
+        /// <param name="serviceTypes">Specific service types to validate.</param>
+        /// <param name="categoryName">Name of the category being validated (for logging).</param>
+        /// <returns>Detailed validation result with timing and categorized errors.</returns>
+        DiValidationResult ValidateServiceCategory(
+            System.IServiceProvider serviceProvider,
+            System.Collections.Generic.IEnumerable<System.Type> serviceTypes,
+            string categoryName);
+    }
+
+    /// <summary>
+    /// Detailed validation result for categorized service validation.
+    /// Includes timing, success/error messages, and summary formatting.
+    /// </summary>
+    public class DiValidationResult
+    {
+        public bool IsValid { get; set; }
+        public List<string> Errors { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+        public List<string> SuccessMessages { get; set; } = new();
+        public System.TimeSpan ValidationDuration { get; set; }
+
+        public string GetSummary()
+        {
+            return IsValid
+                ? $"✓ All validations passed ({SuccessMessages.Count} services verified in {ValidationDuration.TotalMilliseconds:F0}ms)"
+                : $"✗ Validation failed with {Errors.Count} errors and {Warnings.Count} warnings";
+        }
     }
 
     /// <summary>

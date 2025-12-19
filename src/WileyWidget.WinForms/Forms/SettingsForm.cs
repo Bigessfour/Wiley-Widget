@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Serilog;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Theming;
 using Syncfusion.WinForms.Controls;
@@ -19,7 +20,7 @@ namespace WileyWidget.WinForms.Forms
 
     /// <summary>
     /// Settings dialog form that hosts the SettingsPanel control.
-    /// All controls are Syncfusion components with proper theming applied via SfSkinManager.
+    /// All controls are Syncfusion components with proper theming applied via SkinManager.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class SettingsForm : Form
@@ -53,11 +54,13 @@ namespace WileyWidget.WinForms.Forms
 
             // Set Name for UI test identification (used as AutomationId in UI Automation)
             this.Name = "Settings";
+            this.AccessibleName = "SettingsForm";
+            this.AccessibleDescription = "Configure application settings including theme, database connection, and user preferences";
 
             // Apply Syncfusion theme to form and all child controls
-            // NOTE: ThemeColors.ApplyTheme internally calls SfSkinManager.SetVisualStyle
-            WileyWidgetThemeColors.ApplyTheme(this);
-            // REMOVED: SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); // Duplicate - already called by ApplyTheme
+            // NOTE: ThemeColors.ApplyTheme internally calls SkinManager.SetVisualStyle
+            // REMOVED: WileyWidgetThemeColors.ApplyTheme(this); // Global theming only - no per-form theme sets
+            // REMOVED: SkinManager.SetVisualStyle(this, "Office2019Colorful"); // Duplicate - already called by ApplyTheme
 
             // Set minimum size to prevent the form from being resized too small
             // SettingsPanel is 500x400, so minimum should account for borders/title bar
@@ -80,9 +83,10 @@ namespace WileyWidget.WinForms.Forms
                 {
                     mf.RegisterMdiChildWithDocking(this);
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Docking registration is best-effort; fall back to standard MDI when unavailable.
+                    _logger.Debug(ex, "Docking registration failed for SettingsForm - falling back to standard MDI");
                 }
             }
         }
@@ -127,13 +131,16 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
+                if (Program.Services != null)
                 {
-                    var icon = iconService.GetIcon("settings", _themeService.CurrentTheme, 16);
-                    if (icon != null && icon is System.Drawing.Bitmap bitmap)
+                    var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                    if (iconService != null)
                     {
-                        this.Icon = Icon.FromHandle(bitmap.GetHicon());
+                        var icon = iconService.GetIcon("settings", _themeService.CurrentTheme, 16);
+                        if (icon != null && icon is System.Drawing.Bitmap bitmap)
+                        {
+                            this.Icon = Icon.FromHandle(bitmap.GetHicon());
+                        }
                     }
                 }
             }
@@ -142,7 +149,8 @@ namespace WileyWidget.WinForms.Forms
             // Host the SettingsPanel which contains all the actual settings controls
             _settingsPanel = new SettingsPanel(_vm, _themeService)
             {
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                AccessibleName = "Settings Panel"
             };
 
             Controls.Add(_settingsPanel);
@@ -152,7 +160,8 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
-                _settingsPanel?.Dispose();
+                // Use SafeDispose to prevent Syncfusion crashes (nullable ? already handled by extension method)
+                _settingsPanel.SafeDispose();
             }
             base.Dispose(disposing);
         }

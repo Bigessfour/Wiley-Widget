@@ -84,7 +84,7 @@ public class AI_Services_Integration_Verification
 public void AIServices_Integration_Architecture()
 {
 var architecture = @"
-INTEGRATED AI SERVICES ARCHITECTURE:
+INTEGRATED AI SERVICES ARCHITECTURE
 ====================================
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -132,7 +132,7 @@ INTEGRATED AI SERVICES ARCHITECTURE:
 │ - list_directory │
 └──────────────────┘
 
-# ERROR HANDLING FLOW:
+# ERROR HANDLING FLOW
 
 AIAssistantService.ExecuteToolAsync()
 ├─ Success: return ToolCallResult.Success(id, content)
@@ -166,7 +166,7 @@ XAIService.GetInsightsAsync()
 └─ Exception: Catch, fall back to tool help
 └─ Display: ℹ️ Conversational AI unavailable. Try tool commands:...
 
-# USER EXPERIENCE SCENARIOS:
+# USER EXPERIENCE SCENARIOS
 
 Scenario 1: Tool Command (Successful)
 ─────────────────────────────────────
@@ -217,7 +217,7 @@ AI: 💭 Insights: [cached response]
 [after rate limit]
 ❌ Error: Service rate limiting requests. Try again shortly.
 
-# INTEGRATION TESTING COMMANDS:
+# INTEGRATION TESTING COMMANDS
 
 # Build the solution
 
@@ -234,7 +234,7 @@ dotnet test tests/AI_Services_Integration_Verification.cs
 
 dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
 
-# Test in UI (after launching):
+# Test in UI (after launching)
 
 1. Press Ctrl+1 or click 🤖 AI Assistant toolbar button
 2. Try tool commands:
@@ -247,7 +247,7 @@ dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
    - How do I implement caching?
    - Explain this code pattern...
 
-# DEBUGGING:
+# DEBUGGING
 
 If AIChatControl doesn't appear:
 ├─ Check logs for DI registration errors
@@ -277,7 +277,7 @@ Assert.Pass(architecture);
         {
             var integrationPoints = @"
 
-# VERIFIED INTEGRATION POINTS:
+# VERIFIED INTEGRATION POINTS
 
 ✓ 1. DI Registration (DependencyInjection.cs)
 services.AddScoped<IAIAssistantService, AIAssistantService>();
@@ -330,7 +330,7 @@ Assert.Pass(integrationPoints);
         {
             var errorHandling = @"
 
-# ERROR HANDLING VERIFICATION:
+# ERROR HANDLING VERIFICATION
 
 ✓ 1. Tool Execution Errors
 ├─ Caught by try-catch in SendMessageAsync
@@ -383,7 +383,7 @@ Assert.Pass(errorHandling);
         {
             var configuration = @"
 
-# CONFIGURATION VERIFICATION:
+# CONFIGURATION VERIFICATION
 
 Optional Runtime Configuration (appsettings.json):
 {
@@ -393,7 +393,7 @@ Optional Runtime Configuration (appsettings.json):
 },
 \"XAI\": {
 \"ApiKey\": \"your-xai-api-key\", // For conversational AI (optional)
-\"BaseUrl\": \"https://api.x.ai/v1/\", // xAI API endpoint
+\"BaseUrl\": \"<https://api.x.ai/v1/\>", // xAI API endpoint
 \"Model\": \"grok-4-0709\", // AI model (default grok-4-0709)
 \"TimeoutSeconds\": 15, // Request timeout (default 15)
 \"MaxConcurrentRequests\": 5, // Concurrent API calls (default 5)

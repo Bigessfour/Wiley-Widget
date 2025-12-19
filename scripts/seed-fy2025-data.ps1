@@ -10,7 +10,7 @@ Write-Host "Seeding FY 2025 budget data into $Database on $ServerInstance..." -F
 
 # Get the directory where this script is located
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sqlDir = Join-Path -Path $scriptDir -ChildPath "sql"
+$sqlDir = Join-Path -Path (Split-Path -Parent $scriptDir) -ChildPath "sql"
 
 # List of SQL files to execute in order
 $sqlFiles = @(

@@ -411,5 +411,125 @@ namespace WileyWidget.Services.UnitTests
             // Assert
             Assert.Equal(expectedRate, actualRate, precision: 1);
         }
+
+        [Fact]
+        public void ValidateServiceCategory_WithValidServices_ReturnsSuccessResult()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddSingleton<ISettingsService>(Mock.Of<ISettingsService>());
+            services.AddSingleton<IAuditService>(Mock.Of<IAuditService>());
+
+            var serviceProvider = services.BuildServiceProvider();
+            var validator = new DiValidationService(serviceProvider, _mockLogger.Object);
+
+            var serviceTypes = new[] { typeof(ISettingsService), typeof(IAuditService) };
+
+            // Act
+            var result = validator.ValidateServiceCategory(serviceProvider, serviceTypes, "Test Category");
+
+            // Assert
+            Assert.True(result.IsValid);
+            Assert.Equal(2, result.SuccessMessages.Count);
+            Assert.Empty(result.Errors);
+            Assert.True(result.ValidationDuration > TimeSpan.Zero);
+        }
+
+        [Fact]
+        public void ValidateServiceCategory_WithMissingService_ReturnsFailureWithErrors()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            // Only register one service, not both
+            services.AddSingleton<ISettingsService>(Mock.Of<ISettingsService>());
+
+            var serviceProvider = services.BuildServiceProvider();
+            var validator = new DiValidationService(serviceProvider, _mockLogger.Object);
+
+            var serviceTypes = new[] { typeof(ISettingsService), typeof(IAuditService) };
+
+            // Act
+            var result = validator.ValidateServiceCategory(serviceProvider, serviceTypes, "Test Category");
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Single(result.SuccessMessages); // ISettingsService
+            Assert.Single(result.Errors); // IAuditService missing
+            Assert.Contains("IAuditService", result.Errors[0]);
+        }
+
+        [Fact]
+        public void ValidateServiceCategory_WithResolutionException_RecordsError()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddSingleton<ISettingsService>(sp =>
+                throw new InvalidOperationException("Test exception"));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var validator = new DiValidationService(serviceProvider, _mockLogger.Object);
+
+            var serviceTypes = new[] { typeof(ISettingsService) };
+
+            // Act
+            var result = validator.ValidateServiceCategory(serviceProvider, serviceTypes, "Test Category");
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Single(result.Errors);
+            Assert.Contains("Test exception", result.Errors[0]);
+        }
+
+        [Fact]
+        public void ValidateServiceCategory_WithScopedService_ResolvesCorrectly()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddScoped<ISettingsService>(sp => Mock.Of<ISettingsService>());
+
+            var serviceProvider = services.BuildServiceProvider();
+            var validator = new DiValidationService(serviceProvider, _mockLogger.Object);
+
+            var serviceTypes = new[] { typeof(ISettingsService) };
+
+            // Act
+            var result = validator.ValidateServiceCategory(serviceProvider, serviceTypes, "Test Category");
+
+            // Assert
+            Assert.True(result.IsValid);
+            Assert.Single(result.SuccessMessages);
+        }
+
+        [Fact]
+        public void DiValidationResult_GetSummary_FormatsCorrectly()
+        {
+            // Arrange
+            var validResult = new DiValidationResult
+            {
+                IsValid = true,
+                SuccessMessages = { "Service1", "Service2" },
+                ValidationDuration = TimeSpan.FromMilliseconds(50)
+            };
+
+            var invalidResult = new DiValidationResult
+            {
+                IsValid = false,
+                Errors = { "Error1" },
+                Warnings = { "Warning1" }
+            };
+
+            // Act
+            var validSummary = validResult.GetSummary();
+            var invalidSummary = invalidResult.GetSummary();
+
+            // Assert
+            Assert.Contains("✓", validSummary);
+            Assert.Contains("2 services verified", validSummary);
+            Assert.Contains("50ms", validSummary);
+
+            Assert.Contains("✗", invalidSummary);
+            Assert.Contains("1 errors", invalidSummary);
+            Assert.Contains("1 warnings", invalidSummary);
+        }
     }
 }

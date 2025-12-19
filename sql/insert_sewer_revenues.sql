@@ -1,8 +1,8 @@
 -- Insert Sewer Enterprise Fund Revenues for FY 2026
 SET IDENTITY_INSERT BudgetEntries ON;
-INSERT INTO BudgetEntries (Id, MunicipalAccountId, BudgetPeriodId, YearType, EntryType, Amount, CreatedDate, Notes) VALUES
-(41, 102, 1, 0, 0, 5725427.00, GETDATE(), 'Grant'),
-(42, 103, 1, 0, 0, 150000.00, GETDATE(), 'Sewage Sales'),
-(43, 104, 1, 0, 0, 2100.00, GETDATE(), 'Interest on Investments'),
-(44, 105, 1, 0, 0, 2000.00, GETDATE(), 'Misc');
+INSERT INTO BudgetEntries (Id, AccountNumber, Description, BudgetedAmount, ActualAmount, Variance, FiscalYear, StartPeriod, EndPeriod, FundType, DepartmentId, MunicipalAccountId, CreatedAt) VALUES
+(41, '200-201', 'Grant', 5725427.00, 0, 0, 2026, '2026-01-01', '2026-12-31', 1, 1, 102, GETDATE()),
+(42, '200-202', 'Sewage Sales', 150000.00, 0, 0, 2026, '2026-01-01', '2026-12-31', 1, 1, 103, GETDATE()),
+(43, '200-203', 'Interest on Investments', 2100.00, 0, 0, 2026, '2026-01-01', '2026-12-31', 1, 1, 104, GETDATE()),
+(44, '200-204', 'Misc', 2000.00, 0, 0, 2026, '2026-01-01', '2026-12-31', 1, 1, 105, GETDATE());
 SET IDENTITY_INSERT BudgetEntries OFF;

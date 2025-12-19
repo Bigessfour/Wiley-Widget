@@ -3,9 +3,10 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.Themes;
+using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Extensions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -888,7 +889,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Accounts data grid",
                 AccessibleDescription = "Grid displaying municipal accounts with filtering and sorting"
             };
-            SfSkinManager.SetVisualStyle(gridAccounts, ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(gridAccounts, WwThemeColors.DefaultTheme);
             try
             {
                 var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");

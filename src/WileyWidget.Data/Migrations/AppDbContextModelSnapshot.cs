@@ -456,6 +456,8 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("DepartmentId");
 
+                    b.HasIndex("FiscalYear");
+
                     b.HasIndex("FundId");
 
                     b.HasIndex("MunicipalAccountId");

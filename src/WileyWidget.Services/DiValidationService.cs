@@ -170,6 +170,52 @@ namespace WileyWidget.Services
                 .OrderBy(name => name);
         }
 
+        public DiValidationResult ValidateServiceCategory(
+            IServiceProvider serviceProvider,
+            IEnumerable<Type> serviceTypes,
+            string categoryName)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var result = new DiValidationResult();
+
+            _logger.LogInformation("=== Starting {CategoryName} Validation ===", categoryName);
+
+            foreach (var serviceType in serviceTypes)
+            {
+                try
+                {
+                    using var scope = serviceProvider.CreateScope();
+                    var service = scope.ServiceProvider.GetService(serviceType);
+
+                    if (service == null)
+                    {
+                        var error = $"{serviceType.Name} is NOT registered in DI";
+                        result.Errors.Add(error);
+                        _logger.LogError("\u2717 {Error}", error);
+                    }
+                    else
+                    {
+                        var success = $"{serviceType.Name} registered successfully";
+                        result.SuccessMessages.Add(success);
+                        _logger.LogInformation("\u2713 {Success}", success);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var error = $"{serviceType.Name} failed to resolve: {ex.Message}";
+                    result.Errors.Add(error);
+                    _logger.LogError(ex, "\u2717 {Error}", error);
+                }
+            }
+
+            stopwatch.Stop();
+            result.ValidationDuration = stopwatch.Elapsed;
+            result.IsValid = result.Errors.Count == 0;
+
+            _logger.LogInformation(result.GetSummary());
+            return result;
+        }
+
         /// <summary>
         /// Attempts to resolve a service from the DI container, handling scoped services appropriately.
         /// </summary>

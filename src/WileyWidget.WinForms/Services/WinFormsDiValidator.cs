@@ -181,16 +181,11 @@ namespace WileyWidget.WinForms.Services
 
         public DiValidationResult ValidateForms(IServiceProvider serviceProvider)
         {
+            // Legacy forms replaced by panels - only MainForm remains
             var serviceTypes = new[]
             {
-                typeof(MainForm),
-                typeof(ChartForm),
-                typeof(SettingsForm),
-                typeof(AccountsForm),
-                typeof(DashboardForm),
-                typeof(BudgetOverviewForm),
-                typeof(ReportsForm),
-                typeof(CustomersForm)
+                typeof(MainForm)
+                // ChartForm, SettingsForm, AccountsForm, etc. replaced by UserControl panels
             };
 
             return _coreValidator.ValidateServiceCategory(

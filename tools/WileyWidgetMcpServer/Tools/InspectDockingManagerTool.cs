@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.McpServer.Helpers;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.McpServer.Tools;
 
@@ -27,7 +28,7 @@ public static class InspectDockingManagerTool
     {
         ArgumentNullException.ThrowIfNull(outputFormat);
         Form? form = null;
-        MockMainForm? mockMainForm = null;
+        MainForm? mockMainForm = null;
 
         try
         {

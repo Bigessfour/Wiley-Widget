@@ -1,25 +1,22 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.WinForms.Controls;
-using WileyWidgetThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-namespace WileyWidget.WinForms.Forms;
+namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
-/// ChatWindow provides a dedicated modal form for AI chat interaction.
+/// ChatPanel provides AI chat interaction capability within the application.
 /// Allows users to have extended conversations with the AI assistant with context from the main application.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class ChatWindow : Form
+public sealed class ChatPanel : UserControl
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<ChatWindow> _logger;
+    private readonly ILogger<ChatPanel> _logger;
     private readonly IAIService _aiService;
     private readonly IConversationRepository _conversationRepository;
     private readonly IAIContextExtractionService? _contextExtractionService;
@@ -33,53 +30,36 @@ public partial class ChatWindow : Form
     /// <summary>
     /// Constructor accepting service provider for DI resolution.
     /// </summary>
-    public ChatWindow(IServiceProvider serviceProvider, MainForm mainForm)
+    public ChatPanel(IServiceProvider serviceProvider)
     {
-        InitializeComponent();
-
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
-
-        // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
-        // In DockingManager mode, forms are shown as owned windows, not MDI children
-        if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
-        {
-            MdiParent = mainForm;
-        }
 
         // Resolve required services with null checks
         try
         {
-            _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatWindow>>(serviceProvider);
+            _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatPanel>>(serviceProvider);
             _aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(serviceProvider);
             _conversationRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(serviceProvider);
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("Failed to resolve required services for ChatWindow", ex);
+            throw new InvalidOperationException("Failed to resolve required services for ChatPanel", ex);
         }
-
-        // Theme cascades from parent form automatically - no per-form theme calls
-        // WileyWidgetThemeColors.ApplyTheme(this); // REMOVED: Violates SkinManager sole proprietorship
 
         // Optional services - may not be available in all configurations
         _contextExtractionService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIContextExtractionService>(serviceProvider);
         _activityLogRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(serviceProvider);
 
-        _logger?.LogInformation("ChatWindow created");
+        InitializeComponent();
+        _logger.LogInformation("ChatPanel created");
     }
 
     private void InitializeComponent()
     {
-        // Window properties
-        Text = "AI Chat Assistant - Wiley Widget";
-        Size = new Size(700, 850);
-        StartPosition = FormStartPosition.CenterParent;
-        Icon = null; // Use default application icon
-        MaximizeBox = true;
-        MinimizeBox = true;
-        FormBorderStyle = FormBorderStyle.Sizable;
-        // BackColor inherited from SkinManager theme
+        // Panel properties - theme inherited from parent via SkinManager cascade
+        Name = "ChatPanel";
+        Dock = DockStyle.Fill;
+        AutoScroll = false;
 
         // Initialize conversation history
         _conversationHistory = new List<ChatMessage>();
@@ -89,26 +69,25 @@ public partial class ChatWindow : Form
         {
             Dock = DockStyle.Top,
             Height = 30,
-            // BackColor inherited from SkinManager theme
             BorderStyle = BorderStyle.FixedSingle,
             Padding = new Padding(10, 0, 10, 0),
             Name = "ChatStatusPanel",
-            AccessibleName = "Chat Status Panel"
+            AccessibleName = "Chat Status Panel",
+            TabIndex = 0
         };
 
         _statusLabel = new Label
         {
             Text = "Ready",
             Dock = DockStyle.Fill,
-            // Font and ForeColor inherited from SkinManager theme
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleLeft,
             Name = "ChatStatusLabel",
-            AccessibleName = "Chat Status Label"
+            AccessibleName = "Chat Status Label",
+            TabIndex = 1
         };
 
-        // _statusPanel is initialized above and cannot be null here; only check the label
-        _statusPanel!.Controls.Add(_statusLabel);
+        _statusPanel.Controls.Add(_statusLabel);
 
         // === Main Chat Control (Middle - fills remaining space) ===
         // Use DI-resolved AIChatControl for proper dependency injection
@@ -120,6 +99,7 @@ public partial class ChatWindow : Form
                 _chatControl.Dock = DockStyle.Fill;
                 _chatControl.Name = "ChatControl";
                 _chatControl.AccessibleName = "AI Chat Control";
+                _chatControl.TabIndex = 2;
 
                 // Handle send message from chat control
                 _chatControl.MessageSent += ChatControl_MessageSent;
@@ -127,7 +107,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to initialize AIChatControl");
+            _logger.LogError(ex, "Failed to initialize AIChatControl");
             MessageBox.Show(
                 $"Failed to initialize chat control: {ex.Message}",
                 "Chat Initialization Error",
@@ -135,7 +115,7 @@ public partial class ChatWindow : Form
                 MessageBoxIcon.Error);
         }
 
-        // Add controls to form
+        // Add controls to panel
         if (_statusPanel != null)
         {
             Controls.Add(_statusPanel);
@@ -145,18 +125,7 @@ public partial class ChatWindow : Form
             Controls.Add(_chatControl);
         }
 
-        // Keyboard shortcuts
-        KeyPreview = true;
-        KeyDown += (s, e) =>
-        {
-            if (e.KeyCode == Keys.Escape)
-            {
-                Close();
-                e.Handled = true;
-            }
-        };
-
-        _logger?.LogInformation("ChatWindow UI initialized");
+        _logger.LogInformation("ChatPanel UI initialized");
     }
 
     /// <summary>
@@ -170,7 +139,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Unhandled error in chat message handler");
+            _logger.LogError(ex, "Unhandled error in chat message handler");
             UpdateStatus($"Error: {ex.Message}");
         }
     }
@@ -197,7 +166,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error handling message send");
+            _logger.LogError(ex, "Error handling message send");
             UpdateStatus($"Error: {ex.Message}");
 
             // Log error activity
@@ -293,7 +262,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Context extraction failed: {Error}", ex.Message);
+            _logger.LogWarning(ex, "Context extraction failed: {Error}", ex.Message);
         }
     }
 
@@ -323,7 +292,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Failed to log chat activity: {Error}", ex.Message);
+            _logger.LogWarning(ex, "Failed to log chat activity: {Error}", ex.Message);
         }
     }
 
@@ -350,19 +319,19 @@ public partial class ChatWindow : Form
         }
         catch (Exception logEx)
         {
-            _logger?.LogError(logEx, "Failed to log chat error activity");
+            _logger.LogError(logEx, "Failed to log chat error activity");
         }
     }
 
     /// <summary>
-    /// Pass initial context from the main window (e.g., selected account).
+    /// Pass initial context to the chat (e.g., selected account).
     /// This allows personalized AI responses based on the current application state.
     /// </summary>
     public void SetContext(string contextDescription, Dictionary<string, object>? contextData = null)
     {
         try
         {
-            _logger?.LogInformation("Setting chat context: {Context}", contextDescription);
+            _logger.LogInformation("Setting chat context: {Context}", contextDescription);
 
             if (_conversationHistory != null)
             {
@@ -374,7 +343,7 @@ public partial class ChatWindow : Form
                     Timestamp = DateTime.UtcNow
                 };
 
-                // Attach optional metadata entries into the message's metadata dictionary (Metadata is read-only)
+                // Attach optional metadata entries into the message's metadata dictionary
                 if (contextData != null)
                 {
                     foreach (var kv in contextData)
@@ -391,7 +360,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error setting chat context");
+            _logger.LogError(ex, "Error setting chat context");
         }
     }
 
@@ -411,7 +380,7 @@ public partial class ChatWindow : Form
             }
             catch (ObjectDisposedException)
             {
-                // Form disposed during status update - safe to ignore
+                // Panel disposed during status update - safe to ignore
             }
             return;
         }
@@ -432,28 +401,11 @@ public partial class ChatWindow : Form
                 _chatControl.Messages.Clear();
             }
             UpdateStatus("Conversation cleared");
-            _logger?.LogInformation("Conversation cleared");
+            _logger.LogInformation("Conversation cleared");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error clearing conversation");
-        }
-    }
-
-    protected override void OnLoad(EventArgs e)
-    {
-        base.OnLoad(e);
-
-        if (MdiParent is MainForm mf && !mf.IsDisposed)
-        {
-            try
-            {
-                mf.RegisterAsDockingMDIChild(this, true);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to register ChatWindow with DockingManager");
-            }
+            _logger.LogError(ex, "Error clearing conversation");
         }
     }
 
@@ -467,14 +419,14 @@ public partial class ChatWindow : Form
         try
         {
             UpdateStatus($"Loading conversation {conversationId}...");
-            _logger?.LogInformation("Loading conversation: {ConversationId}", conversationId);
+            _logger.LogInformation("Loading conversation: {ConversationId}", conversationId);
 
             var conversationObj = await _conversationRepository.GetConversationAsync(conversationId);
 
             if (conversationObj == null || conversationObj is not ConversationHistory conversation)
             {
                 UpdateStatus($"Conversation {conversationId} not found");
-                _logger?.LogWarning("Conversation not found: {ConversationId}", conversationId);
+                _logger.LogWarning("Conversation not found: {ConversationId}", conversationId);
                 return;
             }
 
@@ -482,7 +434,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error loading conversation: {ConversationId}", conversationId);
+            _logger.LogError(ex, "Error loading conversation: {ConversationId}", conversationId);
             UpdateStatus($"Error loading conversation: {ex.Message}");
             MessageBox.Show(
                 $"Failed to load conversation: {ex.Message}",
@@ -511,12 +463,12 @@ public partial class ChatWindow : Form
 
             _currentConversationId = conversationId;
             UpdateStatus($"Loaded conversation: {conversation.Title}");
-            _logger?.LogInformation("Conversation loaded successfully: {ConversationId}, MessageCount: {Count}",
+            _logger.LogInformation("Conversation loaded successfully: {ConversationId}, MessageCount: {Count}",
                 conversationId, messages?.Count ?? 0);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error deserializing conversation messages: {ConversationId}", conversationId);
+            _logger.LogError(ex, "Error deserializing conversation messages: {ConversationId}", conversationId);
             UpdateStatus($"Error loading conversation: {ex.Message}");
         }
     }
@@ -556,7 +508,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error saving conversation: {ConversationId}", conversationId);
+            _logger.LogError(ex, "Error saving conversation: {ConversationId}", conversationId);
             UpdateStatus($"Error saving conversation: {ex.Message}");
             MessageBox.Show(
                 $"Failed to save conversation: {ex.Message}",
@@ -573,7 +525,7 @@ public partial class ChatWindow : Form
     {
         // Use existing conversation ID or create new one
         var saveId = conversationId ?? _currentConversationId ?? Guid.NewGuid().ToString();
-        _logger?.LogInformation("Saving conversation: {ConversationId}", saveId);
+        _logger.LogInformation("Saving conversation: {ConversationId}", saveId);
 
         // Serialize messages to JSON
         var messagesJson = JsonSerializer.Serialize(_conversationHistory);
@@ -598,7 +550,7 @@ public partial class ChatWindow : Form
         _currentConversationId = conversation.ConversationId;
 
         UpdateStatus("Conversation saved successfully");
-        _logger?.LogInformation("Conversation saved: {ConversationId}, MessageCount: {Count}",
+        _logger.LogInformation("Conversation saved: {ConversationId}, MessageCount: {Count}",
             conversation.ConversationId, conversation.MessageCount);
     }
 
@@ -614,7 +566,7 @@ public partial class ChatWindow : Form
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error retrieving recent conversations: {Error}", ex.Message);
+            _logger.LogError(ex, "Error retrieving recent conversations: {Error}", ex.Message);
             return new List<ConversationHistory>();
         }
     }
@@ -629,11 +581,11 @@ public partial class ChatWindow : Form
         try
         {
             await _conversationRepository.DeleteConversationAsync(conversationId);
-            _logger?.LogInformation("Conversation archived: {ConversationId}", conversationId);
+            _logger.LogInformation("Conversation archived: {ConversationId}", conversationId);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error deleting conversation: {ConversationId}, {Error}", conversationId, ex.Message);
+            _logger.LogError(ex, "Error deleting conversation: {ConversationId}, {Error}", conversationId, ex.Message);
         }
     }
 
@@ -647,60 +599,26 @@ public partial class ChatWindow : Form
             ClearConversation();
             _currentConversationId = null;
             UpdateStatus("Started new conversation");
-            _logger?.LogInformation("New conversation started");
+            _logger.LogInformation("New conversation started");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error starting new conversation: {Error}", ex.Message);
+            _logger.LogError(ex, "Error starting new conversation: {Error}", ex.Message);
         }
     }
 
     /// <summary>
-    /// Cleanup on form close.
-    /// </summary>
-    protected override void OnFormClosing(FormClosingEventArgs e)
-    {
-        try
-        {
-            _logger?.LogInformation("ChatWindow closing");
-            base.OnFormClosing(e);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error during ChatWindow closing: {Error}", ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Ensure owned disposable fields are cleaned up to avoid CA2213 warnings
+    /// Cleanup panel resources.
     /// </summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            SafeDispose(_chatControl);
-            SafeDispose(_statusLabel);
-            SafeDispose(_statusPanel);
+            _chatControl?.Dispose();
+            _statusLabel?.Dispose();
+            _statusPanel?.Dispose();
         }
 
         base.Dispose(disposing);
-    }
-
-    /// <summary>
-    /// Safely dispose of a control with exception handling.
-    /// </summary>
-    private static void SafeDispose(IDisposable? disposable)
-    {
-        if (disposable == null) return;
-
-        try
-        {
-            disposable.Dispose();
-        }
-        catch (Exception ex)
-        {
-            // Log to debug - don't throw during disposal
-            System.Diagnostics.Debug.WriteLine($"Error disposing {disposable.GetType().Name}: {ex.Message}");
-        }
     }
 }

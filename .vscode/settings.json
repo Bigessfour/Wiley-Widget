@@ -41,6 +41,7 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit"
   },
+  "editor.fontSize": 10,
   "editor.minimap.enabled": false,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",

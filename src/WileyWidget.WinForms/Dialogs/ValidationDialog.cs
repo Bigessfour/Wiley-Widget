@@ -69,7 +69,7 @@ namespace WileyWidget.WinForms.Dialogs
                 ColumnCount = 2,
                 RowCount = 3,
                 Padding = new Padding(15)
-                // BackColor handled by SfSkinManager theme cascade
+                // BackColor handled by SkinManager theme cascade
             };
 
             // Icon column (fixed 48px)

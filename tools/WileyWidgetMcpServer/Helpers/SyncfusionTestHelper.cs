@@ -11,7 +11,7 @@ namespace WileyWidget.McpServer.Helpers;
 public static class SyncfusionTestHelper
 {
     /// <summary>
-    /// Validates that a form uses the expected theme via SfSkinManager.
+    /// Validates that a form uses the expected theme via SkinManager.
     /// Checks Syncfusion controls for proper theme application.
     /// </summary>
     public static bool ValidateTheme(Form form, string expectedTheme)
@@ -27,7 +27,7 @@ public static class SyncfusionTestHelper
             return true;
 
         // Check if controls have proper theme name or rely on default
-        // Note: ThemeName may be empty if using SfSkinManager cascade
+        // Note: ThemeName may be empty if using SkinManager cascade
         foreach (var control in syncfusionControls)
         {
             // Try to get ThemeName property via reflection (available on most Syncfusion controls)
@@ -35,7 +35,7 @@ public static class SyncfusionTestHelper
             if (themeNameProp != null)
             {
                 var themeName = themeNameProp.GetValue(control) as string;
-                // Empty theme name means using parent/SfSkinManager cascade (valid)
+                // Empty theme name means using parent/SkinManager cascade (valid)
                 // Otherwise, must match expected theme
                 if (!string.IsNullOrEmpty(themeName) && themeName != expectedTheme)
                 {
@@ -50,7 +50,7 @@ public static class SyncfusionTestHelper
     /// <summary>
     /// Gets all Syncfusion controls recursively from a control tree.
     /// </summary>
-    private static List<Control> GetAllSyncfusionControls(Control control)
+    public static List<Control> GetAllSyncfusionControls(Control control)
     {
         var syncfusionControls = new List<Control>();
 
@@ -117,7 +117,7 @@ public static class SyncfusionTestHelper
             var isSyncfusionControl = control.GetType().Namespace?.StartsWith("Syncfusion", StringComparison.Ordinal) == true;
             if (!isSyncfusionControl)
             {
-                violations.Add($"{currentPath}.BackColor = {ColorToString(control.BackColor)} (manual color - use SfSkinManager instead)");
+                violations.Add($"{currentPath}.BackColor = {ColorToString(control.BackColor)} (manual color - use SkinManager instead)");
             }
         }
 
@@ -130,7 +130,7 @@ public static class SyncfusionTestHelper
             var isSyncfusionControl = control.GetType().Namespace?.StartsWith("Syncfusion", StringComparison.Ordinal) == true;
             if (!isSyncfusionControl)
             {
-                violations.Add($"{currentPath}.ForeColor = {ColorToString(control.ForeColor)} (manual color - use SfSkinManager instead)");
+                violations.Add($"{currentPath}.ForeColor = {ColorToString(control.ForeColor)} (manual color - use SkinManager instead)");
             }
         }
 

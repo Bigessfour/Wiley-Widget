@@ -3,18 +3,19 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Windows.Forms;
 using WileyWidget.McpServer.Helpers;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.McpServer.Tools;
 
 /// <summary>
-/// MCP tool for validating form theme compliance with SfSkinManager.
+/// MCP tool for validating form theme compliance with SkinManager.
 /// Loads a form headlessly and checks for manual color assignments.
 /// </summary>
 [McpServerToolType]
 public static class ValidateFormThemeTool
 {
     [McpServerTool]
-    [Description("Validates that a WinForms form uses SfSkinManager theming exclusively (no manual BackColor/ForeColor assignments).")]
+    [Description("Validates that a WinForms form uses SkinManager theming exclusively (no manual BackColor/ForeColor assignments).")]
     public static string ValidateFormTheme(
         [Description("Fully qualified type name of the form to validate (e.g., 'WileyWidget.WinForms.Forms.AccountsForm')")]
         string formTypeName,
@@ -24,7 +25,7 @@ public static class ValidateFormThemeTool
         string outputFormat = "text")
     {
         Form? form = null;
-        MockMainForm? mockMainForm = null;
+        MainForm? mockMainForm = null;
 
         try
         {
@@ -109,7 +110,7 @@ public static class ValidateFormThemeTool
         }
         else
         {
-            lines.Add("No violations found. Form uses SfSkinManager theming exclusively.");
+            lines.Add("No violations found. Form uses SkinManager theming exclusively.");
         }
 
         return string.Join("\n", lines);

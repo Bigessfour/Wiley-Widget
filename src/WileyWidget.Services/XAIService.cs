@@ -67,6 +67,11 @@ public class XAIService : IAIService, IDisposable
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
         _apiKey = configuration["XAI:ApiKey"];
+
+        // DEBUG: Log what configuration sees
+        Console.WriteLine($"[XAISERVICE DEBUG] XAI:ApiKey from config = {(_apiKey != null ? _apiKey.Substring(0, Math.Min(15, _apiKey.Length)) + "..." : "NULL")} ({_apiKey?.Length ?? 0} chars)");
+        Console.WriteLine($"[XAISERVICE DEBUG] Config type = {configuration.GetType().FullName}");
+
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
             throw new InvalidOperationException("XAI API key not configured");

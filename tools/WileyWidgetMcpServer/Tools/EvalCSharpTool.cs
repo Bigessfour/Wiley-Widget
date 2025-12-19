@@ -55,7 +55,7 @@ public static class EvalCSharpTool
                 .WithReferences(typeof(Syncfusion.WinForms.Controls.SfForm).Assembly)
                 .WithReferences(typeof(Syncfusion.WinForms.DataGrid.SfDataGrid).Assembly)
                 .WithReferences(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly) // Theme support
-                .WithReferences(typeof(Syncfusion.WinForms.Controls.SfSkinManager).Assembly) // SfSkinManager
+                .WithReferences(typeof(Syncfusion.Windows.Forms.SkinManager).Assembly) // SkinManager
                 .WithReferences(typeof(WileyWidget.WinForms.Forms.MainForm).Assembly)
                 .WithReferences(typeof(WileyWidget.McpServer.Helpers.SyncfusionTestHelper).Assembly)
                 .WithReferences(typeof(Moq.Mock).Assembly)

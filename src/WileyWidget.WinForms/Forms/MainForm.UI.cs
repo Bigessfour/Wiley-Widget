@@ -99,7 +99,7 @@ public partial class MainForm
             Size = new Size(1400, 900);
             MinimumSize = new Size(1024, 768);
             StartPosition = FormStartPosition.CenterScreen;
-            // REMOVED: BackColor = ThemeColors.Background; - SfSkinManager owns all color decisions
+            // REMOVED: BackColor = ThemeColors.Background; - SkinManager owns all color decisions
             Name = "MainForm";
 
             // Initialize components container if needed
@@ -149,25 +149,21 @@ public partial class MainForm
             {
                 Name = "Ribbon_Main",
                 AccessibleName = "Ribbon_Main",
+                AccessibleDescription = "Main navigation ribbon with commands organized by task",
                 Dock = (DockStyleEx)DockStyle.Top,
                 OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
                 RibbonStyle = RibbonStyle.Office2016
             };
 
-            // Apply theme
-            try
-            {
-                SfSkinManager.SetVisualStyle(_ribbon, AppThemeColors.DefaultTheme);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Failed to apply theme to Ribbon");
-            }
+            // REMOVED: Per-control theme application - theme cascades from ApplicationVisualTheme
+            // Ribbon automatically inherits theme from SkinManager.ApplicationVisualTheme set in Program.cs
 
             // Create Home Tab
             _homeTab = new ToolStripTabItem
             {
                 Name = "HomeTab",
+                AccessibleName = "HomeTab",
+                AccessibleDescription = "Home tab containing primary navigation commands",
                 Text = "&Home"
             };
 
@@ -181,7 +177,8 @@ public partial class MainForm
             // Create Home Tab Panel
             var homePanel = new ToolStripEx
             {
-                Name = "HomePanel"
+                Name = "HomePanel",
+                AccessibleName = "HomePanel"
             };
 
             // Add navigation buttons
@@ -189,21 +186,55 @@ public partial class MainForm
             {
                 Name = "Nav_Dashboard",
                 AccessibleName = "Nav_Dashboard",  // Automation ID for UI tests
+                AccessibleDescription = "Opens the dashboard view with KPI summary, budget metrics, and financial charts",
                 Text = "📊 " + MainFormResources.Dashboard,
                 ToolTipText = "Open Dashboard",
                 AutoSize = true
             };
-            dashboardBtn.Click += (s, e) => ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    dashboardBtn.Image = iconService.GetIcon("dashboard", currentTheme, 16);
+                    dashboardBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            dashboardBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            };
 
             var accountsBtn = new ToolStripButton
             {
                 Name = "Nav_Accounts",
+                AccessibleDescription = "Opens the accounts management view for viewing and editing chart of accounts",
                 AccessibleName = "Nav_Accounts",  // Automation ID for UI tests
                 Text = "💼 " + MainFormResources.Accounts,
                 ToolTipText = "Open Accounts",
                 AutoSize = true
             };
-            accountsBtn.Click += (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    accountsBtn.Image = iconService.GetIcon("accounts", currentTheme, 16);
+                    accountsBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            accountsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            };
 
             var budgetBtn = new ToolStripButton
             {
@@ -213,7 +244,23 @@ public partial class MainForm
                 ToolTipText = "Open Budget Overview",
                 AutoSize = true
             };
-            budgetBtn.Click += (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    budgetBtn.Image = iconService.GetIcon("budget", currentTheme, 16);
+                    budgetBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            budgetBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            };
 
             var chartsBtn = new ToolStripButton
             {
@@ -223,7 +270,23 @@ public partial class MainForm
                 ToolTipText = "Open Charts",
                 AutoSize = true
             };
-            chartsBtn.Click += (s, e) => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    chartsBtn.Image = iconService.GetIcon("chart", currentTheme, 16);
+                    chartsBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            chartsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            };
 
             var customersBtn = new ToolStripButton
             {
@@ -233,7 +296,20 @@ public partial class MainForm
                 ToolTipText = "Open Customers",
                 AutoSize = true
             };
-            customersBtn.Click += (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    customersBtn.Image = iconService.GetIcon("customers", currentTheme, 16);
+                    customersBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            // TODO: Create CustomersPanel to enable panel-based navigation
+            customersBtn.Click += (s, e) => { /* Customers panel not yet implemented */ };
 
             var reportsBtn = new ToolStripButton
             {
@@ -243,7 +319,20 @@ public partial class MainForm
                 ToolTipText = "Open Reports",
                 AutoSize = true
             };
-            reportsBtn.Click += (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    reportsBtn.Image = iconService.GetIcon("reports", currentTheme, 16);
+                    reportsBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            // TODO: Create ReportsPanel to enable panel-based navigation
+            reportsBtn.Click += (s, e) => { /* Reports panel not yet implemented */ };
 
             var aiChatBtn = new ToolStripButton
             {
@@ -259,11 +348,16 @@ public partial class MainForm
                 var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
                 if (iconService != null)
                 {
-                    aiChatBtn.Image = iconService.GetIcon("chat", AppTheme.Office2019Colorful, 16);
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    aiChatBtn.Image = iconService.GetIcon("chat", currentTheme, 16);
                 }
             }
             catch { /* Icon loading is optional */ }
-            aiChatBtn.Click += (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false);
+            aiChatBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            };
 
             var quickBooksBtn = new ToolStripButton
             {
@@ -279,11 +373,16 @@ public partial class MainForm
                 var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
                 if (iconService != null)
                 {
-                    quickBooksBtn.Image = iconService.GetIcon("quickbooks", AppTheme.Office2019Colorful, 16);
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    quickBooksBtn.Image = iconService.GetIcon("quickbooks", currentTheme, 16);
                 }
             }
             catch { /* Icon loading is optional */ }
-            quickBooksBtn.Click += (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false);
+            quickBooksBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            };
 
             var settingsBtn = new ToolStripButton
             {
@@ -293,9 +392,45 @@ public partial class MainForm
                 ToolTipText = "Open Settings",
                 AutoSize = true
             };
-            settingsBtn.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false);
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    settingsBtn.Image = iconService.GetIcon("settings", currentTheme, 16);
+                    settingsBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            settingsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            };
 
-            // Theme toggle removed - session-only theme switching via menu or hotkey only
+            // Theme toggle button for runtime theme switching
+            var themeToggleBtn = new ToolStripButton
+            {
+                Name = "ThemeToggle",
+                AccessibleName = "ThemeToggle",
+                Text = "🌙 Dark Mode",
+                ToolTipText = "Toggle Dark/Light Theme (Ctrl+Shift+T)",
+                AutoSize = true
+            };
+            themeToggleBtn.Click += ThemeToggleBtn_Click;
+
+            // Global search box
+            var searchBox = new ToolStripTextBox
+            {
+                Name = "GlobalSearch",
+                AccessibleName = "GlobalSearch",
+                ToolTipText = "Search... (Ctrl+F)",
+                AutoSize = false,
+                Width = 200
+            };
+            searchBox.KeyDown += SearchBox_KeyDown;
 
             homePanel.Items.AddRange(new ToolStripItem[]
             {
@@ -310,6 +445,9 @@ public partial class MainForm
                 quickBooksBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
+                themeToggleBtn,
+                new ToolStripSeparator(),
+                searchBox,
                 new ToolStripSeparator(),
                 // Grid commands
                 new ToolStripLabel { Text = "Grid:" , Name = "Grid_Label" },
@@ -362,19 +500,13 @@ public partial class MainForm
             {
                 Name = "StatusBar_Main",
                 AccessibleName = "StatusBar_Main",
+                AccessibleDescription = "Application status bar showing current operation status and information",
                 Dock = DockStyle.Bottom,
                 BeforeTouchSize = new Size(1400, 26)
             };
 
-            // Apply theme
-            try
-            {
-                SfSkinManager.SetVisualStyle(_statusBar, AppThemeColors.DefaultTheme);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Failed to apply theme to StatusBar");
-            }
+            // REMOVED: Per-control theme application - StatusBar inherits theme from ApplicationVisualTheme
+            // Theme cascade from Program.cs ensures consistent styling
 
             // Status label (left)
             _statusLabel = new StatusBarAdvPanel
@@ -441,31 +573,61 @@ public partial class MainForm
             };
 
             var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard" };
-            dashboardBtn.Click += (s, e) => ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false);
+            dashboardBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            };
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
-            accountsBtn.Click += (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false);
+            accountsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            };
 
             var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget" };
-            budgetBtn.Click += (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>(allowMultiple: false);
+            budgetBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            };
 
             var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
-            chartsBtn.Click += (s, e) => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false);
+            chartsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
-            customersBtn.Click += (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>(allowMultiple: false);
+            // TODO: Create CustomersPanel
+            customersBtn.Click += (s, e) => { /* Customers panel not yet implemented */ };
 
             var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
-            reportsBtn.Click += (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false);
+            // TODO: Create ReportsPanel
+            reportsBtn.Click += (s, e) => { /* Reports panel not yet implemented */ };
 
             var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
-            aiChatBtn.Click += (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false);
+            aiChatBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
-            quickBooksBtn.Click += (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false);
+            quickBooksBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            };
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
-            settingsBtn.Click += (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false);
+            settingsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            };
 
             var dockingToggleBtn = new ToolStripButton("Docking") { Name = "Nav_DockingToggle", AccessibleName = "Nav_DockingToggle" };
             dockingToggleBtn.Click += (s, e) => ToggleDocking();
@@ -584,7 +746,6 @@ public partial class MainForm
                 Name = "MainMenuStrip",
                 Dock = DockStyle.Top,
                 Visible = true,
-                AllowMerge = true,
                 Font = new Font("Segoe UI", 9F),
                 RenderMode = ToolStripRenderMode.Professional,
                 ShowItemToolTips = true,
@@ -605,6 +766,21 @@ public partial class MainForm
                 ToolTipText = "File operations"
             };
 
+            // File > Recent Files (MRU) - submenu
+            var recentFilesMenu = new ToolStripMenuItem("&Recent Files")
+            {
+                Name = "Menu_File_RecentFiles",
+                ToolTipText = "Recently opened files"
+            };
+            UpdateMruMenu(recentFilesMenu);
+
+            // File > Clear Recent Files
+            var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => ClearMruList())
+            {
+                Name = "Menu_File_ClearRecent",
+                ToolTipText = "Clear recent files list"
+            };
+
             // File > Exit
             var exitMenuItem = new ToolStripMenuItem("E&xit", null, (s, e) => Close())
             {
@@ -615,6 +791,9 @@ public partial class MainForm
                 ImageScaling = ToolStripItemImageScaling.None
             };
 
+            fileMenu.DropDownItems.Add(recentFilesMenu);
+            fileMenu.DropDownItems.Add(clearRecentMenuItem);
+            fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenuItem);
 
             // View Menu - All child forms accessible here
@@ -625,7 +804,11 @@ public partial class MainForm
             };
 
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => ShowChildForm<DashboardForm, DashboardViewModel>(allowMultiple: false))
+            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            })
             {
                 Name = "Menu_View_Dashboard",
                 ShortcutKeys = Keys.Control | Keys.D,
@@ -635,7 +818,11 @@ public partial class MainForm
             };
 
             // View > Accounts
-            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false))
+            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            })
             {
                 Name = "Menu_View_Accounts",
                 ShortcutKeys = Keys.Control | Keys.A,
@@ -645,7 +832,11 @@ public partial class MainForm
             };
 
             // View > Budget Overview
-            var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) => ShowChildForm<BudgetOverviewForm, BudgetOverviewViewModel>(allowMultiple: false))
+            var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            })
             {
                 Name = "Menu_View_Budget",
                 ShortcutKeys = Keys.Control | Keys.B,
@@ -655,7 +846,11 @@ public partial class MainForm
             };
 
             // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false))
+            var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            })
             {
                 Name = "Menu_View_Charts",
                 ShortcutKeys = Keys.Control | Keys.H,
@@ -665,7 +860,8 @@ public partial class MainForm
             };
 
             // View > Reports
-            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false))
+            // TODO: Create ReportsPanel
+            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => { /* Reports panel not yet implemented */ })
             {
                 Name = "Menu_View_Reports",
                 ShortcutKeys = Keys.Control | Keys.R,
@@ -675,7 +871,11 @@ public partial class MainForm
             };
 
             // View > AI Chat
-            var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) => ShowChildForm<ChatWindow, object>(allowMultiple: false))
+            var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            })
             {
                 Name = "Menu_View_AIChat",
                 ShortcutKeys = Keys.Control | Keys.I,
@@ -687,14 +887,19 @@ public partial class MainForm
                 var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
                 if (iconService != null)
                 {
-                    aiChatMenuItem.Image = iconService.GetIcon("chat", AppTheme.Office2019Colorful, 16);
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    aiChatMenuItem.Image = iconService.GetIcon("chat", currentTheme, 16);
                     aiChatMenuItem.ImageScaling = ToolStripItemImageScaling.None;
                 }
             }
             catch { /* Icon loading is optional */ }
 
             // View > QuickBooks
-            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => ShowChildForm<QuickBooksForm, object>(allowMultiple: false))
+            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            })
             {
                 Name = "Menu_View_QuickBooks",
                 ShortcutKeys = Keys.Control | Keys.Q,
@@ -706,14 +911,16 @@ public partial class MainForm
                 var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
                 if (iconService != null)
                 {
-                    quickBooksMenuItem.Image = iconService.GetIcon("quickbooks", AppTheme.Office2019Colorful, 16);
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    quickBooksMenuItem.Image = iconService.GetIcon("quickbooks", currentTheme, 16);
                     quickBooksMenuItem.ImageScaling = ToolStripItemImageScaling.None;
                 }
             }
             catch { /* Icon loading is optional */ }
 
             // View > Customers
-            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => ShowChildForm<CustomersForm, CustomersViewModel>(allowMultiple: false))
+            // TODO: Create CustomersPanel
+            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => { /* Customers panel not yet implemented */ })
             {
                 Name = "Menu_View_Customers",
                 ShortcutKeys = Keys.Control | Keys.U,
@@ -767,7 +974,11 @@ public partial class MainForm
             };
 
             // Tools > Settings
-            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false))
+            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            })
             {
                 Name = "Menu_Tools_Settings",
                 ShortcutKeys = Keys.Control | Keys.Oemcomma,
@@ -899,6 +1110,34 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Get the current theme name from SkinManager.
+    /// </summary>
+    /// <returns>Current theme name</returns>
+    private string GetCurrentTheme()
+    {
+        return SkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+    }
+
+    /// <summary>
+    /// Convert string theme name to AppTheme enum.
+    /// </summary>
+    /// <param name="themeName">Theme name from SkinManager</param>
+    /// <returns>Corresponding AppTheme enum value</returns>
+    private Theming.AppTheme GetAppThemeFromString(string themeName)
+    {
+        return themeName switch
+        {
+            "Office2019Colorful" => Theming.AppTheme.Office2019Colorful,
+            "Office2019Dark" => Theming.AppTheme.Office2019Dark,
+            "Office2019Black" => Theming.AppTheme.Office2019Black,
+            "Office2019DarkGray" => Theming.AppTheme.Office2019DarkGray,
+            "Office2019White" => Theming.AppTheme.Office2019White,
+            "HighContrastBlack" => Theming.AppTheme.HighContrastBlack,
+            _ => Theming.AppTheme.Office2019Colorful // Default fallback
+        };
+    }
+
+    /// <summary>
     /// Apply theme colors to menu dropdown items.
     /// </summary>
     /// <param name="menuItem">Parent menu item to theme</param>
@@ -943,24 +1182,29 @@ public partial class MainForm
     {
         try
         {
-            var currentTheme = SfSkinManager.ApplicationVisualTheme;
+            var currentTheme = SkinManager.ApplicationVisualTheme;
             var newTheme = currentTheme == "Office2019Dark" ? "Office2019Colorful" : "Office2019Dark";
+            var isLightMode = newTheme == "Office2019Colorful";
 
             // Apply new theme globally
-            SfSkinManager.ApplicationVisualTheme = newTheme;
+            SkinManager.ApplicationVisualTheme = newTheme;
+
+            // Update button text
+            if (sender is ToolStripButton btn)
+            {
+                btn.Text = isLightMode ? "🌙 Dark Mode" : "☀️ Light Mode";
+            }
 
             // SESSION-ONLY: Theme preference does NOT persist to configuration.
             // Resets to default (Office2019Colorful) on next application start.
             _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
-
-            // Note: Theme toggle button removed from UI (session-only switching via hotkey if implemented)
 
             // Refresh all open forms to apply new theme
             foreach (Form form in Application.OpenForms)
             {
                 try
                 {
-                    SfSkinManager.SetVisualStyle(form, newTheme);
+                    SkinManager.SetVisualStyle(form, newTheme);
                     form.Refresh();
                 }
                 catch (Exception ex)
@@ -978,11 +1222,198 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Handle global search box keyboard events (Ctrl+F to focus, Enter to search)
+    /// </summary>
+    private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not ToolStripTextBox searchBox) return;
+
+        try
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                var searchText = searchBox.Text;
+                if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    _logger?.LogInformation("Global search triggered: {SearchText}", searchText);
+                    PerformGlobalSearch(searchText);
+                }
+                e.Handled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Search box error");
+        }
+    }
+
+    /// <summary>
     /// Validates Syncfusion license status and logs warning if trial/unlicensed.
     /// </summary>
     // Removed: ValidateSyncfusionLicense() method - redundant license check
     // Program.cs startup already validates Syncfusion license and logs status
     // Log output shows: "Syncfusion license registered and validated successfully"
+
+    /// <summary>
+    /// Performs a global search across all open MDI child forms containing SfDataGrid controls.
+    /// Searches through DataSource properties via reflection and displays aggregated results.
+    /// </summary>
+    /// <param name="searchText">The text to search for (case-insensitive)</param>
+    private void PerformGlobalSearch(string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            MessageBox.Show("Please enter a search term.", "Global Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        try
+        {
+            _logger?.LogInformation("Performing global search for: {SearchText}", searchText);
+            var results = new System.Text.StringBuilder();
+            var totalMatches = 0;
+
+            // Search through all open MDI child forms
+            foreach (Form childForm in MdiChildren)
+            {
+                if (childForm == null || childForm.IsDisposed)
+                    continue;
+
+                try
+                {
+                    // Find all SfDataGrid controls recursively in the child form
+                    var grids = FindControlsOfType<Syncfusion.WinForms.DataGrid.SfDataGrid>(childForm);
+
+                    foreach (var grid in grids)
+                    {
+                        if (grid.DataSource == null)
+                            continue;
+
+                        // Search grid data via reflection
+                        var gridMatches = SearchGridData(grid, searchText);
+
+                        if (gridMatches > 0)
+                        {
+                            results.AppendLine(CultureInfo.InvariantCulture, $"{childForm.Text} - {grid.Name}: {gridMatches} match(es)");
+                            totalMatches += gridMatches;
+                        }
+                    }
+                }
+                catch (Exception gridEx)
+                {
+                    _logger?.LogWarning(gridEx, "Failed to search grid in form {FormName}", childForm.Name);
+                    // Continue searching other forms
+                }
+            }
+
+            // Display results
+            if (totalMatches > 0)
+            {
+                var message = $"Found {totalMatches} match(es) for '{searchText}':\n\n{results}";
+                MessageBox.Show(message, "Global Search Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _logger?.LogInformation("Global search completed: {TotalMatches} match(es) found", totalMatches);
+            }
+            else
+            {
+                MessageBox.Show($"No matches found for '{searchText}'.", "Global Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _logger?.LogInformation("Global search completed: No matches found");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to perform global search");
+            MessageBox.Show("An error occurred while performing the search. Please check the logs for details.",
+                "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Recursively finds all controls of a specific type within a parent control.
+    /// </summary>
+    /// <typeparam name="T">Type of control to find</typeparam>
+    /// <param name="parent">Parent control to search</param>
+    /// <returns>Collection of matching controls</returns>
+    private IEnumerable<T> FindControlsOfType<T>(Control parent) where T : Control
+    {
+        var results = new List<T>();
+
+        if (parent == null)
+            return results;
+
+        foreach (Control control in parent.Controls)
+        {
+            if (control is T matchingControl)
+            {
+                results.Add(matchingControl);
+            }
+
+            // Recursively search child controls
+            results.AddRange(FindControlsOfType<T>(control));
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Searches a SfDataGrid's DataSource for matching text via reflection.
+    /// </summary>
+    /// <param name="grid">Grid to search</param>
+    /// <param name="searchText">Text to search for (case-insensitive)</param>
+    /// <returns>Number of matches found</returns>
+    private int SearchGridData(Syncfusion.WinForms.DataGrid.SfDataGrid grid, string searchText)
+    {
+        if (grid?.DataSource == null)
+            return 0;
+
+        var matches = 0;
+        var dataSource = grid.DataSource;
+
+        try
+        {
+            // Handle IEnumerable DataSource (most common)
+            if (dataSource is System.Collections.IEnumerable enumerable)
+            {
+                foreach (var item in enumerable)
+                {
+                    if (item == null)
+                        continue;
+
+                    // Use reflection to get all public properties
+                    var properties = item.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+                    foreach (var property in properties)
+                    {
+                        try
+                        {
+                            var value = property.GetValue(item);
+                            if (value == null)
+                                continue;
+
+                            // Convert to string and perform case-insensitive search
+                            var stringValue = value.ToString();
+                            if (!string.IsNullOrEmpty(stringValue) &&
+                                stringValue.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                            {
+                                matches++;
+                                break; // Count each row only once
+                            }
+                        }
+                        catch (Exception propEx)
+                        {
+                            _logger?.LogDebug(propEx, "Failed to read property {PropertyName} during search", property.Name);
+                            // Continue with next property
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to search grid data for grid {GridName}", grid.Name);
+        }
+
+        return matches;
+    }
 
     #endregion
 
@@ -1061,13 +1492,13 @@ public partial class MainForm
             {
                 try
                 {
-                    SfSkinManager.SetVisualStyle(_activityGrid, AppThemeColors.DefaultTheme);
-                    // REMOVED: Manual BackColor/TextColor overrides - SfSkinManager handles all theme colors
+                    // REMOVED: Per-control SetVisualStyle - grid inherits theme from ApplicationVisualTheme
+                    // Theme cascade ensures consistent styling across all controls
                     _activityGrid.Refresh();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Failed to apply theme to activity grid");
+                    _logger.LogDebug(ex, "Failed to refresh activity grid");
                 }
             }
 
@@ -1105,19 +1536,13 @@ public partial class MainForm
 
         _dockingManager.PersistState = true;
         _dockingManager.AnimateAutoHiddenWindow = true;
-        _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font(SegoeUiFontName, 9f);
-        _dockingManager.DockTabFont = _dockTabFont = new Font(SegoeUiFontName, 9f);
+        // REMOVED: Hard-coded fonts - SkinManager owns all theming, including fonts
+        // _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font(SegoeUiFontName, 9f);
+        // _dockingManager.DockTabFont = _dockTabFont = new Font(SegoeUiFontName, 9f);
         _dockingManager.ShowCaption = true;
 
-        try
-        {
-            SfSkinManager.SetVisualStyle(_dockingManager, AppThemeColors.DefaultTheme);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to apply theme to DockingManager");
-            // Theme application is non-critical, continue
-        }
+        // REMOVED: Per-control theme application - DockingManager inherits theme from ApplicationVisualTheme
+        // Theme cascade from Program.cs ensures consistent styling
     }
 
     /// <summary>
@@ -1262,15 +1687,8 @@ public partial class MainForm
 
         Controls.Add(_centralDocumentPanel);
 
-        try
-        {
-            SfSkinManager.SetVisualStyle(_centralDocumentPanel, AppThemeColors.DefaultTheme);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to apply theme to central panel - using defaults");
-            // Theme application is non-critical
-        }
+        // REMOVED: Per-control theme application - central panel inherits theme from ApplicationVisualTheme
+        // Theme cascade from Program.cs ensures consistent styling
 
         try
         {
@@ -1370,16 +1788,29 @@ public partial class MainForm
     private void AddDashboardCards(TableLayoutPanel dashboardPanel)
     {
         var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText).Panel;
-        SetupCardClickHandler(accountsCard, () => ShowChildForm<AccountsForm, AccountsViewModel>(allowMultiple: false));
+        SetupCardClickHandler(accountsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+        });
 
         var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
-        SetupCardClickHandler(chartsCard, () => ShowChildForm<ChartForm, ChartViewModel>(allowMultiple: false));
+        SetupCardClickHandler(chartsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+        });
 
         var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
-        SetupCardClickHandler(settingsCard, () => ShowChildForm<SettingsForm, SettingsViewModel>(allowMultiple: false));
+        SetupCardClickHandler(settingsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+        });
 
         var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
-        SetupCardClickHandler(reportsCard, () => ShowChildForm<ReportsForm, ReportsViewModel>(allowMultiple: false));
+        // TODO: Create ReportsPanel
+        SetupCardClickHandler(reportsCard, () => { /* Reports panel not yet implemented */ });
 
         var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText).Panel;
 
@@ -1405,8 +1836,9 @@ public partial class MainForm
         var activityHeader = new Label
         {
             Text = "Recent Activity",
-            Font = new Font(SegoeUiFontName, 12, FontStyle.Bold),
-            // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+            // REMOVED: Hard-coded Font - SkinManager owns all theming
+            // Font = new Font(SegoeUiFontName, 12, FontStyle.Bold),
+            // REMOVED: ForeColor - SkinManager theme cascade handles label colors
             Dock = DockStyle.Top,
             Height = 35,
             Padding = new Padding(5, 8, 0, 0)
@@ -1424,7 +1856,7 @@ public partial class MainForm
             AllowSorting = true,
             AllowFiltering = true
         };
-        SfSkinManager.SetVisualStyle(_activityGrid, AppThemeColors.DefaultTheme);
+        // REMOVED: Per-control theme application - grid inherits theme from ApplicationVisualTheme
 
         // Map to ActivityLog properties with flexible column sizing
         _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
@@ -1873,6 +2305,12 @@ public partial class MainForm
     /// </summary>
     private void LoadAndApplyDockingLayout(string layoutPath)
     {
+        if (_dockingManager == null)
+        {
+            _logger.LogWarning("Cannot load docking layout - DockingManager is null");
+            return;
+        }
+
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
@@ -2019,7 +2457,7 @@ public partial class MainForm
     /// </summary>
     private void LogDockStateLoad(string layoutPath)
     {
-        _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime:o}",
+        _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
             System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath, this.InvokeRequired, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
     }
 
@@ -2092,7 +2530,7 @@ public partial class MainForm
             var panel = new Panel
             {
                 Name = panelInfo.Name
-                // REMOVED: BackColor, ForeColor - SfSkinManager theme cascade handles panel colors
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles panel colors
             };
 
             // Add some basic content based on panel name (this is a simplified example)
@@ -2124,7 +2562,9 @@ public partial class MainForm
             _dockingManager.DockControl(panel, this, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
 
             // Track the panel
+            _dynamicDockPanels ??= new Dictionary<string, Panel>();
             _dynamicDockPanels[panelInfo.Name] = panel;
+            panel = null; // ownership transferred to DockingManager/dictionary
 
             _logger.LogInformation("Recreated dynamic panel '{PanelName}'", panelInfo.Name);
         }
@@ -2278,15 +2718,9 @@ public partial class MainForm
         {
             if (_dockingManager != null)
             {
-                try
-                {
-                    SfSkinManager.SetVisualStyle(_dockingManager, AppThemeColors.DefaultTheme);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "DockingManager theme apply fallback");
-                    // Theme application failure is non-critical
-                }
+                // REMOVED: Per-control theme application - DockingManager inherits theme from ApplicationVisualTheme
+                // Theme cascade from Program.cs ensures consistent styling
+                _logger.LogDebug("DockingManager uses cascaded theme from ApplicationVisualTheme");
             }
 
             ApplyPanelTheme(_leftDockPanel);
@@ -2306,15 +2740,9 @@ public partial class MainForm
     {
         if (panel == null) return;
 
-        try
-        {
-            SfSkinManager.SetVisualStyle(panel, AppThemeColors.DefaultTheme);
-        }
-        catch (Exception ex)
-        {
-            // Theme application failed - SfSkinManager will use defaults
-            System.Diagnostics.Debug.WriteLine($"Panel theme application failed: {ex.Message}");
-        }
+        // REMOVED: Per-control theme application - panels inherit theme from ApplicationVisualTheme
+        // Theme cascade from Program.cs ensures consistent styling across all docked panels
+        System.Diagnostics.Debug.WriteLine("Panel uses cascaded theme from ApplicationVisualTheme");
     }
 
     /// <summary>
@@ -2872,8 +3300,8 @@ public partial class MainForm
     /// </summary>
     private void DisposeSyncfusionDockingResources()
     {
-        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - _dockingManager present: {HasDockingManager}, _isSavingLayout={IsSaving}", _dockingManager != null, _isSavingLayout);
-        _logger?.LogDebug("Dispose invoked - hasManager={HasDockingManager}, isSavingLayout={IsSaving}", _dockingManager != null, _isSavingLayout);
+        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - _dockingManager present: {HasDockingManager}, _isSavingLayout={IsSavingLayout}", _dockingManager != null, _isSavingLayout);
+        _logger?.LogDebug("Dispose invoked - hasManager={HasDockingManager}, isSavingLayout={IsSavingLayout}", _dockingManager != null, _isSavingLayout);
 
         // Unsubscribe from theme changes to prevent memory leaks
         try
@@ -2969,7 +3397,10 @@ public partial class MainForm
 
                             try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (fallback)"); }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            _logger!.LogDebug(ex, "Unexpected error during threadpool docking disposal (outer)");
+                        }
                     });
                 }
             }
@@ -3065,8 +3496,9 @@ public partial class MainForm
         {
             Text = title,
             Dock = DockStyle.Top,
-            Font = new Font("Segoe UI Semibold", 12, FontStyle.Bold),
-            // REMOVED: ForeColor - SfSkinManager theme cascade handles label colors
+            // REMOVED: Hard-coded Font - SkinManager owns all theming
+            // Font = new Font("Segoe UI Semibold", 12, FontStyle.Bold),
+            // REMOVED: ForeColor - SkinManager theme cascade handles label colors
             Height = 28
         };
 
@@ -3074,14 +3506,15 @@ public partial class MainForm
         {
             Text = description,
             Dock = DockStyle.Fill,
-            Font = new Font(SegoeUiFontName, 10, FontStyle.Regular)
+            // REMOVED: Hard-coded Font - SkinManager owns all theming
+            // Font = new Font(SegoeUiFontName, 10, FontStyle.Regular)
         };
 
         panel.Controls.Add(descriptionLabel);
         panel.Controls.Add(titleLabel);
 
         // Apply professional shadow effect
-        ProfessionalUI.ApplyCardShadow(panel);
+        // Shadow effects removed - rely on SkinManager theme
 
         return (panel, descriptionLabel);
     }
@@ -3103,6 +3536,11 @@ public partial class MainForm
         Wire(card);
     }
 
+    /// <summary>
+    /// LEGACY: ShowChildForm is deprecated. Use PanelNavigationService.ShowPanel instead.
+    /// This method remains for backwards compatibility but will be removed in a future version.
+    /// </summary>
+    [Obsolete("Use IPanelNavigationService.ShowPanel<TPanel> instead for docking-based navigation")]
     private void ShowChildForm<TForm, TViewModel>(bool allowMultiple = false)
         where TForm : Form
         where TViewModel : class
@@ -3238,9 +3676,9 @@ public partial class MainForm
 
     private void SetMdiClientBackColor(Color color)
     {
-        // Note: MDI client BackColor is now managed by SfSkinManager theme cascade
+        // Note: MDI client BackColor is now managed by SkinManager theme cascade
         // This method retained for compatibility but performs no operation
-        _logger.LogDebug("SetMdiClientBackColor called - theme managed by SfSkinManager");
+        _logger.LogDebug("SetMdiClientBackColor called - theme managed by SkinManager");
     }
 
     private void AddMdiWindowMenu()
@@ -3257,7 +3695,7 @@ public partial class MainForm
             // create a hidden MenuStrip for MDI window list
             try
             {
-                menuStrip = new MenuStrip { Name = "MainMenuStrip", Dock = DockStyle.Top, Visible = false, AllowMerge = true };
+                menuStrip = new MenuStrip { Name = "MainMenuStrip", Dock = DockStyle.Top, Visible = false };
                 Controls.Add(menuStrip);
                 this.MainMenuStrip = menuStrip;
                 _logger.LogInformation("Created hidden MenuStrip for MDI support");
@@ -3418,16 +3856,16 @@ public partial class MainForm
             var scope = _serviceProvider.CreateScope();
             var form = CreateFormInstance<TForm, TViewModel>(scope);
 
-            // Apply current theme to child form
-            try
-            {
-                AppThemeColors.ApplyTheme(form);
-                _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
-            }
+            // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
+            // try
+            // {
+            //     AppThemeColors.ApplyTheme(form);
+            //     _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
+            // }
+            // catch (Exception ex)
+            // {
+            //     _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
+            // }
 
             // Ensure DockingManager is configured for standard MDI (Phase 1 Simplification)
             RegisterMdiChildWithDocking(form);
@@ -3489,12 +3927,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
-#if DEBUG
-            if (System.Diagnostics.Debugger.IsAttached)
-            {
-                System.Diagnostics.Debugger.Break();
-            }
-#endif
             throw;
         }
     }
@@ -3530,16 +3962,16 @@ public partial class MainForm
             var scope = _serviceProvider.CreateScope();
             var form = CreateFormInstance<TForm, TViewModel>(scope);
 
-            // Apply current theme to child form
-            try
-            {
-                AppThemeColors.ApplyTheme(form);
-                _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
-            }
+            // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
+            // try
+            // {
+            //     AppThemeColors.ApplyTheme(form);
+            //     _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
+            // }
+            // catch (Exception ex)
+            // {
+            //     _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
+            // }
 
             // Handle form closing to clean up scope and tracking
             form.FormClosed += (s, e) =>
@@ -3574,12 +4006,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
-#if DEBUG
-            if (System.Diagnostics.Debugger.IsAttached)
-            {
-                System.Diagnostics.Debugger.Break();
-            }
-#endif
             throw;
         }
     }
@@ -3620,15 +4046,9 @@ public partial class MainForm
 
     public void CloseSettingsPanel()
     {
-        // Find and close any SettingsForm child windows
-        foreach (Form childForm in this.MdiChildren)
-        {
-            if (childForm is SettingsForm settingsForm)
-            {
-                settingsForm.Close();
-                return;
-            }
-        }
+        // Legacy method - SettingsForm replaced by SettingsPanel
+        // TODO: Implement HidePanel method in IPanelNavigationService if panel hiding is needed
+        // _panelNavigator?.HidePanel("Settings");
     }
 
     public void ClosePanel(string panelName)
@@ -3644,6 +4064,9 @@ public partial class MainForm
         where TForm : Form
         where TViewModel : class
     {
+        // Legacy form types replaced by panels - commented out to fix compilation errors
+        // Use IPanelNavigationService.ShowPanel<> instead
+        /*
         if (typeof(TForm) == typeof(ChartForm))
         {
             var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(scope.ServiceProvider);
@@ -3665,7 +4088,9 @@ public partial class MainForm
             var budgetOverviewForm = ActivatorUtilities.CreateInstance<BudgetOverviewForm>(scope.ServiceProvider, vm, logger, this);
             return (TForm)(Form)budgetOverviewForm;
         }
+        */
 
+        /*
         if (typeof(TForm) == typeof(DashboardForm))
         {
             // Prefer a DI-provided instance when available (tests can register a lightweight stub)
@@ -3683,7 +4108,9 @@ public partial class MainForm
             var dashboardForm = ActivatorUtilities.CreateInstance<DashboardForm>(scope.ServiceProvider, vm, this);
             return (TForm)(Form)dashboardForm;
         }
+        */
 
+        /*
         if (typeof(TForm) == typeof(ReportsForm))
         {
             var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ReportsViewModel>(scope.ServiceProvider);
@@ -3704,6 +4131,7 @@ public partial class MainForm
             var chatWindow = ActivatorUtilities.CreateInstance<ChatWindow>(scope.ServiceProvider, this);
             return (TForm)(Form)chatWindow;
         }
+        */
 
         if (typeof(TForm) == typeof(QuickBooksForm))
         {
@@ -3711,12 +4139,14 @@ public partial class MainForm
             return (TForm)(Form)quickBooksForm;
         }
 
+        /*
         if (typeof(TForm) == typeof(CustomersForm))
         {
             var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<CustomersViewModel>(scope.ServiceProvider);
             var customersForm = ActivatorUtilities.CreateInstance<CustomersForm>(scope.ServiceProvider, vm, this);
             return (TForm)(Form)customersForm;
         }
+        */
 
         return ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
     }
@@ -3760,6 +4190,12 @@ public partial class MainForm
     private void HandleMdiKeyboardShortcuts(KeyEventArgs e)
     {
         if (!_uiConfig.UseMdiMode) return;
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(new System.Action<KeyEventArgs>(HandleMdiKeyboardShortcuts), e);
+            return;
+        }
 
         if (e.Control && e.KeyCode == Keys.Tab && !e.Shift)
         {
@@ -3810,20 +4246,6 @@ public partial class MainForm
         var currentIndex = Array.IndexOf(children, activeChild);
         var previousIndex = currentIndex == 0 ? children.Length - 1 : currentIndex - 1;
         children[previousIndex].Activate();
-    }
-
-    public void ConfigureChildMenuMerging(MenuStrip childMenuStrip)
-    {
-        if (childMenuStrip == null) return;
-
-        childMenuStrip.AllowMerge = true;
-
-        var parentMenuStrip = Controls.OfType<MenuStrip>().FirstOrDefault();
-        if (parentMenuStrip != null)
-        {
-            parentMenuStrip.AllowMerge = true;
-            _logger.LogDebug("Configured menu merging for child form");
-        }
     }
 
     #endregion

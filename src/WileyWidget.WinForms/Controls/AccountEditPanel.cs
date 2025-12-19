@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.ViewModels;
@@ -120,7 +121,7 @@ namespace WileyWidget.WinForms.Controls
                 Width = controlWidth,
                 AccessibleName = "Department"
             };
-            SfSkinManager.SetVisualStyle(cmbDepartment, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(cmbDepartment, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbDepartment);
             y += rowHeight;
 
@@ -131,7 +132,7 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth
             };
-            SfSkinManager.SetVisualStyle(cmbFund, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(cmbFund, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbFund);
             y += rowHeight;
 
@@ -142,21 +143,21 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth
             };
-            SfSkinManager.SetVisualStyle(cmbType, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(cmbType, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbType);
             y += rowHeight;
 
             // Balance
             Controls.Add(new Label { Text = "Balance:", Location = new Point(padding, y + 4), AutoSize = true });
             numBalance = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
-            SfSkinManager.SetVisualStyle(numBalance, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(numBalance, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBalance);
             y += rowHeight;
 
             // Budget
             Controls.Add(new Label { Text = "Budget Amount:", Location = new Point(padding, y + 4), AutoSize = true });
             numBudget = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
-            SfSkinManager.SetVisualStyle(numBudget, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SkinManager.SetVisualStyle(numBudget, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBudget);
             y += rowHeight;
 

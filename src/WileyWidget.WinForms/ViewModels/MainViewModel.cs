@@ -81,24 +81,26 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = true;
                 ErrorMessage = null;
 
-                _logger.LogInformation("Loading dashboard data");
+                _logger.LogInformation("MainViewModel: LoadDataAsync - Loading dashboard data");
 
                 // Early cancellation check
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Load dashboard items
+                _logger.LogDebug("MainViewModel: LoadDataAsync - Calling GetDashboardItemsAsync");
                 var dashboardItems = await _dashboardService.GetDashboardItemsAsync(cancellationToken);
+                _logger.LogInformation("MainViewModel: LoadDataAsync - Retrieved {Count} dashboard items", dashboardItems?.Count() ?? 0);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Parse dashboard items into properties
                 ActivityItems.Clear();
-                foreach (var item in dashboardItems)
+                foreach (DashboardItem item in dashboardItems!)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
                     // Map items to properties based on category/title
-                    switch (item.Category?.ToLowerInvariant())
+                    switch (item.Category?.ToLowerInvariant() ?? string.Empty)
                     {
                         case "budget":
                             if (decimal.TryParse(item.Value, out var budget))
@@ -132,7 +134,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 LastUpdateTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 
-                _logger.LogInformation("Dashboard data loaded successfully. {ItemCount} items", ActivityItems.Count);
+                _logger.LogInformation("MainViewModel: LoadDataAsync - Dashboard data loaded successfully. {ItemCount} items processed", ActivityItems.Count);
             }
             catch (OperationCanceledException ex)
             {
@@ -159,8 +161,9 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                _logger.LogInformation("Initializing MainViewModel");
+                _logger.LogInformation("MainViewModel: InitializeAsync called");
                 await LoadDataAsync(cancellationToken);
+                _logger.LogInformation("MainViewModel: InitializeAsync completed successfully");
             }
             catch (Exception ex)
             {
@@ -168,6 +171,50 @@ namespace WileyWidget.WinForms.ViewModels
                 _aiLoggingService.LogError("MainViewModel Initialize", ex);
                 throw;
             }
+        }
+
+        public void ProcessDashboard(IEnumerable<DashboardItem> dashboardItems)
+        {
+            ArgumentNullException.ThrowIfNull(dashboardItems);
+
+            foreach (DashboardItem item in dashboardItems)
+            {
+                // Map items to properties based on category/title
+                switch (item.Category?.ToLowerInvariant() ?? string.Empty)
+                {
+                    case "budget":
+                        if (decimal.TryParse(item.Value, out var budget))
+                            TotalBudget = budget;
+                        break;
+                    case "actual":
+                        if (decimal.TryParse(item.Value, out var actual))
+                            TotalActual = actual;
+                        break;
+                    case "variance":
+                        if (decimal.TryParse(item.Value, out var varianceValue))
+                            Variance = varianceValue;
+                        break;
+                    case "accounts":
+                        if (int.TryParse(item.Value, out var accounts))
+                            ActiveAccountCount = accounts;
+                        break;
+                    case "departments":
+                        if (int.TryParse(item.Value, out var depts))
+                            TotalDepartments = depts;
+                        break;
+                }
+
+                ActivityItems.Add(new ActivityItem
+                {
+                    Timestamp = DateTime.Now,
+                    Activity = $"{item.Title}: {item.Value}",
+                    Category = item.Category ?? "General"
+                });
+            }
+
+            LastUpdateTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
+
+            _logger.LogInformation("MainViewModel: ProcessDashboard - Dashboard data processed. {ItemCount} items processed", ActivityItems.Count);
         }
 
         public void Dispose()

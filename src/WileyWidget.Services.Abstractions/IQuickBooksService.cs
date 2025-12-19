@@ -28,9 +28,8 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null);
         System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync();
         System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
-        // TODO: Re-enable when Budget type is available or custom implementation is created
-        // System.Threading.Tasks.Task<List<Budget>> GetBudgetsAsync();
-        // System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<Budget> budgets, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync();
+        System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<WileyWidget.Models.QuickBooksBudget> budgets, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Connects to the QuickBooks API

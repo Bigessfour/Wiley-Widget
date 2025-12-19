@@ -60,6 +60,7 @@
     <PackageReference Include="FluentValidation" />
 
     <!-- Open-source alternatives to Syncfusion -->
+    <PackageReference Include="CsvHelper" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
 

@@ -2,20 +2,18 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.WinForms.Extensions;
-using WileyWidgetThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-namespace WileyWidget.WinForms.Forms;
+namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
-/// QuickBooks integration form that provides access to QuickBooks Online data and operations.
+/// QuickBooks integration panel that provides access to QuickBooks Online data and operations.
 /// Allows users to connect to QuickBooks, sync data, and manage QuickBooks integration.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class QuickBooksForm : Form
+public sealed class QuickBooksPanel : UserControl
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<QuickBooksForm> _logger;
+    private readonly ILogger<QuickBooksPanel> _logger;
     private readonly IQuickBooksService _quickBooksService;
 
     // UI Controls
@@ -33,36 +31,24 @@ public partial class QuickBooksForm : Form
     /// <summary>
     /// Constructor accepting service provider for DI resolution.
     /// </summary>
-    public QuickBooksForm(IServiceProvider serviceProvider, MainForm mainForm)
+    public QuickBooksPanel(IServiceProvider serviceProvider)
     {
-        InitializeComponent();
-
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
 
-        // Only set MdiParent if MainForm is in MDI mode AND using MDI for child forms
-        // In DockingManager mode, forms are shown as owned windows, not MDI children
-        if (mainForm.IsMdiContainer && mainForm.UseMdiMode)
-        {
-            MdiParent = mainForm;
-        }
-
-        _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<QuickBooksForm>>(serviceProvider);
+        _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<QuickBooksPanel>>(serviceProvider);
         _quickBooksService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IQuickBooksService>(serviceProvider);
 
-        _logger.LogInformation("QuickBooksForm created");
+        InitializeComponent();
+        _logger.LogInformation("QuickBooksPanel created");
     }
 
     private void InitializeComponent()
     {
-        // Window properties
-        Text = "QuickBooks Integration - Wiley Widget";
-        Size = new Size(600, 500);
-        StartPosition = FormStartPosition.CenterParent;
-        Icon = null; // Use default application icon
-        MaximizeBox = true;
-        MinimizeBox = true;
-        FormBorderStyle = FormBorderStyle.Sizable;
+        // Panel properties - theme inherited from parent via SkinManager cascade
+        Name = "QuickBooksPanel";
+        Dock = DockStyle.Fill;
+        AutoScroll = true;
+        Padding = new Padding(20);
 
         // Connection Status Group
         _connectionGroup = new GroupBox
@@ -70,7 +56,9 @@ public partial class QuickBooksForm : Form
             Text = "Connection Status",
             Location = new Point(20, 20),
             Size = new Size(540, 120),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            TabIndex = 0,
+            AccessibleName = "Connection Status Group"
         };
 
         _statusLabel = new Label
@@ -79,6 +67,7 @@ public partial class QuickBooksForm : Form
             Location = new Point(20, 30),
             Size = new Size(200, 20),
             AutoSize = false,
+            TabIndex = 1,
             AccessibleName = "Connection Status Label"
         };
 
@@ -87,7 +76,10 @@ public partial class QuickBooksForm : Form
             Text = "Connect",
             Location = new Point(20, 60),
             Size = new Size(100, 35),
-            Enabled = false
+            Enabled = false,
+            TabIndex = 2,
+            AccessibleName = "Connect to QuickBooks Button",
+            AccessibleDescription = "Establish connection to QuickBooks Online"
         };
         _connectButton.Click += async (s, e) => await ConnectAsync();
 
@@ -96,7 +88,10 @@ public partial class QuickBooksForm : Form
             Text = "Disconnect",
             Location = new Point(130, 60),
             Size = new Size(100, 35),
-            Enabled = false
+            Enabled = false,
+            TabIndex = 3,
+            AccessibleName = "Disconnect from QuickBooks Button",
+            AccessibleDescription = "Disconnect from QuickBooks Online"
         };
         _disconnectButton.Click += async (s, e) => await DisconnectAsync();
 
@@ -108,7 +103,9 @@ public partial class QuickBooksForm : Form
             Text = "Operations",
             Location = new Point(20, 150),
             Size = new Size(540, 120),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            TabIndex = 4,
+            AccessibleName = "QuickBooks Operations Group"
         };
 
         _syncButton = new Button
@@ -116,7 +113,10 @@ public partial class QuickBooksForm : Form
             Text = "Sync Data",
             Location = new Point(20, 30),
             Size = new Size(120, 35),
-            Enabled = false
+            Enabled = false,
+            TabIndex = 5,
+            AccessibleName = "Sync QuickBooks Data Button",
+            AccessibleDescription = "Synchronize data from QuickBooks Online"
         };
         _syncButton.Click += async (s, e) => await SyncDataAsync();
 
@@ -125,7 +125,10 @@ public partial class QuickBooksForm : Form
             Text = "Import Chart of Accounts",
             Location = new Point(150, 30),
             Size = new Size(160, 35),
-            Enabled = false
+            Enabled = false,
+            TabIndex = 6,
+            AccessibleName = "Import Chart of Accounts Button",
+            AccessibleDescription = "Import account structure from QuickBooks"
         };
         _importAccountsButton.Click += async (s, e) => await ImportAccountsAsync();
 
@@ -140,7 +143,9 @@ public partial class QuickBooksForm : Form
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Vertical,
-            AccessibleName = "Status Log Text Box"
+            TabIndex = 7,
+            AccessibleName = "Status Log Text Box",
+            AccessibleDescription = "Operation status and log messages"
         };
 
         // Progress Bar
@@ -150,41 +155,19 @@ public partial class QuickBooksForm : Form
             Size = new Size(540, 25),
             Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             Visible = false,
+            TabIndex = 8,
             AccessibleName = "Operation Progress Bar"
         };
 
-        // Add controls to form
+        // Add controls to panel
         Controls.AddRange(new Control[] { _connectionGroup, _operationsGroup, _statusTextBox, _progressBar });
 
-        // Keyboard shortcuts
-        KeyPreview = true;
-        KeyDown += (s, e) =>
-        {
-            if (e.KeyCode == Keys.Escape)
-            {
-                Close();
-                e.Handled = true;
-            }
-        };
-
-        _logger.LogInformation("QuickBooksForm UI initialized");
+        _logger.LogInformation("QuickBooksPanel UI initialized");
     }
 
     protected override async void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-
-        if (MdiParent is MainForm mf)
-        {
-            try
-            {
-                mf.RegisterAsDockingMDIChild(this, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to register QuickBooksForm with DockingManager");
-            }
-        }
 
         // Check initial connection status
         await UpdateConnectionStatusAsync();
@@ -204,7 +187,7 @@ public partial class QuickBooksForm : Form
             if (connectionStatus.IsConnected)
             {
                 _statusLabel!.Text = $"Connected to: {connectionStatus.CompanyName ?? "Unknown Company"}";
-                _statusLabel!.ForeColor = Color.Green;
+                _statusLabel!.ForeColor = Color.Green; // Semantic status color
                 _connectButton!.Enabled = false;
                 _disconnectButton!.Enabled = true;
                 _syncButton!.Enabled = true;
@@ -214,7 +197,7 @@ public partial class QuickBooksForm : Form
             else
             {
                 _statusLabel!.Text = "Not Connected";
-                _statusLabel!.ForeColor = Color.Red;
+                _statusLabel!.ForeColor = Color.Red; // Semantic status color
                 _connectButton!.Enabled = true;
                 _disconnectButton!.Enabled = false;
                 _syncButton!.Enabled = false;
@@ -226,7 +209,7 @@ public partial class QuickBooksForm : Form
         {
             _logger.LogError(ex, "Error checking connection status");
             _statusLabel!.Text = "Error checking status";
-            _statusLabel!.ForeColor = Color.Red;
+            _statusLabel!.ForeColor = Color.Red; // Semantic status color
             UpdateStatus($"Error checking connection: {ex.Message}");
         }
         finally
@@ -392,7 +375,7 @@ public partial class QuickBooksForm : Form
 
     private void UpdateStatus(string message)
     {
-        if (_statusTextBox != null)
+        if (_statusTextBox != null && !_statusTextBox.IsDisposed && !IsDisposed)
         {
             if (InvokeRequired)
             {
@@ -407,7 +390,7 @@ public partial class QuickBooksForm : Form
 
     private void SetProgressVisible(bool visible)
     {
-        if (_progressBar != null)
+        if (_progressBar != null && !_progressBar.IsDisposed && !IsDisposed)
         {
             if (InvokeRequired)
             {
@@ -422,58 +405,46 @@ public partial class QuickBooksForm : Form
 
     private void SetButtonsEnabled(bool enabled)
     {
+        if (IsDisposed) return;
+
         if (InvokeRequired)
         {
             Invoke(() =>
             {
-                _connectButton!.Enabled = enabled && !_isConnected;
-                _disconnectButton!.Enabled = enabled && _isConnected;
-                _syncButton!.Enabled = enabled && _isConnected;
-                _importAccountsButton!.Enabled = enabled && _isConnected;
+                if (!IsDisposed)
+                {
+                    _connectButton!.Enabled = enabled && !_isConnected;
+                    _disconnectButton!.Enabled = enabled && _isConnected;
+                    _syncButton!.Enabled = enabled && _isConnected;
+                    _importAccountsButton!.Enabled = enabled && _isConnected;
+                }
             });
         }
         else
         {
             _connectButton!.Enabled = enabled && !_isConnected;
-            _disconnectButton!.Enabled = enabled && !_isConnected;
+            _disconnectButton!.Enabled = enabled && _isConnected;
             _syncButton!.Enabled = enabled && _isConnected;
             _importAccountsButton!.Enabled = enabled && _isConnected;
         }
     }
 
     /// <summary>
-    /// Cleanup on form close.
-    /// </summary>
-    protected override void OnFormClosing(FormClosingEventArgs e)
-    {
-        try
-        {
-            _logger.LogInformation("QuickBooksForm closing");
-            base.OnFormClosing(e);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during QuickBooksForm closing");
-        }
-    }
-
-    /// <summary>
-    /// Ensure owned disposable fields are cleaned up to avoid CA2213 warnings
+    /// Cleanup panel resources.
     /// </summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            // Use SafeDispose for all controls to prevent Syncfusion crashes
-            _statusLabel.SafeDispose();
-            _connectButton.SafeDispose();
-            _disconnectButton.SafeDispose();
-            _syncButton.SafeDispose();
-            _importAccountsButton.SafeDispose();
-            _statusTextBox.SafeDispose();
-            _progressBar.SafeDispose();
-            _connectionGroup.SafeDispose();
-            _operationsGroup.SafeDispose();
+            _statusLabel?.Dispose();
+            _connectButton?.Dispose();
+            _disconnectButton?.Dispose();
+            _syncButton?.Dispose();
+            _importAccountsButton?.Dispose();
+            _statusTextBox?.Dispose();
+            _progressBar?.Dispose();
+            _connectionGroup?.Dispose();
+            _operationsGroup?.Dispose();
         }
 
         base.Dispose(disposing);

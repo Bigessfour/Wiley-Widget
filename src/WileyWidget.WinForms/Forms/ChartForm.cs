@@ -6,9 +6,10 @@ using Syncfusion.Drawing;
 using System.Drawing;
 using System.Diagnostics.CodeAnalysis;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Serilog;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
+using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
@@ -45,8 +46,9 @@ namespace WileyWidget.WinForms.Forms
             }
 
             Text = ChartFormResources.FormTitle;
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
-            ThemeColors.ApplyTheme(this);
+
+            // Apply theme - cascades to all child controls automatically
+            WwThemeColors.ApplyTheme(this);
 
             // Set minimum size for chart visibility
             MinimumSize = new Size(600, 400);
@@ -59,6 +61,11 @@ namespace WileyWidget.WinForms.Forms
                 _logger.Information("ChartForm closed");
                 _vm.PropertyChanged -= VmOnPropertyChanged;
                 UnwireCollectionChanges();
+
+                // Dispose chart controls explicitly
+                _cartesian?.Dispose();
+                _pie?.Dispose();
+                _statusLabel?.Dispose();
             };
 
             _logger.Information("ChartForm initialized successfully");
@@ -84,7 +91,12 @@ namespace WileyWidget.WinForms.Forms
             _pie = CreatePieChart();
             _pie.Dock = DockStyle.Fill;
 
-            var split = new SplitContainer { Dock = DockStyle.Fill };
+            var split = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Name = "ChartSplitContainer",
+                AccessibleName = "Chart Split Container"
+            };
             split.Panel1.Controls.Add(_cartesian);
             split.Panel2.Controls.Add(_pie);
 
@@ -95,7 +107,9 @@ namespace WileyWidget.WinForms.Forms
                 AutoSize = false,
                 Height = 26,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(8, 4, 4, 4)
+                Padding = new Padding(8, 4, 4, 4),
+                Name = "ChartStatusLabel",
+                AccessibleName = "Chart Status Label"
             };
 
             Controls.Add(split);
@@ -103,7 +117,7 @@ namespace WileyWidget.WinForms.Forms
             Size = new Size(1000, 700);
             StartPosition = FormStartPosition.CenterParent;
 
-            Load += async (s, e) => await LoadChartDataAsync();
+            Load += (s, e) => BeginInvoke(async () => await LoadChartDataAsync());
         }
 
         private ChartControl CreateCartesianChart()
@@ -112,10 +126,10 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Name = "Chart_Cartesian",
-                AccessibleName = "Chart_Cartesian",
+                AccessibleName = "Cartesian Chart - Budget Trend",
                 Text = "Budget Trend"
             };
-            SfSkinManager.SetVisualStyle(cartesian, ThemeColors.DefaultTheme);
+            // Theme cascades from parent form automatically
 
             cartesian.PrimaryXAxis.Title = "Month";
             cartesian.PrimaryYAxis.Title = "Amount ($)";
@@ -128,10 +142,10 @@ namespace WileyWidget.WinForms.Forms
             {
                 Dock = DockStyle.Fill,
                 Name = "Chart_Pie",
-                AccessibleName = "Chart_Pie",
+                AccessibleName = "Pie Chart - Budget Distribution",
                 Text = "Budget Distribution"
             };
-            SfSkinManager.SetVisualStyle(pie, ThemeColors.DefaultTheme);
+            // Theme cascades from parent form automatically
 
             // Hide axis for pie chart by setting stroke to transparent
             pie.PrimaryXAxis.DrawGrid = false;
@@ -182,7 +196,9 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (_cartesian == null || _pie == null) return;
+                // Defensive: check for null and disposed state
+                if (_cartesian == null || _pie == null || _cartesian.IsDisposed || _pie.IsDisposed)
+                    return;
 
                 UpdateCartesianSeries(_cartesian);
                 UpdatePieSeries(_pie);
@@ -246,20 +262,31 @@ namespace WileyWidget.WinForms.Forms
 
         private void ShowStatus(string message, bool isError)
         {
-            if (_statusLabel == null) return;
+            // Defensive: check for null and disposed state
+            if (_statusLabel == null || _statusLabel.IsDisposed) return;
 
             if (InvokeRequired)
             {
-                BeginInvoke(() => ShowStatus(message, isError));
+                try
+                {
+                    BeginInvoke(() => ShowStatus(message, isError));
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Form is disposing - safe to ignore
+                }
                 return;
             }
 
             _statusLabel.Text = message;
-            _statusLabel.ForeColor = isError ? Color.Red : Color.Green;  // Semantic status colors
+            // ✅ ALLOWED: Semantic status colors using standard .NET colors
+            _statusLabel.ForeColor = isError ? Color.Red : Color.Green;
         }
 
         private void UpdateCartesianSeries(ChartControl cartesian)
         {
+            if (cartesian.IsDisposed) return;
+
             cartesian.Series.Clear();
             var series = new ChartSeries("Revenue", ChartSeriesType.Line);
             series.Style.Border.Width = 2;
@@ -277,6 +304,8 @@ namespace WileyWidget.WinForms.Forms
 
         private void UpdatePieSeries(ChartControl pie)
         {
+            if (pie.IsDisposed) return;
+
             pie.Series.Clear();
             var pieSeries = new ChartSeries("Distribution", ChartSeriesType.Pie);
 

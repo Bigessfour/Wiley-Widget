@@ -8,9 +8,10 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Themes;
+using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -23,8 +24,12 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(panelName)) return;
+
                 var method = GetType().GetMethod("DockUserControlPanel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                method?.MakeGenericMethod(typeof(TPanel)).Invoke(this, new object[] { panelName });
+                if (method == null) return;
+
+                method.MakeGenericMethod(typeof(TPanel)).Invoke(this, new object[] { panelName });
             }
             catch
             {
@@ -36,18 +41,23 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (ActiveControl is Syncfusion.WinForms.DataGrid.SfDataGrid ac)
+                // Defensive: check for null and disposed state
+                if (IsDisposed || Controls == null) return null;
+
+                if (ActiveControl is Syncfusion.WinForms.DataGrid.SfDataGrid ac && !ac.IsDisposed)
                     return ac;
 
                 // Find focused control recursively
-                Control? focused = FindFocusedControl(this.Controls);
-                if (focused is Syncfusion.WinForms.DataGrid.SfDataGrid fg)
+                Control? focused = FindFocusedControl(Controls);
+                if (focused is Syncfusion.WinForms.DataGrid.SfDataGrid fg && !fg.IsDisposed)
                     return fg;
 
                 // Find first visible SfDataGrid in controls
-                foreach (Control c in this.Controls)
+                foreach (Control c in Controls)
                 {
-                    var grid = c.Controls.OfType<Syncfusion.WinForms.DataGrid.SfDataGrid>().FirstOrDefault(g => g.Visible);
+                    if (c == null || c.IsDisposed) continue;
+                    var grid = c.Controls.OfType<Syncfusion.WinForms.DataGrid.SfDataGrid>()
+                        .FirstOrDefault(g => g != null && !g.IsDisposed && g.Visible);
                     if (grid != null) return grid;
                 }
 
@@ -59,13 +69,18 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private Control? FindFocusedControl(Control.ControlCollection controls)
+        private Control? FindFocusedControl(Control.ControlCollection? controls)
         {
+            if (controls == null) return null;
+
             foreach (Control c in controls)
             {
                 try
                 {
+                    // Defensive: check for null and disposed state
+                    if (c == null || c.IsDisposed) continue;
                     if (c.Focused) return c;
+
                     var nested = FindFocusedControl(c.Controls);
                     if (nested != null) return nested;
                 }
@@ -79,10 +94,10 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null) return;
+                if (grid == null || grid.IsDisposed) return;
 
-                var col = grid.Columns.OfType<GridColumnBase>().FirstOrDefault(c => c.AllowSorting);
-                if (col == null) return;
+                var col = grid.Columns?.OfType<GridColumnBase>().FirstOrDefault(c => c != null && c.AllowSorting);
+                if (col == null || string.IsNullOrWhiteSpace(col.MappingName)) return;
 
                 grid.SortByColumn(col.MappingName, descending);
             }
@@ -97,7 +112,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null) return;
+                if (grid == null || grid.IsDisposed) return;
 
                 // Try to pick a reasonable column and value to filter on.
                 // Use first column with a non-null first-row value and filter by a substring of it.
@@ -108,10 +123,14 @@ namespace WileyWidget.WinForms.Forms
                 var first = items.FirstOrDefault(i => i != null);
                 if (first == null) return;
 
+                if (grid.Columns == null) return;
+
                 foreach (var col in grid.Columns.OfType<GridColumnBase>())
                 {
                     try
                     {
+                        if (col == null || string.IsNullOrWhiteSpace(col.MappingName)) continue;
+
                         var prop = first.GetType().GetProperty(col.MappingName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                         if (prop == null) continue;
                         var val = prop.GetValue(first)?.ToString();
@@ -136,7 +155,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null) return;
+                if (grid == null || grid.IsDisposed) return;
 
                 grid.ClearFilters();
             }
@@ -151,7 +170,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null) return;
+                if (grid == null || grid.IsDisposed) return;
 
                 if (_uiConfig.IsUiTestHarness)
                 {
@@ -167,8 +186,13 @@ namespace WileyWidget.WinForms.Forms
                         try
                         {
                             var path = uiTestDialog.FileName;
+                            if (string.IsNullOrWhiteSpace(path)) return;
+
                             var dir = Path.GetDirectoryName(path);
-                            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                            {
+                                Directory.CreateDirectory(dir);
+                            }
                             await File.WriteAllTextAsync(path, "%XLSX-FAKE\n");
                         }
                         catch (Exception ex)
@@ -181,7 +205,7 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 // Normal operation: use ExportService
-                var save = new SaveFileDialog
+                using var save = new SaveFileDialog
                 {
                     Filter = "Excel Files (*.xlsx)|*.xlsx",
                     DefaultExt = "xlsx",
@@ -192,14 +216,22 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
+                        if (string.IsNullOrWhiteSpace(save.FileName)) return;
                         await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, save.FileName);
                     }
                     catch (Exception ex)
                     {
                         _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
-                        if (!_uiConfig.IsUiTestHarness)
+                        if (_uiConfig != null && !_uiConfig.IsUiTestHarness && !IsDisposed)
                         {
-                            MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            try
+                            {
+                                MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // Form disposed during error display - safe to ignore
+                            }
                         }
                     }
                 }
@@ -212,21 +244,33 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Switches the application theme at runtime and refreshes all MDI children.
-        /// Demonstrates SfSkinManager runtime theme switching capability.
+        /// Theme cascades from parent to children automatically via SkinManager.
         /// </summary>
         /// <param name="themeName">Theme name (e.g., "Office2019Colorful", "Office2019Black", "Office2019DarkGray")</param>
         public void SwitchTheme(string themeName)
         {
             try
             {
-                // Apply theme to main form
-                ThemeColors.ApplyTheme(this, themeName);
-
-                // Refresh all MDI children to pick up theme change
-                foreach (Form child in MdiChildren)
+                if (string.IsNullOrWhiteSpace(themeName))
                 {
-                    SfSkinManager.SetVisualStyle(child, themeName);
-                    child.Refresh();
+                    _logger?.LogWarning("SwitchTheme called with null or empty theme name");
+                    return;
+                }
+
+                // Apply theme to main form - theme cascades to all children automatically
+                WwThemeColors.ApplyTheme(this, themeName);
+
+                // Refresh all MDI children to pick up theme change from cascade
+                // No need for per-child SetVisualStyle - theme cascades automatically
+                if (MdiChildren != null)
+                {
+                    foreach (Form child in MdiChildren)
+                    {
+                        if (child != null && !child.IsDisposed)
+                        {
+                            child.Refresh();
+                        }
+                    }
                 }
 
                 _logger?.LogInformation("Theme switched to '{ThemeName}'", themeName);

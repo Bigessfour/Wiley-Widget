@@ -93,14 +93,14 @@ public partial class AIChatControl : UserControl
         AutoScaleMode = AutoScaleMode.Dpi;
 
         Size = new Size(450, 650);
-        // BackColor handled by SfSkinManager theme cascade
+        // BackColor handled by SkinManager theme cascade
 
         // === Header Panel ===
         _headerPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 45,
-            // BackColor handled by SfSkinManager theme cascade
+            // BackColor handled by SkinManager theme cascade
             Padding = new Padding(15, 0, 15, 0)
         };
 
@@ -109,7 +109,7 @@ public partial class AIChatControl : UserControl
             Text = "AI Assistant",
             Dock = DockStyle.Left,
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            // ForeColor handled by SfSkinManager theme cascade
+            // ForeColor handled by SkinManager theme cascade
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(0, 10, 0, 0)
@@ -122,7 +122,7 @@ public partial class AIChatControl : UserControl
             Width = 70,
             Height = 30,
             FlatStyle = FlatStyle.Flat,
-            // BackColor/ForeColor handled by SfSkinManager theme cascade
+            // BackColor/ForeColor handled by SkinManager theme cascade
             Font = new Font("Segoe UI", 9f),
             Margin = new Padding(5)
         };
@@ -138,7 +138,7 @@ public partial class AIChatControl : UserControl
             Dock = DockStyle.Fill,
             ReadOnly = true,
             BorderStyle = BorderStyle.None,
-            // BackColor handled by SfSkinManager theme cascade
+            // BackColor handled by SkinManager theme cascade
             Font = new Font("Segoe UI", 10f),
             Padding = new Padding(10),
             ScrollBars = RichTextBoxScrollBars.Vertical,
@@ -161,7 +161,7 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Bottom,
             Height = 35,
-            // BackColor handled by SfSkinManager theme cascade (semi-transparent overlay in production)
+            // BackColor handled by SkinManager theme cascade (semi-transparent overlay in production)
             Visible = false
         };
 
@@ -180,7 +180,7 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Bottom,
             Height = 120,
-            // BackColor handled by SfSkinManager theme cascade
+            // BackColor handled by SkinManager theme cascade
             Padding = new Padding(12)
         };
 
@@ -207,7 +207,7 @@ public partial class AIChatControl : UserControl
             Height = 55,
             Multiline = true,
             PlaceholderText = "Type your message... (e.g., 'read MainForm.cs' or 'search for Button')",
-            // BackColor handled by SfSkinManager theme cascade
+            // BackColor handled by SkinManager theme cascade
             BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Segoe UI", 10f),
             ScrollBars = ScrollBars.Vertical,
@@ -223,7 +223,7 @@ public partial class AIChatControl : UserControl
             Width = 70,
             Height = 55,
             Text = "Send",
-            // BackColor/ForeColor handled by SfSkinManager theme cascade
+            // BackColor/ForeColor handled by SkinManager theme cascade
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold),
             Enabled = true,
