@@ -288,6 +288,60 @@ public partial class MainForm
                     _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
             };
 
+            var analyticsBtn = new ToolStripButton
+            {
+                Name = "Nav_Analytics",
+                AccessibleName = "Nav_Analytics",  // Automation ID for UI tests
+                Text = "📊 &Analytics",
+                ToolTipText = "Open Analytics and Insights (Alt+A)",
+                AutoSize = true,
+                AccessibleDescription = "Opens the analytics view with budget analysis, key insights, and recommendations"
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    analyticsBtn.Image = iconService.GetIcon("analytics", currentTheme, 16);
+                    analyticsBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            analyticsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true);
+            };
+
+            var auditLogBtn = new ToolStripButton
+            {
+                Name = "Nav_AuditLog",
+                AccessibleName = "Nav_AuditLog",  // Automation ID for UI tests
+                Text = "📋 &Audit Log",
+                ToolTipText = "Open Audit Log and Activity History (Alt+U)",
+                AutoSize = true,
+                AccessibleDescription = "Opens the audit log view showing application activity, user actions, and system events"
+            };
+            // Try to set icon from theme service
+            try
+            {
+                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                if (iconService != null)
+                {
+                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                    auditLogBtn.Image = iconService.GetIcon("audit", currentTheme, 16);
+                    auditLogBtn.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+            catch { /* Icon loading is optional */ }
+            auditLogBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            };
+
             var customersBtn = new ToolStripButton
             {
                 Name = "Nav_Customers",
@@ -439,6 +493,8 @@ public partial class MainForm
                 accountsBtn,
                 budgetBtn,
                 chartsBtn,
+                analyticsBtn,
+                auditLogBtn,
                 customersBtn,
                 reportsBtn,
                 aiChatBtn,
@@ -600,6 +656,20 @@ public partial class MainForm
                     _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
             };
 
+            var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Nav_Analytics" };
+            analyticsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true);
+            };
+
+            var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Nav_AuditLog" };
+            auditLogBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            };
+
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             // TODO: Create CustomersPanel
             customersBtn.Click += (s, e) => { /* Customers panel not yet implemented */ };
@@ -654,6 +724,8 @@ public partial class MainForm
                 accountsBtn,
                 budgetBtn,
                 chartsBtn,
+                analyticsBtn,
+                auditLogBtn,
                 customersBtn,
                 reportsBtn,
                 aiChatBtn,
