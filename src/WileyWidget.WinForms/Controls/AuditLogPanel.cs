@@ -35,11 +35,13 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private DateTimePicker? _dtpEndDate;
     private Syncfusion.WinForms.ListView.SfComboBox? _cmbActionType;
     private Syncfusion.WinForms.ListView.SfComboBox? _cmbUser;
+    private StatusStrip? _statusStrip;
+    private ToolStripStatusLabel? _statusLabel;
+    private ToolTip? _toolTip;
 
     // Event handlers for cleanup
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _entriesCollectionChangedHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _btnRefreshClickHandler;
@@ -60,7 +62,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         InitializeComponent();
         SetupUI();
-        SubscribeToThemeChanges();
+        // Theme applied globally by SfSkinManager - no per-control subscription needed
     }
 
     private void InitializeComponent()
@@ -185,6 +187,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Text = "&Refresh",
             Width = 100,
             Height = 32,
+            TabIndex = 1,
             AccessibleName = "Refresh audit log",
             AccessibleDescription = "Reload audit entries from database"
         };
@@ -196,6 +199,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             Text = "Auto-refresh",
             AutoSize = true,
+            TabIndex = 2,
             AccessibleName = "Auto-refresh toggle",
             AccessibleDescription = "Automatically refresh audit log every 30 seconds"
         };
@@ -208,12 +212,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Text = "&Export CSV",
             Width = 100,
             Height = 32,
+            TabIndex = 3,
             AccessibleName = "Export to CSV",
             AccessibleDescription = "Export filtered audit entries to CSV file"
         };
         _btnExportCsvClickHandler = (s, e) => ExportToCsv();
         _btnExportCsv.Click += _btnExportCsvClickHandler;
         filterTable.Controls.Add(_btnExportCsv, 5, 0);
+
+        // ToolTip for controls
+        _toolTip = new ToolTip();
+        _toolTip.SetToolTip(_btnRefresh, "Reload audit entries from database (Alt+R)");
+        _toolTip.SetToolTip(_btnExportCsv, "Export filtered audit entries to CSV file (Alt+E)");
+        _toolTip.SetToolTip(_chkAutoRefresh, "Automatically refresh audit log every 30 seconds");
 
         _filterPanel.Controls.Add(filterTable);
         Controls.Add(_filterPanel);
@@ -239,6 +250,17 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         ConfigureGridColumns();
         Controls.Add(_auditGrid);
+
+        // Status strip for operation feedback
+        _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
+        _statusLabel = new ToolStripStatusLabel
+        {
+            Text = "Ready",
+            Spring = true,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        _statusStrip.Items.Add(_statusLabel);
+        Controls.Add(_statusStrip);
 
         // Loading and no-data overlays
         _loadingOverlay = new LoadingOverlay
@@ -415,11 +437,15 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
                 case nameof(ViewModel.IsLoading):
                     if (_loadingOverlay != null)
                         _loadingOverlay.Visible = ViewModel.IsLoading;
+                    if (_statusLabel != null)
+                        _statusLabel.Text = ViewModel.IsLoading ? "Loading audit entries..." : "Ready";
                     break;
 
                 case nameof(ViewModel.Entries):
                     UpdateGridData();
                     UpdateNoDataOverlay();
+                    if (_statusLabel != null && !ViewModel.IsLoading)
+                        _statusLabel.Text = $"Loaded {ViewModel.Entries.Count} entries";
                     break;
 
                 case nameof(ViewModel.ErrorMessage):
@@ -430,6 +456,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
                             "Error",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
+                        if (_statusLabel != null)
+                            _statusLabel.Text = "Error loading entries";
                     }
                     break;
             }
@@ -593,35 +621,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
     private void SubscribeToThemeChanges()
     {
-        _themeChangedHandler = (s, theme) =>
-        {
-            if (IsDisposed) return;
-
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => ApplyTheme()));
-            }
-            else
-            {
-                ApplyTheme();
-            }
-        };
-
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+        // Theme applied globally by SfSkinManager - no per-control subscription needed
     }
 
     private void ApplyTheme()
     {
-        try
-        {
-            // Theme is applied automatically by SkinManager cascade from parent form
-            // No manual color assignments needed
-            ThemeManager.ApplyThemeToControl(this);
-        }
-        catch
-        {
-            // Ignore theme application failures
-        }
+        // Theme applied globally by SfSkinManager - no manual application needed
     }
 
     /// <summary>
@@ -632,13 +637,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         if (disposing)
         {
             // Unsubscribe from events
-            try
-            {
-                if (_themeChangedHandler != null)
-                    ThemeManager.ThemeChanged -= _themeChangedHandler;
-            }
-            catch { }
-
             try
             {
                 if (ViewModel != null && _viewModelPropertyChangedHandler != null)
@@ -681,6 +679,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             try { _loadingOverlay?.Dispose(); } catch { }
             try { _noDataOverlay?.Dispose(); } catch { }
             try { _filterPanel?.Dispose(); } catch { }
+            try { _statusStrip?.Dispose(); } catch { }
+            try { _toolTip?.Dispose(); } catch { }
             try { _btnRefresh?.Dispose(); } catch { }
             try { _btnExportCsv?.Dispose(); } catch { }
             try { _chkAutoRefresh?.Dispose(); } catch { }

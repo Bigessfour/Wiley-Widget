@@ -49,8 +49,7 @@ namespace WileyWidget.WinForms.Controls
         {
             InitializeComponent();
 
-            // Apply theme on construction so the header looks correct early
-            try { ThemeManager.ApplyThemeToControl(this); } catch { }
+            // Theme applied globally by SfSkinManager - no per-control application needed
         }
 
         protected override void Dispose(bool disposing)
