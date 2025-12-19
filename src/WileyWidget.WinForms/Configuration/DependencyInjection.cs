@@ -8,6 +8,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services;
+using WileyWidget.Services.Threading;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
@@ -190,6 +191,17 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddSingleton<IThemeService, ThemeService>();
             services.AddSingleton<IThemeIconService, ThemeIconService>();
+
+            // Dispatcher helper to marshal UI calls via SynchronizationContext
+            if (!services.Any(sd => sd.ServiceType == typeof(IDispatcherHelper)))
+            {
+                services.AddSingleton<IDispatcherHelper>(sp =>
+                {
+                    var logger = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Logging.ILogger<SynchronizationContextDispatcherHelper>>(sp);
+                    var uiContext = WileyWidget.WinForms.Program.UISynchronizationContext;
+                    return new SynchronizationContextDispatcherHelper(uiContext, logger);
+                });
+            }
 
             // Panel Navigation Service (Singleton - Manages docked panels)
             // Factory pattern: Resolves DockingManager and parent control from MainForm
