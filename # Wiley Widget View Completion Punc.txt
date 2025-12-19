@@ -1,0 +1,67 @@
+# Wiley Widget View Completion Punchlist
+
+This document serves as an **authoritative checklist** for evaluating the completion, consistency, and polish of every Windows Forms view (Form or UserControl) in the Wiley Widget project. It ensures uniform appearance, professional UX, adherence to Syncfusion theming rules, proper control usage, and alignment with Microsoft accessibility/UI best practices.
+
+Use this punchlist when reviewing or implementing any view. Each view must pass **all applicable items** before considering it complete. Reference Syncfusion documentation (e.g., SkinManager usage) and Microsoft guidelines for validation.
+
+## 1. Theming & Visual Consistency (Syncfusion SkinManager - Single Source of Truth)
+
+- **Global theming only via SfSkinManager** → No per-form, per-container, or per-control theme applications. Theme must be applied centrally in `Program.cs` (or equivalent entry point).
+- **Required initialization in Program.cs**:
+  - Load required theme assemblies (e.g., `SkinManager.LoadAssembly(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);`).
+  - Set application-wide theme, preferably `SkinManager.ApplicationVisualTheme = "Office2019Colorful";` (or equivalent string/enum for the chosen theme).
+  - Call before `Application.Run()`.
+- **No hard-coded colors** → Avoid setting `ForeColor`, `BackColor`, or custom brushes/palettes on any control. Rely entirely on the active theme.
+- **No individual control ThemeName/VisualStyle overrides** → Do not set `ThemeName` or equivalent on Syncfusion controls. All controls must inherit from the global SkinManager theme.
+- **No competing theme managers** → No custom theme code, third-party theming, or mixed VisualStyle enums/string ThemeName applications.
+- **Consistent theme across forms/containers** → All forms, child controls, docking panels, ribbons, and status bars use the same theme (verified visually and in code).
+- **Recommended theme** → Office2019Colorful (modern, professional default; change only if explicitly required).
+
+## 2. Syncfusion Control Usage (Proper API Implementation)
+
+- **100% adherence to Syncfusion API** → Every Syncfusion control must be configured exactly per official documentation. No partial implementations, "winging it," or deprecated properties/methods.
+- **Null checks & safe initialization** → In form Load/Constructor, check controls for null before accessing (defensive coding, especially if designer-generated).
+- **Proper disposal** → Syncfusion controls that implement IDisposable are disposed correctly (e.g., in Dispose override or using statements if applicable).
+- **Event-driven patterns** → Use recommended events, data binding, and MVVM-like patterns where applicable (e.g., via CommunityToolkit.Mvvm if in use).
+- **No unlicensed or placeholder configurations** → All Syncfusion controls fully functional with proper licensing handled globally.
+
+## 3. Layout & Resizing (Professional Polish)
+
+- **Proper anchoring/docking** → Controls resize and reposition correctly on form resize (use Anchor, Dock, TableLayoutPanel, or FlowLayoutPanel as needed).
+- **MinimumSize/MaximumSize set** → Form has reasonable Min/Max size to prevent unusable states.
+- **Consistent padding/margins** → Uniform spacing (e.g., 12px margins, consistent control gaps) across all views.
+- **Logical control grouping** → Use GroupBox, Panel, or SplitContainer for visual grouping where appropriate.
+- **Font consistency** → Use system/default or theme-inherited fonts; no arbitrary font changes unless for emphasis (e.g., headings).
+
+## 4. Accessibility & Keyboard Navigation (Microsoft Best Practices)
+
+- **Tab order logical** → TabIndex set correctly; matches visual reading order (left-to-right, top-to-bottom).
+- **Access keys** → Key labels/controls have mnemonic access keys (e.g., &Save for Alt+S).
+- **AccessibleName/AccessibleDescription** → Set on all controls (especially non-text ones like buttons/icons) for screen readers.
+- **Keyboard navigation complete** → All actions reachable via keyboard (no mouse-only interactions).
+- **Focus indicators visible** → Default focus rectangles not hidden; selections dimmed in inactive windows.
+- **No color-only information** → Status/conveyance uses text/icons in addition to color.
+- **ToolTips** → Informative ToolTips on complex controls; announced by screen readers.
+- **High contrast support** → Theme supports high contrast (e.g., via HighContrastTheme if needed).
+
+## 5. General Polish & UX Best Practices
+
+- **Clean code-behind** → Minimal logic in views; prefer binding to ViewModels (MVVM pattern).
+- **Error handling** → Graceful handling of nulls, exceptions in UI events.
+- **Performance** → No blocking calls; async where appropriate. Avoid heavy operations in Load.
+- **Consistent icons/styles** → Use theme-compatible icons; uniform button styles (e.g., SfButton where applicable).
+- **Status feedback** → Use StatusStrip or progress indicators for long operations.
+- **Localization ready** → Text from resources if multi-language planned; no hard-coded strings for UI labels.
+- **Visual hierarchy** → Clear primary actions (e.g., bold/colored buttons), secondary dimmed.
+- **No unused controls/variables** → Remove dead code; clean using directives.
+
+## Verification Steps for Each View
+
+1. Build & run → No warnings/errors in Problems panel.
+2. Resize window → Layout remains usable and attractive at various sizes.
+3. Tab through controls → Logical order, all actions accessible.
+4. Change global theme (if testable) → Entire view updates uniformly.
+5. Run with screen reader/Narrator → Key elements announced correctly.
+6. Code review → No violations of theming rules or hard-codes.
+
+This punchlist ensures all views in Wiley Widget achieve **uniform, professional, accessible, and maintainable UI**. Reference this document in Copilot prompts for consistent enforcement beyond mere build success.
