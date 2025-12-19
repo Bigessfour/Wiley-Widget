@@ -28,9 +28,11 @@ public partial class BudgetPanel : UserControl
     private Button? _exportCsvButton;
     private Button? _exportPdfButton;
     private Button? _exportExcelButton;
+#pragma warning disable CS0169 // Field is never used - reserved for future filter functionality
     private Button? _applyFiltersButton;
     private Button? _clearFiltersButton;
     private Button? _refreshButton;
+#pragma warning restore CS0169
     private TextBox? _searchTextBox;
     private ComboBox? _fiscalYearComboBox;
     private ComboBox? _departmentComboBox;
@@ -358,10 +360,10 @@ public partial class BudgetPanel : UserControl
         filterTable.Controls.Add(_underBudgetCheckBox, 3, 2);
 
         filterGroup.Controls.Add(filterTable);
-        _filterPanel.Controls.Add(filterGroup);
+        _filterPanel!.Controls.Add(filterGroup);
         topPanel.Controls.Add(_filterPanel);
 
-        _mainSplitContainer.Panel1.Controls.Add(topPanel);
+        _mainSplitContainer!.Panel1.Controls.Add(topPanel);
     }
 
     private void InitializeBottomPanel()
@@ -560,10 +562,10 @@ public partial class BudgetPanel : UserControl
         buttonTable.Controls.Add(_exportPdfButton, 6, 0);
         buttonTable.Controls.Add(_exportExcelButton, 7, 0);
 
-        _buttonPanel.Controls.Add(buttonTable);
+        _buttonPanel!.Controls.Add(buttonTable);
         bottomPanel.Controls.Add(_buttonPanel);
 
-        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
+        _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
 
     private void SetTabOrder()
@@ -658,6 +660,7 @@ public partial class BudgetPanel : UserControl
         if (result == DialogResult.Yes)
         {
             // Delete logic would go here
+            await Task.CompletedTask; // Suppress CS1998 warning for stub implementation
             MessageBox.Show("Delete functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }

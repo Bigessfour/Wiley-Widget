@@ -834,9 +834,21 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Dispose()
     {
-        // Clean up any resources if needed
-        _logger.LogDebug("ReportsViewModel disposed");
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Clean up managed resources if needed
+        }
+        _logger.LogDebug("ReportsViewModel disposed");
     }
 
     #endregion

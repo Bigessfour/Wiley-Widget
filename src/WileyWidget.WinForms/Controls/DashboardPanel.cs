@@ -433,8 +433,8 @@ namespace WileyWidget.WinForms.Controls
             var chartPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
             _mainChart = new ChartControl { Dock = DockStyle.Fill, AccessibleName = "Budget chart", AccessibleDescription = "Displays budget vs expenditure" };
 
-            // Theme applied automatically by SfSkinManager cascade from parent form
-            // Chart appearance per demos (ChartAppearance.cs patterns) - theme applied by SfSkinManager cascade
+            // Theme applied automatically by SkinManager cascade from parent form
+            // Chart appearance per demos (ChartAppearance.cs patterns) - theme applied by SkinManager cascade
             _mainChart.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             _mainChart.ElementsSpacing = 5;
             _mainChart.BorderAppearance.SkinStyle = Syncfusion.Windows.Forms.Chart.ChartBorderSkinStyle.None;
@@ -655,7 +655,7 @@ namespace WileyWidget.WinForms.Controls
                             var values = new double[] { baseValue * 0.8, baseValue * 0.95, baseValue * 1.02, baseValue * 0.9, baseValue * 1.1, baseValue };
                             for (int i = 0; i < values.Length; i++) s.Points.Add(i.ToString(System.Globalization.CultureInfo.InvariantCulture), values[i]);
                             s.Style.DisplayText = false;
-                            // Use theme-compatible accent color - let SfSkinManager handle theming
+                            // Use theme-compatible accent color - let SkinManager handle theming
                             s.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.DodgerBlue);
                             c.Series.Add(s);
                         }

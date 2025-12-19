@@ -328,7 +328,7 @@ namespace WileyWidget.WinForms.Controls
         {
             if (_varianceChart == null) return;
 
-            // Theme applied automatically by SfSkinManager cascade from parent form
+            // Theme applied automatically by SkinManager cascade from parent form
             _varianceChart.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             _varianceChart.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
             _varianceChart.ShowToolTips = true;

@@ -182,6 +182,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.Threading
             _uiFixture.Dispose();
         }
 
+
         private sealed class NoSendSynchronizationContext : SynchronizationContext, IDisposable
         {
             private readonly BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = new();
@@ -213,8 +214,16 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.Threading
                 }
             }
 
-            public override void Post(SendOrPostCallback d, object? state) => _queue.Add((d, state));
-            public override void Send(SendOrPostCallback d, object? state) => throw new NotSupportedException();
+            public override void Post(SendOrPostCallback d, object? state)
+            {
+                _queue.Add((d, state));
+            }
+
+            public override void Send(SendOrPostCallback d, object? state)
+            {
+                throw new NotSupportedException();
+            }
+
 
             public void Dispose()
             {
@@ -225,8 +234,17 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.Threading
 
         private sealed class PostThrowsSyncContext : SynchronizationContext
         {
-            public override void Post(SendOrPostCallback d, object? state) => throw new InvalidOperationException("Post failed");
-            public override void Send(SendOrPostCallback d, object? state) => throw new NotSupportedException();
+            public override void Post(SendOrPostCallback d, object? state)
+            {
+                throw new InvalidOperationException("Post failed");
+            }
+
+
+            public override void Send(SendOrPostCallback d, object? state)
+            {
+                throw new NotSupportedException();
+            }
+
         }
 
         private sealed class SendQueueSyncContext : SynchronizationContext, IDisposable
@@ -257,7 +275,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.Threading
                 }
             }
 
-            public override void Post(SendOrPostCallback d, object? state) => _queue.Add((d, state, null));
+            public override void Post(SendOrPostCallback d, object? state)
+            {
+                _queue.Add((d, state, null));
+            }
+
 
             public override void Send(SendOrPostCallback d, object? state)
             {

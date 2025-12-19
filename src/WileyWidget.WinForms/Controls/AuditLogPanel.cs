@@ -62,7 +62,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         InitializeComponent();
         SetupUI();
-        // Theme applied globally by SfSkinManager - no per-control subscription needed
+        // Theme applied globally by SkinManager - no per-control subscription needed
     }
 
     private void InitializeComponent()
@@ -348,6 +348,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     /// </summary>
     protected override void OnViewModelResolved(AuditLogViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes
@@ -621,12 +622,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
     private void SubscribeToThemeChanges()
     {
-        // Theme applied globally by SfSkinManager - no per-control subscription needed
+        // Theme applied globally by SkinManager - no per-control subscription needed
     }
 
     private void ApplyTheme()
     {
-        // Theme applied globally by SfSkinManager - no manual application needed
+        // Theme applied globally by SkinManager - no manual application needed
     }
 
     /// <summary>

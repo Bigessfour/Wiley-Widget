@@ -245,13 +245,13 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     /// <summary>
     /// Configures ChartControl for line series display per Syncfusion API documentation.
-    /// Uses global SfSkinManager theme (no per-control overrides), proper date-based X-axis.
+    /// Uses global SkinManager theme (no per-control overrides), proper date-based X-axis.
     /// </summary>
     private void ConfigureChart()
     {
         if (_chartControl == null) return;
 
-        // Rely on global SfSkinManager theme per project punchlist rules - NO per-control theme overrides
+        // Rely on global SkinManager theme per project punchlist rules - NO per-control theme overrides
         _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         _chartControl.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
 
@@ -373,6 +373,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// </summary>
     protected override void OnViewModelResolved(RevenueTrendsViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes
@@ -660,7 +661,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     {
         try
         {
-            // Theme is applied automatically by SfSkinManager cascade from parent form
+            // Theme is applied automatically by SkinManager cascade from parent form
             // No manual color assignments needed per project theme compliance rules
             ThemeManager.ApplyThemeToControl(this);
         }

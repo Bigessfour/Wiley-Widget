@@ -330,6 +330,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var mockDs = new Mock<IQuickBooksDataService>();
             mockDs.Setup(x => x.FindCustomers(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Customer> { new Intuit.Ipp.Data.Customer(), new Intuit.Ipp.Data.Customer() });
             mockDs.Setup(x => x.FindInvoices(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Invoice> { new Intuit.Ipp.Data.Invoice(), new Intuit.Ipp.Data.Invoice(), new Intuit.Ipp.Data.Invoice() });
+            mockDs.Setup(x => x.FindBills(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Bill> { new Intuit.Ipp.Data.Bill(), new Intuit.Ipp.Data.Bill() });
             mockDs.Setup(x => x.FindAccounts(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Account> { new Intuit.Ipp.Data.Account() });
             mockDs.Setup(x => x.FindVendors(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Vendor> { new Intuit.Ipp.Data.Vendor() });
 
@@ -367,6 +368,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
                 new Intuit.Ipp.Data.Account { AcctNum = "101", Name = "Acct 101" }
             });
             mockDs.Setup(x => x.FindAccounts(It.Is<int>(s => s > 1), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Account>());
+            mockDs.Setup(x => x.FindBills(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Bill>());
 
             using var service = new QuickBooksService(
                 mockSettings.Object,
@@ -399,6 +401,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             var expected = new List<Intuit.Ipp.Data.JournalEntry> { new Intuit.Ipp.Data.JournalEntry(), new Intuit.Ipp.Data.JournalEntry() };
             var mockDs = new Mock<IQuickBooksDataService>();
             mockDs.Setup(x => x.FindJournalEntries(It.IsAny<DateTime>(), It.IsAny<DateTime>())).Returns(expected);
+            mockDs.Setup(x => x.FindBills(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Bill>());
 
             using var service = new QuickBooksService(
                 mockSettings.Object,
@@ -428,6 +431,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var mockDs = new Mock<IQuickBooksDataService>();
             mockDs.Setup(x => x.FindCustomers(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Customer> { new Customer() });
+            mockDs.Setup(x => x.FindBills(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Bill>());
 
             using var service = new QuickBooksService(
                 mockSettings.Object,

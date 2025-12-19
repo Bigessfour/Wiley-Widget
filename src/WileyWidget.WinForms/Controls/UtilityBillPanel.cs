@@ -340,10 +340,10 @@ public partial class UtilityBillPanel : UserControl
         buttonTable.Controls.Add(_generateReportButton, 4, 0);
         buttonTable.Controls.Add(_refreshButton, 5, 0);
 
-        _buttonPanel.Controls.Add(buttonTable);
+        _buttonPanel!.Controls.Add(buttonTable);
         topPanel.Controls.Add(_buttonPanel);
 
-        _mainSplitContainer.Panel1.Controls.Add(topPanel);
+        _mainSplitContainer!.Panel1.Controls.Add(topPanel);
     }
 
     private void InitializeBottomPanel()
@@ -451,10 +451,10 @@ public partial class UtilityBillPanel : UserControl
         });
 
         _customersGrid.CurrentCellActivated += CustomersGrid_CurrentCellActivated;
-        customersPanel.Controls.Add(_customersGrid);
+        customersPanel.Controls.Add(_customersGrid!);
         bottomPanel.Controls.Add(customersPanel);
 
-        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
+        _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
 
     private void SetTabOrder()

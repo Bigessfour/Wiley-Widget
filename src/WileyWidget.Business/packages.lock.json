@@ -1128,6 +1128,15 @@
           "WileyWidget.Abstractions": "[1.0.0, )"
         }
       },
+      "wileywidget.services.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "IppDotNetSdkForQuickBooksApiV3": "[15.0.0, )",
+          "Microsoft.Extensions.Logging": "[10.0.0, )",
+          "Microsoft.Extensions.Primitives": "[10.0.0, )",
+          "WileyWidget.Models": "[1.0.0, )"
+        }
+      },
       "FluentValidation": {
         "type": "CentralTransitive",
         "requested": "[11.10.0, )",

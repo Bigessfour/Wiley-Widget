@@ -455,6 +455,21 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    public async System.Threading.Tasks.Task<List<Bill>> GetBillsAsync()
+    {
+        try
+        {
+            // Resolve the data service (use injected test double when present)
+            var ds = await ResolveDataServiceAsync();
+            return ds.FindBills(1, 100);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO bills fetch failed");
+            throw;
+        }
+    }
+
     public async System.Threading.Tasks.Task<List<Vendor>> GetVendorsAsync()
     {
         try

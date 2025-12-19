@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -147,7 +148,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Perform Analysis",
             AccessibleDescription = "Run exploratory data analysis on budget data"
         };
-        _toolTip.SetToolTip(_performAnalysisButton, "Run exploratory data analysis on budget data (Alt+P)");
+        _toolTip!.SetToolTip(_performAnalysisButton, "Run exploratory data analysis on budget data (Alt+P)");
         _performAnalysisButton.Click += async (s, e) => await _viewModel.PerformAnalysisCommand.ExecuteAsync(null);
 
         _runScenarioButton = new Button
@@ -295,10 +296,10 @@ public partial class AnalyticsPanel : UserControl
         scenarioTable.Controls.Add(_projectionYearsTextBox, 1, 3);
 
         scenarioGroup.Controls.Add(scenarioTable);
-        _scenarioPanel.Controls.Add(scenarioGroup);
+        _scenarioPanel!.Controls.Add(scenarioGroup);
         topPanel.Controls.Add(_scenarioPanel);
 
-        _mainSplitContainer.Panel1.Controls.Add(topPanel);
+        _mainSplitContainer!.Panel1!.Controls.Add(topPanel);
     }
 
     private void InitializeBottomPanel()
@@ -485,10 +486,10 @@ public partial class AnalyticsPanel : UserControl
         forecastPanel.Controls.Add(_forecastChart);
         chartsSplit.Panel2.Controls.Add(forecastPanel);
 
-        _chartsPanel.Controls.Add(chartsSplit);
+        _chartsPanel!.Controls.Add(chartsSplit);
         bottomPanel.Controls.Add(_chartsPanel);
 
-        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
+        _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
 
     private void SetTabOrder()
@@ -616,7 +617,7 @@ public partial class AnalyticsPanel : UserControl
 
             foreach (var point in _viewModel.ForecastData)
             {
-                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM"), (double)point.PredictedReserves);
+                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", CultureInfo.InvariantCulture), (double)point.PredictedReserves);
             }
 
             _forecastChart.Series.Add(forecastSeries);
@@ -643,6 +644,7 @@ public partial class AnalyticsPanel : UserControl
             _viewModel.Recommendations.Clear();
             _viewModel.ForecastData.Clear();
 
+            await Task.CompletedTask; // Suppress CS1998 warning for stub implementation
             UpdateStatus("Data refreshed successfully");
         }
         catch (Exception ex)
@@ -685,10 +687,10 @@ public partial class AnalyticsPanel : UserControl
         try
         {
             // Initialize scenario parameters
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1");
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1");
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1");
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString();
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
         }
         catch (Exception ex)
         {

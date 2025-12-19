@@ -522,7 +522,7 @@ if (descriptor.Lifetime != ServiceLifetime.Transient)
 // Verify at least one form is registered (forms should be transient)
 var formDescriptor = services.FirstOrDefault(d =>
     d.ServiceType.Namespace != null &&
-    d.ServiceType.Namespace.Contains(""WileyWidget.WinForms.Forms""));
+    d.ServiceType.Namespace.Contains(""WileyWidget.WinForms.Forms"", StringComparison.Ordinal));
 
 if (formDescriptor == null)
     throw new Exception(""No WinForms forms registered"");

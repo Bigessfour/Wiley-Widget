@@ -54,7 +54,7 @@ namespace WileyWidget.WinForms.Forms
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
-        private readonly IPanelNavigationService _panelNavigator;
+        private readonly IPanelNavigationService? _panelNavigator;
 
         /// <summary>
         /// Public accessor for ServiceProvider used by child forms.
@@ -101,17 +101,17 @@ namespace WileyWidget.WinForms.Forms
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(Program.Services ?? throw new InvalidOperationException("Program.Services not initialized")))
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(Program.Services ?? new ServiceCollection().BuildServiceProvider()))
         {
         }
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IPanelNavigationService panelNavigator)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IPanelNavigationService? panelNavigator)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
-            _panelNavigator = panelNavigator ?? throw new ArgumentNullException(nameof(panelNavigator));
+            _panelNavigator = panelNavigator;
 
             // Resolve IPanelNavigationService after DockingManager is initialized
             // This will be resolved lazily in OnLoad() after InitializeSyncfusionDocking() completes
@@ -721,16 +721,24 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private void ShowReportsPanel(string reportPath)
+        private bool ShowReportsPanel(string reportPath)
         {
             try
             {
+                if (_panelNavigator == null)
+                {
+                    _logger?.LogWarning("Cannot show reports panel for {ReportPath}: PanelNavigationService not available", reportPath);
+                    return false;
+                }
+
                 _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Fill, allowFloating: true);
                 _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed to show reports panel");
+                return false;
             }
         }
 

@@ -425,6 +425,7 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
     private async Task RefreshReportsAsync()
     {
         LoadAvailableReports();
+        await Task.CompletedTask; // Suppress CS1998 warning for stub implementation
         UpdateStatus("Reports list refreshed");
     }
 

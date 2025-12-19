@@ -49,7 +49,7 @@ namespace WileyWidget.WinForms.Controls
         {
             InitializeComponent();
 
-            // Theme applied globally by SfSkinManager - no per-control application needed
+            // Theme applied globally by SkinManager - no per-control application needed
         }
 
         protected override void Dispose(bool disposing)

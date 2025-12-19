@@ -366,7 +366,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                 if (_overallStatusLabel != null)
                 {
                     _overallStatusLabel.Text = $"Status: {_viewModel.OverallStatus}";
-                    // Use semantic status colors (approved exception to SfSkinManager)
+                    // Use semantic status colors (approved exception to SkinManager)
                     _overallStatusLabel.ForeColor = _viewModel.OverallStatusColor switch
                     {
                         "Red" => System.Drawing.Color.Red,

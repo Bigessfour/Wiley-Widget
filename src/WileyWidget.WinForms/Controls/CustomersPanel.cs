@@ -319,7 +319,7 @@ public partial class CustomersPanel : UserControl
         }
     }
 
-    private Syncfusion.Windows.Forms.Tools.DockingManager? FindDockingManager(Control control)
+    private Syncfusion.Windows.Forms.Tools.DockingManager? FindDockingManager(Control? control)
     {
         while (control != null)
         {
