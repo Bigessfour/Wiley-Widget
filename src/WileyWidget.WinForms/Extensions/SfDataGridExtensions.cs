@@ -14,7 +14,7 @@ namespace WileyWidget.WinForms.Extensions
     /// <summary>
     /// Helper extensions for working with <see cref="SfDataGrid"/> in a testable, defensive manner.
     /// Provides programmatic sorting, simple text filtering (data-source based fallback),
-    /// and convenient export wiring to <see cref="WileyWidget.WinForms.Services.ExportService"/>.
+    /// and convenient export wiring to <see cref="Services.ExportService"/>.
     /// </summary>
     public static class SfDataGridExtensions
     {

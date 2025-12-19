@@ -147,7 +147,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 14);
@@ -159,7 +159,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change to avoid stale closure
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -197,7 +197,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconSvc = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 btnGoToDashboard.Image = iconSvc?.GetIcon("home", ThemeManager.CurrentTheme, 14);
                 btnGoToDashboard.ImageAlign = ContentAlignment.MiddleLeft;
@@ -222,7 +222,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 _btnExportPng.Image = iconService?.GetIcon("export", theme, 14);
@@ -234,7 +234,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -264,7 +264,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 _btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
@@ -276,7 +276,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -305,11 +305,8 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_topPanel);
 
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
-            // Let SkinManager handle theming instead of hardcoded colors
+            // Theme applied automatically by SfSkinManager cascade from parent form
             _chartControl = new ChartControl { Dock = DockStyle.Fill };
-
-            // Apply Metro skin first per demos (chart.Skins = Skins.Metro)
-            _chartControl.Skins = Syncfusion.Windows.Forms.Chart.Skins.Metro;
 
             // Chart appearance per demos: SmoothingMode, ElementsSpacing, BorderAppearance
             _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -360,7 +357,7 @@ namespace WileyWidget.WinForms.Controls
             // Add a secondary Y axis for percentage variance if the API is available
             try
             {
-                var secAxis = new Syncfusion.Windows.Forms.Chart.ChartAxis();
+                var secAxis = new ChartAxis();
                 secAxis.Title = "% Variance";
                 try
                 {
@@ -387,7 +384,6 @@ namespace WileyWidget.WinForms.Controls
             _chartControl.LegendPosition = ChartDock.Bottom;
             _chartControl.LegendAlignment = ChartAlignment.Center;
             _chartControl.Legend.Font = new Font("Segoe UI", 10F);
-            _chartControl.Legend.BackColor = Color.Transparent;
 
             // Column width mode per demos
             _chartControl.Spacing = 5;
@@ -451,7 +447,7 @@ namespace WileyWidget.WinForms.Controls
                 if (parentForm == null) return;
 
                 // Prefer direct API on MainForm where available
-                if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
+                if (parentForm is Forms.MainForm mf)
                 {
                     try { mf.ShowPanel<DashboardPanel>("Dashboard"); return; } catch { }
                 }
@@ -892,16 +888,16 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        using var doc = new Syncfusion.Pdf.PdfDocument();
+                        using var doc = new PdfDocument();
                         var page = doc.Pages.Add();
-                        using var pdfImage = new Syncfusion.Pdf.Graphics.PdfBitmap(bmp);
+                        using var pdfImage = new PdfBitmap(bmp);
 
                         // Fit the image into page width while preserving aspect ratio
                         var client = page.GetClientSize();
                         var scale = Math.Min(client.Width / (float)bmp.Width, client.Height / (float)bmp.Height);
                         var drawW = bmp.Width * scale;
                         var drawH = bmp.Height * scale;
-                        var rect = new System.Drawing.RectangleF(0, 0, drawW, drawH);
+                        var rect = new RectangleF(0, 0, drawW, drawH);
                         page.Graphics.DrawImage(pdfImage, rect);
 
                         using var fs = File.OpenWrite(path);

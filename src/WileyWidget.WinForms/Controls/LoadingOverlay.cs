@@ -38,7 +38,7 @@ namespace WileyWidget.WinForms.Controls
         {
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(160, ThemeManager.Colors.TextPrimary);
+            // BackColor inherited from theme cascade
             Visible = false;
             TabStop = false;
 
@@ -46,7 +46,6 @@ namespace WileyWidget.WinForms.Controls
             var container = new Panel
             {
                 AutoSize = true,
-                BackColor = Color.Transparent,
                 Padding = new Padding(12)
             };
 
@@ -66,7 +65,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { /* best effort - fall back to standard progress bar */ }
 
-            if (syncControl is System.Windows.Forms.Control sfWait)
+            if (syncControl is Control sfWait)
             {
                 // Use the Syncfusion waiting control when available
                 _progress = null; // leave _progress null when using Syncfusion control
@@ -90,7 +89,7 @@ namespace WileyWidget.WinForms.Controls
                 _messageLabel = new Label
                 {
                     AutoSize = true,
-                    ForeColor = ThemeManager.Colors.TextPrimary,
+                    // ForeColor inherited from theme cascade
                     Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
                     Text = WileyWidget.WinForms.Forms.MainFormResources.LoadingText,
                     TextAlign = ContentAlignment.MiddleCenter,
@@ -103,7 +102,6 @@ namespace WileyWidget.WinForms.Controls
                     FlowDirection = FlowDirection.TopDown,
                     AutoSize = true,
                     AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    BackColor = Color.Transparent,
                     Anchor = AnchorStyles.None
                 };
 

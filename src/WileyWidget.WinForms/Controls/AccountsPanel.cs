@@ -77,8 +77,8 @@ namespace WileyWidget.WinForms.Controls
         private Button? btnAdd;
         private Button? btnEdit;
         private Button? btnDelete;
-        private Syncfusion.WinForms.Controls.SfButton? btnExportExcel;
-        private Syncfusion.WinForms.Controls.SfButton? btnExportPdf;
+        private SfButton? btnExportExcel;
+        private SfButton? btnExportPdf;
         private EventHandler<AppTheme>? _btnExportExcelThemeChangedHandler;
         private EventHandler<AppTheme>? _btnExportPdfThemeChangedHandler;
         private Panel? topPanel;
@@ -104,7 +104,7 @@ namespace WileyWidget.WinForms.Controls
         // Shared ToolTip instance for the panel to avoid creating multiple undisposed ToolTip objects
         private ToolTip? _toolTip;
         // Local selection tracking using the view-model's display DTO
-        private WileyWidget.WinForms.Models.MunicipalAccountDisplay? _selectedAccountDisplay;
+        private Models.MunicipalAccountDisplay? _selectedAccountDisplay;
         private BindingSource? accountsBindingSource;
         // Combo validation handlers
         private System.ComponentModel.CancelEventHandler? _comboFundValidatingHandler;
@@ -422,7 +422,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
@@ -436,7 +436,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -496,7 +496,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnAdd.Image = iconService?.GetIcon("add", theme, 14);
@@ -508,7 +508,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -547,7 +547,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
@@ -559,7 +559,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -597,7 +597,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
@@ -609,7 +609,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -632,7 +632,7 @@ namespace WileyWidget.WinForms.Controls
             btnDelete.Click += BtnDelete_Click;
 
             // Export buttons (Excel / PDF)
-            btnExportExcel = new Syncfusion.WinForms.Controls.SfButton
+            btnExportExcel = new SfButton
             {
                 Text = "Export Excel",
                 Name = "btnExportExcel",
@@ -645,7 +645,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
@@ -657,7 +657,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -697,7 +697,7 @@ namespace WileyWidget.WinForms.Controls
                 }
             };
 
-            btnExportPdf = new Syncfusion.WinForms.Controls.SfButton
+            btnExportPdf = new SfButton
             {
                 Text = "Export PDF",
                 Name = "btnExportPdf",
@@ -710,7 +710,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
@@ -722,7 +722,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -780,7 +780,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 btnViewCharts.Image = iconService?.GetIcon("chart", ThemeManager.CurrentTheme, 14);
                 btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
@@ -790,7 +790,7 @@ namespace WileyWidget.WinForms.Controls
             btnViewCharts.Click += (s, e) =>
             {
                 try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Charts"); } catch { }
-                NavigateToPanel<WileyWidget.WinForms.Controls.ChartPanel>("Charts");
+                NavigateToPanel<ChartPanel>("Charts");
             };
 
             // Dashboard navigation button
@@ -808,7 +808,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 btnDashboard.Image = iconService?.GetIcon("home", ThemeManager.CurrentTheme, 14);
                 btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
@@ -818,7 +818,7 @@ namespace WileyWidget.WinForms.Controls
             btnDashboard.Click += (s, e) =>
             {
                 try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Dashboard"); } catch { }
-                NavigateToPanel<WileyWidget.WinForms.Controls.DashboardPanel>("Dashboard");
+                NavigateToPanel<DashboardPanel>("Dashboard");
             };
 
             // Layout top panel using FlowLayoutPanel
@@ -974,7 +974,7 @@ namespace WileyWidget.WinForms.Controls
                 // GridUnBoundColumn may not exist in some Syncfusion builds; create via reflection when available.
                 try
                 {
-                    var gridAsm = typeof(Syncfusion.WinForms.DataGrid.SfDataGrid).Assembly;
+                    var gridAsm = typeof(SfDataGrid).Assembly;
                     var ubType = gridAsm.GetType("Syncfusion.WinForms.DataGrid.GridUnBoundColumn");
                     if (ubType != null)
                     {
@@ -1052,14 +1052,14 @@ namespace WileyWidget.WinForms.Controls
             // Add a summary row (bottom) to show totals for numeric columns
             try
             {
-                var tableSummary = new Syncfusion.WinForms.DataGrid.GridTableSummaryRow
+                var tableSummary = new GridTableSummaryRow
                 {
                     Name = "TableSummary",
                     Position = Syncfusion.WinForms.DataGrid.Enums.VerticalPosition.Bottom,
                     ShowSummaryInRow = false
                 };
 
-                var totalBalanceCol = new Syncfusion.WinForms.DataGrid.GridSummaryColumn
+                var totalBalanceCol = new GridSummaryColumn
                 {
                     Name = "TotalBalance",
                     MappingName = "CurrentBalance",
@@ -1273,7 +1273,7 @@ namespace WileyWidget.WinForms.Controls
                 if (IsDisposed) return;
 
                 // Sync selected display model locally - the view model does not expose a SelectedAccount entity
-                if (gridAccounts?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay display)
+                if (gridAccounts?.SelectedItem is Models.MunicipalAccountDisplay display)
                 {
                     _selectedAccountDisplay = display;
                     Serilog.Log.Debug("AccountsPanel: Selected account changed to {AccountNumber}", display.AccountNumber);
@@ -1303,7 +1303,7 @@ namespace WileyWidget.WinForms.Controls
                 if (IsDisposed) return;
 
                 // Trigger edit on double-click of any data row - use selected item which is the display DTO
-                if (gridAccounts?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay)
+                if (gridAccounts?.SelectedItem is Models.MunicipalAccountDisplay)
                 {
                     BtnEdit_Click(sender, e);
                 }
@@ -1325,12 +1325,12 @@ namespace WileyWidget.WinForms.Controls
                 if (IsDisposed) return;
 
                 // Use currently selected display model rather than depending on event args members that differ between SfDataGrid versions
-                var display = gridAccounts?.SelectedItem as WileyWidget.WinForms.Models.MunicipalAccountDisplay;
+                var display = gridAccounts?.SelectedItem as Models.MunicipalAccountDisplay;
                 if (display == null) return;
 
                 var cm = new ContextMenuStrip();
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
 
                 var miEdit = new ToolStripMenuItem("Edit");
@@ -1361,7 +1361,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 // Use the currently selected display DTO for tooltip content - avoids depending on event args shape
                 var grid = gridAccounts;
-                if (grid?.SelectedItem is WileyWidget.WinForms.Models.MunicipalAccountDisplay disp && e.ToolTipInfo?.Items != null && e.ToolTipInfo.Items.Count > 0)
+                if (grid?.SelectedItem is Models.MunicipalAccountDisplay disp && e.ToolTipInfo?.Items != null && e.ToolTipInfo.Items.Count > 0)
                 {
                     var items = e.ToolTipInfo.Items;
                     if (items.Count > 0)
@@ -1387,7 +1387,7 @@ namespace WileyWidget.WinForms.Controls
                 if (parentForm == null) return;
 
                 // Prefer direct API on MainForm where available
-                if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
+                if (parentForm is Forms.MainForm mf)
                 {
                     try { mf.ShowPanel<TPanel>(panelName); return; } catch { }
                 }
@@ -1412,8 +1412,8 @@ namespace WileyWidget.WinForms.Controls
                 // Open AccountEditPanel inside a modal form for adding
                 using var scope = Program.Services.CreateScope();
                 var provider = scope.ServiceProvider;
-                var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Controls.AccountEditPanel>(provider);
-                using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new System.Drawing.Size(520, 560) };
+                var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
+                using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new Size(520, 560) };
                 try
                 {
                     editPanel.Dock = DockStyle.Fill;
@@ -1448,9 +1448,9 @@ namespace WileyWidget.WinForms.Controls
 
                 using var scope = Program.Services.CreateScope();
                 var provider = scope.ServiceProvider;
-                var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Controls.AccountEditPanel>(provider);
+                var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
                 // Populate any existing values if AccountEditPanel had a constructor for existing; for now, host and show
-                using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new System.Drawing.Size(520, 560) };
+                using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new Size(520, 560) };
                 try
                 {
                     editPanel.Dock = DockStyle.Fill;
@@ -1613,6 +1613,7 @@ namespace WileyWidget.WinForms.Controls
                 try { if (gridAccounts != null) { gridAccounts.ToolTipOpening -= GridAccounts_ToolTipOpening; } } catch { }
 
                 // Clear DataSource before disposing Syncfusion controls to avoid NullReferenceException bugs
+                // Using SafeDispose pattern consistently - no need for redundant Dispose calls
                 try { comboFund.SafeClearDataSource(); } catch { }
                 try { comboFund.SafeDispose(); } catch { }
                 try { comboAccountType.SafeClearDataSource(); } catch { }
@@ -1620,10 +1621,7 @@ namespace WileyWidget.WinForms.Controls
                 try { gridAccounts.SafeClearDataSource(); } catch { }
                 try { gridAccounts.SafeDispose(); } catch { }
 
-                // Dispose controls
-                try { gridAccounts?.Dispose(); } catch { }
-                try { comboFund?.Dispose(); } catch { }
-                try { comboAccountType?.Dispose(); } catch { }
+                // Dispose other controls (non-Syncfusion controls use standard Dispose)
                 try { btnRefresh?.Dispose(); } catch { }
                 try { btnAdd?.Dispose(); } catch { }
                 try { btnEdit?.Dispose(); } catch { }

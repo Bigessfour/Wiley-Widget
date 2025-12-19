@@ -119,11 +119,11 @@ namespace WileyWidget.WinForms.Configuration
                 if (form.WindowState != System.Windows.Forms.FormWindowState.Maximized)
                 {
                     // Validate that location is visible on at least one screen
-                    var bounds = new System.Drawing.Rectangle(state.X, state.Y, state.Width, state.Height);
+                    var bounds = new Rectangle(state.X, state.Y, state.Width, state.Height);
                     if (IsVisibleOnScreen(bounds))
                     {
-                        form.Location = new System.Drawing.Point(state.X, state.Y);
-                        form.Size = new System.Drawing.Size(state.Width, state.Height);
+                        form.Location = new Point(state.X, state.Y);
+                        form.Size = new Size(state.Width, state.Height);
                     }
                     else
                     {
@@ -139,7 +139,7 @@ namespace WileyWidget.WinForms.Configuration
             }
         }
 
-        private bool IsVisibleOnScreen(System.Drawing.Rectangle bounds)
+        private bool IsVisibleOnScreen(Rectangle bounds)
         {
             foreach (var screen in Screen.AllScreens)
             {

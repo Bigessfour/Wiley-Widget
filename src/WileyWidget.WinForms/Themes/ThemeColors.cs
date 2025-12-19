@@ -186,7 +186,7 @@ namespace WileyWidget.WinForms.Themes
         /// If you need custom grid appearance, customize the Office2019 theme itself, don't bypass it.
         /// </summary>
         [Obsolete("Custom grid styling removed. SkinManager themes grids automatically via cascade. Do not manually set colors.", true)]
-        public static void ApplySfDataGridTheme(Syncfusion.WinForms.DataGrid.SfDataGrid grid)
+        public static void ApplySfDataGridTheme(SfDataGrid grid)
         {
             throw new InvalidOperationException(
                 "ApplySfDataGridTheme is deprecated. SkinManager automatically themes SfDataGrid via cascade. " +

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FastReport.OpenSource" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <!-- FastReport Open Source WinForms viewer -->
@@ -81,7 +82,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <!-- FastReport Open Source WinForms viewer -->
-    <PackageReference Include="FastReport.OpenSource" />
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
   </ItemGroup>

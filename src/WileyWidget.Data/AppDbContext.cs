@@ -45,6 +45,8 @@ namespace WileyWidget.Data
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
+        public DbSet<DepartmentCurrentCharge> DepartmentCurrentCharges { get; set; } = null!;
+        public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -275,6 +277,33 @@ namespace WileyWidget.Data
                 entity.Property(c => c.ChargeType).HasMaxLength(50).IsRequired();
                 entity.Property(c => c.Description).HasMaxLength(200).IsRequired();
                 entity.Property(c => c.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            });
+
+            // DepartmentCurrentCharge configuration
+            modelBuilder.Entity<DepartmentCurrentCharge>(entity =>
+            {
+                entity.HasKey(dcc => dcc.Id);
+                entity.HasIndex(dcc => dcc.Department).IsUnique();
+                entity.HasIndex(dcc => dcc.IsActive);
+                entity.Property(dcc => dcc.Department).HasMaxLength(50).IsRequired();
+                entity.Property(dcc => dcc.CurrentCharge).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(dcc => dcc.CustomerCount).IsRequired();
+                entity.Property(dcc => dcc.LastUpdated).HasColumnType("datetime2");
+                entity.Property(dcc => dcc.UpdatedBy).HasMaxLength(100);
+                entity.Property(dcc => dcc.Notes).HasMaxLength(500);
+            });
+
+            // DepartmentGoal configuration
+            modelBuilder.Entity<DepartmentGoal>(entity =>
+            {
+                entity.HasKey(dg => dg.Id);
+                entity.HasIndex(dg => new { dg.Department, dg.IsActive });
+                entity.Property(dg => dg.Department).HasMaxLength(50).IsRequired();
+                entity.Property(dg => dg.AdjustmentFactor).HasColumnType("decimal(18,4)").HasDefaultValue(1.0m);
+                entity.Property(dg => dg.TargetProfitMarginPercent).HasColumnType("decimal(18,4)");
+                entity.Property(dg => dg.RecommendationText).HasMaxLength(1000);
+                entity.Property(dg => dg.GeneratedAt).HasColumnType("datetime2");
+                entity.Property(dg => dg.Source).HasMaxLength(100);
             });
 
             // Auditing

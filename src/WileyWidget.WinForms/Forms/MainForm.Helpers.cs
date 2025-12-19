@@ -6,19 +6,19 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGrid.Styles;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
-using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms
 {
+    /// <summary>
+    /// MainForm helper methods for grid operations, export, and panel navigation.
+    /// Cleaned up from MainForm.Extensions.cs - removed all MDI dependencies.
+    /// </summary>
     public partial class MainForm
     {
         /// <summary>
-        /// Minimal bridge for panels expecting ShowPanel. Delegates to DockUserControlPanel when available.
+        /// Minimal bridge for panels expecting ShowPanel. Delegates to PanelNavigationService.
         /// </summary>
         public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
         {
@@ -26,37 +26,35 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (string.IsNullOrWhiteSpace(panelName)) return;
 
-                var method = GetType().GetMethod("DockUserControlPanel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                if (method == null) return;
-
-                method.MakeGenericMethod(typeof(TPanel)).Invoke(this, new object[] { panelName });
+                // Delegate to PanelNavigationService
+                _panelNavigator?.ShowPanel<TPanel>(panelName);
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback no-op for now
+                _logger?.LogWarning(ex, "ShowPanel<{PanelType}>({PanelName}) failed", typeof(TPanel).Name, panelName);
             }
         }
 
-        private Syncfusion.WinForms.DataGrid.SfDataGrid? GetActiveGrid()
+        private SfDataGrid? GetActiveGrid()
         {
             try
             {
                 // Defensive: check for null and disposed state
                 if (IsDisposed || Controls == null) return null;
 
-                if (ActiveControl is Syncfusion.WinForms.DataGrid.SfDataGrid ac && !ac.IsDisposed)
+                if (ActiveControl is SfDataGrid ac && !ac.IsDisposed)
                     return ac;
 
                 // Find focused control recursively
                 Control? focused = FindFocusedControl(Controls);
-                if (focused is Syncfusion.WinForms.DataGrid.SfDataGrid fg && !fg.IsDisposed)
+                if (focused is SfDataGrid fg && !fg.IsDisposed)
                     return fg;
 
                 // Find first visible SfDataGrid in controls
                 foreach (Control c in Controls)
                 {
                     if (c == null || c.IsDisposed) continue;
-                    var grid = c.Controls.OfType<Syncfusion.WinForms.DataGrid.SfDataGrid>()
+                    var grid = c.Controls.OfType<SfDataGrid>()
                         .FirstOrDefault(g => g != null && !g.IsDisposed && g.Visible);
                     if (grid != null) return grid;
                 }
@@ -239,45 +237,6 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
-            }
-        }
-
-        /// <summary>
-        /// Switches the application theme at runtime and refreshes all MDI children.
-        /// Theme cascades from parent to children automatically via SkinManager.
-        /// </summary>
-        /// <param name="themeName">Theme name (e.g., "Office2019Colorful", "Office2019Black", "Office2019DarkGray")</param>
-        public void SwitchTheme(string themeName)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(themeName))
-                {
-                    _logger?.LogWarning("SwitchTheme called with null or empty theme name");
-                    return;
-                }
-
-                // Apply theme to main form - theme cascades to all children automatically
-                WwThemeColors.ApplyTheme(this, themeName);
-
-                // Refresh all MDI children to pick up theme change from cascade
-                // No need for per-child SetVisualStyle - theme cascades automatically
-                if (MdiChildren != null)
-                {
-                    foreach (Form child in MdiChildren)
-                    {
-                        if (child != null && !child.IsDisposed)
-                        {
-                            child.Refresh();
-                        }
-                    }
-                }
-
-                _logger?.LogInformation("Theme switched to '{ThemeName}'", themeName);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to switch theme to '{ThemeName}'", themeName);
             }
         }
     }

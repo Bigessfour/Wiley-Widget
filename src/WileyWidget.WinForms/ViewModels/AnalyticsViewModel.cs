@@ -11,7 +11,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// ViewModel for analytics functionality in the dashboard
     /// </summary>
-    public partial class AnalyticsViewModel : ObservableObject
+    public partial class AnalyticsViewModel : ObservableObject, IDisposable
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
@@ -202,6 +202,16 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        /// <summary>
+        /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        public void Dispose()
+        {
+            // Clean up any resources if needed
+            _logger.LogDebug("AnalyticsViewModel disposed");
+            GC.SuppressFinalize(this);
         }
     }
 

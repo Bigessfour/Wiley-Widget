@@ -44,7 +44,8 @@ namespace WileyWidget.WinForms.Services
         DiValidationResult ValidateViewModels(IServiceProvider serviceProvider);
 
         /// <summary>
-        /// Validates all Forms are registered correctly.
+        /// Validates MainForm is registered correctly.
+        /// Note: Most UI components are now UserControl panels resolved via IPanelNavigationService.
         /// </summary>
         DiValidationResult ValidateForms(IServiceProvider serviceProvider);
 
@@ -60,11 +61,11 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public class WinFormsDiValidator : IWinFormsDiValidator
     {
-        private readonly ServiceAbstractions.IDiValidationService _coreValidator;
+        private readonly IDiValidationService _coreValidator;
         private readonly ILogger<WinFormsDiValidator> _logger;
 
         public WinFormsDiValidator(
-            ServiceAbstractions.IDiValidationService coreValidator,
+            IDiValidationService coreValidator,
             ILogger<WinFormsDiValidator> logger)
         {
             _coreValidator = coreValidator ?? throw new ArgumentNullException(nameof(coreValidator));
@@ -77,8 +78,8 @@ namespace WileyWidget.WinForms.Services
             {
                 typeof(Microsoft.Extensions.Configuration.IConfiguration),
                 typeof(Serilog.ILogger),
-                typeof(CoreServices.ErrorReportingService),
-                typeof(ServiceAbstractions.ITelemetryService)
+                typeof(ErrorReportingService),
+                typeof(ITelemetryService)
             };
 
             return _coreValidator.ValidateServiceCategory(
@@ -91,15 +92,15 @@ namespace WileyWidget.WinForms.Services
         {
             var serviceTypes = new[]
             {
-                typeof(BusinessInterfaces.IAccountsRepository),
+                typeof(IAccountsRepository),
                 typeof(BusinessInterfaces.IActivityLogRepository),
-                typeof(BusinessInterfaces.IAuditRepository),
-                typeof(BusinessInterfaces.IBudgetRepository),
-                typeof(BusinessInterfaces.IDepartmentRepository),
-                typeof(BusinessInterfaces.IEnterpriseRepository),
-                typeof(BusinessInterfaces.IMunicipalAccountRepository),
-                typeof(BusinessInterfaces.IUtilityBillRepository),
-                typeof(BusinessInterfaces.IUtilityCustomerRepository)
+                typeof(IAuditRepository),
+                typeof(IBudgetRepository),
+                typeof(IDepartmentRepository),
+                typeof(IEnterpriseRepository),
+                typeof(IMunicipalAccountRepository),
+                typeof(IUtilityBillRepository),
+                typeof(IUtilityCustomerRepository)
             };
 
             return _coreValidator.ValidateServiceCategory(
@@ -113,42 +114,42 @@ namespace WileyWidget.WinForms.Services
             var serviceTypes = new List<Type>
             {
                 // Core Services
-                typeof(ServiceAbstractions.ISettingsService),
-                typeof(ServiceAbstractions.ISecretVaultService),
-                typeof(CoreServices.HealthCheckService),
-                typeof(CoreServices.IDialogTrackingService),
-                typeof(ServiceAbstractions.IDiValidationService),
+                typeof(ISettingsService),
+                typeof(ISecretVaultService),
+                typeof(HealthCheckService),
+                typeof(IDialogTrackingService),
+                typeof(IDiValidationService),
 
                 // QuickBooks Services
-                typeof(ServiceAbstractions.IQuickBooksApiClient),
-                typeof(ServiceAbstractions.IQuickBooksService),
+                typeof(IQuickBooksApiClient),
+                typeof(IQuickBooksService),
 
                 // Dashboard & Budget Services
-                typeof(ServiceAbstractions.IDashboardService),
-                typeof(WinFormsServices.IBudgetCategoryService),
-                typeof(CoreServices.IWileyWidgetContextService),
+                typeof(IDashboardService),
+                typeof(IBudgetCategoryService),
+                typeof(IWileyWidgetContextService),
 
                 // AI Services
-                typeof(ServiceAbstractions.IAIService),
-                typeof(ServiceAbstractions.IAILoggingService),
-                typeof(ServiceAbstractions.IAuditService),
+                typeof(IAIService),
+                typeof(IAILoggingService),
+                typeof(IAuditService),
 
                 // Reporting Services
-                typeof(ServiceAbstractions.IReportExportService),
-                typeof(ServiceAbstractions.IReportService),
+                typeof(IReportExportService),
+                typeof(IReportService),
                 typeof(CoreServices.Excel.IExcelReaderService),
                 typeof(CoreServices.Export.IExcelExportService),
 
                 // Utility Services
-                typeof(ServiceAbstractions.IDataAnonymizerService),
-                typeof(ServiceAbstractions.IChargeCalculatorService),
-                typeof(ServiceAbstractions.IAnalyticsService),
-                typeof(ServiceAbstractions.IAnalyticsPipeline),
-                typeof(ServiceAbstractions.IGrokSupercomputer),
+                typeof(IDataAnonymizerService),
+                typeof(IChargeCalculatorService),
+                typeof(IAnalyticsService),
+                typeof(IAnalyticsPipeline),
+                typeof(IGrokSupercomputer),
 
                 // Theme Services
-                typeof(WinFormsServices.IThemeService),
-                typeof(WinFormsServices.IThemeIconService)
+                typeof(IThemeService),
+                typeof(IThemeIconService)
             };
 
             return _coreValidator.ValidateServiceCategory(
@@ -181,17 +182,18 @@ namespace WileyWidget.WinForms.Services
 
         public DiValidationResult ValidateForms(IServiceProvider serviceProvider)
         {
-            // Legacy forms replaced by panels - only MainForm remains
+            // Most UI components are now panels/controls, only MainForm is registered as a Form
             var serviceTypes = new[]
             {
                 typeof(MainForm)
                 // ChartForm, SettingsForm, AccountsForm, etc. replaced by UserControl panels
+                // Panels are resolved dynamically via IPanelNavigationService
             };
 
             return _coreValidator.ValidateServiceCategory(
                 serviceProvider,
                 serviceTypes,
-                "Forms");
+                "Forms (MainForm only - panels resolved via navigation service)");
         }
 
         public DiValidationResult ValidateAll(IServiceProvider serviceProvider)

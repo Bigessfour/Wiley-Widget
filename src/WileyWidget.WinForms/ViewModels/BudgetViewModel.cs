@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// ViewModel for budget management with full CRUD operations.
     /// Provides filtering, analysis, and export capabilities for budget entries.
     /// </summary>
-    public partial class BudgetViewModel : ObservableObject
+    public partial class BudgetViewModel : ObservableObject, IDisposable
     {
         private readonly ILogger<BudgetViewModel> _logger;
         private readonly IBudgetRepository _budgetRepository;
@@ -44,6 +44,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private bool isLoading;
+
+        [ObservableProperty]
+        private string statusText = "Ready";
 
         // Advanced filtering
         [ObservableProperty]
@@ -696,6 +699,16 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        /// <summary>
+        /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        public void Dispose()
+        {
+            // Clean up any resources if needed
+            _logger.LogDebug("BudgetViewModel disposed");
+            GC.SuppressFinalize(this);
         }
     }
 }

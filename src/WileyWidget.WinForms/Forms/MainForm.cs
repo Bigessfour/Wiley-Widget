@@ -711,7 +711,7 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                ShowReportViewerForm(reportPath);
+                ShowReportsPanel(reportPath);
                 _reportViewerLaunched = true;
                 _logger?.LogInformation("Report viewer opened for CLI path: {ReportPath}", reportPath);
             }
@@ -721,23 +721,17 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private void ShowReportViewerForm(string reportPath)
+        private void ShowReportsPanel(string reportPath)
         {
-            if (InvokeRequired)
+            try
             {
-                BeginInvoke(new System.Action(() => ShowReportViewerForm(reportPath)));
-                return;
+                _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Fill, allowFloating: true);
+                _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
             }
-
-            if (!File.Exists(reportPath))
+            catch (Exception ex)
             {
-                _logger?.LogWarning("Report viewer path became unavailable before launch: {ReportPath}", reportPath);
-                return;
+                _logger?.LogError(ex, "Failed to show reports panel");
             }
-
-            // ReportViewerForm replaced - implement as panel if needed
-            _logger?.LogWarning("ReportViewerForm not implemented - legacy form removed");
-            return;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -884,7 +878,7 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Handles application font changes by updating this form and all child controls.
         /// </summary>
-        private void OnApplicationFontChanged(object? sender, Services.FontChangedEventArgs e)
+        private void OnApplicationFontChanged(object? sender, FontChangedEventArgs e)
         {
             // Update this form and all child controls
             UpdateControlFont(this, e.NewFont);
@@ -1203,9 +1197,6 @@ namespace WileyWidget.WinForms.Forms
 
                 _logger?.LogInformation("Data file import completed: {FilePath}", filePath);
                 ApplyStatus("Import completed");
-
-                // Refresh dashboard if open
-                RefreshActiveDashboards();
             }
             catch (Exception ex)
             {
@@ -1327,36 +1318,6 @@ namespace WileyWidget.WinForms.Forms
                     MessageBoxIcon.Error);
                 ApplyStatus("Load failed");
             }
-        }
-
-        /// <summary>
-        /// Refresh all open dashboard forms to reflect imported data (legacy - replaced by panels)
-        /// </summary>
-        private void RefreshActiveDashboards()
-        {
-            // Legacy MDI method - DashboardForm replaced by DashboardPanel
-            _logger?.LogWarning("RefreshActiveDashboards called but DashboardForm no longer exists");
-            /*
-            try
-            {
-                foreach (var child in MdiChildren.OfType<DashboardForm>())
-                {
-                    try
-                    {
-                        child.Refresh();
-                        _logger?.LogDebug("Refreshed dashboard form");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogWarning(ex, "Failed to refresh dashboard form");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error refreshing dashboards");
-            }
-            */
         }
 
         #endregion

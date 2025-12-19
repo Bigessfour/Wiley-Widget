@@ -76,14 +76,14 @@ public sealed record UIConfiguration
     /// </summary>
     public static UIConfiguration FromConfiguration(IConfiguration configuration)
     {
-        var isTestHarness = configuration.GetValue<bool>("UI:IsUiTestHarness", false);
+        var isTestHarness = configuration.GetValue("UI:IsUiTestHarness", false);
 
         return new UIConfiguration
         {
             // Phase 1: Hard-coded architecture, but configurable for tests
             UseSyncfusionDocking = true,
-            UseMdiMode = configuration.GetValue<bool>("UI:UseMdiMode", true),
-            UseTabbedMdi = configuration.GetValue<bool>("UI:UseTabbedMdi", false),
+            UseMdiMode = configuration.GetValue("UI:UseMdiMode", true),
+            UseTabbedMdi = configuration.GetValue("UI:UseTabbedMdi", false),
 
             // Read from config
             IsUiTestHarness = isTestHarness,
@@ -99,8 +99,8 @@ public sealed record UIConfiguration
             MinimumFormSize = new Size(1024, 768),
 
             // Feature flags
-            AutoShowDashboard = configuration.GetValue<bool>("UI:AutoShowDashboard", false),
-            DefaultFiscalYear = configuration.GetValue<int>("UI:DefaultFiscalYear", DateTime.UtcNow.Year)
+            AutoShowDashboard = configuration.GetValue("UI:AutoShowDashboard", false),
+            DefaultFiscalYear = configuration.GetValue("UI:DefaultFiscalYear", DateTime.UtcNow.Year)
         };
     }
 

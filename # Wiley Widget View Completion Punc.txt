@@ -44,7 +44,19 @@ Use this punchlist when reviewing or implementing any view. Each view must pass 
 - **ToolTips** → Informative ToolTips on complex controls; announced by screen readers.
 - **High contrast support** → Theme supports high contrast (e.g., via HighContrastTheme if needed).
 
-## 5. General Polish & UX Best Practices
+## 5. Required UI Components (Consistent UX Overlays)
+
+- **PanelHeader required** → All UserControl panels must include `PanelHeader` docked at top with Title, Refresh, Pin, and Close actions.
+- **LoadingOverlay required** → All panels with async data operations must include `LoadingOverlay` with appropriate message (e.g., "Loading data...").
+  - Wire to ViewModel `IsLoading` property in PropertyChanged handler.
+  - Set `Visible = _viewModel.IsLoading` to show/hide during operations.
+- **NoDataOverlay required** → All panels displaying collections must include `NoDataOverlay` with appropriate message (e.g., "No data available").
+  - Wire to show when `!_viewModel.IsLoading && !_viewModel.Collection.Any()`.
+  - Set `Visible` based on empty state logic.
+- **StatusStrip for feedback** → Panels with user actions should include StatusStrip with ToolStripStatusLabel for operation feedback ("Loading...", "Success", "Error: ...").
+- **Proper overlay disposal** → All overlays disposed in Dispose() override (LoadingOverlay, NoDataOverlay, PanelHeader).
+
+## 6. General Polish & UX Best Practices
 
 - **Clean code-behind** → Minimal logic in views; prefer binding to ViewModels (MVVM pattern).
 - **Error handling** → Graceful handling of nulls, exceptions in UI events.

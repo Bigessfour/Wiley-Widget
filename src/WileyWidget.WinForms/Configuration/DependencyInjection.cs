@@ -62,7 +62,7 @@ namespace WileyWidget.WinForms.Configuration
             }
 
             // Logging (Singleton - Serilog logger)
-            services.AddSingleton<Serilog.ILogger>(Serilog.Log.Logger);
+            services.AddSingleton(Serilog.Log.Logger);
 
             // Health Check Configuration (Singleton)
             services.AddSingleton(new HealthCheckConfiguration());
@@ -86,7 +86,7 @@ namespace WileyWidget.WinForms.Configuration
             if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
                 // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
-                services.AddSingleton<DbContextOptions<AppDbContext>>(sp =>
+                services.AddSingleton(sp =>
                 {
                     var builder = new DbContextOptionsBuilder<AppDbContext>();
                     builder.UseInMemoryDatabase("TestDb");
@@ -129,7 +129,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
 
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
-            _ = services.AddSingleton<WileyWidget.Services.Abstractions.IDiValidationService, WileyWidget.Services.DiValidationService>();
+            _ = services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
 
             // =====================================================================
@@ -180,6 +180,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
             services.AddScoped<IGrokSupercomputer, NullGrokSupercomputer>();
 
+            // Department Expense & Recommendation Services (Scoped - may query external APIs)
+            services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
+            services.AddScoped<IGrokRecommendationService, Business.Services.GrokRecommendationService>();
+
             // =====================================================================
             // UI SERVICES & THEME (Singleton - Application-wide state)
             // =====================================================================
@@ -199,7 +203,7 @@ namespace WileyWidget.WinForms.Configuration
             });
 
             // UI Configuration (Singleton)
-            services.AddSingleton<UIConfiguration>(static sp =>
+            services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
             // =====================================================================
@@ -218,6 +222,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<CustomersViewModel>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<ReportsViewModel>();
+            services.AddTransient<DepartmentSummaryViewModel>();
+            services.AddTransient<RevenueTrendsViewModel>();
+            services.AddTransient<AuditLogViewModel>();
+            services.AddTransient<RecommendedMonthlyChargeViewModel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
@@ -228,9 +236,13 @@ namespace WileyWidget.WinForms.Configuration
             // Main Form (Singleton - Application's primary window)
             services.AddSingleton<MainForm>();
 
+            // Child Forms (Transient - Created/disposed as needed)
+            // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()
+
             // NOTE: Child forms removed - application now uses panel-based navigation via IPanelNavigationService
             // Legacy forms (ChartForm, SettingsForm, AccountsForm, etc.) have been superseded by UserControl panels
-            // (DashboardPanel, AccountsPanel, ChartPanel, BudgetOverviewPanel, SettingsPanel)
+            // (DashboardPanel, AccountsPanel, ChartPanel, BudgetOverviewPanel, DepartmentSummaryPanel, RevenueTrendsPanel, SettingsPanel)
+            // Panels are resolved via IPanelNavigationService.ShowPanel<TPanel>() which uses DI to create instances
 
             // =====================================================================
             // NOTES ON OMISSIONS

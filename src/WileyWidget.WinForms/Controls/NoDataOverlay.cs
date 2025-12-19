@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(16, ThemeManager.Colors.TextPrimary); // subtle tint to indicate empty state
+            // BackColor inherited from theme cascade
             Visible = false;
 
             _messageLabel = new Label
@@ -40,7 +40,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 11.0f, FontStyle.Regular),
-                ForeColor = ThemeManager.Colors.TextPrimary,
+                // ForeColor inherited from theme cascade
                 Text = "No data available",
                 AccessibleName = "No data message"
             };

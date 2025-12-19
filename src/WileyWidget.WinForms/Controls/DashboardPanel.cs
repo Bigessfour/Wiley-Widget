@@ -44,9 +44,9 @@ namespace WileyWidget.WinForms.Controls
         private ToolStripButton _btnRefresh = null!;
         private Label _lblLastRefreshed = null!;
 
-        private Syncfusion.WinForms.ListView.SfListView _kpiList = null!;
+        private SfListView _kpiList = null!;
         private ChartControl _mainChart = null!;
-        private Syncfusion.WinForms.DataGrid.SfDataGrid _detailsGrid = null!;
+        private SfDataGrid _detailsGrid = null!;
         private StatusStrip _statusStrip = null!;
         private ErrorProvider? _errorProvider;
         private ToolStripStatusLabel _statusLabel = null!;
@@ -196,7 +196,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
@@ -209,7 +209,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         // Re-resolve icon service on theme change to avoid stale closure
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         if (_dispatcherHelper != null)
                         {
@@ -241,7 +241,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 dashboardLabel.Image = iconService?.GetIcon("home", theme, 16);
@@ -256,7 +256,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -271,7 +271,7 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -296,7 +296,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnAccounts.Image = iconService?.GetIcon("wallet", theme, 16);
@@ -320,7 +320,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
                 btnCharts.Image = iconService?.GetIcon("chart", theme, 16);
@@ -367,7 +367,7 @@ namespace WileyWidget.WinForms.Controls
             mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
             // KPI list - horizontal tiles per Syncfusion SfListView demos
-            _kpiList = new Syncfusion.WinForms.ListView.SfListView
+            _kpiList = new SfListView
             {
                 Dock = DockStyle.Fill,
                 AccessibleName = "Summary metrics",
@@ -433,10 +433,8 @@ namespace WileyWidget.WinForms.Controls
             var chartPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
             _mainChart = new ChartControl { Dock = DockStyle.Fill, AccessibleName = "Budget chart", AccessibleDescription = "Displays budget vs expenditure" };
 
-            // Apply Metro skin per demos
-            _mainChart.Skins = Syncfusion.Windows.Forms.Chart.Skins.Metro;
-
-            // Chart appearance per demos (ChartAppearance.cs patterns)
+            // Theme applied automatically by SfSkinManager cascade from parent form
+            // Chart appearance per demos (ChartAppearance.cs patterns) - theme applied by SfSkinManager cascade
             _mainChart.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             _mainChart.ElementsSpacing = 5;
             _mainChart.BorderAppearance.SkinStyle = Syncfusion.Windows.Forms.Chart.ChartBorderSkinStyle.None;
@@ -465,7 +463,7 @@ namespace WileyWidget.WinForms.Controls
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
 
             // SfDataGrid configured per Syncfusion demos (Getting Started, Themes demos)
-            _detailsGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
+            _detailsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
@@ -489,13 +487,13 @@ namespace WileyWidget.WinForms.Controls
             {
                 // Column configuration per demos - use culture-aware NumberFormatInfo to avoid invariant culture issues
                 var nfi = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat;
-                _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
-                var colBudget = new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 };
-                var colActual = new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 };
+                _detailsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
+                var colBudget = new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 };
+                var colActual = new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 };
                 // Set FormatMode reflectively if available in the Syncfusion version
                 try
                 {
-                    var gmType = typeof(Syncfusion.WinForms.DataGrid.GridNumericColumn);
+                    var gmType = typeof(GridNumericColumn);
                     var fmtProp = gmType.GetProperty("FormatMode");
                     if (fmtProp != null && fmtProp.CanWrite)
                     {
@@ -529,7 +527,7 @@ namespace WileyWidget.WinForms.Controls
             // Helper to create a tile
             Func<string, string, decimal, ChartControl> createTile = (title, tooltip, value) =>
             {
-                var tile = new Panel { Width = 260, Height = 72, Padding = new Padding(8), Margin = new Padding(6), BackColor = Color.Transparent };
+                var tile = new Panel { Width = 260, Height = 72, Padding = new Padding(8), Margin = new Padding(6) };
 
                 var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
                 var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
@@ -657,7 +655,8 @@ namespace WileyWidget.WinForms.Controls
                             var values = new double[] { baseValue * 0.8, baseValue * 0.95, baseValue * 1.02, baseValue * 0.9, baseValue * 1.1, baseValue };
                             for (int i = 0; i < values.Length; i++) s.Points.Add(i.ToString(System.Globalization.CultureInfo.InvariantCulture), values[i]);
                             s.Style.DisplayText = false;
-                            s.Style.Interior = new Syncfusion.Drawing.BrushInfo(ThemeManager.Colors.Accent);
+                            // Use theme-compatible accent color - let SfSkinManager handle theming
+                            s.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.DodgerBlue);
                             c.Series.Add(s);
                         }
 
@@ -776,8 +775,8 @@ namespace WileyWidget.WinForms.Controls
                                     {
                                         try { _detailsGrid.SuspendLayout(); } catch { }
                                         _detailsGrid.Columns.Clear();
-                                        _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Name", HeaderText = "Name", MinimumWidth = 160 });
-                                        var valCol = new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Value", HeaderText = "Value", MinimumWidth = 120 };
+                                        _detailsGrid.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = "Name", MinimumWidth = 160 });
+                                        var valCol = new GridTextColumn { MappingName = "Value", HeaderText = "Value", MinimumWidth = 120 };
                                         _detailsGrid.Columns.Add(valCol);
                                     }
                                     catch { }
@@ -792,9 +791,9 @@ namespace WileyWidget.WinForms.Controls
                                         {
                                             try { _detailsGrid.SuspendLayout(); } catch { }
                                             _detailsGrid.Columns.Clear();
-                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
-                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 });
-                                            _detailsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 });
+                                            _detailsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
+                                            _detailsGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", MinimumWidth = 120 });
+                                            _detailsGrid.Columns.Add(new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 });
                                         }
                                     }
                                     catch { }
@@ -947,7 +946,7 @@ namespace WileyWidget.WinForms.Controls
                 if (parentForm == null) return;
 
                 // Prefer direct API on MainForm where possible - avoids reflection brittleness.
-                if (parentForm is WileyWidget.WinForms.Forms.MainForm mf)
+                if (parentForm is Forms.MainForm mf)
                 {
                     try { mf.ShowPanel<TPanel>(panelName); return; } catch { }
                 }

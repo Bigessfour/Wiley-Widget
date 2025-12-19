@@ -59,8 +59,8 @@ namespace WileyWidget.WinForms.Controls
         private Panel? _topPanel;
         private Panel? _summaryPanel;
         private SfComboBox? _comboFiscalYear;
-        private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
-        private Syncfusion.WinForms.Controls.SfButton? _btnExportCsv;
+        private SfButton? _btnRefresh;
+        private SfButton? _btnExportCsv;
         private SfDataGrid? _metricsGrid;
         private ChartControl? _varianceChart;
         private ErrorProvider? _errorProvider;
@@ -179,7 +179,7 @@ namespace WileyWidget.WinForms.Controls
             flow.Controls.Add(_comboFiscalYear);
 
             // Refresh button
-            _btnRefresh = new Syncfusion.WinForms.Controls.SfButton
+            _btnRefresh = new SfButton
             {
                 Text = BudgetOverviewPanelResources.RefreshText,
                 Width = 100,
@@ -192,13 +192,13 @@ namespace WileyWidget.WinForms.Controls
             flow.Controls.Add(_btnRefresh);
 
             // Export CSV button
-            _btnExportCsv = new Syncfusion.WinForms.Controls.SfButton
+            _btnExportCsv = new SfButton
             {
-                Text = BudgetOverviewPanelResources.ExportCsvText,
+                Text = "&" + BudgetOverviewPanelResources.ExportCsvText,
                 Width = 110,
                 Height = 28,
                 AccessibleName = "Export to CSV",
-                AccessibleDescription = "Export budget data to CSV file"
+                AccessibleDescription = "Export budget data to CSV file (Alt+E)"
             };
             SetupExportButtonIcon();
             _btnExportCsv.Click += async (s, e) => await ExportToCsvAsync();
@@ -208,7 +208,7 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_topPanel);
 
             // Summary panel with KPI tiles
-            _summaryPanel = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(8), BackColor = Color.Transparent };
+            _summaryPanel = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(8) };
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
 
             // Create summary tiles
@@ -290,16 +290,22 @@ namespace WileyWidget.WinForms.Controls
 
         private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
         {
-            var tile = new Panel { Width = 150, Height = 80, Margin = new Padding(4), BackColor = Color.FromArgb(40, accentColor) };
+            var tile = new Panel
+            {
+                Width = 150,
+                Height = 80,
+                Margin = new Padding(4),
+                AccessibleName = $"{title} summary card",
+                AccessibleDescription = $"Displays {title.ToLower(CultureInfo.CurrentCulture)} metric"
+            };
 
             var lblTitle = new Label
             {
                 Text = title,
                 Dock = DockStyle.Top,
                 Height = 24,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = ThemeManager.Colors.TextPrimary
+                TextAlign = ContentAlignment.MiddleCenter
+                // Font and ForeColor inherited from theme cascade
             };
             tile.Controls.Add(lblTitle);
 
@@ -308,8 +314,9 @@ namespace WileyWidget.WinForms.Controls
                 Text = value,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = accentColor
+                AccessibleName = $"{title} value",
+                AccessibleDescription = $"Current {title.ToLower(CultureInfo.CurrentCulture)}: {value}"
+                // Font and ForeColor inherited from theme cascade
             };
             tile.Controls.Add(lblValue);
 
@@ -321,7 +328,7 @@ namespace WileyWidget.WinForms.Controls
         {
             if (_varianceChart == null) return;
 
-            _varianceChart.Skins = Skins.Metro;
+            // Theme applied automatically by SfSkinManager cascade from parent form
             _varianceChart.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             _varianceChart.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
             _varianceChart.ShowToolTips = true;
@@ -353,7 +360,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 if (_btnRefresh != null)
@@ -368,7 +375,7 @@ namespace WileyWidget.WinForms.Controls
                     try
                     {
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         UpdateButtonIcon(_btnRefresh, svc?.GetIcon("refresh", t, 14));
                     }
@@ -384,7 +391,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
                 if (_btnExportCsv != null)
@@ -399,7 +406,7 @@ namespace WileyWidget.WinForms.Controls
                     try
                     {
                         var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Services.IThemeIconService>(Program.Services)
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                             : null;
                         UpdateButtonIcon(_btnExportCsv, svc?.GetIcon("export", t, 14));
                     }
@@ -410,7 +417,7 @@ namespace WileyWidget.WinForms.Controls
             catch { }
         }
 
-        private void UpdateButtonIcon(Syncfusion.WinForms.Controls.SfButton? button, Image? icon)
+        private void UpdateButtonIcon(SfButton? button, Image? icon)
         {
             if (button == null) return;
             if (_dispatcherHelper != null)
@@ -658,7 +665,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var parentForm = this.FindForm();
-                if (parentForm is WileyWidget.WinForms.Forms.MainForm mainForm)
+                if (parentForm is Forms.MainForm mainForm)
                 {
                     mainForm.ClosePanel(Name);
                     return;

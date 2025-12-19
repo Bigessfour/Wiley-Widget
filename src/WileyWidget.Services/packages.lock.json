@@ -39,11 +39,11 @@
       },
       "FastReport.OpenSource": {
         "type": "Direct",
-        "requested": "[2026.1.3, )",
-        "resolved": "2026.1.3",
-        "contentHash": "2kvYdG74Gec69KWcC6d4NPVuLyF7PX3riFRwx+lKiPRsrygPnOJ4Az2c401EEqxVHWxwcMOKDoXqS95cm7WQXA==",
+        "requested": "[2024.2.0, )",
+        "resolved": "2024.2.0",
+        "contentHash": "Ib8/a6IMmNhRSS4/HYkYyueFGcTP855xWkmEKQil+E+0rkdhM1a6VEaG3zAj6TXNCHW8FqRb1y0WGa2kUsQkrQ==",
         "dependencies": {
-          "FastReport.Compat": "2026.1.3"
+          "FastReport.Compat": "2024.2.0"
         }
       },
       "FluentValidation": {
@@ -468,8 +468,8 @@
       },
       "FastReport.Compat": {
         "type": "Transitive",
-        "resolved": "2026.1.3",
-        "contentHash": "BNEkRnX2hr0SIZYkI0XQP5nBQnRmh94mx3UvOHEARDz1MDuStrU2SUE7vs1BIDRkWMeF/2gVgiRu2mDjKTENdA==",
+        "resolved": "2024.2.0",
+        "contentHash": "Rq/nYDL2ky4cb8/NKBkj2I5YQ2kzEzqBsBMShbmfa+u0SQMyG9J1MZEBxqY1wpM4j2Azmeoy8YrwafnL8C/iUQ==",
         "dependencies": {
           "Microsoft.CodeAnalysis.CSharp": "4.0.1",
           "Microsoft.CodeAnalysis.VisualBasic": "4.0.1",

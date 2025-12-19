@@ -16,7 +16,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// Uses CommunityToolkit.Mvvm for MVVM pattern with source generators.
 /// Delegates report operations to IReportService.
 /// </summary>
-public partial class ReportsViewModel : ObservableObject
+public partial class ReportsViewModel : ObservableObject, IDisposable
 {
     private readonly IReportService _reportService;
     private readonly ILogger<ReportsViewModel> _logger;
@@ -52,6 +52,15 @@ public partial class ReportsViewModel : ObservableObject
 
     [ObservableProperty]
     private string? statusMessage;
+
+    [ObservableProperty]
+    private bool isLoading;
+
+    [ObservableProperty]
+    private bool hasReportLoaded;
+
+    [ObservableProperty]
+    private string statusText = "Ready";
 
     [ObservableProperty]
     private ObservableCollection<ReportDataItem> previewData = [];
@@ -377,6 +386,70 @@ public partial class ReportsViewModel : ObservableObject
         {
             ErrorMessage = $"Failed to generate report: {ex.Message}";
             _logger.LogError(ex, "Failed to generate report: {ReportType}", SelectedReportType);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Load a specific report file into the viewer.
+    /// </summary>
+    public async Task LoadReportAsync(string reportPath, CancellationToken cancellationToken = default)
+    {
+        if (ReportViewer == null)
+        {
+            ErrorMessage = "Report viewer not initialized.";
+            _logger.LogWarning("LoadReportAsync called but ReportViewer is null");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            ErrorMessage = "Report path is required.";
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            ErrorMessage = null;
+            StatusMessage = "Loading report...";
+
+            _logger.LogInformation("Loading report from path: {ReportPath}", reportPath);
+
+            // Prepare data sources (use default for now)
+            var dataSources = await PrepareDataSourcesAsync(cancellationToken);
+
+            // Honor cancellation after heavy work
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Load report into viewer
+            var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
+            await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
+
+            // Honor cancellation again
+            cancellationToken.ThrowIfCancellationRequested();
+
+            StatusMessage = $"Report loaded: {Path.GetFileName(reportPath)}";
+            HasReportLoaded = true;
+            _logger.LogInformation("Report loaded successfully from: {ReportPath}", reportPath);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Report loading cancelled.";
+            _logger.LogDebug("Report loading cancelled");
+        }
+        catch (FileNotFoundException ex)
+        {
+            ErrorMessage = $"Report file not found: {ex.FileName}";
+            _logger.LogError(ex, "Report file not found: {FileName}", ex.FileName);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load report: {ex.Message}";
+            _logger.LogError(ex, "Failed to load report from {ReportPath}: {Message}", reportPath, ex.Message);
         }
         finally
         {
@@ -746,6 +819,24 @@ public partial class ReportsViewModel : ObservableObject
             new("Streets Fund", 400000m, 420000m, -20000m, -5.0m),
             new("Parks Fund", 200000m, 180000m, 20000m, 10.0m)
         ];
+    }
+
+    /// <summary>
+    /// Alias for PrintAsync to match panel expectations
+    /// </summary>
+    public async Task PrintReportAsync(CancellationToken cancellationToken = default)
+    {
+        await PrintAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    public void Dispose()
+    {
+        // Clean up any resources if needed
+        _logger.LogDebug("ReportsViewModel disposed");
+        GC.SuppressFinalize(this);
     }
 
     #endregion

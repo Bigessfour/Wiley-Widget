@@ -194,8 +194,8 @@ namespace WileyWidget.WinForms.Controls
 
             // Data Export group
             var exportGroup = new GroupBox { Text = "Data Export", Location = new Point(padding, y), Size = new Size(440, 70), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            var lblExportPath = new Label { Text = "Export Path:", AutoSize = true, Location = new Point(20, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtExportPath = new TextBox { Name = "txtExportPath", Location = new Point(100, 27), Width = 250, Font = new Font("Segoe UI", 10F), AccessibleName = "Export path", AccessibleDescription = "Directory for data exports" };
+            var lblExportPath = new Label { Text = "Export Path:", AutoSize = true, Location = new Point(20, 30) };
+            _txtExportPath = new TextBox { Name = "txtExportPath", Location = new Point(100, 27), Width = 250, AccessibleName = "Export path", AccessibleDescription = "Directory for data exports" };
             _exportPathToolTip = new ToolTip(); _exportPathToolTip.SetToolTip(_txtExportPath, "Directory where exported data files will be saved");
             _btnBrowseExportPath = new Syncfusion.WinForms.Controls.SfButton { Name = "btnBrowseExportPath", Text = "...", Size = new Size(40, 24), Location = new Point(360, 26), AccessibleName = "Browse for export path", AccessibleDescription = "Open folder browser to select export directory" };
             _browseExportPathHandler = (s, e) => OnBrowseExportPath();
@@ -343,7 +343,7 @@ namespace WileyWidget.WinForms.Controls
                 }
 
                 var parentForm = this.FindForm();
-                if (parentForm is WileyWidget.WinForms.Forms.MainForm mainForm) { mainForm.CloseSettingsPanel(); return; }
+                if (parentForm is Forms.MainForm mainForm) { mainForm.CloseSettingsPanel(); return; }
 
                 if (parentForm != null)
                 {

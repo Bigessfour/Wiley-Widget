@@ -39,7 +39,7 @@ namespace WileyWidget.WinForms.Services
 
         public Task<(decimal TotalBudget, decimal TotalActual, decimal TotalEncumbrance)> GetTotalsAsync(int fiscalYear, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<(decimal, decimal, decimal)>((0m, 0m, 0m));
+            return Task.FromResult((0m, 0m, 0m));
         }
     }
 }

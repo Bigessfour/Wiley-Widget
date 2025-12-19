@@ -34,7 +34,7 @@ namespace WileyWidget.WinForms
     {
         public static IServiceProvider Services { get; private set; } = null!;
         // Captured UI thread SynchronizationContext for marshaling UI actions
-        public static System.Threading.SynchronizationContext? UISynchronizationContext { get; private set; }
+        public static SynchronizationContext? UISynchronizationContext { get; private set; }
         private static IStartupTimelineService? _timelineService;
 
         [STAThread]
@@ -138,6 +138,9 @@ namespace WileyWidget.WinForms
             // Show splash screen on main thread to avoid cross-thread handle issues
             SplashForm? splash = null;
 
+            Console.WriteLine("[SPLASH] About to create SplashForm instance");
+            Log.Information("[SPLASH] Starting splash screen initialization");
+
             // ═══════════════════════════════════════════════════════════════════
             // COMPREHENSIVE STARTUP TRY-CATCH WRAPPER
             // Captures all exceptions during startup with full diagnostic details
@@ -145,9 +148,13 @@ namespace WileyWidget.WinForms
             try
             {
                 // Create splash on main UI thread
+                Console.WriteLine("[SPLASH] Creating new SplashForm()");
                 splash = new SplashForm();
-                splash.Show();
+                Console.WriteLine("[SPLASH] SplashForm created");
+                Console.WriteLine("[SPLASH] splash.Show() completed");
+
                 Application.DoEvents(); // Process show event
+                Console.WriteLine("[SPLASH] First Application.DoEvents() after Show() completed");
 
                 // === Phase 5: DI Container Build (must complete BEFORE DI Validation and DB Health Check) ===
                 splash.Report(0.05, "Building dependency injection container...");
@@ -234,14 +241,17 @@ namespace WileyWidget.WinForms
                     {
                         Log.Information("[DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
                         Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
-                        // Run synchronously - use GetAwaiter().GetResult() to avoid deadlock
-                        RunStartupHealthCheckAsync(healthScope.ServiceProvider).GetAwaiter().GetResult();
+                        splash.Report(0.60, "Checking database health...");
+                        Application.DoEvents(); // Keep splash responsive
+
+                        // Run async without blocking UI thread
+                        await RunStartupHealthCheckAsync(healthScope.ServiceProvider);
+
                         Log.Information("[DIAGNOSTIC] RunStartupHealthCheckAsync completed successfully");
                         Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunStartupHealthCheckAsync completed");
                     } // Phase 8 complete
                     Console.WriteLine("[SYNC] Phase 8 complete - Database health verified");
                     Application.DoEvents(); // Process any pending UI messages
-                    System.Threading.Thread.Sleep(100); // Allow DB connections to stabilize
                 }
 
                 Log.Information("[DIAGNOSTIC] Checking IsVerifyStartup at line 121");
@@ -301,7 +311,12 @@ namespace WileyWidget.WinForms
                     try
                     {
                         Log.Information("[DIAGNOSTIC] Seeding task started");
-                        UiTestDataSeeder.SeedIfEnabledAsync(host.Services).GetAwaiter().GetResult();
+                        splash.Report(0.85, "Seeding test data...");
+                        Application.DoEvents(); // Keep splash responsive
+
+                        // Run async without blocking UI thread
+                        await UiTestDataSeeder.SeedIfEnabledAsync(host.Services);
+
                         Log.Information("Test data seeding completed successfully");
                     }
                     catch (Exception seedEx)
@@ -762,7 +777,7 @@ namespace WileyWidget.WinForms
                 var qboClientIdEnv = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
                 var qboClientSecretEnv = Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET");
 
-                var overrides = new System.Collections.Generic.Dictionary<string, string?>();
+                var overrides = new Dictionary<string, string?>();
 
                 if (!string.IsNullOrWhiteSpace(xaiApiKeyEnv))
                 {
@@ -819,7 +834,7 @@ namespace WileyWidget.WinForms
                 if (string.IsNullOrWhiteSpace(existingConn))
                 {
                     var defaultConn = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-                    builder.Configuration.AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string?>
+                    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:DefaultConnection"] = defaultConn
                     });
@@ -926,15 +941,15 @@ namespace WileyWidget.WinForms
                 options.UseSqlServer(connectionString, sql =>
                 {
                     sql.MigrationsAssembly("WileyWidget.Data");
-                    sql.CommandTimeout(builder.Configuration.GetValue<int>("Database:CommandTimeoutSeconds", 30));
+                    sql.CommandTimeout(builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 30));
                     sql.EnableRetryOnFailure(
-                        maxRetryCount: builder.Configuration.GetValue<int>("Database:MaxRetryCount", 3),
-                        maxRetryDelay: TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("Database:MaxRetryDelaySeconds", 10)),
+                        maxRetryCount: builder.Configuration.GetValue("Database:MaxRetryCount", 3),
+                        maxRetryDelay: TimeSpan.FromSeconds(builder.Configuration.GetValue("Database:MaxRetryDelaySeconds", 10)),
                         errorNumbersToAdd: null);
                 });
 
                 options.EnableDetailedErrors();
-                options.EnableSensitiveDataLogging(builder.Configuration.GetValue<bool>("Database:EnableSensitiveDataLogging", false));
+                options.EnableSensitiveDataLogging(builder.Configuration.GetValue("Database:EnableSensitiveDataLogging", false));
 
                 options.UseLoggerFactory(new SerilogLoggerFactory(Log.Logger));
 
@@ -1251,7 +1266,7 @@ namespace WileyWidget.WinForms
                 {
                     if (mainForm != null && !mainForm.IsDisposed)
                     {
-                        mainForm.BeginInvoke(new System.Action(() =>
+                        mainForm.BeginInvoke(new Action(() =>
                         {
                             try
                             {
@@ -1432,18 +1447,27 @@ namespace WileyWidget.WinForms
             internal readonly Form? _form;
             private readonly Label? _messageLabel;
             private readonly ProgressBar? _progressBar;
-            private readonly System.Threading.CancellationTokenSource _cts = new();
+            private readonly CancellationTokenSource _cts = new();
 
             public SplashForm()
             {
+                Console.WriteLine("[SPLASH] SplashForm constructor started");
+
                 // Run headless during UI tests or non-interactive contexts
                 _isHeadless = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
                               || !Environment.UserInteractive;
 
+                Console.WriteLine($"[SPLASH] Headless check: _isHeadless={_isHeadless}");
+                Console.WriteLine($"[SPLASH] Environment.UserInteractive={Environment.UserInteractive}");
+                Console.WriteLine($"[SPLASH] WILEYWIDGET_UI_TESTS={Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS")}");
+
                 if (_isHeadless)
                 {
+                    Console.WriteLine("[SPLASH] Running in headless mode - no UI splash will be shown");
                     return;
                 }
+
+                Console.WriteLine("[SPLASH] Creating splash form UI elements");
 
                 _form = new Form
                 {
@@ -1477,17 +1501,40 @@ namespace WileyWidget.WinForms
                 panel.Controls.Add(_messageLabel);
                 panel.Controls.Add(_progressBar);
                 _form.Controls.Add(panel);
+
+                Console.WriteLine($"[SPLASH] SplashForm UI created successfully. Form handle: {_form.Handle}");
+                Console.WriteLine($"[SPLASH] Form properties: Size={_form.Size}, Location={_form.Location}, Visible={_form.Visible}");
             }
 
             public void Show()
             {
-                if (_isHeadless || _form == null) return;
+                var logPath = "logs/splash-show-debug.txt";
+                File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Show() called. _isHeadless={_isHeadless}, _form={(_form != null ? "not null" : "null")}\n");
+
+                if (_isHeadless || _form == null)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Show() exiting early - headless or form is null\n");
+                    Console.WriteLine("[SPLASH] Show() exiting early - headless or form is null");
+                    return;
+                }
+
                 try
                 {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Calling _form.Show()\n");
                     _form.Show();
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] After Show() - Visible={_form.Visible}, IsHandleCreated={_form.IsHandleCreated}\n");
+
                     _form.Refresh(); // Force immediate paint
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Refresh() completed\n");
+
+                    Application.DoEvents();
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] DoEvents() completed\n");
                 }
-                catch { /* Ignore UI failures */ }
+                catch (Exception ex)
+                {
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Show() exception: {ex.GetType().Name} - {ex.Message}\n");
+                    File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] Stack trace: {ex.StackTrace}\n");
+                }
             }
 
             public void Report(double progress, string message, bool isIndeterminate = false)
@@ -1582,7 +1629,7 @@ namespace WileyWidget.WinForms
 
                 // Use the WinForms-specific validator which provides categorized validation
                 var validationService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetRequiredService<Services.IWinFormsDiValidator>(services);
+                    .GetRequiredService<IWinFormsDiValidator>(services);
 
                 // Note: The validator itself logs detailed category-by-category progress
                 // including the formatted banner output, so we don't duplicate logging here
@@ -1632,7 +1679,7 @@ namespace WileyWidget.WinForms
                 Log.Information("║   ✓ Repositories (9 data access layers)                       ║");
                 Log.Information("║   ✓ Business Services (26 application services)               ║");
                 Log.Information("║   ✓ ViewModels (10 UI view models)                            ║");
-                Log.Information("║   ✓ Forms (8 WinForms UI forms)                               ║");
+                Log.Information("║   ✓ MainForm (panels resolved via navigation service)         ║");
                 Log.Information("╠════════════════════════════════════════════════════════════════╣");
                 Log.Information("║ Result: READY FOR MAIN FORM INSTANTIATION                     ║");
                 Log.Information("╚════════════════════════════════════════════════════════════════╝");

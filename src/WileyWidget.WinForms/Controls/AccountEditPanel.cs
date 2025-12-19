@@ -94,8 +94,9 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth,
                 MaxLength = 20,
-                Font = new Font("Segoe UI", 9F),
                 AccessibleName = "Account Number",
+                AccessibleDescription = "Enter the unique account number",
+                TabIndex = 1
             };
             Controls.Add(txtAccountNumber);
             y += rowHeight;
@@ -107,8 +108,9 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth,
                 MaxLength = 100,
-                Font = new Font("Segoe UI", 9F),
                 AccessibleName = "Account Name",
+                AccessibleDescription = "Enter the descriptive name for this account",
+                TabIndex = 2
             };
             Controls.Add(txtName);
             y += rowHeight;
@@ -119,7 +121,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 Location = new Point(padding + labelWidth, y),
                 Width = controlWidth,
-                AccessibleName = "Department"
+                AccessibleName = "Department",
+                AccessibleDescription = "Select the department this account belongs to",
+                TabIndex = 3
             };
             SkinManager.SetVisualStyle(cmbDepartment, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbDepartment);
@@ -130,7 +134,10 @@ namespace WileyWidget.WinForms.Controls
             cmbFund = new SfComboBox
             {
                 Location = new Point(padding + labelWidth, y),
-                Width = controlWidth
+                Width = controlWidth,
+                AccessibleName = "Fund Type",
+                AccessibleDescription = "Select the municipal fund type for this account",
+                TabIndex = 4
             };
             SkinManager.SetVisualStyle(cmbFund, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbFund);
@@ -141,7 +148,10 @@ namespace WileyWidget.WinForms.Controls
             cmbType = new SfComboBox
             {
                 Location = new Point(padding + labelWidth, y),
-                Width = controlWidth
+                Width = controlWidth,
+                AccessibleName = "Account Type",
+                AccessibleDescription = "Select the account type (Asset, Liability, Revenue, etc.)",
+                TabIndex = 5
             };
             SkinManager.SetVisualStyle(cmbType, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(cmbType);
@@ -149,29 +159,29 @@ namespace WileyWidget.WinForms.Controls
 
             // Balance
             Controls.Add(new Label { Text = "Balance:", Location = new Point(padding, y + 4), AutoSize = true });
-            numBalance = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
+            numBalance = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth, AccessibleName = "Balance", AccessibleDescription = "Enter the current account balance", TabIndex = 6 };
             SkinManager.SetVisualStyle(numBalance, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBalance);
             y += rowHeight;
 
             // Budget
             Controls.Add(new Label { Text = "Budget Amount:", Location = new Point(padding, y + 4), AutoSize = true });
-            numBudget = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth };
+            numBudget = new SfNumericTextBox { Location = new Point(padding + labelWidth, y), Width = controlWidth, AccessibleName = "Budget Amount", AccessibleDescription = "Enter the budgeted amount for this account", TabIndex = 7 };
             SkinManager.SetVisualStyle(numBudget, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
             Controls.Add(numBudget);
             y += rowHeight;
 
             // Active
-            chkActive = new CheckBox { Text = "Active", Location = new Point(padding + labelWidth, y), AutoSize = true };
+            chkActive = new CheckBox { Text = "Active", Location = new Point(padding + labelWidth, y), AutoSize = true, AccessibleName = "Active Status", AccessibleDescription = "Check to mark this account as active", TabIndex = 8 };
             Controls.Add(chkActive);
             y += rowHeight;
 
             // Save/Cancel buttons (exposed as methods for tests)
-            var btnSave = new Button { Text = "Save", Location = new Point(padding + labelWidth, y + 10), AutoSize = true };
+            var btnSave = new Button { Text = "&Save", Location = new Point(padding + labelWidth, y + 10), AutoSize = true, AccessibleName = "Save Account", AccessibleDescription = "Save the account changes", TabIndex = 9 };
             btnSave.Click += BtnSave_Click;
             Controls.Add(btnSave);
 
-            var btnCancel = new Button { Text = "Cancel", Location = new Point(padding + labelWidth + 80, y + 10), AutoSize = true };
+            var btnCancel = new Button { Text = "&Cancel", Location = new Point(padding + labelWidth + 80, y + 10), AutoSize = true, AccessibleName = "Cancel", AccessibleDescription = "Cancel and discard changes", TabIndex = 10 };
             btnCancel.Click += (s, e) => Cancel();
             Controls.Add(btnCancel);
 

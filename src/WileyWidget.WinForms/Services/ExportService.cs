@@ -81,7 +81,7 @@ namespace WileyWidget.WinForms.Services
                 var pdfGrid = grid.ExportToPdfGrid(grid.View, options);
                 var page = document.Pages.Add();
 
-                pdfGrid.Draw(page, new System.Drawing.PointF(0, 0));
+                pdfGrid.Draw(page, new PointF(0, 0));
 
                 document.Save(filePath);
             });
@@ -111,10 +111,10 @@ namespace WileyWidget.WinForms.Services
 
                 try
                 {
-                    if (chart is System.Windows.Forms.Control chartControl)
+                    if (chart is Control chartControl)
                     {
-                        using var chartImage = new System.Drawing.Bitmap(chartControl.Width, chartControl.Height);
-                        chartControl.DrawToBitmap(chartImage, new System.Drawing.Rectangle(0, 0, chartControl.Width, chartControl.Height));
+                        using var chartImage = new Bitmap(chartControl.Width, chartControl.Height);
+                        chartControl.DrawToBitmap(chartImage, new Rectangle(0, 0, chartControl.Width, chartControl.Height));
 
                         var pdfImage = PdfImage.FromImage(chartImage);
 

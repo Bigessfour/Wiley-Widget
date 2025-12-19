@@ -33,11 +33,11 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IMunicipalAccountRepository? _accountRepository;
         private readonly ILogger<DashboardViewModel> _logger;
         private CancellationTokenSource? _loadCancellationTokenSource;
-        private readonly System.Threading.SemaphoreSlim _loadLock = new(1, 1);
+        private readonly SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
         private bool _disposed;
         private readonly IConfiguration? _configuration;
-        private System.Threading.SynchronizationContext? _uiContext;
+        private SynchronizationContext? _uiContext;
 
         #region Observable Properties
 
@@ -201,7 +201,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Sets the UI SynchronizationContext for marshaling collection updates.
         /// Must be called from the UI thread before any async operations.
         /// </summary>
-        public void SetUiContext(System.Threading.SynchronizationContext context)
+        public void SetUiContext(SynchronizationContext context)
         {
             _uiContext = context ?? throw new ArgumentNullException(nameof(context));
             _logger.LogInformation("DashboardViewModel: UI SynchronizationContext set (Type: {ContextType})", context.GetType().Name);

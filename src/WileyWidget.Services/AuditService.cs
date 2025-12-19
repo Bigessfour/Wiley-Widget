@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
@@ -66,6 +69,97 @@ namespace WileyWidget.Services
             }
 
             return Task.CompletedTask;
+        }
+
+        public async Task<IEnumerable<AuditEntry>> GetAuditEntriesAsync(
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? actionType = null,
+            string? user = null,
+            int? skip = null,
+            int? take = null)
+        {
+            try
+            {
+                if (!File.Exists(_auditPath))
+                    return Enumerable.Empty<AuditEntry>();
+
+                var lines = await File.ReadAllLinesAsync(_auditPath);
+                var entries = new List<AuditEntry>();
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    try
+                    {
+                        var auditRecord = JsonSerializer.Deserialize<AuditRecord>(line);
+                        if (auditRecord == null) continue;
+
+                        // Apply filters
+                        if (startDate.HasValue && auditRecord.Timestamp < startDate.Value) continue;
+                        if (endDate.HasValue && auditRecord.Timestamp > endDate.Value) continue;
+
+                        // For now, map Event to Action, and Details to Changes
+                        // In a real implementation, Details would contain structured audit data
+                        var entry = new AuditEntry
+                        {
+                            Id = entries.Count + 1, // Simple ID for display
+                            EntityType = "Unknown", // Would come from Details
+                            EntityId = 0, // Would come from Details
+                            Action = auditRecord.Event,
+                            User = "System", // Would come from Details or context
+                            Timestamp = auditRecord.Timestamp.DateTime,
+                            Changes = auditRecord.Details?.ToString() ?? string.Empty
+                        };
+
+                        entries.Add(entry);
+                    }
+                    catch (JsonException)
+                    {
+                        // Skip malformed lines
+                        continue;
+                    }
+                }
+
+                // Apply additional filters
+                if (!string.IsNullOrEmpty(actionType))
+                    entries = entries.Where(e => e.Action.Contains(actionType, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (!string.IsNullOrEmpty(user))
+                    entries = entries.Where(e => e.User.Contains(user, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                // Apply pagination
+                if (skip.HasValue)
+                    entries = entries.Skip(skip.Value).ToList();
+
+                if (take.HasValue)
+                    entries = entries.Take(take.Value).ToList();
+
+                return entries.OrderByDescending(e => e.Timestamp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve audit entries");
+                return Enumerable.Empty<AuditEntry>();
+            }
+        }
+
+        public async Task<int> GetAuditEntriesCountAsync(
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? actionType = null,
+            string? user = null)
+        {
+            var entries = await GetAuditEntriesAsync(startDate, endDate, actionType, user, null, null);
+            return entries.Count();
+        }
+
+        private class AuditRecord
+        {
+            public DateTimeOffset Timestamp { get; set; }
+            public string Event { get; set; } = string.Empty;
+            public object? Details { get; set; }
         }
 
         private void TryRotateAuditFileIfNeeded()

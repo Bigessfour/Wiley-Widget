@@ -7,6 +7,18 @@ using Syncfusion.Windows.Forms.Tools;
 namespace WileyWidget.WinForms.Services
 {
     /// <summary>
+    /// Interface for panels that can be initialized with parameters.
+    /// </summary>
+    public interface IParameterizedPanel
+    {
+        /// <summary>
+        /// Initialize the panel with the provided parameters.
+        /// </summary>
+        /// <param name="parameters">Parameters for panel initialization.</param>
+        void InitializeWithParameters(object parameters);
+    }
+
+    /// <summary>
     /// Centralized service for managing docked panels in MainForm's DockingManager.
     /// Ensures single instance per panel type, reuse, activation, and proper naming.
     /// Replaces scattered menu click handlers and legacy form-based navigation.
@@ -27,6 +39,29 @@ namespace WileyWidget.WinForms.Services
             DockingStyle preferredStyle = DockingStyle.Right,
             bool allowFloating = true)
             where TPanel : UserControl;
+
+        /// <summary>
+        /// Shows or activates a docked panel with initialization parameters. Creates it if not already present.
+        /// Panel is resolved from DI container to support constructor injection.
+        /// </summary>
+        /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
+        /// <param name="panelName">Unique display name (also used as DockingManager key).</param>
+        /// <param name="parameters">Parameters to pass to panel constructor or initialization.</param>
+        /// <param name="preferredStyle">Preferred docking position.</param>
+        /// <param name="allowFloating">If true, panel can be floated by user.</param>
+        void ShowPanel<TPanel>(
+            string panelName,
+            object? parameters,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TPanel : UserControl;
+
+        /// <summary>
+        /// Hides a docked panel by name.
+        /// </summary>
+        /// <param name="panelName">Name of the panel to hide.</param>
+        /// <returns>True if panel was hidden, false if panel doesn't exist.</returns>
+        bool HidePanel(string panelName);
     }
 
     public sealed class PanelNavigationService : IPanelNavigationService, IDisposable
@@ -57,6 +92,16 @@ namespace WileyWidget.WinForms.Services
             bool allowFloating = true)
             where TPanel : UserControl
         {
+            ShowPanel<TPanel>(panelName, null, preferredStyle, allowFloating);
+        }
+
+        public void ShowPanel<TPanel>(
+            string panelName,
+            object? parameters,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TPanel : UserControl
+        {
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
@@ -73,11 +118,14 @@ namespace WileyWidget.WinForms.Services
 
                 // Create new instance via DI (supports constructor injection)
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
-                panel.Name = panelName.Replace(" ", ""); // Clean name for internal use
+                panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
                 panel.Dock = DockStyle.Fill;
 
-                // Optional: Set DataContext or inject dependencies via DI if panel uses ScopedPanelBase or constructor injection
-                // (Handled automatically if panel uses constructor DI and is resolved via IServiceProvider — see advanced note below)
+                // If panel supports parameter initialization, pass the parameters
+                if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
+                {
+                    parameterizedPanel.InitializeWithParameters(parameters);
+                }
 
                 _dockingManager.SetDockLabel(panel, panelName);
                 _dockingManager.SetAllowFloating(panel, allowFloating);
@@ -111,6 +159,27 @@ namespace WileyWidget.WinForms.Services
         public void Dispose()
         {
             _cachedPanels.Clear();
+        }
+
+        /// <summary>
+        /// Hides a docked panel by name.
+        /// </summary>
+        /// <param name="panelName">Name of the panel to hide.</param>
+        /// <returns>True if panel was hidden, false if panel doesn't exist.</returns>
+        public bool HidePanel(string panelName)
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+                throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
+            {
+                _dockingManager.SetDockVisibility(existingPanel, false);
+                _logger.LogDebug("Hidden panel: {PanelName}", panelName);
+                return true;
+            }
+
+            _logger.LogWarning("Cannot hide panel '{PanelName}' - not found", panelName);
+            return false;
         }
     }
 }

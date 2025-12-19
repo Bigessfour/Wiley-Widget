@@ -67,7 +67,7 @@ public partial class MainForm
     private Dictionary<string, Panel>? _dynamicDockPanels;
     // Font family constant for UI fonts
     private const string SegoeUiFontName = "Segoe UI";
-    private readonly Dictionary<Type, Form> _activeMdiChildren = new();
+    // REMOVED: _activeMdiChildren dictionary - MDI child tracking replaced by PanelNavigationService
     #endregion
 
     #region Chrome
@@ -206,7 +206,7 @@ public partial class MainForm
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
             };
 
             var accountsBtn = new ToolStripButton
@@ -233,7 +233,7 @@ public partial class MainForm
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                    _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
             };
 
             var budgetBtn = new ToolStripButton
@@ -259,7 +259,7 @@ public partial class MainForm
             budgetBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+                    _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
             };
 
             var chartsBtn = new ToolStripButton
@@ -285,7 +285,7 @@ public partial class MainForm
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
             };
 
             var customersBtn = new ToolStripButton
@@ -356,7 +356,7 @@ public partial class MainForm
             aiChatBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
             };
 
             var quickBooksBtn = new ToolStripButton
@@ -381,7 +381,7 @@ public partial class MainForm
             quickBooksBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
             };
 
             var settingsBtn = new ToolStripButton
@@ -407,7 +407,7 @@ public partial class MainForm
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
             };
 
             // Theme toggle button for runtime theme switching
@@ -521,7 +521,7 @@ public partial class MainForm
             {
                 Name = "StatusTextPanel",
                 Text = string.Empty,
-                Size = new System.Drawing.Size(200, 27),
+                Size = new Size(200, 27),
                 HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Center
             };
 
@@ -530,7 +530,7 @@ public partial class MainForm
             {
                 Name = "StatePanel",
                 Text = string.Empty,
-                Size = new System.Drawing.Size(100, 27),
+                Size = new Size(100, 27),
                 HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Left
             };
 
@@ -539,7 +539,7 @@ public partial class MainForm
             {
                 Name = "ClockPanel",
                 Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
-                Size = new System.Drawing.Size(80, 27),
+                Size = new Size(80, 27),
                 HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Right
             };
 
@@ -576,28 +576,28 @@ public partial class MainForm
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
             };
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                    _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
             };
 
             var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget" };
             budgetBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+                    _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
             };
 
             var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
             };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
@@ -612,21 +612,21 @@ public partial class MainForm
             aiChatBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
             };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
             quickBooksBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
             };
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
             };
 
             var dockingToggleBtn = new ToolStripButton("Docking") { Name = "Nav_DockingToggle", AccessibleName = "Nav_DockingToggle" };
@@ -807,7 +807,7 @@ public partial class MainForm
             var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
             })
             {
                 Name = "Menu_View_Dashboard",
@@ -821,7 +821,7 @@ public partial class MainForm
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                    _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
             })
             {
                 Name = "Menu_View_Accounts",
@@ -835,7 +835,7 @@ public partial class MainForm
             var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+                    _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
             })
             {
                 Name = "Menu_View_Budget",
@@ -849,7 +849,7 @@ public partial class MainForm
             var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
             })
             {
                 Name = "Menu_View_Charts",
@@ -860,8 +860,8 @@ public partial class MainForm
             };
 
             // View > Reports
-            // TODO: Create ReportsPanel
-            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => { /* Reports panel not yet implemented */ })
+            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) =>
+                _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Fill, allowFloating: true))
             {
                 Name = "Menu_View_Reports",
                 ShortcutKeys = Keys.Control | Keys.R,
@@ -874,7 +874,7 @@ public partial class MainForm
             var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
             })
             {
                 Name = "Menu_View_AIChat",
@@ -898,7 +898,7 @@ public partial class MainForm
             var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
             })
             {
                 Name = "Menu_View_QuickBooks",
@@ -938,11 +938,9 @@ public partial class MainForm
             // View > Refresh
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) =>
             {
-                // Refresh active child form if any
-                if (ActiveMdiChild is Form activeChild)
-                {
-                    activeChild.Refresh();
-                }
+                // Refresh all open panels via PanelNavigationService
+                // REMOVED: ActiveMdiChild - panels managed by DockingManager
+                this.Refresh();
             })
             {
                 Name = "Menu_View_Refresh",
@@ -977,7 +975,7 @@ public partial class MainForm
             var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
             })
             {
                 Name = "Menu_Tools_Settings",
@@ -1123,7 +1121,7 @@ public partial class MainForm
     /// </summary>
     /// <param name="themeName">Theme name from SkinManager</param>
     /// <returns>Corresponding AppTheme enum value</returns>
-    private Theming.AppTheme GetAppThemeFromString(string themeName)
+    private AppTheme GetAppThemeFromString(string themeName)
     {
         return themeName switch
         {
@@ -1446,7 +1444,7 @@ public partial class MainForm
             stopwatch.Stop();
             _logger.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         }
-        catch (Syncfusion.Windows.Forms.Tools.DockingManagerException dockEx)
+        catch (DockingManagerException dockEx)
         {
             stopwatch.Stop();
             _logger.LogWarning(dockEx, "DockingManager initialization failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
@@ -1463,7 +1461,7 @@ public partial class MainForm
     /// <summary>
     /// Handle theme changes at runtime and reapply theme to all docking panels
     /// </summary>
-    private void OnThemeChanged(object? sender, Theming.AppTheme theme)
+    private void OnThemeChanged(object? sender, AppTheme theme)
     {
         if (InvokeRequired)
         {
@@ -1516,7 +1514,7 @@ public partial class MainForm
     /// </summary>
     private void InitializeDockingManager()
     {
-        components ??= new System.ComponentModel.Container();
+        components ??= new Container();
         _dockingManager = new DockingManager(components);
         _dockingManager.HostControl = this;
 
@@ -1791,21 +1789,21 @@ public partial class MainForm
         SetupCardClickHandler(accountsCard, () =>
         {
             if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
         });
 
         var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
         SetupCardClickHandler(chartsCard, () =>
         {
             if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<Controls.ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
         });
 
         var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
         SetupCardClickHandler(settingsCard, () =>
         {
             if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
         });
 
         var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
@@ -2173,7 +2171,7 @@ public partial class MainForm
     {
         try
         {
-            var xmlDoc = new System.Xml.XmlDocument();
+            var xmlDoc = new XmlDocument();
             xmlDoc.Load(layoutPath);
 
             // Check for version attribute on root element
@@ -2256,12 +2254,12 @@ public partial class MainForm
     {
         try
         {
-            var xmlDoc = new System.Xml.XmlDocument();
+            var xmlDoc = new XmlDocument();
             xmlDoc.Load(layoutPath);
             _logger.LogDebug("Layout XML validated successfully");
             return true;
         }
-        catch (System.Xml.XmlException xmlEx)
+        catch (XmlException xmlEx)
         {
             HandleCorruptLayoutFile(layoutPath, xmlEx);
             return false;
@@ -2271,7 +2269,7 @@ public partial class MainForm
     /// <summary>
     /// Handle corrupt layout file
     /// </summary>
-    private void HandleCorruptLayoutFile(string layoutPath, System.Xml.XmlException xmlEx)
+    private void HandleCorruptLayoutFile(string layoutPath, XmlException xmlEx)
     {
         _logger.LogInformation(xmlEx, "Corrupt XML layout file detected at {Path} - resetting to default layout", layoutPath);
 
@@ -2318,7 +2316,10 @@ public partial class MainForm
             var dynamicPanelInfos = LoadDynamicPanelMetadata(layoutPath);
             RecreateDynamicPanels(dynamicPanelInfos);
 
-            var serializer = new Syncfusion.Runtime.Serialization.AppStateSerializer(
+            // Load additional dynamic panels from JSON metadata
+            LoadDynamicPanels(layoutPath);
+
+            var serializer = new AppStateSerializer(
                 Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
 
             try
@@ -2639,7 +2640,7 @@ public partial class MainForm
                 return;
             }
 
-            var xmlDoc = new System.Xml.XmlDocument();
+            var xmlDoc = new XmlDocument();
             xmlDoc.Load(layoutPath);
 
             // Add version attribute to root element
@@ -2942,7 +2943,7 @@ public partial class MainForm
             try
             {
                 // Attempt to use Syncfusion API to save dock state via AppStateSerializer
-                var serializerType = typeof(Syncfusion.Runtime.Serialization.AppStateSerializer);
+                var serializerType = typeof(AppStateSerializer);
                 var serializer = Activator.CreateInstance(serializerType, new object[] { Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, tempPath })!;
                 var saveMethod = _dockingManager.GetType().GetMethod("SaveDockState", new Type[] { serializerType });
 
@@ -2957,6 +2958,9 @@ public partial class MainForm
                 }
 
                 ReplaceDockingLayoutFile(tempPath, layoutPath);
+
+                // Save dynamic panels metadata
+                SaveDynamicPanels(layoutPath);
             }
             catch (ArgumentException argEx)
             {
@@ -2972,6 +2976,156 @@ public partial class MainForm
         finally
         {
             lock (_dockingSaveLock) { _isSavingLayout = false; }
+        }
+    }
+
+    /// <summary>
+    /// Save dynamic panels metadata alongside the docking layout
+    /// </summary>
+    private void SaveDynamicPanels(string layoutPath)
+    {
+        if (_dynamicDockPanels == null || _dynamicDockPanels.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var panelsPath = layoutPath + ".panels";
+            var tempPath = panelsPath + ".tmp";
+
+            var panelData = new List<object>();
+
+            foreach (var kvp in _dynamicDockPanels)
+            {
+                var panel = kvp.Value;
+                if (panel != null && _dockingManager != null)
+                {
+                    try
+                    {
+                        var panelInfo = new
+                        {
+                            Name = kvp.Key,
+                            Type = panel.GetType().FullName,
+                            IsVisible = _dockingManager.GetDockVisibility(panel),
+                            DockStyle = _dockingManager.GetDockStyle(panel).ToString(),
+                            AllowFloating = _dockingManager.GetAllowFloating(panel)
+                        };
+                        panelData.Add(panelInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to save metadata for dynamic panel: {PanelName}", kvp.Key);
+                    }
+                }
+            }
+
+            if (panelData.Count > 0)
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(panelData, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                File.WriteAllText(tempPath, json);
+                File.Move(tempPath, panelsPath, overwrite: true);
+                _logger.LogDebug("Saved metadata for {Count} dynamic panels", panelData.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save dynamic panels metadata");
+        }
+    }
+
+    /// <summary>
+    /// Load and restore dynamic panels from saved metadata
+    /// </summary>
+    private void LoadDynamicPanels(string layoutPath)
+    {
+        var panelsPath = layoutPath + ".panels";
+        if (!File.Exists(panelsPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(panelsPath);
+            var panelData = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(json);
+
+            if (panelData != null)
+            {
+                foreach (var element in panelData)
+                {
+                    try
+                    {
+                        var name = element.GetProperty("Name").GetString();
+                        var typeName = element.GetProperty("Type").GetString();
+                        var isVisible = element.GetProperty("IsVisible").GetBoolean();
+                        var dockStyleStr = element.GetProperty("DockStyle").GetString();
+                        var allowFloating = element.GetProperty("AllowFloating").GetBoolean();
+
+                        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(typeName))
+                        {
+                            // Try to recreate the panel
+                            RestoreDynamicPanel(name, typeName, isVisible, dockStyleStr, allowFloating);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to restore dynamic panel from metadata");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load dynamic panels metadata");
+        }
+    }
+
+    /// <summary>
+    /// Restore a single dynamic panel from saved metadata
+    /// </summary>
+    private void RestoreDynamicPanel(string name, string typeName, bool isVisible, string? dockStyleStr, bool allowFloating)
+    {
+        try
+        {
+            // Parse dock style
+            var dockStyle = DockingStyle.Right; // Default
+            if (!string.IsNullOrEmpty(dockStyleStr) && Enum.TryParse<DockingStyle>(dockStyleStr, out var parsedStyle))
+            {
+                dockStyle = parsedStyle;
+            }
+
+            // Try to resolve the panel type and create it
+            var panelType = Type.GetType(typeName);
+            if (panelType != null && panelType.IsSubclassOf(typeof(UserControl)))
+            {
+                // Use reflection to call the generic ShowPanel method
+                var method = typeof(IPanelNavigationService).GetMethod("ShowPanel", new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
+                if (method != null)
+                {
+                    var genericMethod = method.MakeGenericMethod(panelType);
+                    genericMethod.Invoke(_panelNavigator, new object[] { name, dockStyle, allowFloating });
+
+                    // Set visibility if needed
+                    if (!isVisible && _dynamicDockPanels != null && _dynamicDockPanels.TryGetValue(name, out var panel))
+                    {
+                        _dockingManager?.SetDockVisibility(panel, false);
+                    }
+
+                    _logger.LogDebug("Restored dynamic panel: {PanelName} ({PanelType})", name, typeName);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Cannot restore dynamic panel - type not found or not a UserControl: {TypeName}", typeName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to restore dynamic panel {PanelName}: {TypeName}", name, typeName);
         }
     }
 
@@ -3536,43 +3690,9 @@ public partial class MainForm
         Wire(card);
     }
 
-    /// <summary>
-    /// LEGACY: ShowChildForm is deprecated. Use PanelNavigationService.ShowPanel instead.
-    /// This method remains for backwards compatibility but will be removed in a future version.
-    /// </summary>
-    [Obsolete("Use IPanelNavigationService.ShowPanel<TPanel> instead for docking-based navigation")]
-    private void ShowChildForm<TForm, TViewModel>(bool allowMultiple = false)
-        where TForm : Form
-        where TViewModel : class
-    {
-        try
-        {
-            // Marshal to UI thread if invoked from background threads
-            if (InvokeRequired)
-            {
-                BeginInvoke(new System.Action(() => ShowChildForm<TForm, TViewModel>(allowMultiple)));
-                return;
-            }
-
-            if (_uiConfig.UseMdiMode)
-            {
-                ShowChildFormMdi<TForm, TViewModel>(allowMultiple);
-            }
-            else
-            {
-                ShowChildFormNonMdi<TForm, TViewModel>(allowMultiple);
-            }
-            UpdateDockingStateText();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to open child form {Form}", typeof(TForm).Name);
-            if (_statusTextPanel != null)
-            {
-                _statusTextPanel.Text = $"Unable to open {typeof(TForm).Name}";
-            }
-        }
-    }
+    // REMOVED: ShowChildForm<TForm, TViewModel>() - Legacy Form factory pattern deleted
+    // All navigation now uses IPanelNavigationService.ShowPanel<TPanel>() for panel-based docking
+    // QuickBooksForm and ChatWindow replaced by QuickBooksPanel and ChatPanel
 
     private void UpdateDockingStateText()
     {
@@ -3596,8 +3716,10 @@ public partial class MainForm
             }
             else
             {
-                var childCount = _activeMdiChildren.Count;
-                stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"Windows: {childCount} window{(childCount != 1 ? "s" : "")}");
+                // Non-MDI mode - count via DockingManager panels (cast to ControlCollection for Count)
+                var controls = _dockingManager?.Controls as Control.ControlCollection;
+                var childCount = controls?.Count ?? 0;
+                stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"Panels: {childCount} panel{(childCount != 1 ? "s" : "")}");
             }
 
             _statePanel.Text = stateInfo.ToString();
@@ -3615,7 +3737,7 @@ public partial class MainForm
 
     // Phase 1 Simplification: ShowNonMdiChildForm removed - MDI mode permanently enabled
 
-    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    [DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public bool UseMdiMode => _uiConfig.UseMdiMode;
 
     private void InitializeMdiSupport()
@@ -3668,8 +3790,7 @@ public partial class MainForm
         // Customize the MDI client area background color (theme-aware)
         SetMdiClientBackColor(SystemColors.Control);  // Standard system background
 
-        // Add Window menu for MDI management
-        AddMdiWindowMenu();
+        // REMOVED: AddMdiWindowMenu() - Window menu with MDI management commands not needed for panels
 
         _logger.LogInformation("Standard MDI container mode enabled");
     }
@@ -3681,144 +3802,11 @@ public partial class MainForm
         _logger.LogDebug("SetMdiClientBackColor called - theme managed by SkinManager");
     }
 
-    private void AddMdiWindowMenu()
-    {
-        // Find the main MenuStrip
-        var menuStrip = Controls.OfType<MenuStrip>().FirstOrDefault();
-        if (menuStrip == null)
-        {
-            // try the MainForm field
-            menuStrip = _menuStrip;
-        }
-        if (menuStrip == null)
-        {
-            // create a hidden MenuStrip for MDI window list
-            try
-            {
-                menuStrip = new MenuStrip { Name = "MainMenuStrip", Dock = DockStyle.Top, Visible = false };
-                Controls.Add(menuStrip);
-                this.MainMenuStrip = menuStrip;
-                _logger.LogInformation("Created hidden MenuStrip for MDI support");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "MenuStrip not found and creation failed; cannot add Window menu");
-                return;
-            }
-        }
+    // REMOVED: AddMdiWindowMenu() - Window menu with MDI management (Cascade, Tile, CloseAll)
+    // Panels architecture doesn't require window arrangement commands
 
-        // Check if Window menu already exists
-        var existingWindowMenu = menuStrip.Items.OfType<ToolStripMenuItem>()
-            .FirstOrDefault(item => item.Text == "&Window");
-
-        if (existingWindowMenu != null)
-        {
-            _logger.LogDebug("Window menu already exists, updating it");
-            menuStrip.Items.Remove(existingWindowMenu);
-        }
-
-        // Create Window menu
-        var windowMenu = new ToolStripMenuItem("&Window");
-
-        // Add window arrangement commands
-        var cascadeMenuItem = new ToolStripMenuItem("&Cascade", null, (s, e) => LayoutMdi(MdiLayout.Cascade))
-        {
-            ShortcutKeys = Keys.Control | Keys.Shift | Keys.C,
-            ToolTipText = "Arrange windows in a cascade"
-        };
-
-        var tileHorizontalMenuItem = new ToolStripMenuItem("Tile &Horizontal", null, (s, e) => LayoutMdi(MdiLayout.TileHorizontal))
-        {
-            ShortcutKeys = Keys.Control | Keys.Shift | Keys.H,
-            ToolTipText = "Arrange windows in horizontal tiles"
-        };
-
-        var tileVerticalMenuItem = new ToolStripMenuItem("Tile &Vertical", null, (s, e) => LayoutMdi(MdiLayout.TileVertical))
-        {
-            ShortcutKeys = Keys.Control | Keys.Shift | Keys.V,
-            ToolTipText = "Arrange windows in vertical tiles"
-        };
-
-        var arrangeIconsMenuItem = new ToolStripMenuItem("Arrange &Icons", null, (s, e) => LayoutMdi(MdiLayout.ArrangeIcons))
-        {
-            ToolTipText = "Arrange minimized window icons"
-        };
-
-        var closeAllMenuItem = new ToolStripMenuItem("Close &All", null, (s, e) => CloseAllMdiChildren())
-        {
-            ShortcutKeys = Keys.Control | Keys.Shift | Keys.W,
-            ToolTipText = "Close all open windows"
-        };
-
-        // Add separator
-        var separator = new ToolStripSeparator();
-
-        // Add items to Window menu
-        windowMenu.DropDownItems.Add(cascadeMenuItem);
-        windowMenu.DropDownItems.Add(tileHorizontalMenuItem);
-        windowMenu.DropDownItems.Add(tileVerticalMenuItem);
-        windowMenu.DropDownItems.Add(arrangeIconsMenuItem);
-        windowMenu.DropDownItems.Add(separator);
-        windowMenu.DropDownItems.Add(closeAllMenuItem);
-        windowMenu.DropDownItems.Add(new ToolStripSeparator());
-
-        // Configure automatic MDI window list
-        // The MenuStrip will automatically add a list of open MDI child windows
-        menuStrip.MdiWindowListItem = windowMenu;
-
-        // Insert Window menu before Help menu (if exists) or at the end
-        var helpMenuIndex = -1;
-        for (int i = 0; i < menuStrip.Items.Count; i++)
-        {
-            var menuItem = menuStrip.Items[i] as ToolStripMenuItem;
-            if (menuItem?.Text != null && menuItem.Text.Contains("Help", StringComparison.OrdinalIgnoreCase))
-            {
-                helpMenuIndex = i;
-                break;
-            }
-        }
-
-        if (helpMenuIndex >= 0)
-        {
-            menuStrip.Items.Insert(helpMenuIndex, windowMenu);
-        }
-        else
-        {
-            menuStrip.Items.Add(windowMenu);
-        }
-
-        _logger.LogInformation("Added Window menu with MDI management commands");
-    }
-
-    private void CloseAllMdiChildren()
-    {
-        try
-        {
-            _logger.LogInformation("Closing all MDI child forms");
-
-            // Create a copy of the array since closing forms modifies the collection
-            var children = MdiChildren.ToArray();
-
-            foreach (var child in children)
-            {
-                try
-                {
-                    child.Close();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to close MDI child form {FormType}", child.GetType().Name);
-                }
-            }
-
-            // Clear tracking dictionary
-            _activeMdiChildren.Clear();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to close all MDI children");
-        }
-    }
+    // REMOVED: CloseAllMdiChildren() - MDI child management replaced by PanelNavigationService
+    // Panels are managed by DockingManager, not MDI children collection
 
     private void ShowChildFormMdi<TForm, TViewModel>(bool allowMultiple = false)
         where TForm : Form
@@ -3835,8 +3823,9 @@ public partial class MainForm
             }
 
             // In MDI mode, check if we should reuse an existing window
-            if (!allowMultiple && _activeMdiChildren.TryGetValue(typeof(TForm), out var existingForm))
+            if (!allowMultiple)
             {
+                var existingForm = MdiChildren.OfType<TForm>().FirstOrDefault();
                 if (existingForm != null && !existingForm.IsDisposed)
                 {
                     try
@@ -3848,13 +3837,12 @@ public partial class MainForm
                     _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
                     return;
                 }
-
-                _activeMdiChildren.Remove(typeof(TForm));
             }
 
             // Create a new scope to get fresh DbContext + ViewModels for each child window
             var scope = _serviceProvider.CreateScope();
-            var form = CreateFormInstance<TForm, TViewModel>(scope);
+            // LEGACY: Direct form instantiation - all forms should be converted to panels and use _panelNavigator
+            var form = ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
 
             // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
             // try
@@ -3899,7 +3887,6 @@ public partial class MainForm
             {
                 try
                 {
-                    _activeMdiChildren.Remove(typeof(TForm));
                     scope.Dispose();
                     _logger.LogDebug("MDI child {FormType} closed and cleaned up", typeof(TForm).Name);
                 }
@@ -3909,11 +3896,7 @@ public partial class MainForm
                 }
             };
 
-            // Track the form
-            if (!allowMultiple)
-            {
-                _activeMdiChildren[typeof(TForm)] = form;
-            }
+            // REMOVED: Track the form in _activeMdiChildren dictionary - no longer needed
 
             // Show the form (non-modal, as MDI child)
             form.Show();
@@ -3941,8 +3924,10 @@ public partial class MainForm
                 typeof(TForm).Name, allowMultiple);
 
             // In non-MDI mode, check if we should reuse an existing window
-            if (!allowMultiple && _activeMdiChildren.TryGetValue(typeof(TForm), out var existingForm))
+            // REMOVED: _activeMdiChildren tracking - use Application.OpenForms instead
+            if (!allowMultiple)
             {
+                var existingForm = Application.OpenForms.OfType<TForm>().FirstOrDefault();
                 if (existingForm != null && !existingForm.IsDisposed)
                 {
                     try
@@ -3954,13 +3939,12 @@ public partial class MainForm
                     _logger.LogDebug("Activated existing non-MDI child {FormType}", typeof(TForm).Name);
                     return;
                 }
-
-                _activeMdiChildren.Remove(typeof(TForm));
             }
 
             // Create a new scope to get fresh DbContext + ViewModels for each child window
             var scope = _serviceProvider.CreateScope();
-            var form = CreateFormInstance<TForm, TViewModel>(scope);
+            // LEGACY: Direct form instantiation - all forms should be converted to panels and use _panelNavigator
+            var form = ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
 
             // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
             // try
@@ -3978,7 +3962,6 @@ public partial class MainForm
             {
                 try
                 {
-                    _activeMdiChildren.Remove(typeof(TForm));
                     scope.Dispose();
                     _logger.LogDebug("Non-MDI child {FormType} closed and cleaned up", typeof(TForm).Name);
                 }
@@ -3988,11 +3971,7 @@ public partial class MainForm
                 }
             };
 
-            // Track the form
-            if (!allowMultiple)
-            {
-                _activeMdiChildren[typeof(TForm)] = form;
-            }
+            // REMOVED: Track the form in _activeMdiChildren dictionary - no longer needed
 
             // Show the form as a separate window (non-modal)
             form.Show();
@@ -4060,112 +4039,13 @@ public partial class MainForm
         matchingForm?.Close();
     }
 
-    private TForm CreateFormInstance<TForm, TViewModel>(IServiceScope scope)
-        where TForm : Form
-        where TViewModel : class
-    {
-        // Legacy form types replaced by panels - commented out to fix compilation errors
-        // Use IPanelNavigationService.ShowPanel<> instead
-        /*
-        if (typeof(TForm) == typeof(ChartForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(scope.ServiceProvider);
-            var chartForm = ActivatorUtilities.CreateInstance<ChartForm>(scope.ServiceProvider, vm, this);
-            return (TForm)(Form)chartForm;
-        }
+    // DELETED: CreateFormInstance<TForm, TViewModel> - All forms converted to UserControl panels
+    // Navigation now uses: _panelNavigator.ShowPanel<PanelType>("Name", DockingStyle, allowFloating)
+    // Remaining legacy forms (QuickBooksForm, ChatWindow) replaced by QuickBooksPanel and ChatPanel
 
-        if (typeof(TForm) == typeof(AccountsForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scope.ServiceProvider);
-            var accountsForm = ActivatorUtilities.CreateInstance<AccountsForm>(scope.ServiceProvider, vm, this);
-            return (TForm)(Form)accountsForm;
-        }
+    // DELETED: GetMdiChildrenOfType<TForm>() - Panels managed by DockingManager, not MDI children
 
-        if (typeof(TForm) == typeof(BudgetOverviewForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<BudgetOverviewViewModel>(scope.ServiceProvider);
-            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<BudgetOverviewForm>>(scope.ServiceProvider);
-            var budgetOverviewForm = ActivatorUtilities.CreateInstance<BudgetOverviewForm>(scope.ServiceProvider, vm, logger, this);
-            return (TForm)(Form)budgetOverviewForm;
-        }
-        */
-
-        /*
-        if (typeof(TForm) == typeof(DashboardForm))
-        {
-            // Prefer a DI-provided instance when available (tests can register a lightweight stub)
-            try
-            {
-                var provided = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DashboardForm>(scope.ServiceProvider);
-                if (provided != null)
-                {
-                    return (TForm)(Form)provided;
-                }
-            }
-            catch { }
-
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DashboardViewModel>(scope.ServiceProvider);
-            var dashboardForm = ActivatorUtilities.CreateInstance<DashboardForm>(scope.ServiceProvider, vm, this);
-            return (TForm)(Form)dashboardForm;
-        }
-        */
-
-        /*
-        if (typeof(TForm) == typeof(ReportsForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ReportsViewModel>(scope.ServiceProvider);
-            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ReportsForm>>(scope.ServiceProvider);
-            var reportsForm = ActivatorUtilities.CreateInstance<ReportsForm>(scope.ServiceProvider, vm, logger, this);
-            return (TForm)(Form)reportsForm;
-        }
-
-        if (typeof(TForm) == typeof(SettingsForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(scope.ServiceProvider);
-            var settingsForm = ActivatorUtilities.CreateInstance<SettingsForm>(scope.ServiceProvider, vm, this);
-            return (TForm)(Form)settingsForm;
-        }
-
-        if (typeof(TForm) == typeof(ChatWindow))
-        {
-            var chatWindow = ActivatorUtilities.CreateInstance<ChatWindow>(scope.ServiceProvider, this);
-            return (TForm)(Form)chatWindow;
-        }
-        */
-
-        if (typeof(TForm) == typeof(QuickBooksForm))
-        {
-            var quickBooksForm = ActivatorUtilities.CreateInstance<QuickBooksForm>(scope.ServiceProvider, this);
-            return (TForm)(Form)quickBooksForm;
-        }
-
-        /*
-        if (typeof(TForm) == typeof(CustomersForm))
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<CustomersViewModel>(scope.ServiceProvider);
-            var customersForm = ActivatorUtilities.CreateInstance<CustomersForm>(scope.ServiceProvider, vm, this);
-            return (TForm)(Form)customersForm;
-        }
-        */
-
-        return ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
-    }
-
-    private IEnumerable<TForm> GetMdiChildrenOfType<TForm>() where TForm : Form
-    {
-        return MdiChildren.OfType<TForm>();
-    }
-
-    private bool ActivateMdiChildOfType<TForm>() where TForm : Form
-    {
-        var existingForm = GetMdiChildrenOfType<TForm>().FirstOrDefault();
-        if (existingForm != null && !existingForm.IsDisposed)
-        {
-            existingForm.Activate();
-            return true;
-        }
-        return false;
-    }
+    // DELETED: ActivateMdiChildOfType<TForm>() - Use DockingManager to activate panels instead
 
     private void DisposeMdiResources()
     {
@@ -4176,10 +4056,13 @@ public partial class MainForm
             // Close all MDI children before disposal
             if (_uiConfig.UseMdiMode && MdiChildren.Length > 0)
             {
-                CloseAllMdiChildren();
+                // Close MDI children directly without CloseAllMdiChildren method
+                foreach (var child in MdiChildren.ToArray())
+                {
+                    try { child.Close(); } catch { }
+                }
             }
-
-            _activeMdiChildren.Clear();
+            // REMOVED: _activeMdiChildren.Clear() - dictionary no longer exists
         }
         catch (Exception ex)
         {
@@ -4193,7 +4076,7 @@ public partial class MainForm
 
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action<KeyEventArgs>(HandleMdiKeyboardShortcuts), e);
+            BeginInvoke(new Action<KeyEventArgs>(HandleMdiKeyboardShortcuts), e);
             return;
         }
 
