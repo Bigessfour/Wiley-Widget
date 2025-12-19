@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-19
+
+### Changed
+
+- Refactored UI marshalling to use `SynchronizationContext` instead of WPF `Dispatcher`.
+  - Added `SynchronizationContextDispatcherHelper` (captures UI `SynchronizationContext` and marshals actions).
+  - Prefers `SynchronizationContext.Send`; when unsupported falls back to `Post` + wait (`PostAndWait`) to preserve synchronous semantics.
+  - Preserves exception propagation with `ExceptionDispatchInfo` or `TaskCompletionSource` as appropriate.
+  - Registered `IDispatcherHelper` in DI to use `Program.UISynchronizationContext` (WinForms startup captures UI context).
+- Added comprehensive unit tests for synchronous and asynchronous flows, Send-not-supported fallback, Post error fallback, and exception propagation.
+
+### Fixed
+
+- Resolved DI registration ambiguity when resolving the logger for `SynchronizationContextDispatcherHelper` (qualified `GetService` call).
+
+---
+
 ## [1.0.0-winforms] - 2025-11-25
 
 ### Repository Consolidation (November 25, 2025)
