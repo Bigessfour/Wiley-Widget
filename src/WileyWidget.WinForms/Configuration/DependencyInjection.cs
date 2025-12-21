@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
@@ -71,31 +72,38 @@ namespace WileyWidget.WinForms.Configuration
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
-            // Memory Cache (Singleton)
+            // Memory Cache (Singleton) - Registers both IMemoryCache and ICacheService
             services.AddMemoryCache();
+            services.AddSingleton<ICacheService, MemoryCacheService>();
 
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
-            // For tests, register DbContext with in-memory database
-            if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            // For test scenarios only: register DbContext with in-memory database
+            // When includeDefaults == false this block is skipped to allow the host builder
+            // to register real database providers (e.g., SQL Server) via ConfigureDatabase.
+            if (includeDefaults)
             {
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("TestDb"));
-            }
-            if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
-            {
-                // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
-                services.AddSingleton(sp =>
+                if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
                 {
-                    var builder = new DbContextOptionsBuilder<AppDbContext>();
-                    builder.UseInMemoryDatabase("TestDb");
-                    return builder.Options;
-                });
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseInMemoryDatabase("TestDb"));
+                }
 
-                services.AddDbContextFactory<AppDbContext>((sp, options) =>
-                    options.UseInMemoryDatabase("TestDb"));
+                if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+                {
+                    // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
+                    services.AddSingleton(sp =>
+                    {
+                        var builder = new DbContextOptionsBuilder<AppDbContext>();
+                        builder.UseInMemoryDatabase("TestDb");
+                        return builder.Options;
+                    });
+
+                    services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                        options.UseInMemoryDatabase("TestDb"));
+                }
             }
 
             // =====================================================================
@@ -128,6 +136,9 @@ namespace WileyWidget.WinForms.Configuration
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
             services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+
+            // Data seeding helper (scoped) - used during health check to auto-populate minimal datasets for dev/tests
+            services.AddScoped<DataSeedingService>();
 
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
             _ = services.AddSingleton<IDiValidationService, DiValidationService>();
@@ -204,14 +215,11 @@ namespace WileyWidget.WinForms.Configuration
             }
 
             // Panel Navigation Service (Singleton - Manages docked panels)
-            // Factory pattern: Resolves DockingManager and parent control from MainForm
+            // Factory pattern: construct without resolving MainForm to avoid DI circular dependency
             services.AddSingleton<IPanelNavigationService>(sp =>
             {
-                var mainForm = DI.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(sp);
-                var dockingManager = mainForm.GetDockingManager();
-                var centralPanel = mainForm.GetCentralDocumentPanel();
                 var logger = DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(sp);
-                return new PanelNavigationService(dockingManager, centralPanel, sp, logger);
+                return new PanelNavigationService(sp, logger);
             });
 
             // UI Configuration (Singleton)
@@ -226,11 +234,45 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddTransient<ChartViewModel>();
             services.AddTransient<SettingsViewModel>();
-            services.AddTransient<AccountsViewModel>();
-            services.AddTransient<DashboardViewModel>();
+
+            // AccountsViewModel: Resolve repositories directly from DI (scoped)
+            services.AddTransient<AccountsViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<AccountsViewModel>>(sp);
+                var accountsRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAccountsRepository>(sp);
+                var municipalRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMunicipalAccountRepository>(sp);
+                return new AccountsViewModel(logger, accountsRepo, municipalRepo);
+            });
+
+            // DashboardViewModel: Resolve required repositories and inject directly
+            services.AddTransient<DashboardViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<DashboardViewModel>>(sp);
+                var budgetRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IBudgetRepository>(sp);
+                var accountRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IMunicipalAccountRepository>(sp);
+                var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(sp);
+                return new DashboardViewModel(logger, budgetRepo, accountRepo, configuration);
+            });
+
             services.AddTransient<AnalyticsViewModel>();
-            services.AddTransient<BudgetOverviewViewModel>();
-            services.AddTransient<BudgetViewModel>();
+
+            // BudgetOverviewViewModel: Resolve IBudgetCategoryService from DI and inject directly
+            services.AddTransient<BudgetOverviewViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<BudgetOverviewViewModel>>(sp);
+                var budgetCategoryService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IBudgetCategoryService>(sp);
+                var uiConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<UIConfiguration>(sp);
+                return new BudgetOverviewViewModel(logger, budgetCategoryService, uiConfig);
+            });
+
+            // BudgetViewModel: Resolve IBudgetRepository and inject directly
+            services.AddTransient<BudgetViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<BudgetViewModel>>(sp);
+                var budgetRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IBudgetRepository>(sp);
+                var reportExportService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IReportExportService>(sp);
+                return new BudgetViewModel(logger, budgetRepo, reportExportService);
+            });
             services.AddTransient<CustomersViewModel>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<ReportsViewModel>();

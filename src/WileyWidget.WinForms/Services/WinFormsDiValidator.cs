@@ -2,9 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services;
+using WileyWidget.Services.Threading;
+using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
@@ -79,7 +82,9 @@ namespace WileyWidget.WinForms.Services
                 typeof(Microsoft.Extensions.Configuration.IConfiguration),
                 typeof(Serilog.ILogger),
                 typeof(ErrorReportingService),
-                typeof(ITelemetryService)
+                typeof(ITelemetryService),
+                typeof(ICacheService),
+                typeof(IStartupTimelineService)
             };
 
             return _coreValidator.ValidateServiceCategory(
@@ -146,10 +151,16 @@ namespace WileyWidget.WinForms.Services
                 typeof(IAnalyticsService),
                 typeof(IAnalyticsPipeline),
                 typeof(IGrokSupercomputer),
+                typeof(IDepartmentExpenseService),
+                typeof(IGrokRecommendationService),
 
-                // Theme Services
+                // Theme & UI Services
                 typeof(IThemeService),
-                typeof(IThemeIconService)
+                typeof(IThemeIconService),
+                typeof(IDispatcherHelper),
+                typeof(IPanelNavigationService),
+                typeof(UIConfiguration),
+                typeof(IWinFormsDiValidator)
             };
 
             return _coreValidator.ValidateServiceCategory(
@@ -171,7 +182,11 @@ namespace WileyWidget.WinForms.Services
                 typeof(BudgetViewModel),
                 typeof(CustomersViewModel),
                 typeof(MainViewModel),
-                typeof(ReportsViewModel)
+                typeof(ReportsViewModel),
+                typeof(DepartmentSummaryViewModel),
+                typeof(RevenueTrendsViewModel),
+                typeof(AuditLogViewModel),
+                typeof(RecommendedMonthlyChargeViewModel)
             };
 
             return _coreValidator.ValidateServiceCategory(
