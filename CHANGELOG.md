@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
   - Preserves exception propagation with `ExceptionDispatchInfo` or `TaskCompletionSource` as appropriate.
   - Registered `IDispatcherHelper` in DI to use `Program.UISynchronizationContext` (WinForms startup captures UI context).
 - Added comprehensive unit tests for synchronous and asynchronous flows, Send-not-supported fallback, Post error fallback, and exception propagation.
-
+- Apply EF Core migrations automatically on application startup (development-safe): migrations are applied during startup when `IHostEnvironment.IsDevelopment()` is true or when `Database:AutoMigrate=true` in configuration. Failures are logged and surface a user-friendly MessageBox; successes are logged to help troubleshooting.
 ### Fixed
 
 - Resolved DI registration ambiguity when resolving the logger for `SynchronizationContextDispatcherHelper` (qualified `GetService` call).
