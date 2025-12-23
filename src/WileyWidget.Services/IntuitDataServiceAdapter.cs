@@ -8,7 +8,7 @@ using Intuit.Ipp.QueryFilter;
 
 namespace WileyWidget.Services
 {
-    internal sealed class IntuitDataServiceAdapter : IQuickBooksDataService
+    internal sealed class IntuitDataServiceAdapter : WileyWidget.Services.Abstractions.IQuickBooksDataService
     {
         private readonly DataService _ds;
         private readonly ServiceContext? _ctx;
@@ -32,6 +32,11 @@ namespace WileyWidget.Services
         public List<Invoice> FindInvoices(int startPosition = 1, int pageSize = 100)
         {
             return _ds.FindAll(new Invoice(), startPosition, pageSize).ToList();
+        }
+
+        public List<Bill> FindBills(int startPosition = 1, int pageSize = 100)
+        {
+            return _ds.FindAll(new Bill(), startPosition, pageSize).ToList();
         }
 
         public List<Account> FindAccounts(int startPosition = 1, int pageSize = 100)

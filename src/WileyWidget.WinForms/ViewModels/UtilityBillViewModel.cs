@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading.Tasks;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
@@ -261,13 +262,14 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = true;
                 StatusText = "Deleting bill...";
 
+                var billNumber = SelectedBill.BillNumber;
                 await _billRepository.DeleteAsync(SelectedBill.Id);
                 UtilityBills.Remove(SelectedBill);
                 SelectedBill = null;
 
                 UpdateSummary();
                 StatusText = "Bill deleted successfully";
-                _logger.LogInformation("Deleted utility bill {BillNumber}", SelectedBill.BillNumber);
+                _logger.LogInformation("Deleted utility bill {BillNumber}", billNumber);
             }
             catch (Exception ex)
             {
@@ -325,6 +327,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 // Report generation logic would go here
                 // For now, just show a placeholder message
+                await Task.CompletedTask; // Suppress CS1998 warning for stub implementation
                 StatusText = "Report generation not yet implemented";
                 _logger.LogInformation("Report generation requested but not implemented");
             }
@@ -352,7 +355,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         private string GenerateBillNumber()
         {
-            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             return $"UB-{timestamp}";
         }
 
@@ -379,9 +382,21 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public void Dispose()
         {
-            // Clean up any resources if needed
-            _logger.LogDebug("UtilityBillViewModel disposed");
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Clean up managed resources if needed
+            }
+            _logger.LogDebug("UtilityBillViewModel disposed");
         }
     }
 }
