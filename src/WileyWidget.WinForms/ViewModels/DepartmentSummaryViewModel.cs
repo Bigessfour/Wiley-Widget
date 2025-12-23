@@ -18,8 +18,15 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
 {
+    /// <summary>
+    /// Represents the _departmentrepository.
+    /// </summary>
+    /// <summary>
+    /// Represents the _departmentrepository.
+    /// </summary>
     private readonly IDepartmentRepository _departmentRepository;
     private CancellationTokenSource? _loadCancellationTokenSource;
+    private bool _disposed;
 
     /// <summary>
     /// Collection of department metrics for grid display.
@@ -30,42 +37,63 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
     /// Total budget across all departments.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _totalbudget.
+    /// </summary>
     private decimal _totalBudget;
 
     /// <summary>
     /// Total actual spending across all departments.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _totalactual.
+    /// </summary>
     private decimal _totalActual;
 
     /// <summary>
     /// Variance between total budget and total actual (positive = under budget, negative = over budget).
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _variance.
+    /// </summary>
     private decimal _variance;
 
     /// <summary>
     /// Percentage variance relative to total budget.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _variancepercent.
+    /// </summary>
     private decimal _variancePercent;
 
     /// <summary>
     /// Number of departments over budget.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _departmentsoverbudget.
+    /// </summary>
     private int _departmentsOverBudget;
 
     /// <summary>
     /// Number of departments under budget.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _departmentsunderbudget.
+    /// </summary>
     private int _departmentsUnderBudget;
 
     /// <summary>
     /// Indicates whether data is currently being loaded.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _isloading.
+    /// </summary>
     private bool _isLoading;
 
     /// <summary>
@@ -78,10 +106,25 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
     /// Timestamp of last successful data load.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _lastupdated.
+    /// </summary>
     private DateTime _lastUpdated;
 
     /// <summary>
     /// Command to load department data asynchronously.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loaddatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loaddatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loaddatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loaddatacommand.
     /// </summary>
     public IAsyncRelayCommand LoadDataCommand { get; }
 
@@ -226,30 +269,162 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
     /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
     protected virtual void Dispose(bool disposing)
     {
+        if (_disposed) return;
+
         if (disposing)
         {
             _loadCancellationTokenSource?.Dispose();
         }
+
+        _disposed = true;
     }
 }
 
 /// <summary>
 /// Represents a single department's budget metrics for grid display.
 /// </summary>
+/// <summary>
+/// Represents a class for departmentmetric.
+/// </summary>
+/// <summary>
+/// Represents a class for departmentmetric.
+/// </summary>
+/// <summary>
+/// Represents a class for departmentmetric.
+/// </summary>
+/// <summary>
+/// Represents a class for departmentmetric.
+/// </summary>
 public class DepartmentMetric
 {
+    /// <summary>
+    /// Gets or sets the departmentid.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentid.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentid.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentid.
+    /// </summary>
     public int DepartmentId { get; set; }
+    /// <summary>
+    /// Gets or sets the departmentname.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentname.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentname.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentname.
+    /// </summary>
     public string DepartmentName { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the departmentcode.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentcode.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentcode.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentcode.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the departmentcode.
+    /// </summary>
     public string DepartmentCode { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the budgetedamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the budgetedamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the budgetedamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the budgetedamount.
+    /// </summary>
     public decimal BudgetedAmount { get; set; }
+    /// <summary>
+    /// Gets or sets the actualamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the actualamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the actualamount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the actualamount.
+    /// </summary>
     public decimal ActualAmount { get; set; }
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
     public decimal Variance { get; set; }
+    /// <summary>
+    /// Gets or sets the variancepercent.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercent.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercent.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercent.
+    /// </summary>
     public decimal VariancePercent { get; set; }
+    /// <summary>
+    /// Gets or sets the isoverbudget.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the isoverbudget.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the isoverbudget.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the isoverbudget.
+    /// </summary>
     public bool IsOverBudget { get; set; }
+
+
 }
 
 /// <summary>
 /// Fallback repository for design-time/testing scenarios.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackdepartmentrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackdepartmentrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackdepartmentrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackdepartmentrepository.
 /// </summary>
 internal class FallbackDepartmentRepository : IDepartmentRepository
 {

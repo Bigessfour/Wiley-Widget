@@ -17,8 +17,15 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
 {
+    /// <summary>
+    /// Represents the _accountsrepository.
+    /// </summary>
+    /// <summary>
+    /// Represents the _accountsrepository.
+    /// </summary>
     private readonly IAccountsRepository _accountsRepository;
     private CancellationTokenSource? _loadCancellationTokenSource;
+    private bool _disposed;
 
     /// <summary>
     /// Collection of monthly revenue data for chart and grid display.
@@ -29,36 +36,54 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
     /// Total revenue across all months in the dataset.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _totalrevenue.
+    /// </summary>
     private decimal _totalRevenue;
 
     /// <summary>
     /// Average monthly revenue.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _averagerevenue.
+    /// </summary>
     private decimal _averageRevenue;
 
     /// <summary>
     /// Highest monthly revenue in the dataset.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _peakrevenue.
+    /// </summary>
     private decimal _peakRevenue;
 
     /// <summary>
     /// Month with lowest revenue.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _lowestrevenue.
+    /// </summary>
     private decimal _lowestRevenue;
 
     /// <summary>
     /// Growth rate percentage from first to last month.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _growthrate.
+    /// </summary>
     private decimal _growthRate;
 
     /// <summary>
     /// Indicates whether data is currently being loaded.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _isloading.
+    /// </summary>
     private bool _isLoading;
 
     /// <summary>
@@ -71,6 +96,9 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
     /// Timestamp of last successful data load.
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the _lastupdated.
+    /// </summary>
     private DateTime _lastUpdated;
 
     /// <summary>
@@ -87,6 +115,18 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Command to refresh revenue data asynchronously.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshcommand.
     /// </summary>
     public IAsyncRelayCommand RefreshCommand { get; }
 
@@ -269,15 +309,31 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
     /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
     protected virtual void Dispose(bool disposing)
     {
+        if (_disposed) return;
+
         if (disposing)
         {
             _loadCancellationTokenSource?.Dispose();
         }
+
+        _disposed = true;
     }
 }
 
 /// <summary>
 /// Represents monthly revenue data for chart and grid display.
+/// </summary>
+/// <summary>
+/// Represents a class for revenuemonthlydata.
+/// </summary>
+/// <summary>
+/// Represents a class for revenuemonthlydata.
+/// </summary>
+/// <summary>
+/// Represents a class for revenuemonthlydata.
+/// </summary>
+/// <summary>
+/// Represents a class for revenuemonthlydata.
 /// </summary>
 public class RevenueMonthlyData
 {
@@ -310,6 +366,18 @@ public class RevenueMonthlyData
 
 /// <summary>
 /// Fallback repository for design-time/testing scenarios.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackaccountsrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackaccountsrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackaccountsrepository.
+/// </summary>
+/// <summary>
+/// Represents a class for fallbackaccountsrepository.
 /// </summary>
 internal class FallbackAccountsRepository : IAccountsRepository
 {

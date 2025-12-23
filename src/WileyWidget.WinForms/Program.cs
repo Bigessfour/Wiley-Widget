@@ -45,10 +45,8 @@ namespace WileyWidget.WinForms
         // Captured UI thread SynchronizationContext for marshaling UI actions
         public static SynchronizationContext? UISynchronizationContext { get; private set; }
 
-        // Fix this method
-        private const string V = "XAI:ApiKey";
-            private const string MessageTemplate = "[DIAGNOSTIC] Starting health check phase";
-            private static IStartupTimelineService? _timelineService;
+        // Removed unused constants
+        private static IStartupTimelineService? _timelineService;
 
         [STAThread]
         static void Main(string[] args)
@@ -88,6 +86,7 @@ namespace WileyWidget.WinForms
             // === Phase 1: License Registration (must complete BEFORE Theme Initialization) ===
             IStartupTimelineService? earlyTimeline = null;
             IDisposable? licensePhase = null;
+            IHost? host = null;
 
             try
             {
@@ -212,7 +211,6 @@ namespace WileyWidget.WinForms
 
                 // === Phase 5: DI Container Build (must complete BEFORE DI Validation and DB Health Check) ===
                 splash.Report(0.05, "Building dependency injection container...");
-                IHost host;
 
 #if DEBUG
                 Console.WriteLine("Phase 5: Building DI Container...");
@@ -251,22 +249,39 @@ namespace WileyWidget.WinForms
                             var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(migrationScope.ServiceProvider);
                             try
                             {
-                                Log.Information("[STARTUP] Applying EF Core migrations...");
-                                await dbContext.Database.MigrateAsync();
-                                Log.Information("[STARTUP] Database migrations applied successfully.");
+                                // Don't attempt relational migrations when using a non-relational provider (e.g., InMemory used for UI tests)
+                                if (!dbContext.Database.IsRelational())
+                                {
+                                    Log.Information("[STARTUP] Skipping automatic EF migrations: non-relational database provider detected.");
+                                }
+                                else
+                                {
+                                    Log.Information("[STARTUP] Applying EF Core migrations...");
+                                    await dbContext.Database.MigrateAsync();
+                                    Log.Information("[STARTUP] Database migrations applied successfully.");
+                                }
                             }
                             catch (Exception ex)
                             {
                                 Log.Error(ex, "[STARTUP] Failed to apply database migrations. Application may fall back to degraded mode or fail queries.");
                                 try
                                 {
-                                    MessageBox.Show(
-                                        "Database initialization failed. The application may not function correctly.\n\n" +
-                                        "Please contact support or run 'dotnet ef database update' manually.\n\n" +
-                                        ex.Message,
-                                        "Database Error",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Error);
+                                    // Avoid showing blocking MessageBox during automated UI tests or when running headless
+                                    var isUiTestRun = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
+                                    if (!isUiTestRun && Environment.UserInteractive)
+                                    {
+                                        MessageBox.Show(
+                                            "Database initialization failed. The application may not function correctly.\n\n" +
+                                            "Please contact support or run 'dotnet ef database update' manually.\n\n" +
+                                            ex.Message,
+                                            "Database Error",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Error);
+                                    }
+                                    else
+                                    {
+                                        Log.Warning("Database initialization failed during non-interactive/test run: {Message}", ex.Message);
+                                    }
                                 }
                                 catch (Exception mbEx)
                                 {
@@ -351,237 +366,274 @@ namespace WileyWidget.WinForms
                             _timelineService.RecordOperation("Register Syncfusion license", "License Registration");
                         } // Immediately dispose to mark complete
 
-                    // Mark Theme Initialization as already complete (happened in Phase 2, depends on License)
-                    using (var retroTheme = _timelineService.BeginPhaseScope("Theme Initialization"))
-                    {
-                        _timelineService.RecordOperation("Load Office2019Theme assembly and set global theme", "Theme Initialization");
-                    } // Immediately dispose to mark complete
-                }
-
-                // DEBUG: Check main configuration
-#if DEBUG
-                var mainConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
-                var mainXaiKey = mainConfig["XAI:ApiKey"];
-                Console.WriteLine($"[MAIN CONFIG DEBUG] XAI:ApiKey = {(mainXaiKey != null ? mainXaiKey.Substring(0, Math.Min(15, mainXaiKey.Length)) + "..." : "NULL")} ({mainXaiKey?.Length ?? 0} chars)");
-#endif
-
-                // === Phase 6: DI Validation (depends on DI Container Build completing first) ===
-                // CRITICAL: Validate critical services - run in background to avoid StackGuard deadlock
-                splash.Report(0.10, "Validating service registration...");
-                Application.DoEvents(); // Keep UI responsive
-
-                // Fire-and-forget: DI resolution can trigger StackGuard which deadlocks on UI thread
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        // ValidateCriticalServices(uiScope.ServiceProvider); // Disabled: missing method
-                        Log.Information("DI validation completed successfully in background");
+                        // Mark Theme Initialization as already complete (happened in Phase 2, depends on License)
+                        using (var retroTheme = _timelineService.BeginPhaseScope("Theme Initialization"))
+                        {
+                            _timelineService.RecordOperation("Load Office2019Theme assembly and set global theme", "Theme Initialization");
+                        } // Immediately dispose to mark complete
                     }
-                    catch (Exception valEx)
-                    {
-                        Log.Fatal(valEx, "DI validation failed in background");
-                    }
-                });
 
-                splash.Report(0.15, "Service validation initiated...");
-                Application.DoEvents();
+                    // DEBUG: Check main configuration
 #if DEBUG
-                Console.WriteLine("[SYNC] Phase 6 complete - DI Validation passed");
+                    var mainConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
+                    var mainXaiKey = mainConfig["XAI:ApiKey"];
+                    Console.WriteLine($"[MAIN CONFIG DEBUG] XAI:ApiKey = {(mainXaiKey != null ? mainXaiKey.Substring(0, Math.Min(15, mainXaiKey.Length)) + "..." : "NULL")} ({mainXaiKey?.Length ?? 0} chars)");
 #endif
-                Application.DoEvents(); // Process any pending UI messages
-                System.Threading.Thread.Sleep(100); // Allow services to stabilize
 
-                // === Phase 7: Configure Error Reporting (depends on Theme Initialization) ===
-                // NOTE: Theme already initialized in Phase 2 before any forms created
-                splash.Report(0.40, "Configuring error reporting...");
-                _timelineService?.RecordOperation("Configure error reporting", "Error Handlers");
-                ConfigureErrorReporting();
-                Console.WriteLine("[SYNC] Phase 7 complete - Error reporting configured");
-                Application.DoEvents(); // Process any pending UI messages
-                System.Threading.Thread.Sleep(50); // Allow error handlers to wire up
+                    // === Phase 6: DI Validation (depends on DI Container Build completing first) ===
+                    // CRITICAL: Validate critical services - run in background to avoid StackGuard deadlock
+                    splash.Report(0.10, "Validating service registration...");
+                    Application.DoEvents(); // Keep UI responsive
 
-                // === Phase 8: Database Health Check (depends on DI Container Build completing first) ===
-                // Startup health check - run in background to avoid blocking UI thread
-                Log.Information("[DIAGNOSTIC] Starting health check phase");
-#if DEBUG
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Starting health check phase");
-#endif
-                splash.Report(0.50, "Verifying database connectivity...");
-                Application.DoEvents(); // Keep UI responsive
-
-                // CRITICAL: Run health check on background thread to prevent UI deadlock
-                // Don't await - let it complete asynchronously while UI continues
-                _ = Task.Run(async () =>
-                {
-                    using (var healthScope = host.Services.CreateScope())
+                    // Fire-and-forget: DI resolution can trigger StackGuard which deadlocks on UI thread
+                    _ = Task.Run(() =>
                     {
                         try
                         {
-                            Log.Information("[DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
-#if DEBUG
-                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
-#endif
-                            await RunStartupHealthCheckAsync(healthScope.ServiceProvider);
-                            Log.Information("[DIAGNOSTIC] RunStartupHealthCheckAsync completed successfully");
-#if DEBUG
-                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunStartupHealthCheckAsync completed");
-#endif
+                            // ValidateCriticalServices(uiScope.ServiceProvider); // Disabled: missing method
+                            Log.Information("DI validation completed successfully in background");
                         }
-                        catch (Exception healthEx)
+                        catch (Exception valEx)
                         {
-                            Log.Warning(healthEx, "Background health check failed (non-blocking)");
+                            Log.Fatal(valEx, "DI validation failed in background");
                         }
-                    }
-                });
+                    });
 
-                splash.Report(0.65, "Database check initiated...");
-                Application.DoEvents();
+                    splash.Report(0.15, "Service validation initiated...");
+                    Application.DoEvents();
 #if DEBUG
-                Console.WriteLine("[SYNC] Phase 8 complete - Database health check running in background");
+                    Console.WriteLine("[SYNC] Phase 6 complete - DI Validation passed");
 #endif
+                    Application.DoEvents(); // Process any pending UI messages
+                    System.Threading.Thread.Sleep(100); // Allow services to stabilize
 
-                Log.Information("[DIAGNOSTIC] Checking IsVerifyStartup at line 121");
+                    // === Phase 7: Configure Error Reporting (depends on Theme Initialization) ===
+                    // NOTE: Theme already initialized in Phase 2 before any forms created
+                    splash.Report(0.40, "Configuring error reporting...");
+                    _timelineService?.RecordOperation("Configure error reporting", "Error Handlers");
+                    ConfigureErrorReporting();
+                    Console.WriteLine("[SYNC] Phase 7 complete - Error reporting configured");
+                    Application.DoEvents(); // Process any pending UI messages
+                    System.Threading.Thread.Sleep(50); // Allow error handlers to wire up
 
+                    // === Phase 8: Database Health Check (depends on DI Container Build completing first) ===
+                    // Startup health check - run in background to avoid blocking UI thread
+                    Log.Information("[DIAGNOSTIC] Starting health check phase");
 #if DEBUG
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Checking IsVerifyStartup");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Starting health check phase");
 #endif
-                if (IsVerifyStartup(args!))
-                {
-                    Log.Information("[DIAGNOSTIC] IsVerifyStartup=true, running verify-startup mode");
-#if DEBUG
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Running verify-startup mode");
-#endif
-                    splash.Complete("Startup verification complete");
-                    await RunVerifyStartupAsync(host);
-                    return; // Exit Main() after verification
-                }
-                Log.Information("[DIAGNOSTIC] IsVerifyStartup=false, continuing normal startup");
-#if DEBUG
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Continuing normal startup");
-#endif
+                    splash.Report(0.50, "Verifying database connectivity...");
+                    Application.DoEvents(); // Keep UI responsive
 
-                // === Phase 9: MainForm Creation (must complete BEFORE Chrome Init and Data Prefetch) ===
-                Log.Information("[DIAGNOSTIC] Creating MainForm");
-#if DEBUG
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Creating MainForm");
-#endif
-                splash.Report(0.75, "Initializing main window...");
-                Application.DoEvents(); // Keep UI responsive
-#if DEBUG
-                Console.WriteLine("Creating MainForm...");
-#endif
-
-                // CRITICAL: Defer MainForm creation until AFTER Application.Run starts message pump
-                // WinForms controls require active message loop for proper initialization
-                // Creating MainForm before Application.Run() causes thread affinity deadlocks
-#if DEBUG
-                Console.WriteLine("[SYNC] Phase 9 - MainForm creation deferred until message pump active");
-#endif
-                Application.DoEvents(); // Process MainForm initialization events
-                System.Threading.Thread.Sleep(150); // Allow MainForm controls to initialize
-
-                // === Phase 10: Chrome Initialization (depends on Theme Init [Phase 2] completing) ===
-                Log.Information("[DIAGNOSTIC] Wiring exception handlers");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Wiring exception handlers");
-                splash.Report(0.80, "Wiring global exception handlers...");
-                Application.DoEvents(); // Keep UI responsive
-                using (var handlerScope = _timelineService?.BeginPhaseScope("Chrome Initialization"))
-                {
-                    WireGlobalExceptionHandlers();
-                } // Phase 10 complete
-#if DEBUG
-                Console.WriteLine("[SYNC] Phase 10 complete - Exception handlers ready");
-#endif
-                Application.DoEvents(); // Process any pending UI messages
-                System.Threading.Thread.Sleep(50); // Allow exception handlers to stabilize
-                Log.Information("[DIAGNOSTIC] Exception handlers wired successfully");
-#if DEBUG
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Exception handlers wired");
-#endif
-
-                // === Phase 11: Data Prefetch - MOVED TO ApplicationContext ===
-                // Data seeding happens AFTER MainForm creation in ApplicationContext.OnApplicationIdle
-                // Splash Screen Hide has been relocated to the UI Message Loop area (after ApplicationContext construction) so Data Prefetch completes first.
-
-
-                        // === Phase 9: UI Message Loop Preparation ===
-                        Log.Information("[DIAGNOSTIC] Preparing UI message loop with ApplicationContext");
-#if DEBUG
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Preparing UI message loop");
-                        Console.WriteLine("Starting application message loop...");
-#endif
-
-                        // Use WileyWidgetApplicationContext if available
-                        var appContext = new Forms.WileyWidgetApplicationContext(Services, _timelineService as WileyWidget.Services.IStartupTimelineService, host);
-                        Application.Run(appContext);
-                        using (var uiPrepScope = _timelineService?.BeginPhaseScope("UI Message Loop Preparation"))
+                    // CRITICAL: Run health check on background thread to prevent UI deadlock
+                    // Don't await - let it complete asynchronously while UI continues
+                    _ = Task.Run(async () =>
+                    {
+                        using (var healthScope = host.Services.CreateScope())
                         {
-                            // MICROSOFT PATTERN: Use ApplicationContext with deferred MainForm creation
-                            // ApplicationContext constructor handles:
-                            // - Phase 7: MainForm Creation
-                            // - Phase 10: Data Prefetch (background seeding)
-
-                            // === Phase 11: Splash Screen Hide (AFTER Data Prefetch completes) ===
-                            // CRITICAL: Must happen AFTER ApplicationContext constructor completes
-                            // ApplicationContext runs Data Prefetch, so splash must wait for it
-                            Log.Information("[DIAGNOSTIC] Completing splash screen after data prefetch");
-#if DEBUG
-                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Completing splash screen");
-#endif
-                            splash.Report(0.95, "Ready");
-                            Application.DoEvents();
-                            using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
+                            try
                             {
-                                splash.Complete("Ready");
-                                Application.DoEvents(); // Process complete message
-
-                                // Brief delay to show "Ready" message (under 300ms threshold)
-                                System.Threading.Thread.Sleep(200);
-                                splash.Dispose();
-                            } // Phase 11 complete
+                                Log.Information("[DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
 #if DEBUG
-                            Console.WriteLine("[SYNC] Phase 11 complete - Splash screen hidden after data prefetch");
+                                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Calling RunStartupHealthCheckAsync");
 #endif
-                            Application.DoEvents(); // Final UI processing before main loop
-                            System.Threading.Thread.Sleep(50); // Brief pause before entering main loop
-
-                            // Generate startup timeline report (DEBUG or env var only)
-                            if (_timelineService != null && _timelineService.IsEnabled)
-                            {
-                                var report = _timelineService.GenerateReport();
-                                if (report.Errors.Count > 0 || report.Warnings.Count > 0)
-                                {
-                                    Log.Warning("[TIMELINE] Startup completed with {ErrorCount} errors and {WarningCount} warnings",
-                                        report.Errors.Count, report.Warnings.Count);
-                                }
-                                else
-                                {
-                                    Log.Information("[TIMELINE] Startup completed successfully with optimal timing");
-                                }
+                                await RunStartupHealthCheckAsync(healthScope.ServiceProvider);
+                                Log.Information("[DIAGNOSTIC] RunStartupHealthCheckAsync completed successfully");
+#if DEBUG
+                                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunStartupHealthCheckAsync completed");
+#endif
                             }
-                        } // Phase 9 complete - UI preparation done, startup timeline ends here
+                            catch (Exception healthEx)
+                            {
+                                Log.Warning(healthEx, "Background health check failed (non-blocking)");
+                            }
+                        }
+                    });
+
+                    splash.Report(0.65, "Database check initiated...");
+                    Application.DoEvents();
 #if DEBUG
-                        Console.WriteLine("[SYNC] Phase 9 complete - UI Message Loop prepared, entering main message loop");
+                    Console.WriteLine("[SYNC] Phase 8 complete - Database health check running in background");
 #endif
 
-                        // === Enter UI Message Loop (blocks until application exits) ===
-                        // CRITICAL: Application.Run() blocks indefinitely running the message loop
-                        // This is NOT a startup phase - it's the main execution mode
-                        // Startup timeline ends before this point - do not track Application.Run as a phase
-                        Log.Information("[DIAGNOSTIC] Entering UI message loop (Application.Run) - will block until exit");
-#if DEBUG
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Entering Application.Run message loop");
-#endif
-                        RunUiLoop(appContext);
+                    Log.Information("[DIAGNOSTIC] Checking IsVerifyStartup at line 121");
 
-                        Log.Information("[DIAGNOSTIC] UI message loop exited");
-                        Program.UIScope?.Dispose();
 #if DEBUG
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] UI message loop exited");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Checking IsVerifyStartup");
 #endif
+                    if (IsVerifyStartup(args!))
+                    {
+                        Log.Information("[DIAGNOSTIC] IsVerifyStartup=true, running verify-startup mode");
+#if DEBUG
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Running verify-startup mode");
+#endif
+                        splash.Complete("Startup verification complete");
+                        await RunVerifyStartupAsync(host);
+                        return; // Exit Main() after verification
                     }
+                    Log.Information("[DIAGNOSTIC] IsVerifyStartup=false, continuing normal startup");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Continuing normal startup");
+#endif
+
+                    // === Phase 9: MainForm Creation (must complete BEFORE Chrome Init and Data Prefetch) ===
+                    Log.Information("[DIAGNOSTIC] Creating MainForm");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Creating MainForm");
+#endif
+                    splash.Report(0.75, "Initializing main window...");
+                    Application.DoEvents(); // Keep UI responsive
+#if DEBUG
+                    Console.WriteLine("Creating MainForm...");
+#endif
+
+                    // CRITICAL: Defer MainForm creation until AFTER Application.Run starts message pump
+                    // WinForms controls require active message loop for proper initialization
+                    // Creating MainForm before Application.Run() causes thread affinity deadlocks
+#if DEBUG
+                    Console.WriteLine("[SYNC] Phase 9 - MainForm creation deferred until message pump active");
+#endif
+                    Application.DoEvents(); // Process MainForm initialization events
+                    System.Threading.Thread.Sleep(150); // Allow MainForm controls to initialize
+
+                    // === Phase 10: Chrome Initialization (depends on Theme Init [Phase 2] completing) ===
+                    Log.Information("[DIAGNOSTIC] Wiring exception handlers");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Wiring exception handlers");
+                    splash.Report(0.80, "Wiring global exception handlers...");
+                    Application.DoEvents(); // Keep UI responsive
+                    using (var handlerScope = _timelineService?.BeginPhaseScope("Chrome Initialization"))
+                    {
+                        WireGlobalExceptionHandlers();
+                    } // Phase 10 complete
+#if DEBUG
+                    Console.WriteLine("[SYNC] Phase 10 complete - Exception handlers ready");
+#endif
+                    Application.DoEvents(); // Process any pending UI messages
+                    System.Threading.Thread.Sleep(50); // Allow exception handlers to stabilize
+                    Log.Information("[DIAGNOSTIC] Exception handlers wired successfully");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Exception handlers wired");
+#endif
+
+                    // === Phase 11: Data Prefetch - MOVED TO ApplicationContext ===
+                    // Data seeding happens AFTER MainForm creation in ApplicationContext.OnApplicationIdle
+                    // Splash Screen Hide has been relocated to the UI Message Loop area (after ApplicationContext construction) so Data Prefetch completes first.
+
+
+                    // === Phase 9: UI Message Loop Preparation ===
+                    Log.Information("[DIAGNOSTIC] Preparing UI message loop with ApplicationContext");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Preparing UI message loop");
+                    Console.WriteLine("Starting application message loop...");
+#endif
+
+                    // Use WileyWidgetApplicationContext if available
+                    var appContext = new Forms.WileyWidgetApplicationContext(Services, _timelineService as WileyWidget.Services.IStartupTimelineService, host);
+                    Application.Run(appContext);
+                    using (var uiPrepScope = _timelineService?.BeginPhaseScope("UI Message Loop Preparation"))
+                    {
+                        // MICROSOFT PATTERN: Use ApplicationContext with deferred MainForm creation
+                        // ApplicationContext constructor handles:
+                        // - Phase 7: MainForm Creation
+                        // - Phase 10: Data Prefetch (background seeding)
+
+                        // === Phase 11: Splash Screen Hide (AFTER Data Prefetch completes) ===
+                        // CRITICAL: Must happen AFTER ApplicationContext constructor completes
+                        // ApplicationContext runs Data Prefetch, so splash must wait for it
+                        Log.Information("[DIAGNOSTIC] Completing splash screen after data prefetch");
+#if DEBUG
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Completing splash screen");
+#endif
+                        splash.Report(0.95, "Ready");
+                        Application.DoEvents();
+                        using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
+                        {
+                            splash.Complete("Ready");
+                            Application.DoEvents(); // Process complete message
+
+                            // Brief delay to show "Ready" message (under 300ms threshold)
+                            System.Threading.Thread.Sleep(200);
+                            splash.Dispose();
+                        } // Phase 11 complete
+#if DEBUG
+                        Console.WriteLine("[SYNC] Phase 11 complete - Splash screen hidden after data prefetch");
+#endif
+                        Application.DoEvents(); // Final UI processing before main loop
+                        System.Threading.Thread.Sleep(50); // Brief pause before entering main loop
+
+                        // Generate startup timeline report (DEBUG or env var only)
+                        if (_timelineService != null && _timelineService.IsEnabled)
+                        {
+                            var report = _timelineService.GenerateReport();
+                            if (report.Errors.Count > 0 || report.Warnings.Count > 0)
+                            {
+                                Log.Warning("[TIMELINE] Startup completed with {ErrorCount} errors and {WarningCount} warnings",
+                                    report.Errors.Count, report.Warnings.Count);
+                            }
+                            else
+                            {
+                                Log.Information("[TIMELINE] Startup completed successfully with optimal timing");
+                            }
+                        }
+                    } // Phase 9 complete - UI preparation done, startup timeline ends here
+#if DEBUG
+                    Console.WriteLine("[SYNC] Phase 9 complete - UI Message Loop prepared, entering main message loop");
+#endif
+
+                    // === Enter UI Message Loop (blocks until application exits) ===
+                    // CRITICAL: Application.Run() blocks indefinitely running the message loop
+                    // This is NOT a startup phase - it's the main execution mode
+                    // Startup timeline ends before this point - do not track Application.Run as a phase
+                    Log.Information("[DIAGNOSTIC] Entering UI message loop (Application.Run) - will block until exit");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Entering Application.Run message loop");
+#endif
+                    RunUiLoop(appContext);
+
+                    Log.Information("[DIAGNOSTIC] UI message loop exited");
+                    Program.UIScope?.Dispose();
+
+                    // Graceful host shutdown: stop host and dispose after UI loop exits to avoid disposing
+                    // logging providers while UI global exception handlers might still be invoked.
+                    try
+                    {
+                        _timelineService?.RecordOperation("Stop host after UI loop", "Shutdown");
+                    }
+                    catch { }
+
+                    try
+                    {
+                        if (host != null)
+                        {
+                            await host.StopAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception stopEx)
+                    {
+                        try { Log.Warning(stopEx, "Host.StopAsync failed during shutdown"); } catch { Console.Error.WriteLine($"Host.StopAsync failed during shutdown: {stopEx}"); }
+                    }
+
+                    try
+                    {
+                        host?.Dispose();
+                    }
+                    catch (Exception disposeEx)
+                    {
+                        try { Log.Warning(disposeEx, "Host.Dispose failed during shutdown"); } catch { Console.Error.WriteLine($"Host.Dispose failed during shutdown: {disposeEx}"); }
+                    }
+
+                    // Flush logs now that host and providers are stopped
+                    try
+                    {
+                        Log.CloseAndFlush();
+                    }
+                    catch { /* best-effort */ }
+
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] UI message loop exited");
+#endif
                 }
+            }
             catch (NullReferenceException nreEx)
             {
                 // Special handling for NullReferenceException with enhanced diagnostics
@@ -655,6 +707,42 @@ namespace WileyWidget.WinForms
                 HandleStartupFailure(ex);
                 throw;
             }
+            finally
+            {
+                // Ensure host is stopped and disposed to avoid disposal races during shutdown
+                try
+                {
+                    if (host != null)
+                    {
+                        try { Log.Information("[DIAGNOSTIC] Initiating host shutdown (final cleanup)"); } catch { }
+                        try
+                        {
+                            await host.StopAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                        }
+                        catch (Exception stopEx)
+                        {
+                            try { Log.Warning(stopEx, "Host.StopAsync failed during final cleanup"); } catch { Console.Error.WriteLine($"Host.StopAsync failed during final cleanup: {stopEx}"); }
+                        }
+
+                        try
+                        {
+                            host.Dispose();
+                        }
+                        catch (Exception disposeEx)
+                        {
+                            try { Log.Warning(disposeEx, "Host.Dispose failed during final cleanup"); } catch { Console.Error.WriteLine($"Host.Dispose failed during final cleanup: {disposeEx}"); }
+                        }
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    Console.Error.WriteLine($"Host shutdown encountered exception: {ex2}");
+                }
+                finally
+                {
+                    try { Log.CloseAndFlush(); } catch { /* best-effort */ }
+                }
+            }
         }
 
         private static (bool flowControl, System.Reflection.Assembly? value) NewMethod(ResolveEventArgs resolveArgs)
@@ -709,28 +797,31 @@ namespace WileyWidget.WinForms
                 Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
             }
         }
-/// <summary>
-/// Performs registersyncfusionlicense. Parameters: configuration.
-/// </summary>
-/// <param name="configuration">The configuration.</param>
+        /// <summary>
+        /// Performs registersyncfusionlicense. Parameters: configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration.</param>
+#pragma warning disable CA1508 // licenseKey null-check is intentional to catch whitespace-only values
         private static void RegisterSyncfusionLicense(IConfiguration configuration)
         {
             try
             {
-                var licenseKey = configuration["Syncfusion:LicenseKey"];
-                if (string.IsNullOrWhiteSpace(licenseKey))
-                {
-                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
-                }
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                    string? rawLicenseKey = configuration["Syncfusion:LicenseKey"];
+                    if (string.IsNullOrWhiteSpace(rawLicenseKey))
+                    {
+                        throw new InvalidOperationException("Syncfusion license key not found in configuration.");
+                    }
+                    string licenseKey = rawLicenseKey!; // non-null after guard
+                    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
 
                 // Validate the license key - non-fatal in development to allow testing
                 bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
                 if (!isValid)
                 {
                     // Log key metadata for debugging (no secrets exposed)
-                    var keyHash = string.Format(System.Globalization.CultureInfo.InvariantCulture, "0x{0:X8}", licenseKey.GetHashCode(StringComparison.Ordinal));
-                    Log.Warning("Syncfusion license validation failed: Key length={Length}, Hash={Hash}. App will continue with license banner.", licenseKey.Length, keyHash);
+                    var keyLength = rawLicenseKey?.Length ?? 0;
+                    var keyHash = string.Format(System.Globalization.CultureInfo.InvariantCulture, "0x{0:X8}", StringComparer.Ordinal.GetHashCode(rawLicenseKey ?? string.Empty));
+                    Log.Warning("Syncfusion license validation failed: Key length={Length}, Hash={Hash}. App will continue with license banner.", keyLength, keyHash);
 #if DEBUG
                     Console.WriteLine($"[WARNING] Syncfusion license validation failed. Continuing in development mode with banner.");
 #else
@@ -748,10 +839,11 @@ namespace WileyWidget.WinForms
                 Log.Error(ex, "Failed to register Syncfusion license.");
                 throw;
             }
+#pragma warning restore CA1508
         }
-/// <summary>
-/// Performs isrunningintestenvironment.
-/// </summary>
+        /// <summary>
+        /// Performs isrunningintestenvironment.
+        /// </summary>
         private static bool IsRunningInTestEnvironment()
         {
             // Check for test environment indicators
@@ -852,9 +944,9 @@ namespace WileyWidget.WinForms
                 Console.WriteLine("[THEME] Continuing startup with default Windows theme (no Syncfusion theming)");
             }
         }
-/// <summary>
-/// Performs configureerrorreporting.
-/// </summary>
+        /// <summary>
+        /// Performs configureerrorreporting.
+        /// </summary>
         private static void ConfigureErrorReporting()
         {
             // Configure error reporting service if needed
@@ -882,9 +974,9 @@ namespace WileyWidget.WinForms
                 Log.Error(ex, "Failed to set default font");
             }
         }
-/// <summary>
-/// Performs capturesynchronizationcontext.
-/// </summary>
+        /// <summary>
+        /// Performs capturesynchronizationcontext.
+        /// </summary>
         public static void CaptureSynchronizationContext()
         {
             // NULL PROTECTION: Check if we already have a WindowsFormsSynchronizationContext
@@ -922,10 +1014,10 @@ namespace WileyWidget.WinForms
 
             UISynchronizationContext = finalContext;
         }
-/// <summary>
-/// Performs buildhost. Parameters: args.
-/// </summary>
-/// <param name="args">The args.</param>
+        /// <summary>
+        /// Performs buildhost. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         private static IHost BuildHost(string[] args)
         {
             var reportViewerLaunchOptions = CreateReportViewerLaunchOptions(args);
@@ -947,10 +1039,10 @@ namespace WileyWidget.WinForms
 
             return builder.Build();
         }
-/// <summary>
-/// Performs addconfiguration. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs addconfiguration. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void AddConfiguration(HostApplicationBuilder builder)
         {
             // Ensure .env is loaded before adding configuration sources
@@ -1097,10 +1189,10 @@ namespace WileyWidget.WinForms
                 Console.Error.WriteLine($"Error ensuring default connection in configuration: {ex}");
             }
         }
-/// <summary>
-/// Performs configurelogging. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs configurelogging. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void ConfigureLogging(HostApplicationBuilder builder)
         {
             try
@@ -1219,10 +1311,10 @@ namespace WileyWidget.WinForms
                 Console.Error.WriteLine("Logging fallback to console-only mode");
             }
         }
-/// <summary>
-/// Performs configuredatabase. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs configuredatabase. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void ConfigureDatabase(HostApplicationBuilder builder)
         {
             void ConfigureSqlOptions(DbContextOptionsBuilder options)
@@ -1276,10 +1368,10 @@ namespace WileyWidget.WinForms
             builder.Services.AddDbContextFactory<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Scoped);
             builder.Services.AddDbContext<AppDbContext>(ConfigureSqlOptions);
         }
-/// <summary>
-/// Performs configurehealthchecks. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs configurehealthchecks. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void ConfigureHealthChecks(HostApplicationBuilder builder)
         {
             try
@@ -1294,9 +1386,9 @@ namespace WileyWidget.WinForms
                 builder.Services.AddSingleton(new HealthCheckConfiguration());
             }
         }
-/// <summary>
-/// Performs capturedifirstchanceexceptions.
-/// </summary>
+        /// <summary>
+        /// Performs capturedifirstchanceexceptions.
+        /// </summary>
         private static void CaptureDiFirstChanceExceptions()
         {
             AppDomain.CurrentDomain.FirstChanceException += (_, eventArgs) =>
@@ -1309,10 +1401,10 @@ namespace WileyWidget.WinForms
                 }
             };
         }
-/// <summary>
-/// Performs adddependencyinjection. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs adddependencyinjection. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void AddDependencyInjection(HostApplicationBuilder builder)
         {
             // Create DI descriptors but avoid test defaults (in-memory DB) when building the real host
@@ -1332,10 +1424,10 @@ namespace WileyWidget.WinForms
                 builder.Services.Add(descriptor);
             }
         }
-/// <summary>
-/// Performs configureuiservices. Parameters: builder.
-/// </summary>
-/// <param name="builder">The builder.</param>
+        /// <summary>
+        /// Performs configureuiservices. Parameters: builder.
+        /// </summary>
+        /// <param name="builder">The builder.</param>
         private static void ConfigureUiServices(HostApplicationBuilder builder)
         {
             // UI configuration is now handled via UIConfiguration.FromConfiguration in DependencyInjection.cs
@@ -1426,13 +1518,13 @@ namespace WileyWidget.WinForms
                                         }
                                         catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 208)
                                         {
-                                        // SqlException 208 = Invalid object name (missing table/schema)
+                                            // SqlException 208 = Invalid object name (missing table/schema)
                                             Log.Warning(sqlEx, "Data seeding aborted: missing database schema (SqlException 208). To fix, run migrations:\n  dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.WinForms\nand then re-run the application.");
-                                }
-                                catch (Exception seEx)
-                                {
-                                    Log.Warning(seEx, "Data seeding failed during startup health check");
-                                }
+                                        }
+                                        catch (Exception seEx)
+                                        {
+                                            Log.Warning(seEx, "Data seeding failed during startup health check");
+                                        }
                                     }
                                 }
                                 else
@@ -1502,10 +1594,10 @@ namespace WileyWidget.WinForms
             Log.Information("[DIAGNOSTIC] RunStartupHealthCheckAsync method exit");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunStartupHealthCheckAsync method exit");
         }
-/// <summary>
-/// Performs isverifystartup. Parameters: args.
-/// </summary>
-/// <param name="args">The args.</param>
+        /// <summary>
+        /// Performs isverifystartup. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         private static bool IsVerifyStartup(string[] args)
         {
             return args != null && Array.Exists(args, a => string.Equals(a, "--verify-startup", StringComparison.OrdinalIgnoreCase));
@@ -1526,9 +1618,9 @@ namespace WileyWidget.WinForms
                 throw new InvalidOperationException("Verify-startup orchestration failed", ex);
             }
         }
-/// <summary>
-/// Performs wireglobalexceptionhandlers.
-/// </summary>
+        /// <summary>
+        /// Performs wireglobalexceptionhandlers.
+        /// </summary>
         private static void WireGlobalExceptionHandlers()
         {
             _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Error Handlers");
@@ -1546,6 +1638,15 @@ namespace WileyWidget.WinForms
                 try
                 {
                     (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "UI Thread Exception", showToUser: false);
+                }
+                catch (ObjectDisposedException ode)
+                {
+                    // Logging or DI disposed during shutdown — suppress and fallback to console to avoid crash
+                    Console.Error.WriteLine($"Reporting suppressed (disposed): {ode.Message}");
+                }
+                catch (AggregateException ae) when (ae.InnerException is ObjectDisposedException)
+                {
+                    Console.Error.WriteLine($"Reporting suppressed (aggregate inner disposed): {ae.InnerException?.Message}");
                 }
                 catch (Exception reportEx)
                 {
@@ -1579,17 +1680,25 @@ namespace WileyWidget.WinForms
                 {
                     (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex ?? new InvalidOperationException("Unhandled domain exception"), "Domain exception", showToUser: false);
                 }
+                catch (ObjectDisposedException ode)
+                {
+                    Console.Error.WriteLine($"Reporting suppressed (disposed): {ode.Message}");
+                }
+                catch (AggregateException ae) when (ae.InnerException is ObjectDisposedException)
+                {
+                    Console.Error.WriteLine($"Reporting suppressed (aggregate inner disposed): {ae.InnerException?.Message}");
+                }
                 catch (Exception reportEx)
                 {
                     Console.Error.WriteLine($"Failed to report AppDomain exception to ErrorReportingService: {reportEx}");
                 }
             };
         }
-/// <summary>
-/// Performs scheduleautocloseifrequested. Parameters: args, mainForm.
-/// </summary>
-/// <param name="args">The args.</param>
-/// <param name="mainForm">The mainForm.</param>
+        /// <summary>
+        /// Performs scheduleautocloseifrequested. Parameters: args, mainForm.
+        /// </summary>
+        /// <param name="args">The args.</param>
+        /// <param name="mainForm">The mainForm.</param>
         private static void ScheduleAutoCloseIfRequested(string[] args, Form mainForm)
         {
             var autoCloseMs = ParseAutoCloseMs(args);
@@ -1615,10 +1724,10 @@ namespace WileyWidget.WinForms
                 Log.Warning(ex, "Failed to schedule auto-close");
             }
         }
-/// <summary>
-/// Performs parseautoclosems. Parameters: args.
-/// </summary>
-/// <param name="args">The args.</param>
+        /// <summary>
+        /// Performs parseautoclosems. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         private static int ParseAutoCloseMs(string[] args)
         {
             var autoCloseArg = args?.FirstOrDefault(a => a != null && a.StartsWith("--auto-close-ms=", StringComparison.OrdinalIgnoreCase));
@@ -1631,10 +1740,10 @@ namespace WileyWidget.WinForms
                 ? autoCloseMs
                 : -1;
         }
-/// <summary>
-/// Performs isautocloseallowed. Parameters: args.
-/// </summary>
-/// <param name="args">The args.</param>
+        /// <summary>
+        /// Performs isautocloseallowed. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         private static bool IsAutoCloseAllowed(string[] args)
         {
             if (IsCiEnvironment())
@@ -1644,20 +1753,20 @@ namespace WileyWidget.WinForms
 
             return args != null && Array.Exists(args, a => string.Equals(a, "--force-auto-close", StringComparison.OrdinalIgnoreCase));
         }
-/// <summary>
-/// Performs iscienvironment.
-/// </summary>
+        /// <summary>
+        /// Performs iscienvironment.
+        /// </summary>
         private static bool IsCiEnvironment()
         {
             return string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.OrdinalIgnoreCase)
                 || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TF_BUILD"));
         }
-/// <summary>
-/// Performs scheduleautoclose. Parameters: mainForm, autoCloseMs.
-/// </summary>
-/// <param name="mainForm">The mainForm.</param>
-/// <param name="autoCloseMs">The autoCloseMs.</param>
+        /// <summary>
+        /// Performs scheduleautoclose. Parameters: mainForm, autoCloseMs.
+        /// </summary>
+        /// <param name="mainForm">The mainForm.</param>
+        /// <param name="autoCloseMs">The autoCloseMs.</param>
         private static void ScheduleAutoClose(Form mainForm, int autoCloseMs)
         {
             System.Threading.Tasks.Task.Run(async () =>
@@ -1689,10 +1798,10 @@ namespace WileyWidget.WinForms
                 }
             });
         }
-/// <summary>
-/// Performs runuiloop. Parameters: context.
-/// </summary>
-/// <param name="context">The context.</param>
+        /// <summary>
+        /// Performs runuiloop. Parameters: context.
+        /// </summary>
+        /// <param name="context">The context.</param>
         private static void RunUiLoop(ApplicationContext context)
         {
             try
@@ -1708,13 +1817,13 @@ namespace WileyWidget.WinForms
             finally
             {
                 Log.Information("Application exited normally.");
-                Log.CloseAndFlush();
+                // Keep logger open — host shutdown and final flush handled by MainAsync to avoid disposing logging while UI handlers may still run.
             }
         }
-/// <summary>
-/// Performs createreportviewerlaunchoptions. Parameters: args.
-/// </summary>
-/// <param name="args">The args.</param>
+        /// <summary>
+        /// Performs createreportviewerlaunchoptions. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         private static ReportViewerLaunchOptions CreateReportViewerLaunchOptions(string[] args)
         {
             if (args == null || args.Length == 0)
@@ -1788,10 +1897,10 @@ namespace WileyWidget.WinForms
                 return path;
             }
         }
-/// <summary>
-/// Performs handlestartupfailure. Parameters: ex.
-/// </summary>
-/// <param name="ex">The ex.</param>
+        /// <summary>
+        /// Performs handlestartupfailure. Parameters: ex.
+        /// </summary>
+        /// <param name="ex">The ex.</param>
         private static void HandleStartupFailure(Exception ex)
         {
             try
@@ -1869,96 +1978,96 @@ namespace WileyWidget.WinForms
         /// a headless no-op for CI/test environments.
         /// </summary>
         internal sealed class SplashForm : Form, IDisposable
-{
-    private readonly bool _isHeadless;
-    private Label _messageLabel;
-    private ProgressBar _progressBar;
-
-    public SplashForm()
-    {
-        _isHeadless = IsRunningInTestEnvironment() || !Environment.UserInteractive;
-        if (!_isHeadless)
         {
-            InitializeComponent();
-        }
-    }
+            private readonly bool _isHeadless;
+            private Label _messageLabel;
+            private ProgressBar _progressBar;
 
-    private void InitializeComponent()
-    {
-        this.SuspendLayout();
-        this.Size = new Size(480, 140);
-        this.StartPosition = FormStartPosition.CenterScreen;
-        this.FormBorderStyle = FormBorderStyle.FixedDialog;
-        this.ShowInTaskbar = false;
-        this.Text = "Wiley Widget - Loading...";
+            public SplashForm()
+            {
+                _isHeadless = IsRunningInTestEnvironment() || !Environment.UserInteractive;
+                if (!_isHeadless)
+                {
+                    InitializeComponent();
+                }
+            }
 
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-        _messageLabel = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 40,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Text = "Initializing...",
-            AutoSize = false
-        };
-        _progressBar = new ProgressBar
-        {
-            Dock = DockStyle.Bottom,
-            Height = 20,
-            Style = ProgressBarStyle.Continuous
-        };
+            private void InitializeComponent()
+            {
+                this.SuspendLayout();
+                this.Size = new Size(480, 140);
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.FormBorderStyle = FormBorderStyle.FixedDialog;
+                this.ShowInTaskbar = false;
+                this.Text = "Wiley Widget - Loading...";
 
-        panel.Controls.Add(_messageLabel);
-        panel.Controls.Add(_progressBar);
-        this.Controls.Add(panel);
-        this.ResumeLayout(false);
-    }
+                var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+                _messageLabel = new Label
+                {
+                    Dock = DockStyle.Top,
+                    Height = 40,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Text = "Initializing...",
+                    AutoSize = false
+                };
+                _progressBar = new ProgressBar
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 20,
+                    Style = ProgressBarStyle.Continuous
+                };
 
-    public void Report(double progress, string message, bool? isIndeterminate = null)
-    {
-        if (_isHeadless) return;
-        if (this.InvokeRequired)
-        {
-            this.Invoke(new Action<double, string, bool?>(Report), progress, message, isIndeterminate);
-            return;
-        }
-        _messageLabel.Text = message;
-        if (isIndeterminate == true)
-        {
-            _progressBar.Style = ProgressBarStyle.Marquee;
-        }
-        else
-        {
-            _progressBar.Value = (int)(progress * 100);
-            _progressBar.Style = ProgressBarStyle.Continuous;
-        }
-        this.Refresh();
-    }
+                panel.Controls.Add(_messageLabel);
+                panel.Controls.Add(_progressBar);
+                this.Controls.Add(panel);
+                this.ResumeLayout(false);
+            }
 
-    public void Complete(string? finalMessage = null)
-    {
-        if (_isHeadless) return;
-        Report(1.0, finalMessage ?? "Ready", false);
-        Thread.Sleep(500);
-    }
+            public void Report(double progress, string message, bool? isIndeterminate = null)
+            {
+                if (_isHeadless) return;
+                if (this.InvokeRequired)
+                {
+                    this.Invoke(new Action<double, string, bool?>(Report), progress, message, isIndeterminate);
+                    return;
+                }
+                _messageLabel.Text = message;
+                if (isIndeterminate == true)
+                {
+                    _progressBar.Style = ProgressBarStyle.Marquee;
+                }
+                else
+                {
+                    _progressBar.Value = (int)(progress * 100);
+                    _progressBar.Style = ProgressBarStyle.Continuous;
+                }
+                this.Refresh();
+            }
 
-    public new void Show()
-    {
-        if (_isHeadless) return;
-        base.Show();
-        this.Refresh();
-    }
+            public void Complete(string? finalMessage = null)
+            {
+                if (_isHeadless) return;
+                Report(1.0, finalMessage ?? "Ready", false);
+                Thread.Sleep(500);
+            }
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _progressBar?.Dispose();
-            _messageLabel?.Dispose();
-        }
-        base.Dispose(disposing);
-    }
-}  // End SplashForm
+            public new void Show()
+            {
+                if (_isHeadless) return;
+                base.Show();
+                this.Refresh();
+            }
 
-}  // End Program class
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    _progressBar?.Dispose();
+                    _messageLabel?.Dispose();
+                }
+                base.Dispose(disposing);
+            }
+        }  // End SplashForm
+
+    }  // End Program class
 }  // End namespace
