@@ -27,3 +27,11 @@ Notes:
   - Testcontainers-based tests (start ephemeral containers via DotNet.Testcontainers)
   - Docker Compose based tests (use `db-postgres` service and the `PostgresComposeConnectivityTests` test that depends on the `Postgres Integration` collection)
 - Respawn is available in the project and used in Postgres tests to reset database state between assertions. If you want to iterate quickly, prefer the compose flow so you can re-use a single DB instance and speed up test runs.
+
+Security note:
+- The Testcontainers-based fixture reads the Postgres password from the `POSTGRES_TEST_PASSWORD` environment variable. If that variable is not set, a randomly generated temporary password will be used so there are no hard-coded credentials in the repository.
+- For CI runs you can (optionally) set a repository secret named `POSTGRES_TEST_PASSWORD` and reference it in your workflow for reproducible runs and easier debugging.
+
+Example (GitHub Actions):
+- Set `POSTGRES_TEST_PASSWORD` in repository secrets.
+- The integration test workflow already forwards this secret to the job environment when present.

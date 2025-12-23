@@ -17,12 +17,22 @@ namespace WileyWidget.Integration.Tests.Infrastructure
         {
             try
             {
+                // Load credentials from environment to avoid hard-coded secrets (GitGuardian safe).
+                var dbName = Environment.GetEnvironmentVariable("POSTGRES_TEST_DATABASE") ?? "wileywidget_test";
+                var user = Environment.GetEnvironmentVariable("POSTGRES_TEST_USERNAME") ?? "postgres";
+                var password = Environment.GetEnvironmentVariable("POSTGRES_TEST_PASSWORD");
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    // Fallback to a randomly generated strong password for local runs/CI when a secret isn't provided.
+                    password = $"WileyWidgetTemp{Guid.NewGuid():N}!";
+                }
+
                 var container = new TestcontainersBuilder<PostgreSqlTestcontainer>()
                     .WithDatabase(new PostgreSqlTestcontainerConfiguration
                     {
-                        Database = "wileywidget_test",
-                        Username = "postgres",
-                        Password = "postgres"
+                        Database = dbName,
+                        Username = user,
+                        Password = password
                     })
                     .WithImage("postgres:15-alpine")
                     .WithCleanUp(true)

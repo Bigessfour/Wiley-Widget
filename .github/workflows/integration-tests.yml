@@ -1,23 +1,43 @@
 name: Integration Tests
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'tests/WileyWidget.Integration.Tests/**'
+      - 'src/**'
+      - 'Directory.Packages.props'
   push:
     branches:
       - main
       - develop
+  workflow_dispatch: {}
 
 jobs:
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Optionally set a secret `POSTGRES_TEST_PASSWORD` in the repo to control the Postgres test password.
+      POSTGRES_TEST_PASSWORD: ${{ secrets.POSTGRES_TEST_PASSWORD }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Verify Docker
+        run: |
+          echo "Checking Docker availability..."
+          if docker info >/dev/null 2>&1; then
+            docker version
+          else
+            echo "Docker not available on runner. Postgres Testcontainers may skip."
+          fi
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
