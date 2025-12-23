@@ -14,7 +14,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for Revenue Trends panel displaying monthly revenue data over time.
 /// Provides observable properties for chart and grid display with async data loading.
 /// </summary>
-public partial class RevenueTrendsViewModel : ViewModelBase
+public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
 {
     private readonly IAccountsRepository _accountsRepository;
     private CancellationTokenSource? _loadCancellationTokenSource;
@@ -251,6 +251,11 @@ public partial class RevenueTrendsViewModel : ViewModelBase
             .ToArray();
 
         return result;
+    }
+
+    public void Dispose()
+    {
+        throw new NotImplementedException();
     }
 }
 
