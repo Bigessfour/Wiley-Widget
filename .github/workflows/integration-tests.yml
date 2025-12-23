@@ -1,0 +1,55 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet
+          key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            nuget-packages-${{ runner.os }}-
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Build solution
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run integration tests
+        run: |
+          dotnet test tests/WileyWidget.Integration.Tests/WileyWidget.Integration.Tests.csproj --configuration Release --logger "trx;LogFileName=integration-tests.trx" --results-directory ./TestResults/Integration -v minimal
+        env:
+          DOTNET_TEST_USE_POLLING_FILE_WATCHER: '1'
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: TestResults
+          retention-days: 7

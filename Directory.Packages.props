@@ -72,6 +72,8 @@
     <!-- PdfSharpCore removed - replaced with Syncfusion.Pdf for consistency -->
     <!-- BoldReports.WinForms removed - doesn't exist on nuget.org. Use BoldReports.WPF only. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageVersion Include="System.Management" Version="10.0.0" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.0" />
@@ -82,7 +84,7 @@
     <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Test packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.8.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.2.0-preview.1" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
@@ -95,6 +97,17 @@
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <!-- Optional integration-test packages -->
+    <!-- Testcontainers re-enabled for programmatic Docker-based integration tests -->
+    <PackageVersion Include="DotNet.Testcontainers" Version="1.7.0-beta.2269" />
+    <PackageVersion Include="Respawn" Version="6.*" />
+    <PackageVersion Include="RichardSzalay.MockHttp" Version="7.*" />
+    <PackageVersion Include="WireMock.Net" Version="2.*" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.*" />
+    <!-- Provider for PostgreSQL EF Core tests -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+    <PackageVersion Include="Npgsql" Version="9.0.0" />
     <!-- UI Automation (FlaUI) packages -->
     <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
     <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
@@ -116,7 +129,8 @@
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
     <PackageVersion Include="FastReport.OpenSource" Version="2024.2.0" />
-    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
+    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict and unify Roslyn versions across
+    projects -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
     <!-- Data handling packages -->
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
