@@ -11,14 +11,16 @@ The WileyWidget MCP Test Server provides AI-assisted UI validation tools for Win
 **Problem Solved:** Many forms require `MainForm` constructor parameter. Previous fallback to parameterless constructor often failed or caused incomplete initialization.
 
 **Solution:** `FormInstantiationHelper` now:
+
 - **Prioritizes** constructor with `MainForm` parameter
 - Falls back to parameterless only when no `MainForm` constructor exists
-- Enables MDI mode in mock for realistic initialization
+- Enables docking mode in mock for realistic initialization
 - Provides clear error messages when no suitable constructor found
 
 **Code Example:**
+
 ```csharp
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 ```
 
@@ -31,12 +33,14 @@ var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 **Problem Solved:** DockingManager/Ribbon create background threads that prevent clean disposal, causing errors.
 
 **Solution:** `FormInstantiationHelper.SafeDispose()`:
+
 - Wraps disposal in try-catch to suppress disposal errors
 - Uses `Invoke()` for thread-safe cleanup
 - Calls `GC.SuppressFinalize()` to prevent phantom cleanup errors
 - Disposes both form and mockMainForm gracefully
 
 **Code Example:**
+
 ```csharp
 finally
 {
@@ -53,13 +57,15 @@ finally
 **Problem Solved:** Previous theme validation was oversimplified (just checked if form loaded).
 
 **Solution:** Enhanced `SyncfusionTestHelper.ValidateTheme()`:
+
 - Loads `Office2019Theme` assembly before validation
-- Applies theme via `SfSkinManager.SetTheme()` during form load
+- Applies theme via ` skinmanager.SetTheme()` during form load
 - Checks Syncfusion controls for `ThemeName` property
 - Validates theme cascade (empty theme name = using parent cascade, which is valid)
 - Distinguishes Syncfusion controls from standard WinForms controls
 
 **Code Example:**
+
 ```csharp
 var loaded = FormInstantiationHelper.LoadFormWithTheme(form, "Office2019Colorful");
 var themeValid = SyncfusionTestHelper.ValidateTheme(form, "Office2019Colorful");
@@ -74,12 +80,14 @@ var themeValid = SyncfusionTestHelper.ValidateTheme(form, "Office2019Colorful");
 **Problem Solved:** Batch validation was slow due to repeated reflection and type lookups.
 
 **Solution:** `FormTypeCache` provides:
+
 - Cached form type lookups
 - Cached constructor lookups (MainForm and parameterless)
 - Cached form discovery (all forms in namespace)
 - Thread-safe caching with lock protection
 
 **Code Example:**
+
 ```csharp
 var formType = FormTypeCache.GetFormType(formTypeName);
 var allForms = FormTypeCache.GetAllFormTypes();
@@ -94,11 +102,13 @@ var allForms = FormTypeCache.GetAllFormTypes();
 **Problem Solved:** Text-only output was hard to parse in CI/CD pipelines.
 
 **Solution:** All tools now support `outputFormat: "json"`:
+
 - `ValidateFormTheme` returns structured validation result
 - `BatchValidateForms` returns JSON report with summary and results
 - Error responses also use JSON format when requested
 
 **Code Example:**
+
 ```csharp
 ValidateFormTheme(formTypeName, "Office2019Colorful", outputFormat: "json")
 ```
@@ -111,14 +121,16 @@ ValidateFormTheme(formTypeName, "Office2019Colorful", outputFormat: "json")
 
 ### 1. ValidateFormTheme
 
-**Purpose:** Validates that a form uses SfSkinManager theming exclusively (no manual BackColor/ForeColor).
+**Purpose:** Validates that a form uses  skinmanager theming exclusively (no manual BackColor/ForeColor).
 
 **Parameters:**
+
 - `formTypeName` (required): Fully qualified type name (e.g., `"WileyWidget.WinForms.Forms.AccountsForm"`)
 - `expectedTheme` (optional): Expected theme name (default: `"Office2019Colorful"`)
 - `outputFormat` (optional): `"text"` or `"json"` (default: `"text"`)
 
 **Usage:**
+
 ```csharp
 ValidateFormTheme(
     "WileyWidget.WinForms.Forms.MainForm",
@@ -128,6 +140,7 @@ ValidateFormTheme(
 ```
 
 **Returns:**
+
 - ✅ Theme check (PASS/FAIL)
 - ✅ Manual color check (PASS/FAIL)
 - List of violations (if any)
@@ -139,11 +152,13 @@ ValidateFormTheme(
 **Purpose:** Inspects Syncfusion SfDataGrid controls for column config, data binding, and theme info.
 
 **Parameters:**
+
 - `formTypeName` (required): Fully qualified type name
 - `gridName` (optional): Specific grid control name (finds first grid if omitted)
 - `includeSampleData` (optional): Include sample row data (default: `true`)
 
 **Usage:**
+
 ```csharp
 InspectSfDataGrid(
     "WileyWidget.WinForms.Forms.AccountsForm",
@@ -153,6 +168,7 @@ InspectSfDataGrid(
 ```
 
 **Returns:**
+
 - Grid name and column count
 - Theme name (inherited or explicit)
 - Column details (mapping name, header text, width, visibility)
@@ -165,12 +181,14 @@ InspectSfDataGrid(
 **Purpose:** Validates theme compliance across multiple forms in batch with structured reporting.
 
 **Parameters:**
+
 - `formTypeNames` (optional): Array of form type names (validates all forms if omitted)
 - `expectedTheme` (optional): Expected theme name (default: `"Office2019Colorful"`)
 - `failFast` (optional): Stop on first failure (default: `false`)
 - `outputFormat` (optional): `"text"`, `"json"`, or `"html"` (default: `"text"`)
 
 **Usage:**
+
 ```csharp
 BatchValidateForms(
     null, // Validate all forms
@@ -181,6 +199,7 @@ BatchValidateForms(
 ```
 
 **Returns:**
+
 - Summary (total/passed/failed/duration)
 - Per-form results with violations
 - HTML report option for visual dashboard
@@ -192,47 +211,89 @@ BatchValidateForms(
 **Purpose:** Evaluates C# code dynamically without compilation (rapid prototyping, debugging, theme checks).
 
 **Parameters:**
+
 - `csx` (required): C# code to execute
 - `csxFile` (optional): Path to .csx file (overrides `csx` parameter)
 - `timeoutSeconds` (optional): Execution timeout (default: 30)
 
 **Usage:**
+
 ```csharp
 EvalCSharp(@"
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = new AccountsForm(mockMainForm);
-SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-SfSkinManager.SetTheme(form, new Theme('Office2019Colorful'));
+ skinmanager.LoadAssembly(typeof(Office2019Theme).Assembly);
+ skinmanager.SetTheme(form, new Theme('Office2019Colorful'));
 Console.WriteLine($\"Form theme: {form.GetType().Name}\");
 return true;
 ")
 ```
 
 **Returns:**
+
 - Execution duration
 - Console output
 - Return value (type and value)
 - Compilation or runtime errors
 
 **Enhanced References:**
+
 - ✅ Syncfusion.WinForms.Themes (Office2019Theme, etc.)
-- ✅ Syncfusion.WinForms.Controls (SfSkinManager)
+- ✅ Syncfusion.WinForms.Controls ( skinmanager)
 - ✅ WileyWidget helper classes
 - ✅ Moq for mocking
 
 ---
+
+### GenerateAiManifest
+
+**Purpose:** Runs the repository's Python manifest generator (`scripts/generate-ai-manifest.py`) and returns the generated `ai-fetchable-manifest.json` contents. This is exposed via the MCP tool `GenerateAiManifest` and is useful for making the repository manifest available to AI agents or CI jobs.
+
+**Parameters:**
+
+- `scriptPath` (optional): Path to the generator script relative to workspace root (default: `scripts/generate-ai-manifest.py`).
+- `outputPath` (optional): Manifest output file path (default: `ai-fetchable-manifest.json`).
+- `pythonExe` (optional): Python executable to use (default: `python`). The tool will attempt `python3` / `py` as fallbacks.
+- `timeoutSeconds` (optional): Timeout for the generator process in seconds (default: 60).
+
+**Usage Example:**
+
+```csharp
+// Run generator and get manifest
+var manifestJson = GenerateAiManifest(
+    scriptPath: "scripts/generate-ai-manifest.py",
+    outputPath: "ai-fetchable-manifest.json",
+    pythonExe: "python",
+    timeoutSeconds: 60
+);
+
+// Inspect manifest (JSON string) or save it to a file
+```
+
+**Returns:**
+
+- The manifest JSON string on success.
+- An error message starting with "❌" on failure (e.g., Python not found or generator error).
+
+**Notes:**
+
+- Requires Python available on PATH (script header requests Python 3.14+, but most modern Python 3.x installations will work). If Python is not available, install it or provide the path via `pythonExe`.
+- The generated manifest file (`ai-fetchable-manifest.json`) is stored at repo root by default.
+- Tool implementation: `tools/WileyWidgetMcpServer/Tools/GenerateAiManifestTool.cs`.
 
 ## Best Practices
 
 ### Form Instantiation
 
 **✅ DO:**
+
 ```csharp
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 ```
 
 **❌ DON'T:**
+
 ```csharp
 var form = (Form)Activator.CreateInstance(formType); // Missing MainForm parameter
 ```
@@ -240,6 +301,7 @@ var form = (Form)Activator.CreateInstance(formType); // Missing MainForm paramet
 ### Resource Cleanup
 
 **✅ DO:**
+
 ```csharp
 try
 {
@@ -252,6 +314,7 @@ finally
 ```
 
 **❌ DON'T:**
+
 ```csharp
 form.Dispose(); // Can throw on DockingManager/Ribbon cleanup
 ```
@@ -259,12 +322,14 @@ form.Dispose(); // Can throw on DockingManager/Ribbon cleanup
 ### Theme Validation
 
 **✅ DO:**
+
 ```csharp
 var loaded = FormInstantiationHelper.LoadFormWithTheme(form, "Office2019Colorful");
 var themeValid = SyncfusionTestHelper.ValidateTheme(form, "Office2019Colorful");
 ```
 
 **❌ DON'T:**
+
 ```csharp
 // Assume theme is correct just because form loaded
 ```
@@ -272,12 +337,14 @@ var themeValid = SyncfusionTestHelper.ValidateTheme(form, "Office2019Colorful");
 ### Performance (Batch Operations)
 
 **✅ DO:**
+
 ```csharp
 var formType = FormTypeCache.GetFormType(formTypeName); // Cached
 var allForms = FormTypeCache.GetAllFormTypes(); // Cached
 ```
 
 **❌ DON'T:**
+
 ```csharp
 var formType = assembly.GetType(formTypeName); // Slow reflection every time
 ```
@@ -293,7 +360,7 @@ var formType = assembly.GetType(formTypeName); // Slow reflection every time
   run: |
     dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj -- \
       BatchValidateForms null "Office2019Colorful" false "json" > theme-report.json
-    
+
     # Parse JSON and fail if any violations found
     $report = Get-Content theme-report.json | ConvertFrom-Json
     if ($report.summary.failed -gt 0) {
@@ -329,6 +396,7 @@ echo "✅ Theme validation passed."
 **Cause:** Form type name is incorrect or form is in a different namespace.
 
 **Solution:**
+
 ```csharp
 // Use fully qualified name including namespace
 "WileyWidget.WinForms.Forms.AccountsForm" // ✅ Correct
@@ -376,7 +444,7 @@ public void ValidateFormTheme_ShouldPass_WhenNoManualColors()
         "Office2019Colorful",
         "json"
     );
-    
+
     var json = JsonDocument.Parse(result);
     Assert.True(json.RootElement.GetProperty("passed").GetBoolean());
 }
@@ -407,7 +475,7 @@ public void ValidateFormTheme_ShouldPass_WhenNoManualColors()
 ### Planned Features
 
 1. **FixManualColorsTool**: Auto-remove manual BackColor/ForeColor assignments with patch output
-2. **ApplyThemeTool**: Programmatically apply SfSkinManager theme to a form
+2. **ApplyThemeTool**: Programmatically apply  skinmanager theme to a form
 3. **RunHeadlessFormTest improvements**: Better error reporting and test script library
 4. **Theme switching validation**: Test form with multiple themes (Office2016, Office2019, etc.)
 5. **Accessibility checker**: Validate WCAG compliance for control colors
@@ -415,6 +483,7 @@ public void ValidateFormTheme_ShouldPass_WhenNoManualColors()
 ### Community Contributions Welcome
 
 See `CONTRIBUTING.md` for guidelines on:
+
 - Adding new validation tools
 - Improving performance
 - Extending theme validation rules
@@ -426,7 +495,7 @@ See `CONTRIBUTING.md` for guidelines on:
 
 - **Documentation:** `.vscode/copilot-instructions.md`, `.vscode/approved-workflow.md`
 - **Issues:** Report bugs or feature requests in GitHub Issues
-- **MCP Server Docs:** https://modelcontextprotocol.io/docs
+- **MCP Server Docs:** <https://modelcontextprotocol.io/docs>
 
 ---
 
