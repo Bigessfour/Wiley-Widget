@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Business.Services;
 
@@ -10,11 +11,14 @@ namespace WileyWidget.Business.Services;
 public class DepartmentExpenseService : IDepartmentExpenseService
 {
     private readonly ILogger<DepartmentExpenseService> _logger;
-    // TODO: Inject QuickBooks service/repository
+    private readonly IQuickBooksService _quickBooksService;
 
-    public DepartmentExpenseService(ILogger<DepartmentExpenseService> logger)
+    public DepartmentExpenseService(
+        ILogger<DepartmentExpenseService> logger,
+        IQuickBooksService quickBooksService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
     }
 
     public async Task<decimal> GetDepartmentExpensesAsync(
@@ -28,19 +32,23 @@ public class DepartmentExpenseService : IDepartmentExpenseService
             _logger.LogInformation("Querying expenses for {Department} from {StartDate} to {EndDate}",
                 departmentName, startDate, endDate);
 
-            // TODO: Query QuickBooks API for department expenses
-            // Example: Filter by account categories or department codes
-            // var qbService = ...; var expenses = await qbService.QueryExpenses(...)
+            // Query QuickBooks API for bills (expenses) filtered by department/class
+            var bills = await _quickBooksService.GetBillsAsync();
 
-            // Stub implementation: return sample data
-            return departmentName switch
-            {
-                "Water" => 45000m,
-                "Sewer" => 68000m,
-                "Trash" => 28000m,
-                "Apartments" => 95000m,
-                _ => 0m
-            };
+            // Filter bills by date range and department
+            // TODO: Implement department filtering once ClassRef property is confirmed
+            var departmentBills = bills.Where(bill =>
+                bill.TxnDate >= startDate &&
+                bill.TxnDate <= endDate);
+                // bill.ClassRef?.Name == departmentName); // Commented out until ClassRef property confirmed
+
+            // Sum the total amounts
+            var totalExpenses = departmentBills.Sum(bill => (decimal)bill.TotalAmt);
+
+            _logger.LogInformation("Found {BillCount} bills for department {Department}, total expenses: {Total}",
+                departmentBills.Count(), departmentName, totalExpenses);
+
+            return totalExpenses;
         }
         catch (Exception ex)
         {

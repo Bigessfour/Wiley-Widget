@@ -19,6 +19,9 @@ namespace WileyWidget.Services
     /// Service for importing budget and account data from CSV and Excel files
     /// Uses CsvHelper for CSV parsing and ExcelDataReader for Excel files
     /// </summary>
+    /// <summary>
+    /// Represents a class for csvexcelimportservice.
+    /// </summary>
     public class CsvExcelImportService
     {
         private readonly ILogger<CsvExcelImportService> _logger;
@@ -186,7 +189,7 @@ namespace WileyWidget.Services
                                 Description = description,
                                 Amount = amount,
                                 TransactionDate = transactionDate,
-                                Type = typeStr.ToLower().Contains("credit") ? "Credit" : "Debit",
+                                Type = typeStr.Contains("credit", StringComparison.OrdinalIgnoreCase) ? "Credit" : "Debit",
                                 BudgetEntryId = budgetEntryId,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
@@ -362,11 +365,23 @@ namespace WileyWidget.Services
         // Import DTOs
         private class TransactionImportRow
         {
+            /// <summary>
+            /// Gets or sets the rownumber.
+            /// </summary>
+            /// <summary>
+            /// Gets or sets the rownumber.
+            /// </summary>
             public int RowNumber { get; set; }
             public string? Description { get; set; }
+            /// <summary>
+            /// Gets or sets the amount.
+            /// </summary>
             public decimal Amount { get; set; }
             public DateTime? Date { get; set; }
             public string? Type { get; set; }
+            /// <summary>
+            /// Gets or sets the budgetentryid.
+            /// </summary>
             public int BudgetEntryId { get; set; }
         }
 
@@ -375,9 +390,21 @@ namespace WileyWidget.Services
             public int RowNumber { get; set; }
             public string? AccountNumber { get; set; }
             public string? Description { get; set; }
+            /// <summary>
+            /// Gets or sets the budgetedamount.
+            /// </summary>
             public decimal BudgetedAmount { get; set; }
+            /// <summary>
+            /// Gets or sets the actualamount.
+            /// </summary>
             public decimal ActualAmount { get; set; }
+            /// <summary>
+            /// Gets or sets the fiscalyear.
+            /// </summary>
             public int FiscalYear { get; set; }
+            /// <summary>
+            /// Gets or sets the departmentid.
+            /// </summary>
             public int DepartmentId { get; set; }
             public string? FundType { get; set; }
         }

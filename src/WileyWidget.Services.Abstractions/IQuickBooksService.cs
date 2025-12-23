@@ -25,6 +25,7 @@ namespace WileyWidget.Services.Abstractions
 
         System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null);
         System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync();
+        System.Threading.Tasks.Task<List<Bill>> GetBillsAsync();
         System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null);
         System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync();
         System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);

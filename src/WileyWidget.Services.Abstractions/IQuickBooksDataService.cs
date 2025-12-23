@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Intuit.Ipp.Data;
 
-namespace WileyWidget.Services
+namespace WileyWidget.Services.Abstractions
 {
     /// <summary>
     /// Abstraction over Intuit DataService used by QuickBooksService to enable test doubles.
@@ -11,6 +11,7 @@ namespace WileyWidget.Services
     {
         List<Customer> FindCustomers(int startPosition = 1, int pageSize = 100);
         List<Invoice> FindInvoices(int startPosition = 1, int pageSize = 100);
+        List<Bill> FindBills(int startPosition = 1, int pageSize = 100);
         List<Account> FindAccounts(int startPosition = 1, int pageSize = 100);
         List<JournalEntry> FindJournalEntries(DateTime startDate, DateTime endDate);
         // Support for QuickBooks Budget entities (some SDKs expose Budget; adapt as needed)

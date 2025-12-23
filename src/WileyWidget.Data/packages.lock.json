@@ -1131,7 +1131,8 @@
           "Serilog.Enrichers.Thread": "[4.0.0, )",
           "Serilog.Sinks.Async": "[2.1.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
-          "WileyWidget.Models": "[1.0.0, )"
+          "WileyWidget.Models": "[1.0.0, )",
+          "WileyWidget.Services.Abstractions": "[1.0.0, )"
         }
       },
       "wileywidget.models": {

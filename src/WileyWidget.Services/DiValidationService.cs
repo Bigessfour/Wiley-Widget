@@ -18,6 +18,9 @@ namespace WileyWidget.Services
     ///
     /// Reference: https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines
     /// </summary>
+    /// <summary>
+    /// Represents a class for divalidationservice.
+    /// </summary>
     public class DiValidationService : IDiValidationService
     {
         private readonly IServiceProvider _serviceProvider;
@@ -59,6 +62,11 @@ namespace WileyWidget.Services
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+        /// <summary>
+        /// Performs validateregistrations. Parameters: null, false.
+        /// </summary>
+        /// <param name="null">The null.</param>
+        /// <param name="false">The false.</param>
 
         public DiValidationReport ValidateRegistrations(
             IEnumerable<Assembly>? assembliesToScan = null,
@@ -129,6 +137,9 @@ namespace WileyWidget.Services
 
             return report;
         }
+        /// <summary>
+        /// Performs validatecoreservices.
+        /// </summary>
 
         public bool ValidateCoreServices()
         {
@@ -169,6 +180,12 @@ namespace WileyWidget.Services
                 .Select(t => t.FullName ?? t.Name)
                 .OrderBy(name => name);
         }
+        /// <summary>
+        /// Performs validateservicecategory. Parameters: serviceProvider, serviceTypes, categoryName.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <param name="serviceTypes">The serviceTypes.</param>
+        /// <param name="categoryName">The categoryName.</param>
 
         public DiValidationResult ValidateServiceCategory(
             IServiceProvider serviceProvider,
@@ -353,9 +370,9 @@ namespace WileyWidget.Services
                 : $"{serviceName}Impl";
 
             // Determine likely lifetime
-            string lifetime = serviceName.Contains("Repository") || serviceName.Contains("DbContext")
+            string lifetime = serviceName.Contains("Repository", StringComparison.Ordinal) || serviceName.Contains("DbContext", StringComparison.Ordinal)
                 ? "Scoped"
-                : serviceName.Contains("Service") || serviceName.Contains("Client")
+                : serviceName.Contains("Service", StringComparison.Ordinal) || serviceName.Contains("Client", StringComparison.Ordinal)
                     ? "Singleton"
                     : "Transient";
 

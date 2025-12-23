@@ -285,6 +285,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     /// </summary>
     protected override void OnViewModelResolved(DepartmentSummaryViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes
@@ -540,7 +541,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     {
         try
         {
-            // Theme is applied automatically by SfSkinManager cascade from parent form
+            // Theme is applied automatically by SkinManager cascade from parent form
             // No manual color assignments needed
             ThemeManager.ApplyThemeToControl(this);
         }
