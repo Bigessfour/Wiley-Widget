@@ -48,7 +48,7 @@ namespace WileyWidget.Integration.Tests.Postgres
                 cmd.CommandText = "SELECT COUNT(*) FROM test_items;";
                 var result = await cmd.ExecuteScalarAsync();
                 Assert.NotNull(result);
-                var count = Convert.ToInt64(result);
+                var count = Convert.ToInt64(result.ToString(), System.Globalization.CultureInfo.InvariantCulture);
                 Assert.Equal(1, count);
             }
 
@@ -64,7 +64,7 @@ namespace WileyWidget.Integration.Tests.Postgres
                 cmd.CommandText = "SELECT COUNT(*) FROM test_items;";
                 var result = await cmd.ExecuteScalarAsync();
                 Assert.NotNull(result);
-                var count = Convert.ToInt64(result);
+                var count = Convert.ToInt64(result.ToString(), System.Globalization.CultureInfo.InvariantCulture);
                 Assert.Equal(0, count);
             }
         }

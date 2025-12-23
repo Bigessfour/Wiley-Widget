@@ -35,7 +35,7 @@ namespace WileyWidget.Integration.Tests.Postgres
                 cmd.CommandText = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND lower(table_name)='budgetentries';";
                 var result = await cmd.ExecuteScalarAsync();
                 Assert.NotNull(result);
-                var count = Convert.ToInt64(result);
+                var count = Convert.ToInt64(result.ToString(), System.Globalization.CultureInfo.InvariantCulture);
                 Assert.True(count > 0, "BudgetEntries table should exist after applying migrations");
             }
 
