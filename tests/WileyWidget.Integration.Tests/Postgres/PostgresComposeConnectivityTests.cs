@@ -46,7 +46,9 @@ namespace WileyWidget.Integration.Tests.Postgres
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT COUNT(*) FROM test_items;";
-                var count = (long)await cmd.ExecuteScalarAsync();
+                var result = await cmd.ExecuteScalarAsync();
+                Assert.NotNull(result);
+                var count = Convert.ToInt64(result);
                 Assert.Equal(1, count);
             }
 
@@ -60,7 +62,9 @@ namespace WileyWidget.Integration.Tests.Postgres
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT COUNT(*) FROM test_items;";
-                var count = (long)await cmd.ExecuteScalarAsync();
+                var result = await cmd.ExecuteScalarAsync();
+                Assert.NotNull(result);
+                var count = Convert.ToInt64(result);
                 Assert.Equal(0, count);
             }
         }

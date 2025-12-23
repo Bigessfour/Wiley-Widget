@@ -30,17 +30,21 @@ namespace WileyWidget.Integration.Tests.Infrastructure
                     password = GenerateSecureTestPassword();
                 }
 
+#pragma warning disable CA2000 // Testcontainers builder owns and disposes the configuration object
+                var pgConfig = new PostgreSqlTestcontainerConfiguration
+                {
+                    Database = dbName,
+                    Username = user,
+                    Password = password
+                };
+
                 var container = new TestcontainersBuilder<PostgreSqlTestcontainer>()
-                    .WithDatabase(new PostgreSqlTestcontainerConfiguration
-                    {
-                        Database = dbName,
-                        Username = user,
-                        Password = password
-                    })
+                    .WithDatabase(pgConfig)
                     .WithImage("postgres:15-alpine")
                     .WithCleanUp(true)
                     .WithAutoRemove(true)
                     .Build();
+#pragma warning restore CA2000
 
                 await container.StartAsync();
                 Container = container;
