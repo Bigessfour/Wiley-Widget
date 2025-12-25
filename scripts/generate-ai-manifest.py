@@ -180,7 +180,10 @@ class AIManifestGenerator:
         for pattern in patterns:
             match = re.search(pattern, remote_url, re.IGNORECASE)
             if match:
-                return match.group(1).rstrip(".git")
+                owner = match.group(1)
+                # Remove trailing .git only when it is a suffix (avoid rstrip side-effects)
+                owner = re.sub(r"\.git$", "", owner, flags=re.IGNORECASE)
+                return owner
         return "unknown/unknown"
 
     def _get_file_hash_and_info(self, file_path: Path) -> Dict[str, Any]:
