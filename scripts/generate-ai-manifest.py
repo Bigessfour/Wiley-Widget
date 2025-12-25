@@ -47,6 +47,14 @@ class AIManifestGenerator:
         self.exclude_patterns = self._compile_patterns()
         self.focus_extensions = set(self.config.get("include_only_extensions", []))
 
+        # Compile must-include patterns (README, LICENSE, appsettings, Directory.Build.props, etc.)
+        self.must_include_patterns: List[re.Pattern[str]] = []
+        for pattern in self.config.get("must_include_patterns", []):
+            try:
+                self.must_include_patterns.append(re.compile(pattern, re.IGNORECASE))
+            except re.error as e:
+                print(f"Warning: Invalid must_include regex '{pattern}': {e}", file=sys.stderr)
+
         # Max files logic: support 'max_files' and legacy 'max_files_in_manifest'.
         # If neither key is present, default to a safe limit (800). An explicit
         # null/None value in the config means unlimited.
@@ -65,7 +73,9 @@ class AIManifestGenerator:
 
         self.emit_full_tree = bool(self.config.get("emit_full_tree", True))
         self.tree_max_depth = int(self.config.get("tree_max_depth", 4))
-        self.max_tree_entries_per_dir = int(self.config.get("max_tree_entries_per_dir", 50))
+        self.max_tree_entries_per_dir = int(
+            self.config.get("max_tree_entries_per_dir", 50)
+        )
 
         # Populated during scanning
         self._included_paths: List[Path] = []
@@ -78,6 +88,18 @@ class AIManifestGenerator:
             "exclude_patterns": [],
             "include_only_extensions": [],
             "focus_mode": False,
+            # Files and path patterns to always include (regex, case-insensitive).
+            # These ensure README, LICENSE, appsettings, Directory.Build.props, and
+            # important maintenance scripts are always captured even when focus_mode
+            # is enabled or broad exclude patterns (e.g., '\\.(json)$') are present.
+            "must_include_patterns": [
+                "(^|/)readme(\\..*)?$",
+                "(^|/)license(\\..*)?$",
+                "(^|/)copying(\\..*)?$",
+                "(^|/)appsettings(\\..*)?\\.json$",
+                "(^|/)directory\\.build\\.props$",
+                "(^|/)scripts/.*sync-rules-to-vscode\\.ps1$"
+            ],
         }
 
         if not config_path.exists():
@@ -122,6 +144,11 @@ class AIManifestGenerator:
                     return True
                 return False
             return True
+
+        # Force-include any path matching must_include_patterns (README, LICENSE, appsettings, etc.)
+        for pattern in getattr(self, "must_include_patterns", []):
+            if pattern.search(path_str):
+                return True
 
         # Exclude by pattern
         for pattern in self.exclude_patterns:
@@ -246,6 +273,7 @@ class AIManifestGenerator:
     def _determine_category(self, file_path: Path, relative_path: Path) -> str:
         path_str = str(relative_path).lower()
         suffix = file_path.suffix.lower()
+        name = file_path.name.lower()
 
         if "test" in path_str or "tests" in relative_path.parts:
             return "test"
@@ -259,7 +287,6 @@ class AIManifestGenerator:
             ".yml",
             ".xml",
             ".config",
-            ".csproj",
             ".props",
             ".targets",
         }:
@@ -275,6 +302,13 @@ class AIManifestGenerator:
             ".ico",
         }:
             return "assets"
+        # New categories for key project files
+        if any(word in path_str for word in ["license", "copying", "copyright"]) or any(name.startswith(word) for word in ["license", "copying"]):
+            return "license"
+        if suffix == ".sln":
+            return "solution"
+        if suffix == ".csproj":
+            return "project"
         return "unknown"
 
     def _scan_files(self) -> List[Dict[str, Any]]:
@@ -304,7 +338,9 @@ class AIManifestGenerator:
                 candidates.append(p)
 
         # Deduplicate and sort for deterministic ordering
-        unique_candidates = sorted({p for p in candidates}, key=lambda p: str(p).lower())
+        unique_candidates = sorted(
+            {p for p in candidates}, key=lambda p: str(p).lower()
+        )
 
         for file_path in unique_candidates:
             scanned += 1
@@ -404,17 +440,35 @@ class AIManifestGenerator:
             "languages": self._languages,
         }
 
-    def _detect_architecture(self) -> Dict[str, List[Dict[str, Any]]]:
-        arch: Dict[str, List[Dict[str, Any]]] = {
-            "views": [],
-            "viewmodels": [],
-            "models": [],
-            "services": [],
-            "repositories": [],
-            "converters": [],
-            "behaviors": [],
-            "modules": [],
-        }
+    def _detect_license(self) -> Dict[str, Any]:
+        """Detect license information from license files."""
+        license_files = [p for p in self._included_paths if self._determine_category(p, p.relative_to(self.repo_root)) == "license"]
+        if not license_files:
+            return {"type": "Unknown", "file": None, "detected": False}
+        
+        # Take the first license file
+        license_file = license_files[0]
+        relative_path = str(license_file.relative_to(self.repo_root))
+        
+        try:
+            content = license_file.read_text(encoding="utf-8", errors="ignore").lower()
+            if "mit" in content:
+                license_type = "MIT"
+            elif "apache" in content and "2.0" in content:
+                license_type = "Apache-2.0"
+            elif "gpl" in content:
+                if "3" in content:
+                    license_type = "GPL-3.0"
+                else:
+                    license_type = "GPL"
+            elif "bsd" in content:
+                license_type = "BSD"
+            else:
+                license_type = "Custom"
+        except Exception:
+            license_type = "Unknown"
+        
+        return {"type": license_type, "file": relative_path, "detected": True}
 
         patterns = {
             "viewmodels": re.compile(r"class\s+(\w*ViewModel)\b"),
@@ -509,7 +563,7 @@ class AIManifestGenerator:
                 "/main/schemas/ai-manifest-schema.json"
             ),
             "repository": repo_info,
-            "license": {"type": "Unknown", "file": None, "detected": False},
+            "license": self._detect_license(),
             "summary": summary,
             "metrics": {
                 "total_lines_of_code": self._total_loc,
@@ -544,10 +598,35 @@ class AIManifestGenerator:
                 "nuget_packages": {},
                 "top_dependencies": [],
             },
-            "folder_tree": self._generate_folder_tree() if self.config.get("emit_full_tree", True) else {},
+            "folder_tree": (
+                self._generate_folder_tree()
+                if self.config.get("emit_full_tree", True)
+                else {}
+            ),
             "search_index": [],
             "files": files,
         }
+
+        # License detection: look for common license file names among included files
+        license_candidate = None
+        for f in files:
+            if re.search(r'(^|/)(license)(\..*)?$', f["metadata"]["path"], re.IGNORECASE):
+                license_candidate = f["metadata"]["path"]
+                break
+        if license_candidate:
+            try:
+                license_text = (self.repo_root / license_candidate).read_text(encoding="utf-8", errors="ignore").lower()
+                if "mit license" in license_text or "permission is hereby granted" in license_text:
+                    license_type = "MIT"
+                elif "apache license" in license_text or "apache 2.0" in license_text or "apache license, version 2" in license_text:
+                    license_type = "Apache-2.0"
+                elif "gnu general public license" in license_text or "gpl" in license_text:
+                    license_type = "GPL"
+                else:
+                    license_type = "Unknown"
+                manifest["license"] = {"type": license_type, "file": license_candidate, "detected": True}
+            except Exception:
+                pass
 
         return manifest
 
@@ -565,7 +644,9 @@ class AIManifestGenerator:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
-        print(f"Manifest generated successfully: {output_path} ({self._total_files} files)")
+        print(
+            f"Manifest generated successfully: {output_path} ({self._total_files} files)"
+        )
 
 
 def main():

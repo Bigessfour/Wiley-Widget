@@ -20,6 +20,16 @@
   "_comment_pagination": "Limit files in manifest to prevent oversized outputs",
   "max_files_in_manifest": null,
 
+  "_comment_must_include": "Important files to always include (regex patterns matched on path, case-insensitive)",
+  "must_include_patterns": [
+    "(^|/)readme(\\..*)?$",
+    "(^|/)license(\\..*)?$",
+    "(^|/)copying(\\..*)?$",
+    "(^|/)appsettings(\\..*)?\\.json$",
+    "(^|/)directory\\.build\\.props$",
+    "(^|/)scripts/.*sync-rules-to-vscode\\.ps1$"
+  ],
+
   "_comment_git": "Git history integration",
   "include_git_history": true,
 

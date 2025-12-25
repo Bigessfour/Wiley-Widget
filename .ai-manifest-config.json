@@ -1,5 +1,6 @@
 {
   "exclude_patterns": [
+    "(^|.*/)(bin|obj)/",
     "^docs/",
     "^scripts/",
     "^tools/",
@@ -27,6 +28,14 @@
   ],
   "focus_mode": true,
   "include_only_extensions": [".cs", ".csproj", ".sln", ".xaml"],
+  "must_include_patterns": [
+    "(^|/)readme(\\..*)?$",
+    "(^|/)license(\\..*)?$",
+    "(^|/)copying(\\..*)?$",
+    "(^|/)appsettings(\\..*)?\\.json$",
+    "(^|/)directory\\.build\\.props$",
+    "(^|/)scripts/.*sync-rules-to-vscode\\.ps1$"
+  ],
   "max_files": 700,
   "emit_full_tree": false,
   "tree_max_depth": 4,
