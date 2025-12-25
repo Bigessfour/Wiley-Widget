@@ -163,6 +163,9 @@ yarn-error.log*
 *.pdb
 *.dll
 *.exe
+# If you must keep deliberate binaries (DLL/PDB) in this repo, add explicit negation
+# rules AFTER these patterns, for example:
+#   !/relative/path/to/deliberate.dll
 !scripts/*.exe
 get-pip.py
 
@@ -332,7 +335,7 @@ publish/win-x64/
 %USERPROFILE%/.nuget/packages/
 %USERPROFILE%\357\201\234.nuget\357\201\234packages/
 
-# Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
+# Prevent ThemeService reintroduction - theme managed globally by  skinmanager
 **/ThemeService.cs
 
 # ==============================================================================
