@@ -45,9 +45,31 @@ class AIManifestGenerator:
         self.repo_root = repo_root.resolve()
         self.config = self._load_config()
         self.exclude_patterns = self._compile_patterns()
-        self.focus_extensions = set(
-            self.config.get("include_only_extensions", []),
-        )
+        self.focus_extensions = set(self.config.get("include_only_extensions", []))
+
+        # Max files logic: support 'max_files' and legacy 'max_files_in_manifest'.
+        # If neither key is present, default to a safe limit (800). An explicit
+        # null/None value in the config means unlimited.
+        if "max_files" in self.config:
+            self.max_files = self.config.get("max_files")
+        elif "max_files_in_manifest" in self.config:
+            self.max_files = self.config.get("max_files_in_manifest")
+        else:
+            self.max_files = 800
+
+        if self.max_files is not None:
+            try:
+                self.max_files = int(self.max_files)
+            except Exception:
+                self.max_files = None
+
+        self.emit_full_tree = bool(self.config.get("emit_full_tree", True))
+        self.tree_max_depth = int(self.config.get("tree_max_depth", 4))
+        self.max_tree_entries_per_dir = int(self.config.get("max_tree_entries_per_dir", 50))
+
+        # Populated during scanning
+        self._included_paths: List[Path] = []
+        self._files_truncated = False
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration — use defaults if the config file is missing."""
@@ -59,9 +81,7 @@ class AIManifestGenerator:
         }
 
         if not config_path.exists():
-            msg = (
-                f"Warning: {config_path} not found; using defaults."
-            )
+            msg = f"Warning: {config_path} not found; using defaults."
             print(msg, file=sys.stderr)
             return default_config
 
@@ -94,8 +114,13 @@ class AIManifestGenerator:
         if "appdata" in path_str:
             return False
 
-        # Force-include anything under 'tests' or containing 'test'
+        # Force-include anything under 'tests' or containing 'test' — BUT when focus_mode
+        # is enabled, only include tests whose file extensions are within the focus set.
         if "tests" in parts_lower or "test" in path_str:
+            if self.config.get("focus_mode", False) and self.focus_extensions:
+                if file_path.suffix.lower() in self.focus_extensions:
+                    return True
+                return False
             return True
 
         # Exclude by pattern
@@ -174,8 +199,7 @@ class AIManifestGenerator:
             is_binary = True
 
         mime_type = (
-            mimetypes.guess_type(str(file_path))[0]
-            or "application/octet-stream"
+            mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
         )
 
         return {
@@ -259,17 +283,57 @@ class AIManifestGenerator:
 
         repo_info = self._get_repo_info()
 
-        count = 0
-        for file_path in self.repo_root.rglob("*"):
-            count += 1
-            if count % 200 == 0:
+        # Enforce max files and focused scanning for performance and predictable outputs
+        self._included_paths = []
+        self._files_truncated = False
+        scanned = 0
+
+        # Build candidate list: if focus_mode is enabled, only search files with
+        # allowed extensions which is much faster for large repositories.
+        candidates: List[Path] = []
+        if self.config.get("focus_mode", False) and self.focus_extensions:
+            for ext in sorted(self.focus_extensions):
+                for p in self.repo_root.rglob(f"*{ext}"):
+                    if p.is_file():
+                        candidates.append(p)
+        else:
+            for p in self.repo_root.rglob("*"):
+                candidates.append(p)
+
+        # Deduplicate and sort for deterministic ordering
+        unique_candidates = sorted({p for p in candidates}, key=lambda p: str(p).lower())
+
+        for file_path in unique_candidates:
+            scanned += 1
+            if scanned % 200 == 0:
                 # Progress update to stderr so long runs show activity
-                print(f"Scanned {count} filesystem entries... (included {len(files)} files so far)", file=sys.stderr, flush=True)
+                print(
+                    f"Scanned {scanned} filesystem entries... (included {len(files)} files so far)",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
             if not file_path.is_file():
                 continue
+
+            # Skip by _should_include_file which handles path-based excludes and test inclusion rules
             if not self._should_include_file(file_path):
                 continue
+
+            # If focus_mode is on, ensure the file extension is in the focus set
+            if self.config.get("focus_mode", False) and self.focus_extensions:
+                if file_path.suffix.lower() not in self.focus_extensions:
+                    continue
+
+            # Enforce max_files limit if configured (None = unlimited)
+            if self.max_files is not None and len(files) >= self.max_files:
+                self._files_truncated = True
+                print(
+                    f"Reached max_files limit ({self.max_files}); stopping scan. Set 'max_files' or 'max_files_in_manifest' in config to adjust.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                break
 
             relative_path = file_path.relative_to(self.repo_root)
             stat = file_path.stat()
@@ -289,8 +353,7 @@ class AIManifestGenerator:
             owner_repo = repo_info["owner_repo"]
             branch = repo_info["branch"]
             blob_url = (
-                f"https://github.com/{owner_repo}/blob/{branch}/"
-                f"{relative_path}"
+                f"https://github.com/{owner_repo}/blob/{branch}/" f"{relative_path}"
             )
             raw_url = (
                 f"https://raw.githubusercontent.com/{owner_repo}/"
@@ -318,6 +381,7 @@ class AIManifestGenerator:
                 },
             }
             files.append(file_entry)
+            self._included_paths.append(file_path)
 
         self._total_files = len(files)
         self._total_size = total_size
@@ -331,7 +395,7 @@ class AIManifestGenerator:
         return {
             "total_files": self._total_files,
             "files_in_manifest": self._total_files,
-            "files_truncated": False,
+            "files_truncated": bool(getattr(self, "_files_truncated", False)),
             "total_size": self._total_size,
             "categories": self._categories,
             "languages": self._languages,
@@ -372,8 +436,8 @@ class AIManifestGenerator:
             "modules": re.compile(r"class\s+(\w*Module)\b"),
         }
 
-        for file_path in self.repo_root.rglob("*.cs"):
-            if not self._should_include_file(file_path):
+        for file_path in getattr(self, "_included_paths", []):
+            if file_path.suffix.lower() != ".cs":
                 continue
             try:
                 text = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -392,14 +456,10 @@ class AIManifestGenerator:
                         "path": relative,
                     }
                     if key == "views":
-                        xaml_path = file_path.with_name(
-                            file_path.stem + ".xaml"
-                        )
+                        xaml_path = file_path.with_name(file_path.stem + ".xaml")
                         related: List[str] = []
                         if xaml_path.exists():
-                            xaml_rel = str(
-                                xaml_path.relative_to(self.repo_root)
-                            )
+                            xaml_rel = str(xaml_path.relative_to(self.repo_root))
                             related.append(xaml_rel)
                         entry["related_files"] = related
                     arch[key].append(entry)
@@ -421,10 +481,7 @@ class AIManifestGenerator:
                         children.append(build_tree(child))
                     elif child.is_dir():
                         subtree = build_tree(child)
-                        if (
-                            subtree["children"]
-                            or self._should_include_file(child)
-                        ):
+                        if subtree["children"] or self._should_include_file(child):
                             children.append(subtree)
             except PermissionError:
                 pass
@@ -484,7 +541,7 @@ class AIManifestGenerator:
                 "nuget_packages": {},
                 "top_dependencies": [],
             },
-            "folder_tree": self._generate_folder_tree(),
+            "folder_tree": self._generate_folder_tree() if self.config.get("emit_full_tree", True) else {},
             "search_index": [],
             "files": files,
         }
@@ -495,13 +552,17 @@ class AIManifestGenerator:
         if output_path is None:
             output_path = self.repo_root / "ai-fetchable-manifest.json"
 
-        print(f"Starting manifest generation for {self.repo_root} (focus_mode={self.config.get('focus_mode', False)})", file=sys.stderr, flush=True)
+        print(
+            f"Starting manifest generation for {self.repo_root} (focus_mode={self.config.get('focus_mode', False)}, max_files={self.max_files}, emit_full_tree={self.config.get('emit_full_tree', True)})",
+            file=sys.stderr,
+            flush=True,
+        )
         manifest = self.generate_manifest()
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
-        print(f"Manifest generated successfully: {output_path}")
+        print(f"Manifest generated successfully: {output_path} ({self._total_files} files)")
 
 
 def main():
@@ -511,6 +572,7 @@ def main():
         generator.save_manifest()
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
