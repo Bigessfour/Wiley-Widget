@@ -1,4 +1,11 @@
-name: Integration Tests
+# Integration Tests
+
+# Restrict top-level permissions (do not use write-all)
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  security-events: read
 
 on:
   pull_request:
@@ -6,9 +13,9 @@ on:
       - main
       - develop
     paths:
-      - 'tests/WileyWidget.Integration.Tests/**'
-      - 'src/**'
-      - 'Directory.Packages.props'
+      - "tests/WileyWidget.Integration.Tests/**"
+      - "src/**"
+      - "Directory.Packages.props"
   push:
     branches:
       - main
@@ -62,9 +69,32 @@ jobs:
 
       - name: Run integration tests
         run: |
-          dotnet test tests/WileyWidget.Integration.Tests/WileyWidget.Integration.Tests.csproj --configuration Release --logger "trx;LogFileName=integration-tests.trx" --results-directory ./TestResults/Integration -v minimal
+          dotnet test tests/WileyWidget.Integration.Tests/WileyWidget.Integration.Tests.csproj --configuration Release --logger "trx;LogFileName=integration-tests.trx" --results-directory ./TestResults/Integration --collect:"XPlat Code Coverage" -v minimal
         env:
-          DOTNET_TEST_USE_POLLING_FILE_WATCHER: '1'
+          DOTNET_TEST_USE_POLLING_FILE_WATCHER: "1"
+
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.*
+
+      - name: Generate coverage report
+        shell: bash
+        run: |
+          reportgenerator -reports:TestResults/Integration/*/coverage.cobertura.xml -targetdir:integration-coverage-report -reporttypes:Html
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage-report
+          path: integration-coverage-report
+          retention-days: 7
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage
+          path: TestResults/Integration/*/coverage.cobertura.xml
 
       - name: Upload test results
         if: always()

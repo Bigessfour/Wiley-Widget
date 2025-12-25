@@ -54,13 +54,13 @@ jobs:
       - name: Run unit tests - Services
         shell: pwsh
         run: |
-          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --logger "trx;LogFileName=services-tests.trx" --results-directory ./TestResults/Services
+          dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --logger "trx;LogFileName=services-tests.trx" --results-directory ./TestResults/Services --collect:"XPlat Code Coverage" --settings tests/.runsettings
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Run unit tests - WinForms
         shell: pwsh
         run: |
-          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --logger "trx;LogFileName=winforms-tests.trx" --results-directory ./TestResults/WinForms
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --logger "trx;LogFileName=winforms-tests.trx" --results-directory ./TestResults/WinForms --collect:"XPlat Code Coverage" --settings tests/.runsettings
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Upload test results
@@ -69,6 +69,22 @@ jobs:
         with:
           name: basic-ci-test-results
           path: TestResults
+          retention-days: 7
+
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.*
+
+      - name: Generate coverage report
+        shell: pwsh
+        run: |
+          reportgenerator -reports:TestResults/**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
           retention-days: 7
 
       - name: Announce success

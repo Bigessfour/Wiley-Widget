@@ -13,6 +13,7 @@ namespace WileyWidget.Integration.Tests.Infrastructure
         public PostgreSqlTestcontainer? Container { get; private set; }
         public string ConnectionString => Container?.ConnectionString ?? string.Empty;
         public bool DockerAvailable { get; private set; } = true;
+        public string Password { get; private set; } = string.Empty;
 
         public async Task InitializeAsync()
         {
@@ -29,6 +30,9 @@ namespace WileyWidget.Integration.Tests.Infrastructure
                     // Use cryptographically-secure randomness to avoid static prefixes that can trigger secrets scanners.
                     password = GenerateSecureTestPassword();
                 }
+
+                // Record the final password used for this fixture (either provided via env var or generated securely)
+                Password = password ?? string.Empty;
 
 #pragma warning disable CA2000 // Testcontainers builder owns and disposes the configuration object
                 var pgConfig = new PostgreSqlTestcontainerConfiguration
