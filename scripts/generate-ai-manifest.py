@@ -2,242 +2,332 @@
 """
 AI Fetchable Manifest Generator
 
-Generates ai-fetchable-manifest.json for AI agent visibility into the repository.
-Uses .ai-manifest-config.json for file inclusion/exclusion rules.
+Generates ai-fetchable-manifest.json so AI agents can inspect the repository.
+Uses `.ai-manifest-config.json` for include/exclude rules, but falls back to
+sensible defaults when that file is missing.
 
-Usage:
-    python scripts/generate-ai-manifest.py
+Changes in this version:
+- GitPython is required for reliable git metadata (no subprocess fallback).
+- If `.ai-manifest-config.json` is missing, safe defaults are used and the
+  manifest will still be generated.
+- Improved detached HEAD handling and untracked-file detection for is_dirty.
+- Added `line_count`, `encoding`, and `is_binary` to file metadata.
+- Added `mime_type` to file metadata.
+- Better file categorization: source_code, test, documentation,
+  configuration, automation, and assets.
+- Expanded language detection map.
+- WinUI-aware architecture detection: views include Page/Window patterns and
+  related `.xaml` files are linked.
+- Approximate `total_lines_of_code` metric is based on source_code files.
 
 Requirements:
-    - Python 3.14+
-    - git (for repository information)
-    - Optional: gitpython for better git integration
+- Python 3.9+
+- git
+- gitpython (pip install gitpython)
 """
 
 import hashlib
 import json
+import mimetypes
 import re
-import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
+from git import Repo
 
 
 class AIManifestGenerator:
     """Generates AI fetchable manifest for repository visibility."""
 
     def __init__(self, repo_root: Path):
-        self.repo_root = repo_root
+        self.repo_root = repo_root.resolve()
         self.config = self._load_config()
         self.exclude_patterns = self._compile_patterns()
-        self.focus_extensions = set(self.config.get("include_only_extensions", []))
+        self.focus_extensions = set(
+            self.config.get("include_only_extensions", []),
+        )
 
     def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from .ai-manifest-config.json."""
+        """Load configuration — use defaults if the config file is missing."""
         config_path = self.repo_root / ".ai-manifest-config.json"
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+        default_config: Dict[str, Any] = {
+            "exclude_patterns": [],
+            "include_only_extensions": [],
+            "focus_mode": False,
+        }
 
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        if not config_path.exists():
+            msg = (
+                f"Warning: {config_path} not found; using defaults."
+            )
+            print(msg, file=sys.stderr)
+            return default_config
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            msg = f"Error loading config: {e}. Using defaults."
+            print(msg, file=sys.stderr)
+            return default_config
 
     def _compile_patterns(self) -> List[re.Pattern[str]]:
-        """Compile regex patterns for file exclusion."""
         patterns = []
         for pattern in self.config.get("exclude_patterns", []):
             try:
-                patterns.append(re.compile(pattern))
+                # Compile with IGNORECASE so patterns match consistently across platforms
+                patterns.append(re.compile(pattern, re.IGNORECASE))
             except re.error as e:
-                print(
-                    f"Warning: Invalid regex pattern '{pattern}': {e}", file=sys.stderr
-                )
+                msg = f"Warning: Invalid regex '{pattern}': {e}"
+                print(msg, file=sys.stderr)
         return patterns
 
     def _should_include_file(self, file_path: Path) -> bool:
-        """Determine if a file should be included in the manifest."""
-        # Check exclude patterns
         relative_path = file_path.relative_to(self.repo_root)
-        path_str = str(relative_path)
+        # Normalize to POSIX-style path for consistent matching on Windows and Unix
+        path_str = relative_path.as_posix().lower()
+        parts_lower = [p.lower() for p in relative_path.parts]
 
+        # Exclude any paths under APPDATA (e.g. '%APPDATA%')
+        if "appdata" in path_str:
+            return False
+
+        # Force-include anything under 'tests' or containing 'test'
+        if "tests" in parts_lower or "test" in path_str:
+            return True
+
+        # Exclude by pattern
         for pattern in self.exclude_patterns:
             if pattern.search(path_str):
                 return False
 
-        # Check focus mode
+        # Focus mode: only specific extensions
         if self.config.get("focus_mode", False):
             if self.focus_extensions:
-                ext = file_path.suffix.lower()
-                if ext not in self.focus_extensions:
+                if file_path.suffix.lower() not in self.focus_extensions:
                     return False
 
         return True
 
     def _get_repo_info(self) -> Dict[str, Any]:
-        """Get repository information using git."""
-        try:
-            # Get remote URL
-            remote_url = subprocess.check_output(
-                ["git", "config", "--get", "remote.origin.url"],
-                cwd=self.repo_root,
-                text=True,
-            ).strip()
+        """Get repository information using GitPython (required)."""
+        repo = Repo(self.repo_root, search_parent_directories=True)
 
-            # Get current branch
-            branch = subprocess.check_output(
-                ["git", "branch", "--show-current"], cwd=self.repo_root, text=True
-            ).strip()
+        remote_url = ""
+        if repo.remotes:
+            if "origin" in repo.remotes:
+                remote_url = repo.remotes.origin.url
+            else:
+                remote_url = next(iter(repo.remotes)).url
 
-            # Get commit hash
-            commit_hash = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=self.repo_root, text=True
-            ).strip()
+        branch = "HEAD"
+        if not repo.head.is_detached:
+            branch = repo.active_branch.name
+        else:
+            branch = f"detached ({repo.head.commit.hexsha[:8]})"
 
-            # Check if dirty
-            status = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=self.repo_root,
-                capture_output=True,
-                text=True,
-            )
-            is_dirty = bool(status.stdout.strip())
+        commit_hash = repo.head.commit.hexsha
+        is_dirty = repo.is_dirty(untracked_files=True)
 
-            # Extract owner/repo from URL
-            owner_repo = self._extract_owner_repo(remote_url)
+        owner_repo = self._extract_owner_repo(remote_url)
 
-            generated_at = datetime.now().isoformat()
-            valid_until = (datetime.now() + timedelta(days=7)).isoformat()
+        generated_at = datetime.now().isoformat()
+        valid_until = (datetime.now() + timedelta(days=7)).isoformat()
 
-            return {
-                "remote_url": remote_url,
-                "owner_repo": owner_repo,
-                "branch": branch,
-                "commit_hash": commit_hash,
-                "is_dirty": is_dirty,
-                "generated_at": generated_at,
-                "valid_until": valid_until,
-            }
-
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to get git info: {e}") from e
+        return {
+            "remote_url": remote_url,
+            "owner_repo": owner_repo,
+            "branch": branch,
+            "commit_hash": commit_hash,
+            "is_dirty": is_dirty,
+            "generated_at": generated_at,
+            "valid_until": valid_until,
+        }
 
     def _extract_owner_repo(self, remote_url: str) -> str:
-        """Extract owner/repo from git remote URL."""
-        # Handle various URL formats
         patterns = [
-            r"github\.com[\/:]([^\/]+\/[^\/\.]+)",
-            r"gitlab\.com[\/:]([^\/]+\/[^\/\.]+)",
+            r"github\.com[/:]([^/]+/[^/\.]+)",
+            r"gitlab\.com[/:]([^/]+/[^/\.]+)",
+            r"bitbucket\.org[/:]([^/]+/[^/\.]+)",
         ]
-
         for pattern in patterns:
             match = re.search(pattern, remote_url, re.IGNORECASE)
             if match:
                 return match.group(1).rstrip(".git")
-
-        # Fallback
         return "unknown/unknown"
 
-    def _calculate_sha256(self, file_path: Path) -> str:
-        """Calculate SHA256 hash of a file."""
-        hash_sha256 = hashlib.sha256()
+    def _get_file_hash_and_info(self, file_path: Path) -> Dict[str, Any]:
         with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_sha256.update(chunk)
-        return hash_sha256.hexdigest()
+            content = f.read()
+            sha256 = hashlib.sha256(content).hexdigest()
+
+        try:
+            text = content.decode("utf-8")
+            line_count = text.count("\n") + (1 if text else 0)
+            encoding = "utf-8"
+            is_binary = False
+        except UnicodeDecodeError:
+            line_count = 0
+            encoding = "binary"
+            is_binary = True
+
+        mime_type = (
+            mimetypes.guess_type(str(file_path))[0]
+            or "application/octet-stream"
+        )
+
+        return {
+            "sha256": sha256,
+            "line_count": line_count,
+            "encoding": encoding,
+            "is_binary": is_binary,
+            "mime_type": mime_type,
+        }
 
     def _detect_language(self, file_path: Path) -> str:
-        """Detect programming language from file extension."""
         ext = file_path.suffix.lower()
         language_map = {
             ".cs": "C#",
             ".xaml": "XAML",
-            ".csproj": "C# Project",
-            ".sln": "Visual Studio Solution",
             ".py": "Python",
             ".js": "JavaScript",
             ".ts": "TypeScript",
+            ".tsx": "TypeScript JSX",
             ".json": "JSON",
-            ".xml": "XML",
+            ".yaml": "YAML",
+            ".yml": "YAML",
             ".md": "Markdown",
-            ".txt": "Text",
+            ".html": "HTML",
+            ".css": "CSS",
+            ".xml": "XML",
             ".ps1": "PowerShell",
+            ".sh": "Shell",
+            ".sql": "SQL",
+            ".csproj": "MSBuild Project",
+            ".sln": "Visual Studio Solution",
+            ".txt": "Text",
+            ".csv": "CSV",
+            ".toml": "TOML",
+            ".dockerfile": "Dockerfile",
+            ".gitignore": "Git Ignore",
         }
-        return language_map.get(ext, "Unknown")
+        default_lang = ext[1:].upper() + " File" if ext else "Unknown"
+        return language_map.get(ext, default_lang)
+
+    def _determine_category(self, file_path: Path, relative_path: Path) -> str:
+        path_str = str(relative_path).lower()
+        suffix = file_path.suffix.lower()
+
+        if "test" in path_str or "tests" in relative_path.parts:
+            return "test"
+        if suffix in {".cs", ".xaml", ".ts", ".tsx", ".js", ".py"}:
+            return "source_code"
+        if suffix in {".md", ".markdown"}:
+            return "documentation"
+        if suffix in {
+            ".json",
+            ".yaml",
+            ".yml",
+            ".xml",
+            ".config",
+            ".csproj",
+            ".props",
+            ".targets",
+        }:
+            return "configuration"
+        if suffix in {".ps1", ".py", ".sh", ".bat", ".cmd"}:
+            return "automation"
+        if suffix in {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".svg",
+            ".ico",
+        }:
+            return "assets"
+        return "unknown"
 
     def _scan_files(self) -> List[Dict[str, Any]]:
-        """Scan repository files and collect metadata."""
         files = []
         total_size = 0
-        categories = {}
-        languages = {}
+        categories: Dict[str, int] = {}
+        languages: Dict[str, int] = {}
+        total_loc = 0
 
-        # Cache repo_info to avoid repeated calls
         repo_info = self._get_repo_info()
 
+        count = 0
         for file_path in self.repo_root.rglob("*"):
+            count += 1
+            if count % 200 == 0:
+                # Progress update to stderr so long runs show activity
+                print(f"Scanned {count} filesystem entries... (included {len(files)} files so far)", file=sys.stderr, flush=True)
+
             if not file_path.is_file():
                 continue
-
             if not self._should_include_file(file_path):
                 continue
 
-            try:
-                stat = file_path.stat()
-                size = stat.st_size
-                last_modified = datetime.fromtimestamp(stat.st_mtime).isoformat()
+            relative_path = file_path.relative_to(self.repo_root)
+            stat = file_path.stat()
+            size = stat.st_size
+            last_modified = datetime.fromtimestamp(stat.st_mtime).isoformat()
 
-                relative_path = file_path.relative_to(self.repo_root)
-                sha256 = self._calculate_sha256(file_path)
-                language = self._detect_language(file_path)
+            file_info = self._get_file_hash_and_info(file_path)
+            language = self._detect_language(file_path)
+            category = self._determine_category(file_path, relative_path)
 
-                # Categorize
-                if file_path.suffix in [".cs", ".xaml", ".py", ".js", ".ts"]:
-                    category = "source_code"
-                elif "test" in str(relative_path).lower():
-                    category = "test"
-                else:
-                    category = "unknown"
+            categories[category] = categories.get(category, 0) + 1
+            languages[language] = languages.get(language, 0) + 1
+            total_size += size
+            if category == "source_code" and not file_info["is_binary"]:
+                total_loc += file_info["line_count"]
 
-                categories[category] = categories.get(category, 0) + 1
-                languages[language] = languages.get(language, 0) + 1
+            owner_repo = repo_info["owner_repo"]
+            branch = repo_info["branch"]
+            blob_url = (
+                f"https://github.com/{owner_repo}/blob/{branch}/"
+                f"{relative_path}"
+            )
+            raw_url = (
+                f"https://raw.githubusercontent.com/{owner_repo}/"
+                f"{branch}/{relative_path}"
+            )
 
-                total_size += size
+            file_entry = {
+                "metadata": {
+                    "path": str(relative_path),
+                    "exists": True,
+                    "size": size,
+                    "last_modified": last_modified,
+                    "language": language,
+                    "line_count": file_info["line_count"],
+                    "encoding": file_info["encoding"],
+                    "is_binary": file_info["is_binary"],
+                    "mime_type": file_info["mime_type"],
+                },
+                "urls": {"blob_url": blob_url, "raw_url": raw_url},
+                "context": {
+                    "category": category,
+                    "tracked": True,
+                    "extension": file_path.suffix,
+                    "sha256": file_info["sha256"],
+                },
+            }
+            files.append(file_entry)
 
-                file_info = {
-                    "metadata": {
-                        "path": str(relative_path),
-                        "exists": True,
-                        "size": size,
-                        "last_modified": last_modified,
-                        "language": language,
-                    },
-                    "urls": {
-                        "blob_url": f"https://github.com/{repo_info['owner_repo']}/blob/{repo_info['branch']}/{relative_path}",
-                        "raw_url": f"https://raw.githubusercontent.com/{repo_info['owner_repo']}/{repo_info['branch']}/{relative_path}",
-                    },
-                    "context": {
-                        "category": category,
-                        "tracked": True,  # Assume tracked for now
-                        "extension": file_path.suffix,
-                        "sha256": sha256,
-                    },
-                }
-
-                files.append(file_info)
-
-            except (OSError, IOError) as e:
-                print(f"Warning: Could not process {file_path}: {e}", file=sys.stderr)
-
-        # Store for summary
         self._total_files = len(files)
         self._total_size = total_size
         self._categories = categories
         self._languages = languages
+        self._total_loc = total_loc
 
         return files
 
     def _generate_summary(self) -> Dict[str, Any]:
-        """Generate summary statistics."""
         return {
             "total_files": self._total_files,
             "files_in_manifest": self._total_files,
@@ -247,30 +337,129 @@ class AIManifestGenerator:
             "languages": self._languages,
         }
 
+    def _detect_architecture(self) -> Dict[str, List[Dict[str, Any]]]:
+        arch: Dict[str, List[Dict[str, Any]]] = {
+            "views": [],
+            "viewmodels": [],
+            "models": [],
+            "services": [],
+            "repositories": [],
+            "converters": [],
+            "behaviors": [],
+            "modules": [],
+        }
+
+        patterns = {
+            "viewmodels": re.compile(r"class\s+(\w*ViewModel)\b"),
+            "views": re.compile(
+                r"class\s+("
+                r"\w*(?:View|Page|Window|Control|UserControl|Form|Panel)"
+                r")\b"
+            ),
+            "models": re.compile(r"class\s+(\w*(?:Model|Dto|Entity))\b"),
+            "services": re.compile(
+                r"interface\s+(I\w*Service)\b|class\s+(\w*Service)\b"
+            ),
+            "repositories": re.compile(
+                r"interface\s+(I\w*Repository)\b|class\s+(\w*Repository)\b"
+            ),
+            "converters": re.compile(
+                r"interface\s+(I\w*Converter)\b|class\s+(\w*Converter)\b"
+            ),
+            "behaviors": re.compile(
+                r"interface\s+(I\w*Behavior)\b|class\s+(\w*Behavior)\b"
+            ),
+            "modules": re.compile(r"class\s+(\w*Module)\b"),
+        }
+
+        for file_path in self.repo_root.rglob("*.cs"):
+            if not self._should_include_file(file_path):
+                continue
+            try:
+                text = file_path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+
+            relative = str(file_path.relative_to(self.repo_root))
+
+            for key, pattern in patterns.items():
+                for match in pattern.finditer(text):
+                    name = match.group(1) or match.group(2)
+                    if not name:
+                        continue
+                    entry: Dict[str, Any] = {
+                        "name": name,
+                        "path": relative,
+                    }
+                    if key == "views":
+                        xaml_path = file_path.with_name(
+                            file_path.stem + ".xaml"
+                        )
+                        related: List[str] = []
+                        if xaml_path.exists():
+                            xaml_rel = str(
+                                xaml_path.relative_to(self.repo_root)
+                            )
+                            related.append(xaml_rel)
+                        entry["related_files"] = related
+                    arch[key].append(entry)
+
+        return arch
+
+    def _generate_folder_tree(self) -> Dict[str, Any]:
+        def build_tree(path: Path) -> Dict[str, Any]:
+            if path.is_file():
+                return {
+                    "name": path.name,
+                    "type": "file",
+                    "path": str(path.relative_to(self.repo_root)),
+                }
+            children = []
+            try:
+                for child in sorted(path.iterdir()):
+                    if child.is_file() and self._should_include_file(child):
+                        children.append(build_tree(child))
+                    elif child.is_dir():
+                        subtree = build_tree(child)
+                        if (
+                            subtree["children"]
+                            or self._should_include_file(child)
+                        ):
+                            children.append(subtree)
+            except PermissionError:
+                pass
+            return {
+                "name": path.name,
+                "type": "directory",
+                "path": str(path.relative_to(self.repo_root)),
+                "children": children,
+            }
+
+        return build_tree(self.repo_root)
+
     def generate_manifest(self) -> Dict[str, Any]:
-        """Generate the complete manifest."""
         repo_info = self._get_repo_info()
         files = self._scan_files()
         summary = self._generate_summary()
+        arch = self._detect_architecture()
 
         manifest = {
-            "$schema": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/schemas/ai-manifest-schema.json",
+            "$schema": (
+                "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget"
+                "/main/schemas/ai-manifest-schema.json"
+            ),
             "repository": repo_info,
-            "license": {
-                "type": "Unknown",
-                "file": None,
-                "detected": False,
-            },
+            "license": {"type": "Unknown", "file": None, "detected": False},
             "summary": summary,
             "metrics": {
-                "total_lines_of_code": 0,  # Placeholder
+                "total_lines_of_code": self._total_loc,
                 "total_code_lines": 0,
                 "total_comment_lines": 0,
                 "total_blank_lines": 0,
                 "average_complexity": 0.0,
                 "test_coverage_percent": 0.0,
-                "test_count": 0,
-                "project_metrics": {},  # Placeholder
+                "test_count": self._categories.get("test", 0),
+                "project_metrics": {},
             },
             "security": {
                 "vulnerable_packages": [],
@@ -287,15 +476,8 @@ class AIManifestGenerator:
             },
             "architecture": {
                 "pattern": "MVVM",
-                "views": [],  # Placeholder
-                "viewmodels": [],  # Placeholder
-                "models": [],  # Placeholder
-                "services": [],  # Placeholder
-                "repositories": [],  # Placeholder
-                "converters": [],
-                "behaviors": [],
-                "modules": [],
-                "counts": {},  # Placeholder
+                **{k: arch.get(k, []) for k in arch},
+                "counts": {k: len(arch.get(k, [])) for k in arch},
             },
             "dependency_graph": {
                 "projects": {},
@@ -303,63 +485,34 @@ class AIManifestGenerator:
                 "top_dependencies": [],
             },
             "folder_tree": self._generate_folder_tree(),
-            "search_index": [],  # Placeholder
+            "search_index": [],
             "files": files,
         }
 
         return manifest
 
-    def _generate_folder_tree(self) -> Dict[str, Any]:
-        """Generate a folder tree structure."""
-
-        def build_tree(path: Path) -> Dict[str, Any]:
-            if path.is_file():
-                return {
-                    "name": path.name,
-                    "type": "file",
-                    "path": str(path.relative_to(self.repo_root)),
-                }
-
-            children = []
-            try:
-                for child in sorted(path.iterdir()):
-                    if self._should_include_file(child):
-                        children.append(build_tree(child))
-            except PermissionError:
-                pass
-
-            return {
-                "name": path.name,
-                "type": "directory",
-                "path": str(path.relative_to(self.repo_root)),
-                "children": children,
-            }
-
-        return build_tree(self.repo_root)
-
-    def save_manifest(self, output_path: Optional[Path] = None) -> None:
-        """Generate and save the manifest to a file."""
+    def save_manifest(self, output_path: Path | None = None) -> None:
         if output_path is None:
             output_path = self.repo_root / "ai-fetchable-manifest.json"
 
+        print(f"Starting manifest generation for {self.repo_root} (focus_mode={self.config.get('focus_mode', False)})", file=sys.stderr, flush=True)
         manifest = self.generate_manifest()
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
-        print(f"Manifest generated: {output_path}")
+        print(f"Manifest generated successfully: {output_path}")
 
 
 def main():
-    """Main entry point."""
     repo_root = Path(__file__).parent.parent
-
     try:
         generator = AIManifestGenerator(repo_root)
         generator.save_manifest()
-        print("AI fetchable manifest generated successfully.")
     except Exception as e:
-        print("Error: {}".format(e), file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
