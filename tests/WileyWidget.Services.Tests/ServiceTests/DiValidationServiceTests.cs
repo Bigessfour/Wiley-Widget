@@ -77,7 +77,7 @@ namespace WileyWidget.Services.UnitTests
                 x => x.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("All core services validated")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("All core services validated", StringComparison.OrdinalIgnoreCase)),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -105,7 +105,7 @@ namespace WileyWidget.Services.UnitTests
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Core service missing")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Core service missing", StringComparison.OrdinalIgnoreCase)),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.AtLeastOnce);
@@ -455,7 +455,7 @@ namespace WileyWidget.Services.UnitTests
             Assert.False(result.IsValid);
             Assert.Single(result.SuccessMessages); // ISettingsService
             Assert.Single(result.Errors); // IAuditService missing
-            Assert.Contains("IAuditService", result.Errors[0]);
+            Assert.Contains("IAuditService", result.Errors[0], StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -477,7 +477,7 @@ namespace WileyWidget.Services.UnitTests
             // Assert
             Assert.False(result.IsValid);
             Assert.Single(result.Errors);
-            Assert.Contains("Test exception", result.Errors[0]);
+            Assert.Contains("Test exception", result.Errors[0], StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -523,13 +523,13 @@ namespace WileyWidget.Services.UnitTests
             var invalidSummary = invalidResult.GetSummary();
 
             // Assert
-            Assert.Contains("✓", validSummary);
-            Assert.Contains("2 services verified", validSummary);
-            Assert.Contains("50ms", validSummary);
+            Assert.Contains("✓", validSummary, StringComparison.Ordinal);
+            Assert.Contains("2 services verified", validSummary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("50ms", validSummary, StringComparison.Ordinal);
 
-            Assert.Contains("✗", invalidSummary);
-            Assert.Contains("1 errors", invalidSummary);
-            Assert.Contains("1 warnings", invalidSummary);
+            Assert.Contains("✗", invalidSummary, StringComparison.Ordinal);
+            Assert.Contains("1 errors", invalidSummary, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("1 warnings", invalidSummary, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

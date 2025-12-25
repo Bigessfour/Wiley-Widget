@@ -1,0 +1,75 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'tests/WileyWidget.Integration.Tests/**'
+      - 'src/**'
+      - 'Directory.Packages.props'
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch: {}
+
+jobs:
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Optionally set a secret `POSTGRES_TEST_PASSWORD` in the repo to control the Postgres test password.
+      POSTGRES_TEST_PASSWORD: ${{ secrets.POSTGRES_TEST_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Docker
+        run: |
+          echo "Checking Docker availability..."
+          if docker info >/dev/null 2>&1; then
+            docker version
+          else
+            echo "Docker not available on runner. Postgres Testcontainers may skip."
+          fi
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet
+          key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            nuget-packages-${{ runner.os }}-
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Build solution
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run integration tests
+        run: |
+          dotnet test tests/WileyWidget.Integration.Tests/WileyWidget.Integration.Tests.csproj --configuration Release --logger "trx;LogFileName=integration-tests.trx" --results-directory ./TestResults/Integration -v minimal
+        env:
+          DOTNET_TEST_USE_POLLING_FILE_WATCHER: '1'
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: TestResults
+          retention-days: 7

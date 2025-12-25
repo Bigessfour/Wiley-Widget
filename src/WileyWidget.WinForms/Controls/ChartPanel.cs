@@ -305,7 +305,7 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_topPanel);
 
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
-            // Theme applied automatically by SfSkinManager cascade from parent form
+            // Theme applied automatically by SkinManager cascade from parent form
             _chartControl = new ChartControl { Dock = DockStyle.Fill };
 
             // Chart appearance per demos: SmoothingMode, ElementsSpacing, BorderAppearance
