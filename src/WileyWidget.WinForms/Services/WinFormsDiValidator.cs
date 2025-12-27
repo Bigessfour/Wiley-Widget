@@ -24,6 +24,18 @@ namespace WileyWidget.WinForms.Services
     /// Uses the core IDiValidationService for the heavy lifting but provides
     /// WinForms-specific categorization and validation workflows.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iwinformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for iwinformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for iwinformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for iwinformsdivalidator.
+    /// </summary>
     public interface IWinFormsDiValidator
     {
         /// <summary>
@@ -62,8 +74,26 @@ namespace WileyWidget.WinForms.Services
     /// WinForms-specific DI validator that delegates to the core validation service
     /// but provides UI-layer specific categorization and reporting.
     /// </summary>
+    /// <summary>
+    /// Represents a class for winformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for winformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for winformsdivalidator.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for winformsdivalidator.
+    /// </summary>
     public class WinFormsDiValidator : IWinFormsDiValidator
     {
+        /// <summary>
+        /// Represents the _corevalidator.
+        /// </summary>
+        /// <summary>
+        /// Represents the _corevalidator.
+        /// </summary>
         private readonly IDiValidationService _coreValidator;
         private readonly ILogger<WinFormsDiValidator> _logger;
 
@@ -74,6 +104,22 @@ namespace WileyWidget.WinForms.Services
             _coreValidator = coreValidator ?? throw new ArgumentNullException(nameof(coreValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+        /// <summary>
+        /// Performs validatecriticalservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validatecriticalservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validatecriticalservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validatecriticalservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateCriticalServices(IServiceProvider serviceProvider)
         {
@@ -92,6 +138,26 @@ namespace WileyWidget.WinForms.Services
                 serviceTypes,
                 "Critical Services");
         }
+        /// <summary>
+        /// Performs validaterepositories. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validaterepositories. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validaterepositories. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validaterepositories. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validaterepositories. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateRepositories(IServiceProvider serviceProvider)
         {
@@ -113,6 +179,26 @@ namespace WileyWidget.WinForms.Services
                 serviceTypes,
                 "Repositories");
         }
+        /// <summary>
+        /// Performs validateservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateservices. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateServices(IServiceProvider serviceProvider)
         {
@@ -168,6 +254,26 @@ namespace WileyWidget.WinForms.Services
                 serviceTypes,
                 "Business Services");
         }
+        /// <summary>
+        /// Performs validateviewmodels. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateviewmodels. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateviewmodels. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateviewmodels. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateviewmodels. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateViewModels(IServiceProvider serviceProvider)
         {
@@ -194,6 +300,26 @@ namespace WileyWidget.WinForms.Services
                 serviceTypes,
                 "ViewModels");
         }
+        /// <summary>
+        /// Performs validateforms. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateforms. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateforms. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateforms. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateforms. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateForms(IServiceProvider serviceProvider)
         {
@@ -210,6 +336,26 @@ namespace WileyWidget.WinForms.Services
                 serviceTypes,
                 "Forms (MainForm only - panels resolved via navigation service)");
         }
+        /// <summary>
+        /// Performs validateall. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateall. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateall. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateall. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
+        /// <summary>
+        /// Performs validateall. Parameters: serviceProvider.
+        /// </summary>
+        /// <param name="serviceProvider">The serviceProvider.</param>
 
         public DiValidationResult ValidateAll(IServiceProvider serviceProvider)
         {

@@ -14,6 +14,9 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Service for importing budget data from various file formats
 /// </summary>
+/// <summary>
+/// Represents a class for budgetimporter.
+/// </summary>
 public class BudgetImporter : IBudgetImporter
 {
     private readonly IExcelReaderService _excelReaderService;

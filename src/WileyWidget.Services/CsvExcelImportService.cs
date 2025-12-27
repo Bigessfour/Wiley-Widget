@@ -368,9 +368,6 @@ namespace WileyWidget.Services
             /// <summary>
             /// Gets or sets the rownumber.
             /// </summary>
-            /// <summary>
-            /// Gets or sets the rownumber.
-            /// </summary>
             public int RowNumber { get; set; }
             public string? Description { get; set; }
             /// <summary>

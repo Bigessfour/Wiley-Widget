@@ -10,10 +10,34 @@ namespace WileyWidget.WinForms.Configuration
     /// <summary>
     /// Manages persistent window state (position, size, split positions) for forms.
     /// </summary>
+    /// <summary>
+    /// Represents a class for formstatemanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formstatemanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formstatemanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formstatemanager.
+    /// </summary>
     public class FormStateManager
     {
+        /// <summary>
+        /// Represents the _configdir.
+        /// </summary>
         private readonly string _configDir;
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
         private readonly ILogger _logger;
+        /// <summary>
+        /// Represents the _jsonoptions.
+        /// </summary>
         private readonly JsonSerializerOptions _jsonOptions;
 
         public FormStateManager(ILogger logger)
@@ -39,6 +63,34 @@ namespace WileyWidget.WinForms.Configuration
         /// <summary>
         /// Save form window state (position, size, split container positions).
         /// </summary>
+        /// <summary>
+        /// Performs saveformstate. Parameters: form, formName, null, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="formName">The formName.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs saveformstate. Parameters: form, formName, null, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="formName">The formName.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs saveformstate. Parameters: form, formName, null, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="formName">The formName.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs saveformstate. Parameters: form, formName, null, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="formName">The formName.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
         public void SaveFormState(Form form, string formName, int? mainSplitterDistance = null, int? leftSplitterDistance = null)
         {
             ArgumentNullException.ThrowIfNull(form);
@@ -99,6 +151,26 @@ namespace WileyWidget.WinForms.Configuration
         /// <summary>
         /// Apply saved window state to a form (position, size, window state).
         /// </summary>
+        /// <summary>
+        /// Performs applyformstate. Parameters: form, state.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="state">The state.</param>
+        /// <summary>
+        /// Performs applyformstate. Parameters: form, state.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="state">The state.</param>
+        /// <summary>
+        /// Performs applyformstate. Parameters: form, state.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="state">The state.</param>
+        /// <summary>
+        /// Performs applyformstate. Parameters: form, state.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="state">The state.</param>
         public void ApplyFormState(Form form, FormWindowState state)
         {
             ArgumentNullException.ThrowIfNull(form);
@@ -138,6 +210,14 @@ namespace WileyWidget.WinForms.Configuration
                 _logger.LogWarning(ex, "Failed to apply form state to {FormName}", state?.FormName);
             }
         }
+        /// <summary>
+        /// Performs isvisibleonscreen. Parameters: bounds.
+        /// </summary>
+        /// <param name="bounds">The bounds.</param>
+        /// <summary>
+        /// Performs isvisibleonscreen. Parameters: bounds.
+        /// </summary>
+        /// <param name="bounds">The bounds.</param>
 
         private bool IsVisibleOnScreen(Rectangle bounds)
         {
@@ -150,6 +230,14 @@ namespace WileyWidget.WinForms.Configuration
             }
             return false;
         }
+        /// <summary>
+        /// Performs getstatefilepath. Parameters: formName.
+        /// </summary>
+        /// <param name="formName">The formName.</param>
+        /// <summary>
+        /// Performs getstatefilepath. Parameters: formName.
+        /// </summary>
+        /// <param name="formName">The formName.</param>
 
         private string GetStateFilePath(string formName)
         {
@@ -160,8 +248,32 @@ namespace WileyWidget.WinForms.Configuration
     /// <summary>
     /// Represents the saved state of a form window.
     /// </summary>
+    /// <summary>
+    /// Represents a class for formwindowstate.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formwindowstate.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formwindowstate.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for formwindowstate.
+    /// </summary>
     public class FormWindowState
     {
+        /// <summary>
+        /// Defines the windowstateenum enumeration.
+        /// </summary>
+        /// <summary>
+        /// Defines the windowstateenum enumeration.
+        /// </summary>
+        /// <summary>
+        /// Defines the windowstateenum enumeration.
+        /// </summary>
+        /// <summary>
+        /// Defines the windowstateenum enumeration.
+        /// </summary>
         public enum WindowStateEnum
         {
             Normal = 0,
@@ -170,21 +282,111 @@ namespace WileyWidget.WinForms.Configuration
         }
 
         [JsonPropertyName("formName")]
+        /// <summary>
+        /// Gets or sets the formname.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the formname.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the formname.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the formname.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the formname.
+        /// </summary>
         public string FormName { get; set; } = string.Empty;
 
         [JsonPropertyName("x")]
+        /// <summary>
+        /// Gets or sets the X coordinate of the form window.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the x.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the x.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the x.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the x.
+        /// </summary>
         public int X { get; set; }
 
         [JsonPropertyName("y")]
+        /// <summary>
+        /// Gets or sets the Y coordinate of the form window.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the y.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the y.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the y.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the y.
+        /// </summary>
         public int Y { get; set; }
 
         [JsonPropertyName("width")]
+        /// <summary>
+        /// Gets or sets the width of the form window.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the width.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the width.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the width.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the width.
+        /// </summary>
         public int Width { get; set; }
 
         [JsonPropertyName("height")]
+        /// <summary>
+        /// Gets or sets the height of the form window.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the height.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the height.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the height.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the height.
+        /// </summary>
         public int Height { get; set; }
 
         [JsonPropertyName("windowState")]
+        /// <summary>
+        /// Gets or sets the window state of the form (0=Normal, 1=Minimized, 2=Maximized).
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the windowstate.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the windowstate.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the windowstate.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the windowstate.
+        /// </summary>
         public int WindowState { get; set; }
 
         [JsonPropertyName("mainSplitterDistance")]
@@ -194,6 +396,21 @@ namespace WileyWidget.WinForms.Configuration
         public int? LeftSplitterDistance { get; set; }
 
         [JsonPropertyName("savedAt")]
+        /// <summary>
+        /// Gets or sets the savedat.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savedat.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savedat.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savedat.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savedat.
+        /// </summary>
         public DateTime SavedAt { get; set; }
     }
 }

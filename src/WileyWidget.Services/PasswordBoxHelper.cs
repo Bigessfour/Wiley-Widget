@@ -5,16 +5,28 @@ namespace WileyWidget.Services
 {
     // Simple attached property to enable binding the PasswordBox.Password value to a ViewModel property.
     // Not perfect for SecureString semantics but acceptable for this application's existing pattern.
+    /// <summary>
+    /// Represents a class for passwordboxhelper.
+    /// </summary>
     public static class PasswordBoxHelper
     {
         public static readonly DependencyProperty BoundPasswordProperty =
             DependencyProperty.RegisterAttached("BoundPassword", typeof(string), typeof(PasswordBoxHelper), new PropertyMetadata(string.Empty, OnBoundPasswordChanged));
+        /// <summary>
+        /// Performs getboundpassword. Parameters: obj.
+        /// </summary>
+        /// <param name="obj">The obj.</param>
 
         public static string GetBoundPassword(DependencyObject obj)
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             return (string)obj.GetValue(BoundPasswordProperty);
         }
+        /// <summary>
+        /// Performs setboundpassword. Parameters: obj, value.
+        /// </summary>
+        /// <param name="obj">The obj.</param>
+        /// <param name="value">The value.</param>
         public static void SetBoundPassword(DependencyObject obj, string value)
         {
             if (obj == null) throw new ArgumentNullException(nameof(obj));

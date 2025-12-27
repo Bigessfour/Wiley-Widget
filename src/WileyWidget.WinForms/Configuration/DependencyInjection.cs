@@ -10,25 +10,74 @@ using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Threading;
+// Removed using WileyWidget.WinForms.Services; (ambiguous IStartupTimelineService)
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
+
 using WileyWidget.WinForms.Forms;
+using IActivityLogRepository = WileyWidget.Business.Interfaces.IActivityLogRepository;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
 
 namespace WileyWidget.WinForms.Configuration
 {
+    /// <summary>
+    /// Provides dependency injection configuration for the WileyWidget WinForms application.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dependencyinjection.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dependencyinjection.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dependencyinjection.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dependencyinjection.
+    /// </summary>
     public static class DependencyInjection
     {
+        /// <summary>
+        /// Performs createservicecollection. Parameters: true.
+        /// </summary>
+        /// <param name="true">The true.</param>
+        /// <summary>
+        /// Performs createservicecollection. Parameters: true.
+        /// </summary>
+        /// <param name="true">The true.</param>
+        /// <summary>
+        /// Performs createservicecollection. Parameters: true.
+        /// </summary>
+        /// <param name="true">The true.</param>
+        /// <summary>
+        /// Performs createservicecollection. Parameters: true.
+        /// </summary>
+        /// <param name="true">The true.</param>
         public static ServiceCollection CreateServiceCollection(bool includeDefaults = true)
         {
             var services = new ServiceCollection();
             ConfigureServicesInternal(services, includeDefaults);
             return services;
         }
+        /// <summary>
+        /// Performs configureservices.
+        /// </summary>
+        /// <summary>
+        /// Performs configureservices.
+        /// </summary>
+        /// <summary>
+        /// Performs configureservices.
+        /// </summary>
+        /// <summary>
+        /// Performs configureservices.
+        /// </summary>
+        /// <summary>
+        /// Performs configureservices.
+        /// </summary>
 
         public static IServiceProvider ConfigureServices()
         {
@@ -39,6 +88,16 @@ namespace WileyWidget.WinForms.Configuration
                 ValidateOnBuild = true
             });
         }
+        /// <summary>
+        /// Performs configureservicesinternal. Parameters: services, true.
+        /// </summary>
+        /// <param name="services">The services.</param>
+        /// <param name="true">The true.</param>
+        /// <summary>
+        /// Performs configureservicesinternal. Parameters: services, true.
+        /// </summary>
+        /// <param name="services">The services.</param>
+        /// <param name="true">The true.</param>
 
         private static void ConfigureServicesInternal(IServiceCollection services, bool includeDefaults = true)
         {
@@ -113,21 +172,24 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             services.AddScoped<IAccountsRepository, AccountsRepository>();
+            services.AddScoped<AccountsRepository>(sp => (AccountsRepository)Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAccountsRepository>(sp));
             services.AddScoped<Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
             services.AddScoped<IAuditRepository, AuditRepository>();
             services.AddScoped<IBudgetRepository, BudgetRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
             services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+            services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
             services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
+            services.AddScoped<IQBMappingConfigurationRepository, QBMappingConfigurationRepository>();
 
             // =====================================================================
             // CORE APPLICATION SERVICES (Singleton - Stateless, Thread-Safe)
             // =====================================================================
 
             services.AddSingleton<SettingsService>();
-            services.AddSingleton<ISettingsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<SettingsService>(sp));
+            services.AddSingleton<ISettingsService>(sp => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsService>(sp));
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
             services.AddSingleton<HealthCheckService>();
             services.AddSingleton<ErrorReportingService>();
@@ -135,7 +197,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
-            services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            services.AddSingleton<WileyWidget.Services.IStartupTimelineService, StartupTimelineService>();
 
             // Data seeding helper (scoped) - used during health check to auto-populate minimal datasets for dev/tests
             services.AddScoped<DataSeedingService>();
@@ -148,9 +210,11 @@ namespace WileyWidget.WinForms.Configuration
             // BUSINESS DOMAIN SERVICES
             // =====================================================================
 
-            // QuickBooks Integration (Singleton - external API client)
+            // QuickBooks Integration (Scoped - depends on repositories)
             services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
-            services.AddSingleton<IQuickBooksService, QuickBooksService>();
+            // NOTE: QuickBooksService depends on scoped repositories (ITransactionRepository etc.).
+            // Register as Scoped so it may consume scoped repository services without violating DI rules.
+            services.AddScoped<IQuickBooksService, QuickBooksService>();
 
             // Dashboard Service (Transient - short-lived data aggregation)
             services.AddTransient<IDashboardService, DashboardService>();
@@ -164,6 +228,10 @@ namespace WileyWidget.WinForms.Configuration
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, XAIService>();
             services.AddSingleton<IAILoggingService, AILoggingService>();
+
+            // QuickBooks Services (Scoped - uses repositories)
+            services.AddScoped<IQuickBooksMappingService, QuickBooksMappingService>();
+            services.AddScoped<WileyWidget.Business.Interfaces.IQuickBooksConflictRepository, WileyWidget.Data.QuickBooksConflictRepository>();
 
             // Audit Service (Singleton - writes to repository through scopes)
             services.AddSingleton<IAuditService, AuditService>();
@@ -208,7 +276,7 @@ namespace WileyWidget.WinForms.Configuration
             {
                 services.AddSingleton<IDispatcherHelper>(sp =>
                 {
-                    var logger = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Logging.ILogger<SynchronizationContextDispatcherHelper>>(sp);
+                    var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SynchronizationContextDispatcherHelper>>(sp);
                     var uiContext = WileyWidget.WinForms.Program.UISynchronizationContext;
                     return new SynchronizationContextDispatcherHelper(uiContext, logger);
                 });
@@ -218,13 +286,13 @@ namespace WileyWidget.WinForms.Configuration
             // Factory pattern: construct without resolving MainForm to avoid DI circular dependency
             services.AddSingleton<IPanelNavigationService>(sp =>
             {
-                var logger = DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(sp);
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(sp);
                 return new PanelNavigationService(sp, logger);
             });
 
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
-                UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
+                UIConfiguration.FromConfiguration(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
             // =====================================================================
             // VIEWMODELS (Transient - New instance per form/view)
@@ -234,6 +302,15 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddTransient<ChartViewModel>();
             services.AddTransient<SettingsViewModel>();
+            // QuickBooks ViewModel - transient per panel/view
+            services.AddTransient<QuickBooksViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<QuickBooksViewModel>>(sp);
+                var qb = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IQuickBooksService>(sp);
+                var dispatcher = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDispatcherHelper>(sp);
+                // Note: ViewModel will capture UI context on panel load via SetUiContext
+                return new QuickBooksViewModel(logger, qb, WileyWidget.WinForms.Program.UISynchronizationContext);
+            });
 
             // AccountsViewModel: Resolve repositories directly from DI (scoped)
             services.AddTransient<AccountsViewModel>(sp =>
@@ -280,6 +357,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<RevenueTrendsViewModel>();
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<RecommendedMonthlyChargeViewModel>();
+
+            // ChatViewModel: Resolve required services and inject directly
+            services.AddTransient<ChatViewModel>(sp =>
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ChatViewModel>>(sp);
+                var aiService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIService>(sp);
+                var conversationRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConversationRepository>(sp);
+                var contextExtractionService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIContextExtractionService>(sp);
+                var activityLogRepo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(sp);
+                return new ChatViewModel(logger, aiService, conversationRepo, contextExtractionService, activityLogRepo);
+            });
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

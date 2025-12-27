@@ -2,6 +2,9 @@ using FluentValidation;
 
 namespace WileyWidget.Models.Validators
 {
+    /// <summary>
+    /// Represents a class for budgetdatavalidator.
+    /// </summary>
     public class BudgetDataValidator : AbstractValidator<BudgetData>
     {
         public BudgetDataValidator()

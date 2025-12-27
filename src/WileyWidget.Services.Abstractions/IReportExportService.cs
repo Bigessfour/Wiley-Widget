@@ -7,6 +7,9 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Interface for report export services
     /// </summary>
+    /// <summary>
+    /// Represents a interface for ireportexportservice.
+    /// </summary>
     public interface IReportExportService
     {
         /// <summary>

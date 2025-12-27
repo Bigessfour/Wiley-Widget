@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
@@ -18,6 +19,9 @@ namespace WileyWidget.Services;
 
 /// <summary>
 /// Implementation of IGrokSupercomputer for AI-powered municipal analysis
+/// </summary>
+/// <summary>
+/// Represents a class for groksupercomputer.
 /// </summary>
 public class GrokSupercomputer : IGrokSupercomputer
 {
@@ -756,5 +760,23 @@ Focus on municipal finance best practices and operational efficiency.";
             _aiLoggingService.LogError("QueryAsync", ex);
             throw;
         }
+    }
+
+    public Task<string> GenerateInsightsAsync(string query, string context, CancellationToken cancellationToken = default)
+    {
+        // Stub implementation
+        return Task.FromResult("Mock insight");
+    }
+
+    public Task ProcessTransactionBatchAsync(IEnumerable<Transaction> transactions, CancellationToken cancellationToken = default)
+    {
+        // Stub
+        return Task.CompletedTask;
+    }
+
+    public Task<List<AIInsight>> GetLatestInsightsAsync(int enterpriseId, int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        // Stub
+        return Task.FromResult(new List<AIInsight>());
     }
 }

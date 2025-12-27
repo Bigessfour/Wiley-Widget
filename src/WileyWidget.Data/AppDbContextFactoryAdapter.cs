@@ -18,6 +18,9 @@ namespace WileyWidget.Data
         {
             _inner = inner ?? throw new System.ArgumentNullException(nameof(inner));
         }
+        /// <summary>
+        /// Performs createdbcontext.
+        /// </summary>
 
         public AppDbContext CreateDbContext()
         {

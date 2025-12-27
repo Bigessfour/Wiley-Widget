@@ -16,6 +16,9 @@ namespace WileyWidget.Data.Interceptors
     /// Enhanced EF Core SaveChanges interceptor that provides comprehensive audit logging,
     /// user context tracking, and automatic rollback on failures.
     /// </summary>
+    /// <summary>
+    /// Represents a class for auditinterceptor.
+    /// </summary>
     public class AuditInterceptor : SaveChangesInterceptor
     {
         private readonly ILogger<AuditInterceptor> _logger;

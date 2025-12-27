@@ -5,6 +5,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -15,6 +16,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class RecommendedMonthlyChargePanel : UserControl
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly RecommendedMonthlyChargeViewModel _viewModel;
     private readonly ILogger<RecommendedMonthlyChargePanel> _logger;
 
@@ -64,6 +71,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 
         InitializeControls();
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -327,6 +337,12 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 
         _logger.LogDebug("RecommendedMonthlyChargePanel controls initialized");
     }
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
 
     private void BindViewModel()
     {
@@ -341,6 +357,16 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 
         _logger.LogDebug("ViewModel bound to RecommendedMonthlyChargePanel");
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -389,6 +415,12 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                 break;
         }
     }
+    /// <summary>
+    /// Performs updatechart.
+    /// </summary>
+    /// <summary>
+    /// Performs updatechart.
+    /// </summary>
 
     private void UpdateChart()
     {
@@ -460,7 +492,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             _logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
-            MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.SafeInvoke(() => MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
 
@@ -482,7 +514,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             _logger.LogError(ex, "Error querying Grok AI");
             UpdateStatus($"AI query failed: {ex.Message}");
-            MessageBox.Show($"Error querying AI: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.SafeInvoke(() => MessageBox.Show($"Error querying AI: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
 
@@ -507,6 +539,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             MessageBox.Show($"Error saving changes: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {
@@ -515,6 +555,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             _statusLabel.Text = message;
         }
     }
+    /// <summary>
+    /// Performs enablecontrols. Parameters: enabled.
+    /// </summary>
+    /// <param name="enabled">The enabled.</param>
+    /// <summary>
+    /// Performs enablecontrols. Parameters: enabled.
+    /// </summary>
+    /// <param name="enabled">The enabled.</param>
 
     private void EnableControls(bool enabled)
     {
@@ -538,6 +586,12 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             _logger.LogError(ex, "Error loading panel data");
         }
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -593,6 +647,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     /// <summary>
     /// Required method for Designer support - do not modify
     /// the contents of this method with the code editor.
+    /// </summary>
+    /// <summary>
+    /// Performs initializecomponent.
     /// </summary>
     private void InitializeComponent()
     {

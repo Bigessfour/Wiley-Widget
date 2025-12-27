@@ -7,6 +7,9 @@ namespace WileyWidget.Services;
 /// Application metrics service using System.Diagnostics.Metrics
 /// Provides observability for startup performance, database operations, and circuit breaker state
 /// </summary>
+/// <summary>
+/// Represents a class for applicationmetricsservice.
+/// </summary>
 public class ApplicationMetricsService : IDisposable
 {
     private readonly Meter _meter;
@@ -92,6 +95,11 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records startup duration and success/failure
     /// </summary>
+    /// <summary>
+    /// Performs recordstartup. Parameters: durationMs, success.
+    /// </summary>
+    /// <param name="durationMs">The durationMs.</param>
+    /// <param name="success">The success.</param>
     public void RecordStartup(double durationMs, bool success)
     {
         _startupDuration.Record(durationMs);
@@ -109,6 +117,11 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records database migration duration and success/failure
     /// </summary>
+    /// <summary>
+    /// Performs recordmigration. Parameters: durationMs, success.
+    /// </summary>
+    /// <param name="durationMs">The durationMs.</param>
+    /// <param name="success">The success.</param>
     public void RecordMigration(double durationMs, bool success)
     {
         _migrationDuration.Record(durationMs);
@@ -126,6 +139,10 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records database seeding operation
     /// </summary>
+    /// <summary>
+    /// Performs recordseeding. Parameters: success.
+    /// </summary>
+    /// <param name="success">The success.</param>
     public void RecordSeeding(bool success)
     {
         _seedingOperations.Add(1);
@@ -143,6 +160,12 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records circuit breaker state transition
     /// </summary>
+    /// <summary>
+    /// Performs recordcircuitbreakertransition. Parameters: fromState, toState, serviceName.
+    /// </summary>
+    /// <param name="fromState">The fromState.</param>
+    /// <param name="toState">The toState.</param>
+    /// <param name="serviceName">The serviceName.</param>
     public void RecordCircuitBreakerTransition(string fromState, string toState, string serviceName)
     {
         _circuitBreakerTransitions.Add(1, new KeyValuePair<string, object>("service", serviceName),
@@ -166,6 +189,12 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records health check duration and success/failure
     /// </summary>
+    /// <summary>
+    /// Performs recordhealthcheck. Parameters: durationMs, success, serviceName.
+    /// </summary>
+    /// <param name="durationMs">The durationMs.</param>
+    /// <param name="success">The success.</param>
+    /// <param name="serviceName">The serviceName.</param>
     public void RecordHealthCheck(double durationMs, bool success, string serviceName)
     {
         _healthCheckDuration.Record(durationMs,
@@ -179,6 +208,9 @@ public class ApplicationMetricsService : IDisposable
         _logger.LogDebug("Recorded health check metrics for {Service}: {DurationMs}ms, Success: {Success}",
             serviceName, durationMs, success);
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

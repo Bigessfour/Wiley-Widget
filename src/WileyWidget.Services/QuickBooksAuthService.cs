@@ -17,7 +17,7 @@ namespace WileyWidget.Services;
 /// Handles QuickBooks OAuth authentication and token management.
 /// Extracted from QuickBooksService for better modularity and single responsibility.
 /// </summary>
-internal sealed class QuickBooksAuthService : IDisposable
+public sealed class QuickBooksAuthService : IDisposable
 {
     private readonly ILogger _logger;
     private readonly ISettingsService _settings;
@@ -34,6 +34,7 @@ internal sealed class QuickBooksAuthService : IDisposable
 
     private volatile bool _initialized;
     private readonly SemaphoreSlim _initSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _refreshSemaphore = new(1, 1);
 
     // Intuit OAuth 2.0 endpoints (per official docs)
     private const string AuthorizationEndpoint = "https://appcenter.intuit.com/connect/oauth2";
@@ -47,13 +48,17 @@ internal sealed class QuickBooksAuthService : IDisposable
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {
         _initSemaphore.Dispose();
+        _refreshSemaphore.Dispose();
     }
 
-    private static async Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
+    public static async Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
     {
         if (keyVaultService == null)
         {
@@ -86,13 +91,12 @@ internal sealed class QuickBooksAuthService : IDisposable
     /// to read user-level variables (Windows) but swallow any platform-specific
     /// exceptions so callers remain cross-platform friendly.
     /// </summary>
-    private static string? GetEnvironmentVariableAnyScope(string name)
+    public static string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         try
         {
             var v = Environment.GetEnvironmentVariable(name);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => {(v == null ? "<null>" : "<redacted>")}");
             if (!string.IsNullOrWhiteSpace(v)) return v;
         }
         catch { /* ignore */ }
@@ -100,19 +104,30 @@ internal sealed class QuickBooksAuthService : IDisposable
         try
         {
             var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable(User,'{name}') => {(uv == null ? "<null>" : "<redacted>")}");
             return uv;
         }
         catch { return null; }
     }
 
-    private async Task EnsureInitializedAsync()
+    public async Task EnsureInitializedAsync()
     {
         if (_initialized) return;
         await _initSemaphore.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_initialized) return;
+
+            // Test/CI fast-path: avoid secret vault lookups or environment probing when interactive auth is skipped.
+            var skipInteractive = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WW_SKIP_INTERACTIVE"));
+            if (skipInteractive)
+            {
+                _logger.LogInformation("WW_SKIP_INTERACTIVE set - skipping QuickBooks auth initialization.");
+                _clientId ??= "skip-interactive";
+                _clientSecret ??= "skip-interactive";
+                // _redirectUri and _environment retain their default values
+                _initialized = true;
+                return;
+            }
 
             // Load QBO credentials from secret vault with fallback to environment variables
             var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
@@ -140,8 +155,12 @@ internal sealed class QuickBooksAuthService : IDisposable
             _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
                             ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
                             ?? envSecretCandidate
-                            ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
-                            ?? string.Empty;
+                            ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET");
+
+            if (string.IsNullOrWhiteSpace(_clientSecret))
+            {
+                throw new InvalidOperationException("QBO_CLIENT_SECRET not found in the secret vault or environment variables.");
+            }
 
             var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
             if (!string.IsNullOrWhiteSpace(envRealmCandidate))
@@ -175,6 +194,9 @@ internal sealed class QuickBooksAuthService : IDisposable
             _initSemaphore.Release();
         }
     }
+    /// <summary>
+    /// Performs hasvalidaccesstoken.
+    /// </summary>
 
     public bool HasValidAccessToken()
     {
@@ -193,7 +215,8 @@ internal sealed class QuickBooksAuthService : IDisposable
 
         if (string.IsNullOrWhiteSpace(s.QboRefreshToken))
         {
-            throw new InvalidOperationException("No refresh token available. Please re-authorize the application.");
+            // Raise an auth-specific exception so callers can distinguish authentication failures from other errors
+            throw new QuickBooksAuthException("No refresh token available — QuickBooks authentication required.");
         }
 
         await RefreshTokenAsync();
@@ -204,24 +227,35 @@ internal sealed class QuickBooksAuthService : IDisposable
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = _settings.Current;
 
+        await _refreshSemaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
-            s.QboAccessToken = result.AccessToken;
-            s.QboRefreshToken = result.RefreshToken;
-            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-            _settings.Save();
-            _logger.LogInformation("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+            // Re-check after acquiring semaphore to avoid duplicate refresh if another caller already refreshed.
+            if (HasValidAccessToken()) return;
+
+            try
+            {
+                var result = await RefreshAccessTokenAsync(s.QboRefreshToken!).ConfigureAwait(false);
+                s.QboAccessToken = result.AccessToken;
+                s.QboRefreshToken = result.RefreshToken;
+                s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
+                _settings.Save();
+                _logger.LogInformation("QBO token refreshed successfully (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to refresh QBO access token");
+                // Clear invalid tokens to force re-authorization
+                s.QboAccessToken = null;
+                s.QboRefreshToken = null;
+                s.QboTokenExpiry = default;
+                _settings.Save();
+                throw new QuickBooksAuthException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Failed to refresh QBO access token");
-            // Clear invalid tokens to force re-authorization
-            s.QboAccessToken = null;
-            s.QboRefreshToken = null;
-            s.QboTokenExpiry = default;
-            _settings.Save();
-            throw new QuickBooksAuthException("QuickBooks token refresh failed. Please re-authorize the application.", ex);
+            _refreshSemaphore.Release();
         }
     }
 
@@ -320,6 +354,9 @@ internal sealed class QuickBooksAuthService : IDisposable
 
         throw new QuickBooksAuthException($"Token refresh failed after {maxRetries} attempts", lastException);
     }
+    /// <summary>
+    /// Performs getaccesstoken.
+    /// </summary>
 
     public string GetAccessToken()
     {
@@ -333,10 +370,29 @@ internal sealed class QuickBooksAuthService : IDisposable
 
     public string? GetRealmId() => _realmId;
     public string GetEnvironment() => _environment;
+    /// <summary>
+    /// Performs validateorrefreshtoken.
+    /// </summary>
+
+    internal void ValidateOrRefreshToken()
+    {
+        try
+        {
+            // Perform a synchronous check/refresh for callers that cannot await
+            RefreshTokenIfNeededAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ValidateOrRefreshToken failed");
+        }
+    }
 }
 
 /// <summary>
 /// Exception thrown when QuickBooks authentication fails.
+/// </summary>
+/// <summary>
+/// Represents a class for quickbooksauthexception.
 /// </summary>
 public class QuickBooksAuthException : Exception
 {

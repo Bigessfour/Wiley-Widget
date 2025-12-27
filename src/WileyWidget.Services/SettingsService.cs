@@ -24,7 +24,7 @@ namespace WileyWidget.Services
     /// - Provides asynchronous loading capabilities
     /// - Uses dependency injection for configuration and logging
     /// </remarks>
-    public sealed class SettingsService : ISettingsService
+    public sealed class SettingsService : ISettingsService, IInitializable
     {
         private readonly IConfiguration? _configuration;
         private string _root = string.Empty;
@@ -70,6 +70,17 @@ namespace WileyWidget.Services
             _file = Path.Combine(_root, "settings.json");
 
             Log.Debug("Settings directory resolved to {SettingsDirectory}", _root);
+        }
+
+        /// <summary>
+        /// Synchronous initialization for startup (loads settings from disk).
+        /// </summary>
+        /// <summary>
+        /// Performs initialize.
+        /// </summary>
+        public void Initialize()
+        {
+            Load();
         }
 
         /// <summary>
@@ -154,6 +165,9 @@ namespace WileyWidget.Services
         /// IO failures are logged but do not throw exceptions to prevent degrading the user experience.
         /// </remarks>
         /// <exception cref="InvalidOperationException">Thrown when the settings directory cannot be created.</exception>
+        /// <summary>
+        /// Performs save.
+        /// </summary>
         public void Save()
         {
             try
@@ -197,6 +211,11 @@ namespace WileyWidget.Services
         /// - Day is valid for the specified month (e.g., prevents Feb 30)
         /// - The date can be constructed as a valid DateTime
         /// </remarks>
+        /// <summary>
+        /// Performs savefiscalyearsettings. Parameters: month, day.
+        /// </summary>
+        /// <param name="month">The month.</param>
+        /// <param name="day">The day.</param>
         public void SaveFiscalYearSettings(int month, int day)
         {
             // Validate month
@@ -281,6 +300,10 @@ namespace WileyWidget.Services
         /// This is a legacy method maintained for backward compatibility.
         /// Direct property access via <see cref="Current"/> is preferred.
         /// </remarks>
+        /// <summary>
+        /// Performs get. Parameters: key.
+        /// </summary>
+        /// <param name="key">The key.</param>
         public string Get(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -318,6 +341,11 @@ namespace WileyWidget.Services
         /// Direct property access via <see cref="Current"/> is preferred.
         /// Type conversion is attempted automatically but may fail for complex types.
         /// </remarks>
+        /// <summary>
+        /// Performs set. Parameters: key, value.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <param name="value">The value.</param>
         public void Set(string key, string value)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -385,6 +413,9 @@ namespace WileyWidget.Services
         /// Loads settings and returns the current instance for fluent usage.
         /// </summary>
         /// <returns>The current <see cref="AppSettings"/> instance after loading.</returns>
+        /// <summary>
+        /// Performs loadsettings.
+        /// </summary>
         public AppSettings LoadSettings()
         {
             Load();
@@ -394,6 +425,11 @@ namespace WileyWidget.Services
         public string GetEnvironmentName() => GetValue("Environment") ?? "Production";
 
         public string GetValue(string key) => _configuration?[key] ?? _configuration?["AppSettings:" + key] ?? string.Empty;
+        /// <summary>
+        /// Performs setvalue. Parameters: key, value.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <param name="value">The value.</param>
 
         public void SetValue(string key, string value)
         {
@@ -410,6 +446,9 @@ namespace WileyWidget.Services
         /// This method does not reinitialize paths - it only resets the in-memory settings.
         /// Used by unit tests to ensure a clean state.
         /// </remarks>
+        /// <summary>
+        /// Performs resetfortests.
+        /// </summary>
         internal void ResetForTests()
         {
             Current = new AppSettings();

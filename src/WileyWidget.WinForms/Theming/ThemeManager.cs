@@ -10,15 +10,58 @@ namespace WileyWidget.WinForms.Theming
     /// <summary>
     /// Lightweight theme manager that defers to SkinManager (ThemeColors) for real theming.
     /// </summary>
+    /// <summary>
+    /// Represents a class for thememanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for thememanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for thememanager.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for thememanager.
+    /// </summary>
     public static class ThemeManager
     {
         public const string VisualTheme = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
         public static AppTheme CurrentTheme { get; private set; } = AppTheme.Office2019Dark;
+        /// <summary>
+        /// Gets or sets the colors.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the colors.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the colors.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the colors.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the colors.
+        /// </summary>
 
         public static ThemePalette Colors { get; } = ThemePalette.CreateDefault();
 
         public static event EventHandler<AppTheme>? ThemeChanged;
+        /// <summary>
+        /// Performs applythemetocontrol. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applythemetocontrol. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applythemetocontrol. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applythemetocontrol. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
 
         public static void ApplyThemeToControl(Control control)
         {
@@ -40,11 +83,51 @@ namespace WileyWidget.WinForms.Theming
                 // Best-effort only; do not block if a control does not support SkinManager.
             }
         }
+        /// <summary>
+        /// Performs applytheme. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: control.
+        /// </summary>
+        /// <param name="control">The control.</param>
 
         public static void ApplyTheme(Control control)
         {
             ApplyThemeToControl(control);
         }
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
 
         public static void SetTheme(AppTheme theme)
         {

@@ -8,6 +8,9 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Abstraction for QuickBooks API client operations to enable testing
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iquickbooksapiclient.
+    /// </summary>
     public interface IQuickBooksApiClient
     {
         Task<List<Customer>> GetCustomersAsync();

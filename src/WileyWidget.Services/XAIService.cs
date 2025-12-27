@@ -28,7 +28,10 @@ namespace WileyWidget.Services;
 /// <summary>
 /// xAI service implementation for AI-powered insights and analysis
 /// </summary>
-public class XAIService : IAIService, IDisposable
+/// <summary>
+/// Represents a class for xaiservice.
+/// </summary>
+public class XAIService : IAIService, IInitializable, IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -42,6 +45,22 @@ public class XAIService : IAIService, IDisposable
     // private readonly dynamic _telemetryClient; // Commented out until Azure is configured
     private readonly ResiliencePipeline<HttpResponseMessage> _httpPipeline;
     private bool _disposed;
+
+    /// <summary>
+    /// Synchronous initialization for startup (API key validation, warm-up, etc.).
+    /// </summary>
+    /// <summary>
+    /// Performs initialize.
+    /// </summary>
+    public void Initialize()
+    {
+        // Perform synchronous setup here (e.g., validate API key, warm up cache, etc.)
+        if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey.Length < 20)
+        {
+            throw new InvalidOperationException("XAI API key is missing or invalid");
+        }
+        // Optionally, ping the API or perform a test call synchronously if needed
+    }
 
     /// <summary>
     /// Constructor with dependency injection
@@ -240,9 +259,9 @@ public class XAIService : IAIService, IDisposable
     {
         // Validate inputs
         if (string.IsNullOrWhiteSpace(context))
-            throw new ArgumentException("Context cannot be null or empty", nameof(context));
+            throw new ArgumentNullException(nameof(context), "Context cannot be null or empty");
         if (string.IsNullOrWhiteSpace(question))
-            throw new ArgumentException("Question cannot be null or empty", nameof(question));
+            throw new ArgumentNullException(nameof(question), "Question cannot be null or empty");
 
         // Check for excessively long inputs (potential DoS)
         if (context.Length > 10000)
@@ -281,7 +300,7 @@ public class XAIService : IAIService, IDisposable
             apiCallSpan?.SetTag("ai.context_length", context?.Length ?? 0);
 
             // Create cache key from sanitized inputs
-            var cacheKey = $"XAI:{context.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{question.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            var cacheKey = $"XAI:{StringComparer.OrdinalIgnoreCase.GetHashCode(context ?? string.Empty)}:{StringComparer.OrdinalIgnoreCase.GetHashCode(question ?? string.Empty)}";
 
             // Check cache first
             if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
@@ -507,7 +526,7 @@ public class XAIService : IAIService, IDisposable
             var sanitizedQuestion = question;
             ValidateAndSanitizeInputs(ref sanitizedContext, ref sanitizedQuestion);
 
-            var cacheKey = $"XAI:{sanitizedContext.GetHashCode(StringComparison.OrdinalIgnoreCase)}:{sanitizedQuestion.GetHashCode(StringComparison.OrdinalIgnoreCase)}";
+            var cacheKey = $"XAI:{StringComparer.OrdinalIgnoreCase.GetHashCode(sanitizedContext ?? string.Empty)}:{StringComparer.OrdinalIgnoreCase.GetHashCode(sanitizedQuestion ?? string.Empty)}";
 
             // Check cache first
             if (_memoryCache.TryGetValue(cacheKey, out string cachedResponse))
@@ -832,28 +851,58 @@ public class XAIService : IAIService, IDisposable
     private class XAIResponse
     {
         public Choice[] choices { get; set; }
+        /// <summary>
+        /// Gets or sets the error.
+        /// </summary>
         public XAIError error { get; set; }
+        /// <summary>
+        /// Represents a class for choice.
+        /// </summary>
 
         public class Choice
         {
+            /// <summary>
+            /// Gets or sets the message.
+            /// </summary>
+            /// <summary>
+            /// Gets or sets the message.
+            /// </summary>
             public Message message { get; set; }
         }
+        /// <summary>
+        /// Represents a class for message.
+        /// </summary>
 
         public class Message
         {
+            /// <summary>
+            /// Gets or sets the content.
+            /// </summary>
             public string content { get; set; }
         }
+        /// <summary>
+        /// Represents a class for xaierror.
+        /// </summary>
 
         public class XAIError
         {
             public string message { get; set; }
+            /// <summary>
+            /// Gets or sets the type.
+            /// </summary>
             public string type { get; set; }
+            /// <summary>
+            /// Gets or sets the code.
+            /// </summary>
             public string code { get; set; }
         }
     }
 
     /// <summary>
     /// Dispose of managed resources
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
     /// </summary>
     public void Dispose()
     {
@@ -881,6 +930,10 @@ public class XAIService : IAIService, IDisposable
     /// Update the runtime API key used by the HttpClient for subsequent requests.
     /// This is used after rotating/persisting a new key so the live service reflects the change.
     /// </summary>
+    /// <summary>
+    /// Performs updateapikey. Parameters: newApiKey.
+    /// </summary>
+    /// <param name="newApiKey">The newApiKey.</param>
     public Task UpdateApiKeyAsync(string newApiKey)
     {
         if (string.IsNullOrWhiteSpace(newApiKey))
@@ -964,5 +1017,26 @@ public class XAIService : IAIService, IDisposable
         // In the future, this could be extended to use the conversationHistory for multi-turn conversations
         var context = "Conversational assistant";
         return await GetInsightsAsync(context, message, CancellationToken.None);
+    }
+
+    public async Task<string> GenerateRecommendationsAsync(string prompt, int count, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
+
+        if (count <= 0)
+            throw new ArgumentException("Count must be greater than 0", nameof(count));
+
+        // For now, simulate CPU-bound work asynchronously
+        return await Task.Run(() => $"Generated {count} recommendations for: {prompt}", cancellationToken);
+    }
+
+    public Task<string> GetRecommendedAdjustmentFactorsAsync(string context, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(context))
+            throw new ArgumentException("Context cannot be null or empty", nameof(context));
+
+        // For now, return a simple response
+        return Task.FromResult($"Recommended adjustment factors for: {context}");
     }
 }

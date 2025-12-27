@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Logging;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -12,6 +14,9 @@ public abstract class ViewModelBase : ObservableObject
 {
     /// <summary>
     /// Logger with guaranteed non-null instance (uses NullLogger fallback if DI fails)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the logger.
     /// </summary>
     protected ILogger Logger { get; }
 
@@ -57,6 +62,11 @@ public abstract class ViewModelBase : ObservableObject
     /// </summary>
     /// <param name="dependencies">Dictionary of dependency name -> value pairs</param>
     /// <exception cref="InvalidOperationException">Thrown when any dependency is null</exception>
+    /// <summary>
+    /// Performs validaterequireddependencies. Parameters: Dictionary<string, dependencies.
+    /// </summary>
+    /// <param name="Dictionary<string">The Dictionary<string.</param>
+    /// <param name="dependencies">The dependencies.</param>
     protected void ValidateRequiredDependencies(Dictionary<string, object?> dependencies)
     {
         var nullDependencies = dependencies
@@ -77,6 +87,9 @@ public abstract class ViewModelBase : ObservableObject
     /// Creates a null logger instance using reflection to match the derived ViewModel type.
     /// This ensures NullLogger<DerivedViewModel> is used instead of NullLogger<ViewModelBase>.
     /// </summary>
+    /// <summary>
+    /// Performs createnulllogger.
+    /// </summary>
     private ILogger CreateNullLogger()
     {
         var derivedType = GetType();
@@ -84,5 +97,45 @@ public abstract class ViewModelBase : ObservableObject
         var instanceProperty = nullLoggerType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 
         return (ILogger)(instanceProperty?.GetValue(null) ?? throw new InvalidOperationException($"Failed to create NullLogger for {derivedType.Name}"));
+    }
+
+    /// <summary>
+    /// Safely raise PropertyChanged on the UI thread when possible.
+    /// Call this from derived ViewModels when performing property updates from background threads.
+    /// </summary>
+    /// <summary>
+    /// Performs raisepropertychangedonuithread. Parameters: null.
+    /// </summary>
+    /// <param name="null">The null.</param>
+    protected void RaisePropertyChangedOnUiThread([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    {
+        try
+        {
+            var dispatcher = Program.Services != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services)
+                : null;
+
+            if (dispatcher == null || dispatcher.CheckAccess())
+            {
+                base.OnPropertyChanged(propertyName);
+                return;
+            }
+
+            // Post to UI thread to avoid deadlocks in synchronous callers and ensure PropertyChanged fires on UI thread
+            _ = dispatcher.InvokeAsync(() => base.OnPropertyChanged(propertyName))
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        Logger.LogError(t.Exception, "Failed to dispatch PropertyChanged for {Property}", propertyName);
+                    }
+                }, TaskScheduler.Default);
+        }
+        catch (Exception ex)
+        {
+            // As a safe fallback, raise property on calling thread
+            Logger.LogWarning(ex, "RaisePropertyChangedOnUiThread dispatch failed - raising on calling thread for {Property}", propertyName);
+            base.OnPropertyChanged(propertyName);
+        }
     }
 }

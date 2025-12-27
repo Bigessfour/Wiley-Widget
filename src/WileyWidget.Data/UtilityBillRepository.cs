@@ -10,6 +10,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Repository implementation for UtilityBill data operations
 /// </summary>
+/// <summary>
+/// Represents a class for utilitybillrepository.
+/// </summary>
 public class UtilityBillRepository : IUtilityBillRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.UtilityBillRepository");

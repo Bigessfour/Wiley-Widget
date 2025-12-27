@@ -9,6 +9,12 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public sealed class ErrorProviderBinding : IDisposable
     {
+        /// <summary>
+        /// Represents the _errorprovider.
+        /// </summary>
+        /// <summary>
+        /// Represents the _errorprovider.
+        /// </summary>
         private readonly ErrorProvider _errorProvider;
         private readonly Dictionary<string, Control> _controlMap = new();
 
@@ -17,6 +23,26 @@ namespace WileyWidget.WinForms.Controls
             _errorProvider = errorProvider ?? throw new ArgumentNullException(nameof(errorProvider));
             _ = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         }
+        /// <summary>
+        /// Performs mapcontrol. Parameters: propertyName, control.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs mapcontrol. Parameters: propertyName, control.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs mapcontrol. Parameters: propertyName, control.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="control">The control.</param>
+        /// <summary>
+        /// Performs mapcontrol. Parameters: propertyName, control.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="control">The control.</param>
 
         public void MapControl(string propertyName, Control control)
         {
@@ -25,6 +51,31 @@ namespace WileyWidget.WinForms.Controls
 
             _controlMap[propertyName] = control;
         }
+        /// <summary>
+        /// Performs seterror. Parameters: propertyName, message.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="message">The message.</param>
+        /// <summary>
+        /// Performs seterror. Parameters: propertyName, message.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="message">The message.</param>
+        /// <summary>
+        /// Performs seterror. Parameters: propertyName, message.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="message">The message.</param>
+        /// <summary>
+        /// Performs seterror. Parameters: propertyName, message.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="message">The message.</param>
+        /// <summary>
+        /// Performs seterror. Parameters: propertyName, message.
+        /// </summary>
+        /// <param name="propertyName">The propertyName.</param>
+        /// <param name="message">The message.</param>
 
         public void SetError(string propertyName, string? message)
         {
@@ -33,6 +84,21 @@ namespace WileyWidget.WinForms.Controls
                 _errorProvider.SetError(control, message ?? string.Empty);
             }
         }
+        /// <summary>
+        /// Performs refreshallerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs refreshallerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs refreshallerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs refreshallerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs refreshallerrors.
+        /// </summary>
 
         public void RefreshAllErrors()
         {
@@ -43,6 +109,21 @@ namespace WileyWidget.WinForms.Controls
                 _errorProvider.SetError(control, current);
             }
         }
+        /// <summary>
+        /// Performs clearerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs clearerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs clearerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs clearerrors.
+        /// </summary>
+        /// <summary>
+        /// Performs clearerrors.
+        /// </summary>
 
         public void ClearErrors()
         {
@@ -51,6 +132,21 @@ namespace WileyWidget.WinForms.Controls
                 _errorProvider.SetError(control, string.Empty);
             }
         }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
 
         public void Dispose()
         {

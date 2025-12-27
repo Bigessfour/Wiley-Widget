@@ -16,6 +16,9 @@ namespace WileyWidget.Services
     /// Implements IWileyWidgetContextService to provide contextual information for AI and system operations.
     /// Enhanced with data anonymization for privacy-compliant AI integration.
     /// </summary>
+    /// <summary>
+    /// Represents a class for wileywidgetcontextservice.
+    /// </summary>
     public class WileyWidgetContextService : IWileyWidgetContextService
     {
         private readonly ILogger<WileyWidgetContextService> _logger;

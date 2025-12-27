@@ -17,6 +17,9 @@ namespace WileyWidget.Data
     /// <summary>
     /// Repository implementation for MunicipalAccount data operations
     /// </summary>
+    /// <summary>
+    /// Represents a class for municipalaccountrepository.
+    /// </summary>
     public class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
         // Compiled queries to reduce first-query JIT/plan compilation overhead
@@ -106,6 +109,9 @@ namespace WileyWidget.Data
             {
                 _options = options;
             }
+            /// <summary>
+            /// Performs createdbcontext.
+            /// </summary>
 
             public AppDbContext CreateDbContext()
             {
@@ -229,8 +235,16 @@ namespace WileyWidget.Data
         public async Task<IEnumerable<MunicipalAccount>> GetByFundAsync(MunicipalFundType fund, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-            var list = CQ_GetByFund(context, fund);
-            return list;
+
+            // Materialize results first and perform ordering client-side to avoid
+            // provider-specific translation issues (notably with owned types like
+            // AccountNumber when using the InMemory provider used in tests).
+            var items = await context.MunicipalAccounts
+                .AsNoTracking()
+                .Where(ma => ma.Fund == fund && ma.IsActive)
+                .ToListAsync(cancellationToken);
+
+            return items.OrderBy(ma => ma.AccountNumber?.Value).ToList();
         }
 
         public async Task<IEnumerable<MunicipalAccount>> GetByTypeAsync(AccountType type, CancellationToken cancellationToken = default)
@@ -793,12 +807,18 @@ namespace WileyWidget.Data
         /// </summary>
         private class ChartValidationResult
         {
+            /// <summary>
+            /// Gets or sets the isvalid.
+            /// </summary>
             public bool IsValid { get; set; }
             public List<string> Errors { get; set; } = new List<string>();
         }
 
         /// <summary>
         /// Disposes the repository and its resources
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
         /// </summary>
         public void Dispose()
         {

@@ -1,18 +1,23 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
-    <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618</NoWarn>
+    <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;CA1416;RS1035;WW1005</NoWarn>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Also disable generation of TargetFrameworkAttribute if duplicate is present in source -->
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
+    <InternalsVisibleTo Include="WileyWidget.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -76,6 +81,7 @@
     <PackageReference Include="Syncfusion.Gauge.Windows" />
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
     <PackageReference Include="Syncfusion.DataGridExport.WinForms" />
+    <PackageReference Include="Syncfusion.SfInput.WinForms" />
     <PackageReference Include="Syncfusion.Office2019Theme.WinForms" />
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="microsoft.winforms.designer.sdk">

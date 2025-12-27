@@ -8,6 +8,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a report item for the reporting system
 /// </summary>
+/// <summary>
+/// Represents a class for reportitem.
+/// </summary>
 public class ReportItem : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;

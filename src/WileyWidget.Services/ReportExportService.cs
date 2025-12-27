@@ -18,6 +18,9 @@ namespace WileyWidget.Services;
 /// Implementation of report export service.
 /// Uses ClosedXML for Excel and Syncfusion.Pdf for PDF generation.
 /// </summary>
+/// <summary>
+/// Represents a class for reportexportservice.
+/// </summary>
 public class ReportExportService : IReportExportService
 {
     private readonly ILogger _logger;

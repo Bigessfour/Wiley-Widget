@@ -4,6 +4,7 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -15,6 +16,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class UtilityBillPanel : UserControl
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly UtilityBillViewModel _viewModel;
     private readonly ILogger<UtilityBillPanel> _logger;
 
@@ -55,6 +62,9 @@ public partial class UtilityBillPanel : UserControl
 
         InitializeControls();
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -68,8 +78,11 @@ public partial class UtilityBillPanel : UserControl
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Utility Bill Management" };
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshDataAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeader.SafeInvoke(p =>
+        {
+            p.RefreshClicked += async (s, e) => await RefreshDataAsync();
+            p.CloseClicked += (s, e) => ClosePanel();
+        });
         Controls.Add(_panelHeader);
 
         // Main split container
@@ -94,7 +107,7 @@ public partial class UtilityBillPanel : UserControl
             Spring = true,
             TextAlign = ContentAlignment.MiddleLeft
         };
-        _statusStrip.Items.Add(_statusLabel);
+        _statusStrip.SafeInvoke(s => s.Items.Add(_statusLabel));
 
         // Loading overlay
         _loadingOverlay = new LoadingOverlay { Message = "Loading utility bill data..." };
@@ -113,6 +126,12 @@ public partial class UtilityBillPanel : UserControl
         // Set tab order
         SetTabOrder();
     }
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
 
     private void InitializeTopPanel()
     {
@@ -345,6 +364,12 @@ public partial class UtilityBillPanel : UserControl
 
         _mainSplitContainer!.Panel1.Controls.Add(topPanel);
     }
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
 
     private void InitializeBottomPanel()
     {
@@ -456,29 +481,75 @@ public partial class UtilityBillPanel : UserControl
 
         _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
 
     private void SetTabOrder()
     {
         // Tab order is set in the control initialization above
         // Bills grid (1), buttons (2-7), search (8), status filter (9), overdue checkbox (10), customers grid (11)
     }
+    /// <summary>
+    /// Performs billsgrid currentcellactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs billsgrid currentcellactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void BillsGrid_CurrentCellActivated(object? sender, EventArgs e)
     {
         // Handle grid selection if needed
         // TODO: Implement proper event args handling when Syncfusion types are available
     }
+    /// <summary>
+    /// Performs customersgrid currentcellactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs customersgrid currentcellactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void CustomersGrid_CurrentCellActivated(object? sender, EventArgs e)
     {
         // Handle grid selection if needed
         // TODO: Implement proper event args handling when Syncfusion types are available
     }
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         _viewModel.SearchText = _searchTextBox?.Text ?? string.Empty;
     }
+    /// <summary>
+    /// Performs statusfiltercombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs statusfiltercombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void StatusFilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
@@ -492,11 +563,31 @@ public partial class UtilityBillPanel : UserControl
             _viewModel.FilterStatus = null;
         }
     }
+    /// <summary>
+    /// Performs overdueonlycheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs overdueonlycheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void OverdueOnlyCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
         _viewModel.ShowOverdueOnly = _overdueOnlyCheckBox?.Checked ?? false;
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -557,14 +648,28 @@ public partial class UtilityBillPanel : UserControl
         {
             _logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
-            MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.SafeInvoke(() => MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {
         if (_statusLabel != null) _statusLabel.Text = message;
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -589,11 +694,11 @@ public partial class UtilityBillPanel : UserControl
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-
         try
         {
             // Auto-load data on panel load
-            Task.Run(async () => await RefreshDataAsync());
+            // Avoid offloading to ThreadPool which causes cross-thread UI access inside RefreshDataAsync.
+            _ = RefreshDataAsync();
         }
         catch (Exception ex)
         {
@@ -635,6 +740,9 @@ public partial class UtilityBillPanel : UserControl
     /// <summary>
     /// Required method for Designer support - do not modify
     /// the contents of this method with the code editor.
+    /// </summary>
+    /// <summary>
+    /// Performs initializecomponent.
     /// </summary>
     private void InitializeComponent()
     {

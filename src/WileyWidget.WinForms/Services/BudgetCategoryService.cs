@@ -12,11 +12,38 @@ using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.Services
 {
+    /// <summary>
+    /// Represents a class for budgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetcategoryservice.
+    /// </summary>
     public class BudgetCategoryService : IBudgetCategoryService
     {
         private const int DefaultRetryCount = 3;
+        /// <summary>
+        /// Represents the _budgetrepository.
+        /// </summary>
+        /// <summary>
+        /// Represents the _budgetrepository.
+        /// </summary>
         private readonly IBudgetRepository _budgetRepository;
+        /// <summary>
+        /// Represents the _context.
+        /// </summary>
         private readonly AppDbContext _context;
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
         private readonly ILogger _logger;
 
         public BudgetCategoryService(IBudgetRepository budgetRepository, AppDbContext context, ILogger logger)
@@ -253,6 +280,14 @@ namespace WileyWidget.WinForms.Services
             await _context.SaveChangesAsync(cancellationToken);
             return defaultAccount;
         }
+        /// <summary>
+        /// Performs maptodto. Parameters: entry.
+        /// </summary>
+        /// <param name="entry">The entry.</param>
+        /// <summary>
+        /// Performs maptodto. Parameters: entry.
+        /// </summary>
+        /// <param name="entry">The entry.</param>
 
         private static BudgetCategoryDto MapToDto(BudgetEntry entry)
         {

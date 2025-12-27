@@ -9,11 +9,20 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a municipal department with hierarchical support
 /// </summary>
+/// <summary>
+/// Represents a class for department.
+/// </summary>
 public class Department
 {
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     [Required, MaxLength(100)]
+    /// <summary>
+    /// Gets or sets the name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
 
     public int? ParentId { get; set; } // Nested departments

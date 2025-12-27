@@ -13,6 +13,9 @@ namespace WileyWidget.Services.Export
     /// <summary>
     /// Interface for Excel export functionality.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iexcelexportservice.
+    /// </summary>
     public interface IExcelExportService
     {
         /// <summary>
@@ -38,6 +41,9 @@ namespace WileyWidget.Services.Export
 
     /// <summary>
     /// Service for exporting data to Excel using Syncfusion.XlsIO.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for excelexportservice.
     /// </summary>
     public class ExcelExportService : IExcelExportService
     {

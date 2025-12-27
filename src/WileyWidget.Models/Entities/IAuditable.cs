@@ -5,6 +5,9 @@ namespace WileyWidget.Models.Entities;
 /// <summary>
 /// Interface for entities that require auditing
 /// </summary>
+/// <summary>
+/// Represents a interface for iauditable.
+/// </summary>
 public interface IAuditable
 {
     DateTime CreatedAt { get; set; }

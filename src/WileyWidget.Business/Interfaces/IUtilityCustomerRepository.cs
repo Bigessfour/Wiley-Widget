@@ -5,6 +5,9 @@ namespace WileyWidget.Business.Interfaces;
 /// <summary>
 /// Repository interface for UtilityCustomer data operations
 /// </summary>
+/// <summary>
+/// Represents a interface for iutilitycustomerrepository.
+/// </summary>
 public interface IUtilityCustomerRepository
 {
     /// <summary>

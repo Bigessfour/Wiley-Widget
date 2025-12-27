@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents a budget insight for dashboard display.
 /// Provides analytical information about budget trends and patterns.
 /// </summary>
+/// <summary>
+/// Represents a class for budgetinsight.
+/// </summary>
 public class BudgetInsight : INotifyPropertyChanged
 {
     private string _category = string.Empty;

@@ -13,6 +13,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a municipal utility customer for billing and service management
 /// </summary>
+/// <summary>
+/// Represents a class for utilitycustomer.
+/// </summary>
 public class UtilityCustomer : INotifyPropertyChanged, IValidatableObject
 {
     /// <summary>
@@ -74,6 +77,9 @@ public class UtilityCustomer : INotifyPropertyChanged, IValidatableObject
     /// Unique identifier for the customer
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -733,16 +739,25 @@ public class UtilityCustomer : INotifyPropertyChanged, IValidatableObject
     /// <summary>
     /// Date the record was created
     /// </summary>
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
     /// <summary>
     /// Date the record was last modified
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the lastmodifieddate.
     /// </summary>
     public DateTime LastModifiedDate { get; set; } = DateTime.Now;
 }
 
 /// <summary>
 /// Types of customer accounts
+/// </summary>
+/// <summary>
+/// Defines the customertype enumeration.
 /// </summary>
 public enum CustomerType
 {
@@ -771,6 +786,9 @@ public enum CustomerType
 /// <summary>
 /// Service location classification
 /// </summary>
+/// <summary>
+/// Defines the servicelocation enumeration.
+/// </summary>
 public enum ServiceLocation
 {
     [Description("Inside City Limits")]
@@ -782,6 +800,9 @@ public enum ServiceLocation
 
 /// <summary>
 /// Customer account status
+/// </summary>
+/// <summary>
+/// Defines the customerstatus enumeration.
 /// </summary>
 public enum CustomerStatus
 {

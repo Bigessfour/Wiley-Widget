@@ -5,8 +5,15 @@ using System.IO;
 
 namespace WileyWidget.Data
 {
+    /// <summary>
+    /// Represents a class for designtimedbcontextfactory.
+    /// </summary>
     public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
+        /// <summary>
+        /// Performs createdbcontext. Handles file operations. Parameters: args.
+        /// </summary>
+        /// <param name="args">The args.</param>
         public AppDbContext CreateDbContext(string[] args)
         {
             var configuration = new ConfigurationBuilder()

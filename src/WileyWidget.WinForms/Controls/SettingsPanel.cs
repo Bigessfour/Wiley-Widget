@@ -9,6 +9,21 @@ using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
 {
+    /// <summary>
+    /// Represents a class for settingspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for settingspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for settingspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for settingspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for settingspanelresources.
+    /// </summary>
     internal static class SettingsPanelResources
     {
         public const string PanelTitle = "Settings";
@@ -25,8 +40,17 @@ namespace WileyWidget.WinForms.Controls
     public partial class SettingsPanel : UserControl
     {
         public new object? DataContext { get; private set; }
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
 
         private readonly SettingsViewModel _vm;
+        /// <summary>
+        /// Represents the _themeservice.
+        /// </summary>
         private readonly IThemeService _themeService;
 
         // Controls
@@ -69,6 +93,9 @@ namespace WileyWidget.WinForms.Controls
         public SettingsPanel() : this(ResolveSettingsViewModel(), ResolveThemeService())
         {
         }
+        /// <summary>
+        /// Performs resolvesettingsviewmodel.
+        /// </summary>
 
         private static SettingsViewModel ResolveSettingsViewModel()
         {
@@ -89,6 +116,12 @@ namespace WileyWidget.WinForms.Controls
                 throw;
             }
         }
+        /// <summary>
+        /// Performs resolvethemeservice.
+        /// </summary>
+        /// <summary>
+        /// Performs resolvethemeservice.
+        /// </summary>
 
         private static IThemeService ResolveThemeService()
         {
@@ -128,6 +161,12 @@ namespace WileyWidget.WinForms.Controls
             // Start async load
             _ = LoadViewDataAsync();
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -136,6 +175,12 @@ namespace WileyWidget.WinForms.Controls
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
         }
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
 
         private void SetupUI()
         {
@@ -186,7 +231,7 @@ namespace WileyWidget.WinForms.Controls
             y += 30;
 
             // Demo mode toggle
-            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
+            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Orange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
             _demoDataToolTip = new ToolTip(); _demoDataToolTip.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data. Useful for demonstrations or when database is unavailable.");
             _chkUseDemoData.CheckedChanged += (s, e) => { if (_vm != null) _vm.UseDemoData = _chkUseDemoData.Checked; };
             _mainPanel.Controls.Add(_chkUseDemoData);
@@ -284,6 +329,12 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "SettingsPanel: Failed to setup ErrorProviderBinding");
             }
         }
+        /// <summary>
+        /// Performs onbrowseexportpath.
+        /// </summary>
+        /// <summary>
+        /// Performs onbrowseexportpath.
+        /// </summary>
 
         private void OnBrowseExportPath()
         {
@@ -299,6 +350,12 @@ namespace WileyWidget.WinForms.Controls
                 if (_vm != null) _vm.DefaultExportPath = folderDialog.SelectedPath;
             }
         }
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
 
         private void ApplyCurrentTheme()
         {
@@ -316,12 +373,32 @@ namespace WileyWidget.WinForms.Controls
             try { Serilog.Log.Debug("SettingsPanel: LoadViewDataAsync starting"); if (_vm != null) { await (_vm.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask); Serilog.Log.Information("SettingsPanel: settings loaded successfully"); } }
             catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: LoadViewDataAsync failed"); }
         }
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
 
         private void OnThemeChanged(object? sender, AppTheme theme)
         {
             if (InvokeRequired) { Invoke(() => OnThemeChanged(sender, theme)); return; }
             ApplyCurrentTheme();
         }
+        /// <summary>
+        /// Performs btnclose click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs btnclose click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void BtnClose_Click(object? sender, EventArgs e)
         {
@@ -388,6 +465,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Handles font selection changes.
         /// </summary>
+        /// <summary>
+        /// Performs onfontselectionchanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void OnFontSelectionChanged(object? sender, EventArgs e)
         {
             try

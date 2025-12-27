@@ -5,6 +5,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -15,6 +16,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class ReportsPanel : UserControl, IParameterizedPanel
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly ReportsViewModel _viewModel;
     private readonly ILogger<ReportsPanel> _logger;
     private string? _initialReportPath;
@@ -53,6 +60,22 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
     /// Initialize the panel with parameters (e.g., report path to auto-load)
     /// </summary>
     /// <param name="parameters">Parameters for panel initialization</param>
+    /// <summary>
+    /// Performs initializewithparameters. Parameters: parameters.
+    /// </summary>
+    /// <param name="parameters">The parameters.</param>
+    /// <summary>
+    /// Performs initializewithparameters. Parameters: parameters.
+    /// </summary>
+    /// <param name="parameters">The parameters.</param>
+    /// <summary>
+    /// Performs initializewithparameters. Parameters: parameters.
+    /// </summary>
+    /// <param name="parameters">The parameters.</param>
+    /// <summary>
+    /// Performs initializewithparameters. Parameters: parameters.
+    /// </summary>
+    /// <param name="parameters">The parameters.</param>
     public void InitializeWithParameters(object parameters)
     {
         if (parameters is string reportPath && !string.IsNullOrWhiteSpace(reportPath))
@@ -75,6 +98,12 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
             _logger.LogWarning("ReportsPanel received unsupported parameter type: {ParameterType}", parameters.GetType().Name);
         }
     }
+    /// <summary>
+    /// Performs loadinitialreport. Handles file operations.
+    /// </summary>
+    /// <summary>
+    /// Performs loadinitialreport. Handles file operations.
+    /// </summary>
 
     private void LoadInitialReport()
     {
@@ -107,6 +136,12 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
             UpdateStatus($"Failed to load report: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -116,9 +151,9 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         // Panel header
         _panelHeader = new PanelHeader { Dock = DockStyle.Top };
-        _panelHeader.Title = "Reports";
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeader.SafeInvoke(c => c.Title = "Reports");
+        // TODO: Manual SafeInvoke needed for: _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
+        // TODO: Manual SafeInvoke needed for: _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
         // Main layout container
@@ -211,7 +246,6 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         _reportViewer = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = SystemColors.ControlLight,
             BorderStyle = BorderStyle.FixedSingle
         };
 
@@ -260,11 +294,22 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         _logger.LogDebug("ReportsPanel controls initialized");
     }
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
 
     private void BindViewModel()
     {
         // ViewModel binding is handled through PropertyChanged events
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -284,6 +329,12 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
                 break;
         }
     }
+    /// <summary>
+    /// Performs updatebuttonstates.
+    /// </summary>
+    /// <summary>
+    /// Performs updatebuttonstates.
+    /// </summary>
 
     private void UpdateButtonStates()
     {
@@ -295,6 +346,12 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         if (_exportExcelButton != null) _exportExcelButton.Enabled = !isLoading && hasReport;
         if (_printButton != null) _printButton.Enabled = !isLoading && hasReport;
     }
+    /// <summary>
+    /// Performs loadavailablereports. Handles file operations.
+    /// </summary>
+    /// <summary>
+    /// Performs loadavailablereports. Handles file operations.
+    /// </summary>
 
     private void LoadAvailableReports()
     {
@@ -324,6 +381,16 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
             UpdateStatus("Failed to load reports list");
         }
     }
+    /// <summary>
+    /// Performs reportselector selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs reportselector selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ReportSelector_SelectedIndexChanged(object? sender, EventArgs e)
     {
@@ -428,6 +495,12 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         await Task.CompletedTask; // Suppress CS1998 warning for stub implementation
         UpdateStatus("Reports list refreshed");
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -472,6 +545,14 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         return null;
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {

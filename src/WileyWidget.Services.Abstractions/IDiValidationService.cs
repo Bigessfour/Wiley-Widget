@@ -9,6 +9,9 @@ namespace WileyWidget.Services.Abstractions
     ///
     /// Reference: https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection
     /// </summary>
+    /// <summary>
+    /// Represents a interface for idivalidationservice.
+    /// </summary>
     public interface IDiValidationService
     {
         /// <summary>
@@ -66,13 +69,25 @@ namespace WileyWidget.Services.Abstractions
     /// Detailed validation result for categorized service validation.
     /// Includes timing, success/error messages, and summary formatting.
     /// </summary>
+    /// <summary>
+    /// Represents a class for divalidationresult.
+    /// </summary>
     public class DiValidationResult
     {
+        /// <summary>
+        /// Gets or sets the isvalid.
+        /// </summary>
         public bool IsValid { get; set; }
         public List<string> Errors { get; set; } = new();
         public List<string> Warnings { get; set; } = new();
         public List<string> SuccessMessages { get; set; } = new();
         public System.TimeSpan ValidationDuration { get; set; }
+        /// <summary>
+        /// Performs getsummary.
+        /// </summary>
+        /// <summary>
+        /// Performs getsummary.
+        /// </summary>
 
         public string GetSummary()
         {
@@ -84,6 +99,9 @@ namespace WileyWidget.Services.Abstractions
 
     /// <summary>
     /// Report containing results of DI validation scan.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for divalidationreport.
     /// </summary>
     public class DiValidationReport
     {
@@ -133,15 +151,24 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Detailed error information for a service that failed to resolve.
     /// </summary>
+    /// <summary>
+    /// Represents a class for divalidationerror.
+    /// </summary>
     public class DiValidationError
     {
         /// <summary>
         /// The service type that failed to resolve.
         /// </summary>
+        /// <summary>
+        /// Gets or sets the servicetype.
+        /// </summary>
         public string ServiceType { get; set; } = string.Empty;
 
         /// <summary>
         /// The exception message from the resolution attempt.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the errormessage.
         /// </summary>
         public string ErrorMessage { get; set; } = string.Empty;
 

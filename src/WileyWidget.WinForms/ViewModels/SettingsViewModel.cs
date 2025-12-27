@@ -36,9 +36,18 @@ namespace WileyWidget.WinForms.ViewModels
         private string appTitle = "Wiley Widget Settings";
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the openeditformsdocked.
+        /// </summary>
+        /// <summary>
+        /// Represents the openeditformsdocked.
+        /// </summary>
         private bool openEditFormsDocked;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the usedemodata.
+        /// </summary>
         private bool useDemoData;
 
         [ObservableProperty]
@@ -57,9 +66,42 @@ namespace WileyWidget.WinForms.ViewModels
         private string defaultExportPath = string.Empty;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the hasunsavedchanges.
+        /// </summary>
+        /// <summary>
+        /// Represents the hasunsavedchanges.
+        /// </summary>
         private bool hasUnsavedChanges;
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
 
         public IAsyncRelayCommand LoadCommand { get; }
+        /// <summary>
+        /// Gets or sets the browseexportpathcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the browseexportpathcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the browseexportpathcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the browseexportpathcommand.
+        /// </summary>
 
         public IRelayCommand BrowseExportPathCommand { get; }
 
@@ -112,11 +154,20 @@ namespace WileyWidget.WinForms.ViewModels
             _logger.LogInformation("DefaultExportPath changed to: {DefaultExportPath}", value);
             MarkDirty();
         }
+        /// <summary>
+        /// Performs markdirty.
+        /// </summary>
 
         private void MarkDirty()
         {
             HasUnsavedChanges = true;
         }
+        /// <summary>
+        /// Performs load.
+        /// </summary>
+        /// <summary>
+        /// Performs load.
+        /// </summary>
 
         private Task LoadAsync()
         {
@@ -129,6 +180,18 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Simple validation hook for the Settings panel.
+        /// </summary>
+        /// <summary>
+        /// Performs validatesettings.
+        /// </summary>
+        /// <summary>
+        /// Performs validatesettings.
+        /// </summary>
+        /// <summary>
+        /// Performs validatesettings.
+        /// </summary>
+        /// <summary>
+        /// Performs validatesettings.
         /// </summary>
         public bool ValidateSettings()
         {

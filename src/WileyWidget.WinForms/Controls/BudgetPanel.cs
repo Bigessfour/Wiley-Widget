@@ -4,6 +4,7 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -15,6 +16,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class BudgetPanel : UserControl
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly BudgetViewModel _viewModel;
     private readonly ILogger<BudgetPanel> _logger;
 
@@ -68,6 +75,9 @@ public partial class BudgetPanel : UserControl
 
         InitializeControls();
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -126,6 +136,12 @@ public partial class BudgetPanel : UserControl
         // Set tab order
         SetTabOrder();
     }
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
 
     private void InitializeTopPanel()
     {
@@ -365,6 +381,12 @@ public partial class BudgetPanel : UserControl
 
         _mainSplitContainer!.Panel1.Controls.Add(topPanel);
     }
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
 
     private void InitializeBottomPanel()
     {
@@ -564,24 +586,55 @@ public partial class BudgetPanel : UserControl
 
         _buttonPanel!.Controls.Add(buttonTable);
         bottomPanel.Controls.Add(_buttonPanel);
-
+        // TODO: Manual SafeInvoke needed for:
         _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
 
     private void SetTabOrder()
     {
         // Tab order set in control initialization
     }
+    /// <summary>
+    /// Performs budgetgrid currentcellactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void BudgetGrid_CurrentCellActivated(object? sender, EventArgs e)
     {
         // Handle grid selection if needed
     }
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         _viewModel.SearchText = _searchTextBox?.Text ?? string.Empty;
     }
+    /// <summary>
+    /// Performs fiscalyearcombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs fiscalyearcombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void FiscalYearComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
@@ -590,11 +643,31 @@ public partial class BudgetPanel : UserControl
             _viewModel.SelectedFiscalYear = year;
         }
     }
+    /// <summary>
+    /// Performs departmentcombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs departmentcombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void DepartmentComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
         // Department filtering logic would go here
     }
+    /// <summary>
+    /// Performs fundtypecombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs fundtypecombobox selectedindexchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void FundTypeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
@@ -608,6 +681,16 @@ public partial class BudgetPanel : UserControl
             _viewModel.SelectedFundType = null;
         }
     }
+    /// <summary>
+    /// Performs variancethresholdtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs variancethresholdtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void VarianceThresholdTextBox_TextChanged(object? sender, EventArgs e)
     {
@@ -620,22 +703,62 @@ public partial class BudgetPanel : UserControl
             _viewModel.VarianceThreshold = null;
         }
     }
+    /// <summary>
+    /// Performs overbudgetcheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs overbudgetcheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void OverBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
         _viewModel.ShowOnlyOverBudget = _overBudgetCheckBox?.Checked ?? false;
     }
+    /// <summary>
+    /// Performs underbudgetcheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs underbudgetcheckbox checkedchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void UnderBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
         _viewModel.ShowOnlyUnderBudget = _underBudgetCheckBox?.Checked ?? false;
     }
+    /// <summary>
+    /// Performs addentrybutton click. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs addentrybutton click. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void AddEntryButton_Click(object? sender, EventArgs e)
     {
         // Add entry dialog would be implemented here
         MessageBox.Show("Add Entry functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
+    /// <summary>
+    /// Performs editentrybutton click. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs editentrybutton click. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void EditEntryButton_Click(object? sender, EventArgs e)
     {
@@ -664,6 +787,16 @@ public partial class BudgetPanel : UserControl
             MessageBox.Show("Delete functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
+    /// <summary>
+    /// Performs importcsvbutton click. Handles file operations. Imports data or configuration. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs importcsvbutton click. Handles file operations. Imports data or configuration. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ImportCsvButton_Click(object? sender, EventArgs e)
     {
@@ -678,6 +811,16 @@ public partial class BudgetPanel : UserControl
             _ = _viewModel.ImportFromCsvCommand.ExecuteAsync(openFileDialog.FileName);
         }
     }
+    /// <summary>
+    /// Performs exportcsvbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs exportcsvbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ExportCsvButton_Click(object? sender, EventArgs e)
     {
@@ -693,6 +836,16 @@ public partial class BudgetPanel : UserControl
             _ = _viewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
+    /// <summary>
+    /// Performs exportpdfbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs exportpdfbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ExportPdfButton_Click(object? sender, EventArgs e)
     {
@@ -708,6 +861,16 @@ public partial class BudgetPanel : UserControl
             _ = _viewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
+    /// <summary>
+    /// Performs exportexcelbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs exportexcelbutton click. Handles file operations. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
@@ -723,6 +886,16 @@ public partial class BudgetPanel : UserControl
             _ = _viewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -793,14 +966,28 @@ public partial class BudgetPanel : UserControl
         {
             _logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
-            MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.SafeInvoke(() => MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {
         if (_statusLabel != null) _statusLabel.Text = message;
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -870,6 +1057,9 @@ public partial class BudgetPanel : UserControl
     /// <summary>
     /// Required method for Designer support - do not modify
     /// the contents of this method with the code editor.
+    /// </summary>
+    /// <summary>
+    /// Performs initializecomponent.
     /// </summary>
     private void InitializeComponent()
     {

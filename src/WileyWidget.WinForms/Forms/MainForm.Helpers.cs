@@ -86,6 +86,10 @@ namespace WileyWidget.WinForms.Forms
             }
             return null;
         }
+        /// <summary>
+        /// Performs sortactivegridbyfirstsortablecolumn. Parameters: descending.
+        /// </summary>
+        /// <param name="descending">The descending.</param>
 
         private void SortActiveGridByFirstSortableColumn(bool descending)
         {
@@ -104,6 +108,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "SortActiveGrid failed");
             }
         }
+        /// <summary>
+        /// Performs applytestfiltertoactivegrid.
+        /// </summary>
+        /// <summary>
+        /// Performs applytestfiltertoactivegrid.
+        /// </summary>
 
         private void ApplyTestFilterToActiveGrid()
         {
@@ -147,6 +157,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "ApplyTestFilterToActiveGrid failed");
             }
         }
+        /// <summary>
+        /// Performs clearactivegridfilter.
+        /// </summary>
+        /// <summary>
+        /// Performs clearactivegridfilter.
+        /// </summary>
 
         private void ClearActiveGridFilter()
         {

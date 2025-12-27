@@ -3,6 +3,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Defines AI conversation modes for context-aware queries
 /// </summary>
+/// <summary>
+/// Defines the conversationmode enumeration.
+/// </summary>
 public enum ConversationMode
 {
     /// <summary>

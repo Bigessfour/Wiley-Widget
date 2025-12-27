@@ -1,5 +1,8 @@
 namespace WileyWidget.Services.Abstractions
 {
+    /// <summary>
+    /// Represents a interface for isecretvaultservice.
+    /// </summary>
     public interface ISecretVaultService
     {
         // Synchronous helpers kept for compatibility

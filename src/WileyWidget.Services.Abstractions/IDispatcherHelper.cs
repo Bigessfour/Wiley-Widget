@@ -9,6 +9,9 @@ namespace WileyWidget.Services.Threading
     /// <summary>
     /// Interface for dispatcher helper operations to marshal calls to the UI thread
     /// </summary>
+    /// <summary>
+    /// Represents a interface for idispatcherhelper.
+    /// </summary>
     public interface IDispatcherHelper
     {
         /// <summary>

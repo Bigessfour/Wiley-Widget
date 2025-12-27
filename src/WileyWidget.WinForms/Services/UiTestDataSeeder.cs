@@ -6,6 +6,21 @@ using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Services
 {
+    /// <summary>
+    /// Represents a class for uitestdataseeder.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for uitestdataseeder.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for uitestdataseeder.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for uitestdataseeder.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for uitestdataseeder.
+    /// </summary>
     internal static class UiTestDataSeeder
     {
         private const string UiTestEnvVar = "WILEYWIDGET_UI_TESTS";

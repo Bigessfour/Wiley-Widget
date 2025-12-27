@@ -8,6 +8,9 @@ namespace WileyWidget.Models;
 /// Represents a quick action item for dashboard shortcuts.
 /// Provides one-click access to common tasks.
 /// </summary>
+/// <summary>
+/// Represents a class for quickaction.
+/// </summary>
 public class QuickAction : INotifyPropertyChanged
 {
     private string _title = string.Empty;

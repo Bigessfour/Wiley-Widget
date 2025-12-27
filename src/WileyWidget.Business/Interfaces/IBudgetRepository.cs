@@ -8,6 +8,9 @@ namespace WileyWidget.Business.Interfaces;
 /// <summary>
 /// Repository interface for BudgetEntry operations
 /// </summary>
+/// <summary>
+/// Represents a interface for ibudgetrepository.
+/// </summary>
 public interface IBudgetRepository
 {
     /// <summary>

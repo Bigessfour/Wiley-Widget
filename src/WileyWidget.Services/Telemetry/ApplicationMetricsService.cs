@@ -9,6 +9,9 @@ namespace WileyWidget.Services.Telemetry;
 /// Provides custom application metrics for SigNoz monitoring.
 /// Tracks memory usage, error rates, and application-specific performance metrics.
 /// </summary>
+/// <summary>
+/// Represents a class for applicationmetricsservice.
+/// </summary>
 public class ApplicationMetricsService : IDisposable
 {
     private readonly ILogger<ApplicationMetricsService> _logger;
@@ -117,6 +120,12 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records an error occurrence with metadata.
     /// </summary>
+    /// <summary>
+    /// Performs recorderror. Parameters: errorType, severity, null.
+    /// </summary>
+    /// <param name="errorType">The errorType.</param>
+    /// <param name="severity">The severity.</param>
+    /// <param name="null">The null.</param>
     public void RecordError(string errorType, string severity, string? source = null)
     {
         var tags = new TagList
@@ -139,6 +148,13 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records an operation with duration.
     /// </summary>
+    /// <summary>
+    /// Performs recordoperation. Parameters: operationType, durationMs, success, null.
+    /// </summary>
+    /// <param name="operationType">The operationType.</param>
+    /// <param name="durationMs">The durationMs.</param>
+    /// <param name="success">The success.</param>
+    /// <param name="null">The null.</param>
     public void RecordOperation(string operationType, double durationMs, bool success, string? context = null)
     {
         var tags = new TagList
@@ -162,6 +178,12 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records module initialization result.
     /// </summary>
+    /// <summary>
+    /// Performs recordmoduleinitialization. Parameters: moduleName, success, durationMs.
+    /// </summary>
+    /// <param name="moduleName">The moduleName.</param>
+    /// <param name="success">The success.</param>
+    /// <param name="durationMs">The durationMs.</param>
     public void RecordModuleInitialization(string moduleName, bool success, double durationMs)
     {
         var tags = new TagList
@@ -184,6 +206,13 @@ public class ApplicationMetricsService : IDisposable
     /// <summary>
     /// Records GC collection metrics.
     /// </summary>
+    /// <summary>
+    /// Performs recordgarbagecollection. Parameters: generation, durationMs, memoryBefore, memoryAfter.
+    /// </summary>
+    /// <param name="generation">The generation.</param>
+    /// <param name="durationMs">The durationMs.</param>
+    /// <param name="memoryBefore">The memoryBefore.</param>
+    /// <param name="memoryAfter">The memoryAfter.</param>
     public void RecordGarbageCollection(int generation, double durationMs, long memoryBefore, long memoryAfter)
     {
         var tags = new TagList
@@ -202,6 +231,9 @@ public class ApplicationMetricsService : IDisposable
     /// Forces an immediate update of memory metrics.
     /// Call this before critical operations to get current state.
     /// </summary>
+    /// <summary>
+    /// Performs updatememorymetricsnow.
+    /// </summary>
     public void UpdateMemoryMetricsNow()
     {
         UpdateMemoryMetrics(null);
@@ -209,6 +241,9 @@ public class ApplicationMetricsService : IDisposable
 
     /// <summary>
     /// Gets current memory statistics for logging/diagnostics.
+    /// </summary>
+    /// <summary>
+    /// Performs getmemorystatistics.
     /// </summary>
     public object GetMemoryStatistics()
     {
@@ -290,6 +325,9 @@ public class ApplicationMetricsService : IDisposable
         }
         // No unmanaged resources to clean up
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

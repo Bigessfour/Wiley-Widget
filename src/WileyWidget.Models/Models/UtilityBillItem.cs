@@ -12,6 +12,9 @@ namespace WileyWidget.Models;
 /// Represents an individual line item on a utility bill
 /// Supports modular billing with different charge types
 /// </summary>
+/// <summary>
+/// Represents a class for utilitybillitem.
+/// </summary>
 public class UtilityBillItem : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -22,9 +25,15 @@ public class UtilityBillItem : INotifyPropertyChanged
     }
 
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     [Required]
+    /// <summary>
+    /// Gets or sets the billid.
+    /// </summary>
     public int BillId { get; set; }
 
     [ForeignKey(nameof(BillId))]
@@ -161,6 +170,9 @@ public class UtilityBillItem : INotifyPropertyChanged
             }
         }
     }
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
 
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
@@ -217,6 +229,9 @@ public class UtilityBillItem : INotifyPropertyChanged
 
 /// <summary>
 /// Types of bill items for utility billing
+/// </summary>
+/// <summary>
+/// Defines the billitemtype enumeration.
 /// </summary>
 public enum BillItemType
 {

@@ -13,6 +13,12 @@ namespace WileyWidget.WinForms.ViewModels;
 public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposable
 {
     private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
+    /// <summary>
+    /// Represents the _disposed.
+    /// </summary>
+    /// <summary>
+    /// Represents the _disposed.
+    /// </summary>
     private bool _disposed;
 
     #region Observable Properties
@@ -33,6 +39,9 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// Indicates if data is currently being loaded
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the isloading.
+    /// </summary>
     private bool isLoading;
 
     /// <summary>
@@ -45,18 +54,27 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// Total suggested monthly revenue across all departments
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the totalsuggestedrevenue.
+    /// </summary>
     private decimal totalSuggestedRevenue;
 
     /// <summary>
     /// Total current monthly revenue across all departments
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the totalcurrentrevenue.
+    /// </summary>
     private decimal totalCurrentRevenue;
 
     /// <summary>
     /// Total monthly expenses across all departments
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the totalmonthlyexpenses.
+    /// </summary>
     private decimal totalMonthlyExpenses;
 
     /// <summary>
@@ -86,9 +104,48 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     #endregion
 
     #region Commands
+    /// <summary>
+    /// Gets or sets the refreshdatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshdatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshdatacommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the refreshdatacommand.
+    /// </summary>
 
     public IAsyncRelayCommand RefreshDataCommand { get; }
+    /// <summary>
+    /// Gets or sets the savecurrentchargescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the savecurrentchargescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the savecurrentchargescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the savecurrentchargescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the savecurrentchargescommand.
+    /// </summary>
     public IAsyncRelayCommand SaveCurrentChargesCommand { get; }
+    /// <summary>
+    /// Gets or sets the querygrokcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the querygrokcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the querygrokcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the querygrokcommand.
+    /// </summary>
     public IAsyncRelayCommand QueryGrokCommand { get; }
     public IAsyncRelayCommand<string> ApplyRecommendationCommand { get; }
 
@@ -263,6 +320,9 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Loads department expense data (from QuickBooks in production)
     /// </summary>
+    /// <summary>
+    /// Performs loaddepartmentdata.
+    /// </summary>
     private void LoadDepartmentData()
     {
         Departments.Clear();
@@ -317,6 +377,9 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
     /// <summary>
     /// Loads state/national benchmark data
+    /// </summary>
+    /// <summary>
+    /// Performs loadbenchmarkdata.
     /// </summary>
     private void LoadBenchmarkData()
     {
@@ -376,6 +439,9 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Calculates total revenue, expenses, and overall status
     /// </summary>
+    /// <summary>
+    /// Performs calculatetotals.
+    /// </summary>
     private void CalculateTotals()
     {
         TotalMonthlyExpenses = Departments.Sum(d => d.MonthlyExpenses);
@@ -408,6 +474,9 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Initializes sample data for design-time preview
     /// </summary>
+    /// <summary>
+    /// Performs initializesampledata.
+    /// </summary>
     private void InitializeSampleData()
     {
         LoadDepartmentData();
@@ -417,6 +486,21 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         LastUpdated = DateTime.Now;
         StatusText = "Design Mode - Sample Data";
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

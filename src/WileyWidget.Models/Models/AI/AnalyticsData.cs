@@ -9,6 +9,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents KPI data with name and value.
     /// </summary>
+    /// <summary>
+    /// Represents a class for kpi.
+    /// </summary>
     public class KPI : INotifyPropertyChanged
     {
         private string? _name;
@@ -63,6 +66,9 @@ namespace WileyWidget.Models
 
     /// <summary>
     /// Represents statistical summary data.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for statisticalsummary.
     /// </summary>
     public class StatisticalSummary : INotifyPropertyChanged
     {
@@ -187,6 +193,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents analytics data building on ReportData, including chart data, KPIs, and statistical summaries.
     /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsdata.
+    /// </summary>
     public class AnalyticsData : ReportData
     {
         private Dictionary<string, double> _chartData;
@@ -307,6 +316,9 @@ namespace WileyWidget.Models
 
         /// <summary>
         /// Updates the analytics data based on the current enterprises.
+        /// </summary>
+        /// <summary>
+        /// Performs updateanalytics.
         /// </summary>
         public void UpdateAnalytics()
         {

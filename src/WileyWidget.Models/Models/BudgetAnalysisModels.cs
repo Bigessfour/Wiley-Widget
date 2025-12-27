@@ -9,10 +9,16 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Summary information for a fund in the budget
 /// </summary>
+/// <summary>
+/// Represents a class for fundsummary.
+/// </summary>
 public class FundSummary
 {
     /// <summary>
     /// Gets or sets the fund type
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the fund.
     /// </summary>
     public BudgetFundType Fund { get; set; } = new() { Code = "GF", Name = "General Fund" };
 
@@ -23,6 +29,15 @@ public class FundSummary
 
     /// <summary>
     /// Gets or sets the total budgeted amount for the fund
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalbudgeted.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalbudgeted.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalbudgeted.
     /// </summary>
     public decimal TotalBudgeted { get; set; }
 
@@ -38,6 +53,15 @@ public class FundSummary
     /// <summary>
     /// Gets or sets the total actual amount spent for the fund
     /// </summary>
+    /// <summary>
+    /// Gets or sets the totalactual.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalactual.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalactual.
+    /// </summary>
     public decimal TotalActual { get; set; }
 
     /// <summary>
@@ -52,15 +76,36 @@ public class FundSummary
     /// <summary>
     /// Gets or sets the budget variance (positive = under budget, negative = over budget)
     /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variance.
+    /// </summary>
     public decimal Variance { get; set; }
 
     /// <summary>
     /// Gets or sets the variance percentage
     /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercentage.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercentage.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the variancepercentage.
+    /// </summary>
     public decimal VariancePercentage { get; set; }
 
     /// <summary>
     /// Gets or sets the number of accounts in this fund
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the accountcount.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the accountcount.
     /// </summary>
     public int AccountCount { get; set; }
 
@@ -90,6 +135,9 @@ public class FundSummary
 
 /// <summary>
 /// Summary information for a department in the budget
+/// </summary>
+/// <summary>
+/// Represents a class for departmentsummary.
 /// </summary>
 public class DepartmentSummary
 {
@@ -178,6 +226,9 @@ public class DepartmentSummary
 /// <summary>
 /// Variance information for a specific account
 /// </summary>
+/// <summary>
+/// Represents a class for accountvariance.
+/// </summary>
 public class AccountVariance
 {
     /// <summary>
@@ -198,15 +249,24 @@ public class AccountVariance
     /// <summary>
     /// Gets or sets the budgeted amount
     /// </summary>
+    /// <summary>
+    /// Gets or sets the budgetedamount.
+    /// </summary>
     public decimal BudgetedAmount { get; set; }
 
     /// <summary>
     /// Gets or sets the actual amount spent
     /// </summary>
+    /// <summary>
+    /// Gets or sets the actualamount.
+    /// </summary>
     public decimal ActualAmount { get; set; }
 
     /// <summary>
     /// Gets or sets the variance amount (positive = under budget, negative = over budget)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the varianceamount.
     /// </summary>
     public decimal VarianceAmount { get; set; }
 
@@ -238,10 +298,16 @@ public class AccountVariance
 /// <summary>
 /// Comprehensive budget variance analysis
 /// </summary>
+/// <summary>
+/// Represents a class for budgetvarianceanalysis.
+/// </summary>
 public class BudgetVarianceAnalysis
 {
     /// <summary>
     /// Gets or sets the analysis date
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the analysisdate.
     /// </summary>
     public DateTime AnalysisDate { get; set; } = DateTime.UtcNow;
 
@@ -263,10 +329,16 @@ public class BudgetVarianceAnalysis
     /// <summary>
     /// Gets or sets the overall variance amount
     /// </summary>
+    /// <summary>
+    /// Gets or sets the totalvariance.
+    /// </summary>
     public decimal TotalVariance { get; set; }
 
     /// <summary>
     /// Gets or sets the overall variance percentage
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalvariancepercentage.
     /// </summary>
     public decimal TotalVariancePercentage { get; set; }
 
@@ -308,4 +380,6 @@ public class BudgetVarianceAnalysis
     /// Gets or sets any analysis warnings or notes
     /// </summary>
     public List<string> Warnings { get; set; } = new();
+
+    public decimal RemainingBudget { get; set; }
 }

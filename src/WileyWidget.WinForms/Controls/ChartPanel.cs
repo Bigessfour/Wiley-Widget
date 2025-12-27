@@ -15,6 +15,9 @@ using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
 {
+    /// <summary>
+    /// Represents a class for chartpanelresources.
+    /// </summary>
     internal static class ChartPanelResources
     {
         public const string PanelTitle = "Budget Analytics";

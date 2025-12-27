@@ -9,6 +9,9 @@ namespace WileyWidget.Data
     /// Enables coordinated degraded-mode behavior (e.g. in-memory database fallback)
     /// after catastrophic startup failures. Thread-safe, process-level static state.
     /// </summary>
+    /// <summary>
+    /// Represents a class for appdbstartupstate.
+    /// </summary>
     public static class AppDbStartupState
     {
         private static int _initializationAttempted;
@@ -45,6 +48,10 @@ namespace WileyWidget.Data
         /// Activate degraded mode with a reason. Idempotent; first reason wins.
         /// </summary>
         /// <param name="reason">Human-readable reason (logged)</param>
+        /// <summary>
+        /// Performs activatefallback. Parameters: reason.
+        /// </summary>
+        /// <param name="reason">The reason.</param>
         public static void ActivateFallback(string reason)
         {
             if (Interlocked.CompareExchange(ref _fallbackActivated, 1, 0) == 0)
@@ -57,6 +64,9 @@ namespace WileyWidget.Data
 
         /// <summary>
         /// Reset all state - primarily for unit tests.
+        /// </summary>
+        /// <summary>
+        /// Performs resetfortests.
         /// </summary>
         public static void ResetForTests()
         {

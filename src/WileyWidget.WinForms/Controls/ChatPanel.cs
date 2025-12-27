@@ -5,6 +5,7 @@ using System.Text.Json;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -21,6 +22,7 @@ public sealed class ChatPanel : UserControl
     private readonly IConversationRepository _conversationRepository;
     private readonly IAIContextExtractionService? _contextExtractionService;
     private readonly IActivityLogRepository? _activityLogRepository;
+    private ChatViewModel? _viewModel;
     private AIChatControl? _chatControl;
     private List<ChatMessage>? _conversationHistory;
     private Label? _statusLabel;
@@ -49,6 +51,9 @@ public sealed class ChatPanel : UserControl
         // Optional services - may not be available in all configurations
         _contextExtractionService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIContextExtractionService>(serviceProvider);
         _activityLogRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(serviceProvider);
+
+        // Resolve ViewModel
+        _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChatViewModel>(serviceProvider);
 
         InitializeComponent();
         _logger.LogInformation("ChatPanel created");
@@ -90,20 +95,30 @@ public sealed class ChatPanel : UserControl
         _statusPanel.Controls.Add(_statusLabel);
 
         // === Main Chat Control (Middle - fills remaining space) ===
-        // Use DI-resolved AIChatControl for proper dependency injection
+        // Create AIChatControl manually to pass ViewModel's Messages collection
         try
         {
-            _chatControl = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AIChatControl>(_serviceProvider);
-            if (_chatControl != null)
-            {
-                _chatControl.Dock = DockStyle.Fill;
-                _chatControl.Name = "ChatControl";
-                _chatControl.AccessibleName = "AI Chat Control";
-                _chatControl.TabIndex = 2;
+            var aiAssistantService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IAIAssistantService>(_serviceProvider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<AIChatControl>>(_serviceProvider);
+            var conversationalAIService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIService>(_serviceProvider);
+            var personalityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIPersonalityService>(_serviceProvider);
+            var insightsService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IFinancialInsightsService>(_serviceProvider);
 
-                // Handle send message from chat control
-                _chatControl.MessageSent += ChatControl_MessageSent;
-            }
+            _chatControl = new AIChatControl(
+                aiAssistantService,
+                logger,
+                conversationalAIService,
+                personalityService,
+                insightsService,
+                _viewModel?.Messages);
+
+            _chatControl.Dock = DockStyle.Fill;
+            _chatControl.Name = "ChatControl";
+            _chatControl.AccessibleName = "AI Chat Control";
+            _chatControl.TabIndex = 2;
+
+            // Handle send message from chat control
+            _chatControl.MessageSent += ChatControl_MessageSent;
         }
         catch (Exception ex)
         {
@@ -113,6 +128,12 @@ public sealed class ChatPanel : UserControl
                 "Chat Initialization Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+        }
+
+        // Bind status label to ViewModel
+        if (_statusLabel != null && _viewModel != null)
+        {
+            _statusLabel.DataBindings.Add("Text", _viewModel, "Status", false, DataSourceUpdateMode.OnPropertyChanged);
         }
 
         // Add controls to panel
@@ -135,12 +156,22 @@ public sealed class ChatPanel : UserControl
     {
         try
         {
-            await HandleMessageSentAsync(e);
+            if (_viewModel != null)
+            {
+                await _viewModel.SendMessageAsync(e);
+            }
+            if (_chatControl != null)
+            {
+                _chatControl.NotifyProcessingCompleted();
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled error in chat message handler");
-            UpdateStatus($"Error: {ex.Message}");
+            if (_viewModel != null)
+            {
+                _viewModel.Status = $"Error: {ex.Message}";
+            }
         }
     }
 
@@ -329,39 +360,7 @@ public sealed class ChatPanel : UserControl
     /// </summary>
     public void SetContext(string contextDescription, Dictionary<string, object>? contextData = null)
     {
-        try
-        {
-            _logger.LogInformation("Setting chat context: {Context}", contextDescription);
-
-            if (_conversationHistory != null)
-            {
-                // Add context as a system message to initialize the conversation
-                var contextMessage = new ChatMessage
-                {
-                    IsUser = false,
-                    Message = $"Context: {contextDescription}",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                // Attach optional metadata entries into the message's metadata dictionary
-                if (contextData != null)
-                {
-                    foreach (var kv in contextData)
-                        contextMessage.Metadata[kv.Key] = kv.Value;
-                }
-
-                _conversationHistory.Add(contextMessage);
-            }
-
-            if (_statusLabel != null && !_statusLabel.IsDisposed)
-            {
-                _statusLabel.Text = $"Context: {contextDescription}";
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error setting chat context");
-        }
+        _viewModel?.SetContext(contextDescription, contextData);
     }
 
     /// <summary>
@@ -391,22 +390,12 @@ public sealed class ChatPanel : UserControl
     /// <summary>
     /// Clear all conversation history and messages.
     /// </summary>
+    /// <summary>
+    /// Performs clearconversation.
+    /// </summary>
     public void ClearConversation()
     {
-        try
-        {
-            _conversationHistory?.Clear();
-            if (_chatControl != null && !_chatControl.IsDisposed)
-            {
-                _chatControl.Messages.Clear();
-            }
-            UpdateStatus("Conversation cleared");
-            _logger.LogInformation("Conversation cleared");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error clearing conversation");
-        }
+        _viewModel?.ClearConversation();
     }
 
     /// <summary>
@@ -414,34 +403,7 @@ public sealed class ChatPanel : UserControl
     /// </summary>
     public async Task LoadConversationAsync(string conversationId)
     {
-        if (string.IsNullOrWhiteSpace(conversationId)) return;
-
-        try
-        {
-            UpdateStatus($"Loading conversation {conversationId}...");
-            _logger.LogInformation("Loading conversation: {ConversationId}", conversationId);
-
-            var conversationObj = await _conversationRepository.GetConversationAsync(conversationId);
-
-            if (conversationObj == null || conversationObj is not ConversationHistory conversation)
-            {
-                UpdateStatus($"Conversation {conversationId} not found");
-                _logger.LogWarning("Conversation not found: {ConversationId}", conversationId);
-                return;
-            }
-
-            DeserializeAndLoadMessages(conversation, conversationId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading conversation: {ConversationId}", conversationId);
-            UpdateStatus($"Error loading conversation: {ex.Message}");
-            MessageBox.Show(
-                $"Failed to load conversation: {ex.Message}",
-                "Load Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-        }
+        await (_viewModel?.LoadConversationAsync(conversationId) ?? Task.CompletedTask);
     }
 
     /// <summary>
@@ -493,29 +455,7 @@ public sealed class ChatPanel : UserControl
     /// </summary>
     public async Task SaveConversationAsync(string? conversationId = null)
     {
-        if (_conversationHistory == null || _conversationHistory.Count == 0)
-        {
-            UpdateStatus("No messages to save");
-            return;
-        }
-
-        try
-        {
-            UpdateStatus("Saving conversation...");
-
-            var conversationData = PrepareConversationData(conversationId);
-            await PersistConversation(conversationData);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error saving conversation: {ConversationId}", conversationId);
-            UpdateStatus($"Error saving conversation: {ex.Message}");
-            MessageBox.Show(
-                $"Failed to save conversation: {ex.Message}",
-                "Save Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-        }
+        await (_viewModel?.SaveConversationAsync(conversationId) ?? Task.CompletedTask);
     }
 
     /// <summary>
@@ -559,16 +499,7 @@ public sealed class ChatPanel : UserControl
     /// </summary>
     public async Task<List<ConversationHistory>> GetRecentConversationsAsync(int limit = 20)
     {
-        try
-        {
-            var conversations = await _conversationRepository.GetConversationsAsync(0, limit);
-            return conversations?.OfType<ConversationHistory>().ToList() ?? new List<ConversationHistory>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving recent conversations: {Error}", ex.Message);
-            return new List<ConversationHistory>();
-        }
+        return await (_viewModel?.GetRecentConversationsAsync(limit) ?? Task.FromResult(new List<ConversationHistory>()));
     }
 
     /// <summary>
@@ -594,17 +525,7 @@ public sealed class ChatPanel : UserControl
     /// </summary>
     public void StartNewConversation()
     {
-        try
-        {
-            ClearConversation();
-            _currentConversationId = null;
-            UpdateStatus("Started new conversation");
-            _logger.LogInformation("New conversation started");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error starting new conversation: {Error}", ex.Message);
-        }
+        _viewModel?.StartNewConversation();
     }
 
     /// <summary>

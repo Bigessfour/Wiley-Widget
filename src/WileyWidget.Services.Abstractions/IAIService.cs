@@ -6,6 +6,9 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Interface for AI services providing insights and analysis
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iaiservice.
+    /// </summary>
     public interface IAIService
     {
         /// <summary>
@@ -56,6 +59,16 @@ namespace WileyWidget.Services.Abstractions
         /// Send a message to the AI service with conversation history context.
         /// </summary>
         Task<string> SendMessageAsync(string message, object conversationHistory);
+
+        /// <summary>
+        /// Generate recommendations based on prompt and count
+        /// </summary>
+        Task<string> GenerateRecommendationsAsync(string prompt, int count, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get recommended adjustment factors
+        /// </summary>
+        Task<string> GetRecommendedAdjustmentFactorsAsync(string context, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

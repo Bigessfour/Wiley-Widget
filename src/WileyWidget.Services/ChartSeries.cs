@@ -7,10 +7,16 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Represents a series of data points for charting
 /// </summary>
+/// <summary>
+/// Represents a class for chartseries.
+/// </summary>
 public class ChartSeries
 {
     /// <summary>
     /// Gets or sets the name of the series
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the name.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
@@ -28,6 +34,9 @@ public class ChartSeries
 /// <summary>
 /// Represents a single data point in a chart series
 /// </summary>
+/// <summary>
+/// Represents a class for chartdatapoint.
+/// </summary>
 public class ChartDataPoint
 {
     /// <summary>
@@ -37,6 +46,9 @@ public class ChartDataPoint
 
     /// <summary>
     /// Gets or sets the Y value (numeric value)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the yvalue.
     /// </summary>
     public double YValue { get; set; }
 

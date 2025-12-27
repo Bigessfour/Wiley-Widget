@@ -16,6 +16,18 @@ namespace WileyWidget.WinForms.Themes
     /// DO NOT manually set BackColor, ForeColor - use theme accessors only when styling elements like charts.
     /// Reference: https://help.syncfusion.com/windowsforms/skins/getting-started
     /// </summary>
+    /// <summary>
+    /// Represents a class for themecolors.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themecolors.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themecolors.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themecolors.
+    /// </summary>
     internal static class ThemeColors
     {
         // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful for modern professional look)
@@ -70,6 +82,26 @@ namespace WileyWidget.WinForms.Themes
         /// </summary>
         /// <param name="form">The form to apply theming to.</param>
         /// <param name="themeName">Optional theme name override (defaults to Office2019Colorful)</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: form, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: form, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: form, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs applytheme. Parameters: form, null.
+        /// </summary>
+        /// <param name="form">The form.</param>
+        /// <param name="null">The null.</param>
         public static void ApplyTheme(Form form, string? themeName = null)
         {
             if (form == null) return;
@@ -109,6 +141,9 @@ namespace WileyWidget.WinForms.Themes
         /// <summary>
         /// Ensures the Office2019Theme assembly is loaded into the SkinManager.
         /// This is idempotent - safe to call multiple times.
+        /// </summary>
+        /// <summary>
+        /// Performs ensurethemeassemblyloaded.
         /// </summary>
         private static void EnsureThemeAssemblyLoaded()
         {
@@ -175,6 +210,30 @@ namespace WileyWidget.WinForms.Themes
         /// DEPRECATED: Do not use. For chart brushes, let SkinManager handle theming.
         /// </summary>
         [Obsolete("Let SkinManager handle chart theming through cascade.", error: true)]
+        /// <summary>
+        /// Performs getgradientbrush. Parameters: color1, color2, GradientStyle.Vertical.
+        /// </summary>
+        /// <param name="color1">The color1.</param>
+        /// <param name="color2">The color2.</param>
+        /// <param name="GradientStyle.Vertical">The GradientStyle.Vertical.</param>
+        /// <summary>
+        /// Performs getgradientbrush. Parameters: color1, color2, GradientStyle.Vertical.
+        /// </summary>
+        /// <param name="color1">The color1.</param>
+        /// <param name="color2">The color2.</param>
+        /// <param name="GradientStyle.Vertical">The GradientStyle.Vertical.</param>
+        /// <summary>
+        /// Performs getgradientbrush. Parameters: color1, color2, GradientStyle.Vertical.
+        /// </summary>
+        /// <param name="color1">The color1.</param>
+        /// <param name="color2">The color2.</param>
+        /// <param name="GradientStyle.Vertical">The GradientStyle.Vertical.</param>
+        /// <summary>
+        /// Performs getgradientbrush. Parameters: color1, color2, GradientStyle.Vertical.
+        /// </summary>
+        /// <param name="color1">The color1.</param>
+        /// <param name="color2">The color2.</param>
+        /// <param name="GradientStyle.Vertical">The GradientStyle.Vertical.</param>
         public static BrushInfo GetGradientBrush(Color color1, Color color2, GradientStyle style = GradientStyle.Vertical)
         {
             throw new NotSupportedException("Let SkinManager handle chart theming");
@@ -186,6 +245,22 @@ namespace WileyWidget.WinForms.Themes
         /// If you need custom grid appearance, customize the Office2019 theme itself, don't bypass it.
         /// </summary>
         [Obsolete("Custom grid styling removed. SkinManager themes grids automatically via cascade. Do not manually set colors.", true)]
+        /// <summary>
+        /// Performs applysfdatagridtheme. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs applysfdatagridtheme. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs applysfdatagridtheme. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs applysfdatagridtheme. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
         public static void ApplySfDataGridTheme(SfDataGrid grid)
         {
             throw new InvalidOperationException(

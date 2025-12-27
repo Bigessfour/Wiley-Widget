@@ -8,6 +8,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents report data containing enterprises and calculated metrics.
     /// </summary>
+    /// <summary>
+    /// Represents a class for reportdata.
+    /// </summary>
     public class ReportData : INotifyPropertyChanged
     {
         private ObservableCollection<Enterprise> _enterprises;

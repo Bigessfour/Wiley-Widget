@@ -33,8 +33,22 @@ namespace WileyWidget.Services
         /// <param name="force">When true, removes previously seeded budgets/accounts/periods/departments before seeding.</param>
         public async Task<SeedResult> SeedBudgetDataAsync(bool force = false, CancellationToken cancellationToken = default)
         {
-            // Ensure DB exists
-            await _db.Database.EnsureCreatedAsync(cancellationToken);
+            // Ensure DB readiness:
+            // - For relational providers, require migrations to be applied (avoid EnsureCreated which bypasses migrations)
+            // - For non-relational/test providers (InMemory) create the database
+            if (_db.Database.IsRelational())
+            {
+                var pending = await _db.Database.GetPendingMigrationsAsync(cancellationToken).ConfigureAwait(false);
+                if (pending != null && pending.Any())
+                {
+                    _logger.LogError("Data seeding aborted: pending migrations detected ({Count}). Run 'dotnet ef database update' before seeding.", pending.Count());
+                    throw new InvalidOperationException("Database has pending migrations; run 'dotnet ef database update' before seeding.");
+                }
+            }
+            else
+            {
+                await _db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             var beforeCount = await _db.BudgetEntries.CountAsync(cancellationToken).ConfigureAwait(false);
             if (beforeCount > 0 && !force)

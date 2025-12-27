@@ -5,6 +5,21 @@ using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.Services
 {
+    /// <summary>
+    /// Represents a interface for ibudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ibudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ibudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ibudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ibudgetcategoryservice.
+    /// </summary>
     public interface IBudgetCategoryService
     {
         Task<List<BudgetCategoryDto>> GetAllCategoriesAsync(int fiscalYear, CancellationToken cancellationToken = default);

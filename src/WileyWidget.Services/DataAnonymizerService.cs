@@ -15,6 +15,9 @@ namespace WileyWidget.Services
     /// Implements GDPR and privacy-compliant data masking for municipal finance data.
     /// Production-ready with comprehensive logging and reversible anonymization support.
     /// </summary>
+    /// <summary>
+    /// Represents a class for dataanonymizerservice.
+    /// </summary>
     public class DataAnonymizerService : IDataAnonymizerService
     {
         private readonly ILogger<DataAnonymizerService> _logger;
@@ -38,6 +41,10 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="enterprise">The enterprise to anonymize</param>
         /// <returns>Anonymized copy of the enterprise</returns>
+        /// <summary>
+        /// Performs anonymizeenterprise. Parameters: enterprise.
+        /// </summary>
+        /// <param name="enterprise">The enterprise.</param>
         public Enterprise AnonymizeEnterprise(Enterprise enterprise)
         {
             if (enterprise == null)
@@ -76,6 +83,10 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="budgetData">The budget data to anonymize</param>
         /// <returns>Anonymized copy of the budget data</returns>
+        /// <summary>
+        /// Performs anonymizebudgetdata. Parameters: budgetData.
+        /// </summary>
+        /// <param name="budgetData">The budgetData.</param>
         public BudgetData AnonymizeBudgetData(BudgetData budgetData)
         {
             if (budgetData == null)
@@ -358,6 +369,9 @@ namespace WileyWidget.Services
         /// <summary>
         /// Clears the anonymization cache. Use with caution as this will affect consistency.
         /// </summary>
+        /// <summary>
+        /// Performs clearcache.
+        /// </summary>
         public void ClearCache()
         {
             lock (_cacheLock)
@@ -392,6 +406,10 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="input">The string to anonymize</param>
         /// <returns>The anonymized string</returns>
+        /// <summary>
+        /// Performs anonymize. Parameters: input.
+        /// </summary>
+        /// <param name="input">The input.</param>
         public string Anonymize(string input)
         {
             if (string.IsNullOrEmpty(input))

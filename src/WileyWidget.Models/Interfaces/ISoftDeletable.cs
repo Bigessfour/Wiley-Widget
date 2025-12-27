@@ -8,6 +8,9 @@ namespace WileyWidget.Models;
 /// Interface for entities that support soft delete (retain data for audit/compliance)
 /// Municipal data often requires retention for historical/legal purposes
 /// </summary>
+/// <summary>
+/// Represents a interface for isoftdeletable.
+/// </summary>
 public interface ISoftDeletable
 {
     /// <summary>

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Dialogs
 {
@@ -38,6 +39,12 @@ namespace WileyWidget.WinForms.Dialogs
 
             _logger?.LogDebug("DeleteConfirmationDialog created: {Message}", message);
         }
+        /// <summary>
+        /// Performs initializedialog. Parameters: title, message, detail.
+        /// </summary>
+        /// <param name="title">The title.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="detail">The detail.</param>
 
         private void InitializeDialog(string title, string message, string? detail)
         {
@@ -165,8 +172,8 @@ namespace WileyWidget.WinForms.Dialogs
             };
             buttonPanel.Controls.Add(_deleteButton);
 
-            mainPanel.SetColumnSpan(buttonPanel, 2);
-            mainPanel.Controls.Add(buttonPanel, 0, buttonRow);
+            mainPanel.SafeInvoke(c => c.SetColumnSpan(buttonPanel, 2));
+            mainPanel.SafeInvoke(c => c.Controls.Add(buttonPanel, 0, buttonRow));
 
             Controls.Add(mainPanel);
 
@@ -184,6 +191,66 @@ namespace WileyWidget.WinForms.Dialogs
         /// <param name="detail">Optional detail text</param>
         /// <param name="logger">Optional logger</param>
         /// <returns>True if user confirmed deletion, false otherwise</returns>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, message, null, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="message">The message.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="null">The null.</param>
         public static bool Show(
             IWin32Window? owner,
             string title,

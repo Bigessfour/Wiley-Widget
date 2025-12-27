@@ -7,6 +7,9 @@ namespace WileyWidget.Services.Excel;
 /// <summary>
 /// Interface for reading Excel files and extracting municipal budget data
 /// </summary>
+/// <summary>
+/// Represents a interface for iexcelreaderservice.
+/// </summary>
 public interface IExcelReaderService
 {
     /// <summary>

@@ -15,6 +15,9 @@ namespace WileyWidget.Services;
 /// Health check service that integrates Microsoft.Extensions.Diagnostics.HealthChecks
 /// with the custom WileyWidget health check models
 /// </summary>
+/// <summary>
+/// Represents a class for healthcheckservice.
+/// </summary>
 public class HealthCheckService
 {
     // Resolve the Microsoft HealthCheckService per-scope using IServiceProvider to avoid
@@ -78,6 +81,11 @@ public class HealthCheckService
                 stopwatch.ElapsedMilliseconds, report.OverallStatus);
 
             return report;
+        }
+        catch (OperationCanceledException)
+        {
+            // Preserve cancellation semantics so callers can observe task cancellation
+            throw;
         }
         catch (Exception ex)
         {

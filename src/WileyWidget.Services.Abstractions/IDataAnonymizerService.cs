@@ -7,6 +7,9 @@ namespace WileyWidget.Services.Abstractions
     /// Interface for data anonymization service providing privacy-compliant data masking.
     /// Used to sanitize sensitive information before sending to AI services or external systems.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for idataanonymizerservice.
+    /// </summary>
     public interface IDataAnonymizerService
     {
         /// <summary>

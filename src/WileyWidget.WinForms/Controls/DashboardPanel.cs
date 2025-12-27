@@ -16,6 +16,21 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace WileyWidget.WinForms.Controls
 {
+    /// <summary>
+    /// Represents a class for dashboardpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardpanelresources.
+    /// </summary>
     internal static class DashboardPanelResources
     {
         public const string PanelTitle = "Dashboard";
@@ -33,6 +48,12 @@ namespace WileyWidget.WinForms.Controls
         /// Uses 'new' to intentionally hide Control.DataContext when present in platform versions.
         /// </summary>
         public new object? DataContext { get; private set; }
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
         private readonly DashboardViewModel _vm;
 
         // controls
@@ -99,6 +120,9 @@ namespace WileyWidget.WinForms.Controls
                 return null;
             }
         }
+        /// <summary>
+        /// Performs resolvedashboardviewmodel.
+        /// </summary>
 
         private static DashboardViewModel ResolveDashboardViewModel()
         {
@@ -143,6 +167,16 @@ namespace WileyWidget.WinForms.Controls
             // Diagnostic logging
             try { Serilog.Log.Debug("DashboardPanel initialized"); } catch { }
 
+            // Capture and set UI SynchronizationContext for the ViewModel (safe on UI thread)
+            try
+            {
+                _vm.SetUiContext();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "DashboardPanel: SetUiContext failed");
+            }
+
             // Wire initial load
 #pragma warning disable CS4014
             EnsureLoadedAsync();
@@ -169,6 +203,12 @@ namespace WileyWidget.WinForms.Controls
                 catch { }
             }
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -177,6 +217,12 @@ namespace WileyWidget.WinForms.Controls
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
         }
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
 
         private void SetupUI()
         {
@@ -264,9 +310,9 @@ namespace WileyWidget.WinForms.Controls
                     using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "dashboard-details.xlsx" };
                     if (sfd.ShowDialog() != DialogResult.OK) return;
                     await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(_detailsGrid, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.SafeInvoke(() => MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
-                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { this.SafeInvoke(() => MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error)); }
             };
             _toolStrip.Items.Add(btnExportExcel);
 
@@ -280,9 +326,9 @@ namespace WileyWidget.WinForms.Controls
                     if (sfd.ShowDialog() != DialogResult.OK) return;
                     // Export main chart into PDF
                     await WileyWidget.WinForms.Services.ExportService.ExportChartToPdfAsync(_mainChart, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.SafeInvoke(() => MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
-                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { this.SafeInvoke(() => MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error)); }
             };
             _toolStrip.Items.Add(btnExportPdf);
 
@@ -600,6 +646,12 @@ namespace WileyWidget.WinForms.Controls
             };
             ThemeManager.ThemeChanged += _themeChangedHandler;
         }
+        /// <summary>
+        /// Performs tryapplyviewmodelbindings.
+        /// </summary>
+        /// <summary>
+        /// Performs tryapplyviewmodelbindings.
+        /// </summary>
 
         private void TryApplyViewModelBindings()
         {
@@ -882,6 +934,16 @@ namespace WileyWidget.WinForms.Controls
                 npc.PropertyChanged += _viewModelPropertyChangedHandler;
             }
         }
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -921,6 +983,12 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "DashboardPanel: ViewModel_PropertyChanged failed");
             }
         }
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
 
         private void ApplyCurrentTheme()
         {
@@ -983,6 +1051,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Named handler for PanelHeader.CloseClicked event (enables proper unsubscription).
         /// </summary>
+        /// <summary>
+        /// Performs onpanelheadercloseclicked. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void OnPanelHeaderCloseClicked(object? sender, EventArgs e)
         {
             try

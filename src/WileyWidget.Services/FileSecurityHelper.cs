@@ -7,6 +7,9 @@ namespace WileyWidget.Services
     /// <summary>
     /// Provides platform-aware file security operations, particularly ACL restrictions on Windows
     /// </summary>
+    /// <summary>
+    /// Represents a class for filesecurityhelper.
+    /// </summary>
     public static class FileSecurityHelper
     {
         /// <summary>
@@ -14,6 +17,10 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="filePath">Path to the file to restrict</param>
         /// <returns>True if ACL was applied successfully, false if platform doesn't support or operation failed</returns>
+        /// <summary>
+        /// Performs restrictfiletocurrentuser. Handles file operations. Parameters: filePath.
+        /// </summary>
+        /// <param name="filePath">The filePath.</param>
         public static bool RestrictFileToCurrentUser(string filePath)
         {
             if (!File.Exists(filePath))

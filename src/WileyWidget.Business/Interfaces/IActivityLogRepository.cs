@@ -7,6 +7,9 @@ namespace WileyWidget.Business.Interfaces;
 /// <summary>
 /// Provides access to recent activity log entries for dashboard/docking views.
 /// </summary>
+/// <summary>
+/// Represents a interface for iactivitylogrepository.
+/// </summary>
 public interface IActivityLogRepository
 {
     /// <summary>

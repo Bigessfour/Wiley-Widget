@@ -14,6 +14,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Repository implementation for BudgetEntry data operations with comprehensive SigNoz telemetry
 /// </summary>
+/// <summary>
+/// Represents a class for budgetrepository.
+/// </summary>
 public class BudgetRepository : IBudgetRepository
 {
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
@@ -245,7 +248,7 @@ public class BudgetRepository : IBudgetRepository
             {
                 await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
                 budgetEntries = await context.BudgetEntries
-                    .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
+                    .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate)
                     .Include(be => be.Department)
                     .Include(be => be.Fund)
                     .AsNoTracking()
@@ -373,8 +376,7 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<IEnumerable<BudgetEntry>> GetSewerBudgetEntriesAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
-        // Sewer Enterprise Fund is FundId = 2 (Enterprise Fund)
-        const int sewerFundId = 2;
+        // Prefer semantic filtering by Fund.Type rather than magic numeric IDs
         string cacheKey = $"BudgetEntries_Sewer_Year_{fiscalYear}";
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
@@ -383,7 +385,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
-                .Where(be => be.FundId == sewerFundId && be.FiscalYear == fiscalYear)
+                .Where(be => be.Fund != null && be.Fund.Type == FundType.EnterpriseFund && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
@@ -441,10 +443,11 @@ public class BudgetRepository : IBudgetRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Use period overlap (StartPeriod/EndPeriod) rather than CreatedAt when summarizing budget for a date range
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate)
             .ToListAsync(cancellationToken);
 
         var analysis = new BudgetVarianceAnalysis
@@ -459,6 +462,8 @@ public class BudgetRepository : IBudgetRepository
         analysis.TotalVariancePercentage = analysis.TotalBudgeted != 0
             ? (analysis.TotalVariance / analysis.TotalBudgeted) * 100
             : 0;
+
+
 
         // Group by funds
         analysis.FundSummaries = budgetEntries
@@ -502,10 +507,11 @@ public class BudgetRepository : IBudgetRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Use period overlap to find relevant budget entries for the requested date range
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate)
             .ToListAsync(cancellationToken);
 
         return budgetEntries
@@ -529,10 +535,11 @@ public class BudgetRepository : IBudgetRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Use period overlap to find fund allocations relevant to the requested date range
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate)
             .ToListAsync(cancellationToken);
 
         return budgetEntries
@@ -565,15 +572,11 @@ public class BudgetRepository : IBudgetRepository
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         // Try to filter by Department.EnterpriseId or Fund.EnterpriseId if such properties exist.
+        // Use period overlap logic to select budget entries relevant to the requested date range
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
-
-        // Dynamic enterprise filter if present on Department or Fund
-        // Note: Model does not currently expose EnterpriseId on Department/Fund.
-        // Keeping the hook for future schema support; currently acts as no-op.
-
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate);
         var budgetEntries = await query.ToListAsync(cancellationToken);
         // Reuse existing aggregation logic via in-memory projection
         var analysis = new BudgetVarianceAnalysis
@@ -622,7 +625,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries
@@ -646,7 +649,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
+            .Where(be => be.StartPeriod <= endDate && be.EndPeriod >= startDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries

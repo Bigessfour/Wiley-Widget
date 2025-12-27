@@ -7,6 +7,9 @@ using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Data
 {
+    /// <summary>
+    /// Represents a class for appdbcontext.
+    /// </summary>
     public class AppDbContext : DbContext, IAppDbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
@@ -47,6 +50,9 @@ namespace WileyWidget.Data
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
         public DbSet<DepartmentCurrentCharge> DepartmentCurrentCharges { get; set; } = null!;
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
+        public DbSet<AIInsight> AIInsights { get; set; } = null!;
+        public DbSet<QBMappingConfiguration> QBMappingConfigurations { get; set; } = null!;
+        public DbSet<QuickBooksSyncConflict> QuickBooksSyncConflicts { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -108,7 +114,7 @@ namespace WileyWidget.Data
                     owned.Property(a => a.Value).HasColumnName("AccountNumber").HasMaxLength(20).IsRequired();
                 });
                 entity.Property(e => e.AccountNumber_Value)
-                      .HasComputedColumnSql("[AccountNumber]");
+                      .HasComputedColumnSql("[AccountNumber]", stored: true);
                 entity.HasOne(e => e.Department)
                       .WithMany()
                       .HasForeignKey(e => e.DepartmentId)
@@ -152,6 +158,9 @@ namespace WileyWidget.Data
                 entity.Property(t => t.Amount).HasColumnType("decimal(18,2)");
                 entity.Property(t => t.Type).HasMaxLength(50);
                 entity.Property(t => t.Description).HasMaxLength(200);
+                entity.Property(t => t.RowVersion)
+                    .IsRowVersion()
+                    .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
                 entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 0"));
             });
 
@@ -254,6 +263,18 @@ namespace WileyWidget.Data
                 entity.Property(ub => ub.RowVersion)
                       .IsRowVersion()
                       .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
+            });
+
+            // QuickBooks sync conflict configuration
+            modelBuilder.Entity<QuickBooksSyncConflict>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.QuickBooksInvoiceId).HasMaxLength(100).IsRequired();
+                entity.Property(c => c.Status).HasMaxLength(50).HasDefaultValue("Pending");
+                entity.Property(c => c.RemoteAmount).HasColumnType("decimal(18,2)");
+                entity.Property(c => c.LocalAmount).HasColumnType("decimal(18,2)");
+                entity.HasIndex(c => c.Status);
+                entity.HasIndex(c => c.QuickBooksInvoiceId);
             });
 
             // UtilityCustomer configuration

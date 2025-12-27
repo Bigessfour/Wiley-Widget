@@ -8,6 +8,9 @@ namespace WileyWidget.Services;
 /// No-op AI service used in development/testing when API keys are not configured.
 /// Prevents startup failures by providing predictable stub responses.
 /// </summary>
+/// <summary>
+/// Represents a class for nullaiservice.
+/// </summary>
 public class NullAIService : IAIService
 {
     public Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default)
@@ -32,6 +35,10 @@ public class NullAIService : IAIService
     // ValidateApiKeyAsync(string) without a CancellationToken parameter.
     public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey)
         => ValidateApiKeyAsync(apiKey, CancellationToken.None);
+    /// <summary>
+    /// Performs updateapikey. Parameters: newApiKey.
+    /// </summary>
+    /// <param name="newApiKey">The newApiKey.</param>
 
     public Task UpdateApiKeyAsync(string newApiKey)
     {
@@ -44,4 +51,10 @@ public class NullAIService : IAIService
 
     public Task<string> SendMessageAsync(string message, object conversationHistory)
         => Task.FromResult("[Dev Stub] AI messaging is disabled in development. Configure XAI_API_KEY to enable.");
+
+    public Task<string> GenerateRecommendationsAsync(string prompt, int count, CancellationToken cancellationToken = default)
+        => Task.FromResult("[Dev Stub] Recommendation generation is disabled in development.");
+
+    public Task<string> GetRecommendedAdjustmentFactorsAsync(string context, CancellationToken cancellationToken = default)
+        => Task.FromResult("[Dev Stub] Adjustment factor recommendations are disabled in development.");
 }

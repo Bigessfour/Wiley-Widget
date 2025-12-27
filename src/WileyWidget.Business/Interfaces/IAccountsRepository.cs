@@ -9,6 +9,9 @@ namespace WileyWidget.Business.Interfaces;
 /// Repository interface for municipal account data operations.
 /// Provides abstraction over data access for accounts, enabling testability and separation of concerns.
 /// </summary>
+/// <summary>
+/// Represents a interface for iaccountsrepository.
+/// </summary>
 public interface IAccountsRepository
 {
     /// <summary>

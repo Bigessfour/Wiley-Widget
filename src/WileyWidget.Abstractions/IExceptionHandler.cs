@@ -6,6 +6,9 @@ namespace WileyWidget.Abstractions
     /// Lightweight exception handler contract used for DI registration and centralized handling.
     /// Implementations should provide application-wide handling for navigation and general errors.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iexceptionhandler.
+    /// </summary>
     public interface IExceptionHandler
     {
         void HandleNavigationError(string regionName, string targetUri, Exception? error, string errorMessage);

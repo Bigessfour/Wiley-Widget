@@ -7,19 +7,110 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using Microsoft.Extensions.Configuration;
 using WileyWidget.WinForms.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.WinForms.ViewModels
 {
     /// <summary>
     /// Dashboard metric display model
     /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardmetric.
+    /// </summary>
     public class DashboardMetric
     {
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
         public double Value { get; set; }
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
         public string Unit { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the trend.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the trend.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the trend.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the trend.
+        /// </summary>
         public string Trend { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the changepercent.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the changepercent.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the changepercent.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the changepercent.
+        /// </summary>
         public double ChangePercent { get; set; }
+        /// <summary>
+        /// Gets or sets the description.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the description.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the description.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the description.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the description.
+        /// </summary>
         public string Description { get; set; } = string.Empty;
     }
 
@@ -35,9 +126,19 @@ namespace WileyWidget.WinForms.ViewModels
         private CancellationTokenSource? _loadCancellationTokenSource;
         private readonly SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
+        /// <summary>
+        /// Represents the _disposed.
+        /// </summary>
+        /// <summary>
+        /// Represents the _disposed.
+        /// </summary>
         private bool _disposed;
         private readonly IConfiguration? _configuration;
         private SynchronizationContext? _uiContext;
+        /// <summary>
+        /// Represents the _iscontextready.
+        /// </summary>
+        private bool _isContextReady;
 
         #region Observable Properties
 
@@ -51,9 +152,18 @@ namespace WileyWidget.WinForms.ViewModels
         private DateTime lastUpdated = DateTime.Now;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the haserror.
+        /// </summary>
         private bool hasError;
 
         [ObservableProperty]
@@ -63,15 +173,33 @@ namespace WileyWidget.WinForms.ViewModels
         private ObservableCollection<DashboardMetric> metrics = new();
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbudgetgauge.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbudgetgauge.
+        /// </summary>
         private float totalBudgetGauge;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the revenuegauge.
+        /// </summary>
         private float revenueGauge;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the expensesgauge.
+        /// </summary>
+        /// <summary>
+        /// Represents the expensesgauge.
+        /// </summary>
         private float expensesGauge;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the netpositiongauge.
+        /// </summary>
         private float netPositionGauge;
 
         // Budget Analysis Data
@@ -79,15 +207,33 @@ namespace WileyWidget.WinForms.ViewModels
         private BudgetVarianceAnalysis? budgetAnalysis;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbudgeted.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbudgeted.
+        /// </summary>
         private decimal totalBudgeted;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalactual.
+        /// </summary>
         private decimal totalActual;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalvariance.
+        /// </summary>
         private decimal totalVariance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the variancepercentage.
+        /// </summary>
+        /// <summary>
+        /// Represents the variancepercentage.
+        /// </summary>
         private decimal variancePercentage;
 
         // Fund Breakdown
@@ -104,18 +250,39 @@ namespace WileyWidget.WinForms.ViewModels
 
         // Revenue & Expense Details
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalrevenue.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalrevenue.
+        /// </summary>
         private decimal totalRevenue;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalexpenses.
+        /// </summary>
         private decimal totalExpenses;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the netincome.
+        /// </summary>
         private decimal netIncome;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the accountcount.
+        /// </summary>
+        /// <summary>
+        /// Represents the accountcount.
+        /// </summary>
         private int accountCount;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the activedepartments.
+        /// </summary>
         private int activeDepartments;
 
         // Chart Data for Revenue Trend
@@ -135,8 +302,35 @@ namespace WileyWidget.WinForms.ViewModels
         #endregion
 
         #region Commands
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcommand.
+        /// </summary>
 
         public IAsyncRelayCommand LoadCommand { get; }
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand<int> LoadFiscalYearCommand { get; }
 
@@ -146,9 +340,9 @@ namespace WileyWidget.WinForms.ViewModels
         #endregion
 
         public DashboardViewModel(
-            IBudgetRepository? budgetRepository,
-            IMunicipalAccountRepository? accountRepository,
             ILogger<DashboardViewModel>? logger,
+            IBudgetRepository? budgetRepository = null,
+            IMunicipalAccountRepository? accountRepository = null,
             IConfiguration? configuration = null)
         {
             // CRITICAL: Use NullLogger fallback to prevent null reference in error handlers
@@ -160,13 +354,13 @@ namespace WileyWidget.WinForms.ViewModels
                 Console.WriteLine("[WARNING] DashboardViewModel: ILogger<DashboardViewModel> is null - using NullLogger fallback");
             }
 
-            // Store repositories (will validate in LoadDashboardDataAsync)
             _budgetRepository = budgetRepository;
             _accountRepository = accountRepository;
             _configuration = configuration;
 
             // Capture UI context (may be null if called off UI thread - will be set via SetUiContext)
             _uiContext = System.Threading.SynchronizationContext.Current;
+            _isContextReady = _uiContext != null;
 
             if (_uiContext == null)
             {
@@ -189,11 +383,11 @@ namespace WileyWidget.WinForms.ViewModels
                 InitializeSampleData();
             }
 
-            _logger.LogDebug("DashboardViewModel initialized");
+            _logger.LogDebug("DashboardViewModel initialized with direct repository injection");
         }
 
         public DashboardViewModel()
-            : this(null, null, WileyWidget.WinForms.Logging.NullLogger<DashboardViewModel>.Instance, null)
+            : this(WileyWidget.WinForms.Logging.NullLogger<DashboardViewModel>.Instance, null, null, null)
         {
         }
 
@@ -201,11 +395,61 @@ namespace WileyWidget.WinForms.ViewModels
         /// Sets the UI SynchronizationContext for marshaling collection updates.
         /// Must be called from the UI thread before any async operations.
         /// </summary>
+        /// <summary>
+        /// Performs setuicontext. Parameters: context.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <summary>
+        /// Performs setuicontext.
+        /// </summary>
+        /// <summary>
+        /// Performs setuicontext. Parameters: context.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <summary>
+        /// Performs setuicontext.
+        /// </summary>
+        /// <summary>
+        /// Performs setuicontext. Parameters: context.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <summary>
+        /// Performs setuicontext.
+        /// </summary>
+        /// <summary>
+        /// Performs setuicontext. Parameters: context.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <summary>
+        /// Performs setuicontext.
+        /// </summary>
         public void SetUiContext(SynchronizationContext context)
         {
             _uiContext = context ?? throw new ArgumentNullException(nameof(context));
+            _isContextReady = true;
             _logger.LogInformation("DashboardViewModel: UI SynchronizationContext set (Type: {ContextType})", context.GetType().Name);
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] DashboardViewModel: SetUiContext called - Type: {context.GetType().Name}");
+
+            // Trigger any deferred loads now that UI context is available
+            try
+            {
+                // Fire-and-forget load - safest to start in background
+                _ = LoadDashboardDataAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SetUiContext: deferred load failed to start");
+            }
+        }
+
+        /// <summary>
+        /// Convenience overload: call from UI thread to capture the current SynchronizationContext
+        /// </summary>
+        public void SetUiContext()
+        {
+            var ctx = System.Threading.SynchronizationContext.Current;
+            if (ctx == null) return;
+            SetUiContext(ctx);
         }
 
         /// <summary>
@@ -256,9 +500,11 @@ namespace WileyWidget.WinForms.ViewModels
                         IsLoading = true;
                         ErrorMessage = null;
 
+                        // Repositories must be injected via constructor
                         if (_budgetRepository == null || _accountRepository == null)
                         {
                             ErrorMessage = "Dashboard repositories are not available";
+                            _logger.LogError("IBudgetRepository or IMunicipalAccountRepository is null");
                             return;
                         }
 
@@ -327,10 +573,10 @@ namespace WileyWidget.WinForms.ViewModels
 
                         if (analysis != null)
                         {
-                            // Update all properties on UI thread (use Post to avoid deadlock and ensure PropertyChanged fires on UI thread)
+                            // Update all properties on UI thread (use Send to ensure updates complete before continuing)
                             if (_uiContext != null)
                             {
-                                _uiContext.Post(_ =>
+                                _uiContext.Send(_ =>
                                 {
                                     BudgetAnalysis = analysis;
                                     TotalBudgeted = analysis.TotalBudgeted;
@@ -353,10 +599,10 @@ namespace WileyWidget.WinForms.ViewModels
                                 return;
                             }
 
-                            // Update department summaries on UI thread (use Post to avoid deadlock)
+                            // Update department summaries on UI thread (use Send to ensure immediate update)
                             if (_uiContext != null)
                             {
-                                _uiContext.Post(_ =>
+                                _uiContext.Send(_ =>
                                 {
                                     DepartmentSummaries.Clear();
                                     foreach (var dept in analysis.DepartmentSummaries)
@@ -375,7 +621,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                             if (_uiContext != null)
                             {
-                                _uiContext.Post(_ =>
+                                _uiContext.Send(_ =>
                                 {
                                     TopVariances.Clear();
                                     foreach (var variance in topVarList)
@@ -412,7 +658,7 @@ namespace WileyWidget.WinForms.ViewModels
                         // Use Post to avoid deadlock and ensure PropertyChanged fires on UI thread
                         if (_uiContext != null)
                         {
-                            _uiContext.Post(_ =>
+                            _uiContext.Send(_ =>
                             {
                                 try
                                 {
@@ -571,7 +817,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                     if (_uiContext != null)
                     {
-                        _uiContext.Post(_ => updateAction(), null);
+                        _uiContext.Send(_ => updateAction(), null);
                     }
                     else
                     {
@@ -600,6 +846,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Updates the metrics collection for grid display
+        /// </summary>
+        /// <summary>
+        /// Performs updatemetricscollection.
         /// </summary>
         private void UpdateMetricsCollection()
         {
@@ -692,6 +941,10 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Populates monthly revenue data for chart display
         /// </summary>
+        /// <summary>
+        /// Performs populatemonthlyrevenuedata. Parameters: fiscalYear.
+        /// </summary>
+        /// <param name="fiscalYear">The fiscalYear.</param>
         private void PopulateMonthlyRevenueData(int fiscalYear)
         {
             _logger.LogDebug("PopulateMonthlyRevenueData: Starting for FY {FiscalYear}", fiscalYear);
@@ -717,6 +970,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Initializes sample data for design-time preview
+        /// </summary>
+        /// <summary>
+        /// Performs initializesampledata.
         /// </summary>
         private void InitializeSampleData()
         {
@@ -749,10 +1005,61 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// Monthly revenue data for chart display
     /// </summary>
+    /// <summary>
+    /// Represents a class for monthlyrevenue.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for monthlyrevenue.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for monthlyrevenue.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for monthlyrevenue.
+    /// </summary>
     public class MonthlyRevenue
     {
+        /// <summary>
+        /// Gets or sets the month.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the month.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the month.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the month.
+        /// </summary>
         public string Month { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the amount.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the amount.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the amount.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the amount.
+        /// </summary>
         public decimal Amount { get; set; }
+        /// <summary>
+        /// Gets or sets the monthnumber.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the monthnumber.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the monthnumber.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the monthnumber.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the monthnumber.
+        /// </summary>
         public int MonthNumber { get; set; }
     }
 }
@@ -762,6 +1069,18 @@ namespace WileyWidget.WinForms.ViewModels
 {
     public partial class DashboardViewModel
     {
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
@@ -810,58 +1129,43 @@ namespace WileyWidget.WinForms.ViewModels
         /// This prevents null reference exceptions during dashboard load.
         /// Sets error state if dependencies are missing instead of throwing.
         /// </summary>
+        /// <summary>
+        /// Performs validatecriticaldependencies.
+        /// </summary>
         private void ValidateCriticalDependencies()
         {
             _logger.LogDebug("=== ValidateCriticalDependencies STARTED ===");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: ENTRY");
 
             // _logger is always valid (falls back to NullLogger)
-            // But verify repositories which are required for data loading
-            if (_budgetRepository == null)
+            // Validate required repositories (must be provided via DI)
+            if (_budgetRepository == null || _accountRepository == null)
             {
-                var message = "BudgetRepository is null - dashboard will show error state";
+                var message = "Required repositories are not registered. IBudgetRepository and IMunicipalAccountRepository must be registered as scoped services.";
                 _logger.LogWarning(message);
                 Console.WriteLine($"[WARNING] {message}");
-                ErrorMessage = "Budget data unavailable - repository not configured";
+                ErrorMessage = "Required repositories not available";
                 HasError = true;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null BudgetRepository");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to missing repositories");
             }
             else
             {
-                _logger.LogDebug("BudgetRepository is available");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: BudgetRepository OK");
+                _logger.LogDebug("Required repositories are available");
             }
 
-            if (_accountRepository == null)
-            {
-                var message = "AccountRepository is null - dashboard will show error state";
-                _logger.LogWarning(message);
-                Console.WriteLine($"[WARNING] {message}");
-                if (!HasError)
-                {
-                    ErrorMessage = "Account data unavailable - repository not configured";
-                }
-                HasError = true;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null AccountRepository");
-            }
-            else
-            {
-                _logger.LogDebug("AccountRepository is available");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: AccountRepository OK");
-            }
-
-            // UI context is CRITICAL - without it, UI updates will fail
+            // UI context matters for UI-bound updates. If missing, we defer UI-specific work and allow startup to continue.
             if (_uiContext == null)
             {
-                var message = "UI SynchronizationContext is null - UI updates may fail. Call SetUiContext() from DashboardForm constructor.";
+                var message = "UI SynchronizationContext is null - UI updates may fail. SetUiContext() will capture it when the view is created.";
                 _logger.LogWarning(message);
                 Console.WriteLine($"[WARNING] {message}");
-                if (!HasError)
+                // Set a non-fatal message but do NOT mark HasError=true so that startup and DI validation can continue
+                if (string.IsNullOrEmpty(ErrorMessage))
                 {
-                    ErrorMessage = "UI context not available - some updates may not display";
+                    ErrorMessage = "UI context not available - UI updates deferred until form load";
                 }
-                HasError = true;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null UI SynchronizationContext");
+                // Do not set HasError here - UI context will be provided later by the view (DashboardPanel)
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Deferring UI initialization until SetUiContext()");
             }
             else
             {

@@ -14,9 +14,21 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public sealed class ThemeIconService : IThemeIconService, IDisposable
     {
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
         private readonly ILogger _logger;
         private readonly ConcurrentDictionary<string, Image?> _iconCache;
         private readonly object _disposeLock = new();
+        /// <summary>
+        /// Represents the _disposed.
+        /// </summary>
+        /// <summary>
+        /// Represents the _disposed.
+        /// </summary>
         private bool _disposed;
 
         // Known icon names for validation
@@ -42,7 +54,13 @@ namespace WileyWidget.WinForms.Services
 
             // Business
             "dashboard", "chart", "report", "reports", "user", "profile", "chat", "ai", "assistant",
-            "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget"
+            "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget",
+
+            // File types
+            "excel", "pdf", "wallet",
+
+            // Audit / compliance icon
+            "audit"
         };
 
         public ThemeIconService(ILogger logger)
@@ -123,6 +141,22 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Checks if an icon name is recognized by the service.
         /// </summary>
+        /// <summary>
+        /// Performs isknownicon. Parameters: name.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <summary>
+        /// Performs isknownicon. Parameters: name.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <summary>
+        /// Performs isknownicon. Parameters: name.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <summary>
+        /// Performs isknownicon. Parameters: name.
+        /// </summary>
+        /// <param name="name">The name.</param>
         public bool IsKnownIcon(string name)
         {
             return !string.IsNullOrWhiteSpace(name) && KnownIconNames.Contains(name);
@@ -139,6 +173,18 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Clears the icon cache.
         /// </summary>
+        /// <summary>
+        /// Performs clearcache.
+        /// </summary>
+        /// <summary>
+        /// Performs clearcache.
+        /// </summary>
+        /// <summary>
+        /// Performs clearcache.
+        /// </summary>
+        /// <summary>
+        /// Performs clearcache.
+        /// </summary>
         public void ClearCache()
         {
             _logger.Information("Clearing icon cache with {Count} entries", _iconCache.Count);
@@ -151,6 +197,18 @@ namespace WileyWidget.WinForms.Services
 
             _iconCache.Clear();
         }
+        /// <summary>
+        /// Performs getcachekey. Parameters: name, theme, size.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="theme">The theme.</param>
+        /// <param name="size">The size.</param>
+        /// <summary>
+        /// Performs getcachekey. Parameters: name, theme, size.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="theme">The theme.</param>
+        /// <param name="size">The size.</param>
 
         private static string GetCacheKey(string name, AppTheme theme, int size)
         {
@@ -246,12 +304,33 @@ namespace WileyWidget.WinForms.Services
                     "quickbooks" or "accounting" or "accounts" or "finance" or "money" or "budget" => SystemIcons.Shield,
                     "invoice" or "bill" or "payment" => SystemIcons.Shield,
 
+                    // Audit / compliance
+                    "audit" => SystemIcons.Shield,
+
                     // Fallback for unknown icons
                     _ => null
                 };
 
                 if (systemIcon == null)
                 {
+                    // Try custom generators for known icons
+                    if (string.Equals(name, "audit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return GenerateAuditIcon(size);
+                    }
+                    if (string.Equals(name, "excel", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return GenerateExcelIcon(size);
+                    }
+                    if (string.Equals(name, "pdf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return GeneratePdfIcon(size);
+                    }
+                    if (string.Equals(name, "wallet", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return GenerateWalletIcon(size);
+                    }
+
                     return null;
                 }
 
@@ -264,6 +343,133 @@ namespace WileyWidget.WinForms.Services
             catch (Exception ex)
             {
                 _logger.Error(ex, "Error generating system icon for {IconName} with size {Size}", name, size);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Generates a simple audit icon (circle with checkmark) as a fallback.
+        /// </summary>
+        private static Image? GenerateAuditIcon(int size)
+        {
+            try
+            {
+                var bmp = new Bitmap(size, size);
+                using var g = Graphics.FromImage(bmp);
+                g.SmoothingMode = SmoothingMode.HighQuality;
+
+                var fill = Brushes.MediumSeaGreen;
+                var pen = new Pen(Color.White, Math.Max(2, size / 12));
+
+                // Fill circle
+                g.FillEllipse(fill, 0, 0, size - 1, size - 1);
+
+                // Draw checkmark
+                var p = new System.Drawing.PointF[]
+                {
+                    new System.Drawing.PointF(size * 0.22f, size * 0.55f),
+                    new System.Drawing.PointF(size * 0.44f, size * 0.75f),
+                    new System.Drawing.PointF(size * 0.78f, size * 0.28f)
+                };
+
+                g.DrawLines(pen, p);
+
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Generates a simple Excel icon (green square with "X").
+        /// </summary>
+        private static Image? GenerateExcelIcon(int size)
+        {
+            try
+            {
+                var bmp = new Bitmap(size, size);
+                using var g = Graphics.FromImage(bmp);
+                g.SmoothingMode = SmoothingMode.HighQuality;
+
+                // Excel green background
+                var fill = new SolidBrush(Color.FromArgb(0, 176, 80));
+                g.FillRectangle(fill, 0, 0, size, size);
+
+                // White "X"
+                var pen = new Pen(Color.White, Math.Max(2, size / 8));
+                g.DrawLine(pen, size * 0.2f, size * 0.2f, size * 0.8f, size * 0.8f);
+                g.DrawLine(pen, size * 0.8f, size * 0.2f, size * 0.2f, size * 0.8f);
+
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Generates a simple PDF icon (red square with "PDF").
+        /// </summary>
+        private static Image? GeneratePdfIcon(int size)
+        {
+            try
+            {
+                var bmp = new Bitmap(size, size);
+                using var g = Graphics.FromImage(bmp);
+                g.SmoothingMode = SmoothingMode.HighQuality;
+
+                // PDF red background
+                var fill = new SolidBrush(Color.FromArgb(220, 53, 69));
+                g.FillRectangle(fill, 0, 0, size, size);
+
+                // White "PDF" text
+                using var font = new Font("Arial", size * 0.25f, FontStyle.Bold);
+                var textBrush = Brushes.White;
+                var text = "PDF";
+                var textSize = g.MeasureString(text, font);
+                var textX = (size - textSize.Width) / 2;
+                var textY = (size - textSize.Height) / 2;
+                g.DrawString(text, font, textBrush, textX, textY);
+
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Generates a simple wallet icon (brown rectangle with money symbol).
+        /// </summary>
+        private static Image? GenerateWalletIcon(int size)
+        {
+            try
+            {
+                var bmp = new Bitmap(size, size);
+                using var g = Graphics.FromImage(bmp);
+                g.SmoothingMode = SmoothingMode.HighQuality;
+
+                // Wallet brown background
+                var fill = new SolidBrush(Color.FromArgb(139, 69, 19));
+                g.FillRectangle(fill, size * 0.1f, size * 0.2f, size * 0.8f, size * 0.6f);
+
+                // White money symbol ($)
+                using var font = new Font("Arial", size * 0.4f, FontStyle.Bold);
+                var textBrush = Brushes.White;
+                var text = "$";
+                var textSize = g.MeasureString(text, font);
+                var textX = (size - textSize.Width) / 2;
+                var textY = (size - textSize.Height) / 2;
+                g.DrawString(text, font, textBrush, textX, textY);
+
+                return bmp;
+            }
+            catch
+            {
                 return null;
             }
         }
@@ -393,6 +599,18 @@ namespace WileyWidget.WinForms.Services
                 return sourceImage;
             }
         }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
 
         public void Dispose()
         {

@@ -10,6 +10,9 @@ namespace WileyWidget.Services
     /// Lightweight in-memory cache implementation for local development and tests.
     /// Not intended for production-scale distributed caching.
     /// </summary>
+    /// <summary>
+    /// Represents a class for inmemorycacheservice.
+    /// </summary>
     public class InMemoryCacheService : ICacheService
     {
         private readonly ConcurrentDictionary<string, (object Value, DateTime? Expires)> _store = new();
@@ -87,6 +90,10 @@ namespace WileyWidget.Services
             _store[key] = (value!, expires);
             return Task.CompletedTask;
         }
+        /// <summary>
+        /// Performs remove. Parameters: key.
+        /// </summary>
+        /// <param name="key">The key.</param>
 
         public Task RemoveAsync(string key)
         {
@@ -103,6 +110,9 @@ namespace WileyWidget.Services
             _logger?.Debug("InMemoryCacheService: Exists check for key {Key}={Exists}", key, exists);
             return Task.FromResult(exists);
         }
+        /// <summary>
+        /// Performs clearall.
+        /// </summary>
 
         public Task ClearAllAsync()
         {

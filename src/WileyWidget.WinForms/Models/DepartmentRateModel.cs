@@ -18,18 +18,27 @@ public partial class DepartmentRateModel : ObservableObject
     /// Monthly expenses for this department (from QuickBooks)
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the monthlyexpenses.
+    /// </summary>
     private decimal monthlyExpenses;
 
     /// <summary>
     /// Current monthly charge per customer/unit
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the currentcharge.
+    /// </summary>
     private decimal currentCharge;
 
     /// <summary>
     /// Suggested monthly charge based on expenses + AI adjustment factor
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the suggestedcharge.
+    /// </summary>
     private decimal suggestedCharge;
 
     /// <summary>
@@ -37,6 +46,9 @@ public partial class DepartmentRateModel : ObservableObject
     /// Positive = profitable, negative = losing money
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the monthlygainloss.
+    /// </summary>
     private decimal monthlyGainLoss;
 
     /// <summary>
@@ -62,12 +74,18 @@ public partial class DepartmentRateModel : ObservableObject
     /// Number of customers/units for this department (for total calculations)
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the customercount.
+    /// </summary>
     private int customerCount;
 
     /// <summary>
     /// State-wide average rate for this department type
     /// </summary>
     [ObservableProperty]
+    /// <summary>
+    /// Represents the stateaverage.
+    /// </summary>
     private decimal stateAverage;
 
     /// <summary>
@@ -85,6 +103,22 @@ public partial class DepartmentRateModel : ObservableObject
     /// <summary>
     /// Updates the suggested charge based on expenses and AI adjustment factor
     /// </summary>
+    /// <summary>
+    /// Performs updatesuggested. Parameters: 1.0m.
+    /// </summary>
+    /// <param name="1.0m">The 1.0m.</param>
+    /// <summary>
+    /// Performs updatesuggested. Parameters: 1.0m.
+    /// </summary>
+    /// <param name="1.0m">The 1.0m.</param>
+    /// <summary>
+    /// Performs updatesuggested. Parameters: 1.0m.
+    /// </summary>
+    /// <param name="1.0m">The 1.0m.</param>
+    /// <summary>
+    /// Performs updatesuggested. Parameters: 1.0m.
+    /// </summary>
+    /// <param name="1.0m">The 1.0m.</param>
     public void UpdateSuggested(decimal aiFactor = 1.0m)
     {
         AiAdjustmentFactor = aiFactor;
@@ -99,6 +133,9 @@ public partial class DepartmentRateModel : ObservableObject
     partial void OnAiAdjustmentFactorChanged(decimal value) => CalculateDerived();
     partial void OnCustomerCountChanged(int value) => OnPropertyChanged(nameof(TotalMonthlyImpact));
     partial void OnStateAverageChanged(decimal value) => OnPropertyChanged(nameof(VarianceFromState));
+    /// <summary>
+    /// Performs calculatederived.
+    /// </summary>
 
     private void CalculateDerived()
     {

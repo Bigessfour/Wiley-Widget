@@ -55,6 +55,9 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         SetupUI();
         SubscribeToThemeChanges();
     }
+    /// <summary>
+    /// Performs initializecomponent.
+    /// </summary>
 
     private void InitializeComponent()
     {
@@ -73,6 +76,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             // Fall back if DPI scaling not supported
         }
     }
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
 
     private void SetupUI()
     {
@@ -82,10 +91,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         _panelHeader = new PanelHeader
         {
             Dock = DockStyle.Top,
-            Title = "Department Summary",
-            AccessibleName = "Department Summary header"
+            Title = "Department Summary"
         };
-        _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+        _panelHeader.SafeSetProperty(h => h.AccessibleName = "Department Summary header");
+        _panelHeaderRefreshHandler = (s, e) => _ = RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
@@ -179,6 +188,22 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         ResumeLayout(false);
     }
+    /// <summary>
+    /// Performs createsummarycard. Parameters: parent, title, value, columnIndex, description.
+    /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="title">The title.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="columnIndex">The columnIndex.</param>
+    /// <param name="description">The description.</param>
+    /// <summary>
+    /// Performs createsummarycard. Parameters: parent, title, value, columnIndex, description.
+    /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="title">The title.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="columnIndex">The columnIndex.</param>
+    /// <param name="description">The description.</param>
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
     {
@@ -217,6 +242,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         parent.Controls.Add(cardPanel, columnIndex, 0);
         return lblValue;
     }
+    /// <summary>
+    /// Performs configuregridcolumns.
+    /// </summary>
+    /// <summary>
+    /// Performs configuregridcolumns.
+    /// </summary>
 
     private void ConfigureGridColumns()
     {
@@ -324,6 +355,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             }
         }
     }
+    /// <summary>
+    /// Performs showerror. Parameters: ex.
+    /// </summary>
+    /// <param name="ex">The ex.</param>
 
     private void ShowError(Exception ex)
     {
@@ -333,6 +368,16 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -381,6 +426,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             // Ignore if disposed during update
         }
     }
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
 
     private void UpdateUI()
     {
@@ -403,6 +454,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             // Ignore if disposed
         }
     }
+    /// <summary>
+    /// Performs updatesummarycards.
+    /// </summary>
+    /// <summary>
+    /// Performs updatesummarycards.
+    /// </summary>
 
     private void UpdateSummaryCards()
     {
@@ -444,6 +501,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             Console.WriteLine($"DepartmentSummaryPanel: UpdateSummaryCards failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
 
     private void UpdateGridData()
     {
@@ -464,6 +527,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             Console.WriteLine($"DepartmentSummaryPanel: UpdateGridData failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
 
     private void UpdateNoDataOverlay()
     {
@@ -490,13 +559,20 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            // MessageBox.Show is thread-safe for modal dialogs, but use SafeInvoke for consistency
+            this.SafeInvoke(() => MessageBox.Show(
                 $"Failed to refresh data: {ex.Message}",
                 "Error",
                 MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+                MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -517,6 +593,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             Console.WriteLine($"DepartmentSummaryPanel: ClosePanel failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
 
     private void SubscribeToThemeChanges()
     {
@@ -536,6 +618,12 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         ThemeManager.ThemeChanged += _themeChangedHandler;
     }
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
 
     private void ApplyTheme()
     {

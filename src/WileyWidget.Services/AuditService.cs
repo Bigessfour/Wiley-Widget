@@ -15,6 +15,9 @@ namespace WileyWidget.Services
     /// Simple audit service. Writes structured metadata to the normal ILogger and an append-only audit file.
     /// This service MUST NOT store secret values. Callers should redact sensitive fields before calling.
     /// </summary>
+    /// <summary>
+    /// Represents a class for auditservice.
+    /// </summary>
     public class AuditService : IAuditService
     {
         private readonly ILogger<AuditService> _logger;
@@ -23,12 +26,38 @@ namespace WileyWidget.Services
         public AuditService(ILogger<AuditService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            // Use root logs folder for centralized logging
-            var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-            var logs = Path.Combine(projectRoot, "logs");
+            // Use root logs folder for centralized logging (respect WILEYWIDGET_LOG_DIR if provided)
+            var logs = Environment.GetEnvironmentVariable("WILEYWIDGET_LOG_DIR");
+            if (string.IsNullOrWhiteSpace(logs))
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var dir = baseDir;
+                for (int depth = 0; depth < 8; depth++)
+                {
+                    if (File.Exists(Path.Combine(dir, "WileyWidget.sln")) || Directory.Exists(Path.Combine(dir, ".git")))
+                    {
+                        logs = Path.Combine(dir, "logs");
+                        break;
+                    }
+
+                    var parent = Directory.GetParent(dir);
+                    if (parent == null) break;
+                    dir = parent.FullName;
+                }
+
+                if (string.IsNullOrWhiteSpace(logs))
+                {
+                    logs = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+                }
+            }
             Directory.CreateDirectory(logs);
             _auditPath = Path.Combine(logs, "audit.log");
         }
+        /// <summary>
+        /// Performs audit. Parameters: eventName, details.
+        /// </summary>
+        /// <param name="eventName">The eventName.</param>
+        /// <param name="details">The details.</param>
 
         public Task AuditAsync(string eventName, object details)
         {
@@ -157,7 +186,13 @@ namespace WileyWidget.Services
 
         private class AuditRecord
         {
+            /// <summary>
+            /// Gets or sets the timestamp.
+            /// </summary>
             public DateTimeOffset Timestamp { get; set; }
+            /// <summary>
+            /// Gets or sets the event.
+            /// </summary>
             public string Event { get; set; } = string.Empty;
             public object? Details { get; set; }
         }

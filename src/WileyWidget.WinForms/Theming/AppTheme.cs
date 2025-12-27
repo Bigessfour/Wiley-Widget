@@ -3,6 +3,18 @@ namespace WileyWidget.WinForms.Theming
     /// <summary>
     /// Defines available application themes.
     /// </summary>
+    /// <summary>
+    /// Defines the apptheme enumeration.
+    /// </summary>
+    /// <summary>
+    /// Defines the apptheme enumeration.
+    /// </summary>
+    /// <summary>
+    /// Defines the apptheme enumeration.
+    /// </summary>
+    /// <summary>
+    /// Defines the apptheme enumeration.
+    /// </summary>
     public enum AppTheme
     {
         Light,

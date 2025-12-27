@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents a dashboard panel item for tile-based layouts.
 /// Used with Syncfusion SfTileView for dashboard panels.
 /// </summary>
+/// <summary>
+/// Represents a class for panelitem.
+/// </summary>
 public class PanelItem : INotifyPropertyChanged
 {
     private string _title = string.Empty;

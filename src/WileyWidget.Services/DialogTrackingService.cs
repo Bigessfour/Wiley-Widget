@@ -12,6 +12,9 @@ namespace WileyWidget.Services
     /// Prevents memory leaks and NullReferenceException during shutdown by ensuring
     /// all dialogs are properly closed before container disposal.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for idialogtrackingservice.
+    /// </summary>
     public interface IDialogTrackingService
     {
         /// <summary>
@@ -45,12 +48,19 @@ namespace WileyWidget.Services
     /// Implementation of dialog tracking service.
     /// Thread-safe for concurrent dialog operations.
     /// </summary>
+    /// <summary>
+    /// Represents a class for dialogtrackingservice.
+    /// </summary>
     public class DialogTrackingService : IDialogTrackingService
     {
         private readonly ConcurrentDictionary<int, WeakReference<Window>> _trackedDialogs = new();
         private int _nextDialogId = 0;
 
         /// <inheritdoc/>
+        /// <summary>
+        /// Performs registerdialog. Parameters: dialog.
+        /// </summary>
+        /// <param name="dialog">The dialog.</param>
         public void RegisterDialog(Window dialog)
         {
             if (dialog == null)
@@ -75,6 +85,10 @@ namespace WileyWidget.Services
         }
 
         /// <inheritdoc/>
+        /// <summary>
+        /// Performs unregisterdialog. Parameters: dialog.
+        /// </summary>
+        /// <param name="dialog">The dialog.</param>
         public void UnregisterDialog(Window dialog)
         {
             if (dialog == null) return;
@@ -107,6 +121,9 @@ namespace WileyWidget.Services
         }
 
         /// <inheritdoc/>
+        /// <summary>
+        /// Performs closealldialogs.
+        /// </summary>
         public void CloseAllDialogs()
         {
             Log.Information("Closing all tracked dialogs (Count: {Count})", OpenDialogCount);

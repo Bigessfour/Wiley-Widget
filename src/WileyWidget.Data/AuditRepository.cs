@@ -13,6 +13,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Repository implementation for audit trail data operations
 /// </summary>
+/// <summary>
+/// Represents a class for auditrepository.
+/// </summary>
 public class AuditRepository : IAuditRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AuditRepository");

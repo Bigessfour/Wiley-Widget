@@ -7,6 +7,9 @@ using QBTask = Intuit.Ipp.Data.Task;
 
 namespace WileyWidget.Services.Abstractions
 {
+    /// <summary>
+    /// Represents a interface for iquickbooksservice.
+    /// </summary>
     public interface IQuickBooksService
     {
         System.Threading.Tasks.Task<bool> AuthorizeAsync();
@@ -25,6 +28,7 @@ namespace WileyWidget.Services.Abstractions
 
         System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null);
         System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync();
+        System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<List<Bill>> GetBillsAsync();
         System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null);
         System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync();
@@ -47,15 +51,27 @@ namespace WileyWidget.Services.Abstractions
 
     public sealed class UrlAclCheckResult
     {
+        /// <summary>
+        /// Gets or sets the isready.
+        /// </summary>
         public bool IsReady { get; set; }
+        /// <summary>
+        /// Gets or sets the listenerprefix.
+        /// </summary>
         public string ListenerPrefix { get; set; } = string.Empty;
         public string? Owner { get; set; }
+        /// <summary>
+        /// Gets or sets the guidance.
+        /// </summary>
         public string Guidance { get; set; } = string.Empty;
         public string? RawNetshOutput { get; set; }
     }
 
     public sealed class ConnectionStatus
     {
+        /// <summary>
+        /// Gets or sets the isconnected.
+        /// </summary>
         public bool IsConnected { get; set; }
         public string? CompanyName { get; set; }
         public string? LastSyncTime { get; set; }
@@ -64,17 +80,41 @@ namespace WileyWidget.Services.Abstractions
 
     public sealed class SyncResult
     {
+        /// <summary>
+        /// Gets or sets the success.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the success.
+        /// </summary>
         public bool Success { get; set; }
+        /// <summary>
+        /// Gets or sets the recordssynced.
+        /// </summary>
         public int RecordsSynced { get; set; }
         public string? ErrorMessage { get; set; }
+        /// <summary>
+        /// Gets or sets the duration.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the duration.
+        /// </summary>
         public TimeSpan Duration { get; set; }
     }
 
     public sealed class ImportResult
     {
         public bool Success { get; set; }
+        /// <summary>
+        /// Gets or sets the accountsimported.
+        /// </summary>
         public int AccountsImported { get; set; }
+        /// <summary>
+        /// Gets or sets the accountsupdated.
+        /// </summary>
         public int AccountsUpdated { get; set; }
+        /// <summary>
+        /// Gets or sets the accountsskipped.
+        /// </summary>
         public int AccountsSkipped { get; set; }
         public string? ErrorMessage { get; set; }
         public TimeSpan Duration { get; set; }

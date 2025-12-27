@@ -12,6 +12,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Repository implementation for Enterprise data operations
 /// </summary>
+/// <summary>
+/// Represents a class for enterpriserepository.
+/// </summary>
 public class EnterpriseRepository : IEnterpriseRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.EnterpriseRepository");
@@ -241,6 +244,11 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Creates an enterprise from header mapping
     /// </summary>
+    /// <summary>
+    /// Performs createfromheadermapping. Parameters: IDictionary<string, headerValueMap.
+    /// </summary>
+    /// <param name="IDictionary<string">The IDictionary<string.</param>
+    /// <param name="headerValueMap">The headerValueMap.</param>
     public Enterprise CreateFromHeaderMapping(IDictionary<string, string> headerValueMap)
     {
         if (headerValueMap == null)

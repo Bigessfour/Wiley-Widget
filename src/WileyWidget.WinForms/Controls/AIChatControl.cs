@@ -30,6 +30,12 @@ public partial class AIChatControl : UserControl
     /// Provides the user message to parent forms/windows for integration.
     /// </summary>
     public event EventHandler<string>? MessageSent;
+    /// <summary>
+    /// Represents the _aiservice.
+    /// </summary>
+    /// <summary>
+    /// Represents the _aiservice.
+    /// </summary>
     private readonly IAIAssistantService _aiService;
     private readonly IAIService? _conversationalAIService;
     private readonly IAIPersonalityService? _personalityService;
@@ -62,7 +68,8 @@ public partial class AIChatControl : UserControl
         ILogger<AIChatControl> logger,
         IAIService? conversationalAIService = null,
         IAIPersonalityService? personalityService = null,
-        IFinancialInsightsService? insightsService = null)
+        IFinancialInsightsService? insightsService = null,
+        ObservableCollection<ChatMessage>? messages = null)
     {
         // Validate STA thread requirement for WinForms controls
         if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
@@ -77,13 +84,16 @@ public partial class AIChatControl : UserControl
         _conversationalAIService = conversationalAIService;
         _personalityService = personalityService;
         _insightsService = insightsService;
-        Messages = new ObservableCollection<ChatMessage>();
+        Messages = messages ?? new ObservableCollection<ChatMessage>();
 
         InitializeComponent();
         ShowWelcomeMessage();
         _logger.LogInformation("AIChatControl initialized successfully{ConversationalAI}",
             _conversationalAIService != null ? " with conversational AI fallback enabled" : "");
     }
+    /// <summary>
+    /// Performs initializecomponent.
+    /// </summary>
 
     private void InitializeComponent()
     {
@@ -252,6 +262,12 @@ public partial class AIChatControl : UserControl
 
         ResumeLayout(false);
     }
+    /// <summary>
+    /// Performs clearmessages.
+    /// </summary>
+    /// <summary>
+    /// Performs clearmessages.
+    /// </summary>
 
     private void ClearMessages()
     {
@@ -262,6 +278,12 @@ public partial class AIChatControl : UserControl
         }
         _logger.LogInformation("Chat messages cleared");
     }
+    /// <summary>
+    /// Performs showwelcomemessage.
+    /// </summary>
+    /// <summary>
+    /// Performs showwelcomemessage.
+    /// </summary>
 
     private void ShowWelcomeMessage()
     {
@@ -309,6 +331,16 @@ public partial class AIChatControl : UserControl
             // Non-critical failure - continue without welcome message
         }
     }
+    /// <summary>
+    /// Performs inputtextbox keydown. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs inputtextbox keydown. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void InputTextBox_KeyDown(object? sender, KeyEventArgs e)
     {
@@ -330,16 +362,6 @@ public partial class AIChatControl : UserControl
 
         if (string.IsNullOrWhiteSpace(input))
             return;
-
-        // Add user message
-        var userMessage = new ChatMessage
-        {
-            IsUser = true,
-            Message = input,
-            Timestamp = DateTime.Now
-        };
-        Messages.Add(userMessage);
-        AppendMessageToDisplay(userMessage);
 
         // Show progress (ensure UI thread execution)
         if (InvokeRequired)
@@ -363,12 +385,11 @@ public partial class AIChatControl : UserControl
         await _executionSemaphore.WaitAsync();
         try
         {
-            // If a parent has subscribed to MessageSent, delegate processing to the parent
+            // If a parent has subscribed to MessageSent, delegate all processing to the parent
             // This allows a parent form (e.g., ChatWindow) to centralize AI service usage
             if (MessageSent != null)
             {
-                // Leave the semaphore acquired and the progress UI visible until the parent
-                // calls NotifyProcessingCompleted(). This avoids concurrent processing.
+                // Delegate to parent - parent will add user message and process AI
                 try
                 {
                     MessageSent.Invoke(this, input);
@@ -402,11 +423,19 @@ public partial class AIChatControl : UserControl
                     }
                 }
 
-                // DONE: delegate to parent, return now (parent will add AI response and must call NotifyProcessingCompleted())
+                // DONE: delegate to parent, return now
                 return;
             }
 
-            // Parse for tool call
+            // Add user message (only if not delegating)
+            var userMessage = new ChatMessage
+            {
+                IsUser = true,
+                Message = input,
+                Timestamp = DateTime.Now
+            };
+            Messages.Add(userMessage);
+            AppendMessageToDisplay(userMessage);
             var toolCall = _aiService.ParseInputForTool(input);
 
             string responseMessage;
@@ -498,12 +527,14 @@ public partial class AIChatControl : UserControl
         {
             _logger.LogError(ex, "Error sending message");
             string friendlyError = ConversationalAIHelper.FormatFriendlyError(ex);
-            Messages.Add(new ChatMessage
+            var errorMessage = new ChatMessage
             {
                 IsUser = false,
                 Message = friendlyError,
                 Timestamp = DateTime.Now
-            });
+            };
+            Messages.Add(errorMessage);
+            AppendMessageToDisplay(errorMessage);
         }
         finally
         {
@@ -539,6 +570,18 @@ public partial class AIChatControl : UserControl
     /// Public method called by parent forms (e.g. ChatWindow) to indicate processing has completed.
     /// This unblocks the control, hides progress UI and enables the send button.
     /// </summary>
+    /// <summary>
+    /// Performs notifyprocessingcompleted.
+    /// </summary>
+    /// <summary>
+    /// Performs notifyprocessingcompleted.
+    /// </summary>
+    /// <summary>
+    /// Performs notifyprocessingcompleted.
+    /// </summary>
+    /// <summary>
+    /// Performs notifyprocessingcompleted.
+    /// </summary>
     public void NotifyProcessingCompleted()
     {
         if (InvokeRequired)
@@ -563,6 +606,14 @@ public partial class AIChatControl : UserControl
             _logger.LogWarning(ex, "Failed to complete processing state transition");
         }
     }
+    /// <summary>
+    /// Performs appendmessagetodisplay. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs appendmessagetodisplay. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void AppendMessageToDisplay(ChatMessage message)
     {
@@ -612,6 +663,9 @@ public partial class AIChatControl : UserControl
     /// <summary>
     /// Trim older messages when the collection exceeds the configured MaxMessageCount.
     /// Rebuilds the messages display from the in-memory Messages collection to keep RTF state consistent.
+    /// </summary>
+    /// <summary>
+    /// Performs trimmessagesifneeded.
     /// </summary>
     private void TrimMessagesIfNeeded()
     {

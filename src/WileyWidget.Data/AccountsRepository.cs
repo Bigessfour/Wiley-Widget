@@ -15,6 +15,9 @@ namespace WileyWidget.Data;
 /// Repository implementation for municipal account data operations.
 /// Encapsulates data access logic for MunicipalAccount entities.
 /// </summary>
+/// <summary>
+/// Represents a class for accountsrepository.
+/// </summary>
 public class AccountsRepository : IAccountsRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AccountsRepository");

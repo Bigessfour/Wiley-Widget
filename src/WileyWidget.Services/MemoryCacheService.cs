@@ -13,6 +13,9 @@ namespace WileyWidget.Services
     /// - Uses System.Text.Json for deep cloning when necessary
     /// - Maps CacheEntryOptions to MemoryCacheEntryOptions
     /// </summary>
+    /// <summary>
+    /// Represents a class for memorycacheservice.
+    /// </summary>
     public class MemoryCacheService : ICacheService, IDisposable
     {
         private readonly IMemoryCache _memoryCache;
@@ -91,6 +94,10 @@ namespace WileyWidget.Services
 
             return Task.CompletedTask;
         }
+        /// <summary>
+        /// Performs remove. Parameters: key.
+        /// </summary>
+        /// <param name="key">The key.</param>
 
         public Task RemoveAsync(string key)
         {
@@ -107,6 +114,9 @@ namespace WileyWidget.Services
             _logger?.Debug("MemoryCacheService: EXISTS key {Key} => {Exists}", key, exists);
             return Task.FromResult(exists);
         }
+        /// <summary>
+        /// Performs clearall.
+        /// </summary>
 
         public Task ClearAllAsync()
         {
@@ -168,6 +178,9 @@ namespace WileyWidget.Services
                 // no-op
             }
         }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
 
         public void Dispose()
         {

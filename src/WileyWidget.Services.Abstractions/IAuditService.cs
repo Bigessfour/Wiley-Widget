@@ -5,6 +5,9 @@ using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
+    /// <summary>
+    /// Represents a interface for iauditservice.
+    /// </summary>
     public interface IAuditService
     {
         Task AuditAsync(string eventName, object payload);

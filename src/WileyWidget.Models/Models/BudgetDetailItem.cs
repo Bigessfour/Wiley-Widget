@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents a detailed budget item for display in budget analysis views.
 /// Used in BudgetViewModel for detailed budget tracking and comparison.
 /// </summary>
+/// <summary>
+/// Represents a class for budgetdetailitem.
+/// </summary>
 public class BudgetDetailItem : INotifyPropertyChanged
 {
     private string _enterpriseName = string.Empty;

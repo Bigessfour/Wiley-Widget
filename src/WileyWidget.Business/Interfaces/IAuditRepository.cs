@@ -8,6 +8,9 @@ namespace WileyWidget.Business.Interfaces;
 /// <summary>
 /// Repository interface for audit trail operations
 /// </summary>
+/// <summary>
+/// Represents a interface for iauditrepository.
+/// </summary>
 public interface IAuditRepository
 {
     /// <summary>

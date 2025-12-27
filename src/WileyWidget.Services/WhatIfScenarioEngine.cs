@@ -15,6 +15,9 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Service for generating comprehensive What-If financial scenarios
 /// </summary>
+/// <summary>
+/// Represents a class for whatifscenarioengine.
+/// </summary>
 public class WhatIfScenarioEngine : IWhatIfScenarioEngine
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -362,50 +365,126 @@ public class WhatIfScenarioEngine : IWhatIfScenarioEngine
 /// <summary>
 /// Parameters for what-if scenario
 /// </summary>
+/// <summary>
+/// Represents a class for scenarioparameters.
+/// </summary>
 public class ScenarioParameters
 {
+    /// <summary>
+    /// Gets or sets the payraisepercentage.
+    /// </summary>
     public decimal PayRaisePercentage { get; set; }
+    /// <summary>
+    /// Gets or sets the benefitsincreaseamount.
+    /// </summary>
     public decimal BenefitsIncreaseAmount { get; set; } // Monthly amount
+    /// <summary>
+    /// Gets or sets the equipmentpurchaseamount.
+    /// </summary>
     public decimal EquipmentPurchaseAmount { get; set; }
+    /// <summary>
+    /// Gets or sets the equipmentfinancingyears.
+    /// </summary>
     public int EquipmentFinancingYears { get; set; } = 5;
+    /// <summary>
+    /// Gets or sets the reservepercentage.
+    /// </summary>
     public decimal ReservePercentage { get; set; }
 }
 
 /// <summary>
 /// Comprehensive scenario result
 /// </summary>
+/// <summary>
+/// Represents a class for comprehensivescenario.
+/// </summary>
 public class ComprehensiveScenario
 {
+    /// <summary>
+    /// Gets or sets the scenarioname.
+    /// </summary>
     public string ScenarioName { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the baselinedata.
+    /// </summary>
     public BaselineData BaselineData { get; set; } = new();
     public List<ScenarioImpact> ScenarioImpacts { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the totalimpact.
+    /// </summary>
     public TotalImpact TotalImpact { get; set; } = new();
     public List<string> Recommendations { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the projections.
+    /// </summary>
+    public List<Projection> Projections { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the riskassessment.
+    /// </summary>
     public RiskAssessment RiskAssessment { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the generateddate.
+    /// </summary>
     public DateTime GeneratedDate { get; set; }
 }
 
 /// <summary>
 /// Baseline financial data
 /// </summary>
+/// <summary>
+/// Represents a class for baselinedata.
+/// </summary>
 public class BaselineData
 {
+    /// <summary>
+    /// Gets or sets the currentrate.
+    /// </summary>
     public decimal CurrentRate { get; set; }
+    /// <summary>
+    /// Gets or sets the monthlyexpenses.
+    /// </summary>
     public decimal MonthlyExpenses { get; set; }
+    /// <summary>
+    /// Gets or sets the monthlyrevenue.
+    /// </summary>
     public decimal MonthlyRevenue { get; set; }
+    /// <summary>
+    /// Gets or sets the monthlybalance.
+    /// </summary>
     public decimal MonthlyBalance { get; set; }
+    /// <summary>
+    /// Gets or sets the citizencount.
+    /// </summary>
     public int CitizenCount { get; set; }
 }
 
 /// <summary>
 /// Individual scenario impact
 /// </summary>
+/// <summary>
+/// Represents a class for scenarioimpact.
+/// </summary>
 public class ScenarioImpact
 {
+    /// <summary>
+    /// Gets or sets the category.
+    /// </summary>
     public string Category { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the description.
+    /// </summary>
     public string Description { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the annualincrease.
+    /// </summary>
     public decimal AnnualIncrease { get; set; }
+    /// <summary>
+    /// Gets or sets the monthlyincrease.
+    /// </summary>
     public decimal MonthlyIncrease { get; set; }
+    /// <summary>
+    /// Gets or sets the impactlevel.
+    /// </summary>
     public string ImpactLevel { get; set; } = string.Empty; // Low, Medium, High
     public List<string> Details { get; set; } = new();
 }
@@ -413,21 +492,48 @@ public class ScenarioImpact
 /// <summary>
 /// Total scenario impact
 /// </summary>
+/// <summary>
+/// Represents a class for totalimpact.
+/// </summary>
 public class TotalImpact
 {
+    /// <summary>
+    /// Gets or sets the totalannualexpenseincrease.
+    /// </summary>
     public decimal TotalAnnualExpenseIncrease { get; set; }
+    /// <summary>
+    /// Gets or sets the totalmonthlyexpenseincrease.
+    /// </summary>
     public decimal TotalMonthlyExpenseIncrease { get; set; }
+    /// <summary>
+    /// Gets or sets the requiredrateincrease.
+    /// </summary>
     public decimal RequiredRateIncrease { get; set; }
+    /// <summary>
+    /// Gets or sets the newmonthlyrate.
+    /// </summary>
     public decimal NewMonthlyRate { get; set; }
+    /// <summary>
+    /// Gets or sets the newmonthlyrevenue.
+    /// </summary>
     public decimal NewMonthlyRevenue { get; set; }
+    /// <summary>
+    /// Gets or sets the newmonthlybalance.
+    /// </summary>
     public decimal NewMonthlyBalance { get; set; }
 }
 
 /// <summary>
 /// Risk assessment
 /// </summary>
+/// <summary>
+/// Represents a class for riskassessment.
+/// </summary>
 public class RiskAssessment
 {
+    /// <summary>
+    /// Gets or sets the risklevel.
+    /// </summary>
     public string RiskLevel { get; set; } = string.Empty; // Low, Medium, High
     public List<string> Concerns { get; set; } = new();
     public List<string> MitigationStrategies { get; set; } = new();

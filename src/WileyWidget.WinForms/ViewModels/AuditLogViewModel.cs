@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Threading;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -14,10 +15,31 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for the Audit Log panel, providing data binding and commands for audit entry management.
 /// Supports filtering, pagination, and async data loading.
 /// </summary>
+/// <summary>
+/// Represents a class for auditlogviewmodel.
+/// </summary>
+/// <summary>
+/// Represents a class for auditlogviewmodel.
+/// </summary>
+/// <summary>
+/// Represents a class for auditlogviewmodel.
+/// </summary>
+/// <summary>
+/// Represents a class for auditlogviewmodel.
+/// </summary>
 public class AuditLogViewModel : INotifyPropertyChanged
 {
     private readonly ILogger<AuditLogViewModel> _logger;
+    /// <summary>
+    /// Represents the _auditservice.
+    /// </summary>
+    /// <summary>
+    /// Represents the _auditservice.
+    /// </summary>
     private readonly IAuditService _auditService;
+    /// <summary>
+    /// Represents the _isloading.
+    /// </summary>
 
     private bool _isLoading;
     private string? _errorMessage;
@@ -164,10 +186,34 @@ public class AuditLogViewModel : INotifyPropertyChanged
     /// <summary>
     /// Command to load audit entries asynchronously.
     /// </summary>
+    /// <summary>
+    /// Gets or sets the loadentriescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loadentriescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loadentriescommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the loadentriescommand.
+    /// </summary>
     public AsyncRelayCommand LoadEntriesCommand { get; }
 
     /// <summary>
     /// Command to export entries to CSV.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the exporttocsvcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the exporttocsvcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the exporttocsvcommand.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the exporttocsvcommand.
     /// </summary>
     public RelayCommand ExportToCsvCommand { get; }
 
@@ -194,14 +240,15 @@ public class AuditLogViewModel : INotifyPropertyChanged
 
         try
         {
-            IsLoading = true;
-            ErrorMessage = null;
+            // Set UI state on UI thread to avoid cross-thread property changed events
+            await UiThread.InvokeAsync(() =>
+            {
+                IsLoading = true;
+                ErrorMessage = null;
+            });
 
             _logger.LogInformation("Loading audit entries with filters: StartDate={StartDate}, EndDate={EndDate}, ActionType={ActionType}, User={User}, Skip={Skip}, Take={Take}",
                 StartDate, EndDate, SelectedActionType, SelectedUser, Skip, Take);
-
-            // Clear existing entries
-            Entries.Clear();
 
             // Load filtered entries
             var entries = await _auditService.GetAuditEntriesAsync(
@@ -212,27 +259,34 @@ public class AuditLogViewModel : INotifyPropertyChanged
                 skip: Skip,
                 take: Take);
 
-            // Add to observable collection
-            foreach (var entry in entries)
+            // Update collection on UI thread to avoid cross-thread exceptions in bindings
+            await UiThread.InvokeAsync(() =>
             {
-                Entries.Add(entry);
-            }
+                Entries.Clear();
+                foreach (var entry in entries)
+                {
+                    Entries.Add(entry);
+                }
+            });
 
             _logger.LogInformation("Loaded {Count} audit entries", entries.Count());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load audit entries");
-            ErrorMessage = $"Failed to load audit entries: {ex.Message}";
+            await UiThread.InvokeAsync(() => ErrorMessage = $"Failed to load audit entries: {ex.Message}");
         }
         finally
         {
-            IsLoading = false;
+            await UiThread.InvokeAsync(() => IsLoading = false);
         }
     }
 
     /// <summary>
     /// Exports current entries to CSV (placeholder implementation).
+    /// </summary>
+    /// <summary>
+    /// Performs exporttocsv.
     /// </summary>
     private void ExportToCsv()
     {
@@ -243,6 +297,18 @@ public class AuditLogViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Resets filters to default values.
+    /// </summary>
+    /// <summary>
+    /// Performs resetfilters.
+    /// </summary>
+    /// <summary>
+    /// Performs resetfilters.
+    /// </summary>
+    /// <summary>
+    /// Performs resetfilters.
+    /// </summary>
+    /// <summary>
+    /// Performs resetfilters.
     /// </summary>
     public void ResetFilters()
     {
@@ -309,6 +375,17 @@ public class AuditLogViewModel : INotifyPropertyChanged
     /// </summary>
     protected virtual void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        // Ensure PropertyChanged is raised on UI thread to avoid cross-thread exceptions in controls
+        var dispatcher = Program.Services != null
+            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services)
+            : null;
+
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return;
+        }
+
+        _ = dispatcher.InvokeAsync(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
     }
 }

@@ -27,6 +27,9 @@ namespace WileyWidget.Services.Threading
         /// <summary>
         /// Returns true when the current thread has the captured synchronization context.
         /// </summary>
+        /// <summary>
+        /// Performs checkaccess.
+        /// </summary>
         public bool CheckAccess()
         {
             if (_syncContext != null)
@@ -36,6 +39,10 @@ namespace WileyWidget.Services.Threading
 
             return false;
         }
+        /// <summary>
+        /// Performs invoke. Parameters: action.
+        /// </summary>
+        /// <param name="action">The action.</param>
 
         public void Invoke(Action action)
         {
@@ -76,12 +83,6 @@ namespace WileyWidget.Services.Threading
                 catch (NotSupportedException notSupEx)
                 {
                     _logger?.LogDebug(notSupEx, "SynchronizationContext.Send not supported - falling back to Post+Wait");
-                    PostAndWait(action);
-                    return;
-                }
-                catch (Exception sendEx)
-                {
-                    _logger?.LogDebug(sendEx, "SynchronizationContext.Send threw; attempting Post+Wait fallback");
                     PostAndWait(action);
                     return;
                 }
@@ -145,6 +146,16 @@ namespace WileyWidget.Services.Threading
 
         private void PostAndWait(Action action)
         {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+
+            // If we're already on the target synchronization context, run inline to avoid deadlock
+            if (SynchronizationContext.Current == _syncContext)
+            {
+                _logger?.LogTrace("PostAndWait - calling thread already has target synchronization context; executing action inline to avoid deadlock");
+                action();
+                return;
+            }
+
             var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
             try
             {
@@ -165,16 +176,36 @@ namespace WileyWidget.Services.Threading
             {
                 // If Post itself fails, fall back to executing synchronously on calling thread and log.
                 _logger?.LogWarning(postEx, "SynchronizationContext.Post threw; executing action synchronously on calling thread");
+                tcs.SetResult(null); // Mark as completed to avoid deadlock
                 action();
                 return;
             }
 
-            // Block and propagate exceptions, preserving stack trace
+            // Wait for posted action to complete, but guard against indefinite deadlock by using a timeout.
+            var timeout = TimeSpan.FromSeconds(30);
+            var completed = Task.WhenAny(tcs.Task, Task.Delay(timeout)).GetAwaiter().GetResult();
+            if (completed != tcs.Task)
+            {
+                var msg = $"SynchronizationContext.Post did not complete within {timeout.TotalSeconds:F0}s; target context may be blocked";
+                _logger?.LogError(msg);
+                throw new TimeoutException(msg);
+            }
+
+            // Propagate any exception from the posted action preserving original exception if present
             tcs.Task.GetAwaiter().GetResult();
         }
 
         private T PostAndWait<T>(Func<T> func)
         {
+            if (func == null) throw new ArgumentNullException(nameof(func));
+
+            // If we're already on the target synchronization context, run inline to avoid deadlock
+            if (SynchronizationContext.Current == _syncContext)
+            {
+                _logger?.LogTrace("PostAndWait<T> - calling thread already has target synchronization context; executing func inline to avoid deadlock");
+                return func();
+            }
+
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
             try
             {
@@ -193,12 +224,32 @@ namespace WileyWidget.Services.Threading
             }
             catch (Exception postEx)
             {
-                _logger?.LogWarning(postEx, "SynchronizationContext.Post threw; executing func synchronously on calling thread");
-                return func();
+                _logger?.LogWarning(postEx, "SynchronizationContext.Post<T> threw; executing func synchronously on calling thread");
+                tcs.SetResult(func()); // Mark as completed to avoid deadlock
+                return tcs.Task.GetAwaiter().GetResult();
+            }
+
+            // Wait for posted func to complete, guard against indefinite deadlock using a timeout
+            var timeout = TimeSpan.FromSeconds(30);
+            var completed = Task.WhenAny(tcs.Task, Task.Delay(timeout)).GetAwaiter().GetResult();
+            if (completed != tcs.Task)
+            {
+                var msg = $"SynchronizationContext.Post did not complete within {timeout.TotalSeconds:F0}s; target context may be blocked";
+                _logger?.LogError(msg);
+                throw new TimeoutException(msg);
             }
 
             return tcs.Task.GetAwaiter().GetResult();
         }
+        /// <summary>
+        /// Performs invoke. Parameters: action.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <summary>
+        /// Performs invoke. Parameters: action, priority.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="priority">The priority.</param>
 
         public Task InvokeAsync(Action action)
         {

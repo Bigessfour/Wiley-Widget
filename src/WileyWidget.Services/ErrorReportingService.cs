@@ -18,6 +18,9 @@ namespace WileyWidget.Services;
 /// Provides structured logging, user notifications, recovery mechanisms, and comprehensive telemetry.
 /// Enhanced with OpenTelemetry spans and metrics for distributed tracing and monitoring.
 /// </summary>
+/// <summary>
+/// Represents a class for errorreportingservice.
+/// </summary>
 public class ErrorReportingService
 {
     private readonly Dictionary<string, ErrorRecoveryStrategy> _recoveryStrategies = new();
@@ -29,6 +32,9 @@ public class ErrorReportingService
 
     /// <summary>
     /// When true, user dialogs are suppressed (useful for automated tests and headless runs).
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the suppressuserdialogs.
     /// </summary>
     public bool SuppressUserDialogs { get; set; } = false;
 
@@ -67,6 +73,10 @@ public class ErrorReportingService
     /// Sets the SigNoz telemetry service for OpenTelemetry integration.
     /// Called during application startup after telemetry service is initialized.
     /// </summary>
+    /// <summary>
+    /// Performs settelemetryservice. Parameters: telemetryService.
+    /// </summary>
+    /// <param name="telemetryService">The telemetryService.</param>
     public void SetTelemetryService(SigNozTelemetryService telemetryService)
     {
         _telemetryService = telemetryService;
@@ -76,6 +86,14 @@ public class ErrorReportingService
     /// <summary>
     /// Reports an error with structured logging and optional user notification.
     /// </summary>
+    /// <summary>
+    /// Performs reporterror. Parameters: exception, null, true, LogEventLevel.Error, null.
+    /// </summary>
+    /// <param name="exception">The exception.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="true">The true.</param>
+    /// <param name="LogEventLevel.Error">The LogEventLevel.Error.</param>
+    /// <param name="null">The null.</param>
     public void ReportError(Exception exception, string context = null, bool showToUser = true,
                            LogEventLevel level = LogEventLevel.Error, string correlationId = null)
     {
@@ -125,6 +143,12 @@ public class ErrorReportingService
     /// Lightweight telemetry: records an event with optional properties.
     /// Uses structured logging so it can be aggregated by sinks.
     /// </summary>
+    /// <summary>
+    /// Performs trackevent. Parameters: eventName, IDictionary<string, null.
+    /// </summary>
+    /// <param name="eventName">The eventName.</param>
+    /// <param name="IDictionary<string">The IDictionary<string.</param>
+    /// <param name="null">The null.</param>
     public void TrackEvent(string eventName, IDictionary<string, object> properties = null)
     {
         try
@@ -183,6 +207,13 @@ public class ErrorReportingService
     /// <summary>
     /// Tracks a metric with optional properties.
     /// </summary>
+    /// <summary>
+    /// Performs trackmetric. Parameters: metricName, value, IDictionary<string, null.
+    /// </summary>
+    /// <param name="metricName">The metricName.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="IDictionary<string">The IDictionary<string.</param>
+    /// <param name="null">The null.</param>
     public void TrackMetric(string metricName, double value, IDictionary<string, object> properties = null)
     {
         try
@@ -224,6 +255,14 @@ public class ErrorReportingService
     /// <summary>
     /// Tracks a dependency call (database, HTTP, etc.) with duration.
     /// </summary>
+    /// <summary>
+    /// Performs trackdependency. Parameters: dependencyName, commandName, duration, success, "Database".
+    /// </summary>
+    /// <param name="dependencyName">The dependencyName.</param>
+    /// <param name="commandName">The commandName.</param>
+    /// <param name="duration">The duration.</param>
+    /// <param name="success">The success.</param>
+    /// <param name=""Database"">The "Database".</param>
     public void TrackDependency(string dependencyName, string commandName, TimeSpan duration,
                                bool success, string dependencyType = "Database")
     {
@@ -284,6 +323,9 @@ public class ErrorReportingService
     /// <summary>
     /// Exports telemetry data to JSON for analysis.
     /// </summary>
+    /// <summary>
+    /// Performs exporttelemetrydata.
+    /// </summary>
     public string ExportTelemetryData()
     {
         var exportData = new
@@ -306,6 +348,11 @@ public class ErrorReportingService
     /// <summary>
     /// Lightweight telemetry: increments a named counter and logs occasionally.
     /// </summary>
+    /// <summary>
+    /// Performs incrementcounter. Parameters: name, 1.
+    /// </summary>
+    /// <param name="name">The name.</param>
+    /// <param name="1">The 1.</param>
     public long IncrementCounter(string name, long value = 1)
     {
         try
@@ -330,6 +377,12 @@ public class ErrorReportingService
     /// <summary>
     /// Reports a warning with structured logging.
     /// </summary>
+    /// <summary>
+    /// Performs reportwarning. Parameters: message, null, null.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
     public void ReportWarning(string message, string context = null, string correlationId = null)
     {
         if (message is null) throw new ArgumentNullException(nameof(message));
@@ -380,6 +433,11 @@ public class ErrorReportingService
     /// <summary>
     /// Registers a recovery strategy for a specific error context.
     /// </summary>
+    /// <summary>
+    /// Performs registerrecoverystrategy. Parameters: context, strategy.
+    /// </summary>
+    /// <param name="context">The context.</param>
+    /// <param name="strategy">The strategy.</param>
     public void RegisterRecoveryStrategy(string context, ErrorRecoveryStrategy strategy)
     {
         if (string.IsNullOrWhiteSpace(context)) throw new ArgumentException("Context is required", nameof(context));
@@ -423,6 +481,12 @@ public class ErrorReportingService
     /// <summary>
     /// Safely executes an action that should not throw exceptions.
     /// </summary>
+    /// <summary>
+    /// Performs safeexecute. Parameters: action, null, true.
+    /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="true">The true.</param>
     public void SafeExecute(Action action, string context = null, bool logErrors = true)
     {
         if (action is null) throw new ArgumentNullException(nameof(action));
@@ -507,9 +571,18 @@ public abstract class ErrorRecoveryStrategy
 /// <summary>
 /// Represents a telemetry event for Application Insights-like tracking.
 /// </summary>
+/// <summary>
+/// Represents a class for telemetryevent.
+/// </summary>
 public class TelemetryEvent
 {
+    /// <summary>
+    /// Gets or sets the eventname.
+    /// </summary>
     public string EventName { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the timestamp.
+    /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public Dictionary<string, object> Properties { get; set; } = new();
     public Dictionary<string, double> Metrics { get; set; } = new();
@@ -526,6 +599,9 @@ public class TelemetryEvent
 
 /// <summary>
 /// Retry strategy with exponential backoff.
+/// </summary>
+/// <summary>
+/// Represents a class for retrywithdelaystrategy.
 /// </summary>
 public class RetryWithDelayStrategy : ErrorRecoveryStrategy
 {

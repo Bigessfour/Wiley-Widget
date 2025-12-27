@@ -13,48 +13,74 @@ namespace WileyWidget.Data.Migrations
         {
             ArgumentNullException.ThrowIfNull(migrationBuilder);
 
-            // Insert Departments that may not be present from prior migrations
-            migrationBuilder.InsertData(
-                table: "Departments",
-                columns: new[] { "Id", "DepartmentCode", "Name", "ParentId" },
-                values: new object[,]
-                {
-                    { 3, "CULT", "Culture and Recreation", null },
-                    { 4, "SAN", "Sanitation", 2 },
-                    { 5, "UTIL", "Utilities", null },
-                    { 6, "COMM", "Community Center", null },
-                    { 7, "CONS", "Conservation", null },
-                    { 8, "REC", "Recreation", null }
-                });
+            // Idempotent inserts: use conditional SQL so applying this migration multiple
+            // times (or against a DB with overlapping data) does not fail.
 
-            // Insert Funds that are not present in earlier migrations (avoid duplicating Ids 1-2)
-            migrationBuilder.InsertData(
-                table: "Funds",
-                columns: new[] { "Id", "FundCode", "Name", "Type" },
-                values: new object[,]
-                {
-                    { 3, "300-UTIL", "Utility Fund", 2 },
-                    { 4, "400-COMM", "Community Center Fund", 3 },
-                    { 5, "500-CONS", "Conservation Trust Fund", 6 },
-                    { 6, "600-REC", "Recreation Fund", 3 }
-                });
+            // Departments: insert by DepartmentCode to avoid PK conflicts with existing Ids
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Departments')
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'CULT')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('CULT', 'Culture and Recreation', NULL);
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'SAN')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('SAN', 'Sanitation', NULL);
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'UTIL')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('UTIL', 'Utilities', NULL);
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'COMM')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('COMM', 'Community Center', NULL);
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'CONS')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('CONS', 'Conservation', NULL);
+    IF NOT EXISTS (SELECT 1 FROM Departments WHERE DepartmentCode = 'REC')
+        INSERT INTO Departments (DepartmentCode, Name, ParentId) VALUES ('REC', 'Recreation', NULL);
+END
+");
 
-            // Insert a few sample vendors
-            migrationBuilder.InsertData(
-                table: "Vendor",
-                columns: new[] { "Id", "ContactInfo", "IsActive", "Name" },
-                values: new object[,]
-                {
-                    { 1, "contact@acmesupplies.example.com", true, "Acme Supplies" },
-                    { 2, "info@muniservices.example.com", true, "Municipal Services Co." },
-                    { 3, "projects@trailbuilders.example.com", true, "Trail Builders LLC" }
-                });
+            // Funds: insert by FundCode
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Funds')
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Funds WHERE FundCode = '300-UTIL')
+        INSERT INTO Funds (FundCode, Name, Type) VALUES ('300-UTIL', 'Utility Fund', 2);
+    IF NOT EXISTS (SELECT 1 FROM Funds WHERE FundCode = '400-COMM')
+        INSERT INTO Funds (FundCode, Name, Type) VALUES ('400-COMM', 'Community Center Fund', 3);
+    IF NOT EXISTS (SELECT 1 FROM Funds WHERE FundCode = '500-CONS')
+        INSERT INTO Funds (FundCode, Name, Type) VALUES ('500-CONS', 'Conservation Trust Fund', 6);
+    IF NOT EXISTS (SELECT 1 FROM Funds WHERE FundCode = '600-REC')
+        INSERT INTO Funds (FundCode, Name, Type) VALUES ('600-REC', 'Recreation Fund', 3);
+END
+");
 
-            // Insert a default AppSettings row if missing (Id = 1)
-            migrationBuilder.InsertData(
-                table: "AppSettings",
-                columns: new[] { "Id", "Theme", "EnableDataCaching", "CacheExpirationMinutes", "SelectedLogLevel", "EnableFileLogging", "LogFilePath", "QuickBooksEnvironment", "QboTokenExpiry", "LastSelectedEnterpriseId" },
-                values: new object[] { 1, "FluentDark", true, 30, "Information", true, "logs/wiley-widget.log", "sandbox", new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 1 });
+            // Vendors: insert by Name to avoid duplicate entries
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Vendor')
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Vendor WHERE Name = 'Acme Supplies')
+        INSERT INTO Vendor (ContactInfo, IsActive, Name) VALUES ('contact@acmesupplies.example.com', 1, 'Acme Supplies');
+    IF NOT EXISTS (SELECT 1 FROM Vendor WHERE Name = 'Municipal Services Co.')
+        INSERT INTO Vendor (ContactInfo, IsActive, Name) VALUES ('info@muniservices.example.com', 1, 'Municipal Services Co.');
+    IF NOT EXISTS (SELECT 1 FROM Vendor WHERE Name = 'Trail Builders LLC')
+        INSERT INTO Vendor (ContactInfo, IsActive, Name) VALUES ('projects@trailbuilders.example.com', 1, 'Trail Builders LLC');
+END
+");
+
+            // AppSettings: only insert if the table and the expected columns exist and the row is missing
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AppSettings')
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM AppSettings WHERE Id = 1)
+    BEGIN
+        IF (
+            (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'AppSettings' AND COLUMN_NAME IN (
+                'Theme','EnableDataCaching','CacheExpirationMinutes','SelectedLogLevel','EnableFileLogging','LogFilePath','QuickBooksEnvironment','QboTokenExpiry','LastSelectedEnterpriseId'
+            )) = 9
+        )
+        BEGIN
+            INSERT INTO AppSettings (Id, Theme, EnableDataCaching, CacheExpirationMinutes, SelectedLogLevel, EnableFileLogging, LogFilePath, QuickBooksEnvironment, QboTokenExpiry, LastSelectedEnterpriseId)
+            VALUES (1, 'FluentDark', 1, 30, 'Information', 1, 'logs/wiley-widget.log', 'sandbox', '2026-01-01', 1);
+        END
+    END
+END
+");
         }
 
         /// <inheritdoc />
@@ -62,23 +88,34 @@ namespace WileyWidget.Data.Migrations
         {
             ArgumentNullException.ThrowIfNull(migrationBuilder);
 
-            migrationBuilder.DeleteData(table: "AppSettings", keyColumn: "Id", keyValue: 1);
+            // Delete by unique keys where possible to make Down idempotent and safe
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AppSettings')
+BEGIN
+    DELETE FROM AppSettings WHERE Id = 1;
+END
+");
 
-            migrationBuilder.DeleteData(table: "Vendor", keyColumn: "Id", keyValue: 1);
-            migrationBuilder.DeleteData(table: "Vendor", keyColumn: "Id", keyValue: 2);
-            migrationBuilder.DeleteData(table: "Vendor", keyColumn: "Id", keyValue: 3);
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Vendor')
+BEGIN
+    DELETE FROM Vendor WHERE Name IN ('Acme Supplies','Municipal Services Co.','Trail Builders LLC');
+END
+");
 
-            migrationBuilder.DeleteData(table: "Funds", keyColumn: "Id", keyValue: 3);
-            migrationBuilder.DeleteData(table: "Funds", keyColumn: "Id", keyValue: 4);
-            migrationBuilder.DeleteData(table: "Funds", keyColumn: "Id", keyValue: 5);
-            migrationBuilder.DeleteData(table: "Funds", keyColumn: "Id", keyValue: 6);
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Funds')
+BEGIN
+    DELETE FROM Funds WHERE FundCode IN ('300-UTIL','400-COMM','500-CONS','600-REC');
+END
+");
 
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 3);
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 4);
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 5);
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 6);
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 7);
-            migrationBuilder.DeleteData(table: "Departments", keyColumn: "Id", keyValue: 8);
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Departments')
+BEGIN
+    DELETE FROM Departments WHERE DepartmentCode IN ('CULT','SAN','UTIL','COMM','CONS','REC');
+END
+");
         }
     }
 }

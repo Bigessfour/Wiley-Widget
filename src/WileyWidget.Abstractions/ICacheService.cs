@@ -7,6 +7,9 @@ namespace WileyWidget.Abstractions
     /// Cache entry configuration used by the cache service implementations.
     /// Mirrors common options from Microsoft.Extensions.Caching.Memory but keeps the abstraction free of framework types.
     /// </summary>
+    /// <summary>
+    /// Represents a class for cacheentryoptions.
+    /// </summary>
     public class CacheEntryOptions
     {
         /// <summary>
@@ -29,6 +32,9 @@ namespace WileyWidget.Abstractions
     /// Simple cache abstraction used by ViewModels to reduce repeated DB hits in E2E and UI flows.
     /// Implementations may wrap IMemoryCache or IDistributedCache.
     /// Designed to be safe for production: supports expirations, GetOrCreate patterns, removal and existence checks.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for icacheservice.
     /// </summary>
     public interface ICacheService
     {

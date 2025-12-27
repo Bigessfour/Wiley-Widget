@@ -9,6 +9,9 @@ namespace WileyWidget.Services.Abstractions
     /// Abstraction for FastReport Open Source integration used by the UI layer.
     /// Provides full programmatic control over report generation, export, and viewer operations.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for ireportservice.
+    /// </summary>
     public interface IReportService
     {
         /// <summary>

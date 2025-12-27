@@ -6,6 +6,18 @@ namespace WileyWidget.WinForms.Services
     /// <summary>
     /// Service for managing application themes.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for ithemeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ithemeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ithemeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a interface for ithemeservice.
+    /// </summary>
     public interface IThemeService
     {
         AppTheme CurrentTheme { get; }
@@ -17,8 +29,23 @@ namespace WileyWidget.WinForms.Services
     /// <summary>
     /// Default implementation of theme service.
     /// </summary>
+    /// <summary>
+    /// Represents a class for themeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themeservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for themeservice.
+    /// </summary>
     public class ThemeService : IThemeService
     {
+        /// <summary>
+        /// Represents the _logger.
+        /// </summary>
         private readonly ILogger _logger;
         private AppTheme _currentTheme = AppTheme.Office2019Colorful;
 
@@ -33,6 +60,22 @@ namespace WileyWidget.WinForms.Services
         public AppTheme Preference => _currentTheme;
 
         public event EventHandler<AppTheme>? ThemeChanged;
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs settheme. Parameters: theme.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
 
         public void SetTheme(AppTheme theme)
         {

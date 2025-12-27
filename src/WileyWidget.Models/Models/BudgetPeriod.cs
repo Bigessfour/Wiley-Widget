@@ -11,6 +11,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a budget period for multi-year budget tracking
 /// </summary>
+/// <summary>
+/// Represents a class for budgetperiod.
+/// </summary>
 public class BudgetPeriod : INotifyPropertyChanged
 {
     private int _id;
@@ -175,6 +178,9 @@ public class BudgetPeriod : INotifyPropertyChanged
 
 /// <summary>
 /// Budget period status enumeration
+/// </summary>
+/// <summary>
+/// Defines the budgetstatus enumeration.
 /// </summary>
 public enum BudgetStatus
 {

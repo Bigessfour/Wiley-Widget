@@ -12,6 +12,9 @@ namespace WileyWidget.Services.Threading;
 /// <summary>
 /// Implementation of IDispatcherHelper for dispatcher operations
 /// </summary>
+/// <summary>
+/// Represents a class for dispatcherhelper.
+/// </summary>
 public class DispatcherHelper : IDispatcherHelper
 {
     private readonly Dispatcher _dispatcher;
@@ -38,6 +41,9 @@ public class DispatcherHelper : IDispatcherHelper
     /// <summary>
     /// Checks if the current thread is the UI thread
     /// </summary>
+    /// <summary>
+    /// Performs checkaccess.
+    /// </summary>
     public bool CheckAccess()
     {
         return _dispatcher.CheckAccess();
@@ -47,6 +53,10 @@ public class DispatcherHelper : IDispatcherHelper
     /// Executes an action on the UI thread synchronously
     /// </summary>
     /// <param name="action">The action to execute</param>
+    /// <summary>
+    /// Performs invoke. Parameters: action.
+    /// </summary>
+    /// <param name="action">The action.</param>
     public void Invoke(Action action)
     {
         if (action == null) throw new ArgumentNullException(nameof(action));
@@ -98,6 +108,15 @@ public class DispatcherHelper : IDispatcherHelper
     /// </summary>
     /// <param name="action">The action to execute</param>
     /// <returns>A task representing the async operation</returns>
+    /// <summary>
+    /// Performs invoke. Parameters: action.
+    /// </summary>
+    /// <param name="action">The action.</param>
+    /// <summary>
+    /// Performs invoke. Parameters: action, priority.
+    /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="priority">The priority.</param>
     public Task InvokeAsync(Action action)
     {
         return InvokeAsync(action, DispatcherPriority.Normal);

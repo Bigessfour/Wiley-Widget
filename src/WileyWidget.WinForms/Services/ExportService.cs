@@ -16,6 +16,18 @@ namespace WileyWidget.WinForms.Services
     /// Export service for Syncfusion grids using official APIs.
     /// Implements Excel and PDF export functionality per Syncfusion documentation.
     /// </summary>
+    /// <summary>
+    /// Represents a class for exportservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for exportservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for exportservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for exportservice.
+    /// </summary>
     public static class ExportService
     {
         /// <summary>
@@ -24,6 +36,26 @@ namespace WileyWidget.WinForms.Services
         /// <param name="grid">The SfDataGrid to export.</param>
         /// <param name="filePath">Output file path for the Excel file.</param>
         /// <returns>Task representing the async export operation.</returns>
+        /// <summary>
+        /// Performs exportgridtoexcel. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtoexcel. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtoexcel. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtoexcel. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
         public static Task ExportGridToExcelAsync(SfDataGrid grid, string filePath)
         {
             if (grid == null)
@@ -57,6 +89,26 @@ namespace WileyWidget.WinForms.Services
         /// <param name="grid">The SfDataGrid to export.</param>
         /// <param name="filePath">Output file path for the PDF file.</param>
         /// <returns>Task representing the async export operation.</returns>
+        /// <summary>
+        /// Performs exportgridtopdf. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtopdf. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtopdf. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportgridtopdf. Handles file operations. Parameters: grid, filePath.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="filePath">The filePath.</param>
         public static Task ExportGridToPdfAsync(SfDataGrid grid, string filePath)
         {
             if (grid == null)
@@ -94,6 +146,26 @@ namespace WileyWidget.WinForms.Services
         /// <param name="chart">The chart object to export (must be Syncfusion chart control).</param>
         /// <param name="filePath">Output file path for the PDF file.</param>
         /// <returns>Task representing the async export operation.</returns>
+        /// <summary>
+        /// Performs exportcharttopdf. Handles file operations. Parameters: chart, filePath.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportcharttopdf. Handles file operations. Parameters: chart, filePath.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportcharttopdf. Handles file operations. Parameters: chart, filePath.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <summary>
+        /// Performs exportcharttopdf. Handles file operations. Parameters: chart, filePath.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="filePath">The filePath.</param>
         public static Task ExportChartToPdfAsync(object chart, string filePath)
         {
             if (chart == null)

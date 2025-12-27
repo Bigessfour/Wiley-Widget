@@ -8,6 +8,9 @@ namespace WileyWidget.Business.Services;
 /// Service for querying department-specific expenses from QuickBooks.
 /// TODO: Integrate with actual QuickBooks API (IppDotNetSdkForQuickBooksApiV3).
 /// </summary>
+/// <summary>
+/// Represents a class for departmentexpenseservice.
+/// </summary>
 public class DepartmentExpenseService : IDepartmentExpenseService
 {
     private readonly ILogger<DepartmentExpenseService> _logger;
@@ -40,7 +43,7 @@ public class DepartmentExpenseService : IDepartmentExpenseService
             var departmentBills = bills.Where(bill =>
                 bill.TxnDate >= startDate &&
                 bill.TxnDate <= endDate);
-                // bill.ClassRef?.Name == departmentName); // Commented out until ClassRef property confirmed
+            // bill.ClassRef?.Name == departmentName); // Commented out until ClassRef property confirmed
 
             // Sum the total amounts
             var totalExpenses = departmentBills.Sum(bill => (decimal)bill.TotalAmt);

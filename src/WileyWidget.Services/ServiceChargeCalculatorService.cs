@@ -17,6 +17,9 @@ namespace WileyWidget.Services;
 /// Service for calculating recommended monthly service charges based on actual expenses
 /// with comprehensive rate validation and budget logic
 /// </summary>
+/// <summary>
+/// Represents a class for servicechargecalculatorservice.
+/// </summary>
 public class ServiceChargeCalculatorService : IChargeCalculatorService
 {
     private readonly BusinessInterfaces.IEnterpriseRepository _enterpriseRepository;
@@ -144,6 +147,10 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
     /// </summary>
     /// <param name="amount">The amount to calculate charge for</param>
     /// <returns>The calculated charge</returns>
+    /// <summary>
+    /// Performs calculatecharge. Parameters: amount.
+    /// </summary>
+    /// <param name="amount">The amount.</param>
     public decimal CalculateCharge(decimal amount)
     {
         // Simple calculation: assume 1% of the amount as charge

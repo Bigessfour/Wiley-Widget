@@ -17,11 +17,17 @@ namespace WileyWidget.Data.Resilience;
 /// Handles transient failures from Azure SQL, authentication timeouts, network issues,
 /// and implements comprehensive resilience patterns using Polly v8
 /// </summary>
+/// <summary>
+/// Represents a class for databaseresiliencepolicy.
+/// </summary>
 public static class DatabaseResiliencePolicy
 {
     /// <summary>
     /// Retry policy for authentication/transient failures when connecting to SQL Server.
     /// Retries 3 times with exponential backoff (500ms, 1s, 2s) using Polly v8 syntax.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the databaseauthretrypolicy.
     /// </summary>
     public static AsyncRetryPolicy DatabaseAuthRetryPolicy { get; } = Policy
         .Handle<SqlException>(ex => IsTransientError(ex))
@@ -39,6 +45,9 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Retry policy for database operation timeouts using Polly v8
     /// Retries 2 times with linear backoff (1s, 2s)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the databasetimeoutretrypolicy.
     /// </summary>
     public static AsyncRetryPolicy DatabaseTimeoutRetryPolicy { get; } = Policy
         .Handle<TimeoutException>()
@@ -58,6 +67,9 @@ public static class DatabaseResiliencePolicy
     /// Retry policy for EF Core concurrency conflicts using Polly v8
     /// Retries once immediately
     /// </summary>
+    /// <summary>
+    /// Gets or sets the concurrencyretrypolicy.
+    /// </summary>
     public static AsyncRetryPolicy ConcurrencyRetryPolicy { get; } = Policy
         .Handle<DbUpdateConcurrencyException>()
         .RetryAsync(
@@ -70,6 +82,9 @@ public static class DatabaseResiliencePolicy
 
     /// <summary>
     /// Circuit breaker policy for database operations to prevent cascade failures
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the databasecircuitbreakerpolicy.
     /// </summary>
     public static AsyncCircuitBreakerPolicy DatabaseCircuitBreakerPolicy { get; } = Policy
         .Handle<SqlException>(ex => IsTransientError(ex))
@@ -85,6 +100,9 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Timeout policy for database operations to prevent hanging queries
     /// </summary>
+    /// <summary>
+    /// Gets or sets the databasetimeoutpolicy.
+    /// </summary>
     public static AsyncTimeoutPolicy DatabaseTimeoutPolicy { get; } = Policy
         .TimeoutAsync(
             timeout: TimeSpan.FromSeconds(30),
@@ -99,6 +117,9 @@ public static class DatabaseResiliencePolicy
     /// Combined policy for all database operations using Polly v8 PolicyWrap
     /// Wraps authentication, timeout, concurrency, circuit breaker, and timeout policies
     /// </summary>
+    /// <summary>
+    /// Gets or sets the combineddatabasepolicy.
+    /// </summary>
     public static AsyncPolicy CombinedDatabasePolicy { get; } = Policy.WrapAsync(
         DatabaseCircuitBreakerPolicy,
         DatabaseTimeoutPolicy,
@@ -110,6 +131,9 @@ public static class DatabaseResiliencePolicy
 
     /// <summary>
     /// Resilience pipeline for read operations (lighter resilience)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the readoperationpolicy.
     /// </summary>
     public static AsyncPolicy ReadOperationPolicy { get; } = Policy.WrapAsync(
         DatabaseTimeoutPolicy,
@@ -127,6 +151,9 @@ public static class DatabaseResiliencePolicy
 
     /// <summary>
     /// Resilience pipeline for write operations (stricter resilience)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the writeoperationpolicy.
     /// </summary>
     public static AsyncPolicy WriteOperationPolicy { get; } = Policy.WrapAsync(
         DatabaseCircuitBreakerPolicy,
@@ -183,6 +210,10 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Executes a void database operation with combined resilience policy
     /// </summary>
+    /// <summary>
+    /// Performs execute. Parameters: operation.
+    /// </summary>
+    /// <param name="operation">The operation.</param>
     public static Task ExecuteAsync(Func<Task> operation)
     {
         return CombinedDatabasePolicy.ExecuteAsync(operation);
@@ -207,6 +238,10 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Executes a void write operation with stricter resilience policy
     /// </summary>
+    /// <summary>
+    /// Performs executewrite. Parameters: operation.
+    /// </summary>
+    /// <param name="operation">The operation.</param>
     public static Task ExecuteWriteAsync(Func<Task> operation)
     {
         return WriteOperationPolicy.ExecuteAsync(operation);

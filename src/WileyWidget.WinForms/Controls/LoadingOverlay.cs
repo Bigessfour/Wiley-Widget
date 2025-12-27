@@ -4,12 +4,25 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
 {
     /// <summary>
     /// A lightweight semi-transparent loading overlay with a marquee progress indicator and optional message.
     /// Designed to be docked Fill inside panels and toggled visible when panels are loading.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for loadingoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for loadingoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for loadingoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for loadingoverlay.
     /// </summary>
     public class LoadingOverlay : Panel
     {
@@ -33,6 +46,9 @@ namespace WileyWidget.WinForms.Controls
 
             base.Dispose(disposing);
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -119,7 +135,10 @@ namespace WileyWidget.WinForms.Controls
 
                 this.Resize += (s, e) =>
                 {
-                    container.Location = new Point((Width - container.Width) / 2, (Height - container.Height) / 2);
+                    this.SafeInvoke(() =>
+                    {
+                        container.Location = new Point((Width - container.Width) / 2, (Height - container.Height) / 2);
+                    });
                 };
             }
 

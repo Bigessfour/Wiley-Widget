@@ -2,6 +2,9 @@ using FluentValidation;
 
 namespace WileyWidget.Models.Validators
 {
+    /// <summary>
+    /// Represents a class for enterprisevalidator.
+    /// </summary>
     public class EnterpriseValidator : AbstractValidator<Enterprise>
     {
         public EnterpriseValidator()

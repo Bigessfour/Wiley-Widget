@@ -3,6 +3,7 @@ using System.Drawing;
 using System.ComponentModel;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -42,7 +43,7 @@ namespace WileyWidget.WinForms.Controls
         public bool IsPinned
         {
             get => _btnPin.Checked;
-            set => _btnPin.Checked = value;
+            set => this.SafeInvoke(() => _btnPin.Checked = value);
         }
 
         public PanelHeader()
@@ -64,6 +65,9 @@ namespace WileyWidget.WinForms.Controls
 
             base.Dispose(disposing);
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {

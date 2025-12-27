@@ -55,6 +55,18 @@ public sealed class NullLogger<T> : ILogger<T>
     {
         public static readonly NullScope Instance = new();
         private NullScope() { }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
         public void Dispose() { }
     }
 }

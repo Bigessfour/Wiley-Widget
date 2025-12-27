@@ -6,6 +6,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a budget change record for tracking historical modifications.
 /// </summary>
+/// <summary>
+/// Represents a class for budgetchange.
+/// </summary>
 public class BudgetChange : INotifyPropertyChanged
 {
     private DateTime _changeDate;

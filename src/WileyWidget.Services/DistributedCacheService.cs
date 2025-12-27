@@ -11,6 +11,9 @@ namespace WileyWidget.Services
     /// IDistributedCache wrapper implementing ICacheService using JSON serialization.
     /// Useful when running in scaled environments with a distributed cache (Redis, SQL, etc.).
     /// </summary>
+    /// <summary>
+    /// Represents a class for distributedcacheservice.
+    /// </summary>
     public class DistributedCacheService : ICacheService
     {
         private readonly IDistributedCache _distributedCache;
@@ -74,6 +77,10 @@ namespace WileyWidget.Services
 
             await _distributedCache.SetAsync(key, bytes, cacheOptions);
         }
+        /// <summary>
+        /// Performs remove. Parameters: key.
+        /// </summary>
+        /// <param name="key">The key.</param>
 
         public Task RemoveAsync(string key)
         {
@@ -87,6 +94,9 @@ namespace WileyWidget.Services
             var val = await _distributedCache.GetAsync(key);
             return val != null && val.Length > 0;
         }
+        /// <summary>
+        /// Performs clearall.
+        /// </summary>
 
         public Task ClearAllAsync()
         {

@@ -3,6 +3,9 @@ using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
+    /// <summary>
+    /// Represents a interface for ichargecalculatorservice.
+    /// </summary>
     public interface IChargeCalculatorService
     {
         Task<ServiceChargeRecommendation> CalculateRecommendedChargeAsync(int enterpriseId);

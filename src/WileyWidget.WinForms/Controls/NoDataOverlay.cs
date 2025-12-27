@@ -9,6 +9,18 @@ namespace WileyWidget.WinForms.Controls
     /// <summary>
     /// Simple centered message for no-data states. Designed to be docked Fill and shown when the panel's collection is empty.
     /// </summary>
+    /// <summary>
+    /// Represents a class for nodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for nodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for nodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for nodataoverlay.
+    /// </summary>
     public class NoDataOverlay : Panel
     {
         private Label _messageLabel = null!;
@@ -27,6 +39,9 @@ namespace WileyWidget.WinForms.Controls
 
             base.Dispose(disposing);
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {

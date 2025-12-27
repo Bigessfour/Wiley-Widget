@@ -64,6 +64,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         SetupUI();
         // Theme applied globally by SkinManager - no per-control subscription needed
     }
+    /// <summary>
+    /// Performs initializecomponent.
+    /// </summary>
 
     private void InitializeComponent()
     {
@@ -82,6 +85,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Fall back if DPI scaling not supported
         }
     }
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
 
     private void SetupUI()
     {
@@ -91,10 +100,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _panelHeader = new PanelHeader
         {
             Dock = DockStyle.Top,
-            Title = "Audit Log",
-            AccessibleName = "Audit Log header"
+            Title = "Audit Log"
         };
-        _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+        _panelHeader.SafeSetProperty(h => h.AccessibleName = "Audit Log header");
+        _panelHeaderRefreshHandler = (s, e) => _ = RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
@@ -191,7 +200,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "Refresh audit log",
             AccessibleDescription = "Reload audit entries from database"
         };
-        _btnRefreshClickHandler = async (s, e) => await RefreshDataAsync();
+        _btnRefreshClickHandler = (s, e) => _ = RefreshDataAsync();
         _btnRefresh.Click += _btnRefreshClickHandler;
         filterTable.Controls.Add(_btnRefresh, 4, 0);
 
@@ -224,7 +233,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _toolTip = new ToolTip();
         _toolTip.SetToolTip(_btnRefresh, "Reload audit entries from database (Alt+R)");
         _toolTip.SetToolTip(_btnExportCsv, "Export filtered audit entries to CSV file (Alt+E)");
-        _toolTip.SetToolTip(_chkAutoRefresh, "Automatically refresh audit log every 30 seconds");
+        _toolTip.SetToolTip(_chkAutoRefresh, _chkAutoRefresh.AccessibleDescription);
 
         _filterPanel.Controls.Add(filterTable);
         Controls.Add(_filterPanel);
@@ -279,6 +288,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         ResumeLayout(false);
     }
+    /// <summary>
+    /// Performs configuregridcolumns.
+    /// </summary>
+    /// <summary>
+    /// Performs configuregridcolumns.
+    /// </summary>
 
     private void ConfigureGridColumns()
     {
@@ -368,6 +383,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Load data asynchronously
         _ = LoadDataSafeAsync();
     }
+    /// <summary>
+    /// Performs initializefilters.
+    /// </summary>
 
     private void InitializeFilters()
     {
@@ -378,15 +396,15 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         var startDate = endDate.AddDays(-30);
 
         _dtpStartDate!.Value = startDate;
-        _dtpEndDate!.Value = endDate;
+        // TODO: Manual SafeInvoke needed for: _dtpEndDate!.Value = endDate;
 
         // Populate action types (common audit actions)
         var actionTypes = new List<string> { "All", "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT" };
-        _cmbActionType!.DataSource = actionTypes;
+        // TODO: Manual SafeInvoke needed for: _cmbActionType!.DataSource = actionTypes;
 
         // Populate users (would come from ViewModel in real implementation)
         var users = new List<string> { "All", "admin", "user1", "user2" }; // Placeholder
-        _cmbUser!.DataSource = users;
+                                                                           // TODO: Manual SafeInvoke needed for: _cmbUser!.DataSource = users;
     }
 
     private async Task LoadDataSafeAsync()
@@ -410,6 +428,14 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             }
         }
     }
+    /// <summary>
+    /// Performs showerror. Parameters: ex.
+    /// </summary>
+    /// <param name="ex">The ex.</param>
+    /// <summary>
+    /// Performs showerror. Parameters: ex.
+    /// </summary>
+    /// <param name="ex">The ex.</param>
 
     private void ShowError(Exception ex)
     {
@@ -419,6 +445,16 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -468,6 +504,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Ignore if disposed during update
         }
     }
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
 
     private void UpdateUI()
     {
@@ -489,6 +531,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Ignore if disposed
         }
     }
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
 
     private void UpdateGridData()
     {
@@ -509,6 +557,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Console.WriteLine($"AuditLogPanel: UpdateGridData failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
 
     private void UpdateNoDataOverlay()
     {
@@ -535,13 +589,20 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            // MessageBox.Show is thread-safe for modal dialogs, but use SafeInvoke for consistency
+            this.SafeInvoke(() => MessageBox.Show(
                 $"Failed to refresh audit entries: {ex.Message}",
                 "Error",
                 MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+                MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs applyfilters.
+    /// </summary>
+    /// <summary>
+    /// Performs applyfilters.
+    /// </summary>
 
     private void ApplyFilters()
     {
@@ -562,6 +623,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Console.WriteLine($"AuditLogPanel: ApplyFilters failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs toggleautorefresh.
+    /// </summary>
+    /// <summary>
+    /// Performs toggleautorefresh.
+    /// </summary>
 
     private void ToggleAutoRefresh()
     {
@@ -576,6 +643,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Stop timer
         }
     }
+    /// <summary>
+    /// Performs exporttocsv. Handles file operations.
+    /// </summary>
+    /// <summary>
+    /// Performs exporttocsv. Handles file operations.
+    /// </summary>
 
     private void ExportToCsv()
     {
@@ -599,6 +672,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             MessageBox.Show($"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -619,11 +698,23 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Console.WriteLine($"AuditLogPanel: ClosePanel failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
 
     private void SubscribeToThemeChanges()
     {
         // Theme applied globally by SkinManager - no per-control subscription needed
     }
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
 
     private void ApplyTheme()
     {

@@ -11,6 +11,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Shared helper for repositories to surface optimistic concurrency conflicts with contextual information.
 /// </summary>
+/// <summary>
+/// Represents a class for repositoryconcurrencyhelper.
+/// </summary>
 internal static class RepositoryConcurrencyHelper
 {
     public static async Task HandleAsync(DbUpdateConcurrencyException exception, string entityName)

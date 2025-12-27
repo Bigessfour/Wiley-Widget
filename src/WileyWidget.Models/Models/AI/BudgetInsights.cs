@@ -9,6 +9,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents a projection with date and projected value.
     /// </summary>
+    /// <summary>
+    /// Represents a class for projection.
+    /// </summary>
     public class Projection : INotifyPropertyChanged
     {
         private DateTime _date;
@@ -64,8 +67,14 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents a budget variance.
     /// </summary>
+    /// <summary>
+    /// Represents a class for budgetvariance.
+    /// </summary>
     public class BudgetVariance
     {
+        /// <summary>
+        /// Gets or sets the category.
+        /// </summary>
         /// <summary>
         /// Gets or sets the category.
         /// </summary>
@@ -74,15 +83,24 @@ namespace WileyWidget.Models
         /// <summary>
         /// Gets or sets the budgeted amount.
         /// </summary>
+        /// <summary>
+        /// Gets or sets the budgeted.
+        /// </summary>
         public decimal Budgeted { get; set; }
 
         /// <summary>
         /// Gets or sets the actual amount.
         /// </summary>
+        /// <summary>
+        /// Gets or sets the actual.
+        /// </summary>
         public decimal Actual { get; set; }
 
         /// <summary>
         /// Gets or sets the variance amount.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the variance.
         /// </summary>
         public decimal Variance { get; set; }
 
@@ -95,8 +113,14 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents a budget projection.
     /// </summary>
+    /// <summary>
+    /// Represents a class for budgetprojection.
+    /// </summary>
     public class BudgetProjection
     {
+        /// <summary>
+        /// Gets or sets the period.
+        /// </summary>
         /// <summary>
         /// Gets or sets the period.
         /// </summary>
@@ -104,6 +128,9 @@ namespace WileyWidget.Models
 
         /// <summary>
         /// Gets or sets the projected amount.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the projected.
         /// </summary>
         public decimal Projected { get; set; }
 
@@ -115,11 +142,17 @@ namespace WileyWidget.Models
         /// <summary>
         /// Gets or sets the confidence level.
         /// </summary>
+        /// <summary>
+        /// Gets or sets the confidencelevel.
+        /// </summary>
         public double ConfidenceLevel { get; set; }
     }
 
     /// <summary>
     /// Represents budget insights building on AnalyticsData, including variance analysis, trend projections, and summary.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetinsights.
     /// </summary>
     public class BudgetInsights : AnalyticsData
     {
@@ -229,10 +262,16 @@ namespace WileyWidget.Models
         /// <summary>
         /// Gets or sets the health score.
         /// </summary>
+        /// <summary>
+        /// Gets or sets the healthscore.
+        /// </summary>
         public int HealthScore { get; set; }
 
         /// <summary>
         /// Updates the budget insights based on the current enterprises.
+        /// </summary>
+        /// <summary>
+        /// Performs updateinsights.
         /// </summary>
         public void UpdateInsights()
         {

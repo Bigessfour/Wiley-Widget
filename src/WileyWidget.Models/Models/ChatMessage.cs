@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Lightweight chat message model that can be shared across UI and service layers.
 /// Text is mirrored to the <see cref="Message"/> property so existing bindings keep working.
 /// </summary>
+/// <summary>
+/// Represents a class for chatmessage.
+/// </summary>
 public class ChatMessage
 {
     /// <summary>
@@ -19,10 +22,16 @@ public class ChatMessage
     /// <summary>
     /// Indicates if this message was provided by an end user.
     /// </summary>
+    /// <summary>
+    /// Gets or sets the isuser.
+    /// </summary>
     public bool IsUser { get; set; }
 
     /// <summary>
     /// Primary message content.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the message.
     /// </summary>
     public string Message { get; set; } = string.Empty;
 
@@ -43,6 +52,9 @@ public class ChatMessage
     /// <summary>
     /// Timestamp recorded when the message was created or received.
     /// </summary>
+    /// <summary>
+    /// Gets or sets the timestamp.
+    /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     /// <summary>
@@ -62,6 +74,10 @@ public class ChatMessage
     /// <summary>
     /// Creates a message authored by the user.
     /// </summary>
+    /// <summary>
+    /// Performs createusermessage. Parameters: content.
+    /// </summary>
+    /// <param name="content">The content.</param>
     public static ChatMessage CreateUserMessage(string content)
     {
         var utcNow = DateTime.UtcNow;
@@ -76,6 +92,10 @@ public class ChatMessage
     /// <summary>
     /// Creates a message authored by the AI assistant.
     /// </summary>
+    /// <summary>
+    /// Performs createaimessage. Parameters: content.
+    /// </summary>
+    /// <param name="content">The content.</param>
     public static ChatMessage CreateAIMessage(string content)
     {
         var utcNow = DateTime.UtcNow;

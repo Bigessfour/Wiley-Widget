@@ -28,6 +28,18 @@ namespace WileyWidget.WinForms.Utilities
     ///     "Loading data...");
     /// </code>
     /// </summary>
+    /// <summary>
+    /// Represents a class for asynceventhelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for asynceventhelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for asynceventhelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for asynceventhelper.
+    /// </summary>
     public static class AsyncEventHelper
     {
         /// <summary>
@@ -170,6 +182,12 @@ namespace WileyWidget.WinForms.Utilities
         /// <summary>
         /// Updates a ToolStripStatusLabel with thread-safe invocation if needed.
         /// </summary>
+        /// <summary>
+        /// Performs updatestatuslabel. Parameters: statusLabel, control, text.
+        /// </summary>
+        /// <param name="statusLabel">The statusLabel.</param>
+        /// <param name="control">The control.</param>
+        /// <param name="text">The text.</param>
         private static void UpdateStatusLabel(ToolStripStatusLabel? statusLabel, Control control, string text)
         {
             if (statusLabel == null) return;
@@ -188,6 +206,26 @@ namespace WileyWidget.WinForms.Utilities
         /// Ensures the provided action executes on the UI thread associated with the given control.
         /// Safe to call from background threads.
         /// </summary>
+        /// <summary>
+        /// Performs ensureonuithread. Parameters: control, action.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <param name="action">The action.</param>
+        /// <summary>
+        /// Performs ensureonuithread. Parameters: control, action.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <param name="action">The action.</param>
+        /// <summary>
+        /// Performs ensureonuithread. Parameters: control, action.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <param name="action">The action.</param>
+        /// <summary>
+        /// Performs ensureonuithread. Parameters: control, action.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <param name="action">The action.</param>
         public static void EnsureOnUiThread(Control control, Action action)
         {
             if (control == null) throw new ArgumentNullException(nameof(control));
@@ -210,6 +248,22 @@ namespace WileyWidget.WinForms.Utilities
         /// </summary>
         /// <param name="timeout">Optional timeout duration</param>
         /// <returns>New CancellationTokenSource instance</returns>
+        /// <summary>
+        /// Performs createcancellationtokensource. Parameters: null.
+        /// </summary>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs createcancellationtokensource. Parameters: null.
+        /// </summary>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs createcancellationtokensource. Parameters: null.
+        /// </summary>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs createcancellationtokensource. Parameters: null.
+        /// </summary>
+        /// <param name="null">The null.</param>
         public static CancellationTokenSource CreateCancellationTokenSource(TimeSpan? timeout = null)
         {
             return timeout.HasValue
@@ -222,6 +276,22 @@ namespace WileyWidget.WinForms.Utilities
         /// Typical usage: FormClosing event to cancel pending operations.
         /// </summary>
         /// <param name="cancellationTokenSource">CancellationTokenSource to cancel and dispose</param>
+        /// <summary>
+        /// Performs cancelanddispose. Parameters: cancellationTokenSource.
+        /// </summary>
+        /// <param name="cancellationTokenSource">The cancellationTokenSource.</param>
+        /// <summary>
+        /// Performs cancelanddispose. Parameters: cancellationTokenSource.
+        /// </summary>
+        /// <param name="cancellationTokenSource">The cancellationTokenSource.</param>
+        /// <summary>
+        /// Performs cancelanddispose. Parameters: cancellationTokenSource.
+        /// </summary>
+        /// <param name="cancellationTokenSource">The cancellationTokenSource.</param>
+        /// <summary>
+        /// Performs cancelanddispose. Parameters: cancellationTokenSource.
+        /// </summary>
+        /// <param name="cancellationTokenSource">The cancellationTokenSource.</param>
         public static void CancelAndDispose(ref CancellationTokenSource? cancellationTokenSource)
         {
             if (cancellationTokenSource != null)

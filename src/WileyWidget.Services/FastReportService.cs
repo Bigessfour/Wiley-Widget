@@ -16,6 +16,9 @@ namespace WileyWidget.Services
     /// Provides full programmatic control over report generation, export, and viewer operations.
     /// All methods must be called on the UI thread.
     /// </summary>
+    /// <summary>
+    /// Represents a class for fastreportservice.
+    /// </summary>
     public class FastReportService : IReportService
     {
         private readonly ILogger<FastReportService> _logger;
@@ -144,6 +147,13 @@ namespace WileyWidget.Services
         /// <param name="filePath">Output PDF file path</param>
         /// <param name="progress">Optional progress reporter</param>
         /// <param name="cancellationToken">Cancellation token</param>
+        /// <summary>
+        /// Performs exporttopdf. Handles file operations. Parameters: reportViewer, filePath, null, default.
+        /// </summary>
+        /// <param name="reportViewer">The reportViewer.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="default">The default.</param>
         public Task ExportToPdfAsync(
             object reportViewer,
             string filePath,
@@ -194,6 +204,13 @@ namespace WileyWidget.Services
         /// <param name="filePath">Output Excel file path</param>
         /// <param name="progress">Optional progress reporter</param>
         /// <param name="cancellationToken">Cancellation token</param>
+        /// <summary>
+        /// Performs exporttoexcel. Handles file operations. Parameters: reportViewer, filePath, null, default.
+        /// </summary>
+        /// <param name="reportViewer">The reportViewer.</param>
+        /// <param name="filePath">The filePath.</param>
+        /// <param name="null">The null.</param>
+        /// <param name="default">The default.</param>
         public Task ExportToExcelAsync(
             object reportViewer,
             string filePath,

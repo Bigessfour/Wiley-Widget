@@ -14,6 +14,9 @@ namespace WileyWidget.Models;
 /// Value object representing a hierarchical account number
 /// </summary>
 [Owned]
+/// <summary>
+/// Represents a class for accountnumber.
+/// </summary>
 public class AccountNumber
 {
     /// <summary>
@@ -22,6 +25,9 @@ public class AccountNumber
     [Required]
     [MaxLength(20)]
     [RegularExpression(@"^\d+([.-]\d+)*$", ErrorMessage = "Account number must be numeric with optional separators (dots or hyphens)")]
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string Value { get; set; }
 
     /// <summary>
@@ -40,7 +46,7 @@ public class AccountNumber
     /// Whether this account number represents a parent account (has child accounts)
     /// </summary>
     [NotMapped]
-    public bool IsParent => Value.Contains('.', StringComparison.Ordinal) && Value.Split('.').Length < 3; // Parent accounts typically have 1-2 levels
+    public bool IsParent => Value.Contains('.') && Value.Split('.').Length < 3; // Parent accounts typically have 1-2 levels
 
     /// <summary>
     /// Gets the parent account number string.
@@ -70,7 +76,7 @@ public class AccountNumber
     public override bool Equals(object? obj) =>
         obj is AccountNumber other && Value == other.Value;
 
-    public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
+    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value ?? string.Empty);
 }
 
 /// <summary>
@@ -116,11 +122,17 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     /// Unique identifier for the municipal account
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// Department this account belongs to
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the departmentid.
+    /// </summary>
     public int DepartmentId { get; set; }
     public Department? Department { get; set; }
 
@@ -179,6 +191,9 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     /// Budget period this account belongs to
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the budgetperiodid.
+    /// </summary>
     public int BudgetPeriodId { get; set; }
     public BudgetPeriod? BudgetPeriod { get; set; }
 
@@ -236,6 +251,9 @@ public partial class MunicipalAccount : INotifyPropertyChanged
             OnTypeDescriptionChanged();
         }
     }
+    /// <summary>
+    /// Gets or sets the funddescription.
+    /// </summary>
     public string FundDescription { get; set; } = "General Fund";
 
     private MunicipalFundType _fund;
@@ -392,6 +410,9 @@ public partial class MunicipalAccount : INotifyPropertyChanged
 /// <summary>
 /// Account types following GASB standards
 /// </summary>
+/// <summary>
+/// Defines the accounttype enumeration.
+/// </summary>
 public enum AccountType
 {
     // Asset Types
@@ -442,6 +463,9 @@ public enum AccountType
 /// <summary>
 /// Fund classes following GASB standards
 /// </summary>
+/// <summary>
+/// Defines the fundclass enumeration.
+/// </summary>
 public enum FundClass
 {
     Governmental,
@@ -452,6 +476,9 @@ public enum FundClass
 
 /// <summary>
 /// Fund types for governmental fund accounting
+/// </summary>
+/// <summary>
+/// Defines the municipalfundtype enumeration.
 /// </summary>
 public enum MunicipalFundType
 {
@@ -480,6 +507,9 @@ public enum MunicipalFundType
 
 /// <summary>
 /// Multi-year budget data structure for import processing
+/// </summary>
+/// <summary>
+/// Represents a class for multiyearbudgetdata.
 /// </summary>
 public class MultiYearBudgetData
 {

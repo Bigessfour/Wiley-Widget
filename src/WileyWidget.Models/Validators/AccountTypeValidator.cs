@@ -10,6 +10,9 @@ namespace WileyWidget.Models.Validators;
 /// <summary>
 /// Validator for account types according to GASB standards
 /// </summary>
+/// <summary>
+/// Represents a class for accounttypevalidator.
+/// </summary>
 public class AccountTypeValidator
 {
     // Account number ranges for different types (GASB compliant)
@@ -102,6 +105,11 @@ public class AccountTypeValidator
     /// <param name="accountType">The account type to validate</param>
     /// <param name="accountNumber">The account number</param>
     /// <returns>True if the account type is valid for the account number, false otherwise</returns>
+    /// <summary>
+    /// Performs validateaccounttypefornumber. Parameters: accountType, accountNumber.
+    /// </summary>
+    /// <param name="accountType">The accountType.</param>
+    /// <param name="accountNumber">The accountNumber.</param>
     public bool ValidateAccountTypeForNumber(AccountType accountType, string accountNumber)
     {
         if (!TryGetAccountRootValue(accountNumber, out var accountRoot))
@@ -119,6 +127,11 @@ public class AccountTypeValidator
     /// <param name="accountType">The account type to validate</param>
     /// <param name="fundClass">The fund class</param>
     /// <returns>True if the account type is allowed in the fund class, false otherwise</returns>
+    /// <summary>
+    /// Performs validateaccounttypeforfund. Parameters: accountType, fundClass.
+    /// </summary>
+    /// <param name="accountType">The accountType.</param>
+    /// <param name="fundClass">The fundClass.</param>
     public bool ValidateAccountTypeForFund(AccountType accountType, FundClass fundClass)
     {
         if (!AllowedFundClasses.TryGetValue(accountType, out var allowedFunds))
@@ -195,6 +208,10 @@ public class AccountTypeValidator
     /// </summary>
     /// <param name="accounts">The accounts to validate</param>
     /// <returns>Validation result with success status and any errors</returns>
+    /// <summary>
+    /// Performs validateaccounttypecompliance. Parameters: accounts.
+    /// </summary>
+    /// <param name="accounts">The accounts.</param>
     public ValidationResult ValidateAccountTypeCompliance(IEnumerable<MunicipalAccount> accounts)
     {
         if (accounts == null) throw new ArgumentNullException(nameof(accounts));
@@ -217,8 +234,14 @@ public class AccountTypeValidator
     /// <summary>
     /// Result of a validation operation
     /// </summary>
+    /// <summary>
+    /// Represents a class for validationresult.
+    /// </summary>
     public class ValidationResult
     {
+        /// <summary>
+        /// Gets or sets the isvalid.
+        /// </summary>
         public bool IsValid { get; set; }
         public List<string> Errors { get; set; } = new();
         public List<string> Warnings { get; set; } = new();

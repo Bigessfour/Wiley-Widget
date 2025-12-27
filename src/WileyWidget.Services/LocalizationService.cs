@@ -10,6 +10,9 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Service for managing application localization and culture switching
 /// </summary>
+/// <summary>
+/// Represents a class for localizationservice.
+/// </summary>
 public class LocalizationService : INotifyPropertyChanged, IDisposable
 {
     private readonly ILogger<LocalizationService> _logger;
@@ -72,6 +75,10 @@ public class LocalizationService : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Sets the current culture for both data formatting and UI localization
     /// </summary>
+    /// <summary>
+    /// Performs setculture. Parameters: cultureName.
+    /// </summary>
+    /// <param name="cultureName">The cultureName.</param>
     public void SetCulture(string cultureName)
     {
         try
@@ -91,6 +98,11 @@ public class LocalizationService : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Sets separate cultures for data formatting and UI localization
     /// </summary>
+    /// <summary>
+    /// Performs setcultures. Parameters: cultureName, uiCultureName.
+    /// </summary>
+    /// <param name="cultureName">The cultureName.</param>
+    /// <param name="uiCultureName">The uiCultureName.</param>
     public void SetCultures(string cultureName, string uiCultureName)
     {
         try
@@ -114,6 +126,15 @@ public class LocalizationService : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Gets a localized string by key
     /// </summary>
+    /// <summary>
+    /// Performs getstring. Parameters: key.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <summary>
+    /// Performs getstring. Parameters: key, fallback.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="fallback">The fallback.</param>
     public string GetString(string key)
     {
         try
@@ -170,6 +191,9 @@ public class LocalizationService : INotifyPropertyChanged, IDisposable
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

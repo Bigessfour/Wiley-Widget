@@ -16,15 +16,63 @@ namespace WileyWidget.WinForms.Extensions
     /// Provides programmatic sorting, simple text filtering (data-source based fallback),
     /// and convenient export wiring to <see cref="Services.ExportService"/>.
     /// </summary>
+    /// <summary>
+    /// Represents a class for sfdatagridextensions.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for sfdatagridextensions.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for sfdatagridextensions.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for sfdatagridextensions.
+    /// </summary>
     public static class SfDataGridExtensions
     {
         private static readonly ConditionalWeakTable<SfDataGrid, object> _originalSources = new();
+        /// <summary>
+        /// Performs saveoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs saveoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs saveoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs saveoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
 
         public static void SaveOriginalDataSource(this SfDataGrid grid)
         {
             if (grid == null) throw new ArgumentNullException(nameof(grid));
             _originalSources.GetValue(grid, _ => grid.DataSource ?? Array.Empty<object>());
         }
+        /// <summary>
+        /// Performs restoreoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs restoreoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs restoreoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs restoreoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs restoreoriginaldatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
 
         public static void RestoreOriginalDataSource(this SfDataGrid grid)
         {
@@ -34,12 +82,62 @@ namespace WileyWidget.WinForms.Extensions
                 try { grid.DataSource = original; } catch { }
             }
         }
+        /// <summary>
+        /// Performs clearsaveddatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsaveddatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsaveddatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsaveddatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsaveddatasource. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
 
         public static void ClearSavedDataSource(this SfDataGrid grid)
         {
             if (grid == null) throw new ArgumentNullException(nameof(grid));
             try { _originalSources.Remove(grid); } catch { }
         }
+        /// <summary>
+        /// Performs sortbycolumn. Parameters: grid, columnName, false.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="false">The false.</param>
+        /// <summary>
+        /// Performs sortbycolumn. Parameters: grid, columnName, false.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="false">The false.</param>
+        /// <summary>
+        /// Performs sortbycolumn. Parameters: grid, columnName, false.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="false">The false.</param>
+        /// <summary>
+        /// Performs sortbycolumn. Parameters: grid, columnName, false.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="false">The false.</param>
+        /// <summary>
+        /// Performs sortbycolumn. Parameters: grid, columnName, false.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="false">The false.</param>
 
         public static void SortByColumn(this SfDataGrid grid, string columnName, bool descending = false)
         {
@@ -53,6 +151,26 @@ namespace WileyWidget.WinForms.Extensions
                 SortDirection = descending ? ListSortDirection.Descending : ListSortDirection.Ascending
             });
         }
+        /// <summary>
+        /// Performs clearsort. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsort. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsort. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsort. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearsort. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
 
         public static void ClearSort(this SfDataGrid grid)
         {
@@ -67,6 +185,30 @@ namespace WileyWidget.WinForms.Extensions
         /// This approach is a pragmatic fallback for programmatic filtering when Syncfusion
         /// filter predicate APIs are not convenient to use from tests.
         /// </summary>
+        /// <summary>
+        /// Performs applytextcontainsfilter. Parameters: grid, columnName, containsText.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="containsText">The containsText.</param>
+        /// <summary>
+        /// Performs applytextcontainsfilter. Parameters: grid, columnName, containsText.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="containsText">The containsText.</param>
+        /// <summary>
+        /// Performs applytextcontainsfilter. Parameters: grid, columnName, containsText.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="containsText">The containsText.</param>
+        /// <summary>
+        /// Performs applytextcontainsfilter. Parameters: grid, columnName, containsText.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <param name="columnName">The columnName.</param>
+        /// <param name="containsText">The containsText.</param>
         public static void ApplyTextContainsFilter(this SfDataGrid grid, string columnName, string containsText)
         {
             if (grid == null) throw new ArgumentNullException(nameof(grid));
@@ -98,6 +240,26 @@ namespace WileyWidget.WinForms.Extensions
 
             grid.DataSource = filtered;
         }
+        /// <summary>
+        /// Performs clearfilters. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearfilters. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearfilters. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearfilters. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
+        /// <summary>
+        /// Performs clearfilters. Parameters: grid.
+        /// </summary>
+        /// <param name="grid">The grid.</param>
 
         public static void ClearFilters(this SfDataGrid grid)
         {

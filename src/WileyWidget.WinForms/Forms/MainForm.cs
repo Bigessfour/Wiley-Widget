@@ -26,8 +26,12 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Services.Abstractions;
+using WileyWidget.Services;
+using WileyWidget.WinForms.Forms;
 
 #pragma warning disable CS8604 // Possible null reference argument
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
@@ -35,6 +39,45 @@ using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Forms
 {
+    /// <summary>
+    /// Attribute to specify initialization order for services implementing IAsyncInitializable.
+    /// Lower values are initialized first.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
+    internal sealed class InitializationOrderAttribute : Attribute
+    {
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the order.
+        /// </summary>
+        public int Order { get; }
+
+        public InitializationOrderAttribute(int order) => Order = order;
+    }
+    /// <summary>
+    /// Represents a class for mainformresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for mainformresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for mainformresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for mainformresources.
+    /// </summary>
+
     internal static class MainFormResources
     {
         public const string FormTitle = "Wiley Widget — Running on WinForms + .NET 9";
@@ -44,12 +87,14 @@ namespace WileyWidget.WinForms.Forms
         public const string Reports = "Reports";
         public const string Settings = "Settings";
         public const string Docking = "Docking";
-        public const string Mdi = "MDI Mode";
         public const string LoadingText = "Loading...";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : SfForm
+    /// <summary>
+    /// The main form of the WileyWidget WinForms application.
+    /// </summary>
+    public partial class MainForm : SfForm, IMainFormDockingProvider
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
@@ -64,18 +109,30 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Public accessor for DockingManager used by PanelNavigationService.
         /// </summary>
-        public DockingManager GetDockingManager() => _dockingManager ?? throw new InvalidOperationException("DockingManager not initialized");
+        public DockingManager GetDockingManager() => _dockingManager ?? throw new InvalidOperationException("DockingManager not initialized"); // IMainFormDockingProvider
 
         /// <summary>
         /// Public accessor for central document panel used by PanelNavigationService.
         /// </summary>
-        public Control GetCentralDocumentPanel() => _centralDocumentPanel ?? throw new InvalidOperationException("Central document panel not initialized");
+        public Control GetCentralDocumentPanel() => _centralDocumentPanel ?? throw new InvalidOperationException("Central document panel not initialized"); // IMainFormDockingProvider
 
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        /// <summary>
+        /// Represents the _reportviewerlaunchoptions.
+        /// </summary>
+        /// <summary>
+        /// Represents the _reportviewerlaunchoptions.
+        /// </summary>
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
+        /// <summary>
+        /// Represents the _reportviewerlaunched.
+        /// </summary>
+        /// <summary>
+        /// Represents the _reportviewerlaunched.
+        /// </summary>
         private bool _reportViewerLaunched;
         private ToolStripTabItem? _homeTab;
         private ToolStripEx? _navigationStrip;
@@ -85,13 +142,33 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _statePanel;
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
+        /// <summary>
+        /// Represents the _dashboardautoshown.
+        /// </summary>
+        /// <summary>
+        /// Represents the _dashboardautoshown.
+        /// </summary>
         private bool _dashboardAutoShown;
+        /// <summary>
+        /// Represents the _syncfusiondockinginitialized.
+        /// </summary>
         private bool _syncfusionDockingInitialized;
+        /// <summary>
+        /// Represents the _ribbonhandlecreated.
+        /// </summary>
+        private bool _ribbonHandleCreated;  // Track ribbon handle creation to prevent double initialization
+        /// <summary>
+        /// Represents the _initialized.
+        /// </summary>
+        /// <summary>
+        /// Represents the _initialized.
+        /// </summary>
         private bool _initialized;
         private System.ComponentModel.IContainer? components;
         private UIConfiguration _uiConfig = null!;
         private int _onShownExecuted = 0;
         private CancellationTokenSource? _initializationCts;
+        private CancellationTokenSource? _shutdownCts; // Cancelled on form closing to abort background operations
         private Serilog.ILogger? _asyncLogger;
         // Dashboard description labels are declared in docking partial
 
@@ -106,6 +183,7 @@ namespace WileyWidget.WinForms.Forms
         }
 
         public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IPanelNavigationService? panelNavigator)
+            : base() // Default base constructor, DataObjectConsumerOptions not available
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
@@ -121,35 +199,7 @@ namespace WileyWidget.WinForms.Forms
 
             _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
 
-            // CRITICAL FIX: Set IsMdiContainer based on configuration to prevent conflicts
-            try
-            {
-                if (_uiConfig.UseMdiMode)
-                {
-                    _logger.LogDebug("Setting IsMdiContainer=true (MDI enabled in configuration)");
-                    IsMdiContainer = true;
-                    _logger.LogDebug("IsMdiContainer set successfully");
-                }
-                else
-                {
-                    _logger.LogDebug("MDI mode disabled in configuration - not setting IsMdiContainer");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"ERROR setting IsMdiContainer: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
-                _logger?.LogError(ex, "Failed to set IsMdiContainer");
 
-                // Rethrow with contextual information so callers can more easily identify
-                // that MDI container configuration failed during MainForm construction.
-                throw new InvalidOperationException("Failed to configure MainForm MDI container during construction", ex);
-            }
-
-            // Enable drag-drop for files
-            AllowDrop = true;
-            DragEnter += MainForm_DragEnter;
-            DragDrop += MainForm_DragDrop;
 
             // Set reasonable form size constraints to prevent unusable states
             this.MinimumSize = new Size(800, 600);
@@ -175,28 +225,17 @@ namespace WileyWidget.WinForms.Forms
                 throw new InvalidOperationException("Failed to initialize UI chrome (InitializeChrome)", ex);
             }
 
-            try
-            {
-                _logger.LogDebug("Calling InitializeMdiSupport...");
-                InitializeMdiSupport();
-                _logger.LogDebug("InitializeMdiSupport completed");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"ERROR in InitializeMdiSupport: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
-                _logger?.LogError(ex, "InitializeMdiSupport failed");
-
-                // Provide contextual information when rethrowing to aid diagnostics.
-                throw new InvalidOperationException("Failed to initialize MDI support (InitializeMdiSupport)", ex);
-            }
-
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
 
             // Subscribe to font changes for real-time updates
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
         }
+        /// <summary>
+        /// Performs mainform dragenter. Handles file operations. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void MainForm_DragEnter(object? sender, DragEventArgs e)
         {
@@ -212,6 +251,16 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Error in DragEnter handler");
             }
         }
+        /// <summary>
+        /// Performs mainform activated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs mainform activated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void MainForm_Activated(object? sender, EventArgs e)
         {
@@ -278,6 +327,16 @@ namespace WileyWidget.WinForms.Forms
 
             await Task.CompletedTask;
         }
+        /// <summary>
+        /// Performs mainform firstchanceexception. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs mainform firstchanceexception. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
         {
@@ -311,14 +370,6 @@ namespace WileyWidget.WinForms.Forms
                     {
                         logger?.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
                     }
-
-                    // Log MDI-related exceptions
-                    if (ex.Message.Contains("MDI", StringComparison.OrdinalIgnoreCase) ||
-                        ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
-                        ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
-                    {
-                        logger?.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
-                    }
                 }
                 catch (Exception logEx)
                 {
@@ -344,9 +395,10 @@ namespace WileyWidget.WinForms.Forms
             // Designer short-circuit
             if (DesignMode)
             {
-                IsMdiContainer = false;
                 return;
             }
+
+            // Enable drag-drop for files (MOVED TO OnShown to ensure form is visible for drag-drop registration)
 
             if (_initialized)
                 return;
@@ -361,6 +413,25 @@ namespace WileyWidget.WinForms.Forms
             if (_logger == null)
                 _logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(_serviceProvider) ?? NullLogger<MainForm>.Instance;
 
+            // Add ribbon to Controls now that MainForm handle exists (deferred from InitializeRibbon)
+            if (_ribbon != null && !Controls.Contains(_ribbon))
+            {
+                SuspendLayout();
+                Controls.Add(_ribbon);
+                ResumeLayout(false);
+                _logger?.LogDebug("Ribbon added to Controls in OnLoad (form handle exists)");
+            }
+
+            // Initialize Syncfusion docking early (moved from OnShown) to prevent control hierarchy changes
+            // after ribbon handle is established
+            // MOVED TO OnShown to ensure form is visible for drag-drop registration
+            // if (!_syncfusionDockingInitialized)
+            // {
+            //     // Fire-and-forget: InitializeSyncfusionDocking is async void
+            //     InitializeSyncfusionDocking();
+            //     _syncfusionDockingInitialized = true;
+            // }
+
             _initialized = true;
 
             // Load MRU list from registry
@@ -373,22 +444,6 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                // Z-order: MDI client first
-                if (_uiConfig.UseMdiMode && IsMdiContainer)
-                {
-                    var mdiClient = Controls.OfType<MdiClient>().FirstOrDefault();
-                    if (mdiClient != null)
-                    {
-                        mdiClient.Dock = DockStyle.Fill;
-                        mdiClient.Visible = true;
-
-                        // Phase 1 Simplification: Standard MDI z-order (no TabbedMDI)
-                        mdiClient.SendToBack();
-
-                        _logger?.LogDebug("MDI client configured (TabbedMDI: {TabbedMDI})", _uiConfig.UseTabbedMdi);
-                    }
-                }
-
                 // Ribbon above all
                 if (_ribbon != null)
                 {
@@ -396,7 +451,7 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("Ribbon brought to front");
                 }
 
-                // Status bar above MDI but below ribbon
+                // Status bar below ribbon
                 if (_statusBar != null)
                 {
                     _statusBar.BringToFront();
@@ -417,18 +472,7 @@ namespace WileyWidget.WinForms.Forms
             // Kept here for reference - remove if causing issues
             _logger?.LogDebug("PanelNavigationService already initialized via constructor injection");
 
-            if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
-            {
-                if (_panelNavigator != null)
-                {
-                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
-                    _dashboardAutoShown = true;
-                }
-                else
-                {
-                    _logger?.LogWarning("Cannot auto-show dashboard: PanelNavigationService not available");
-                }
-            }
+            // Auto-show moved to OnShown (ensures docking initialized)
 
             _logger?.LogInformation("MainForm startup completed successfully");
         }
@@ -495,97 +539,236 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// OnShown override. Deferred initialization for heavy operations to avoid blocking UI thread.
-        /// Microsoft recommendation: "Perform heavy initialization in OnShown to prevent UI blocking during OnLoad."
-        /// Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/advanced/best-practices-for-loading-controls
+        /// OnShown override. Implements new synchronous startup pattern with splash progress and deferred background initialization.
         /// </summary>
-        protected override async void OnShown(EventArgs e)
+        protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
 
-            if (DesignMode)
-                return;
-
-            // Thread-safe guard: Prevent duplicate execution
+            // Prevent duplicate execution
             if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
             {
                 _logger?.LogWarning("OnShown called multiple times - ignoring duplicate call");
                 return;
             }
 
-            // Create cancellation token source for initialization operations
-            _initializationCts = new CancellationTokenSource();
-            var cancellationToken = _initializationCts.Token;
+            // Enable drag-drop for files (moved from OnLoad to ensure form is visible and STA thread is ready)
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+            {
+                AllowDrop = true;
+                DragEnter += MainForm_DragEnter;
+                DragDrop += MainForm_DragDrop;
+                _logger?.LogDebug("Drag-drop handlers registered successfully in OnShown");
+            }
+            else
+            {
+                _logger?.LogWarning("Cannot register drag-drop handlers: Not on STA thread");
+            }
 
-            // Track form shown event for startup timeline analysis
-            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
-            timelineService?.RecordFormLifecycleEvent("MainForm", "Shown");
+            // Show splash form for progress reporting
+            using (var splash = new Program.SplashForm())
+            {
+                splash.Show();
+                splash.BringToFront();
+                splash.Report(0.01, "Starting up...");
+                Application.DoEvents();
 
-            // Initialize async logging for MainForm diagnostics to avoid blocking UI thread
+                try
+                {
+                    // Phase 1: Synchronous service initialization (IInitializable)
+                    var initializables = _serviceProvider?.GetServices<IInitializable>()?.ToList() ?? new List<IInitializable>();
+                    int total = initializables.Count;
+                    int current = 0;
+                    foreach (var svc in initializables)
+                    {
+                        current++;
+                        string svcName = svc.GetType().Name;
+                        splash.Report((double)current / (total + 2), $"Initializing {svcName}...");
+                        svc.Initialize();
+                        Application.DoEvents();
+                    }
+
+                    // Phase 2: UI setup (Syncfusion docking initialization)
+                    splash.Report(0.85, "Configuring UI...");
+                    // Initialize Syncfusion docking now that form is visible for drag-drop registration
+                    if (!_syncfusionDockingInitialized)
+                    {
+                        // Fire-and-forget: InitializeSyncfusionDocking is async void
+                        InitializeSyncfusionDocking();
+                        _syncfusionDockingInitialized = true;
+                    }
+                    Application.DoEvents();
+
+                    // Phase 3: MainViewModel initialization (synchronous)
+                    splash.Report(0.92, "Loading dashboard...");
+                    // If MainViewModel implements IInitializable, it will be handled above
+                    Application.DoEvents();
+
+                    // Auto-show dashboard after docking and viewmodel initialization
+                    if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
+                    {
+                        try
+                        {
+                            if (_panelNavigator != null)
+                            {
+                                _panelNavigator.Initialize(this);
+                                _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                                _dashboardAutoShown = true;
+                            }
+                            else
+                            {
+                                var navigator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(_serviceProvider);
+                                if (navigator != null)
+                                {
+                                    navigator.Initialize(this);
+                                    navigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                                    _dashboardAutoShown = true;
+                                }
+                                else
+                                {
+                                    _logger?.LogWarning("Cannot auto-show dashboard: PanelNavigationService not available");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Failed to auto-show dashboard panel");
+                        }
+                    }
+
+                    // Phase 4: Schedule deferred background initialization (synchronous for now)
+                    splash.Report(0.97, "Finalizing startup...");
+                    DeferredBackgroundInitialization();
+                    Application.DoEvents();
+
+                    splash.Report(1.0, "Ready");
+                    Application.DoEvents();
+                }
+                catch (Exception ex)
+                {
+                    splash.Report(1.0, "Startup error");
+                    _logger?.LogError(ex, "Critical error during startup");
+                    MessageBox.Show($"Startup error: {ex.Message}", "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    splash.Close();
+                }
+            }
+
+            // Continue with normal OnShown logic (activate, etc.)
+            Activated += MainForm_Activated;
+            _logger?.LogInformation("MainForm OnShown: Synchronous startup complete, background initialization scheduled");
+        }
+
+        /// <summary>
+        /// Deferred background initialization (runs on background thread after splash closes).
+        /// </summary>
+        /// <summary>
+        /// Performs deferredbackgroundinitialization.
+        /// </summary>
+        private void DeferredBackgroundInitialization()
+        {
             try
             {
-                // Use root logs folder for centralized logging
-                var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-                var logsDirectory = Path.Combine(projectRoot, "logs");
-                Directory.CreateDirectory(logsDirectory);
-                var asyncLogPath = Path.Combine(logsDirectory, "mainform-async-.log");
-                _asyncLogger = new LoggerConfiguration()
-                    .WriteTo.Async(a => a.File(asyncLogPath,
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 7,
-                        formatProvider: CultureInfo.InvariantCulture))
-                    .Enrich.FromLogContext()
-                    .MinimumLevel.Debug()
-                    .CreateLogger();
-
-                _asyncLogger.Information("Async logging initialized for MainForm diagnostics - path: {LogPath}", asyncLogPath);
+                // Example: Load MRU, warm up caches, etc. (add as needed)
+                _logger?.LogInformation("Deferred background initialization started");
+                // ...
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to initialize async logging for MainForm - falling back to main logger");
+                _logger?.LogError(ex, "Error in deferred background initialization");
             }
+        }
 
-            // Wire Activated event for tracking (only once)
-            Activated += MainForm_Activated;
-
-            _asyncLogger?.Information("MainForm OnShown: Starting deferred initialization - UI thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
-
+        /// <summary>
+        /// Initialize all IAsyncInitializable services in order, with non-blocking error handling.
+        /// </summary>
+        private async Task InitializeAsyncServicesInOrder(CancellationToken cancellationToken)
+        {
             try
             {
-                _logger?.LogInformation("OnShown: Starting deferred initialization");
+                _asyncLogger?.Information("Initializing IAsyncInitializable services in order");
+                ApplyStatus("Initializing services...");
 
-                // Phase 1: Initialize Syncfusion docking (synchronous UI operation - execute directly on UI thread)
-                ApplyStatus("Initializing...");
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!_syncfusionDockingInitialized)
+                if (_serviceProvider == null)
                 {
+                    _logger?.LogError("ServiceProvider is null during async service initialization");
+                    ApplyStatus("Initialization error: ServiceProvider unavailable");
+                    return;
+                }
+
+                // Get all IAsyncInitializable services
+                var asyncInitializables = _serviceProvider.GetServices<IAsyncInitializable>()?.ToList() ?? new List<IAsyncInitializable>();
+                if (asyncInitializables.Count == 0)
+                {
+                    _logger?.LogInformation("No IAsyncInitializable services registered");
+                    return;
+                }
+
+                // Order by InitializationOrderAttribute (lowest first), then by type name
+                asyncInitializables = asyncInitializables
+                    .OrderBy(s => s.GetType().GetCustomAttributes(typeof(InitializationOrderAttribute), true)
+                        .Cast<InitializationOrderAttribute>().FirstOrDefault()?.Order ?? int.MaxValue)
+                    .ThenBy(s => s.GetType().FullName)
+                    .ToList();
+
+                var errorReporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(_serviceProvider);
+
+                foreach (var service in asyncInitializables)
+                {
+                    var typeName = service.GetType().Name;
                     try
                     {
-                        InitializeSyncfusionDocking();
-                        _syncfusionDockingInitialized = true;
-                        _logger?.LogInformation("Docking initialized successfully");
+                        ApplyStatus($"Initializing {typeName}...");
+                        _asyncLogger?.Information("Initializing service: {Service}", typeName);
+                        await service.InitializeAsync(cancellationToken).ConfigureAwait(true);
+                        _logger?.LogInformation("Service initialized: {Service}", typeName);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogInformation("Initialization cancelled for {Service}", typeName);
+                        ApplyStatus($"Initialization cancelled: {typeName}");
+                        return;
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Failed to initialize docking manager in OnShown");
-                        // Continue - not fatal
+                        _logger?.LogError(ex, "Failed to initialize service: {Service}", typeName);
+                        _asyncLogger?.Error(ex, "Failed to initialize service: {Service}", typeName);
+                        ApplyStatus($"Error: {typeName}");
+                        errorReporting?.ReportError(ex, $"Failed to initialize {typeName}: {ex.Message}");
+                        // Continue initializing other services
                     }
                 }
 
-                // Phase 2: Ensure docking z-order (layout already loaded synchronously in InitializeSyncfusionDocking)
-                if (_uiConfig.UseSyncfusionDocking)
-                {
-                    // REMOVED: Redundant async reload - LoadDockingLayout() already called synchronously in InitializeSyncfusionDocking()
-                    // This eliminates double-load performance hit and simplifies startup flow
-                    try { EnsureDockingZOrder(); }
-                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
-                }
+                ApplyStatus("All services initialized");
+                _logger?.LogInformation("All IAsyncInitializable services initialized");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("Async service initialization cancelled");
+                ApplyStatus("Initialization cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Unexpected error during async service initialization");
+                ApplyStatus("Initialization error");
+                _asyncLogger?.Error(ex, "Unexpected error during async service initialization");
+            }
+        }
 
-                // Phase 3: Initialize dashboard data asynchronously
-                _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
-                _logger?.LogInformation("Initializing MainViewModel");
+        /// <summary>
+        /// Initialize MainViewModel asynchronously after OnShown completes.
+        /// This prevents deadlock where ConfigureAwait(true) tries to marshal back to UI thread
+        /// while OnShown is still executing on the same thread.
+        /// </summary>
+        private async Task InitializeMainViewModelAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: Starting deferred MainViewModel initialization");
+                _logger?.LogInformation("Initializing MainViewModel (deferred)");
+
                 ApplyStatus("Loading dashboard data...");
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -604,45 +787,51 @@ namespace WileyWidget.WinForms.Forms
                     _mainViewModelScope = _serviceProvider.CreateScope();
                     var scopedServices = _mainViewModelScope.ServiceProvider;
                     mainVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
-                    _asyncLogger?.Information("MainForm OnShown: MainViewModel resolved from DI container");
+                    _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: MainViewModel resolved from DI container");
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
-                    _asyncLogger?.Error(ex, "MainForm OnShown: Failed to resolve MainViewModel from DI container");
+                    _asyncLogger?.Error(ex, "MainForm InitializeMainViewModelAsync: Failed to resolve MainViewModel from DI container");
                 }
 
                 if (mainVm != null)
                 {
                     try
                     {
-                        _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
+                        _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: Calling MainViewModel.InitializeAsync");
                         await mainVm.InitializeAsync(cancellationToken).ConfigureAwait(true);
                         _logger?.LogInformation("MainViewModel initialized successfully");
-                        _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                        _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: MainViewModel.InitializeAsync completed successfully");
                     }
                     catch (OperationCanceledException)
                     {
                         _logger?.LogInformation("Dashboard initialization cancelled");
-                        _asyncLogger?.Information("MainForm OnShown: Dashboard initialization cancelled");
+                        _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: Dashboard initialization cancelled");
                         ApplyStatus("Initialization cancelled");
                         return;
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
-                        _asyncLogger?.Error(ex, "MainForm OnShown: Failed to initialize MainViewModel in OnShown");
+                        _logger?.LogError(ex, "Failed to initialize MainViewModel");
+                        _asyncLogger?.Error(ex, "MainForm InitializeMainViewModelAsync: Failed to initialize MainViewModel");
                         ApplyStatus("Error loading dashboard data");
                         // Show user-friendly error message
-                        if (this.IsHandleCreated)
+                        if (this.IsHandleCreated && !this.IsDisposed)
                         {
                             try
                             {
-                                MessageBox.Show(this,
-                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
-                                    "Initialization Error",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                                this.BeginInvoke(new global::System.Action(() =>
+                                {
+                                    if (!this.IsDisposed)
+                                    {
+                                        MessageBox.Show(this,
+                                            $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                            "Initialization Error",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+                                    }
+                                }));
                             }
                             catch { /* Swallow MessageBox errors */ }
                         }
@@ -655,33 +844,24 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 ApplyStatus("Ready");
-                _logger?.LogInformation("OnShown: Deferred initialization completed");
+                _logger?.LogInformation("MainViewModel initialization completed");
+                _asyncLogger?.Information("MainForm InitializeMainViewModelAsync: Initialization completed successfully");
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("OnShown initialization cancelled");
+                _logger?.LogInformation("MainViewModel initialization cancelled");
                 ApplyStatus("Initialization cancelled");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Unexpected error during OnShown deferred initialization");
+                _logger?.LogError(ex, "Unexpected error during MainViewModel initialization");
                 ApplyStatus("Initialization error");
-
-                // Critical error - show user-friendly message
-                if (this.IsHandleCreated)
-                {
-                    try
-                    {
-                        MessageBox.Show(this,
-                            $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
-                            "Critical Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    }
-                    catch { /* Swallow MessageBox errors */ }
-                }
+                _asyncLogger?.Error(ex, "MainForm InitializeMainViewModelAsync: Unexpected error during initialization");
             }
         }
+        /// <summary>
+        /// Performs trylaunchreportvieweronload.
+        /// </summary>
 
         private void TryLaunchReportViewerOnLoad()
         {
@@ -720,6 +900,14 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Failed to open report viewer for {ReportPath}", reportPath);
             }
         }
+        /// <summary>
+        /// Performs showreportspanel. Parameters: reportPath.
+        /// </summary>
+        /// <param name="reportPath">The reportPath.</param>
+        /// <summary>
+        /// Performs showreportspanel. Parameters: reportPath.
+        /// </summary>
+        /// <param name="reportPath">The reportPath.</param>
 
         private bool ShowReportsPanel(string reportPath)
         {
@@ -746,24 +934,71 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                // Cancel any ongoing initialization operations
+                _logger?.LogInformation("MainForm closing - initiating graceful shutdown");
+
+                // Signal shutdown to background operations and cancel initialization immediately
                 try
                 {
+                    _shutdownCts?.Cancel();
                     _initializationCts?.Cancel();
+                    _logger?.LogDebug("Background operations and initialization cancelled");
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogDebug(ex, "Exception cancelling initialization during form closing (expected if already completed)");
                 }
 
-                if (_dockingManager != null)
+                // Stop status timer immediately to prevent callbacks during shutdown
+                try
                 {
-                    try { SaveDockingLayout(); }
-                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout during form closing"); }
+                    if (_statusTimer != null)
+                    {
+                        _statusTimer.Stop();
+                        _statusTimer.Enabled = false;
+                        _logger?.LogDebug("Status timer stopped");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to stop status timer during form closing");
                 }
 
-                // Phase 1 Simplification: Dispose docking resources
-                DisposeSyncfusionDockingResources();
+                // Save docking layout best-effort without blocking shutdown
+                // Fire-and-forget to prevent deadlock during shutdown
+                if (_dockingManager != null)
+                {
+                    try
+                    {
+                        // Don't wait for completion - best-effort save only
+                        _ = Task.Run(() =>
+                        {
+                            try { SaveDockingLayout(); }
+                            catch (Exception ex) { _logger?.LogDebug(ex, "Failed to SaveDockingLayout during form closing"); }
+                        });
+                        _logger?.LogDebug("Docking layout save scheduled (best-effort, no wait)");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "Failed to schedule docking layout save during form closing");
+                    }
+                }
+
+                // Dispose Syncfusion docking resources synchronously
+                try
+                {
+                    DisposeSyncfusionDockingResources();
+                    _logger?.LogDebug("Syncfusion docking resources disposed");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to dispose Syncfusion docking resources during form closing");
+                }
+
+                _logger?.LogInformation("MainForm graceful shutdown completed");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Unexpected error during MainForm shutdown");
             }
             finally
             {
@@ -776,6 +1011,9 @@ namespace WileyWidget.WinForms.Forms
         /// Phase 1: Hard-coded to Office2019Colorful.
         /// NOTE: Theme is inherited from Program.InitializeTheme() which sets ApplicationVisualTheme globally.
         /// No need to call SetVisualStyle here - it cascades automatically from the global setting.
+        /// </summary>
+        /// <summary>
+        /// Performs applytheme.
         /// </summary>
         private void ApplyTheme()
         {
@@ -790,13 +1028,17 @@ namespace WileyWidget.WinForms.Forms
         /// Thread-safe helper to update the status text panel from any thread.
         /// </summary>
         /// <param name="text">Status text to display.</param>
+        /// <summary>
+        /// Performs applystatus. Parameters: text.
+        /// </summary>
+        /// <param name="text">The text.</param>
         private void ApplyStatus(string text)
         {
             try
             {
                 if (this.IsHandleCreated && this.InvokeRequired)
                 {
-                    try { this.BeginInvoke(new System.Action(() => ApplyStatus(text))); } catch { }
+                    try { this.BeginInvoke(new global::System.Action(() => ApplyStatus(text))); } catch { }
                     return;
                 }
             }
@@ -886,6 +1128,11 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Handles application font changes by updating this form and all child controls.
         /// </summary>
+        /// <summary>
+        /// Performs onapplicationfontchanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void OnApplicationFontChanged(object? sender, FontChangedEventArgs e)
         {
             // Update this form and all child controls
@@ -906,6 +1153,11 @@ namespace WileyWidget.WinForms.Forms
         /// Recursively updates the font of a control and all its children.
         /// Respects designer-set fonts to avoid breaking explicit overrides.
         /// </summary>
+        /// <summary>
+        /// Performs updatecontrolfont. Parameters: control, newFont.
+        /// </summary>
+        /// <param name="control">The control.</param>
+        /// <param name="newFont">The newFont.</param>
         private void UpdateControlFont(Control control, Font newFont)
         {
             // Skip if control explicitly overrides font (designer-set)
@@ -935,13 +1187,39 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
+                try
+                {
+                    // Cancel any pending operations before disposal
+                    _shutdownCts?.Cancel();
+                    _initializationCts?.Cancel();
+                }
+                catch { /* Best-effort cancellation */ }
+
                 // Dispose the MainViewModel scope when the form is disposed
-                _mainViewModelScope?.Dispose();
-                _mainViewModelScope = null;
+                try
+                {
+                    _mainViewModelScope?.Dispose();
+                    _mainViewModelScope = null;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to dispose MainViewModel scope");
+                }
+
+                // Dispose cancellation token sources
+                try
+                {
+                    _initializationCts?.Dispose();
+                    _shutdownCts?.Dispose();
+                }
+                catch { /* Swallow disposal exceptions */ }
 
                 // Dispose components container (standard IContainer, not Syncfusion)
-                components?.Dispose();
-                _initializationCts?.Dispose();
+                try
+                {
+                    components?.Dispose();
+                }
+                catch { /* Swallow disposal exceptions */ }
 
                 // Safe dispose UI controls
                 _menuStrip.SafeDispose();
@@ -949,6 +1227,13 @@ namespace WileyWidget.WinForms.Forms
                 _statusBar.SafeDispose();
                 _navigationStrip.SafeDispose();
                 _statusTimer.SafeDispose();
+
+                // Dispose async logger
+                try
+                {
+                    (_asyncLogger as IDisposable)?.Dispose();
+                }
+                catch { /* Swallow disposal exceptions */ }
             }
             base.Dispose(disposing);
         }
@@ -957,6 +1242,10 @@ namespace WileyWidget.WinForms.Forms
 
         private readonly List<string> _mruFiles = new(10);
         private const string MruRegistryKey = "Software\\\\WileyWidget\\\\MRU";
+        /// <summary>
+        /// Performs addtomrulist. Handles file operations. Parameters: filePath.
+        /// </summary>
+        /// <param name="filePath">The filePath.</param>
 
         private void AddToMruList(string filePath)
         {
@@ -988,6 +1277,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Failed to add to MRU list");
             }
         }
+        /// <summary>
+        /// Performs clearmrulist. Handles file operations.
+        /// </summary>
+        /// <summary>
+        /// Performs clearmrulist. Handles file operations.
+        /// </summary>
 
         private void ClearMruList()
         {
@@ -1003,6 +1298,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Failed to clear MRU list");
             }
         }
+        /// <summary>
+        /// Performs loadmrufromregistry. Handles file operations.
+        /// </summary>
+        /// <summary>
+        /// Performs loadmrufromregistry. Handles file operations.
+        /// </summary>
 
         private void LoadMruFromRegistry()
         {
@@ -1026,6 +1327,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "Failed to load MRU from registry");
             }
         }
+        /// <summary>
+        /// Performs savemrutoregistry. Handles file operations.
+        /// </summary>
+        /// <summary>
+        /// Performs savemrutoregistry. Handles file operations.
+        /// </summary>
 
         private void SaveMruToRegistry()
         {
@@ -1052,6 +1359,12 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "Failed to save MRU to registry");
             }
         }
+        /// <summary>
+        /// Performs updatemrumenuinfilemenu. Handles file operations.
+        /// </summary>
+        /// <summary>
+        /// Performs updatemrumenuinfilemenu. Handles file operations.
+        /// </summary>
 
         private void UpdateMruMenuInFileMenu()
         {
@@ -1072,6 +1385,14 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Failed to update MRU menu");
             }
         }
+        /// <summary>
+        /// Performs updatemrumenu. Handles file operations. Parameters: recentMenu.
+        /// </summary>
+        /// <param name="recentMenu">The recentMenu.</param>
+        /// <summary>
+        /// Performs updatemrumenu. Handles file operations. Parameters: recentMenu.
+        /// </summary>
+        /// <param name="recentMenu">The recentMenu.</param>
 
         private void UpdateMruMenu(ToolStripMenuItem recentMenu)
         {

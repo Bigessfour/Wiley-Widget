@@ -10,6 +10,18 @@ namespace WileyWidget.WinForms.Services
     /// Fallback implementation of IBudgetCategoryService for use when DI container is not available.
     /// Returns empty collections and does not perform actual operations.
     /// </summary>
+    /// <summary>
+    /// Represents a class for fallbackbudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for fallbackbudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for fallbackbudgetcategoryservice.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for fallbackbudgetcategoryservice.
+    /// </summary>
     internal class FallbackBudgetCategoryService : IBudgetCategoryService
     {
         public Task<List<BudgetCategoryDto>> GetAllCategoriesAsync(int fiscalYear, CancellationToken cancellationToken = default)

@@ -126,6 +126,9 @@ namespace WileyWidget.Data
                 return fallback.Options;
             }
         }
+        /// <summary>
+        /// Performs createdbcontext.
+        /// </summary>
 
         public AppDbContext CreateDbContext()
         {

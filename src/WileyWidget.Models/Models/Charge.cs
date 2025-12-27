@@ -10,6 +10,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents an individual charge item for utility billing
 /// </summary>
+/// <summary>
+/// Represents a class for charge.
+/// </summary>
 public class Charge : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -20,10 +23,16 @@ public class Charge : INotifyPropertyChanged
     }
 
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
     /// Foreign key to the bill this charge belongs to
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the billid.
     /// </summary>
     public int BillId { get; set; }
 
@@ -141,10 +150,16 @@ public class Charge : INotifyPropertyChanged
     /// <summary>
     /// Date the charge was created
     /// </summary>
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
     /// <summary>
     /// Date the charge was last modified
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the lastmodifieddate.
     /// </summary>
     public DateTime LastModifiedDate { get; set; } = DateTime.Now;
 }

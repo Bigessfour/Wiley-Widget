@@ -25,6 +25,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -67,7 +68,7 @@ public partial class MainForm
     private Dictionary<string, Panel>? _dynamicDockPanels;
     // Font family constant for UI fonts
     private const string SegoeUiFontName = "Segoe UI";
-    // REMOVED: _activeMdiChildren dictionary - MDI child tracking replaced by PanelNavigationService
+    // REMOVED: _activeMdiChildren dictionary - panel tracking replaced by PanelNavigationService
     #endregion
 
     #region Chrome
@@ -75,6 +76,9 @@ public partial class MainForm
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
     /// Call this from constructor after configuration is loaded.
+    /// </summary>
+    /// <summary>
+    /// Performs initializechrome.
     /// </summary>
     private void InitializeChrome()
     {
@@ -141,6 +145,9 @@ public partial class MainForm
     /// <summary>
     /// Initialize Syncfusion RibbonControlAdv for main navigation.
     /// </summary>
+    /// <summary>
+    /// Performs initializeribbon.
+    /// </summary>
     private void InitializeRibbon()
     {
         try
@@ -150,10 +157,14 @@ public partial class MainForm
                 Name = "Ribbon_Main",
                 AccessibleName = "Ribbon_Main",
                 AccessibleDescription = "Main navigation ribbon with commands organized by task",
-                Dock = (DockStyleEx)DockStyle.Top,
+                // TODO: Manual SafeInvoke needed for: Dock = (DockStyleEx)DockStyle.Top,
                 OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
                 RibbonStyle = RibbonStyle.Office2016
+                // ShowItemToolTips left at default (true) - tooltips work correctly when handle created at proper time
             };
+
+            // TODO: Manual SafeInvoke needed for: // Subscribe to HandleCreated to detect and prevent double initialization
+            _ribbon.HandleCreated += OnRibbonHandleCreated;
 
             // REMOVED: Per-control theme application - theme cascades from ApplicationVisualTheme
             // Ribbon automatically inherits theme from SkinManager.ApplicationVisualTheme set in Program.cs
@@ -191,18 +202,8 @@ public partial class MainForm
                 ToolTipText = "Open Dashboard",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    dashboardBtn.Image = iconService.GetIcon("dashboard", currentTheme, 16);
-                    dashboardBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(dashboardBtn, "dashboard"));
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -218,18 +219,8 @@ public partial class MainForm
                 ToolTipText = "Open Accounts",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    accountsBtn.Image = iconService.GetIcon("accounts", currentTheme, 16);
-                    accountsBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(accountsBtn, "accounts"));
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -244,18 +235,8 @@ public partial class MainForm
                 ToolTipText = "Open Budget Overview",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    budgetBtn.Image = iconService.GetIcon("budget", currentTheme, 16);
-                    budgetBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(budgetBtn, "budget"));
             budgetBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -270,18 +251,8 @@ public partial class MainForm
                 ToolTipText = "Open Charts",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    chartsBtn.Image = iconService.GetIcon("chart", currentTheme, 16);
-                    chartsBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(chartsBtn, "chart"));
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -297,18 +268,8 @@ public partial class MainForm
                 AutoSize = true,
                 AccessibleDescription = "Opens the analytics view with budget analysis, key insights, and recommendations"
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    analyticsBtn.Image = iconService.GetIcon("analytics", currentTheme, 16);
-                    analyticsBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(analyticsBtn, "analytics"));
             analyticsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -324,18 +285,8 @@ public partial class MainForm
                 AutoSize = true,
                 AccessibleDescription = "Opens the audit log view showing application activity, user actions, and system events"
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    auditLogBtn.Image = iconService.GetIcon("audit", currentTheme, 16);
-                    auditLogBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(auditLogBtn, "audit"));
             auditLogBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -350,18 +301,8 @@ public partial class MainForm
                 ToolTipText = "Open Customers",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    customersBtn.Image = iconService.GetIcon("customers", currentTheme, 16);
-                    customersBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(customersBtn, "customers"));
             // TODO: Create CustomersPanel to enable panel-based navigation
             customersBtn.Click += (s, e) => { /* Customers panel not yet implemented */ };
 
@@ -373,18 +314,8 @@ public partial class MainForm
                 ToolTipText = "Open Reports",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    reportsBtn.Image = iconService.GetIcon("reports", currentTheme, 16);
-                    reportsBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(reportsBtn, "reports"));
             // TODO: Create ReportsPanel to enable panel-based navigation
             reportsBtn.Click += (s, e) => { /* Reports panel not yet implemented */ };
 
@@ -396,17 +327,8 @@ public partial class MainForm
                 ToolTipText = "Open AI Chat Assistant",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    aiChatBtn.Image = iconService.GetIcon("chat", currentTheme, 16);
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(aiChatBtn, "chat"));
             aiChatBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -421,17 +343,8 @@ public partial class MainForm
                 ToolTipText = "Open QuickBooks Integration",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    quickBooksBtn.Image = iconService.GetIcon("quickbooks", currentTheme, 16);
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(quickBooksBtn, "quickbooks"));
             quickBooksBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -446,18 +359,8 @@ public partial class MainForm
                 ToolTipText = "Open Settings",
                 AutoSize = true
             };
-            // Try to set icon from theme service
-            try
-            {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                if (iconService != null)
-                {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    settingsBtn.Image = iconService.GetIcon("settings", currentTheme, 16);
-                    settingsBtn.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
+            // Defer icon loading to after form shown to speed up MainForm creation
+            Task.Run(() => LoadRibbonIcon(settingsBtn, "settings"));
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -531,12 +434,13 @@ public partial class MainForm
                 clearFilterBtn.Click += (s, e) => ClearActiveGridFilter();
             if (exportGridBtn != null)
                 exportGridBtn.Click += async (s, e) => await ExportActiveGridToExcel();
-
-            _homeTab.Panel.AddToolStrip(homePanel);
+            // TODO: Manual SafeInvoke needed for:
+            // TODO: Manual SafeInvoke needed for: _homeTab.Panel.AddToolStrip(homePanel);
             _ribbon.Header.AddMainItem(_homeTab);
 
-            Controls.Add(_ribbon);
-            _logger?.LogDebug("Ribbon initialized successfully");
+            // DO NOT add to Controls yet - deferred to OnLoad when MainForm handle exists
+            // This prevents handle recreation race condition with ToolStripItemsToolTipService
+            _logger?.LogDebug("Ribbon initialized successfully (not yet added to Controls)");
         }
         catch (Exception ex)
         {
@@ -546,7 +450,69 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Handle creation guard for Ribbon to detect and prevent double initialization.
+    /// </summary>
+    /// <summary>
+    /// Performs onribbonhandlecreated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    private void OnRibbonHandleCreated(object? sender, EventArgs e)
+    {
+        if (_ribbonHandleCreated)
+        {
+            _logger?.LogWarning("Ribbon handle created multiple times - tooltip service may attempt double registration");
+            return;
+        }
+        _ribbonHandleCreated = true;
+        _logger?.LogDebug("Ribbon handle created successfully");
+    }
+
+    /// <summary>
+    /// Load icon for a ribbon button asynchronously (called from background thread).
+    /// </summary>
+    /// <summary>
+    /// Performs loadribbonicon. Parameters: button, iconName.
+    /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="iconName">The iconName.</param>
+    private void LoadRibbonIcon(ToolStripButton button, string iconName)
+    {
+        try
+        {
+            var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+            if (iconService != null)
+            {
+                var currentTheme = GetAppThemeFromString(GetCurrentTheme());
+                var icon = iconService.GetIcon(iconName, currentTheme, 16);
+
+                // Marshal back to UI thread to set Image property
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new System.Action(() =>
+                    {
+                        button.Image = icon;
+                        button.ImageScaling = ToolStripItemImageScaling.None;
+                    }));
+                }
+                else
+                {
+                    button.Image = icon;
+                    button.ImageScaling = ToolStripItemImageScaling.None;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to load ribbon icon '{IconName}' - non-critical", iconName);
+        }
+    }
+
+    /// <summary>
     /// Initialize Syncfusion StatusBarAdv for status information.
+    /// </summary>
+    /// <summary>
+    /// Performs initializestatusbar.
     /// </summary>
     private void InitializeStatusBar()
     {
@@ -581,7 +547,7 @@ public partial class MainForm
                 HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Center
             };
 
-            // State panel (MDI/Docking indicator)
+            // State panel (Docking indicator)
             _statePanel = new StatusBarAdvPanel
             {
                 Name = "StatePanel",
@@ -617,6 +583,9 @@ public partial class MainForm
     /// <summary>
     /// Initialize simple navigation strip for test harness mode.
     /// </summary>
+    /// <summary>
+    /// Performs initializenavigationstrip.
+    /// </summary>
     private void InitializeNavigationStrip()
     {
         try
@@ -627,8 +596,11 @@ public partial class MainForm
                 Dock = DockStyle.Top,
                 GripStyle = ToolStripGripStyle.Hidden
             };
+            // Disable item tooltips in test runs to avoid ToolTip service handle races in headless environments
+            try { _navigationStrip.ShowItemToolTips = false; } catch { }
 
             var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard" };
+            dashboardBtn.ToolTipText = string.Empty;
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -636,6 +608,7 @@ public partial class MainForm
             };
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
+            accountsBtn.ToolTipText = string.Empty;
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -650,6 +623,7 @@ public partial class MainForm
             };
 
             var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
+            chartsBtn.ToolTipText = string.Empty;
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -675,6 +649,7 @@ public partial class MainForm
             customersBtn.Click += (s, e) => { /* Customers panel not yet implemented */ };
 
             var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
+            reportsBtn.ToolTipText = string.Empty;
             // TODO: Create ReportsPanel
             reportsBtn.Click += (s, e) => { /* Reports panel not yet implemented */ };
 
@@ -693,6 +668,7 @@ public partial class MainForm
             };
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
+            settingsBtn.ToolTipText = string.Empty;
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -701,9 +677,6 @@ public partial class MainForm
 
             var dockingToggleBtn = new ToolStripButton("Docking") { Name = "Nav_DockingToggle", AccessibleName = "Nav_DockingToggle" };
             dockingToggleBtn.Click += (s, e) => ToggleDocking();
-
-            var mdiToggleBtn = new ToolStripButton("MDI") { Name = "Nav_MdiToggle", AccessibleName = "Nav_MdiToggle" };
-            mdiToggleBtn.Click += (s, e) => ToggleMdiMode();
 
             // Theme toggle removed - session-only theme switching via menu or hotkey only
 
@@ -716,7 +689,7 @@ public partial class MainForm
 
             var navGridExport = new ToolStripButton("Export Grid") { Name = "Nav_ExportGrid" };
             navGridExport.Click += async (s, e) => await ExportActiveGridToExcel();
-
+            // TODO: Manual SafeInvoke needed for:
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
                 dashboardBtn,
@@ -734,7 +707,6 @@ public partial class MainForm
                 settingsBtn,
                 new ToolStripSeparator(),
                 dockingToggleBtn,
-                mdiToggleBtn,
                 new ToolStripSeparator(),
                 navGridApplyFilter,
                 navGridClearFilter,
@@ -753,6 +725,9 @@ public partial class MainForm
 
     /// <summary>
     /// Initialize status timer to update clock panel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializestatustimer.
     /// </summary>
     private void InitializeStatusTimer()
     {
@@ -787,6 +762,9 @@ public partial class MainForm
     /// <summary>
     /// Toggle docking mode (for UI testing) - DISABLED: docking is const true
     /// </summary>
+    /// <summary>
+    /// Performs toggledocking.
+    /// </summary>
     private void ToggleDocking()
     {
         // NOTE: ToggleDockingMode() removed - _useSyncfusionDocking is const true
@@ -795,19 +773,12 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Toggle MDI mode (for UI testing) - DISABLED: MDI is const true
-    /// </summary>
-    private void ToggleMdiMode()
-    {
-        // NOTE: Cannot toggle because UseMdiMode is read-only (backed by const)
-        _logger?.LogWarning("ToggleMdiMode called but MDI mode is const true and cannot be toggled");
-        UpdateDockingStateText();
-    }
-
-    /// <summary>
     /// Initialize MenuStrip for navigation and commands.
     /// Provides a traditional menu bar with File, View, Tools, and Help menus.
     /// Enhanced with Syncfusion theming, Segoe MDL2 Assets icons, and proper renderer configuration.
+    /// </summary>
+    /// <summary>
+    /// Performs initializemenubar.
     /// </summary>
     private void InitializeMenuBar()
     {
@@ -933,7 +904,7 @@ public partial class MainForm
 
             // View > Reports
             var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) =>
-                _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Fill, allowFloating: true))
+                _panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Fill, allowFloating: true))
             {
                 Name = "Menu_View_Reports",
                 ShortcutKeys = Keys.Control | Keys.R,
@@ -1155,6 +1126,11 @@ public partial class MainForm
     /// <param name="iconText">Unicode character from Segoe MDL2 Assets font</param>
     /// <param name="size">Icon size in pixels</param>
     /// <returns>Bitmap containing the rendered icon</returns>
+    /// <summary>
+    /// Performs createiconfromtext. Parameters: iconText, size.
+    /// </summary>
+    /// <param name="iconText">The iconText.</param>
+    /// <param name="size">The size.</param>
     private Bitmap CreateIconFromText(string iconText, int size)
     {
         var bitmap = new Bitmap(size, size);
@@ -1183,6 +1159,9 @@ public partial class MainForm
     /// Get the current theme name from SkinManager.
     /// </summary>
     /// <returns>Current theme name</returns>
+    /// <summary>
+    /// Performs getcurrenttheme.
+    /// </summary>
     private string GetCurrentTheme()
     {
         return SkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
@@ -1193,6 +1172,10 @@ public partial class MainForm
     /// </summary>
     /// <param name="themeName">Theme name from SkinManager</param>
     /// <returns>Corresponding AppTheme enum value</returns>
+    /// <summary>
+    /// Performs getappthemefromstring. Parameters: themeName.
+    /// </summary>
+    /// <param name="themeName">The themeName.</param>
     private AppTheme GetAppThemeFromString(string themeName)
     {
         return themeName switch
@@ -1211,6 +1194,10 @@ public partial class MainForm
     /// Apply theme colors to menu dropdown items.
     /// </summary>
     /// <param name="menuItem">Parent menu item to theme</param>
+    /// <summary>
+    /// Performs applymenutheme. Parameters: menuItem.
+    /// </summary>
+    /// <param name="menuItem">The menuItem.</param>
     private void ApplyMenuTheme(ToolStripMenuItem menuItem)
     {
         if (menuItem?.DropDown == null)
@@ -1248,6 +1235,11 @@ public partial class MainForm
     /// Handle theme toggle - switches between Dark and Light themes (session-only, no config persistence).
     /// Can be invoked via keyboard shortcut or programmatically.
     /// </summary>
+    /// <summary>
+    /// Performs themetogglebtn click. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
     private void ThemeToggleBtn_Click(object? sender, EventArgs e)
     {
         try
@@ -1294,6 +1286,11 @@ public partial class MainForm
     /// <summary>
     /// Handle global search box keyboard events (Ctrl+F to focus, Enter to search)
     /// </summary>
+    /// <summary>
+    /// Performs searchbox keydown. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
     private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
     {
         if (sender is not ToolStripTextBox searchBox) return;
@@ -1325,10 +1322,14 @@ public partial class MainForm
     // Log output shows: "Syncfusion license registered and validated successfully"
 
     /// <summary>
-    /// Performs a global search across all open MDI child forms containing SfDataGrid controls.
+    /// Performs a global search across all docked panels containing SfDataGrid controls.
     /// Searches through DataSource properties via reflection and displays aggregated results.
     /// </summary>
     /// <param name="searchText">The text to search for (case-insensitive)</param>
+    /// <summary>
+    /// Performs performglobalsearch. Parameters: searchText.
+    /// </summary>
+    /// <param name="searchText">The searchText.</param>
     private void PerformGlobalSearch(string searchText)
     {
         if (string.IsNullOrWhiteSpace(searchText))
@@ -1343,38 +1344,9 @@ public partial class MainForm
             var results = new System.Text.StringBuilder();
             var totalMatches = 0;
 
-            // Search through all open MDI child forms
-            foreach (Form childForm in MdiChildren)
-            {
-                if (childForm == null || childForm.IsDisposed)
-                    continue;
-
-                try
-                {
-                    // Find all SfDataGrid controls recursively in the child form
-                    var grids = FindControlsOfType<Syncfusion.WinForms.DataGrid.SfDataGrid>(childForm);
-
-                    foreach (var grid in grids)
-                    {
-                        if (grid.DataSource == null)
-                            continue;
-
-                        // Search grid data via reflection
-                        var gridMatches = SearchGridData(grid, searchText);
-
-                        if (gridMatches > 0)
-                        {
-                            results.AppendLine(CultureInfo.InvariantCulture, $"{childForm.Text} - {grid.Name}: {gridMatches} match(es)");
-                            totalMatches += gridMatches;
-                        }
-                    }
-                }
-                catch (Exception gridEx)
-                {
-                    _logger?.LogWarning(gridEx, "Failed to search grid in form {FormName}", childForm.Name);
-                    // Continue searching other forms
-                }
-            }
+            // TODO: Implement global search for docked panels
+            // For now, global search is disabled in docking-only mode
+            results.AppendLine("Global search is not yet implemented for docked panels.");
 
             // Display results
             if (totalMatches > 0)
@@ -1408,7 +1380,9 @@ public partial class MainForm
         var results = new List<T>();
 
         if (parent == null)
+        {
             return results;
+        }
 
         foreach (Control control in parent.Controls)
         {
@@ -1430,6 +1404,11 @@ public partial class MainForm
     /// <param name="grid">Grid to search</param>
     /// <param name="searchText">Text to search for (case-insensitive)</param>
     /// <returns>Number of matches found</returns>
+    /// <summary>
+    /// Performs searchgriddata. Parameters: grid, searchText.
+    /// </summary>
+    /// <param name="grid">The grid.</param>
+    /// <param name="searchText">The searchText.</param>
     private int SearchGridData(Syncfusion.WinForms.DataGrid.SfDataGrid grid, string searchText)
     {
         if (grid?.DataSource == null)
@@ -1492,6 +1471,9 @@ public partial class MainForm
     /// <summary>
     /// Initialize Syncfusion DockingManager (Phase 1 Simplification: always enabled)
     /// </summary>
+    /// <summary>
+    /// Performs initializesyncfusiondocking.
+    /// </summary>
     private void InitializeSyncfusionDocking()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -1533,6 +1515,11 @@ public partial class MainForm
     /// <summary>
     /// Handle theme changes at runtime and reapply theme to all docking panels
     /// </summary>
+    /// <summary>
+    /// Performs onthemechanged. Parameters: sender, theme.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="theme">The theme.</param>
     private void OnThemeChanged(object? sender, AppTheme theme)
     {
         if (InvokeRequired)
@@ -1584,6 +1571,9 @@ public partial class MainForm
     /// <summary>
     /// Initialize the DockingManager component with proper configuration
     /// </summary>
+    /// <summary>
+    /// Performs initializedockingmanager.
+    /// </summary>
     private void InitializeDockingManager()
     {
         components ??= new Container();
@@ -1596,11 +1586,14 @@ public partial class MainForm
     /// <summary>
     /// Configure DockingManager settings and theme
     /// </summary>
+    /// <summary>
+    /// Performs configuredockingmanagersettings.
+    /// </summary>
     private void ConfigureDockingManagerSettings()
     {
         if (_dockingManager == null) return;
 
-        // Phase 1 Simplification: EnableDocumentMode permanently false (standard MDI, no TabbedMDI)
+        // Configure for docking windows (not tabbed documents)
         _dockingManager.EnableDocumentMode = false;
         _logger.LogInformation("DockingManager document mode disabled (using DockingManager for panels only)");
 
@@ -1618,6 +1611,9 @@ public partial class MainForm
     /// <summary>
     /// Create all docking panels (left, center, right)
     /// </summary>
+    /// <summary>
+    /// Performs createdockingpanels.
+    /// </summary>
     private void CreateDockingPanels()
     {
         CreateLeftDockPanel();
@@ -1628,6 +1624,11 @@ public partial class MainForm
     /// <summary>
     /// Handle docking initialization errors with fallback
     /// </summary>
+    /// <summary>
+    /// Performs handledockinginitializationerror. Parameters: ex, message.
+    /// </summary>
+    /// <param name="ex">The ex.</param>
+    /// <param name="message">The message.</param>
     private void HandleDockingInitializationError(Exception ex, string message)
     {
         _logger.LogError(ex, "{Message}: {Type} - {ExMessage}", message, ex.GetType().Name, ex.Message);
@@ -1650,6 +1651,9 @@ public partial class MainForm
     /// <summary>
     /// Show user-friendly warning message for docking failure
     /// </summary>
+    /// <summary>
+    /// Performs showdockingwarningmessage.
+    /// </summary>
     private void ShowDockingWarningMessage()
     {
         try
@@ -1669,6 +1673,9 @@ public partial class MainForm
 
     /// <summary>
     /// Create left dock panel with dashboard cards (collapsible, auto-hide enabled)
+    /// </summary>
+    /// <summary>
+    /// Performs createleftdockpanel.
     /// </summary>
     private void CreateLeftDockPanel()
     {
@@ -1694,6 +1701,9 @@ public partial class MainForm
     /// <summary>
     /// Create central document panel for main content area
     /// </summary>
+    /// <summary>
+    /// Performs createcentraldocumentpanel.
+    /// </summary>
     private void CreateCentralDocumentPanel()
     {
         if (_dockingManager == null) return;
@@ -1709,47 +1719,30 @@ public partial class MainForm
         ConfigureCentralPanelForMode();
         EnsureCentralPanelVisibility();
 
-        _logger.LogDebug("Central document panel created (standard Fill docking, MDI-compatible)");
+        _logger.LogDebug("Central document panel created (standard Fill docking)");
     }
 
     /// <summary>
-    /// Configure central panel based on current mode (MDI or standard)
+    /// Configure central panel for docking mode
+    /// </summary>
+    /// <summary>
+    /// Performs configurecentralpanelformode.
     /// </summary>
     private void ConfigureCentralPanelForMode()
     {
         if (_centralDocumentPanel == null) return;
 
-        // Phase 1 Simplification: MDI always enabled
-        var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
-        if (mdiClient != null)
-        {
-            ConfigureMdiClient(mdiClient);
-        }
-        else
-        {
-            AddCentralPanelToForm();
-        }
+        // Docking-only mode: always add central panel to form
+        AddCentralPanelToForm();
     }
 
-    /// <summary>
-    /// Configure MDI client as central document area
-    /// </summary>
-    private void ConfigureMdiClient(MdiClient mdiClient)
-    {
-        try
-        {
-            mdiClient.Dock = DockStyle.Fill;
-            mdiClient.SendToBack();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to configure MdiClient as central document area - using central panel fallback");
-            AddCentralPanelToForm();
-        }
-    }
+
 
     /// <summary>
     /// Add central panel to form with proper styling
+    /// </summary>
+    /// <summary>
+    /// Performs addcentralpaneltoform.
     /// </summary>
     private void AddCentralPanelToForm()
     {
@@ -1774,6 +1767,9 @@ public partial class MainForm
     /// <summary>
     /// Create right dock panel with activity grid (collapsible, auto-hide enabled)
     /// </summary>
+    /// <summary>
+    /// Performs createrightdockpanel.
+    /// </summary>
     private void CreateRightDockPanel()
     {
         if (_dockingManager == null) return;
@@ -1797,6 +1793,13 @@ public partial class MainForm
     /// <summary>
     /// Configure docking behavior for a panel
     /// </summary>
+    /// <summary>
+    /// Performs configurepaneldocking. Parameters: panel, style, size, label.
+    /// </summary>
+    /// <param name="panel">The panel.</param>
+    /// <param name="style">The style.</param>
+    /// <param name="size">The size.</param>
+    /// <param name="label">The label.</param>
     private void ConfigurePanelDocking(Panel panel, DockingStyle style, int size, string label)
     {
         if (_dockingManager == null) return;
@@ -1817,12 +1820,14 @@ public partial class MainForm
             // Minimum size setting is non-critical
         }
 
-        // Phase 1 Simplification: MDI always enabled for docked panels
-        _dockingManager.SetAsMDIChild(panel, true);
+        // Panel configured for docking
     }
 
     /// <summary>
     /// Create dashboard cards panel (extracted for reuse in docking)
+    /// </summary>
+    /// <summary>
+    /// Performs createdashboardcardspanel.
     /// </summary>
     private Panel CreateDashboardCardsPanel()
     {
@@ -1844,6 +1849,10 @@ public partial class MainForm
     /// <summary>
     /// Add row styles to dashboard panel
     /// </summary>
+    /// <summary>
+    /// Performs adddashboardpanelrows. Parameters: dashboardPanel.
+    /// </summary>
+    /// <param name="dashboardPanel">The dashboardPanel.</param>
     private static void AddDashboardPanelRows(TableLayoutPanel dashboardPanel)
     {
         for (int i = 0; i < 5; i++)
@@ -1855,6 +1864,10 @@ public partial class MainForm
     /// <summary>
     /// Add dashboard cards to panel
     /// </summary>
+    /// <summary>
+    /// Performs adddashboardcards. Parameters: dashboardPanel.
+    /// </summary>
+    /// <param name="dashboardPanel">The dashboardPanel.</param>
     private void AddDashboardCards(TableLayoutPanel dashboardPanel)
     {
         var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText).Panel;
@@ -1895,6 +1908,9 @@ public partial class MainForm
     /// Create activity grid panel (extracted for reuse in docking)
     /// Now loads data from ActivityLog database table for real-time activity tracking.
     /// </summary>
+    /// <summary>
+    /// Performs createactivitygridpanel.
+    /// </summary>
     private Panel CreateActivityGridPanel()
     {
         var activityPanel = new Panel
@@ -1930,8 +1946,8 @@ public partial class MainForm
 
         // Map to ActivityLog properties with flexible column sizing
         _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        // TODO: Manual SafeInvoke needed for: _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        // TODO: Manual SafeInvoke needed for: _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
         _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 80, MinimumWidth = 60 });
 
         // Load initial data from database
@@ -1944,8 +1960,8 @@ public partial class MainForm
         };
         _activityRefreshTimer.Tick += async (s, e) => await LoadActivityDataAsync();
         _activityRefreshTimer.Start();
-
-        activityPanel.Controls.Add(_activityGrid);
+        // TODO: Manual SafeInvoke needed for:
+        // TODO: Manual SafeInvoke needed for: activityPanel.Controls.Add(_activityGrid);
         activityPanel.Controls.Add(activityHeader);
 
         return activityPanel;
@@ -1987,6 +2003,9 @@ public partial class MainForm
             LoadFallbackActivityData();
         }
     }
+    /// <summary>
+    /// Performs loadfallbackactivitydata.
+    /// </summary>
 
     private void LoadFallbackActivityData()
     {
@@ -2015,6 +2034,9 @@ public partial class MainForm
     /// <summary>
     /// Hide standard panels when switching to Syncfusion docking
     /// </summary>
+    /// <summary>
+    /// Performs hidestandardpanelsfordocking.
+    /// </summary>
     private void HideStandardPanelsForDocking()
     {
         foreach (Control control in Controls)
@@ -2037,6 +2059,9 @@ public partial class MainForm
 
     /// <summary>
     /// Show standard panels if docking initialization fails
+    /// </summary>
+    /// <summary>
+    /// Performs showstandardpanelsafterdockingfailure.
     /// </summary>
     private void ShowStandardPanelsAfterDockingFailure()
     {
@@ -2063,6 +2088,9 @@ public partial class MainForm
     /// <summary>
     /// Ensure docking panels and manager are correctly ordered in the Z axis (Phase 1: always enabled)
     /// </summary>
+    /// <summary>
+    /// Performs ensuredockingzorder.
+    /// </summary>
     private void EnsureDockingZOrder()
     {
         try
@@ -2088,6 +2116,9 @@ public partial class MainForm
 
     /// <summary>
     /// Load saved docking layout from AppData
+    /// </summary>
+    /// <summary>
+    /// Performs loaddockinglayout.
     /// </summary>
     private void LoadDockingLayout()
     {
@@ -2125,6 +2156,9 @@ public partial class MainForm
 
     /// <summary>
     /// Check if docking layout should be loaded
+    /// </summary>
+    /// <summary>
+    /// Performs shouldloaddockinglayout. Handles file operations.
     /// </summary>
     private bool ShouldLoadDockingLayout()
     {
@@ -2195,6 +2229,9 @@ public partial class MainForm
     /// <summary>
     /// Log preconditions for docking layout load
     /// </summary>
+    /// <summary>
+    /// Performs logloadpreconditions.
+    /// </summary>
     private void LogLoadPreconditions()
     {
         try
@@ -2213,6 +2250,10 @@ public partial class MainForm
     /// <summary>
     /// Validate layout file exists and is not corrupt
     /// </summary>
+    /// <summary>
+    /// Performs validatelayoutfile. Handles file operations. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private bool ValidateLayoutFile(string layoutPath)
     {
         if (!File.Exists(layoutPath))
@@ -2239,6 +2280,10 @@ public partial class MainForm
     /// <summary>
     /// Validate layout version compatibility
     /// </summary>
+    /// <summary>
+    /// Performs validatelayoutversion. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private bool ValidateLayoutVersion(string layoutPath)
     {
         try
@@ -2277,6 +2322,12 @@ public partial class MainForm
     /// <summary>
     /// Handle incompatible layout version
     /// </summary>
+    /// <summary>
+    /// Performs handleincompatiblelayoutversion. Handles file operations. Parameters: layoutPath, fileVersion, currentVersion.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
+    /// <param name="fileVersion">The fileVersion.</param>
+    /// <param name="currentVersion">The currentVersion.</param>
     private void HandleIncompatibleLayoutVersion(string layoutPath, string fileVersion, string currentVersion)
     {
         try
@@ -2302,6 +2353,10 @@ public partial class MainForm
     /// <summary>
     /// Handle empty layout file
     /// </summary>
+    /// <summary>
+    /// Performs handleemptylayoutfile. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void HandleEmptyLayoutFile(string layoutPath)
     {
         _logger.LogInformation("Docking layout file {Path} is empty - resetting to default layout", layoutPath);
@@ -2322,6 +2377,10 @@ public partial class MainForm
     /// <summary>
     /// Validate XML structure of layout file
     /// </summary>
+    /// <summary>
+    /// Performs validatelayoutxml. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private bool ValidateLayoutXml(string layoutPath)
     {
         try
@@ -2341,6 +2400,11 @@ public partial class MainForm
     /// <summary>
     /// Handle corrupt layout file
     /// </summary>
+    /// <summary>
+    /// Performs handlecorruptlayoutfile. Parameters: layoutPath, xmlEx.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
+    /// <param name="xmlEx">The xmlEx.</param>
     private void HandleCorruptLayoutFile(string layoutPath, XmlException xmlEx)
     {
         _logger.LogInformation(xmlEx, "Corrupt XML layout file detected at {Path} - resetting to default layout", layoutPath);
@@ -2362,6 +2426,9 @@ public partial class MainForm
     /// <summary>
     /// Reset docking layout to default state
     /// </summary>
+    /// <summary>
+    /// Performs resettodefaultlayout.
+    /// </summary>
     private void ResetToDefaultLayout()
     {
         if (_dockingManager == null) return;
@@ -2371,8 +2438,10 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// <summary>
     /// Load and apply docking layout from file with performance monitoring and timeout
     /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void LoadAndApplyDockingLayout(string layoutPath)
     {
         if (_dockingManager == null)
@@ -2398,25 +2467,14 @@ public partial class MainForm
             {
                 LogDockStateLoad(layoutPath);
 
-                // Use Task.Run with timeout to detect slow/hung layout loads
-                var loadTask = Task.Run(() =>
+                // Synchronous load
+                if (this.InvokeRequired)
                 {
-                    if (this.InvokeRequired)
-                    {
-                        this.Invoke(() => _dockingManager?.LoadDockState(serializer));
-                    }
-                    else
-                    {
-                        _dockingManager?.LoadDockState(serializer);
-                    }
-                });
-
-                if (!loadTask.Wait(LayoutLoadTimeoutMs))
+                    this.Invoke(() => _dockingManager?.LoadDockState(serializer));
+                }
+                else
                 {
-                    stopwatch.Stop();
-                    _logger.LogError("Layout load exceeded timeout of {TimeoutMs}ms - layout is too complex or corrupted. Auto-resetting to defaults.", LayoutLoadTimeoutMs);
-                    HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
-                    return;
+                    _dockingManager?.LoadDockState(serializer);
                 }
 
                 stopwatch.Stop();
@@ -2455,6 +2513,11 @@ public partial class MainForm
     /// <summary>
     /// Handle slow or hung layout load by resetting to defaults
     /// </summary>
+    /// <summary>
+    /// Performs handleslowlayoutload. Parameters: layoutPath, elapsedMs.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
+    /// <param name="elapsedMs">The elapsedMs.</param>
     private void HandleSlowLayoutLoad(string layoutPath, long elapsedMs)
     {
         try
@@ -2528,6 +2591,10 @@ public partial class MainForm
     /// <summary>
     /// Log dock state load operation
     /// </summary>
+    /// <summary>
+    /// Performs logdockstateload. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void LogDockStateLoad(string layoutPath)
     {
         _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
@@ -2537,6 +2604,12 @@ public partial class MainForm
     /// <summary>
     /// Handle errors during dock state load
     /// </summary>
+    /// <summary>
+    /// Performs handledockstateloaderror. Parameters: layoutPath, ex, message.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
+    /// <param name="ex">The ex.</param>
+    /// <param name="message">The message.</param>
     private void HandleDockStateLoadError(string layoutPath, Exception ex, string message)
     {
         _logger.LogWarning(ex, "{Message} - resetting to default layout ({Path})", message, layoutPath);
@@ -2567,6 +2640,10 @@ public partial class MainForm
     /// <summary>
     /// Recreate dynamic panels from metadata
     /// </summary>
+    /// <summary>
+    /// Performs recreatedynamicpanels. Parameters: panelInfos.
+    /// </summary>
+    /// <param name="panelInfos">The panelInfos.</param>
     private void RecreateDynamicPanels(List<DynamicPanelInfo> panelInfos)
     {
         foreach (var panelInfo in panelInfos)
@@ -2587,6 +2664,10 @@ public partial class MainForm
     /// Create a dynamic panel based on saved metadata
     /// </summary>
     /// <param name="panelInfo">Information about the panel to recreate</param>
+    /// <summary>
+    /// Performs recreatedynamicpanel. Parameters: panelInfo.
+    /// </summary>
+    /// <param name="panelInfo">The panelInfo.</param>
     private void RecreateDynamicPanel(DynamicPanelInfo panelInfo)
     {
         if (_dynamicDockPanels == null || _dockingManager == null)
@@ -2652,11 +2733,54 @@ public partial class MainForm
     /// </summary>
     private sealed class DynamicPanelInfo
     {
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the type.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the type.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the type.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the type.
+        /// </summary>
         public string Type { get; set; } = "System.Windows.Forms.Panel";
         public string? DockLabel { get; set; }
+        /// <summary>
+        /// Gets or sets the isautohide.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the isautohide.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the isautohide.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the isautohide.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the isautohide.
+        /// </summary>
         public bool IsAutoHide { get; set; }
     }
+    /// <summary>
+    /// Performs trydeletelayoutfiles. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
 
     private static void TryDeleteLayoutFiles(string? layoutPath)
     {
@@ -2684,6 +2808,9 @@ public partial class MainForm
     /// <summary>
     /// Returns the path to the docking layout file under AppData\WileyWidget.
     /// </summary>
+    /// <summary>
+    /// Performs getdockinglayoutpath. Handles file operations.
+    /// </summary>
     private static string GetDockingLayoutPath()
     {
         try
@@ -2703,6 +2830,10 @@ public partial class MainForm
     /// <summary>
     /// Inject layout version into saved XML file
     /// </summary>
+    /// <summary>
+    /// Performs injectlayoutversion. Handles file operations. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void InjectLayoutVersion(string layoutPath)
     {
         try
@@ -2729,6 +2860,16 @@ public partial class MainForm
             // Non-critical - version will be missing but load will still work (older version)
         }
     }
+    /// <summary>
+    /// Performs replacedockinglayoutfile. Parameters: tempPath, finalPath.
+    /// </summary>
+    /// <param name="tempPath">The tempPath.</param>
+    /// <param name="finalPath">The finalPath.</param>
+    /// <summary>
+    /// Performs replacedockinglayoutfile. Parameters: tempPath, finalPath.
+    /// </summary>
+    /// <param name="tempPath">The tempPath.</param>
+    /// <param name="finalPath">The finalPath.</param>
 
     private void ReplaceDockingLayoutFile(string tempPath, string finalPath)
     {
@@ -2765,6 +2906,14 @@ public partial class MainForm
             TryCleanupTempFile(tempPath);
         }
     }
+    /// <summary>
+    /// Performs trycleanuptempfile. Handles file operations. Parameters: tempPath.
+    /// </summary>
+    /// <param name="tempPath">The tempPath.</param>
+    /// <summary>
+    /// Performs trycleanuptempfile. Handles file operations. Parameters: tempPath.
+    /// </summary>
+    /// <param name="tempPath">The tempPath.</param>
 
     private static void TryCleanupTempFile(string tempPath)
     {
@@ -2784,6 +2933,9 @@ public partial class MainForm
 
     /// <summary>
     /// Apply Syncfusion theme to docked panels using SkinManager (single authority).
+    /// </summary>
+    /// <summary>
+    /// Performs applythemetodockingpanels.
     /// </summary>
     private void ApplyThemeToDockingPanels()
     {
@@ -2808,6 +2960,14 @@ public partial class MainForm
             // Theme application failure is non-critical - defaults will be used
         }
     }
+    /// <summary>
+    /// Performs applypaneltheme. Parameters: panel.
+    /// </summary>
+    /// <param name="panel">The panel.</param>
+    /// <summary>
+    /// Performs applypaneltheme. Parameters: panel.
+    /// </summary>
+    /// <param name="panel">The panel.</param>
 
     private static void ApplyPanelTheme(Control? panel)
     {
@@ -2822,6 +2982,10 @@ public partial class MainForm
     /// Helper: invoke an action on the UI thread and return a Task that completes when the action finishes.
     /// This provides an awaitable wrapper over BeginInvoke with a threadpool fallback.
     /// </summary>
+    /// <summary>
+    /// Performs safeinvoke. Parameters: action.
+    /// </summary>
+    /// <param name="action">The action.</param>
     private Task SafeInvokeAsync(System.Action action)
     {
         if (action == null) throw new ArgumentNullException(nameof(action));
@@ -2889,6 +3053,16 @@ public partial class MainForm
     }
 
     #region Docking Event Handlers
+    /// <summary>
+    /// Performs dockingmanager dockstatechanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs dockingmanager dockstatechanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
     {
@@ -2911,6 +3085,9 @@ public partial class MainForm
     /// Prevents I/O spam during rapid docking operations (e.g., dragging, resizing)
     /// Enforces minimum 2-second interval between saves and prevents concurrent saves
     /// </summary>
+    /// <summary>
+    /// Performs debouncedsavedockinglayout.
+    /// </summary>
     private void DebouncedSaveDockingLayout()
     {
         try
@@ -2922,6 +3099,13 @@ public partial class MainForm
         {
             // Logging failure is non-critical
             System.Diagnostics.Debug.WriteLine($"Failed to log debounce info: {ex.Message}");
+        }
+
+        // If shutdown is in progress, skip saving
+        if (_shutdownCts?.IsCancellationRequested == true)
+        {
+            _logger?.LogDebug("Skipping debounced save - shutdown in progress");
+            return;
         }
 
         if (_isSavingLayout)
@@ -2952,6 +3136,11 @@ public partial class MainForm
     /// <summary>
     /// Timer tick handler - performs actual save after debounce period
     /// </summary>
+    /// <summary>
+    /// Performs onsavetimertick. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
     private void OnSaveTimerTick(object? sender, EventArgs e)
     {
         _dockingLayoutSaveTimer?.Stop();
@@ -2981,8 +3170,18 @@ public partial class MainForm
     /// Thread-safe and idempotent; marshals to UI thread if called from background threads.
     /// Uses a temp-file replace strategy to avoid partial writes.
     /// </summary>
+    /// <summary>
+    /// Performs savedockinglayout.
+    /// </summary>
     private void SaveDockingLayout()
     {
+        // If shutdown is in progress, abort saving
+        if (_shutdownCts?.IsCancellationRequested == true)
+        {
+            _logger?.LogDebug("SaveDockingLayout aborted due to shutdown");
+            return;
+        }
+
         // Marshal to UI thread if necessary
         if (InvokeRequired)
         {
@@ -3054,6 +3253,10 @@ public partial class MainForm
     /// <summary>
     /// Save dynamic panels metadata alongside the docking layout
     /// </summary>
+    /// <summary>
+    /// Performs savedynamicpanels. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void SaveDynamicPanels(string layoutPath)
     {
         if (_dynamicDockPanels == null || _dynamicDockPanels.Count == 0)
@@ -3112,6 +3315,10 @@ public partial class MainForm
     /// <summary>
     /// Load and restore dynamic panels from saved metadata
     /// </summary>
+    /// <summary>
+    /// Performs loaddynamicpanels. Handles file operations. Parameters: layoutPath.
+    /// </summary>
+    /// <param name="layoutPath">The layoutPath.</param>
     private void LoadDynamicPanels(string layoutPath)
     {
         var panelsPath = layoutPath + ".panels";
@@ -3159,6 +3366,14 @@ public partial class MainForm
     /// <summary>
     /// Restore a single dynamic panel from saved metadata
     /// </summary>
+    /// <summary>
+    /// Performs restoredynamicpanel. Parameters: name, typeName, isVisible, dockStyleStr, allowFloating.
+    /// </summary>
+    /// <param name="name">The name.</param>
+    /// <param name="typeName">The typeName.</param>
+    /// <param name="isVisible">The isVisible.</param>
+    /// <param name="dockStyleStr">The dockStyleStr.</param>
+    /// <param name="allowFloating">The allowFloating.</param>
     private void RestoreDynamicPanel(string name, string typeName, bool isVisible, string? dockStyleStr, bool allowFloating)
     {
         try
@@ -3200,11 +3415,31 @@ public partial class MainForm
             _logger.LogWarning(ex, "Failed to restore dynamic panel {PanelName}: {TypeName}", name, typeName);
         }
     }
+    /// <summary>
+    /// Performs dockingmanager dockcontrolactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs dockingmanager dockcontrolactivated. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void DockingManager_DockControlActivated(object? sender, DockActivationChangedEventArgs e)
     {
         _logger.LogDebug("Dock control activated: {Control}", e.Control.Name);
     }
+    /// <summary>
+    /// Performs dockingmanager dockvisibilitychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs dockingmanager dockvisibilitychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
     {
@@ -3218,13 +3453,15 @@ public partial class MainForm
     /// <summary>
     /// Ensures proper visibility and z-order of central panels (Phase 1: always docked)
     /// </summary>
+    /// <summary>
+    /// Performs ensurecentralpanelvisibility.
+    /// </summary>
     private void EnsureCentralPanelVisibility()
     {
         // Phase 1 Simplification: Docking always enabled
         try
         {
             EnsureCentralPanelVisible();
-            EnsureMdiClientVisible();
             EnsureSidePanelsZOrder();
             RefreshFormLayout();
 
@@ -3239,6 +3476,9 @@ public partial class MainForm
 
     /// <summary>
     /// Ensure central document panel is visible
+    /// </summary>
+    /// <summary>
+    /// Performs ensurecentralpanelvisible.
     /// </summary>
     private void EnsureCentralPanelVisible()
     {
@@ -3257,32 +3497,13 @@ public partial class MainForm
         }
     }
 
-    /// <summary>
-    /// Ensure MDI client is visible (Phase 1: MDI always enabled)
-    /// </summary>
-    private void EnsureMdiClientVisible()
-    {
-        // Phase 1 Simplification: MDI always enabled
-        var mdiClient = this.Controls.OfType<MdiClient>().FirstOrDefault();
-        if (mdiClient == null) return;
 
-        try
-        {
-            mdiClient.Visible = true;
-            mdiClient.SendToBack();
-            mdiClient.Invalidate();
-
-            // NOTE: RefreshTabbedMdiManager() removed - TabbedMDI permanently disabled
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to set MDI client visibility");
-            // MDI client visibility failure is non-critical
-        }
-    }
 
     /// <summary>
     /// Ensure side panels are behind central content
+    /// </summary>
+    /// <summary>
+    /// Performs ensuresidepanelszorder.
     /// </summary>
     private void EnsureSidePanelsZOrder()
     {
@@ -3316,27 +3537,16 @@ public partial class MainForm
     /// <summary>
     /// Refresh form layout (Phase 1 Simplification)
     /// </summary>
+    /// <summary>
+    /// Performs refreshformlayout.
+    /// </summary>
     private void RefreshFormLayout()
     {
         if (_dockingManager == null) return;
 
         this.Refresh();
 
-        // Phase 1 Simplification: MDI always enabled
-        if (_centralDocumentPanel != null)
-        {
-            try
-            {
-                _dockingManager.SetAsMDIChild(_centralDocumentPanel, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to reassert MDI child status for central panel");
-                // MDI child status reassertion failure is non-critical
-            }
-        }
-
-        this.Invalidate();
+        // Central document panel configured for docking
     }
 
     // Phase 1 Simplification: EnsureNonDockingVisibility removed - docking always enabled
@@ -3356,6 +3566,42 @@ public partial class MainForm
     /// <param name="width">Panel width (for Left/Right docking)</param>
     /// <param name="height">Panel height (for Top/Bottom docking)</param>
     /// <returns>True if panel was added successfully, false if panel already exists or docking is disabled</returns>
+    /// <summary>
+    /// Performs adddynamicdockpanel. Parameters: panelName, displayLabel, content, DockingStyle.Right, 200, 150.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <param name="displayLabel">The displayLabel.</param>
+    /// <param name="content">The content.</param>
+    /// <param name="DockingStyle.Right">The DockingStyle.Right.</param>
+    /// <param name="200">The 200.</param>
+    /// <param name="150">The 150.</param>
+    /// <summary>
+    /// Performs adddynamicdockpanel. Parameters: panelName, displayLabel, content, DockingStyle.Right, 200, 150.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <param name="displayLabel">The displayLabel.</param>
+    /// <param name="content">The content.</param>
+    /// <param name="DockingStyle.Right">The DockingStyle.Right.</param>
+    /// <param name="200">The 200.</param>
+    /// <param name="150">The 150.</param>
+    /// <summary>
+    /// Performs adddynamicdockpanel. Parameters: panelName, displayLabel, content, DockingStyle.Right, 200, 150.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <param name="displayLabel">The displayLabel.</param>
+    /// <param name="content">The content.</param>
+    /// <param name="DockingStyle.Right">The DockingStyle.Right.</param>
+    /// <param name="200">The 200.</param>
+    /// <param name="150">The 150.</param>
+    /// <summary>
+    /// Performs adddynamicdockpanel. Parameters: panelName, displayLabel, content, DockingStyle.Right, 200, 150.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <param name="displayLabel">The displayLabel.</param>
+    /// <param name="content">The content.</param>
+    /// <param name="DockingStyle.Right">The DockingStyle.Right.</param>
+    /// <param name="200">The 200.</param>
+    /// <param name="150">The 150.</param>
     public bool AddDynamicDockPanel(string panelName, string displayLabel, Control content,
         DockingStyle dockStyle = DockingStyle.Right, int width = 200, int height = 150)
     {
@@ -3437,6 +3683,22 @@ public partial class MainForm
     /// </summary>
     /// <param name="panelName">Name of the panel to remove</param>
     /// <returns>True if panel was removed, false if panel doesn't exist</returns>
+    /// <summary>
+    /// Performs removedynamicdockpanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs removedynamicdockpanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs removedynamicdockpanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs removedynamicdockpanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
     public bool RemoveDynamicDockPanel(string panelName)
     {
         if (_dynamicDockPanels == null || !_dynamicDockPanels.ContainsKey(panelName))
@@ -3497,6 +3759,11 @@ public partial class MainForm
     /// <summary>
     /// Helper method to set floating mode with error handling
     /// </summary>
+    /// <summary>
+    /// Performs trysetfloatingmode. Parameters: panel, allowFloating.
+    /// </summary>
+    /// <param name="panel">The panel.</param>
+    /// <param name="allowFloating">The allowFloating.</param>
     private void TrySetFloatingMode(Panel panel, bool allowFloating)
     {
         try
@@ -3523,6 +3790,9 @@ public partial class MainForm
     /// actual disposal work asynchronously (UI-thread or threadpool).
     /// This prevents double-dispose from a container and avoids Syncfusion
     /// NullReferenceExceptions during concurrent teardown.
+    /// </summary>
+    /// <summary>
+    /// Performs disposesyncfusiondockingresources.
     /// </summary>
     private void DisposeSyncfusionDockingResources()
     {
@@ -3744,6 +4014,16 @@ public partial class MainForm
 
         return (panel, descriptionLabel);
     }
+    /// <summary>
+    /// Performs setupcardclickhandler. Parameters: card, onClick.
+    /// </summary>
+    /// <param name="card">The card.</param>
+    /// <param name="onClick">The onClick.</param>
+    /// <summary>
+    /// Performs setupcardclickhandler. Parameters: card, onClick.
+    /// </summary>
+    /// <param name="card">The card.</param>
+    /// <param name="onClick">The onClick.</param>
 
 
 
@@ -3765,6 +4045,12 @@ public partial class MainForm
     // REMOVED: ShowChildForm<TForm, TViewModel>() - Legacy Form factory pattern deleted
     // All navigation now uses IPanelNavigationService.ShowPanel<TPanel>() for panel-based docking
     // QuickBooksForm and ChatWindow replaced by QuickBooksPanel and ChatPanel
+    /// <summary>
+    /// Performs updatedockingstatetext.
+    /// </summary>
+    /// <summary>
+    /// Performs updatedockingstatetext.
+    /// </summary>
 
     private void UpdateDockingStateText()
     {
@@ -3781,18 +4067,10 @@ public partial class MainForm
 
             var stateInfo = new System.Text.StringBuilder();
 
-            if (_uiConfig.UseMdiMode)
-            {
-                var childCount = MdiChildren?.Length ?? 0;
-                stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"MDI: {childCount} window{(childCount != 1 ? "s" : "")}");
-            }
-            else
-            {
-                // Non-MDI mode - count via DockingManager panels (cast to ControlCollection for Count)
-                var controls = _dockingManager?.Controls as Control.ControlCollection;
-                var childCount = controls?.Count ?? 0;
-                stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"Panels: {childCount} panel{(childCount != 1 ? "s" : "")}");
-            }
+            // Docking mode - count via DockingManager panels (cast to ControlCollection for Count)
+            var controls = _dockingManager?.Controls as Control.ControlCollection;
+            var childCount = controls?.Count ?? 0;
+            stateInfo.Append(System.Globalization.CultureInfo.InvariantCulture, $"Panels: {childCount} panel{(childCount != 1 ? "s" : "")}");
 
             _statePanel.Text = stateInfo.ToString();
             _logger?.LogTrace("Status state updated: {State}", _statePanel.Text);
@@ -3803,404 +4081,56 @@ public partial class MainForm
         }
     }
 
-    #endregion
-
-    #region MDI
-
-    // Phase 1 Simplification: ShowNonMdiChildForm removed - MDI mode permanently enabled
-
-    [DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public bool UseMdiMode => _uiConfig.UseMdiMode;
-
-    private void InitializeMdiSupport()
-    {
-        try
-        {
-            if (_uiConfig.UseMdiMode)
-            {
-                _logger.LogInformation("Initializing standard MDI container mode");
-                ApplyMdiMode();
-            }
-            else
-            {
-                _logger.LogInformation("MDI mode disabled in configuration - skipping MDI initialization");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to initialize MDI support. Note: _useMdiMode and _useTabbedMdi are const and cannot be changed.");
-
-            // NOTE: Cannot actually fall back to modal dialogs because _useMdiMode is const true.
-            // User-friendly error: Show message and let the error propagate
-            try
-            {
-                MessageBox.Show(
-                    "MDI initialization failed. Please check the error log for details.",
-                    "MDI Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-            catch (Exception msgEx)
-            {
-                _logger.LogError(msgEx, "Failed to show MDI error message");
-            }
-
-            // Re-throw since we can't actually fall back
-            throw;
-        }
-    }
-
-    private void ApplyMdiMode()
-    {
-        // Phase 1 Simplification: Standard MDI only
-        if (!IsMdiContainer)
-        {
-            _logger.LogWarning("ApplyMdiMode called but IsMdiContainer is false. MDI mode may not be properly configured.");
-            return;
-        }
-
-        // Customize the MDI client area background color (theme-aware)
-        SetMdiClientBackColor(SystemColors.Control);  // Standard system background
-
-        // REMOVED: AddMdiWindowMenu() - Window menu with MDI management commands not needed for panels
-
-        _logger.LogInformation("Standard MDI container mode enabled");
-    }
-
-    private void SetMdiClientBackColor(Color color)
-    {
-        // Note: MDI client BackColor is now managed by SkinManager theme cascade
-        // This method retained for compatibility but performs no operation
-        _logger.LogDebug("SetMdiClientBackColor called - theme managed by SkinManager");
-    }
-
-    // REMOVED: AddMdiWindowMenu() - Window menu with MDI management (Cascade, Tile, CloseAll)
-    // Panels architecture doesn't require window arrangement commands
-
-    // REMOVED: CloseAllMdiChildren() - MDI child management replaced by PanelNavigationService
-    // Panels are managed by DockingManager, not MDI children collection
-
-    private void ShowChildFormMdi<TForm, TViewModel>(bool allowMultiple = false)
-        where TForm : Form
-        where TViewModel : class
-    {
-        try
-        {
-            _logger.LogInformation("Showing child form {FormType} (MDI mode: {MdiMode}, AllowMultiple: {AllowMultiple})",
-                typeof(TForm).Name, _uiConfig.UseMdiMode, allowMultiple);
-
-            if (!IsMdiContainer)
-            {
-                IsMdiContainer = true;
-            }
-
-            // In MDI mode, check if we should reuse an existing window
-            if (!allowMultiple)
-            {
-                var existingForm = MdiChildren.OfType<TForm>().FirstOrDefault();
-                if (existingForm != null && !existingForm.IsDisposed)
-                {
-                    try
-                    {
-                        existingForm.BringToFront();
-                        existingForm.Activate();
-                    }
-                    catch { }
-                    _logger.LogDebug("Activated existing MDI child {FormType}", typeof(TForm).Name);
-                    return;
-                }
-            }
-
-            // Create a new scope to get fresh DbContext + ViewModels for each child window
-            var scope = _serviceProvider.CreateScope();
-            // LEGACY: Direct form instantiation - all forms should be converted to panels and use _panelNavigator
-            var form = ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
-
-            // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
-            // try
-            // {
-            //     AppThemeColors.ApplyTheme(form);
-            //     _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
-            // }
-            // catch (Exception ex)
-            // {
-            //     _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
-            // }
-
-            // Ensure DockingManager is configured for standard MDI (Phase 1 Simplification)
-            RegisterMdiChildWithDocking(form);
-
-            try
-            {
-                // Phase 1 Simplification: Standard MDI pattern (no TabbedMDI)
-                // Use form.MdiParent = this; form.Show() for standard MDI containers
-
-                if (!form.IsMdiChild)
-                {
-                    form.MdiParent = this;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to set MdiParent for {FormType}, attempting recovery", typeof(TForm).Name);
-                // Recovery: ensure form is at least shown as owned window
-                try
-                {
-                    form.Owner = this;
-                }
-                catch (Exception recoverEx)
-                {
-                    _logger.LogError(recoverEx, "Failed to recover from MdiParent assignment failure for {FormType}", typeof(TForm).Name);
-                }
-            }
-
-            // Handle form closing to clean up scope and tracking
-            form.FormClosed += (s, e) =>
-            {
-                try
-                {
-                    scope.Dispose();
-                    _logger.LogDebug("MDI child {FormType} closed and cleaned up", typeof(TForm).Name);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error cleaning up MDI child {FormType}", typeof(TForm).Name);
-                }
-            };
-
-            // REMOVED: Track the form in _activeMdiChildren dictionary - no longer needed
-
-            // Show the form (non-modal, as MDI child)
-            form.Show();
-
-            _logger.LogInformation("MDI child form {FormType} shown", typeof(TForm).Name);
-        }
-        catch (OperationCanceledException oce)
-        {
-            _logger.LogDebug(oce, "Showing child form {FormType} was canceled", typeof(TForm).Name);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
-            throw;
-        }
-    }
-
-    private void ShowChildFormNonMdi<TForm, TViewModel>(bool allowMultiple = false)
-        where TForm : Form
-        where TViewModel : class
-    {
-        try
-        {
-            _logger.LogInformation("Showing child form {FormType} (non-MDI mode, AllowMultiple: {AllowMultiple})",
-                typeof(TForm).Name, allowMultiple);
-
-            // In non-MDI mode, check if we should reuse an existing window
-            // REMOVED: _activeMdiChildren tracking - use Application.OpenForms instead
-            if (!allowMultiple)
-            {
-                var existingForm = Application.OpenForms.OfType<TForm>().FirstOrDefault();
-                if (existingForm != null && !existingForm.IsDisposed)
-                {
-                    try
-                    {
-                        existingForm.BringToFront();
-                        existingForm.Activate();
-                    }
-                    catch { }
-                    _logger.LogDebug("Activated existing non-MDI child {FormType}", typeof(TForm).Name);
-                    return;
-                }
-            }
-
-            // Create a new scope to get fresh DbContext + ViewModels for each child window
-            var scope = _serviceProvider.CreateScope();
-            // LEGACY: Direct form instantiation - all forms should be converted to panels and use _panelNavigator
-            var form = ActivatorUtilities.CreateInstance<TForm>(scope.ServiceProvider);
-
-            // REMOVED: Manual theme application - SkinManager owns all theming, theme cascades automatically
-            // try
-            // {
-            //     AppThemeColors.ApplyTheme(form);
-            //     _logger.LogDebug("Theme applied to child form {FormType}", typeof(TForm).Name);
-            // }
-            // catch (Exception ex)
-            // {
-            //     _logger.LogDebug(ex, "Failed to apply theme to child form {FormType}", typeof(TForm).Name);
-            // }
-
-            // Handle form closing to clean up scope and tracking
-            form.FormClosed += (s, e) =>
-            {
-                try
-                {
-                    scope.Dispose();
-                    _logger.LogDebug("Non-MDI child {FormType} closed and cleaned up", typeof(TForm).Name);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error cleaning up non-MDI child {FormType}", typeof(TForm).Name);
-                }
-            };
-
-            // REMOVED: Track the form in _activeMdiChildren dictionary - no longer needed
-
-            // Show the form as a separate window (non-modal)
-            form.Show();
-
-            _logger.LogInformation("Non-MDI child form {FormType} shown", typeof(TForm).Name);
-        }
-        catch (OperationCanceledException oce)
-        {
-            _logger.LogDebug(oce, "Showing child form {FormType} was canceled", typeof(TForm).Name);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to show child form {FormType}", typeof(TForm).Name);
-            throw;
-        }
-    }
-
-    internal void RegisterMdiChildWithDocking(Form child)
-    {
-        if (child == null)
-        {
-            return;
-        }
-
-        if (_dockingManager == null || !_uiConfig.UseSyncfusionDocking)
-        {
-            return;
-        }
-
-        // Phase 1 Simplification: Standard MDI with docking (no TabbedMDI)
-        // DockingManager handles dockable panels; Forms use standard MDI pattern
-        if (_uiConfig.UseTabbedMdi) { _dockingManager.EnableDocumentMode = false; }
-
-        // Ensure MDI child Forms are not treated as dockable windows.
-        try
-        {
-            // _dockingManager is guaranteed non-null here (guarded above); call directly to avoid dead code.
-            _dockingManager.SetEnableDocking(child, false);
-        }
-        catch
-        {
-            // Some Syncfusion builds may throw when calling SetEnableDocking on top-level Forms.
-        }
-    }
-
-    public void RegisterAsDockingMDIChild(Form child, bool enabled)
-    {
-        // Delegate to the actual implementation (enabled parameter is ignored)
-        RegisterMdiChildWithDocking(child);
-    }
-
-    public void CloseSettingsPanel()
-    {
-        // Legacy method - SettingsForm replaced by SettingsPanel
-        // TODO: Implement HidePanel method in IPanelNavigationService if panel hiding is needed
-        // _panelNavigator?.HidePanel("Settings");
-    }
-
+    /// <summary>
+    /// Closes a docked panel by name using PanelNavigationService.
+    /// </summary>
+    /// <param name="panelName">Name of the panel to close.</param>
+    /// <summary>
+    /// Performs closepanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs closepanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs closepanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
+    /// <summary>
+    /// Performs closepanel. Parameters: panelName.
+    /// </summary>
+    /// <param name="panelName">The panelName.</param>
     public void ClosePanel(string panelName)
     {
-        // Find and close child form or panel by name using LINQ
-        var matchingForm = this.MdiChildren.FirstOrDefault(f =>
-            f.Text.Contains(panelName, StringComparison.OrdinalIgnoreCase));
-
-        matchingForm?.Close();
-    }
-
-    // DELETED: CreateFormInstance<TForm, TViewModel> - All forms converted to UserControl panels
-    // Navigation now uses: _panelNavigator.ShowPanel<PanelType>("Name", DockingStyle, allowFloating)
-    // Remaining legacy forms (QuickBooksForm, ChatWindow) replaced by QuickBooksPanel and ChatPanel
-
-    // DELETED: GetMdiChildrenOfType<TForm>() - Panels managed by DockingManager, not MDI children
-
-    // DELETED: ActivateMdiChildOfType<TForm>() - Use DockingManager to activate panels instead
-
-    private void DisposeMdiResources()
-    {
-        try
+        if (_panelNavigator != null)
         {
-            // Phase 1 Simplification: TabbedMDIManager permanently removed - no disposal needed
-
-            // Close all MDI children before disposal
-            if (_uiConfig.UseMdiMode && MdiChildren.Length > 0)
-            {
-                // Close MDI children directly without CloseAllMdiChildren method
-                foreach (var child in MdiChildren.ToArray())
-                {
-                    try { child.Close(); } catch { }
-                }
-            }
-            // REMOVED: _activeMdiChildren.Clear() - dictionary no longer exists
+            _panelNavigator.HidePanel(panelName);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogWarning(ex, "Error disposing MDI resources");
+            _logger?.LogWarning("Cannot close panel '{PanelName}' - PanelNavigationService not available", panelName);
         }
     }
 
-    private void HandleMdiKeyboardShortcuts(KeyEventArgs e)
+    /// <summary>
+    /// Closes the settings panel (legacy method for compatibility).
+    /// </summary>
+    /// <summary>
+    /// Performs closesettingspanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closesettingspanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closesettingspanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closesettingspanel.
+    /// </summary>
+    public void CloseSettingsPanel()
     {
-        if (!_uiConfig.UseMdiMode) return;
-
-        if (InvokeRequired)
-        {
-            BeginInvoke(new Action<KeyEventArgs>(HandleMdiKeyboardShortcuts), e);
-            return;
-        }
-
-        if (e.Control && e.KeyCode == Keys.Tab && !e.Shift)
-        {
-            ActivateNextMdiChild();
-            e.Handled = true;
-        }
-        else if (e.Control && e.Shift && e.KeyCode == Keys.Tab)
-        {
-            ActivatePreviousMdiChild();
-            e.Handled = true;
-        }
-        else if (e.Control && e.KeyCode == Keys.F4)
-        {
-            ActiveMdiChild?.Close();
-            e.Handled = true;
-        }
-    }
-
-    private void ActivateNextMdiChild()
-    {
-        var children = MdiChildren;
-        if (children.Length <= 1) return;
-
-        var activeChild = ActiveMdiChild;
-        if (activeChild == null)
-        {
-            children[0].Activate();
-            return;
-        }
-
-        var currentIndex = Array.IndexOf(children, activeChild);
-        var nextIndex = (currentIndex + 1) % children.Length;
-        children[nextIndex].Activate();
-    }
-
-    private void ActivatePreviousMdiChild()
-    {
-        var children = MdiChildren;
-        if (children.Length <= 1) return;
-
-        var activeChild = ActiveMdiChild;
-        if (activeChild == null)
-        {
-            children[children.Length - 1].Activate();
-            return;
-        }
-
-        var currentIndex = Array.IndexOf(children, activeChild);
-        var previousIndex = currentIndex == 0 ? children.Length - 1 : currentIndex - 1;
-        children[previousIndex].Activate();
+        ClosePanel("Settings");
     }
 
     #endregion

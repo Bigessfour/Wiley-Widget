@@ -11,6 +11,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents the overall municipal budget summary
 /// </summary>
+/// <summary>
+/// Represents a class for overallbudget.
+/// </summary>
 public class OverallBudget : INotifyPropertyChanged, IValidatableObject
 {
     /// <summary>
@@ -42,12 +45,18 @@ public class OverallBudget : INotifyPropertyChanged, IValidatableObject
     /// Unique identifier for the budget snapshot
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
     /// Date this budget snapshot was created
     /// </summary>
     [Required(ErrorMessage = "Snapshot date is required")]
+    /// <summary>
+    /// Gets or sets the snapshotdate.
+    /// </summary>
     public DateTime SnapshotDate { get; set; } = DateTime.MinValue;
 
     private decimal _totalMonthlyRevenue;
@@ -173,6 +182,9 @@ public class OverallBudget : INotifyPropertyChanged, IValidatableObject
     /// Whether this is the current active budget snapshot
     /// </summary>
     [Required(ErrorMessage = "IsCurrent flag is required")]
+    /// <summary>
+    /// Gets or sets the iscurrent.
+    /// </summary>
     public bool IsCurrent { get; set; } = false;
 
     /// <summary>

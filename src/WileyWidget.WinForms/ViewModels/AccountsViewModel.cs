@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
@@ -16,13 +17,28 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class AccountsViewModel : ObservableRecipient
     {
         private readonly ILogger<AccountsViewModel> _logger;
+        /// <summary>
+        /// Represents the _accountsrepository.
+        /// </summary>
+        /// <summary>
+        /// Represents the _accountsrepository.
+        /// </summary>
         private readonly IAccountsRepository _accountsRepository;
+        /// <summary>
+        /// Represents the _municipalaccountrepository.
+        /// </summary>
         private readonly IMunicipalAccountRepository _municipalAccountRepository;
 
         [ObservableProperty]
         private string title = "Municipal Accounts";
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -53,9 +69,18 @@ namespace WileyWidget.WinForms.ViewModels
         });
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbalance.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbalance.
+        /// </summary>
         private decimal totalBalance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the activeaccountcount.
+        /// </summary>
         private int activeAccountCount;
 
         public AccountsViewModel(
@@ -63,14 +88,44 @@ namespace WileyWidget.WinForms.ViewModels
             IAccountsRepository accountsRepository,
             IMunicipalAccountRepository municipalAccountRepository)
         {
-            _logger = logger;
-            _accountsRepository = accountsRepository;
-            _municipalAccountRepository = municipalAccountRepository;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _accountsRepository = accountsRepository ?? throw new ArgumentNullException(nameof(accountsRepository));
+            _municipalAccountRepository = municipalAccountRepository ?? throw new ArgumentNullException(nameof(municipalAccountRepository));
+
             LoadAccountsCommand = new AsyncRelayCommand(LoadAccountsAsync);
             FilterAccountsCommand = new AsyncRelayCommand(FilterAccountsAsync);
         }
+        /// <summary>
+        /// Gets or sets the loadaccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadaccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadaccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadaccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadaccountscommand.
+        /// </summary>
+
+
 
         public IAsyncRelayCommand LoadAccountsCommand { get; }
+        /// <summary>
+        /// Gets or sets the filteraccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the filteraccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the filteraccountscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the filteraccountscommand.
+        /// </summary>
         public IAsyncRelayCommand FilterAccountsCommand { get; }
 
         public async Task<List<Department>> GetDepartmentsAsync()
@@ -95,21 +150,21 @@ namespace WileyWidget.WinForms.ViewModels
                 // Apply filters if selected
                 if (SelectedFund.HasValue && SelectedAccountType.HasValue)
                 {
-                    accountsList = await _accountsRepository.GetAccountsByFundAndTypeAsync(
+                    accountsList = await _accountsRepository!.GetAccountsByFundAndTypeAsync(
                         SelectedFund.Value,
                         SelectedAccountType.Value);
                 }
                 else if (SelectedFund.HasValue)
                 {
-                    accountsList = await _accountsRepository.GetAccountsByFundAsync(SelectedFund.Value);
+                    accountsList = await _accountsRepository!.GetAccountsByFundAsync(SelectedFund.Value);
                 }
                 else if (SelectedAccountType.HasValue)
                 {
-                    accountsList = await _accountsRepository.GetAccountsByTypeAsync(SelectedAccountType.Value);
+                    accountsList = await _accountsRepository!.GetAccountsByTypeAsync(SelectedAccountType.Value);
                 }
                 else
                 {
-                    accountsList = await _accountsRepository.GetAllAccountsAsync();
+                    accountsList = await _accountsRepository!.GetAllAccountsAsync();
                 }
 
                 Accounts.Clear();
@@ -148,6 +203,12 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = false;
             }
         }
+        /// <summary>
+        /// Performs filteraccounts.
+        /// </summary>
+        /// <summary>
+        /// Performs filteraccounts.
+        /// </summary>
 
         private Task FilterAccountsAsync()
         {

@@ -10,12 +10,21 @@ namespace WileyWidget.Models;
 /// Represents a budget imported from QuickBooks Online.
 /// Maps to QuickBooks Budget entity with all necessary fields for synchronization.
 /// </summary>
+/// <summary>
+/// Represents a class for quickbooksbudget.
+/// </summary>
 public class QuickBooksBudget
 {
     /// <summary>
     /// Primary key for local database
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -23,6 +32,9 @@ public class QuickBooksBudget
     /// </summary>
     [Required]
     [MaxLength(50)]
+    /// <summary>
+    /// Gets or sets the quickbooksid.
+    /// </summary>
     public string QuickBooksId { get; set; } = string.Empty;
 
     /// <summary>
@@ -30,34 +42,52 @@ public class QuickBooksBudget
     /// </summary>
     [Required]
     [MaxLength(200)]
+    /// <summary>
+    /// Gets or sets the name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Fiscal year for this budget
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the fiscalyear.
+    /// </summary>
     public int FiscalYear { get; set; }
 
     /// <summary>
     /// Start date of the budget period
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the startdate.
+    /// </summary>
     public DateTime StartDate { get; set; }
 
     /// <summary>
     /// End date of the budget period
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the enddate.
+    /// </summary>
     public DateTime EndDate { get; set; }
 
     /// <summary>
     /// Budget type (Annual, Quarterly, Monthly, etc.)
     /// </summary>
     [MaxLength(50)]
+    /// <summary>
+    /// Gets or sets the budgettype.
+    /// </summary>
     public string BudgetType { get; set; } = "Annual";
 
     /// <summary>
     /// Whether this budget is currently active
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the isactive.
     /// </summary>
     public bool IsActive { get; set; } = true;
 
@@ -65,6 +95,9 @@ public class QuickBooksBudget
     /// Total budgeted amount across all line items
     /// </summary>
     [Column(TypeName = "decimal(18,2)")]
+    /// <summary>
+    /// Gets or sets the totalamount.
+    /// </summary>
     public decimal TotalAmount { get; set; }
 
     /// <summary>
@@ -86,10 +119,22 @@ public class QuickBooksBudget
     /// <summary>
     /// Creation timestamp
     /// </summary>
+    /// <summary>
+    /// Gets or sets the createdat.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the createdat.
+    /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Last update timestamp
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the updatedat.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the updatedat.
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
@@ -104,6 +149,9 @@ public class QuickBooksBudget
 /// Represents a single line item within a QuickBooks budget.
 /// Each line item corresponds to a specific account and time period.
 /// </summary>
+/// <summary>
+/// Represents a class for quickbooksbudgetlineitem.
+/// </summary>
 public class QuickBooksBudgetLineItem
 {
     /// <summary>
@@ -116,12 +164,18 @@ public class QuickBooksBudgetLineItem
     /// Parent budget ID
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the quickbooksbudgetid.
+    /// </summary>
     public int QuickBooksBudgetId { get; set; }
 
     /// <summary>
     /// Navigation property to parent budget
     /// </summary>
     [ForeignKey("QuickBooksBudgetId")]
+    /// <summary>
+    /// Gets or sets the budget.
+    /// </summary>
     public QuickBooksBudget Budget { get; set; } = null!;
 
     /// <summary>
@@ -129,6 +183,9 @@ public class QuickBooksBudgetLineItem
     /// </summary>
     [Required]
     [MaxLength(50)]
+    /// <summary>
+    /// Gets or sets the accountid.
+    /// </summary>
     public string AccountId { get; set; } = string.Empty;
 
     /// <summary>
@@ -136,6 +193,9 @@ public class QuickBooksBudgetLineItem
     /// </summary>
     [Required]
     [MaxLength(200)]
+    /// <summary>
+    /// Gets or sets the accountname.
+    /// </summary>
     public string AccountName { get; set; } = string.Empty;
 
     /// <summary>
@@ -149,18 +209,27 @@ public class QuickBooksBudgetLineItem
     /// </summary>
     [Required]
     [Column(TypeName = "decimal(18,2)")]
+    /// <summary>
+    /// Gets or sets the amount.
+    /// </summary>
     public decimal Amount { get; set; }
 
     /// <summary>
     /// Period start date for this line item
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the periodstartdate.
+    /// </summary>
     public DateTime PeriodStartDate { get; set; }
 
     /// <summary>
     /// Period end date for this line item
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the periodenddate.
+    /// </summary>
     public DateTime PeriodEndDate { get; set; }
 
     /// <summary>

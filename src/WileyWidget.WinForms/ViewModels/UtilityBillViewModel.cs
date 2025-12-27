@@ -17,7 +17,16 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class UtilityBillViewModel : ObservableObject, IDisposable
     {
         private readonly ILogger<UtilityBillViewModel> _logger;
+        /// <summary>
+        /// Represents the _billrepository.
+        /// </summary>
+        /// <summary>
+        /// Represents the _billrepository.
+        /// </summary>
         private readonly IUtilityBillRepository _billRepository;
+        /// <summary>
+        /// Represents the _customerrepository.
+        /// </summary>
         private readonly IUtilityCustomerRepository _customerRepository;
 
         [ObservableProperty]
@@ -39,9 +48,18 @@ namespace WileyWidget.WinForms.ViewModels
         private BillStatus? filterStatus;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the showoverdueonly.
+        /// </summary>
+        /// <summary>
+        /// Represents the showoverdueonly.
+        /// </summary>
         private bool showOverdueOnly;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -52,36 +70,138 @@ namespace WileyWidget.WinForms.ViewModels
 
         // Summary properties
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totaloutstanding.
+        /// </summary>
+        /// <summary>
+        /// Represents the totaloutstanding.
+        /// </summary>
         private decimal totalOutstanding;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the overduecount.
+        /// </summary>
         private int overdueCount;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalrevenue.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalrevenue.
+        /// </summary>
         private decimal totalRevenue;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the billsthismonth.
+        /// </summary>
         private int billsThisMonth;
 
         /// <summary>Gets the command to load utility bills.</summary>
+        /// <summary>
+        /// Gets or sets the loadbillscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbillscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbillscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbillscommand.
+        /// </summary>
         public IAsyncRelayCommand LoadBillsCommand { get; }
 
         /// <summary>Gets the command to load customers.</summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
         public IAsyncRelayCommand LoadCustomersCommand { get; }
 
         /// <summary>Gets the command to create a new bill.</summary>
+        /// <summary>
+        /// Gets or sets the createbillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the createbillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the createbillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the createbillcommand.
+        /// </summary>
         public IAsyncRelayCommand CreateBillCommand { get; }
 
         /// <summary>Gets the command to save changes to a bill.</summary>
+        /// <summary>
+        /// Gets or sets the savebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the savebillcommand.
+        /// </summary>
         public IAsyncRelayCommand SaveBillCommand { get; }
 
         /// <summary>Gets the command to delete a bill.</summary>
+        /// <summary>
+        /// Gets or sets the deletebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletebillcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletebillcommand.
+        /// </summary>
         public IAsyncRelayCommand DeleteBillCommand { get; }
 
         /// <summary>Gets the command to mark a bill as paid.</summary>
+        /// <summary>
+        /// Gets or sets the markaspaidcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the markaspaidcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the markaspaidcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the markaspaidcommand.
+        /// </summary>
         public IAsyncRelayCommand MarkAsPaidCommand { get; }
 
         /// <summary>Gets the command to generate a bill report.</summary>
+        /// <summary>
+        /// Gets or sets the generatereportcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generatereportcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generatereportcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generatereportcommand.
+        /// </summary>
         public IAsyncRelayCommand GenerateReportCommand { get; }
 
         public UtilityBillViewModel(
@@ -342,6 +462,9 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = false;
             }
         }
+        /// <summary>
+        /// Performs updatesummary.
+        /// </summary>
 
         private void UpdateSummary()
         {
@@ -352,6 +475,12 @@ namespace WileyWidget.WinForms.ViewModels
                 b.BillDate.Year == DateTime.Today.Year &&
                 b.BillDate.Month == DateTime.Today.Month);
         }
+        /// <summary>
+        /// Performs generatebillnumber.
+        /// </summary>
+        /// <summary>
+        /// Performs generatebillnumber.
+        /// </summary>
 
         private string GenerateBillNumber()
         {
@@ -379,6 +508,18 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
         /// </summary>
         public void Dispose()
         {

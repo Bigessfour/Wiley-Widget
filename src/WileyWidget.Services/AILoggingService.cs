@@ -18,6 +18,9 @@ namespace WileyWidget.Services
     /// Monitors queries, responses, errors, and usage metrics for municipal finance AI integration.
     /// Uses Serilog for structured logging with dedicated file sink.
     /// </summary>
+    /// <summary>
+    /// Represents a class for ailoggingservice.
+    /// </summary>
     public class AILoggingService : IAILoggingService
     {
         private readonly ILogger<AILoggingService> _logger;
@@ -44,9 +47,31 @@ namespace WileyWidget.Services
             _lastResetDate = DateTime.UtcNow.Date;
 
             // Create dedicated Serilog logger for AI usage
-            // Use root logs folder for centralized logging
-            var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-            var logsDirectory = Path.Combine(projectRoot, "logs");
+            // Use root logs folder for centralized logging (respect WILEYWIDGET_LOG_DIR if provided)
+            var logsDirectory = Environment.GetEnvironmentVariable("WILEYWIDGET_LOG_DIR");
+            if (string.IsNullOrWhiteSpace(logsDirectory))
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var dir = baseDir;
+                for (int depth = 0; depth < 8; depth++)
+                {
+                    if (File.Exists(Path.Combine(dir, "WileyWidget.sln")) || Directory.Exists(Path.Combine(dir, ".git")))
+                    {
+                        logsDirectory = Path.Combine(dir, "logs");
+                        break;
+                    }
+
+                    var parent = Directory.GetParent(dir);
+                    if (parent == null) break;
+                    dir = parent.FullName;
+                }
+
+                if (string.IsNullOrWhiteSpace(logsDirectory))
+                {
+                    logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+                }
+            }
+
             Directory.CreateDirectory(logsDirectory);
 
             _aiUsageLogger = new LoggerConfiguration()
@@ -66,6 +91,12 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs an AI query request to XAI service.
         /// </summary>
+        /// <summary>
+        /// Performs logquery. Parameters: query, context, model.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="context">The context.</param>
+        /// <param name="model">The model.</param>
         public void LogQuery(string query, string context, string model)
         {
             try
@@ -112,6 +143,13 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs a successful AI response from XAI service.
         /// </summary>
+        /// <summary>
+        /// Performs logresponse. Parameters: query, response, responseTimeMs, 0.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="response">The response.</param>
+        /// <param name="responseTimeMs">The responseTimeMs.</param>
+        /// <param name="0">The 0.</param>
         public void LogResponse(string query, string response, long responseTimeMs, int tokensUsed = 0)
         {
             try
@@ -161,6 +199,10 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs informational messages about AI operations.
         /// </summary>
+        /// <summary>
+        /// Performs loginformation. Parameters: message.
+        /// </summary>
+        /// <param name="message">The message.</param>
         public void LogInformation(string message)
         {
             try
@@ -187,6 +229,17 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs an error that occurred during AI processing.
         /// </summary>
+        /// <summary>
+        /// Performs logerror. Parameters: query, error, errorType.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="error">The error.</param>
+        /// <param name="errorType">The errorType.</param>
+        /// <summary>
+        /// Performs logerror. Parameters: query, exception.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="exception">The exception.</param>
         public void LogError(string query, string error, string errorType)
         {
             try
@@ -253,6 +306,13 @@ namespace WileyWidget.Services
         /// <summary>
         /// Logs usage metrics for AI operations.
         /// </summary>
+        /// <summary>
+        /// Performs logmetric. Parameters: metricName, metricValue, Dictionary<string, null.
+        /// </summary>
+        /// <param name="metricName">The metricName.</param>
+        /// <param name="metricValue">The metricValue.</param>
+        /// <param name="Dictionary<string">The Dictionary<string.</param>
+        /// <param name="null">The null.</param>
         public void LogMetric(string metricName, double metricValue, Dictionary<string, object>? metadata = null)
         {
             try
@@ -327,6 +387,9 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets the count of queries made today.
         /// </summary>
+        /// <summary>
+        /// Performs gettodayquerycount.
+        /// </summary>
         public int GetTodayQueryCount()
         {
             ResetDailyCountersIfNeeded();
@@ -339,6 +402,9 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets the average response time in milliseconds.
         /// </summary>
+        /// <summary>
+        /// Performs getaverageresponsetime.
+        /// </summary>
         public double GetAverageResponseTime()
         {
             lock (_metricsLock)
@@ -349,6 +415,9 @@ namespace WileyWidget.Services
 
         /// <summary>
         /// Gets the error rate as a percentage.
+        /// </summary>
+        /// <summary>
+        /// Performs geterrorrate.
         /// </summary>
         public double GetErrorRate()
         {
@@ -424,17 +493,53 @@ namespace WileyWidget.Services
         /// </summary>
         private class AILogEntry
         {
+            /// <summary>
+            /// Gets or sets the timestamp.
+            /// </summary>
             public DateTime Timestamp { get; set; }
+            /// <summary>
+            /// Gets or sets the entrytype.
+            /// </summary>
             public string EntryType { get; set; }
+            /// <summary>
+            /// Gets or sets the query.
+            /// </summary>
             public string Query { get; set; }
+            /// <summary>
+            /// Gets or sets the context.
+            /// </summary>
             public string Context { get; set; }
+            /// <summary>
+            /// Gets or sets the model.
+            /// </summary>
             public string Model { get; set; }
+            /// <summary>
+            /// Gets or sets the response.
+            /// </summary>
             public string Response { get; set; }
+            /// <summary>
+            /// Gets or sets the responsetimems.
+            /// </summary>
             public long ResponseTimeMs { get; set; }
+            /// <summary>
+            /// Gets or sets the tokensused.
+            /// </summary>
             public int TokensUsed { get; set; }
+            /// <summary>
+            /// Gets or sets the errormessage.
+            /// </summary>
             public string ErrorMessage { get; set; }
+            /// <summary>
+            /// Gets or sets the errortype.
+            /// </summary>
             public string ErrorType { get; set; }
+            /// <summary>
+            /// Gets or sets the metricname.
+            /// </summary>
             public string MetricName { get; set; }
+            /// <summary>
+            /// Gets or sets the metricvalue.
+            /// </summary>
             public double MetricValue { get; set; }
             public Dictionary<string, object> Metadata { get; set; }
         }

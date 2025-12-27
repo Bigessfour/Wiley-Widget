@@ -8,6 +8,9 @@ namespace WileyWidget.Services.Abstractions
     /// Interface for the analytics pipeline that orchestrates end-to-end data processing
     /// from data layer through business logic to AI analysis and UI presentation.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for ianalyticspipeline.
+    /// </summary>
     public interface IAnalyticsPipeline
     {
         /// <summary>

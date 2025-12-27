@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents a system activity item for display in the dashboard.
 /// Tracks user actions, system events, and important operations.
 /// </summary>
+/// <summary>
+/// Represents a class for activityitem.
+/// </summary>
 public class ActivityItem : INotifyPropertyChanged
 {
     private DateTime _timestamp;

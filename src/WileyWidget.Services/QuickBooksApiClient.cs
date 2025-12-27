@@ -15,6 +15,9 @@ namespace WileyWidget.Services
     /// <summary>
     /// Implementation of IQuickBooksApiClient using Intuit SDK
     /// </summary>
+    /// <summary>
+    /// Represents a class for quickbooksapiclient.
+    /// </summary>
     public class QuickBooksApiClient : IQuickBooksApiClient
     {
         private readonly SettingsService _settings;

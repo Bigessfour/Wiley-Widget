@@ -13,6 +13,9 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Repository implementation for Department data operations
 /// </summary>
+/// <summary>
+/// Represents a class for departmentrepository.
+/// </summary>
 public class DepartmentRepository : IDepartmentRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.DepartmentRepository");

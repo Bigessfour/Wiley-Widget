@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -20,13 +21,28 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class ChartViewModel : ObservableObject
     {
         private readonly ILogger<ChartViewModel> _logger;
+        /// <summary>
+        /// Represents the _dashboardservice.
+        /// </summary>
+        /// <summary>
+        /// Represents the _dashboardservice.
+        /// </summary>
         private readonly IDashboardService _dashboardService;
+        /// <summary>
+        /// Represents the _configuration.
+        /// </summary>
         private readonly IConfiguration _configuration;
 
         [ObservableProperty]
         private string? errorMessage;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -43,13 +59,26 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private string selectedChartType = "Line";
-        private ILogger<ChartViewModel> object1;
-        private IDashboardService object2;
 
         public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
         public ObservableCollection<(string Category, decimal Value)> PieChartData { get; } = new();
         public ObservableCollection<KeyValuePair<string, decimal>> ChartData { get; } = new();
         public ObservableCollection<ChartDataPoint> LineChartData { get; } = new();
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
 
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand<int> LoadChartsByYearCommand { get; }
@@ -71,17 +100,19 @@ namespace WileyWidget.WinForms.ViewModels
             _logger.LogInformation("ChartViewModel constructed");
         }
 
-        public ChartViewModel(ILogger<ChartViewModel> object1, IDashboardService object2)
-        {
-            this.object1 = object1;
-            this.object2 = object2;
-        }
+
 
         /// <summary>
         /// Load chart data with optional year filter and cancellation support.
         /// </summary>
         public async Task LoadChartsAsync(int? year = null, string? category = null, CancellationToken cancellationToken = default)
         {
+
+            // Set default fiscal year from configuration (use DefaultFiscalYear for consistency)
+            SelectedYear = _configuration.GetValue("UI:DefaultFiscalYear", DateTime.UtcNow.Year);
+            SelectedStartDate = new(SelectedYear, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            SelectedEndDate = new(SelectedYear, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+
             var yearToLoad = year ?? SelectedYear;
             if (yearToLoad < 2000 || yearToLoad > DateTime.UtcNow.Year + 10)
             {
@@ -108,7 +139,7 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 // Load dashboard data from service
-                var dashboardItems = await _dashboardService.GetDashboardDataAsync(cancellationToken);
+                var dashboardItems = await _dashboardService!.GetDashboardDataAsync(cancellationToken);
 
                 if (dashboardItems == null)
                 {
@@ -215,6 +246,12 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Transforms dashboard items into chart-friendly data structures.
         /// </summary>
+        /// <summary>
+        /// Performs transformdashboarddatatocharts. Parameters: items, year, cancellationToken.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <param name="year">The year.</param>
+        /// <param name="cancellationToken">The cancellationToken.</param>
         private Task TransformDashboardDataToChartsAsync(IList<DashboardItem> items, int year, CancellationToken cancellationToken)
         {
             return Task.Run(() =>

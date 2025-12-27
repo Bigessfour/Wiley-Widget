@@ -5,6 +5,9 @@ namespace WileyWidget.Abstractions;
 /// <summary>
 /// Service for persisting and restoring application state across sessions
 /// </summary>
+/// <summary>
+/// Represents a interface for iapplicationstateservice.
+/// </summary>
 public interface IApplicationStateService
 {
     /// <summary>

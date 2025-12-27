@@ -8,6 +8,9 @@ using System.Runtime.CompilerServices;
 // using WileyWidget.Data; (interfaces moved to Models)
 
 namespace WileyWidget.Models;
+/// <summary>
+/// Defines the enterprisestatus enumeration.
+/// </summary>
 
 public enum EnterpriseStatus
 {
@@ -19,6 +22,9 @@ public enum EnterpriseStatus
 /// <summary>
 /// Represents a municipal enterprise (Water, Sewer, Trash, Apartments)
 /// Implements audit tracking and soft delete for compliance
+/// </summary>
+/// <summary>
+/// Represents a class for enterprise.
 /// </summary>
 public class Enterprise : INotifyPropertyChanged, ISoftDeletable
 {
@@ -64,6 +70,9 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// </summary>
     [Key]
     [GridDisplay(99, 80, Visible = true)] // Put ID at the end
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -426,6 +435,9 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <summary>
     /// Date and time when the enterprise was created (UTC)
     /// </summary>
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     /// <summary>
@@ -460,6 +472,9 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <summary>
     /// Whether the enterprise has been soft-deleted (retained for audit/compliance)
     /// </summary>
+    /// <summary>
+    /// Gets or sets the isdeleted.
+    /// </summary>
     public bool IsDeleted { get; set; }
 
     /// <summary>
@@ -486,6 +501,10 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// </summary>
     /// <param name="targetBalance">Desired monthly balance</param>
     /// <returns>Required rate adjustment (positive = increase, negative = decrease)</returns>
+    /// <summary>
+    /// Performs calculaterateadjustmentfortarget. Parameters: targetBalance.
+    /// </summary>
+    /// <param name="targetBalance">The targetBalance.</param>
     public decimal CalculateRateAdjustmentForTarget(decimal targetBalance)
     {
         if (CitizenCount == 0)
@@ -502,6 +521,11 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <param name="proposedRate">The rate to validate</param>
     /// <param name="errorMessage">Error message if invalid</param>
     /// <returns>True if valid, false otherwise</returns>
+    /// <summary>
+    /// Performs validateratechange. Parameters: proposedRate, errorMessage.
+    /// </summary>
+    /// <param name="proposedRate">The proposedRate.</param>
+    /// <param name="errorMessage">The errorMessage.</param>
     public bool ValidateRateChange(decimal proposedRate, out string? errorMessage)
     {
         if (proposedRate < 0)
@@ -546,6 +570,9 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <summary>
     /// Determines the recommended rate adjustment based on current financial health
     /// </summary>
+    /// <summary>
+    /// Performs getraterecommendation.
+    /// </summary>
     public string GetRateRecommendation()
     {
         var variance = CalculateBreakEvenVariance();
@@ -563,6 +590,12 @@ public class Enterprise : INotifyPropertyChanged, ISoftDeletable
     /// <summary>
     /// Updates meter readings and validates water consumption
     /// </summary>
+    /// <summary>
+    /// Performs updatemeterreading. Parameters: newReading, readDate, errorMessage.
+    /// </summary>
+    /// <param name="newReading">The newReading.</param>
+    /// <param name="readDate">The readDate.</param>
+    /// <param name="errorMessage">The errorMessage.</param>
     public bool UpdateMeterReading(decimal newReading, DateTime readDate, out string? errorMessage)
     {
         if (newReading < 0)

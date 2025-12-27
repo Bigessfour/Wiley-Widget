@@ -21,6 +21,18 @@ namespace WileyWidget.WinForms.Controls
     /// Resource strings for AccountsPanel UI elements.
     /// Centralized for localization support and maintainability.
     /// </summary>
+    /// <summary>
+    /// Represents a class for accountspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for accountspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for accountspanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for accountspanelresources.
+    /// </summary>
     internal static class AccountsPanelResources
     {
         /// <summary>Panel title.</summary>
@@ -194,6 +206,9 @@ namespace WileyWidget.WinForms.Controls
                 throw;
             }
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -252,6 +267,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Named handler for PanelHeader.PinToggled event (enables proper unsubscription).
         /// </summary>
+        /// <summary>
+        /// Performs onpanelheaderpintoggled. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void OnPanelHeaderPinToggled(object? sender, EventArgs e)
         {
             // Leave persistence to PanelStateManager / future work
@@ -260,6 +280,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Named handler for PanelHeader.CloseClicked event (enables proper unsubscription).
         /// </summary>
+        /// <summary>
+        /// Performs onpanelheadercloseclicked. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void OnPanelHeaderCloseClicked(object? sender, EventArgs e)
         {
             try
@@ -327,6 +352,9 @@ namespace WileyWidget.WinForms.Controls
                 try { errorProvider?.SetError(this, "Failed to load accounts data. Check logs for details."); } catch { }
             }
         }
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
 
         private void SetupUI()
         {
@@ -685,15 +713,15 @@ namespace WileyWidget.WinForms.Controls
                     if (sfd.ShowDialog() != DialogResult.OK) return;
                     if (gridAccounts == null)
                     {
-                        MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        this.SafeInvoke(() => MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning));
                         return;
                     }
                     await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(gridAccounts, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.SafeInvoke(() => MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.SafeInvoke(() => MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error));
                 }
             };
 
@@ -750,15 +778,15 @@ namespace WileyWidget.WinForms.Controls
                     if (sfd.ShowDialog() != DialogResult.OK) return;
                     if (gridAccounts == null)
                     {
-                        MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        this.SafeInvoke(() => MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning));
                         return;
                     }
                     await WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(gridAccounts, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.SafeInvoke(() => MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.SafeInvoke(() => MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error));
                 }
             };
 
@@ -1134,6 +1162,12 @@ namespace WileyWidget.WinForms.Controls
             summaryPanel.Controls.Add(summaryFlow);
             Controls.Add(summaryPanel);
         }
+        /// <summary>
+        /// Performs bindviewmodel.
+        /// </summary>
+        /// <summary>
+        /// Performs bindviewmodel.
+        /// </summary>
 
         private void BindViewModel()
         {
@@ -1186,6 +1220,16 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "AccountsPanel: BindViewModel failed");
             }
         }
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -1245,6 +1289,12 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Debug("AccountsPanel: ViewModel_PropertyChanged - panel was disposed");
             }
         }
+        /// <summary>
+        /// Performs updatesummary.
+        /// </summary>
+        /// <summary>
+        /// Performs updatesummary.
+        /// </summary>
 
         private void UpdateSummary()
         {
@@ -1266,6 +1316,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Handles grid selection changes to sync with ViewModel.SelectedAccount.
         /// </summary>
+        /// <summary>
+        /// Performs gridaccounts selectionchanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void GridAccounts_SelectionChanged(object? sender, Syncfusion.WinForms.DataGrid.Events.SelectionChangedEventArgs e)
         {
             try
@@ -1296,6 +1351,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Handles double-click on grid cell to open edit dialog (per Syncfusion demos).
         /// </summary>
+        /// <summary>
+        /// Performs gridaccounts celldoubleclick. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void GridAccounts_CellDoubleClick(object? sender, Syncfusion.WinForms.DataGrid.Events.CellClickEventArgs e)
         {
             try
@@ -1317,6 +1377,16 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "AccountsPanel: GridAccounts_CellDoubleClick failed");
             }
         }
+        /// <summary>
+        /// Performs gridaccounts cellclick. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs gridaccounts cellclick. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void GridAccounts_CellClick(object? sender, Syncfusion.WinForms.DataGrid.Events.CellClickEventArgs e)
         {
@@ -1355,6 +1425,11 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Provides custom tooltips for grid cells (per Syncfusion demos).
         /// </summary>
+        /// <summary>
+        /// Performs gridaccounts tooltipopening. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void GridAccounts_ToolTipOpening(object? sender, Syncfusion.WinForms.DataGrid.Events.ToolTipOpeningEventArgs e)
         {
             try
@@ -1404,6 +1479,11 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "AccountsPanel: NavigateToPanel<{Panel}> failed", typeof(TPanel).Name);
             }
         }
+        /// <summary>
+        /// Performs btnadd click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void BtnAdd_Click(object? sender, EventArgs e)
         {
@@ -1418,7 +1498,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     editPanel.Dock = DockStyle.Fill;
                     modal.Controls.Add(editPanel);
-                    if (modal.ShowDialog(this.FindForm()) == DialogResult.OK)
+                    // TODO: Manual SafeInvoke needed for: if (modal.ShowDialog(this.FindForm()) == DialogResult.OK)
                     {
                         _ = ViewModel?.LoadAccountsCommand?.ExecuteAsync(null);
                     }
@@ -1434,6 +1514,16 @@ namespace WileyWidget.WinForms.Controls
                 MessageBox.Show($"Error adding account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        /// <summary>
+        /// Performs btnedit click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs btnedit click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void BtnEdit_Click(object? sender, EventArgs e)
         {
@@ -1471,6 +1561,16 @@ namespace WileyWidget.WinForms.Controls
                 MessageBox.Show($"Error editing account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        /// <summary>
+        /// Performs btndelete click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs btndelete click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void BtnDelete_Click(object? sender, EventArgs e)
         {
@@ -1501,11 +1601,31 @@ namespace WileyWidget.WinForms.Controls
                 MessageBox.Show($"Error deleting account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        /// <summary>
+        /// Performs combofund validated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs combofund validated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ComboFund_Validated(object? sender, EventArgs e)
         {
             try { if (comboFund != null) errorProvider?.SetError(comboFund, ""); } catch { }
         }
+        /// <summary>
+        /// Performs combofund validating. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs combofund validating. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ComboFund_Validating(object? sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -1522,15 +1642,41 @@ namespace WileyWidget.WinForms.Controls
                 // Swallow errors - validation shouldn't break the UI
             }
         }
+        /// <summary>
+        /// Performs comboaccounttype validating. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs comboaccounttype validating. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void ComboAccountType_Validating(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             // No validation required for account type selection
         }
+        /// <summary>
+        /// Performs comboaccounttype validated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs comboaccounttype validated. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ComboAccountType_Validated(object? sender, EventArgs e)
         {
             try { if (comboAccountType != null) errorProvider?.SetError(comboAccountType, ""); } catch { }
         }
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
 
         private void ApplyCurrentTheme()
         {
@@ -1542,6 +1688,16 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
         }
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
 
         private void OnThemeChanged(object? sender, AppTheme theme)
         {
@@ -1646,6 +1802,9 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Updates the no-data overlay visibility based on the bound accounts collection.
         /// Uses reflection so the method is resilient if the view-model shape changes.
+        /// </summary>
+        /// <summary>
+        /// Performs updatenodataoverlay.
         /// </summary>
         private void UpdateNoDataOverlay()
         {

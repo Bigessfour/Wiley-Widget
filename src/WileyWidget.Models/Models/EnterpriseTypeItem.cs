@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents enterprise type statistics for dashboard visualization.
 /// Used in DashboardViewModel for displaying enterprise distribution by type.
 /// </summary>
+/// <summary>
+/// Represents a class for enterprisetypeitem.
+/// </summary>
 public class EnterpriseTypeItem : INotifyPropertyChanged
 {
     private string _type = string.Empty;
@@ -116,6 +119,9 @@ public class EnterpriseTypeItem : INotifyPropertyChanged
     /// <summary>
     /// Gets the percentage of total enterprises (calculated property).
     /// This requires the total count to be set externally.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the percentage.
     /// </summary>
     public double Percentage { get; set; }
 

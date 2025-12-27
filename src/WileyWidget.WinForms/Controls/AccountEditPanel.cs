@@ -15,6 +15,10 @@ using Syncfusion.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {
+    /// <summary>
+    /// User control for editing account information including account number, name, department, and fund.
+    /// Provides data binding support and validation for account management operations.
+    /// </summary>
     public partial class AccountEditPanel : UserControl
     {
         // Public DataContext for parity with other panels
@@ -32,11 +36,26 @@ namespace WileyWidget.WinForms.Controls
         private SfNumericTextBox numBalance = null!;
         private SfNumericTextBox numBudget = null!;
         private CheckBox chkActive = null!;
+        /// <summary>
+        /// Represents the _viewmodel.
+        /// </summary>
+        /// <summary>
+        /// Represents the _viewmodel.
+        /// </summary>
 
         private readonly AccountsViewModel _viewModel;
+        /// <summary>
+        /// Represents the _editmodel.
+        /// </summary>
         private readonly MunicipalAccountEditModel _editModel;
         private ErrorProvider? _errorProvider;
         private ErrorProviderBinding? _errorBinding;
+        /// <summary>
+        /// Represents the _isnew.
+        /// </summary>
+        /// <summary>
+        /// Represents the _isnew.
+        /// </summary>
 
         private bool _isNew;
 
@@ -58,6 +77,9 @@ namespace WileyWidget.WinForms.Controls
             // Load data asynchronously on load event
             this.Load += AccountEditPanel_Load;
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -78,6 +100,14 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "AccountEditPanel_Load: unexpected error");
             }
         }
+        /// <summary>
+        /// Performs setupui. Parameters: existing.
+        /// </summary>
+        /// <param name="existing">The existing.</param>
+        /// <summary>
+        /// Performs setupui. Parameters: existing.
+        /// </summary>
+        /// <param name="existing">The existing.</param>
 
         private void SetupUI(MunicipalAccount? existing)
         {
@@ -197,6 +227,9 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Sets up validation binding using ErrorProviderBinding for MVVM-style validation.
         /// </summary>
+        /// <summary>
+        /// Performs setupvalidation.
+        /// </summary>
         private void SetupValidation()
         {
             try
@@ -240,11 +273,16 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "AccountEditPanel.LoadDataAsync failed");
-                try { MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); } catch { }
+                try { this.SafeInvoke(() => MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)); } catch { }
             }
         }
 
         // This method intentionally mirrors AccountEditForm.BtnSave_Click so tests can call it reflectively
+        /// <summary>
+        /// Performs btnsave click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
         private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
@@ -306,6 +344,12 @@ namespace WileyWidget.WinForms.Controls
                 try { MessageBox.Show("Error saving account", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); } catch { }
             }
         }
+        /// <summary>
+        /// Performs cancel.
+        /// </summary>
+        /// <summary>
+        /// Performs cancel.
+        /// </summary>
 
         private void Cancel()
         {

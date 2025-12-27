@@ -9,6 +9,9 @@ namespace WileyWidget.Business.Services;
 /// <summary>
 /// Service for AI-driven rate recommendations using xAI Grok API.
 /// </summary>
+/// <summary>
+/// Represents a class for grokrecommendationservice.
+/// </summary>
 public class GrokRecommendationService : IGrokRecommendationService
 {
     private readonly ILogger<GrokRecommendationService> _logger;

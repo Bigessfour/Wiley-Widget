@@ -7,6 +7,9 @@ namespace WileyWidget.Abstractions
     /// Provides methods for handling navigation errors and general application errors
     /// with consistent logging and event publishing.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for ierrorhandler.
+    /// </summary>
     public interface IErrorHandler
     {
         void HandleNavigationError(string regionName, string targetUri, Exception? error, string errorMessage);

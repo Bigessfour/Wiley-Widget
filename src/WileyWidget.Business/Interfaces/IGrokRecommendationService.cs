@@ -3,6 +3,9 @@ namespace WileyWidget.Business.Interfaces;
 /// <summary>
 /// Service interface for AI-driven rate recommendations using xAI Grok API.
 /// </summary>
+/// <summary>
+/// Represents a interface for igrokrecommendationservice.
+/// </summary>
 public interface IGrokRecommendationService
 {
     /// <summary>

@@ -13,6 +13,9 @@ namespace WileyWidget.Services
     /// Implementation of the analytics pipeline that orchestrates end-to-end data processing
     /// from data layer through business logic to AI analysis and UI presentation.
     /// </summary>
+    /// <summary>
+    /// Represents a class for analyticspipeline.
+    /// </summary>
     public class AnalyticsPipeline : IAnalyticsPipeline
     {
         private readonly IEnterpriseRepository _repo;
@@ -59,8 +62,19 @@ namespace WileyWidget.Services
             var report = await _grok.FetchEnterpriseDataAsync(enterpriseId, start, end);
             var analyticsData = await _grok.RunReportCalcsAsync(report);
 
+
+
             // 3. AI Layer: Generate compliance report and perform analysis
             var compliance = await _grok.GenerateComplianceReportAsync(targetEnterprise);
+            // If FetchEnterpriseData populated a BudgetSummary, carry it into the compliance report so downstream analysis (AI) can run
+            // Note: ComplianceReport (ReportData) initializes a default BudgetSummary instance, so check for empty totals as well
+            if ((compliance.BudgetSummary == null || (compliance.BudgetSummary.TotalBudgeted == 0 && compliance.BudgetSummary.TotalActual == 0)) && report?.BudgetSummary != null)
+            {
+                compliance.BudgetSummary = report.BudgetSummary;
+            }
+
+
+
             compliance.UpdateCompliance(); // Perform semantic compliance checks
 
             // 4. Projections/Analysis: Analyze budget data for insights

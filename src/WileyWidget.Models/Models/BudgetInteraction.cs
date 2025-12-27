@@ -7,12 +7,18 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents interactions between enterprises (e.g., shared costs, dependencies)
 /// </summary>
+/// <summary>
+/// Represents a class for budgetinteraction.
+/// </summary>
 public class BudgetInteraction
 {
     /// <summary>
     /// Unique identifier for the budget interaction
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -20,6 +26,9 @@ public class BudgetInteraction
     /// </summary>
     [Required(ErrorMessage = "Primary enterprise is required")]
     [Range(1, int.MaxValue, ErrorMessage = "Primary enterprise is required")] // Treat 0 as missing
+    /// <summary>
+    /// Gets or sets the primaryenterpriseid.
+    /// </summary>
     public int PrimaryEnterpriseId { get; set; }
 
     /// <summary>
@@ -32,6 +41,9 @@ public class BudgetInteraction
     /// </summary>
     [Required(ErrorMessage = "Interaction type is required")]
     [StringLength(50, ErrorMessage = "Interaction type cannot exceed 50 characters")]
+    /// <summary>
+    /// Gets or sets the interactiontype.
+    /// </summary>
     public string InteractionType { get; set; } = string.Empty;
 
     /// <summary>
@@ -39,6 +51,9 @@ public class BudgetInteraction
     /// </summary>
     [Required(ErrorMessage = "Description is required")]
     [StringLength(200, ErrorMessage = "Description cannot exceed 200 characters")]
+    /// <summary>
+    /// Gets or sets the description.
+    /// </summary>
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
@@ -46,6 +61,9 @@ public class BudgetInteraction
     /// </summary>
     [Required(ErrorMessage = "Monthly amount is required")]
     [Column(TypeName = "decimal(18,2)")]
+    /// <summary>
+    /// Gets or sets the monthlyamount.
+    /// </summary>
     public decimal MonthlyAmount { get; set; }
 
     /// <summary>
@@ -61,12 +79,18 @@ public class BudgetInteraction
     /// <summary>
     /// Date of the interaction
     /// </summary>
+    /// <summary>
+    /// Gets or sets the interactiondate.
+    /// </summary>
     public DateTime InteractionDate { get; set; }
 
     /// <summary>
     /// Whether this is a cost (true) or revenue (false)
     /// </summary>
     [Required]
+    /// <summary>
+    /// Gets or sets the iscost.
+    /// </summary>
     public bool IsCost { get; set; } = true;
 
     /// <summary>

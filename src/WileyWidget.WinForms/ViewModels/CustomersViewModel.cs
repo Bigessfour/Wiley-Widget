@@ -19,12 +19,24 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class CustomersViewModel : ObservableRecipient
     {
         private readonly ILogger<CustomersViewModel> _logger;
+        /// <summary>
+        /// Represents the _repo.
+        /// </summary>
+        /// <summary>
+        /// Represents the _repo.
+        /// </summary>
         private readonly IUtilityCustomerRepository _repo;
 
         [ObservableProperty]
         private string title = "Customers";
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -40,15 +52,63 @@ namespace WileyWidget.WinForms.ViewModels
         private string? searchText;
 
         /// <summary>Gets the command to load all customers.</summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadcustomerscommand.
+        /// </summary>
         public IAsyncRelayCommand LoadCustomersCommand { get; }
 
         /// <summary>Gets the command to search customers.</summary>
+        /// <summary>
+        /// Gets or sets the searchcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the searchcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the searchcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the searchcommand.
+        /// </summary>
         public IAsyncRelayCommand SearchCommand { get; }
 
         /// <summary>Gets the command to add a new customer.</summary>
+        /// <summary>
+        /// Gets or sets the addcustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the addcustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the addcustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the addcustomercommand.
+        /// </summary>
         public IAsyncRelayCommand AddCustomerCommand { get; }
 
         /// <summary>Gets the command to delete a customer.</summary>
+        /// <summary>
+        /// Gets or sets the deletecustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletecustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletecustomercommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the deletecustomercommand.
+        /// </summary>
         public IAsyncRelayCommand DeleteCustomerCommand { get; }
 
         public CustomersViewModel(ILogger<CustomersViewModel> logger, IUtilityCustomerRepository repo)
@@ -117,6 +177,10 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = false;
             }
         }
+        /// <summary>
+        /// Performs addcustomer. Parameters: default.
+        /// </summary>
+        /// <param name="default">The default.</param>
 
         private Task AddCustomerAsync(CancellationToken cancellationToken = default)
         {

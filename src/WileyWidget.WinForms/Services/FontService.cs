@@ -10,6 +10,12 @@ namespace WileyWidget.WinForms.Services;
 public sealed class FontService : IDisposable
 {
     private static readonly Lazy<FontService> _instance = new(() => new FontService());
+    /// <summary>
+    /// Represents the _currentfont.
+    /// </summary>
+    /// <summary>
+    /// Represents the _currentfont.
+    /// </summary>
     private Font _currentFont;
 
     /// <summary>
@@ -38,6 +44,22 @@ public sealed class FontService : IDisposable
     /// </summary>
     /// <param name="newFont">The new font to apply.</param>
     /// <exception cref="ArgumentNullException">Thrown when newFont is null.</exception>
+    /// <summary>
+    /// Performs setapplicationfont. Parameters: newFont.
+    /// </summary>
+    /// <param name="newFont">The newFont.</param>
+    /// <summary>
+    /// Performs setapplicationfont. Parameters: newFont.
+    /// </summary>
+    /// <param name="newFont">The newFont.</param>
+    /// <summary>
+    /// Performs setapplicationfont. Parameters: newFont.
+    /// </summary>
+    /// <param name="newFont">The newFont.</param>
+    /// <summary>
+    /// Performs setapplicationfont. Parameters: newFont.
+    /// </summary>
+    /// <param name="newFont">The newFont.</param>
     public void SetApplicationFont(Font newFont)
     {
         if (newFont == null)
@@ -62,6 +84,18 @@ public sealed class FontService : IDisposable
     /// <summary>
     /// Disposes the current font resource.
     /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
     public void Dispose()
     {
         _currentFont?.Dispose();
@@ -71,15 +105,51 @@ public sealed class FontService : IDisposable
 /// <summary>
 /// Event arguments for font change notifications.
 /// </summary>
+/// <summary>
+/// Represents a class for fontchangedeventargs.
+/// </summary>
+/// <summary>
+/// Represents a class for fontchangedeventargs.
+/// </summary>
+/// <summary>
+/// Represents a class for fontchangedeventargs.
+/// </summary>
+/// <summary>
+/// Represents a class for fontchangedeventargs.
+/// </summary>
 public class FontChangedEventArgs : EventArgs
 {
     /// <summary>
     /// Gets the previous font.
     /// </summary>
+    /// <summary>
+    /// Gets or sets the oldfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the oldfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the oldfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the oldfont.
+    /// </summary>
     public Font OldFont { get; }
 
     /// <summary>
     /// Gets the new font.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the newfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the newfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the newfont.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the newfont.
     /// </summary>
     public Font NewFont { get; }
 

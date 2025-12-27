@@ -7,6 +7,9 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Abstraction over Intuit DataService used by QuickBooksService to enable test doubles.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iquickbooksdataservice.
+    /// </summary>
     public interface IQuickBooksDataService
     {
         List<Customer> FindCustomers(int startPosition = 1, int pageSize = 100);

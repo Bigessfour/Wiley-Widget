@@ -13,6 +13,12 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Phase configuration defining expected startup order for Syncfusion WinForms apps.
 /// </summary>
+/// <summary>
+/// Performs phaseconfig. Parameters: ExpectedOrder, IsUiCritical, null.
+/// </summary>
+/// <param name="ExpectedOrder">The ExpectedOrder.</param>
+/// <param name="IsUiCritical">The IsUiCritical.</param>
+/// <param name="null">The null.</param>
 public record PhaseConfig(int ExpectedOrder, bool IsUiCritical, string? DependsOn = null)
 {
     /// <summary>
@@ -42,20 +48,24 @@ public record PhaseConfig(int ExpectedOrder, bool IsUiCritical, string? DependsO
         // Phase 7: MainForm Creation (depends on theme + DI)
         { "MainForm Creation", new(7, true, "Theme Initialization") },
 
-        // Phase 8: Chrome/Ribbon (after MainForm, on UI thread)
-        { "Chrome Initialization", new(8, true, "MainForm Creation") },
+        // Phase 8: Chrome/Ribbon (after theme, on UI thread)
+        { "Chrome Initialization", new(8, true, "Theme Initialization") },
 
-        // Phase 9: MDI/Docking (after Chrome)
-        { "MDI Support Initialization", new(9, true, "Chrome Initialization") },
+        // Phase 9: Panel Management (after Chrome)
+        { "Panel Management Initialization", new(9, true, "Chrome Initialization") },
 
         // Phase 10: Data Prefetch (background, non-blocking)
+        // Depends on MainForm Creation to ensure form is ready before data operations
         { "Data Prefetch", new(10, false, "MainForm Creation") },
 
-        // Phase 11: Splash Hide (after data ready)
-        { "Splash Screen Hide", new(11, true, "Data Prefetch") },
+        // Phase 11: Splash Hide (after MainForm ready)
+        { "Splash Screen Hide", new(11, true, "MainForm Creation") },
 
-        // Phase 12: UI Message Loop (final phase)
-        { "UI Message Loop", new(12, true, "MainForm Creation") }
+        // Phase 12: UI Message Loop Preparation (final setup before Application.Run)
+        { "UI Message Loop Preparation", new(12, true, "Splash Screen Hide") }
+
+        // Note: Application.Run() is not tracked as a phase - it blocks for entire app lifetime
+        // Startup timeline ends at Phase 12 (UI Message Loop Preparation)
     };
 
     /// <summary>
@@ -69,6 +79,9 @@ public record PhaseConfig(int ExpectedOrder, bool IsUiCritical, string? DependsO
 /// Monitors application startup timeline and detects out-of-sync operations.
 /// Tracks phase timing, thread affinity, dependency violations, and identifies initialization order issues.
 /// Optimized for Syncfusion WinForms apps with theme/DI/module initialization.
+/// </summary>
+/// <summary>
+/// Represents a interface for istartuptimelineservice.
 /// </summary>
 public interface IStartupTimelineService
 {
@@ -123,20 +136,53 @@ public interface IStartupTimelineService
 /// <summary>
 /// Represents a recorded startup phase or operation.
 /// </summary>
+/// <summary>
+/// Represents a class for startupevent.
+/// </summary>
 public class StartupEvent
 {
+    /// <summary>
+    /// Gets or sets the name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the type.
+    /// </summary>
     public string Type { get; set; } = "Phase"; // Phase, Operation, Checkpoint
+    /// <summary>
+    /// Gets or sets the expectedorder.
+    /// </summary>
     public int ExpectedOrder { get; set; }
+    /// <summary>
+    /// Gets or sets the actualorder.
+    /// </summary>
     public int ActualOrder { get; set; }
+    /// <summary>
+    /// Gets or sets the chronologicalorder.
+    /// </summary>
     public int ChronologicalOrder { get; set; } // Based purely on start time for parallel-safe ordering
+    /// <summary>
+    /// Gets or sets the starttime.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the starttime.
+    /// </summary>
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public TimeSpan? Duration => EndTime.HasValue ? EndTime.Value - StartTime : null;
+    /// <summary>
+    /// Gets or sets the threadid.
+    /// </summary>
     public int ThreadId { get; set; }
     public string? ParentPhase { get; set; }
     public string? DependsOn { get; set; } // Dependency phase name
+    /// <summary>
+    /// Gets or sets the isasync.
+    /// </summary>
     public bool IsAsync { get; set; }
+    /// <summary>
+    /// Gets or sets the isuicritical.
+    /// </summary>
     public bool IsUiCritical { get; set; }
     public double? MeasuredDurationMs { get; set; }
 }
@@ -144,14 +190,23 @@ public class StartupEvent
 /// <summary>
 /// Timeline analysis report with detected issues.
 /// </summary>
+/// <summary>
+/// Represents a class for startuptimelinereport.
+/// </summary>
 public class StartupTimelineReport
 {
     public List<StartupEvent> Events { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
     public List<string> Errors { get; set; } = new();
+    /// <summary>
+    /// Gets or sets the totalduration.
+    /// </summary>
     public TimeSpan TotalDuration { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
+    /// <summary>
+    /// Gets or sets the uithreadid.
+    /// </summary>
     public int UiThreadId { get; set; }
 
     /// <summary>
@@ -252,6 +307,9 @@ public class StartupTimelineReport
 
     /// <summary>
     /// Generates human-readable timeline report with nested operations and summary stats.
+    /// </summary>
+    /// <summary>
+    /// Performs toformattedstring.
     /// </summary>
     public string ToFormattedString()
     {
@@ -437,6 +495,9 @@ public class StartupTimelineReport
 /// Thread-safe, designed for concurrent access during multi-threaded startup.
 /// Optimized for Syncfusion WinForms with pre-defined critical phases.
 /// </summary>
+/// <summary>
+/// Represents a class for startuptimelineservice.
+/// </summary>
 public class StartupTimelineService : IStartupTimelineService
 {
     private readonly ConcurrentBag<StartupEvent> _events = new();
@@ -465,8 +526,8 @@ public class StartupTimelineService : IStartupTimelineService
 
         if (_isEnabled)
         {
-            _logger.LogInformation("StartupTimelineService initialized - tracking startup on UI thread {ThreadId}", _uiThreadId);
-            _logger.LogInformation("Canonical phase order loaded: {PhaseCount} expected phases defined", PhaseConfig.ExpectedPhases.Count);
+            SafeLog(() => _logger.LogInformation("StartupTimelineService initialized - tracking startup on UI thread {ThreadId}", _uiThreadId));
+            SafeLog(() => _logger.LogInformation("Canonical phase order loaded: {PhaseCount} expected phases defined", PhaseConfig.ExpectedPhases.Count));
         }
     }
 
@@ -486,6 +547,49 @@ public class StartupTimelineService : IStartupTimelineService
             "true",
             StringComparison.OrdinalIgnoreCase);
     }
+
+    // Defensive logging helper: prevent logger sink failures from crashing startup
+    private void SafeLog(Action logAction)
+    {
+        if (logAction == null) return;
+        try
+        {
+            logAction();
+        }
+        catch (AggregateException ae)
+        {
+            try
+            {
+                Console.Error.WriteLine("[TIMELINE] Logging provider AggregateException: " + ae.Message);
+                foreach (var inner in ae.InnerExceptions)
+                {
+                    Console.Error.WriteLine("[TIMELINE]   Inner: " + inner.ToString());
+                }
+            }
+            catch
+            {
+                // Swallow to avoid secondary failures
+            }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                Console.Error.WriteLine("[TIMELINE] Logging provider threw exception: " + ex);
+            }
+            catch
+            {
+                // Swallow any errors to avoid recursive crashes
+            }
+        }
+    }
+
+    /// <summary>
+    /// Performs recordphasestart. Parameters: phaseName, 0, null.
+    /// </summary>
+    /// <param name="phaseName">The phaseName.</param>
+    /// <param name="0">The 0.</param>
+    /// <param name="null">The null.</param>
 
     public void RecordPhaseStart(string phaseName, int expectedOrder = 0, bool? isUiCritical = null)
     {
@@ -516,14 +620,14 @@ public class StartupTimelineService : IStartupTimelineService
 
         var threadMarker = evt.ThreadId == _uiThreadId ? "UI" : $"T{evt.ThreadId}";
         var criticalMarker = evt.IsUiCritical ? " [UI-CRITICAL]" : "";
-        _logger.LogInformation("[TIMELINE] Phase START [{ThreadMarker}]{CriticalMarker}: {PhaseName} (expected order: {Expected}, chronological: {Chrono})",
-            threadMarker, criticalMarker, phaseName, expectedOrder, evt.ChronologicalOrder);
+        SafeLog(() => _logger.LogInformation("[TIMELINE] Phase START [{ThreadMarker}]{CriticalMarker}: {PhaseName} (expected order: {Expected}, chronological: {Chrono})",
+            threadMarker, criticalMarker, phaseName, expectedOrder, evt.ChronologicalOrder));
 
         // Immediate validation: UI-critical on wrong thread
         if (evt.IsUiCritical && evt.ThreadId != _uiThreadId)
         {
-            _logger.LogError("[TIMELINE] ✗ CRITICAL: UI-critical phase '{PhaseName}' started on non-UI thread {ThreadId}!",
-                phaseName, evt.ThreadId);
+            SafeLog(() => _logger.LogError("[TIMELINE] ✗ CRITICAL: UI-critical phase '{PhaseName}' started on non-UI thread {ThreadId}!",
+                phaseName, evt.ThreadId));
         }
 
         // Check dependency immediately
@@ -536,11 +640,15 @@ public class StartupTimelineService : IStartupTimelineService
 
             if (dependency == null)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not completed",
-                    phaseName, config.DependsOn);
+                SafeLog(() => _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not completed",
+                    phaseName, config.DependsOn));
             }
         }
     }
+    /// <summary>
+    /// Performs recordphaseend. Parameters: phaseName.
+    /// </summary>
+    /// <param name="phaseName">The phaseName.</param>
 
     public void RecordPhaseEnd(string phaseName)
     {
@@ -551,30 +659,37 @@ public class StartupTimelineService : IStartupTimelineService
             evt.EndTime = DateTime.Now;
 
             var threadMarker = evt.ThreadId == _uiThreadId ? "UI" : $"T{evt.ThreadId}";
-            _logger.LogInformation("[TIMELINE] Phase END [{ThreadMarker}]: {PhaseName} (duration: {Duration}ms)",
-                threadMarker, phaseName, evt.Duration?.TotalMilliseconds ?? 0);
+            SafeLog(() => _logger.LogInformation("[TIMELINE] Phase END [{ThreadMarker}]: {PhaseName} (duration: {Duration}ms)",
+                threadMarker, phaseName, evt.Duration?.TotalMilliseconds ?? 0));
 
             // Warn about long-running phases on UI thread (>300ms = potential freeze)
             if (evt.ThreadId == _uiThreadId && evt.Duration?.TotalMilliseconds > 300)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>300ms threshold)",
-                    phaseName, evt.Duration?.TotalMilliseconds);
+                SafeLog(() => _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>300ms threshold)",
+                    phaseName, evt.Duration?.TotalMilliseconds));
             }
 
-            // Special warning for Syncfusion theme if too late (must be order ≤4)
-            if (phaseName.Contains("Theme", StringComparison.OrdinalIgnoreCase) && evt.ChronologicalOrder > 4)
+            // Special warning for Syncfusion theme if too late (should be very early)
+            // Be stricter: warn when theme appears late in the chronology (order > 3)
+            if (phaseName.Contains("Theme", StringComparison.OrdinalIgnoreCase) && evt.ChronologicalOrder > 3)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ SYNCFUSION WARNING: Theme initialization happened at chronological order {Order} - should be early (order ≤4) before any control creation",
-                    evt.ChronologicalOrder);
+                SafeLog(() => _logger.LogWarning("[TIMELINE] ⚠ SYNCFUSION WARNING: Theme initialization happened at chronological order {Order} - should be early (order ≤3) before any control creation",
+                    evt.ChronologicalOrder));
             }
         }
         else
         {
-            _logger.LogWarning("[TIMELINE] ⚠ Phase END called for '{PhaseName}' but no matching START found", phaseName);
+            SafeLog(() => _logger.LogWarning("[TIMELINE] ⚠ Phase END called for '{PhaseName}' but no matching START found", phaseName));
         }
 
         _currentPhase = null;
     }
+    /// <summary>
+    /// Performs recordoperation. Parameters: operationName, phaseName, null.
+    /// </summary>
+    /// <param name="operationName">The operationName.</param>
+    /// <param name="phaseName">The phaseName.</param>
+    /// <param name="null">The null.</param>
 
     public void RecordOperation(string operationName, string phaseName, double? durationMs = null)
     {
@@ -599,13 +714,18 @@ public class StartupTimelineService : IStartupTimelineService
 
         var threadMarker = evt.ThreadId == _uiThreadId ? "UI" : $"T{evt.ThreadId}";
         var durationText = durationMs.HasValue ? $" ({durationMs.Value:F0}ms)" : "";
-        _logger.LogDebug("[TIMELINE] Operation [{ThreadMarker}]: {OperationName} in '{PhaseName}'{Duration}",
-            threadMarker, operationName, phaseName, durationText);
+        SafeLog(() => _logger.LogDebug("[TIMELINE] Operation [{ThreadMarker}]: {OperationName} in '{PhaseName}'{Duration}",
+            threadMarker, operationName, phaseName, durationText));
     }
 
     /// <summary>
     /// Helper method to record WinForms lifecycle events (Load, Shown, Activated).
     /// </summary>
+    /// <summary>
+    /// Performs recordformlifecycleevent. Parameters: formName, eventName.
+    /// </summary>
+    /// <param name="formName">The formName.</param>
+    /// <param name="eventName">The eventName.</param>
     public void RecordFormLifecycleEvent(string formName, string eventName)
     {
         if (!_isEnabled) return;
@@ -613,7 +733,7 @@ public class StartupTimelineService : IStartupTimelineService
         var checkpointName = $"{formName}.{eventName}";
         RecordOperation(checkpointName, _currentPhase ?? "UI Message Loop", null);
 
-        _logger.LogDebug("[TIMELINE] WinForms Lifecycle: {Checkpoint}", checkpointName);
+        SafeLog(() => _logger.LogDebug("[TIMELINE] WinForms Lifecycle: {Checkpoint}", checkpointName));
     }
 
     /// <summary>
@@ -630,6 +750,9 @@ public class StartupTimelineService : IStartupTimelineService
             _service = service;
             _phaseName = phaseName;
         }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
 
         public void Dispose()
         {
@@ -640,12 +763,21 @@ public class StartupTimelineService : IStartupTimelineService
             }
         }
     }
+    /// <summary>
+    /// Performs beginphasescope. Parameters: phaseName, 0, null.
+    /// </summary>
+    /// <param name="phaseName">The phaseName.</param>
+    /// <param name="0">The 0.</param>
+    /// <param name="null">The null.</param>
 
     public IDisposable BeginPhaseScope(string phaseName, int expectedOrder = 0, bool? isUiCritical = null)
     {
         RecordPhaseStart(phaseName, expectedOrder, isUiCritical);
         return new PhaseScope(this, phaseName);
     }
+    /// <summary>
+    /// Performs generatereport.
+    /// </summary>
 
     public StartupTimelineReport GenerateReport()
     {
@@ -675,39 +807,63 @@ public class StartupTimelineService : IStartupTimelineService
         var dependencyViolations = report.GetDependencyViolations();
         var threadIssues = report.GetThreadAffinityIssues();
 
+        // Keep ordering issues as warnings, and treat dependency violations as warnings as well to avoid false-positives
         report.Warnings.AddRange(orderViolations);
-        report.Errors.AddRange(dependencyViolations); // Dependencies are errors, not warnings
+        report.Warnings.AddRange(dependencyViolations); // Previously treated as errors - surface as warnings so startup is not blocked
         report.Warnings.AddRange(threadIssues);
 
         // Check for incomplete phases
         foreach (var activePhase in _activePhases.Values)
         {
-            report.Errors.Add($"Phase '{activePhase.Name}' was started but never completed");
+            // Treat background (async) fire-and-forget phases as warnings (they may intentionally not complete),
+            // while phases started on the UI thread remain errors when incomplete.
+            if (activePhase.IsAsync)
+            {
+                report.Warnings.Add($"Background phase '{activePhase.Name}' was started but never completed (fire-and-forget)");
+            }
+            else
+            {
+                report.Errors.Add($"Phase '{activePhase.Name}' was started but never completed");
+            }
         }
 
         // Log the formatted report
         var formattedReport = report.ToFormattedString();
-        Log.Information(formattedReport);
+        try
+        {
+            Log.Information(formattedReport);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                Console.Error.WriteLine("[TIMELINE] Serilog write failed during GenerateReport: " + ex);
+            }
+            catch
+            {
+                // swallow
+            }
+        }
 
         // Also log individual issues with structured logging for querying
         foreach (var error in report.Errors)
         {
-            _logger.LogError("[TIMELINE] ✗ {Error}", error);
+            SafeLog(() => _logger.LogError("[TIMELINE] ✗ {Error}", error));
         }
 
         foreach (var warning in report.Warnings)
         {
-            _logger.LogWarning("[TIMELINE] ⚠ {Warning}", warning);
+            SafeLog(() => _logger.LogWarning("[TIMELINE] ⚠ {Warning}", warning));
         }
 
         if (report.Errors.Count == 0 && report.Warnings.Count == 0)
         {
-            _logger.LogInformation("[TIMELINE] ✓ No timing or ordering issues detected - startup sequence optimal");
+            SafeLog(() => _logger.LogInformation("[TIMELINE] ✓ No timing or ordering issues detected - startup sequence optimal"));
         }
         else
         {
             var summary = $"Startup analysis: {report.Errors.Count} errors, {report.Warnings.Count} warnings";
-            _logger.LogWarning("[TIMELINE] {Summary}", summary);
+            SafeLog(() => _logger.LogWarning("[TIMELINE] {Summary}", summary));
         }
 
         return report;

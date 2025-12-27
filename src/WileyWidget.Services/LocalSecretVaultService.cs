@@ -81,6 +81,11 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             _fileLock.Release();
         }
     }
+    /// <summary>
+    /// Performs storesecret. Parameters: key, value.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
 
     public void StoreSecret(string key, string value)
     {
@@ -218,6 +223,9 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         // Replace existing file atomically
         File.Replace(tmp, _secretsPath, null);
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

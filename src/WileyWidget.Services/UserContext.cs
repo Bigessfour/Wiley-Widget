@@ -6,6 +6,9 @@ namespace WileyWidget.Services
     /// <summary>
     /// Simple implementation of user context service using AsyncLocal for thread safety
     /// </summary>
+    /// <summary>
+    /// Represents a class for usercontext.
+    /// </summary>
     public class UserContext : IUserContext
     {
         private static readonly AsyncLocal<string?> _currentUserId = new();
@@ -35,6 +38,11 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="userId">The user ID</param>
         /// <param name="userName">The user name</param>
+        /// <summary>
+        /// Performs setcurrentuser. Parameters: userId, userName.
+        /// </summary>
+        /// <param name="userId">The userId.</param>
+        /// <param name="userName">The userName.</param>
         public void SetCurrentUser(string? userId, string? userName)
         {
             _currentUserId.Value = userId;

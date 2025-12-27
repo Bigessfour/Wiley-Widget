@@ -11,6 +11,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a utility bill for a customer
 /// </summary>
+/// <summary>
+/// Represents a class for utilitybill.
+/// </summary>
 public class UtilityBill : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -21,9 +24,15 @@ public class UtilityBill : INotifyPropertyChanged
     }
 
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     [Required]
+    /// <summary>
+    /// Gets or sets the customerid.
+    /// </summary>
     public int CustomerId { get; set; }
 
     [ForeignKey(nameof(CustomerId))]
@@ -328,6 +337,9 @@ public class UtilityBill : INotifyPropertyChanged
 
     [Timestamp]
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
 
     public DateTime CreatedDate { get; set; } = DateTime.Now;
 
@@ -399,6 +411,9 @@ public class UtilityBill : INotifyPropertyChanged
 
 /// <summary>
 /// Status of a utility bill
+/// </summary>
+/// <summary>
+/// Defines the billstatus enumeration.
 /// </summary>
 public enum BillStatus
 {

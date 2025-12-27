@@ -14,7 +14,10 @@ namespace WileyWidget.Services.Telemetry;
 /// package versions drift. For environments that require full OpenTelemetry integration,
 /// replace with a richer implementation behind the ITelemetryService abstraction.
 /// </summary>
-public class SigNozTelemetryService : IDisposable, ITelemetryService
+/// <summary>
+/// Represents a class for signoztelemetryservice.
+/// </summary>
+public class SigNozTelemetryService : IDisposable, ITelemetryService, IInitializable
 {
     private readonly ILogger<SigNozTelemetryService> _logger;
     private readonly IConfiguration _configuration;
@@ -31,6 +34,9 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
 
     /// <summary>
     /// No-op initialize. Logs startup info so telemetry startup remains observable.
+    /// </summary>
+    /// <summary>
+    /// Performs initialize.
     /// </summary>
     public void Initialize()
     {
@@ -86,6 +92,9 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     /// <summary>
     /// Basic connectivity validation (no network calls in fallback implementation).
     /// </summary>
+    /// <summary>
+    /// Performs validateconnectivity.
+    /// </summary>
     public bool ValidateConnectivity()
     {
         _logger.LogDebug("Telemetry fallback connectivity check (no-op)");
@@ -94,6 +103,9 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
 
     /// <summary>
     /// Returns a minimal telemetry status object for diagnostics.
+    /// </summary>
+    /// <summary>
+    /// Performs gettelemetrystatus.
     /// </summary>
     public object GetTelemetryStatus()
     {
@@ -106,6 +118,9 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
             TracingEnabled = true
         };
     }
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
 
     public void Dispose()
     {

@@ -9,6 +9,9 @@ namespace WileyWidget.Business.Interfaces;
 /// Repository interface for Enterprise entities.
 /// Defines data access operations for municipal enterprises.
 /// </summary>
+/// <summary>
+/// Represents a interface for ienterpriserepository.
+/// </summary>
 public interface IEnterpriseRepository
 {
     /// <summary>

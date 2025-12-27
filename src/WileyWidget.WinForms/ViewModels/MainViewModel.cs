@@ -19,32 +19,71 @@ namespace WileyWidget.WinForms.ViewModels
     public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         private readonly ILogger<MainViewModel> _logger;
+        /// <summary>
+        /// Represents the _dashboardservice.
+        /// </summary>
+        /// <summary>
+        /// Represents the _dashboardservice.
+        /// </summary>
         private readonly IDashboardService _dashboardService;
+        /// <summary>
+        /// Represents the _ailoggingservice.
+        /// </summary>
         private readonly IAILoggingService _aiLoggingService;
+        /// <summary>
+        /// Represents the _disposed.
+        /// </summary>
         private bool _disposed;
 
         [ObservableProperty]
         private string title = "Wiley Widget — WinForms + .NET 9";
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbudget.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbudget.
+        /// </summary>
         private decimal totalBudget;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalactual.
+        /// </summary>
         private decimal totalActual;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the variance.
+        /// </summary>
         private decimal variance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the activeaccountcount.
+        /// </summary>
+        /// <summary>
+        /// Represents the activeaccountcount.
+        /// </summary>
         private int activeAccountCount;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totaldepartments.
+        /// </summary>
         private int totalDepartments;
 
         [ObservableProperty]
         private string? lastUpdateTime;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -55,8 +94,35 @@ namespace WileyWidget.WinForms.ViewModels
         /// Bound to data grids in the MainForm.
         /// </summary>
         public ObservableCollection<ActivityItem> ActivityItems { get; } = new();
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
 
         public IAsyncRelayCommand LoadDataCommand { get; }
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
         public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService)
@@ -172,6 +238,22 @@ namespace WileyWidget.WinForms.ViewModels
                 throw;
             }
         }
+        /// <summary>
+        /// Performs processdashboard. Parameters: dashboardItems.
+        /// </summary>
+        /// <param name="dashboardItems">The dashboardItems.</param>
+        /// <summary>
+        /// Performs processdashboard. Parameters: dashboardItems.
+        /// </summary>
+        /// <param name="dashboardItems">The dashboardItems.</param>
+        /// <summary>
+        /// Performs processdashboard. Parameters: dashboardItems.
+        /// </summary>
+        /// <param name="dashboardItems">The dashboardItems.</param>
+        /// <summary>
+        /// Performs processdashboard. Parameters: dashboardItems.
+        /// </summary>
+        /// <param name="dashboardItems">The dashboardItems.</param>
 
         public void ProcessDashboard(IEnumerable<DashboardItem> dashboardItems)
         {
@@ -216,6 +298,21 @@ namespace WileyWidget.WinForms.ViewModels
 
             _logger.LogInformation("MainViewModel: ProcessDashboard - Dashboard data processed. {ItemCount} items processed", ActivityItems.Count);
         }
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
 
         public void Dispose()
         {

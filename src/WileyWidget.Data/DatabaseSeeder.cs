@@ -3,6 +3,9 @@ using WileyWidget.Models;
 
 namespace WileyWidget.Data
 {
+    /// <summary>
+    /// Represents a class for databaseseeder.
+    /// </summary>
     public class DatabaseSeeder
     {
         private readonly AppDbContext _context;

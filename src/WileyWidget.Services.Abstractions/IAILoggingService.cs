@@ -8,6 +8,9 @@ namespace WileyWidget.Services.Abstractions
     /// Interface for AI usage tracking and logging service.
     /// Monitors XAI API calls, response times, errors, and usage metrics for municipal finance AI operations.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iailoggingservice.
+    /// </summary>
     public interface IAILoggingService
     {
         /// <summary>

@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -24,7 +25,16 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class BudgetViewModel : ObservableObject, IDisposable
     {
         private readonly ILogger<BudgetViewModel> _logger;
+        /// <summary>
+        /// Represents the _budgetrepository.
+        /// </summary>
+        /// <summary>
+        /// Represents the _budgetrepository.
+        /// </summary>
         private readonly IBudgetRepository _budgetRepository;
+        /// <summary>
+        /// Represents the _reportexportservice.
+        /// </summary>
         private readonly IReportExportService _reportExportService;
 
         [ObservableProperty]
@@ -43,6 +53,12 @@ namespace WileyWidget.WinForms.ViewModels
         private string errorMessage = string.Empty;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -62,31 +78,70 @@ namespace WileyWidget.WinForms.ViewModels
         private decimal? varianceThreshold;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the showonlyoverbudget.
+        /// </summary>
+        /// <summary>
+        /// Represents the showonlyoverbudget.
+        /// </summary>
         private bool showOnlyOverBudget;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the showonlyunderbudget.
+        /// </summary>
         private bool showOnlyUnderBudget;
 
         // Analysis properties
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbudgeted.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbudgeted.
+        /// </summary>
         private decimal totalBudgeted;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalactual.
+        /// </summary>
         private decimal totalActual;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalvariance.
+        /// </summary>
         private decimal totalVariance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalencumbrance.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalencumbrance.
+        /// </summary>
         private decimal totalEncumbrance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the percentused.
+        /// </summary>
         private decimal percentUsed;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the entriesoverbudget.
+        /// </summary>
+        /// <summary>
+        /// Represents the entriesoverbudget.
+        /// </summary>
         private int entriesOverBudget;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the entriesunderbudget.
+        /// </summary>
         private int entriesUnderBudget;
 
         // Grouping
@@ -94,12 +149,42 @@ namespace WileyWidget.WinForms.ViewModels
         private string groupBy = "None";
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the showhierarchy.
+        /// </summary>
+        /// <summary>
+        /// Represents the showhierarchy.
+        /// </summary>
         private bool showHierarchy;
 
         /// <summary>Gets the command to load budget entries.</summary>
+        /// <summary>
+        /// Gets or sets the loadbudgetscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbudgetscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbudgetscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbudgetscommand.
+        /// </summary>
         public IAsyncRelayCommand LoadBudgetsCommand { get; }
 
         /// <summary>Gets the command to load budgets by fiscal year.</summary>
+        /// <summary>
+        /// Gets or sets the loadbyyearcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbyyearcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbyyearcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loadbyyearcommand.
+        /// </summary>
         public IAsyncRelayCommand LoadByYearCommand { get; }
 
         /// <summary>Gets the command to import budget entries from CSV.</summary>
@@ -115,9 +200,33 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand<string> ExportToExcelCommand { get; }
 
         /// <summary>Gets the command to apply current filters.</summary>
+        /// <summary>
+        /// Gets or sets the applyfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the applyfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the applyfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the applyfilterscommand.
+        /// </summary>
         public IAsyncRelayCommand ApplyFiltersCommand { get; }
 
         /// <summary>Gets the command to clear all filters.</summary>
+        /// <summary>
+        /// Gets or sets the clearfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the clearfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the clearfilterscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the clearfilterscommand.
+        /// </summary>
         public IAsyncRelayCommand ClearFiltersCommand { get; }
 
         /// <summary>Gets the command to copy a budget entry to next year.</summary>
@@ -127,12 +236,36 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand<decimal> BulkAdjustCommand { get; }
 
         /// <summary>Gets the command to calculate variances.</summary>
+        /// <summary>
+        /// Gets or sets the calculatevariancescommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the calculatevariancescommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the calculatevariancescommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the calculatevariancescommand.
+        /// </summary>
         public IAsyncRelayCommand CalculateVariancesCommand { get; }
 
         /// <summary>Gets the command to refresh analysis totals.</summary>
+        /// <summary>
+        /// Gets or sets the refreshanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshanalysiscommand.
+        /// </summary>
         public IAsyncRelayCommand RefreshAnalysisCommand { get; }
 
-        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IReportExportService? reportExportService)
+        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository budgetRepository, IReportExportService? reportExportService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
@@ -168,6 +301,8 @@ namespace WileyWidget.WinForms.ViewModels
                 }
             };
         }
+
+
 
         private async Task LoadBudgetsAsync()
         {
@@ -557,6 +692,9 @@ namespace WileyWidget.WinForms.ViewModels
 
             await RefreshAnalysisAsync();
         }
+        /// <summary>
+        /// Performs clearfilters.
+        /// </summary>
 
         private Task ClearFiltersAsync()
         {
@@ -610,10 +748,11 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
+                EnsureRepository();
                 foreach (var entry in BudgetEntries)
                 {
                     entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
-                    await _budgetRepository.UpdateAsync(entry);
+                    await _budgetRepository!.UpdateAsync(entry);
                 }
                 _logger.LogInformation("Calculated variances for {Count} entries", BudgetEntries.Count);
                 await RefreshAnalysisAsync();
@@ -656,7 +795,8 @@ namespace WileyWidget.WinForms.ViewModels
                     CreatedAt = DateTime.UtcNow
                 };
 
-                await _budgetRepository.AddAsync(newEntry);
+                EnsureRepository();
+                await _budgetRepository!.AddAsync(newEntry);
                 _logger.LogInformation("Copied budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, newEntry.FiscalYear);
             }
             catch (Exception ex)
@@ -677,6 +817,7 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
+                EnsureRepository();
                 var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
                 var adjustmentFactor = 1 + (adjustmentPercent / 100);
 
@@ -684,7 +825,7 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     entry.BudgetedAmount *= adjustmentFactor;
                     entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
-                    await _budgetRepository.UpdateAsync(entry);
+                    await _budgetRepository!.UpdateAsync(entry);
                 }
 
                 _logger.LogInformation("Applied {Percent}% adjustment to {Count} entries", adjustmentPercent, entries.Count);
@@ -702,7 +843,36 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
+        /// Ensure the IBudgetRepository is available for write operations.
+        /// Throws InvalidOperationException when repository is missing (defensive check).
+        /// </summary>
+        /// <summary>
+        /// Performs ensurerepository.
+        /// </summary>
+        private void EnsureRepository()
+        {
+            if (_budgetRepository == null)
+            {
+                ErrorMessage = "Budget repository is not available";
+                _logger.LogError("IBudgetRepository is null - ensure DI registrations");
+                throw new InvalidOperationException("IBudgetRepository is not available");
+            }
+        }
+
+        /// <summary>
         /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
         /// </summary>
         public void Dispose()
         {

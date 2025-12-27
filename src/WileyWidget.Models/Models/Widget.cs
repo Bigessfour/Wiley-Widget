@@ -9,6 +9,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents a Widget entity for the WileyWidget application
 /// </summary>
+/// <summary>
+/// Represents a class for widget.
+/// </summary>
 public class Widget : INotifyPropertyChanged
 {
     /// <summary>
@@ -40,6 +43,9 @@ public class Widget : INotifyPropertyChanged
     /// Unique identifier for the widget
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -149,6 +155,9 @@ public class Widget : INotifyPropertyChanged
     /// Date when the widget was created
     /// </summary>
     [DataType(DataType.DateTime)]
+    /// <summary>
+    /// Gets or sets the createddate.
+    /// </summary>
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     /// <summary>
@@ -199,6 +208,9 @@ public class Widget : INotifyPropertyChanged
 
     /// <summary>
     /// Updates the ModifiedDate when the widget is changed
+    /// </summary>
+    /// <summary>
+    /// Performs markasmodified.
     /// </summary>
     public void MarkAsModified()
     {

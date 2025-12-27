@@ -14,12 +14,20 @@ public sealed class TelemetryStartupService : IHostedService
     public TelemetryStartupService()
     {
     }
+    /// <summary>
+    /// Performs start. Parameters: cancellationToken.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellationToken.</param>
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         Log.Information("Telemetry pipeline disabled; startup event logged for diagnostics only.");
         return Task.CompletedTask;
     }
+    /// <summary>
+    /// Performs stop. Parameters: cancellationToken.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellationToken.</param>
 
     public Task StopAsync(CancellationToken cancellationToken)
     {

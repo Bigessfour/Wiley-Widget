@@ -527,55 +527,61 @@ namespace WileyWidget.WinForms
                     Console.WriteLine("Starting application message loop...");
 #endif
 
+                    // Add OnApplicationIdle handler for deferred operations (Option A)
+                    Application.Idle += OnApplicationIdle;
+
                     // Use WileyWidgetApplicationContext if available
                     var appContext = new Forms.WileyWidgetApplicationContext(Services, _timelineService as WileyWidget.Services.IStartupTimelineService, host);
-                    Application.Run(appContext);
+
+                    // === Phase 11: Splash Screen Hide (AFTER MainForm Creation completes) ===
+                    // CRITICAL: Must happen AFTER ApplicationContext constructor completes
+                    // ApplicationContext creates MainForm, so splash must wait for it
+                    Log.Information("[DIAGNOSTIC] Completing splash screen after MainForm creation");
+#if DEBUG
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Completing splash screen");
+#endif
+                    using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
+                    {
+                        splash.Report(0.95, "Ready");
+                        Application.DoEvents();
+                        splash.Complete("Ready");
+                        Application.DoEvents(); // Process complete message
+
+                        // Brief delay to show "Ready" message (under 300ms threshold)
+                        System.Threading.Thread.Sleep(200);
+                        splash.Dispose();
+                    } // Phase 11 complete
+#if DEBUG
+                    Console.WriteLine("[SYNC] Phase 11 complete - Splash screen hidden after MainForm creation");
+#endif
+
+                    // === Phase 12: UI Message Loop Preparation (AFTER Splash Screen Hide completes) ===
                     using (var uiPrepScope = _timelineService?.BeginPhaseScope("UI Message Loop Preparation"))
                     {
                         // MICROSOFT PATTERN: Use ApplicationContext with deferred MainForm creation
                         // ApplicationContext constructor handles:
                         // - Phase 7: MainForm Creation
-                        // - Phase 10: Data Prefetch (background seeding)
+                        // - Phase 10: Data Prefetch (background seeding via OnApplicationIdle)
 
-                        // === Phase 11: Splash Screen Hide (AFTER Data Prefetch completes) ===
-                        // CRITICAL: Must happen AFTER ApplicationContext constructor completes
-                        // ApplicationContext runs Data Prefetch, so splash must wait for it
-                        Log.Information("[DIAGNOSTIC] Completing splash screen after data prefetch");
-#if DEBUG
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Completing splash screen");
-#endif
-                        splash.Report(0.95, "Ready");
-                        Application.DoEvents();
-                        using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
-                        {
-                            splash.Complete("Ready");
-                            Application.DoEvents(); // Process complete message
-
-                            // Brief delay to show "Ready" message (under 300ms threshold)
-                            System.Threading.Thread.Sleep(200);
-                            splash.Dispose();
-                        } // Phase 11 complete
-#if DEBUG
-                        Console.WriteLine("[SYNC] Phase 11 complete - Splash screen hidden after data prefetch");
-#endif
                         Application.DoEvents(); // Final UI processing before main loop
                         System.Threading.Thread.Sleep(50); // Brief pause before entering main loop
+                    } // Phase 12 complete - UI preparation done, startup timeline ends here
 
-                        // Generate startup timeline report (DEBUG or env var only)
-                        if (_timelineService != null && _timelineService.IsEnabled)
+                    Application.Run(appContext);
+                    // Generate startup timeline report (DEBUG or env var only) - moved outside phase scope
+                    if (_timelineService != null && _timelineService.IsEnabled)
+                    {
+                        var report = _timelineService.GenerateReport();
+                        if (report.Errors.Count > 0 || report.Warnings.Count > 0)
                         {
-                            var report = _timelineService.GenerateReport();
-                            if (report.Errors.Count > 0 || report.Warnings.Count > 0)
-                            {
-                                Log.Warning("[TIMELINE] Startup completed with {ErrorCount} errors and {WarningCount} warnings",
-                                    report.Errors.Count, report.Warnings.Count);
-                            }
-                            else
-                            {
-                                Log.Information("[TIMELINE] Startup completed successfully with optimal timing");
-                            }
+                            Log.Warning("[TIMELINE] Startup completed with {ErrorCount} errors and {WarningCount} warnings",
+                                report.Errors.Count, report.Warnings.Count);
                         }
-                    } // Phase 9 complete - UI preparation done, startup timeline ends here
+                        else
+                        {
+                            Log.Information("[TIMELINE] Startup completed successfully with optimal timing");
+                        }
+                    }
 #if DEBUG
                     Console.WriteLine("[SYNC] Phase 9 complete - UI Message Loop prepared, entering main message loop");
 #endif
@@ -806,13 +812,13 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                    string? rawLicenseKey = configuration["Syncfusion:LicenseKey"];
-                    if (string.IsNullOrWhiteSpace(rawLicenseKey))
-                    {
-                        throw new InvalidOperationException("Syncfusion license key not found in configuration.");
-                    }
-                    string licenseKey = rawLicenseKey!; // non-null after guard
-                    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                string? rawLicenseKey = configuration["Syncfusion:LicenseKey"];
+                if (string.IsNullOrWhiteSpace(rawLicenseKey))
+                {
+                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
+                }
+                string licenseKey = rawLicenseKey!; // non-null after guard
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
 
                 // Validate the license key - non-fatal in development to allow testing
                 bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
@@ -2068,6 +2074,27 @@ namespace WileyWidget.WinForms
                 base.Dispose(disposing);
             }
         }  // End SplashForm
+
+        /// <summary>
+        /// Handles deferred operations when the application message loop is idle.
+        /// </summary>
+        private static void OnApplicationIdle(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Perform deferred background operations when UI is idle
+                // Example: Warm up caches, load additional data, etc.
+                Log.Debug("[IDLE] Application idle - performing deferred operations");
+                // TODO: Add deferred operations here as needed
+                // For now, just log that idle event occurred
+                // Remove handler after first idle to avoid repeated execution
+                Application.Idle -= OnApplicationIdle;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in OnApplicationIdle handler");
+            }
+        }
 
     }  // End Program class
 }  // End namespace

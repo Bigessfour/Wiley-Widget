@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
@@ -27,15 +28,54 @@ namespace WileyWidget.ViewModels
     public partial class BudgetOverviewViewModel : ObservableObject
     {
         private readonly ILogger<BudgetOverviewViewModel> _logger;
+        /// <summary>
+        /// Represents the _budgetcategoryservice.
+        /// </summary>
+        /// <summary>
+        /// Represents the _budgetcategoryservice.
+        /// </summary>
         private readonly IBudgetCategoryService _budgetCategoryService;
 
+        /// <summary>
+        /// Gets the collection of budget categories.
+        /// </summary>
         public ObservableCollection<BudgetCategoryDto> Categories { get; } = new();
 
         public ObservableCollection<int> AvailableFiscalYears { get; } = new();
 
+        /// <summary>
+        /// Gets the collection of budget metrics.
+        /// </summary>
         public ObservableCollection<BudgetMetric> Metrics { get; } = new();
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the loaddatacommand.
+        /// </summary>
 
         public IAsyncRelayCommand LoadDataCommand { get; }
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the refreshcommand.
+        /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand<BudgetCategoryDto> AddCategoryCommand { get; }
         public IAsyncRelayCommand<BudgetCategoryDto> UpdateCategoryCommand { get; }
@@ -48,30 +88,66 @@ namespace WileyWidget.ViewModels
         private BudgetCategoryDto? selectedCategory;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalbudget.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalbudget.
+        /// </summary>
         private decimal totalBudget;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalactual.
+        /// </summary>
         private decimal totalActual;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalencumbrance.
+        /// </summary>
         private decimal totalEncumbrance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the totalvariance.
+        /// </summary>
+        /// <summary>
+        /// Represents the totalvariance.
+        /// </summary>
         private decimal totalVariance;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the overallvariancepercent.
+        /// </summary>
         private decimal overallVariancePercent;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the overbudgetcount.
+        /// </summary>
+        /// <summary>
+        /// Represents the overbudgetcount.
+        /// </summary>
         private int overBudgetCount;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the underbudgetcount.
+        /// </summary>
         private int underBudgetCount;
 
         [ObservableProperty]
         private DateTime lastUpdated = DateTime.Now;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -85,11 +161,6 @@ namespace WileyWidget.ViewModels
         {
             get => FiscalYear;
             set => FiscalYear = value;
-        }
-
-        public BudgetOverviewViewModel()
-            : this(NullLogger<BudgetOverviewViewModel>.Instance, new FallbackBudgetCategoryService(), null)
-        {
         }
 
         public BudgetOverviewViewModel(ILogger<BudgetOverviewViewModel> logger, IBudgetCategoryService budgetCategoryService, UIConfiguration? uiConfig = null)
@@ -120,6 +191,12 @@ namespace WileyWidget.ViewModels
         public BudgetOverviewViewModel(IBudgetCategoryService budgetCategoryService)
             : this(NullLogger<BudgetOverviewViewModel>.Instance, budgetCategoryService, null)
         {
+            // Legacy constructor for tests - delegates to main ctor
+        }
+
+        public BudgetOverviewViewModel()
+            : this(NullLogger<BudgetOverviewViewModel>.Instance, new FallbackBudgetCategoryService(), null)
+        {
         }
 
         public Task InitializeAsync(CancellationToken cancellationToken = default) => LoadDataAsync(cancellationToken);
@@ -133,6 +210,14 @@ namespace WileyWidget.ViewModels
                 ErrorMessage = null;
                 Categories.Clear();
                 Metrics.Clear();
+
+                // Service should be injected via constructor in this refactor
+                if (_budgetCategoryService == null)
+                {
+                    ErrorMessage = "Budget category service is not available";
+                    _logger.LogError("IBudgetCategoryService is null");
+                    return;
+                }
 
                 var categories = await _budgetCategoryService.GetAllCategoriesAsync(FiscalYear, cancellationToken);
                 foreach (var category in categories)
@@ -162,6 +247,13 @@ namespace WileyWidget.ViewModels
 
         private async Task RefreshTotalsAsync(CancellationToken cancellationToken)
         {
+            // Ensure service is resolved
+            if (_budgetCategoryService == null)
+            {
+                _logger.LogWarning("Cannot refresh totals - IBudgetCategoryService is null");
+                return;
+            }
+
             var (totalBudget, totalActual, totalEncumbrance) = await _budgetCategoryService.GetTotalsAsync(FiscalYear, cancellationToken);
             TotalBudget = totalBudget;
             TotalActual = totalActual;
@@ -175,6 +267,14 @@ namespace WileyWidget.ViewModels
             if (newCategory is null)
             {
                 throw new ArgumentNullException(nameof(newCategory));
+            }
+
+            // Ensure service is resolved
+            if (_budgetCategoryService == null)
+            {
+                ErrorMessage = "Budget category service not available";
+                _logger.LogError("Cannot add category - IBudgetCategoryService is null");
+                throw new InvalidOperationException("IBudgetCategoryService not available");
             }
 
             try
@@ -204,6 +304,14 @@ namespace WileyWidget.ViewModels
             if (category is null)
             {
                 throw new ArgumentNullException(nameof(category));
+            }
+
+            // Ensure service is resolved
+            if (_budgetCategoryService == null)
+            {
+                ErrorMessage = "Budget category service not available";
+                _logger.LogError("Cannot update category - IBudgetCategoryService is null");
+                throw new InvalidOperationException("IBudgetCategoryService not available");
             }
 
             try
@@ -238,6 +346,14 @@ namespace WileyWidget.ViewModels
 
         private async Task DeleteCategoryAsync(int categoryId, CancellationToken cancellationToken)
         {
+            // Ensure service is resolved
+            if (_budgetCategoryService == null)
+            {
+                ErrorMessage = "Budget category service not available";
+                _logger.LogError("Cannot delete category - IBudgetCategoryService is null");
+                throw new InvalidOperationException("IBudgetCategoryService not available");
+            }
+
             try
             {
                 var deleted = await _budgetCategoryService.DeleteCategoryAsync(categoryId, cancellationToken);
@@ -272,6 +388,9 @@ namespace WileyWidget.ViewModels
         partial void OnTotalActualChanged(decimal value) => OnPropertyChanged(nameof(Variance));
 
         partial void OnTotalEncumbranceChanged(decimal value) => OnPropertyChanged(nameof(Variance));
+        /// <summary>
+        /// Performs initializefiscalyearoptions.
+        /// </summary>
 
         private void InitializeFiscalYearOptions()
         {
@@ -283,6 +402,14 @@ namespace WileyWidget.ViewModels
                 AvailableFiscalYears.Add(currentYear + 1);
             }
         }
+        /// <summary>
+        /// Performs updatefiscalyearoptions. Parameters: categories.
+        /// </summary>
+        /// <param name="categories">The categories.</param>
+        /// <summary>
+        /// Performs updatefiscalyearoptions. Parameters: categories.
+        /// </summary>
+        /// <param name="categories">The categories.</param>
 
         private void UpdateFiscalYearOptions(IEnumerable<BudgetCategoryDto> categories)
         {
@@ -294,6 +421,12 @@ namespace WileyWidget.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Performs updatemetricsfromcategories.
+        /// </summary>
+        /// <summary>
+        /// Performs updatemetricsfromcategories.
+        /// </summary>
 
         private void UpdateMetricsFromCategories()
         {

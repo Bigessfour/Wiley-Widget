@@ -5,6 +5,8 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Threading;
+using System.Threading;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -13,10 +15,19 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public partial class AnalyticsViewModel : ObservableObject, IDisposable
     {
+        /// <summary>
+        /// Represents the _analyticsservice.
+        /// </summary>
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
+        /// <summary>
+        /// Represents the isloading.
+        /// </summary>
         private bool isLoading;
 
         [ObservableProperty]
@@ -45,19 +56,76 @@ namespace WileyWidget.WinForms.ViewModels
 
         // Scenario parameters
         [ObservableProperty]
+        /// <summary>
+        /// Represents the rateincreasepercentage.
+        /// </summary>
+        /// <summary>
+        /// Represents the rateincreasepercentage.
+        /// </summary>
         private decimal rateIncreasePercentage;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the expenseincreasepercentage.
+        /// </summary>
         private decimal expenseIncreasePercentage;
 
         [ObservableProperty]
+        /// <summary>
+        /// Represents the revenuetargetpercentage.
+        /// </summary>
+        /// <summary>
+        /// Represents the revenuetargetpercentage.
+        /// </summary>
         private decimal revenueTargetPercentage;
 
         [ObservableProperty]
         private int projectionYears = 3;
+        /// <summary>
+        /// Gets or sets the performanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the performanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the performanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the performanalysiscommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the performanalysiscommand.
+        /// </summary>
 
         public IAsyncRelayCommand PerformAnalysisCommand { get; }
+        /// <summary>
+        /// Gets or sets the runscenariocommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the runscenariocommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the runscenariocommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the runscenariocommand.
+        /// </summary>
         public IAsyncRelayCommand RunScenarioCommand { get; }
+        /// <summary>
+        /// Gets or sets the generateforecastcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generateforecastcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generateforecastcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generateforecastcommand.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the generateforecastcommand.
+        /// </summary>
         public IAsyncRelayCommand GenerateForecastCommand { get; }
 
         public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger)
@@ -74,58 +142,63 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                IsLoading = true;
-                StatusText = "Performing exploratory analysis...";
+                // Guarantee UI state changes happen on the UI thread
+                await UiThread.InvokeAsync(() =>
+                {
+                    IsLoading = true;
+                    StatusText = "Performing exploratory analysis...";
+                });
 
                 var startDate = new DateTime(DateTime.Now.Year - 1, 7, 1);
                 var endDate = new DateTime(DateTime.Now.Year, 6, 30);
 
-                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate);
+                BudgetAnalysisResult result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate);
 
-                // Update metrics
-                Metrics.Clear();
-                foreach (var kvp in result.CategoryBreakdown)
+                // Update UI-bound collections on UI thread to avoid cross-thread exceptions
+                await UiThread.InvokeAsync(() =>
                 {
-                    Metrics.Add(new AnalyticsMetric
+                    Metrics.Clear();
+                    foreach (var kvp in result.CategoryBreakdown)
                     {
-                        Name = kvp.Key,
-                        Value = kvp.Value,
-                        Unit = "$"
-                    });
-                }
+                        Metrics.Add(new AnalyticsMetric
+                        {
+                            Name = kvp.Key,
+                            Value = kvp.Value,
+                            Unit = "$"
+                        });
+                    }
 
-                // Update variances
-                TopVariances.Clear();
-                foreach (var variance in result.TopVariances)
-                {
-                    TopVariances.Add(variance);
-                }
+                    TopVariances.Clear();
+                    foreach (var variance in result.TopVariances)
+                    {
+                        TopVariances.Add(variance);
+                    }
 
-                // Update trends
-                TrendData.Clear();
-                foreach (var trend in result.TrendData.MonthlyTrends)
-                {
-                    TrendData.Add(trend);
-                }
+                    TrendData.Clear();
+                    foreach (var trend in result.TrendData.MonthlyTrends)
+                    {
+                        TrendData.Add(trend);
+                    }
 
-                // Update insights
-                Insights.Clear();
-                foreach (var insight in result.Insights)
-                {
-                    Insights.Add(insight);
-                }
+                    Insights.Clear();
+                    foreach (var insight in result.Insights)
+                    {
+                        Insights.Add(insight);
+                    }
 
-                StatusText = "Analysis complete";
+                    StatusText = "Analysis complete";
+                });
+
                 _logger.LogInformation("Exploratory analysis completed successfully");
             }
             catch (Exception ex)
             {
-                StatusText = $"Analysis failed: {ex.Message}";
+                await UiThread.InvokeAsync(() => StatusText = $"Analysis failed: {ex.Message}");
                 _logger.LogError(ex, "Error performing exploratory analysis");
             }
             finally
             {
-                IsLoading = false;
+                await UiThread.InvokeAsync(() => IsLoading = false);
             }
         }
 
@@ -133,8 +206,11 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                IsLoading = true;
-                StatusText = "Running scenario analysis...";
+                await UiThread.InvokeAsync(() =>
+                {
+                    IsLoading = true;
+                    StatusText = "Running scenario analysis...";
+                });
 
                 var parameters = new RateScenarioParameters
                 {
@@ -146,31 +222,35 @@ namespace WileyWidget.WinForms.ViewModels
 
                 var result = await _analyticsService.RunRateScenarioAsync(parameters);
 
-                // Update projections
-                ScenarioProjections.Clear();
-                foreach (var projection in result.Projections)
+                await UiThread.InvokeAsync(() =>
                 {
-                    ScenarioProjections.Add(projection);
-                }
+                    // Update projections
+                    ScenarioProjections.Clear();
+                    foreach (var projection in result.Projections)
+                    {
+                        ScenarioProjections.Add(projection);
+                    }
 
-                // Update recommendations
-                Recommendations.Clear();
-                foreach (var rec in result.Recommendations)
-                {
-                    Recommendations.Add(rec);
-                }
+                    // Update recommendations
+                    Recommendations.Clear();
+                    foreach (var rec in result.Recommendations)
+                    {
+                        Recommendations.Add(rec);
+                    }
 
-                StatusText = "Scenario analysis complete";
+                    StatusText = "Scenario analysis complete";
+                });
+
                 _logger.LogInformation("Rate scenario analysis completed successfully");
             }
             catch (Exception ex)
             {
-                StatusText = $"Scenario failed: {ex.Message}";
+                await UiThread.InvokeAsync(() => StatusText = $"Scenario failed: {ex.Message}");
                 _logger.LogError(ex, "Error running rate scenario");
             }
             finally
             {
-                IsLoading = false;
+                await UiThread.InvokeAsync(() => IsLoading = false);
             }
         }
 
@@ -178,34 +258,53 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                IsLoading = true;
-                StatusText = "Generating forecast...";
+                await UiThread.InvokeAsync(() =>
+                {
+                    IsLoading = true;
+                    StatusText = "Generating forecast...";
+                });
 
                 var result = await _analyticsService.GenerateReserveForecastAsync(3);
 
-                // Update forecast data
-                ForecastData.Clear();
-                foreach (var point in result.ForecastPoints)
+                await UiThread.InvokeAsync(() =>
                 {
-                    ForecastData.Add(point);
-                }
+                    // Update forecast data
+                    ForecastData.Clear();
+                    foreach (var point in result.ForecastPoints)
+                    {
+                        ForecastData.Add(point);
+                    }
 
-                StatusText = "Forecast generated";
+                    StatusText = "Forecast generated";
+                });
+
                 _logger.LogInformation("Reserve forecast generated successfully");
             }
             catch (Exception ex)
             {
-                StatusText = $"Forecast failed: {ex.Message}";
+                await UiThread.InvokeAsync(() => StatusText = $"Forecast failed: {ex.Message}");
                 _logger.LogError(ex, "Error generating reserve forecast");
             }
             finally
             {
-                IsLoading = false;
+                await UiThread.InvokeAsync(() => IsLoading = false);
             }
         }
 
         /// <summary>
         /// Disposes of resources used by the ViewModel.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
+        /// </summary>
+        /// <summary>
+        /// Performs dispose.
         /// </summary>
         public void Dispose()
         {
@@ -230,10 +329,61 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// Analytics metric for display
     /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsmetric.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsmetric.
+    /// </summary>
     public class AnalyticsMetric
     {
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the value.
+        /// </summary>
         public decimal Value { get; set; }
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
+        /// <summary>
+        /// Gets or sets the unit.
+        /// </summary>
         public string Unit { get; set; } = string.Empty;
     }
 }

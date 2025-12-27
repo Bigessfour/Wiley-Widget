@@ -14,6 +14,9 @@ namespace WileyWidget.Services.Excel;
 /// Service for reading Excel files and extracting municipal budget data.
 /// Uses ExcelDataReader (open-source) instead of Syncfusion.XlsIO.
 /// </summary>
+/// <summary>
+/// Represents a class for excelreaderservice.
+/// </summary>
 public class ExcelReaderService : IExcelReaderService
 {
     private readonly ILogger<ExcelReaderService> _logger;

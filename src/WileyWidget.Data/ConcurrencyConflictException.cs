@@ -14,6 +14,9 @@ public sealed class ConcurrencyConflictException : Exception
     /// <summary>
     /// The entity type involved in the conflict.
     /// </summary>
+    /// <summary>
+    /// Gets or sets the entityname.
+    /// </summary>
     public string EntityName { get; }
 
     /// <summary>

@@ -11,6 +11,9 @@ namespace WileyWidget.Models;
 /// Global settings for fiscal year configuration
 /// Used to categorize financial data into current, past, and future periods
 /// </summary>
+/// <summary>
+/// Represents a class for fiscalyearsettings.
+/// </summary>
 public class FiscalYearSettings : INotifyPropertyChanged
 {
     /// <summary>
@@ -30,6 +33,9 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// Unique identifier (singleton pattern - only one record should exist)
     /// </summary>
     [Key]
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     private int _fiscalYearStartMonth = 7;
@@ -84,6 +90,9 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Last time settings were modified
     /// </summary>
+    /// <summary>
+    /// Gets or sets the lastmodified.
+    /// </summary>
     public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
     /// <summary>
@@ -110,6 +119,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Get the current fiscal year start date relative to a specific date
     /// </summary>
+    /// <summary>
+    /// Performs getcurrentfiscalyearstart. Parameters: referenceDate.
+    /// </summary>
+    /// <param name="referenceDate">The referenceDate.</param>
     public DateTime GetCurrentFiscalYearStart(DateTime referenceDate)
     {
         try
@@ -133,6 +146,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Get the current fiscal year end date relative to a specific date
     /// </summary>
+    /// <summary>
+    /// Performs getcurrentfiscalyearend. Parameters: referenceDate.
+    /// </summary>
+    /// <param name="referenceDate">The referenceDate.</param>
     public DateTime GetCurrentFiscalYearEnd(DateTime referenceDate)
     {
         var fiscalStart = GetCurrentFiscalYearStart(referenceDate);
@@ -142,6 +159,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Determine if a date falls within the current fiscal year
     /// </summary>
+    /// <summary>
+    /// Performs iscurrentfiscalyear. Parameters: date.
+    /// </summary>
+    /// <param name="date">The date.</param>
     public bool IsCurrentFiscalYear(DateTime date)
     {
         var fiscalStart = GetCurrentFiscalYearStart(DateTime.Now);
@@ -152,6 +173,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Determine if a date is in a past fiscal year
     /// </summary>
+    /// <summary>
+    /// Performs ispastfiscalyear. Parameters: date.
+    /// </summary>
+    /// <param name="date">The date.</param>
     public bool IsPastFiscalYear(DateTime date)
     {
         var fiscalStart = GetCurrentFiscalYearStart(DateTime.Now);
@@ -161,6 +186,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Determine if a date is in a future fiscal year
     /// </summary>
+    /// <summary>
+    /// Performs isfuturefiscalyear. Parameters: date.
+    /// </summary>
+    /// <param name="date">The date.</param>
     public bool IsFutureFiscalYear(DateTime date)
     {
         var fiscalEnd = GetCurrentFiscalYearEnd(DateTime.Now);
@@ -170,6 +199,10 @@ public class FiscalYearSettings : INotifyPropertyChanged
     /// <summary>
     /// Get fiscal year period classification
     /// </summary>
+    /// <summary>
+    /// Performs getfiscalperiod. Parameters: date.
+    /// </summary>
+    /// <param name="date">The date.</param>
     public FiscalPeriod GetFiscalPeriod(DateTime date)
     {
         if (IsCurrentFiscalYear(date)) return FiscalPeriod.Current;
@@ -180,6 +213,9 @@ public class FiscalYearSettings : INotifyPropertyChanged
 
 /// <summary>
 /// Fiscal period classification for data integrity
+/// </summary>
+/// <summary>
+/// Defines the fiscalperiod enumeration.
 /// </summary>
 public enum FiscalPeriod
 {

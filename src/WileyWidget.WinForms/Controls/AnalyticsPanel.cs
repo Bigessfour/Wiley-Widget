@@ -6,6 +6,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -16,6 +17,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class AnalyticsPanel : UserControl
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly AnalyticsViewModel _viewModel;
     private readonly ILogger<AnalyticsPanel> _logger;
 
@@ -57,6 +64,9 @@ public partial class AnalyticsPanel : UserControl
 
         InitializeControls();
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -118,6 +128,12 @@ public partial class AnalyticsPanel : UserControl
         // Set tab order
         SetTabOrder();
     }
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializetoppanel.
+    /// </summary>
 
     private void InitializeTopPanel()
     {
@@ -178,7 +194,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _toolTip.SetToolTip(_refreshButton, "Refresh analytics data (Alt+R)");
+        _toolTip.SetToolTip(_refreshButton, "Refresh analytics data");
         _refreshButton.Click += async (s, e) => await RefreshDataAsync();
 
         buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
@@ -301,6 +317,12 @@ public partial class AnalyticsPanel : UserControl
 
         _mainSplitContainer!.Panel1!.Controls.Add(topPanel);
     }
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
+    /// <summary>
+    /// Performs initializebottompanel.
+    /// </summary>
 
     private void InitializeBottomPanel()
     {
@@ -491,35 +513,86 @@ public partial class AnalyticsPanel : UserControl
 
         _mainSplitContainer!.Panel2.Controls.Add(bottomPanel);
     }
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
+    /// <summary>
+    /// Performs settaborder.
+    /// </summary>
 
     private void SetTabOrder()
     {
         // Tab order set in control initialization
     }
+    /// <summary>
+    /// Performs rateincreasetextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void RateIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value))
             _viewModel.RateIncreasePercentage = value;
     }
+    /// <summary>
+    /// Performs expenseincreasetextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs expenseincreasetextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ExpenseIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value))
             _viewModel.ExpenseIncreasePercentage = value;
     }
+    /// <summary>
+    /// Performs revenuetargettextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs revenuetargettextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void RevenueTargetTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value))
             _viewModel.RevenueTargetPercentage = value;
     }
+    /// <summary>
+    /// Performs projectionyearstextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs projectionyearstextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ProjectionYearsTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (int.TryParse(_projectionYearsTextBox?.Text, out var value))
             _viewModel.ProjectionYears = value;
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -569,6 +642,12 @@ public partial class AnalyticsPanel : UserControl
                 break;
         }
     }
+    /// <summary>
+    /// Performs updatetrendschart.
+    /// </summary>
+    /// <summary>
+    /// Performs updatetrendschart.
+    /// </summary>
 
     private void UpdateTrendsChart()
     {
@@ -601,6 +680,12 @@ public partial class AnalyticsPanel : UserControl
             _logger.LogError(ex, "Error updating trends chart");
         }
     }
+    /// <summary>
+    /// Performs updateforecastchart.
+    /// </summary>
+    /// <summary>
+    /// Performs updateforecastchart.
+    /// </summary>
 
     private void UpdateForecastChart()
     {
@@ -620,7 +705,7 @@ public partial class AnalyticsPanel : UserControl
                 forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", CultureInfo.InvariantCulture), (double)point.PredictedReserves);
             }
 
-            _forecastChart.Series.Add(forecastSeries);
+            _forecastChart.SafeInvoke(c => c.Series.Add(forecastSeries));
             _forecastChart.Refresh();
         }
         catch (Exception ex)
@@ -651,14 +736,28 @@ public partial class AnalyticsPanel : UserControl
         {
             _logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
-            MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            this.SafeInvoke(() => MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {
         if (_statusLabel != null) _statusLabel.Text = message;
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -735,6 +834,9 @@ public partial class AnalyticsPanel : UserControl
     /// <summary>
     /// Required method for Designer support - do not modify
     /// the contents of this method with the code editor.
+    /// </summary>
+    /// <summary>
+    /// Performs initializecomponent.
     /// </summary>
     private void InitializeComponent()
     {

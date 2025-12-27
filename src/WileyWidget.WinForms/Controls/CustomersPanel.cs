@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -13,6 +14,12 @@ namespace WileyWidget.WinForms.Controls;
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class CustomersPanel : UserControl
 {
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
+    /// <summary>
+    /// Represents the _viewmodel.
+    /// </summary>
     private readonly CustomersViewModel _viewModel;
     private readonly ILogger<CustomersPanel> _logger;
 
@@ -43,6 +50,9 @@ public partial class CustomersPanel : UserControl
 
         _logger.LogDebug("CustomersPanel initialized");
     }
+    /// <summary>
+    /// Performs initializecontrols.
+    /// </summary>
 
     private void InitializeControls()
     {
@@ -52,7 +62,7 @@ public partial class CustomersPanel : UserControl
 
         // Panel header
         _panelHeader = new PanelHeader { Dock = DockStyle.Top };
-        _panelHeader.Title = "Customers";
+        _panelHeader.SafeInvoke(c => c.Title = "Customers");
         _panelHeader.RefreshClicked += async (s, e) => await RefreshCustomersAsync();
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
@@ -205,6 +215,12 @@ public partial class CustomersPanel : UserControl
         // Load initial data
         _ = LoadCustomersAsync();
     }
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
+    /// <summary>
+    /// Performs bindviewmodel.
+    /// </summary>
 
     private void BindViewModel()
     {
@@ -213,6 +229,16 @@ public partial class CustomersPanel : UserControl
             _customersGrid.DataSource = _viewModel.Customers;
         }
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -284,11 +310,31 @@ public partial class CustomersPanel : UserControl
     {
         await LoadCustomersAsync();
     }
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs searchtextbox textchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         // Debounce search - could implement timer here for auto-search
     }
+    /// <summary>
+    /// Performs customersgrid selectionchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs customersgrid selectionchanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void CustomersGrid_SelectionChanged(object? sender, EventArgs e)
     {
@@ -302,12 +348,28 @@ public partial class CustomersPanel : UserControl
             }
         }
     }
+    /// <summary>
+    /// Performs customersgrid doubleclick. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs customersgrid doubleclick. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void CustomersGrid_DoubleClick(object? sender, EventArgs e)
     {
         // Could open customer details dialog here
         _logger.LogDebug("Customer double-clicked - details dialog not implemented yet");
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -332,6 +394,14 @@ public partial class CustomersPanel : UserControl
         }
         return null;
     }
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
+    /// <summary>
+    /// Performs updatestatus. Parameters: message.
+    /// </summary>
+    /// <param name="message">The message.</param>
 
     private void UpdateStatus(string message)
     {

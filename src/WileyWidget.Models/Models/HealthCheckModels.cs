@@ -8,6 +8,9 @@ namespace WileyWidget.Models;
 /// <summary>
 /// Represents the overall health status of the application
 /// </summary>
+/// <summary>
+/// Defines the healthstatus enumeration.
+/// </summary>
 public enum HealthStatus
 {
     /// <summary>
@@ -34,6 +37,9 @@ public enum HealthStatus
 /// <summary>
 /// Represents the result of a single health check
 /// </summary>
+/// <summary>
+/// Represents a class for healthcheckresult.
+/// </summary>
 public class HealthCheckResult
 {
     /// <summary>
@@ -43,6 +49,9 @@ public class HealthCheckResult
 
     /// <summary>
     /// Current health status
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the status.
     /// </summary>
     public HealthStatus Status { get; set; }
 
@@ -59,10 +68,19 @@ public class HealthCheckResult
     /// <summary>
     /// Time taken to perform the health check
     /// </summary>
+    /// <summary>
+    /// Gets or sets the duration.
+    /// </summary>
     public TimeSpan Duration { get; set; }
 
     /// <summary>
     /// Timestamp when the health check was performed
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the timestamp.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the timestamp.
     /// </summary>
     public DateTime Timestamp { get; set; }
 
@@ -79,6 +97,12 @@ public class HealthCheckResult
     /// <summary>
     /// Creates a healthy result
     /// </summary>
+    /// <summary>
+    /// Performs healthy. Parameters: serviceName, null, null.
+    /// </summary>
+    /// <param name="serviceName">The serviceName.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
     public static HealthCheckResult Healthy(string serviceName, string? description = null, TimeSpan? duration = null)
     {
         return new HealthCheckResult
@@ -94,6 +118,12 @@ public class HealthCheckResult
     /// <summary>
     /// Creates a degraded result
     /// </summary>
+    /// <summary>
+    /// Performs degraded. Parameters: serviceName, description, null.
+    /// </summary>
+    /// <param name="serviceName">The serviceName.</param>
+    /// <param name="description">The description.</param>
+    /// <param name="null">The null.</param>
     public static HealthCheckResult Degraded(string serviceName, string description, TimeSpan? duration = null)
     {
         return new HealthCheckResult
@@ -109,6 +139,13 @@ public class HealthCheckResult
     /// <summary>
     /// Creates an unhealthy result
     /// </summary>
+    /// <summary>
+    /// Performs unhealthy. Parameters: serviceName, description, null, null.
+    /// </summary>
+    /// <param name="serviceName">The serviceName.</param>
+    /// <param name="description">The description.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
     public static HealthCheckResult Unhealthy(string serviceName, string description, Exception? exception = null, TimeSpan? duration = null)
     {
         return new HealthCheckResult
@@ -125,6 +162,13 @@ public class HealthCheckResult
     /// <summary>
     /// Creates an unavailable result
     /// </summary>
+    /// <summary>
+    /// Performs unavailable. Parameters: serviceName, description, null, null.
+    /// </summary>
+    /// <param name="serviceName">The serviceName.</param>
+    /// <param name="description">The description.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
     public static HealthCheckResult Unavailable(string serviceName, string description, Exception? exception = null, TimeSpan? duration = null)
     {
         return new HealthCheckResult
@@ -142,15 +186,27 @@ public class HealthCheckResult
 /// <summary>
 /// Represents the overall health check report for the application
 /// </summary>
+/// <summary>
+/// Represents a class for healthcheckreport.
+/// </summary>
 public class HealthCheckReport
 {
     /// <summary>
     /// Overall health status of the application
     /// </summary>
+    /// <summary>
+    /// Gets or sets the overallstatus.
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the overallstatus.
+    /// </summary>
     public HealthStatus OverallStatus { get; set; }
 
     /// <summary>
     /// Total time taken for all health checks
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the totalduration.
     /// </summary>
     public TimeSpan TotalDuration { get; set; }
 
@@ -208,6 +264,9 @@ public class HealthCheckReport
     /// <summary>
     /// Determines if the application can start with the current health status
     /// </summary>
+    /// <summary>
+    /// Performs canstartapplication.
+    /// </summary>
     public bool CanStartApplication()
     {
         // Application can start if:
@@ -230,6 +289,9 @@ public class HealthCheckReport
 /// Circuit breaker for health checks to prevent cascading failures
 /// Tuned for startup resilience: 3 failures, 2 minute recovery for critical services
 /// </summary>
+/// <summary>
+/// Represents a class for healthcheckcircuitbreaker.
+/// </summary>
 public class HealthCheckCircuitBreaker
 {
     private readonly object _lock = new();
@@ -249,6 +311,9 @@ public class HealthCheckCircuitBreaker
         _metricsService = metricsService;
         _serviceName = serviceName;
     }
+    /// <summary>
+    /// Defines the circuitbreakerstate enumeration.
+    /// </summary>
 
     public enum CircuitBreakerState
     {
@@ -341,6 +406,9 @@ public class HealthCheckCircuitBreaker
 /// <summary>
 /// Exception thrown when circuit breaker is open
 /// </summary>
+/// <summary>
+/// Represents a class for circuitbreakeropenexception.
+/// </summary>
 public class CircuitBreakerOpenException : Exception
 {
     public CircuitBreakerOpenException(string message) : base(message) { }
@@ -348,6 +416,9 @@ public class CircuitBreakerOpenException : Exception
 
 /// <summary>
 /// Summary of application health status for UI display
+/// </summary>
+/// <summary>
+/// Represents a class for healthstatussummary.
 /// </summary>
 public class HealthStatusSummary
 {
@@ -369,10 +440,16 @@ public class HealthStatusSummary
     /// <summary>
     /// Total number of services checked
     /// </summary>
+    /// <summary>
+    /// Gets or sets the servicecount.
+    /// </summary>
     public int ServiceCount { get; set; }
 
     /// <summary>
     /// Number of healthy services
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the healthycount.
     /// </summary>
     public int HealthyCount { get; set; }
 
@@ -390,45 +467,72 @@ public class HealthStatusSummary
 /// <summary>
 /// Enhanced health check configuration with resilience settings
 /// </summary>
+/// <summary>
+/// Represents a class for healthcheckconfiguration.
+/// </summary>
 public class HealthCheckConfiguration
 {
     /// <summary>
     /// Default timeout for health checks
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the defaulttimeout.
     /// </summary>
     public TimeSpan DefaultTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Timeout for database health checks
     /// </summary>
+    /// <summary>
+    /// Gets or sets the databasetimeout.
+    /// </summary>
     public TimeSpan DatabaseTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Timeout for external service health checks
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the externalservicetimeout.
     /// </summary>
     public TimeSpan ExternalServiceTimeout { get; set; } = TimeSpan.FromSeconds(15);
 
     /// <summary>
     /// Maximum number of retries for failed health checks
     /// </summary>
+    /// <summary>
+    /// Gets or sets the maxretries.
+    /// </summary>
     public int MaxRetries { get; set; } = 2;
 
     /// <summary>
     /// Delay between retries
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the retrydelay.
     /// </summary>
     public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Circuit breaker failure threshold
     /// </summary>
+    /// <summary>
+    /// Gets or sets the circuitbreakerthreshold.
+    /// </summary>
     public int CircuitBreakerThreshold { get; set; } = 3;
 
     /// <summary>
     /// Circuit breaker timeout period
     /// </summary>
+    /// <summary>
+    /// Gets or sets the circuitbreakertimeout.
+    /// </summary>
     public TimeSpan CircuitBreakerTimeout { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Whether to continue with application startup if health checks fail
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the continueonfailure.
     /// </summary>
     public bool ContinueOnFailure { get; set; } = true;
 
@@ -445,10 +549,16 @@ public class HealthCheckConfiguration
     /// <summary>
     /// Maximum allowed overall unhealthy+unavailable failure rate (0-1) before startup aborts (if ContinueOnFailure is false). Default 0.5 (50%).
     /// </summary>
+    /// <summary>
+    /// Gets or sets the criticalfailureratethreshold.
+    /// </summary>
     public double CriticalFailureRateThreshold { get; set; } = 0.5;
 
     /// <summary>
     /// If true, only critical services are checked during initial startup; non-critical services run later (e.g., via background task).
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the defernoncriticalchecks.
     /// </summary>
     public bool DeferNonCriticalChecks { get; set; } = false;
 }

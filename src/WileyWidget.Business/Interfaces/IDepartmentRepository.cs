@@ -8,6 +8,9 @@ namespace WileyWidget.Business.Interfaces;
 /// Repository interface for Department entities.
 /// Defines data access operations for municipal departments.
 /// </summary>
+/// <summary>
+/// Represents a interface for idepartmentrepository.
+/// </summary>
 public interface IDepartmentRepository
 {
     /// <summary>

@@ -6,6 +6,9 @@ namespace WileyWidget.Services.Logging;
 /// <summary>
 /// Provides correlation IDs and contextual information for structured logging
 /// </summary>
+/// <summary>
+/// Represents a class for loggingcontext.
+/// </summary>
 public class LoggingContext : IDisposable
 {
     private static readonly AsyncLocal<LoggingContext> _current = new();
@@ -18,25 +21,40 @@ public class LoggingContext : IDisposable
     /// <summary>
     /// Gets a default logging context when none is active
     /// </summary>
+    /// <summary>
+    /// Gets or sets the default.
+    /// </summary>
     public static LoggingContext Default { get; } = new LoggingContext(Guid.Empty, "None");
 
     /// <summary>
     /// Unique identifier for this operation/request
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the correlationid.
     /// </summary>
     public Guid CorrelationId { get; }
 
     /// <summary>
     /// Name of the operation being performed
     /// </summary>
+    /// <summary>
+    /// Gets or sets the operationname.
+    /// </summary>
     public string OperationName { get; }
 
     /// <summary>
     /// When this context was created
     /// </summary>
+    /// <summary>
+    /// Gets or sets the starttime.
+    /// </summary>
     public DateTime StartTime { get; }
 
     /// <summary>
     /// Thread ID where this context was created
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the threadid.
     /// </summary>
     public int ThreadId { get; }
 
@@ -59,6 +77,10 @@ public class LoggingContext : IDisposable
     /// </summary>
     /// <param name="operationName">Name of the operation</param>
     /// <returns>Disposable logging context that should be used in a using statement</returns>
+    /// <summary>
+    /// Performs beginoperation. Parameters: operationName.
+    /// </summary>
+    /// <param name="operationName">The operationName.</param>
     public static LoggingContext BeginOperation(string operationName)
     {
         var parentCorrelationId = _current.Value?.CorrelationId;
@@ -73,6 +95,11 @@ public class LoggingContext : IDisposable
     /// <param name="correlationId">The correlation ID to use</param>
     /// <param name="operationName">Name of the operation</param>
     /// <returns>Disposable logging context</returns>
+    /// <summary>
+    /// Performs beginoperationwithid. Parameters: correlationId, operationName.
+    /// </summary>
+    /// <param name="correlationId">The correlationId.</param>
+    /// <param name="operationName">The operationName.</param>
     public static LoggingContext BeginOperationWithId(Guid correlationId, string operationName)
     {
         var parentCorrelationId = _current.Value?.CorrelationId;
@@ -88,6 +115,9 @@ public class LoggingContext : IDisposable
 
     /// <summary>
     /// Disposes the context and restores the parent context
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
     /// </summary>
     public void Dispose()
     {

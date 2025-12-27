@@ -7,6 +7,9 @@ namespace WileyWidget.Models;
 /// Represents a system alert for display in the dashboard.
 /// Used for notifications, warnings, and error messages.
 /// </summary>
+/// <summary>
+/// Represents a class for alertitem.
+/// </summary>
 public class AlertItem : INotifyPropertyChanged
 {
     private string _severity = "Info";

@@ -5,12 +5,60 @@ namespace WileyWidget.WinForms.Helpers
     /// <summary>
     /// Helper methods for conversational AI interactions.
     /// </summary>
+    /// <summary>
+    /// Represents a class for conversationalaihelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for conversationalaihelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for conversationalaihelper.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for conversationalaihelper.
+    /// </summary>
     public static class ConversationalAIHelper
     {
+        /// <summary>
+        /// Performs getwelcomemessage. Parameters: personalityName.
+        /// </summary>
+        /// <param name="personalityName">The personalityName.</param>
+        /// <summary>
+        /// Performs getwelcomemessage. Parameters: personalityName.
+        /// </summary>
+        /// <param name="personalityName">The personalityName.</param>
+        /// <summary>
+        /// Performs getwelcomemessage. Parameters: personalityName.
+        /// </summary>
+        /// <param name="personalityName">The personalityName.</param>
+        /// <summary>
+        /// Performs getwelcomemessage. Parameters: personalityName.
+        /// </summary>
+        /// <param name="personalityName">The personalityName.</param>
         public static string GetWelcomeMessage(string personalityName)
         {
             return $"Hello! I'm your AI assistant with a {personalityName} personality. How can I help you today?";
         }
+        /// <summary>
+        /// Performs formatfriendlyerror. Parameters: exception.
+        /// </summary>
+        /// <param name="exception">The exception.</param>
+        /// <summary>
+        /// Performs formatfriendlyerror. Parameters: exception.
+        /// </summary>
+        /// <param name="exception">The exception.</param>
+        /// <summary>
+        /// Performs formatfriendlyerror. Parameters: exception.
+        /// </summary>
+        /// <param name="exception">The exception.</param>
+        /// <summary>
+        /// Performs formatfriendlyerror. Parameters: exception.
+        /// </summary>
+        /// <param name="exception">The exception.</param>
+        /// <summary>
+        /// Performs formatfriendlyerror. Parameters: exception.
+        /// </summary>
+        /// <param name="exception">The exception.</param>
 
         public static string FormatFriendlyError(Exception exception)
         {

@@ -6,6 +6,9 @@ namespace WileyWidget.Services.Abstractions;
 /// Minimal telemetry abstraction used by lower layers to report exceptions and diagnostic data.
 /// Kept intentionally small to avoid circular project references.
 /// </summary>
+/// <summary>
+/// Represents a interface for itelemetryservice.
+/// </summary>
 public interface ITelemetryService
 {
     /// <summary>

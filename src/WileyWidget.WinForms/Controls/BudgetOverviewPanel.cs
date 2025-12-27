@@ -23,6 +23,18 @@ namespace WileyWidget.WinForms.Controls
     /// <summary>
     /// Resource strings for BudgetOverviewPanel UI elements.
     /// </summary>
+    /// <summary>
+    /// Represents a class for budgetoverviewpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetoverviewpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetoverviewpanelresources.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for budgetoverviewpanelresources.
+    /// </summary>
     internal static class BudgetOverviewPanelResources
     {
         public const string PanelTitle = "Budget Overview";
@@ -44,6 +56,12 @@ namespace WileyWidget.WinForms.Controls
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class BudgetOverviewPanel : UserControl
     {
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
+        /// <summary>
+        /// Represents the _vm.
+        /// </summary>
         private readonly BudgetOverviewViewModel _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
@@ -88,6 +106,9 @@ namespace WileyWidget.WinForms.Controls
         public BudgetOverviewPanel() : this(ResolveBudgetOverviewViewModel(), ResolveDispatcherHelper())
         {
         }
+        /// <summary>
+        /// Performs resolvebudgetoverviewviewmodel.
+        /// </summary>
 
         private static BudgetOverviewViewModel ResolveBudgetOverviewViewModel()
         {
@@ -138,6 +159,12 @@ namespace WileyWidget.WinForms.Controls
             _themeChangedHandler = OnThemeChanged;
             ThemeManager.ThemeChanged += _themeChangedHandler;
         }
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
+        /// <summary>
+        /// Performs initializecomponent.
+        /// </summary>
 
         private void InitializeComponent()
         {
@@ -146,6 +173,12 @@ namespace WileyWidget.WinForms.Controls
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
         }
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
+        /// <summary>
+        /// Performs setupui.
+        /// </summary>
 
         private void SetupUI()
         {
@@ -154,7 +187,7 @@ namespace WileyWidget.WinForms.Controls
             // Panel header
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
             _panelHeader.Title = BudgetOverviewPanelResources.PanelTitle;
-            _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+            _panelHeaderRefreshHandler = (s, e) => _ = RefreshDataAsync();
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
@@ -175,8 +208,8 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Fiscal year selector",
                 AccessibleDescription = "Select the fiscal year to view budget data"
             };
-            _comboFiscalYear.SelectedIndexChanged += ComboFiscalYear_SelectedIndexChanged;
-            flow.Controls.Add(_comboFiscalYear);
+            // TODO: Manual SafeInvoke needed for: _comboFiscalYear.SelectedIndexChanged += ComboFiscalYear_SelectedIndexChanged;
+            // TODO: Manual SafeInvoke needed for: flow.Controls.Add(_comboFiscalYear);
 
             // Refresh button
             _btnRefresh = new SfButton
@@ -188,8 +221,8 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Reload budget overview data"
             };
             SetupRefreshButtonIcon();
-            _btnRefresh.Click += async (s, e) => await RefreshDataAsync();
-            flow.Controls.Add(_btnRefresh);
+            // TODO: Manual SafeInvoke needed for: _btnRefresh.Click += (s, e) => _ = RefreshDataAsync();
+            // TODO: Manual SafeInvoke needed for: flow.Controls.Add(_btnRefresh);
 
             // Export CSV button
             _btnExportCsv = new SfButton
@@ -201,8 +234,8 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Export budget data to CSV file (Alt+E)"
             };
             SetupExportButtonIcon();
-            _btnExportCsv.Click += async (s, e) => await ExportToCsvAsync();
-            flow.Controls.Add(_btnExportCsv);
+            // TODO: Manual SafeInvoke needed for: _btnExportCsv.Click += async (s, e) => await ExportToCsvAsync();
+            // TODO: Manual SafeInvoke needed for: flow.Controls.Add(_btnExportCsv);
 
             _topPanel.Controls.Add(flow);
             Controls.Add(_topPanel);
@@ -287,6 +320,20 @@ namespace WileyWidget.WinForms.Controls
             _noDataOverlay = new NoDataOverlay { Message = "No budget data available" };
             Controls.Add(_noDataOverlay);
         }
+        /// <summary>
+        /// Performs createsummarytile. Parameters: parent, title, value, accentColor.
+        /// </summary>
+        /// <param name="parent">The parent.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="accentColor">The accentColor.</param>
+        /// <summary>
+        /// Performs createsummarytile. Parameters: parent, title, value, accentColor.
+        /// </summary>
+        /// <param name="parent">The parent.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="accentColor">The accentColor.</param>
 
         private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
         {
@@ -323,6 +370,12 @@ namespace WileyWidget.WinForms.Controls
             parent.Controls.Add(tile);
             return lblValue;
         }
+        /// <summary>
+        /// Performs configurechart.
+        /// </summary>
+        /// <summary>
+        /// Performs configurechart.
+        /// </summary>
 
         private void ConfigureChart()
         {
@@ -343,6 +396,12 @@ namespace WileyWidget.WinForms.Controls
             _varianceChart.PrimaryYAxis.Title = "Amount";
             _varianceChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
         }
+        /// <summary>
+        /// Performs configuregridcolumns.
+        /// </summary>
+        /// <summary>
+        /// Performs configuregridcolumns.
+        /// </summary>
 
         private void ConfigureGridColumns()
         {
@@ -351,9 +410,15 @@ namespace WileyWidget.WinForms.Controls
             _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 150 });
             _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 120 });
             _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 120 });
-            _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 100 });
+            // TODO: Manual SafeInvoke needed for: _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 120 });
+            // TODO: Manual SafeInvoke needed for: _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 100 });
         }
+        /// <summary>
+        /// Performs setuprefreshbuttonicon.
+        /// </summary>
+        /// <summary>
+        /// Performs setuprefreshbuttonicon.
+        /// </summary>
 
         private void SetupRefreshButtonIcon()
         {
@@ -385,6 +450,12 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
         }
+        /// <summary>
+        /// Performs setupexportbuttonicon.
+        /// </summary>
+        /// <summary>
+        /// Performs setupexportbuttonicon.
+        /// </summary>
 
         private void SetupExportButtonIcon()
         {
@@ -416,6 +487,16 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
         }
+        /// <summary>
+        /// Performs updatebuttonicon. Parameters: button, icon.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="icon">The icon.</param>
+        /// <summary>
+        /// Performs updatebuttonicon. Parameters: button, icon.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="icon">The icon.</param>
 
         private void UpdateButtonIcon(SfButton? button, Image? icon)
         {
@@ -433,6 +514,12 @@ namespace WileyWidget.WinForms.Controls
                 button.Image = icon;
             }
         }
+        /// <summary>
+        /// Performs bindviewmodel.
+        /// </summary>
+        /// <summary>
+        /// Performs bindviewmodel.
+        /// </summary>
 
         private void BindViewModel()
         {
@@ -441,7 +528,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_comboFiscalYear != null && _vm.AvailableFiscalYears.Any())
                 {
-                    _comboFiscalYear.DataSource = _vm.AvailableFiscalYears.ToList();
+                    _comboFiscalYear.SafeInvoke(c => c.DataSource = _vm.AvailableFiscalYears.ToList());
                     _comboFiscalYear.SelectedItem = _vm.SelectedFiscalYear;
                 }
             }
@@ -458,6 +545,16 @@ namespace WileyWidget.WinForms.Controls
             // Initial UI update
             UpdateUI();
         }
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs viewmodel propertychanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -510,6 +607,12 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: PropertyChanged handler failed");
             }
         }
+        /// <summary>
+        /// Performs updateui.
+        /// </summary>
+        /// <summary>
+        /// Performs updateui.
+        /// </summary>
 
         private void UpdateUI()
         {
@@ -559,6 +662,12 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateUI failed");
             }
         }
+        /// <summary>
+        /// Performs updatechart.
+        /// </summary>
+        /// <summary>
+        /// Performs updatechart.
+        /// </summary>
 
         private void UpdateChart()
         {
@@ -588,6 +697,16 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateChart failed");
             }
         }
+        /// <summary>
+        /// Performs combofiscalyear selectedindexchanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs combofiscalyear selectedindexchanged. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void ComboFiscalYear_SelectedIndexChanged(object? sender, EventArgs e)
         {
@@ -610,7 +729,8 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: Refresh failed");
-                MessageBox.Show($"Failed to refresh data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // MessageBox.Show is thread-safe for modal dialogs, but use SafeInvoke for consistency
+                this.SafeInvoke(() => MessageBox.Show($"Failed to refresh data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
             }
         }
 
@@ -651,14 +771,20 @@ namespace WileyWidget.WinForms.Controls
                     _vm.OverallVariancePercent.ToString("F2", CultureInfo.InvariantCulture), ","));
 
                 await File.WriteAllTextAsync(sfd.FileName, sb.ToString());
-                MessageBox.Show($"Exported to {sfd.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.SafeInvoke(() => MessageBox.Show($"Exported to {sfd.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information));
             }
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "BudgetOverviewPanel: Export to CSV failed");
-                MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.SafeInvoke(() => MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error));
             }
         }
+        /// <summary>
+        /// Performs closepanel.
+        /// </summary>
+        /// <summary>
+        /// Performs closepanel.
+        /// </summary>
 
         private void ClosePanel()
         {
@@ -679,6 +805,16 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: ClosePanel failed");
             }
         }
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
+        /// <summary>
+        /// Performs onthemechanged. Parameters: sender, theme.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="theme">The theme.</param>
 
         private void OnThemeChanged(object? sender, AppTheme theme)
         {
@@ -699,6 +835,12 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
         }
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
+        /// <summary>
+        /// Performs applycurrenttheme.
+        /// </summary>
 
         private void ApplyCurrentTheme()
         {

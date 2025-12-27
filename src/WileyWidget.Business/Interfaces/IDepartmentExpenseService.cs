@@ -4,6 +4,9 @@ namespace WileyWidget.Business.Interfaces;
 /// Service interface for querying department-specific expenses from QuickBooks.
 /// Provides aggregated expense data for Water, Sewer, Trash, and Apartments departments.
 /// </summary>
+/// <summary>
+/// Represents a interface for idepartmentexpenseservice.
+/// </summary>
 public interface IDepartmentExpenseService
 {
     /// <summary>

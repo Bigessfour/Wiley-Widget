@@ -15,9 +15,17 @@ namespace WileyWidget.Services
     /// coercing invalid Color values to safe defaults to avoid XAML parser failures
     /// during application startup.
     /// </summary>
+    /// <summary>
+    /// Represents a class for saferesourcedictionaryloader.
+    /// </summary>
     public static class SafeResourceDictionaryLoader
     {
         private static readonly string[] AllowedColorFormats = new[] { "#RRGGBB", "#AARRGGBB", "#RGB", "#ARGB" };
+        /// <summary>
+        /// Performs load. Handles file operations. Parameters: path, null.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="null">The null.</param>
 
         public static ResourceDictionary Load(string path, ILogger? logger = null)
         {

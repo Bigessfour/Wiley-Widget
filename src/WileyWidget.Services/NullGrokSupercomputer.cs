@@ -9,6 +9,9 @@ namespace WileyWidget.Services;
 /// No-op Grok Supercomputer service used in development/testing when AI services are not configured.
 /// Prevents startup failures by providing predictable stub responses.
 /// </summary>
+/// <summary>
+/// Represents a class for nullgroksupercomputer.
+/// </summary>
 public class NullGrokSupercomputer : IGrokSupercomputer
 {
     public Task<ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "")

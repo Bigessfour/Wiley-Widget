@@ -9,6 +9,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents the compliance status.
     /// </summary>
+    /// <summary>
+    /// Defines the compliancestatus enumeration.
+    /// </summary>
     public enum ComplianceStatus
     {
         Compliant,
@@ -20,6 +23,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents the severity level of a compliance violation.
     /// </summary>
+    /// <summary>
+    /// Defines the violationseverity enumeration.
+    /// </summary>
     public enum ViolationSeverity
     {
         Low,
@@ -30,6 +36,9 @@ namespace WileyWidget.Models
 
     /// <summary>
     /// Represents a compliance violation with details about the issue and corrective actions.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for complianceviolation.
     /// </summary>
     public class ComplianceViolation : INotifyPropertyChanged
     {
@@ -120,6 +129,9 @@ namespace WileyWidget.Models
     /// <summary>
     /// Represents a compliance item with name, status, and description.
     /// </summary>
+    /// <summary>
+    /// Represents a class for complianceitem.
+    /// </summary>
     public class ComplianceItem : INotifyPropertyChanged
     {
         private string? _name;
@@ -191,6 +203,9 @@ namespace WileyWidget.Models
 
     /// <summary>
     /// Represents a compliance report building on AnalyticsData, including compliance items, overall status, and recommendations.
+    /// </summary>
+    /// <summary>
+    /// Represents a class for compliancereport.
     /// </summary>
     public class ComplianceReport : AnalyticsData
     {
@@ -333,8 +348,15 @@ namespace WileyWidget.Models
         /// </summary>
         public DateTime? NextAuditDate { get; set; }
 
+        public List<AIInsight> AIInsights { get; set; } = new();
+
+        public int TransactionsProcessed { get; set; }
+
         /// <summary>
         /// Updates the compliance report based on the current enterprises.
+        /// </summary>
+        /// <summary>
+        /// Performs updatecompliance.
         /// </summary>
         public void UpdateCompliance()
         {

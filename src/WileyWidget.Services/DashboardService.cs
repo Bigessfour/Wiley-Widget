@@ -16,6 +16,9 @@ namespace WileyWidget.Services
     /// <summary>
     /// Service for dashboard data operations with caching and resilience
     /// </summary>
+    /// <summary>
+    /// Represents a class for dashboardservice.
+    /// </summary>
     public class DashboardService : IDashboardService
     {
         private readonly ILogger<DashboardService> _logger;

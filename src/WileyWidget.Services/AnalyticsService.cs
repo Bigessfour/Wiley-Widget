@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
@@ -11,6 +12,9 @@ namespace WileyWidget.Services
 {
     /// <summary>
     /// Service providing analytics capabilities for budget data analysis and scenario modeling
+    /// </summary>
+    /// <summary>
+    /// Represents a class for analyticsservice.
     /// </summary>
     public class AnalyticsService : IAnalyticsService
     {
@@ -31,43 +35,51 @@ namespace WileyWidget.Services
         /// <summary>
         /// Performs exploratory data analysis on budget data
         /// </summary>
-        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate)
+        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Performing exploratory analysis for period {Start} to {End}", startDate, endDate);
+            try
+            {
+                _logger.LogInformation("Performing exploratory analysis for period {Start} to {End}", startDate, endDate);
 
-            var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate);
-            var accounts = await _accountRepository.GetAllAsync();
+                var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
+                var accounts = await _accountRepository.GetAllAsync(cancellationToken);
 
-            var result = new BudgetAnalysisResult();
+                var result = new BudgetAnalysisResult();
 
-            // Category breakdown
-            result.CategoryBreakdown = budgetEntries
-                .GroupBy(be => GetCategoryFromAccount(be.AccountNumber, accounts))
-                .ToDictionary(g => g.Key, g => g.Sum(be => be.ActualAmount));
+                // Category breakdown
+                result.CategoryBreakdown = budgetEntries
+                    .GroupBy(be => GetCategoryFromAccount(be.AccountNumber, accounts))
+                    .ToDictionary(g => g.Key, g => g.Sum(be => be.ActualAmount));
 
-            // Top variances
-            result.TopVariances = budgetEntries
-                .Where(be => be.BudgetedAmount > 0)
-                .Select(be => new VarianceAnalysis
-                {
-                    AccountNumber = be.AccountNumber,
-                    AccountName = GetAccountName(be.AccountNumber, accounts),
-                    BudgetedAmount = be.BudgetedAmount,
-                    ActualAmount = be.ActualAmount,
-                    VarianceAmount = be.ActualAmount - be.BudgetedAmount,
-                    VariancePercentage = be.BudgetedAmount > 0 ? ((be.ActualAmount - be.BudgetedAmount) / be.BudgetedAmount) * 100 : 0
-                })
-                .OrderByDescending(v => Math.Abs(v.VarianceAmount))
-                .Take(10)
-                .ToList();
+                // Top variances
+                result.TopVariances = budgetEntries
+                    .Where(be => be.BudgetedAmount > 0)
+                    .Select(be => new VarianceAnalysis
+                    {
+                        AccountNumber = be.AccountNumber,
+                        AccountName = GetAccountName(be.AccountNumber, accounts),
+                        BudgetedAmount = be.BudgetedAmount,
+                        ActualAmount = be.ActualAmount,
+                        VarianceAmount = be.ActualAmount - be.BudgetedAmount,
+                        VariancePercentage = be.BudgetedAmount > 0 ? ((be.ActualAmount - be.BudgetedAmount) / be.BudgetedAmount) * 100 : 0
+                    })
+                    .OrderByDescending(v => Math.Abs(v.VarianceAmount))
+                    .Take(10)
+                    .ToList();
 
-            // Trend analysis
-            result.TrendData = AnalyzeTrends(budgetEntries, startDate, endDate);
+                // Trend analysis
+                result.TrendData = AnalyzeTrends(budgetEntries, startDate, endDate);
 
-            // Generate insights
-            result.Insights = GenerateInsights(result);
+                // Generate insights
+                result.Insights = GenerateInsights(result);
 
-            return result;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to perform exploratory analysis for period {Start} to {End}", startDate, endDate);
+                throw;
+            }
         }
 
         /// <summary>
@@ -289,7 +301,13 @@ namespace WileyWidget.Services
 
         private class ReserveDataPoint
         {
+            /// <summary>
+            /// Gets or sets the date.
+            /// </summary>
             public DateTime Date { get; set; }
+            /// <summary>
+            /// Gets or sets the reserves.
+            /// </summary>
             public decimal Reserves { get; set; }
         }
     }

@@ -18,8 +18,17 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class ReportsViewModel : ObservableObject, IDisposable
 {
+    /// <summary>
+    /// Represents the _reportservice.
+    /// </summary>
+    /// <summary>
+    /// Represents the _reportservice.
+    /// </summary>
     private readonly IReportService _reportService;
     private readonly ILogger<ReportsViewModel> _logger;
+    /// <summary>
+    /// Represents the _auditservice.
+    /// </summary>
     private readonly IAuditService _auditService;
     private readonly IReportExportService? _exportService;
 
@@ -45,6 +54,12 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private DateTime toDate = DateTime.Now;
 
     [ObservableProperty]
+    /// <summary>
+    /// Represents the isbusy.
+    /// </summary>
+    /// <summary>
+    /// Represents the isbusy.
+    /// </summary>
     private bool isBusy;
 
     [ObservableProperty]
@@ -54,9 +69,18 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private string? statusMessage;
 
     [ObservableProperty]
+    /// <summary>
+    /// Represents the isloading.
+    /// </summary>
+    /// <summary>
+    /// Represents the isloading.
+    /// </summary>
     private bool isLoading;
 
     [ObservableProperty]
+    /// <summary>
+    /// Represents the hasreportloaded.
+    /// </summary>
     private bool hasReportLoaded;
 
     [ObservableProperty]
@@ -188,6 +212,10 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
         _logger.LogInformation("ReportsViewModel initialized. Reports folder: {ReportsFolder}", ReportsFolder);
     }
+    /// <summary>
+    /// Performs normalize. Parameters: input.
+    /// </summary>
+    /// <param name="input">The input.</param>
 
     private static string Normalize(string input)
     {
@@ -195,6 +223,14 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         var chars = input.Where(c => char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray();
         return new string(chars);
     }
+    /// <summary>
+    /// Performs splitcamelcase. Parameters: input.
+    /// </summary>
+    /// <param name="input">The input.</param>
+    /// <summary>
+    /// Performs splitcamelcase. Parameters: input.
+    /// </summary>
+    /// <param name="input">The input.</param>
 
     private static string SplitCamelCase(string input)
     {
@@ -282,6 +318,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Gets the RDL file path for the selected report type.
+    /// </summary>
+    /// <summary>
+    /// Performs getreportpath. Handles file operations.
     /// </summary>
     private string GetReportPath()
     {
@@ -629,6 +668,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Validate selected parameters prior to running or exporting a report.
     /// </summary>
+    /// <summary>
+    /// Performs validateparameters.
+    /// </summary>
     private bool ValidateParameters()
     {
         ErrorMessage = null;
@@ -733,6 +775,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    /// <summary>
+    /// Performs nextpage.
+    /// </summary>
     private void NextPage()
     {
         CurrentPage++;
@@ -741,6 +786,12 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    /// <summary>
+    /// Performs previouspage.
+    /// </summary>
+    /// <summary>
+    /// Performs previouspage.
+    /// </summary>
     private void PreviousPage()
     {
         if (CurrentPage > 1)
@@ -832,6 +883,18 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Disposes of resources used by the ViewModel.
     /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
+    /// <summary>
+    /// Performs dispose.
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
@@ -864,6 +927,30 @@ public record ReportDataItem(string Name, string Value, string Category);
 /// <summary>
 /// Budget summary report data.
 /// </summary>
+/// <summary>
+/// Performs budgetsummaryitem. Parameters: FundName, BudgetAmount, ActualAmount.
+/// </summary>
+/// <param name="FundName">The FundName.</param>
+/// <param name="BudgetAmount">The BudgetAmount.</param>
+/// <param name="ActualAmount">The ActualAmount.</param>
+/// <summary>
+/// Performs budgetsummaryitem. Parameters: FundName, BudgetAmount, ActualAmount.
+/// </summary>
+/// <param name="FundName">The FundName.</param>
+/// <param name="BudgetAmount">The BudgetAmount.</param>
+/// <param name="ActualAmount">The ActualAmount.</param>
+/// <summary>
+/// Performs budgetsummaryitem. Parameters: FundName, BudgetAmount, ActualAmount.
+/// </summary>
+/// <param name="FundName">The FundName.</param>
+/// <param name="BudgetAmount">The BudgetAmount.</param>
+/// <param name="ActualAmount">The ActualAmount.</param>
+/// <summary>
+/// Performs budgetsummaryitem. Parameters: FundName, BudgetAmount, ActualAmount.
+/// </summary>
+/// <param name="FundName">The FundName.</param>
+/// <param name="BudgetAmount">The BudgetAmount.</param>
+/// <param name="ActualAmount">The ActualAmount.</param>
 public record BudgetSummaryItem(string FundName, decimal BudgetAmount, decimal ActualAmount)
 {
     public decimal Variance => BudgetAmount - ActualAmount;

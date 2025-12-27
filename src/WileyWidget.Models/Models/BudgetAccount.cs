@@ -8,6 +8,9 @@ namespace WileyWidget.Models;
 /// Represents a hierarchical GASB-compliant budget account
 /// Supports parent-child relationships for accounts like 410, 410.1, 410.1.1
 /// </summary>
+/// <summary>
+/// Represents a class for budgetaccount.
+/// </summary>
 public class BudgetAccount : INotifyPropertyChanged
 {
     private string _accountNumber = string.Empty;
@@ -55,6 +58,9 @@ public class BudgetAccount : INotifyPropertyChanged
     /// <summary>
     /// Gets or sets the fund type code (General, Special Revenue, Capital, etc.)
     /// </summary>
+    /// <summary>
+    /// Gets or sets the fundtype.
+    /// </summary>
     public string FundType
     {
         get => _fundType;
@@ -70,6 +76,9 @@ public class BudgetAccount : INotifyPropertyChanged
 
     /// <summary>
     /// Gets or sets the budgeted amount (must be positive per GASB rules)
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the budgetamount.
     /// </summary>
     public decimal BudgetAmount
     {
@@ -87,6 +96,9 @@ public class BudgetAccount : INotifyPropertyChanged
 
     /// <summary>
     /// Gets or sets the actual expenses to date
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the actualamount.
     /// </summary>
     public decimal ActualAmount
     {
@@ -171,6 +183,9 @@ public class BudgetAccount : INotifyPropertyChanged
     /// <summary>
     /// Gets the account ID
     /// </summary>
+    /// <summary>
+    /// Gets or sets the id.
+    /// </summary>
     public int Id { get; set; }
 
     /// <summary>
@@ -210,15 +225,24 @@ public class BudgetAccount : INotifyPropertyChanged
 /// <summary>
 /// Represents a GASB fund type for budget classification
 /// </summary>
+/// <summary>
+/// Represents a class for budgetfundtype.
+/// </summary>
 public class BudgetFundType
 {
     /// <summary>
     /// Gets or sets the fund type code
     /// </summary>
+    /// <summary>
+    /// Gets or sets the code.
+    /// </summary>
     public string Code { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the fund type name
+    /// </summary>
+    /// <summary>
+    /// Gets or sets the name.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
@@ -247,18 +271,33 @@ public class BudgetFundType
 /// <summary>
 /// Data model for budget distribution chart
 /// </summary>
+/// <summary>
+/// Represents a class for budgetdistributiondata.
+/// </summary>
 public class BudgetDistributionData
 {
     public string FundType { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the amount.
+    /// </summary>
     public decimal Amount { get; set; }
+    /// <summary>
+    /// Gets or sets the percentage.
+    /// </summary>
     public double Percentage { get; set; }
 }
 
 /// <summary>
 /// Data model for budget comparison chart
 /// </summary>
+/// <summary>
+/// Represents a class for budgetcomparisondata.
+/// </summary>
 public class BudgetComparisonData
 {
+    /// <summary>
+    /// Gets or sets the category.
+    /// </summary>
     public string Category { get; set; } = string.Empty;
     public decimal BudgetAmount { get; set; }
     public decimal ActualAmount { get; set; }

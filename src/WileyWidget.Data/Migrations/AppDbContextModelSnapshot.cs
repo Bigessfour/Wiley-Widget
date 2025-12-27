@@ -22,6 +22,61 @@ namespace WileyWidget.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WileyWidget.Models.AIInsight", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EnterpriseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActioned")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Query")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Response")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AIInsights");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.ActivityLog", b =>
                 {
                     b.Property<int>("Id")
@@ -211,6 +266,9 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("QuickBooksCompanyFile")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("QuickBooksConflictPolicy")
+                        .HasColumnType("int");
+
                     b.Property<string>("QuickBooksEnvironment")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -315,6 +373,7 @@ namespace WileyWidget.Data.Migrations
                             LastSelectedEnterpriseId = 1,
                             LogFilePath = "logs/wiley-widget.log",
                             QboTokenExpiry = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            QuickBooksConflictPolicy = 0,
                             QuickBooksEnvironment = "sandbox",
                             SelectedLogLevel = "Information",
                             SessionTimeoutMinutes = 60,
@@ -399,6 +458,9 @@ namespace WileyWidget.Data.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("DepartmentCode")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
@@ -1130,6 +1192,95 @@ namespace WileyWidget.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WileyWidget.Models.DepartmentCurrentCharge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CurrentCharge")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CustomerCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Department")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("DepartmentCurrentCharges");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.DepartmentGoal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AdjustmentFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(1.0m);
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RecommendationText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("TargetProfitMarginPercent")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Department", "IsActive");
+
+                    b.ToTable("DepartmentGoals");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
                 {
                     b.Property<int>("Id")
@@ -1394,7 +1545,7 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("AccountNumber_Value")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("nvarchar(max)")
-                        .HasComputedColumnSql("[AccountNumber]");
+                        .HasComputedColumnSql("[AccountNumber]", true);
 
                     b.Property<decimal>("Balance")
                         .HasPrecision(19, 4)
@@ -1934,6 +2085,126 @@ namespace WileyWidget.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WileyWidget.Models.QBMappingConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BudgetEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MappingStrategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QBEntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("QBEntityName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("QBEntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BudgetEntryId");
+
+                    b.ToTable("QBMappingConfigurations");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.QuickBooksSyncConflict", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("LocalAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("LocalTransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Policy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QuickBooksInvoiceId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("RemoteAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuickBooksInvoiceId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("QuickBooksSyncConflicts");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.TaxRevenueSummary", b =>
                 {
                     b.Property<int>("Id")
@@ -2102,6 +2373,21 @@ namespace WileyWidget.Data.Migrations
 
                     b.Property<int?>("MunicipalAccountId")
                         .HasColumnType("int");
+
+                    b.Property<string>("QuickBooksId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("QuickBooksInvoiceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasDefaultValue(new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 });
 
                     b.Property<DateTime>("TransactionDate")
                         .HasColumnType("datetime2");
@@ -2739,6 +3025,17 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("ParentAccount");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.QBMappingConfiguration", b =>
+                {
+                    b.HasOne("WileyWidget.Models.BudgetEntry", "BudgetEntry")
+                        .WithMany()
+                        .HasForeignKey("BudgetEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BudgetEntry");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Transaction", b =>

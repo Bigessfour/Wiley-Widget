@@ -58,6 +58,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         SetupUI();
         SubscribeToThemeChanges();
     }
+    /// <summary>
+    /// Performs initializecomponent.
+    /// </summary>
 
     private void InitializeComponent()
     {
@@ -76,6 +79,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             // Fall back if DPI scaling not supported
         }
     }
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
+    /// <summary>
+    /// Performs setupui.
+    /// </summary>
 
     private void SetupUI()
     {
@@ -85,10 +94,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _panelHeader = new PanelHeader
         {
             Dock = DockStyle.Top,
-            Title = "Revenue Trends",
-            AccessibleName = "Revenue Trends header"
+            Title = "Revenue Trends"
         };
-        _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+        _panelHeader.SafeSetProperty(h => h.AccessibleName = "Revenue Trends header");
+        _panelHeaderRefreshHandler = (s, e) => _ = RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
@@ -204,6 +213,22 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         ResumeLayout(false);
     }
+    /// <summary>
+    /// Performs createsummarycard. Parameters: parent, title, value, columnIndex, description.
+    /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="title">The title.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="columnIndex">The columnIndex.</param>
+    /// <param name="description">The description.</param>
+    /// <summary>
+    /// Performs createsummarycard. Parameters: parent, title, value, columnIndex, description.
+    /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="title">The title.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="columnIndex">The columnIndex.</param>
+    /// <param name="description">The description.</param>
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
     {
@@ -246,6 +271,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// <summary>
     /// Configures ChartControl for line series display per Syncfusion API documentation.
     /// Uses global SkinManager theme (no per-control overrides), proper date-based X-axis.
+    /// </summary>
+    /// <summary>
+    /// Performs configurechart.
     /// </summary>
     private void ConfigureChart()
     {
@@ -319,6 +347,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// <summary>
     /// Configures SfDataGrid columns with proper formatting per Syncfusion API.
     /// Uses currency and date formatting as documented in SfDataGrid column configuration.
+    /// </summary>
+    /// <summary>
+    /// Performs configuregridcolumns.
     /// </summary>
     private void ConfigureGridColumns()
     {
@@ -412,6 +443,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             }
         }
     }
+    /// <summary>
+    /// Performs showerror. Parameters: ex.
+    /// </summary>
+    /// <param name="ex">The ex.</param>
 
     private void ShowError(Exception ex)
     {
@@ -421,6 +456,16 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
+    /// <summary>
+    /// Performs viewmodel propertychanged. Parameters: sender, e.
+    /// </summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The e.</param>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -467,6 +512,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             // Ignore if disposed during update
         }
     }
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
+    /// <summary>
+    /// Performs updateui.
+    /// </summary>
 
     private void UpdateUI()
     {
@@ -490,6 +541,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             // Ignore if disposed
         }
     }
+    /// <summary>
+    /// Performs updatesummarycards.
+    /// </summary>
+    /// <summary>
+    /// Performs updatesummarycards.
+    /// </summary>
 
     private void UpdateSummaryCards()
     {
@@ -525,6 +582,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// <summary>
     /// Updates chart with line series data per Syncfusion ChartControl API.
     /// Configures line series with proper styling and data points.
+    /// </summary>
+    /// <summary>
+    /// Performs updatechartdata.
     /// </summary>
     private void UpdateChartData()
     {
@@ -564,6 +624,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Console.WriteLine($"RevenueTrendsPanel: UpdateChartData failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
+    /// <summary>
+    /// Performs updategriddata.
+    /// </summary>
 
     private void UpdateGridData()
     {
@@ -584,6 +650,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Console.WriteLine($"RevenueTrendsPanel: UpdateGridData failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
+    /// <summary>
+    /// Performs updatenodataoverlay.
+    /// </summary>
 
     private void UpdateNoDataOverlay()
     {
@@ -610,13 +682,20 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            // MessageBox.Show is thread-safe for modal dialogs, but use SafeInvoke for consistency
+            this.SafeInvoke(() => MessageBox.Show(
                 $"Failed to refresh data: {ex.Message}",
                 "Error",
                 MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+                MessageBoxIcon.Error));
         }
     }
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
+    /// <summary>
+    /// Performs closepanel.
+    /// </summary>
 
     private void ClosePanel()
     {
@@ -637,6 +716,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Console.WriteLine($"RevenueTrendsPanel: ClosePanel failed: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
+    /// <summary>
+    /// Performs subscribetothemechanges.
+    /// </summary>
 
     private void SubscribeToThemeChanges()
     {
@@ -656,6 +741,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         ThemeManager.ThemeChanged += _themeChangedHandler;
     }
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
+    /// <summary>
+    /// Performs applytheme.
+    /// </summary>
 
     private void ApplyTheme()
     {

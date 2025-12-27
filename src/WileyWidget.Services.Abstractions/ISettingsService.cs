@@ -2,6 +2,9 @@ using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
+    /// <summary>
+    /// Represents a interface for isettingsservice.
+    /// </summary>
     public interface ISettingsService
     {
         // Existing key/value helpers (legacy)

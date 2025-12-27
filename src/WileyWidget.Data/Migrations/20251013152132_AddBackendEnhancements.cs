@@ -576,26 +576,10 @@ namespace WileyWidget.Data.Migrations
                     { 1, "100", "General Fund", 1 },
                     { 2, "200", "Utility Fund", 2 }
                 });
-
-            migrationBuilder.InsertData(
-                table: "BudgetEntries",
-                columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 1, "405", "GOV", 0m, 50000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(1044), 1, "Road Maintenance", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
-
             migrationBuilder.InsertData(
                 table: "Departments",
                 columns: new[] { "Id", "DepartmentCode", "Name", "ParentId" },
                 values: new object[] { 2, "SAN", "Sanitation", 1 });
-
-            migrationBuilder.InsertData(
-                table: "BudgetEntries",
-                columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
-                values: new object[] { 2, "405.1", "GOV", 0m, 20000m, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(2333), 1, "Paving", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 0, true, null, 1, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), null, 0m });
-
-            migrationBuilder.InsertData(
-                table: "Transactions",
-                columns: new[] { "Id", "Amount", "BudgetEntryId", "CreatedAt", "Description", "MunicipalAccountId", "TransactionDate", "Type", "UpdatedAt" },
-                values: new object[] { 1, 10000m, 1, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(3448), "Initial payment for road work", null, new DateTime(2025, 10, 13, 15, 21, 30, 809, DateTimeKind.Utc).AddTicks(4078), "Payment", null });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_BudgetEntryId",
@@ -881,24 +865,9 @@ namespace WileyWidget.Data.Migrations
                 table: "BudgetInteraction");
 
             migrationBuilder.DeleteData(
-                table: "BudgetEntries",
-                keyColumn: "Id",
-                keyValue: 2);
-
-            migrationBuilder.DeleteData(
                 table: "Departments",
                 keyColumn: "Id",
                 keyValue: 2);
-
-            migrationBuilder.DeleteData(
-                table: "Transactions",
-                keyColumn: "Id",
-                keyValue: 1);
-
-            migrationBuilder.DeleteData(
-                table: "BudgetEntries",
-                keyColumn: "Id",
-                keyValue: 1);
 
             migrationBuilder.DeleteData(
                 table: "Departments",

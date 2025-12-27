@@ -48,6 +48,12 @@ namespace WileyWidget.WinForms.Dialogs
 
             _logger?.LogDebug("ValidationDialog created with {ErrorCount} errors", errorList.Count);
         }
+        /// <summary>
+        /// Performs initializedialog. Parameters: title, headerMessage, errors.
+        /// </summary>
+        /// <param name="title">The title.</param>
+        /// <param name="headerMessage">The headerMessage.</param>
+        /// <param name="errors">The errors.</param>
 
         private void InitializeDialog(string title, string headerMessage, List<string> errors)
         {
@@ -112,7 +118,6 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.FromArgb(40, Color.Red),  // Light red tint for error list
                 Font = new Font("Segoe UI", 9F),
                 SelectionMode = SelectionMode.MultiExtended,
                 IntegralHeight = false,
@@ -169,6 +174,16 @@ namespace WileyWidget.WinForms.Dialogs
             // Set accept button
             AcceptButton = _okButton;
         }
+        /// <summary>
+        /// Performs copybutton click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        /// <summary>
+        /// Performs copybutton click. Parameters: sender, e.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
 
         private void CopyButton_Click(object? sender, EventArgs e)
         {
@@ -219,6 +234,66 @@ namespace WileyWidget.WinForms.Dialogs
         /// <param name="errors">Validation errors</param>
         /// <param name="logger">Optional logger</param>
         /// <returns>DialogResult</returns>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, headerMessage, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="headerMessage">The headerMessage.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, headerMessage, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="headerMessage">The headerMessage.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, headerMessage, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="headerMessage">The headerMessage.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, headerMessage, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="headerMessage">The headerMessage.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
+        /// <summary>
+        /// Performs show. Parameters: owner, title, errors, null.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="errors">The errors.</param>
+        /// <param name="null">The null.</param>
         public static DialogResult Show(
             IWin32Window? owner,
             string title,

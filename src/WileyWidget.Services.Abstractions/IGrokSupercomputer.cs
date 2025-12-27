@@ -10,6 +10,9 @@ namespace WileyWidget.Services.Abstractions
     /// This interface defines the contract for AI-powered operations in municipal finance management,
     /// including enterprise data retrieval, analytical calculations, budget analysis, and regulatory compliance.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for igroksupercomputer.
+    /// </summary>
     public interface IGrokSupercomputer
     {
         Task<ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "");

@@ -8,6 +8,9 @@ namespace WileyWidget.Services
     /// Interface for building dynamic context in municipal finance operations.
     /// Provides methods to construct contextual information for system state, enterprises, budgets, and operations.
     /// </summary>
+    /// <summary>
+    /// Represents a interface for iwileywidgetcontextservice.
+    /// </summary>
     public interface IWileyWidgetContextService
     {
         /// <summary>

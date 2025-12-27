@@ -11,10 +11,22 @@ namespace WileyWidget.WinForms.Controls;
 public abstract class ScopedPanelBase<TViewModel> : UserControl
     where TViewModel : class
 {
+    /// <summary>
+    /// Represents the _scopefactory.
+    /// </summary>
+    /// <summary>
+    /// Represents the _scopefactory.
+    /// </summary>
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
     private IServiceScope? _scope;
     private TViewModel? _viewModel;
+    /// <summary>
+    /// Represents the _disposed.
+    /// </summary>
+    /// <summary>
+    /// Represents the _disposed.
+    /// </summary>
     private bool _disposed;
 
     /// <summary>
