@@ -8,6 +8,7 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using WileyWidget.WinForms.E2ETests.Helpers;
 using FlaUIApplication = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
@@ -25,11 +26,43 @@ namespace WileyWidget.WinForms.E2ETests
         public Dashboard_FlaUI_ConvertedTests()
         {
             // Try environment variable first so CI/test runners can provide published exe.
-            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
+            _exePath = ResolveExecutablePath();
 
             // Disable MDI mode for UI tests so forms open as separate windows
             Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
             Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
+        }
+
+        private static string ResolveExecutablePath()
+        {
+            var envPath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE");
+            if (!string.IsNullOrWhiteSpace(envPath))
+            {
+                return envPath;
+            }
+
+            var baseDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", "Debug"));
+            if (!Directory.Exists(baseDir))
+            {
+                throw new DirectoryNotFoundException($"Build output directory not found at '{baseDir}'. Build WileyWidget.WinForms or set WILEYWIDGET_EXE to a published executable.");
+            }
+
+            var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
+            if (File.Exists(standard))
+            {
+                return standard;
+            }
+
+            var versioned = Directory.GetDirectories(baseDir, "net9.0-windows*")
+                .Select(dir => Path.Combine(dir, "WileyWidget.WinForms.exe"))
+                .FirstOrDefault(File.Exists);
+
+            if (versioned != null)
+            {
+                return versioned;
+            }
+
+            throw new FileNotFoundException($"Executable not found in '{baseDir}'. Please set WILEYWIDGET_EXE env var to published executable or build the WinForms project.");
         }
 
         private static bool IsModalWindow(Window candidate)

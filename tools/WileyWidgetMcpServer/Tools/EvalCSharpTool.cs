@@ -84,6 +84,28 @@ public static class EvalCSharpTool
                 Console.SetOut(stringWriter);
                 Console.SetError(stringWriter);
 
+                // Attempt to register Syncfusion license from environment for this process to avoid popup dialogs
+                try
+                {
+                    var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY") ?? Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE");
+                    if (!string.IsNullOrWhiteSpace(licenseKey))
+                    {
+                        try
+                        {
+                            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                            stringWriter.WriteLine("Syncfusion license registered from environment variable SYNCFUSION_LICENSE_KEY");
+                        }
+                        catch (Exception ex)
+                        {
+                            stringWriter.WriteLine($"Warning: Syncfusion license registration failed: {ex.Message}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    stringWriter.WriteLine($"Warning: Failed to check Syncfusion license env var: {ex.Message}");
+                }
+
                 // Execute script
                 var result = await CSharpScript.EvaluateAsync(
                     codeToExecute,

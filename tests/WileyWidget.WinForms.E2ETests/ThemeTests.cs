@@ -9,6 +9,7 @@ using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
 using WileyWidget.WinForms.E2ETests.PageObjects;
+using WileyWidget.WinForms.E2ETests.Helpers;
 using Application = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
@@ -32,7 +33,6 @@ namespace WileyWidget.WinForms.E2ETests
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
             Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
 
             // Set the license key to avoid popup
             // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
@@ -68,7 +68,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             // Arrange
             _automation = new UIA3Automation();
-            _app = Application.Launch(_exePath);
+            _app = TestAppHelper.LaunchFlaUIApp(_exePath);
             DismissLicensePopups();
             Retry.WhileNull(() => _app.GetMainWindow(_automation),
                 timeout: TimeSpan.FromSeconds(10),
@@ -96,7 +96,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             // Arrange
             _automation = new UIA3Automation();
-            _app = Application.Launch(_exePath);
+            _app = TestAppHelper.LaunchFlaUIApp(_exePath);
             DismissLicensePopups();
             Retry.WhileNull(() => _app.GetMainWindow(_automation),
                 timeout: TimeSpan.FromSeconds(10),
@@ -137,7 +137,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             // Arrange
             _automation = new UIA3Automation();
-            _app = Application.Launch(_exePath);
+            _app = TestAppHelper.LaunchFlaUIApp(_exePath);
             DismissLicensePopups();
             Retry.WhileNull(() => _app.GetMainWindow(_automation),
                 timeout: TimeSpan.FromSeconds(10),
@@ -177,7 +177,7 @@ namespace WileyWidget.WinForms.E2ETests
         {
             // Arrange
             _automation = new UIA3Automation();
-            _app = Application.Launch(_exePath);
+            _app = TestAppHelper.LaunchFlaUIApp(_exePath);
             DismissLicensePopups();
             Retry.WhileNull(() => _app.GetMainWindow(_automation),
                 timeout: TimeSpan.FromSeconds(10),

@@ -7,6 +7,7 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using WileyWidget.WinForms.E2ETests.Helpers;
 
 namespace WileyWidget.WinForms.E2ETests
 {
@@ -33,8 +34,7 @@ namespace WileyWidget.WinForms.E2ETests
         private void StartApp()
         {
             if (!File.Exists(_exePath)) throw new FileNotFoundException(_exePath);
-            Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "TEST");
-            _app = FlaUI.Core.Application.Launch(_exePath);
+            _app = TestAppHelper.LaunchFlaUIApp(_exePath);
             _automation = new UIA3Automation();
         }
 

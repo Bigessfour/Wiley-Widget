@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using FlaUI.Core;
 
 namespace WileyWidget.WinForms.E2ETests.Helpers
 {
@@ -90,6 +91,27 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
             }
 
             return env;
+        }
+
+        /// <summary>
+        /// Launches the test application with FlaUI using the specified environment setup.
+        /// </summary>
+        public static FlaUI.Core.Application LaunchFlaUIApp(string exePath, IDictionary<string, string>? environment = null)
+        {
+            environment ??= BuildTestEnvironment(isTestHarness: true, useMdiMode: false, useTabbedMdi: false);
+
+            var psi = new System.Diagnostics.ProcessStartInfo(exePath)
+            {
+                UseShellExecute = false
+            };
+
+            // Set environment variables
+            foreach (var kvp in environment)
+            {
+                psi.EnvironmentVariables[kvp.Key] = kvp.Value;
+            }
+
+            return FlaUI.Core.Application.Launch(psi);
         }
 
         /// <summary>

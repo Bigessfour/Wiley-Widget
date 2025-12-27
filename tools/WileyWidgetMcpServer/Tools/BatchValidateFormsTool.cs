@@ -62,8 +62,8 @@ public static class BatchValidateFormsTool
 
                 try
                 {
-                    // Create mock MainForm with MDI enabled for realism
-                    var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+                    // Create mock MainForm for form testing
+                    var mockMainForm = MockFactory.CreateMockMainForm();
 
                     // Get form type from cache
                     var formType = FormTypeCache.GetFormType(formTypeName);

@@ -21,5 +21,16 @@
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(NUGET_PACKAGES)' != ''">$(NUGET_PACKAGES)</NuGetPackageRoot>
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(UserProfile)' != ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)\.nuget\packages\</NuGetPackageRoot>
+
+    <!-- ============================================================
+         MSBUILD PIPE STABILITY FIX
+         Prevents "Pipe is broken" IOExceptions during dotnet watch
+         and rapid rebuild cycles by disabling persistent MSBuild nodes
+         ============================================================ -->
+    <!-- Disable MSBuild node reuse to prevent pipe breakage during watch/restart cycles -->
+    <MSBuildDisableNodeReuse>true</MSBuildDisableNodeReuse>
+
+    <!-- Optional: Disable parallel build to reduce multi-node pipe issues (remove if build performance is critical) -->
+    <!-- <BuildInParallel>false</BuildInParallel> -->
   </PropertyGroup>
 </Project>

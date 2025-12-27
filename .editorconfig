@@ -27,6 +27,23 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+# WileyWidget Async Initialization Pattern Enforcement
+# Prohibit .Result/.Wait() and enforce synchronous Initialize()
+
+# Disallow .Result and .Wait() on Task/ValueTask
+# (Requires Roslyn analyzer or custom analyzer for full enforcement)
+dotnet_diagnostic.WW0001.severity = error  # Prohibit .Result/.Wait() on Task/ValueTask
+
+# Enforce synchronous Initialize() methods (no async/Task/ValueTask)
+dotnet_diagnostic.WW0002.severity = error  # Initialize() must not be async or return Task/ValueTask
+
+# Enforce that heavy/async startup logic is deferred to IAsyncInitializable.InitializeAsync after MainForm is shown
+# (Documented for code review; analyzer enforcement is best-effort)
+dotnet_diagnostic.WW0003.severity = warning  # Heavy startup logic must be deferred
+
+# Require XML documentation for public/internal members (non-critical, suggestion level)
+dotnet_diagnostic.WW1004.severity = suggestion  # Public or internal member missing XML documentation comment
+
 # XML project files
 [*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
 indent_style = space

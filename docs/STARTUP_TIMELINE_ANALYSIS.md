@@ -31,7 +31,7 @@
 ```text
 9. ValidateCriticalServices (comprehensive DI validation)
    - Uses WinFormsDiValidator to check all service categories
-10. InitializeTheme (SfSkinManager.ApplicationVisualTheme)
+10. InitializeTheme ( skinmanager.ApplicationVisualTheme)
 11. ConfigureErrorReporting
 ```
 
@@ -86,7 +86,7 @@
 
 ```text
 Program.Main:
-  ├─ InitializeTheme() → Sets SfSkinManager.ApplicationVisualTheme = "Office2019Colorful"
+  ├─ InitializeTheme() → Sets  skinmanager.ApplicationVisualTheme = "Office2019Colorful"
   └─ MainForm ctor:
        └─ ApplyTheme() → Tries to apply theme (but form not yet in control tree)
 ```
@@ -482,11 +482,13 @@ Target: <2s to first paint, <5s to fully interactive.
 #### 🎯 Key Features (All Implemented):
 
 ##### 1. **Canonical Syncfusion Phase Configuration**
+
 - Pre-defined expected phases with order, UI-criticality, and dependencies
 - Auto-detection of phase properties from configuration
 - Based on Syncfusion best practices: License → Theme → Controls → Data
 
 **Example Configuration:**
+
 ```csharp
 public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases = new()
 {
@@ -506,31 +508,37 @@ public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases =
 ```
 
 ##### 2. **Dependency Validation**
+
 - Detects when phases start before their dependencies complete
 - Immediate warnings logged when dependency violations occur
 - Example: MainForm Creation depends on Theme Initialization
 
 ##### 3. **Thread Affinity Detection**
+
 - Explicit `IsUiCritical` flag (not fragile name heuristics)
 - Detects UI operations on background threads
 - Warns about blocking operations >300ms on UI thread (industry standard)
 
 ##### 4. **RAII Pattern Support**
+
 - `BeginPhaseScope()` for automatic phase end on disposal
 - Prevents missed `RecordPhaseEnd()` calls
 - Recommended for all phase tracking
 
 ##### 5. **Conditional Reporting**
+
 - Only enabled in DEBUG builds or with `WILEYWIDGET_TRACK_STARTUP_TIMELINE=true`
 - Zero overhead in Release builds by default
 - `IsEnabled` property for runtime checks
 
 ##### 6. **WinForms Lifecycle Integration**
+
 - `RecordFormLifecycleEvent()` for Load/Shown/Activated events
 - Auto-records as checkpoints under current phase
 - Helps track form initialization timing
 
 ##### 7. **Enhanced Reporting**
+
 - Beautiful formatted ASCII report with summary statistics
 - Shows longest UI phase, total UI blocked time, potential freezes
 - Nested timeline with operations grouped under phases
@@ -543,8 +551,8 @@ public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases =
 ```csharp
 using (_timeline.BeginPhaseScope("Theme Initialization")) // Auto-detects order & UI-criticality
 {
-    SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-    SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
+     skinmanager.LoadAssembly(typeof(Office2019Theme).Assembly);
+     skinmanager.ApplicationVisualTheme = "Office2019Colorful";
 }
 ```
 

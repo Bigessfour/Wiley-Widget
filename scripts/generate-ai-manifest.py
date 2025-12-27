@@ -35,7 +35,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
-from git import Repo
+try:
+    from git import Repo  # type: ignore
+except ImportError:
+    print(
+        "Error: GitPython is not installed. Please install it with 'pip install gitpython' and try again.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 class AIManifestGenerator:
@@ -53,7 +60,10 @@ class AIManifestGenerator:
             try:
                 self.must_include_patterns.append(re.compile(pattern, re.IGNORECASE))
             except re.error as e:
-                print(f"Warning: Invalid must_include regex '{pattern}': {e}", file=sys.stderr)
+                print(
+                    f"Warning: Invalid must_include regex '{pattern}': {e}",
+                    file=sys.stderr,
+                )
 
         # Max files logic: support 'max_files' and legacy 'max_files_in_manifest'.
         # If neither key is present, default to a safe limit (800). An explicit
@@ -98,7 +108,7 @@ class AIManifestGenerator:
                 "(^|/)copying(\\..*)?$",
                 "(^|/)appsettings(\\..*)?\\.json$",
                 "(^|/)directory\\.build\\.props$",
-                "(^|/)scripts/.*sync-rules-to-vscode\\.ps1$"
+                "(^|/)scripts/.*sync-rules-to-vscode\\.ps1$",
             ],
         }
 
@@ -153,7 +163,20 @@ class AIManifestGenerator:
         # Exclude by pattern
         for pattern in self.exclude_patterns:
             if pattern.search(path_str):
-                return False
+                excluded = True
+                break
+        else:
+            excluded = False
+
+        if excluded:
+            # Must include patterns override excludes
+            for pattern in self.config.get("must_include_patterns", []):
+                try:
+                    if re.search(pattern, path_str, re.IGNORECASE):
+                        return True
+                except re.error:
+                    pass
+            return False
 
         # Focus mode: only specific extensions
         if self.config.get("focus_mode", False):
@@ -303,7 +326,9 @@ class AIManifestGenerator:
         }:
             return "assets"
         # New categories for key project files
-        if any(word in path_str for word in ["license", "copying", "copyright"]) or any(name.startswith(word) for word in ["license", "copying"]):
+        if any(word in path_str for word in ["license", "copying", "copyright"]) or any(
+            name.startswith(word) for word in ["license", "copying"]
+        ):
             return "license"
         if suffix == ".sln":
             return "solution"
@@ -333,14 +358,132 @@ class AIManifestGenerator:
                 for p in self.repo_root.rglob(f"*{ext}"):
                     if p.is_file():
                         candidates.append(p)
+
+            # Instead of scanning the entire repository for each pattern (which can be
+            # slow on large repos), search a small set of likely bases for important
+            # filenames (README, LICENSE, appsettings, Directory.Build.props, key scripts).
+            name_globs = [
+                "README*",
+                "license*",
+                "copying*",
+                "appsettings*.json",
+                "Directory.Build.props",
+                "sync-rules-to-vscode.ps1",
+            ]
+
+            # Check for important root-level files directly (fast path)
+            root_names = [
+                "README.md",
+                "README",
+                "LICENSE",
+                "LICENSE.md",
+                "appsettings.json",
+                "Directory.Build.props",
+            ]
+            for rn in root_names:
+                p = self.repo_root / rn
+                if p.exists() and p.is_file() and p not in candidates:
+                    candidates.append(p)
+
+            # Search smaller, likely subdirectories (avoid scanning huge vendor trees)
+            search_bases = [
+                self.repo_root / "scripts",
+                self.repo_root / "src",
+                self.repo_root / "docs",
+                self.repo_root / "licenses",
+                self.repo_root / "tests",
+                self.repo_root / "tools",
+            ]
+            for name_glob in name_globs:
+                for base in search_bases:
+                    try:
+                        if not base.exists():
+                            continue
+                        for p in base.rglob(name_glob):
+                            if p.is_file():
+                                candidates.append(p)
+                    except Exception:
+                        continue
         else:
             for p in self.repo_root.rglob("*"):
                 candidates.append(p)
+
+        # Also include must_include files even in focus_mode, but restrict search to likely bases
+        must_include_patterns = self.config.get("must_include_patterns", [])
+        if must_include_patterns:
+            for base in search_bases:
+                try:
+                    if not base.exists():
+                        continue
+                    for p in base.rglob("*"):
+                        if p.is_file():
+                            relative_path = p.relative_to(self.repo_root)
+                            path_str = relative_path.as_posix().lower()
+                            for pattern in must_include_patterns:
+                                try:
+                                    if re.search(pattern, path_str, re.IGNORECASE):
+                                        if p not in candidates:
+                                            candidates.append(p)
+                                        break
+                                except re.error:
+                                    pass
+                except Exception:
+                    continue
 
         # Deduplicate and sort for deterministic ordering
         unique_candidates = sorted(
             {p for p in candidates}, key=lambda p: str(p).lower()
         )
+
+        # Prioritize must-include files so they are processed first (ensures they're
+        # included even if max_files truncation occurs). We apply a small priority
+        # ordering so project-critical files (appsettings, Directory.Build.props,
+        # README) are placed at the front.
+        if getattr(self, "must_include_patterns", []):
+            priority_patterns = [
+                re.compile(r"(^|/)appsettings(\\..*)?\\.json$", re.IGNORECASE),
+                re.compile(r"(^|/)directory\\.build\\.props$", re.IGNORECASE),
+                re.compile(r"(^|/)readme(\\..*)?$", re.IGNORECASE),
+                re.compile(r"(^|/)license(\\..*)?$", re.IGNORECASE),
+            ]
+
+            musts: List[Path] = []
+            matched: set = set()
+
+            # First, collect items matching priority patterns in defined order
+            for pp in priority_patterns:
+                for p in unique_candidates:
+                    if p in matched:
+                        continue
+                    try:
+                        ppath = p.relative_to(self.repo_root).as_posix().lower()
+                    except Exception:
+                        ppath = str(p).lower()
+                    try:
+                        if pp.search(ppath):
+                            musts.append(p)
+                            matched.add(p)
+                    except Exception:
+                        continue
+
+            # Next, collect remaining items that match any must_include pattern
+            for p in unique_candidates:
+                if p in matched:
+                    continue
+                try:
+                    ppath = p.relative_to(self.repo_root).as_posix().lower()
+                except Exception:
+                    ppath = str(p).lower()
+                for mp in self.must_include_patterns:
+                    try:
+                        if mp.search(ppath):
+                            musts.append(p)
+                            matched.add(p)
+                            break
+                    except Exception:
+                        continue
+
+            [p for p in unique_candidates if p not in matched]
 
         for file_path in unique_candidates:
             scanned += 1
@@ -356,13 +499,26 @@ class AIManifestGenerator:
                 continue
 
             # Skip by _should_include_file which handles path-based excludes and test inclusion rules
-            if not self._should_include_file(file_path):
+            included_by_rule = self._should_include_file(file_path)
+            if not included_by_rule:
                 continue
 
-            # If focus_mode is on, ensure the file extension is in the focus set
+            # If focus_mode is on, ensure the file extension is in the focus set, unless
+            # the file was force-included via must_include_patterns (e.g., README, LICENSE, appsettings)
             if self.config.get("focus_mode", False) and self.focus_extensions:
                 if file_path.suffix.lower() not in self.focus_extensions:
-                    continue
+                    matched_must_include = False
+                    for mp in getattr(self, "must_include_patterns", []):
+                        try:
+                            if mp.search(
+                                file_path.relative_to(self.repo_root).as_posix().lower()
+                            ):
+                                matched_must_include = True
+                                break
+                        except Exception:
+                            continue
+                    if not matched_must_include:
+                        continue
 
             # Enforce max_files limit if configured (None = unlimited)
             if self.max_files is not None and len(files) >= self.max_files:
@@ -442,14 +598,18 @@ class AIManifestGenerator:
 
     def _detect_license(self) -> Dict[str, Any]:
         """Detect license information from license files."""
-        license_files = [p for p in self._included_paths if self._determine_category(p, p.relative_to(self.repo_root)) == "license"]
+        license_files = [
+            p
+            for p in self._included_paths
+            if self._determine_category(p, p.relative_to(self.repo_root)) == "license"
+        ]
         if not license_files:
             return {"type": "Unknown", "file": None, "detected": False}
-        
+
         # Take the first license file
         license_file = license_files[0]
         relative_path = str(license_file.relative_to(self.repo_root))
-        
+
         try:
             content = license_file.read_text(encoding="utf-8", errors="ignore").lower()
             if "mit" in content:
@@ -467,8 +627,20 @@ class AIManifestGenerator:
                 license_type = "Custom"
         except Exception:
             license_type = "Unknown"
-        
+
         return {"type": license_type, "file": relative_path, "detected": True}
+
+    def _detect_architecture(self) -> Dict[str, List[Dict[str, Any]]]:
+        arch: Dict[str, List[Dict[str, Any]]] = {
+            "views": [],
+            "viewmodels": [],
+            "models": [],
+            "services": [],
+            "repositories": [],
+            "converters": [],
+            "behaviors": [],
+            "modules": [],
+        }
 
         patterns = {
             "viewmodels": re.compile(r"class\s+(\w*ViewModel)\b"),
@@ -555,6 +727,17 @@ class AIManifestGenerator:
         repo_info = self._get_repo_info()
         files = self._scan_files()
         summary = self._generate_summary()
+        # Debug checks: ensure method exists and is callable on this instance
+        print(
+            f"_detect_architecture on instance? {hasattr(self, '_detect_architecture')}",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            f"callable? {callable(getattr(self, '_detect_architecture', None))}",
+            file=sys.stderr,
+            flush=True,
+        )
         arch = self._detect_architecture()
 
         manifest = {
@@ -610,21 +793,41 @@ class AIManifestGenerator:
         # License detection: look for common license file names among included files
         license_candidate = None
         for f in files:
-            if re.search(r'(^|/)(license)(\..*)?$', f["metadata"]["path"], re.IGNORECASE):
+            if re.search(
+                r"(^|/)(license)(\..*)?$", f["metadata"]["path"], re.IGNORECASE
+            ):
                 license_candidate = f["metadata"]["path"]
                 break
         if license_candidate:
             try:
-                license_text = (self.repo_root / license_candidate).read_text(encoding="utf-8", errors="ignore").lower()
-                if "mit license" in license_text or "permission is hereby granted" in license_text:
+                license_text = (
+                    (self.repo_root / license_candidate)
+                    .read_text(encoding="utf-8", errors="ignore")
+                    .lower()
+                )
+                if (
+                    "mit license" in license_text
+                    or "permission is hereby granted" in license_text
+                ):
                     license_type = "MIT"
-                elif "apache license" in license_text or "apache 2.0" in license_text or "apache license, version 2" in license_text:
+                elif (
+                    "apache license" in license_text
+                    or "apache 2.0" in license_text
+                    or "apache license, version 2" in license_text
+                ):
                     license_type = "Apache-2.0"
-                elif "gnu general public license" in license_text or "gpl" in license_text:
+                elif (
+                    "gnu general public license" in license_text
+                    or "gpl" in license_text
+                ):
                     license_type = "GPL"
                 else:
                     license_type = "Unknown"
-                manifest["license"] = {"type": license_type, "file": license_candidate, "detected": True}
+                manifest["license"] = {
+                    "type": license_type,
+                    "file": license_candidate,
+                    "detected": True,
+                }
             except Exception:
                 pass
 

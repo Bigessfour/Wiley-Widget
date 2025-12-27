@@ -7,14 +7,15 @@
       "file": ".vscode/copilot-mcp-rules.md"
     },
     {
-      "text": "MANDATORY THEME RULE: SfSkinManager has SOLE PROPRIETORSHIP over all theme and color management. STRICTLY FORBIDDEN: (1) Custom color properties/dictionaries/methods (2) Manual BackColor/ForeColor assignments (3) Custom theme application methods (4) Any competing theme systems. ONLY AUTHORIZED: (1) SfSkinManager.SetVisualStyle() (2) ThemeColors.ApplyTheme() which wraps SfSkinManager (3) Program.InitializeTheme() at startup. EXCEPTION: Semantic status colors using Color.Red/Green/Orange only. Violations cause compilation errors and are architectural violations. See copilot-instructions.md SfSkinManager section for complete rules."
+      "text": "MANDATORY THEME RULE:  skinmanager has SOLE PROPRIETORSHIP over all theme and color management. STRICTLY FORBIDDEN: (1) Custom color properties/dictionaries/methods (2) Manual BackColor/ForeColor assignments (3) Custom theme application methods (4) Any competing theme systems. ONLY AUTHORIZED: (1)  skinmanager.SetVisualStyle() (2) ThemeColors.ApplyTheme() which wraps  skinmanager (3) Program.InitializeTheme() at startup. EXCEPTION: Semantic status colors using Color.Red/Green/Orange only. Violations cause compilation errors and are architectural violations. See copilot-instructions.md  skinmanager section for complete rules."
     }
   ],
   "github.copilot.chat.localeOverride": "en",
   "github.copilot.advanced": {
-    "debug.overrideEngine": "gpt-4o-2024-11-20",
+    "debug.overrideEngine": "grok-4-1-fast-reasoning",
     "debug.useNodeFetcher": true
   },
+  "github.copilot.chat.models.local.enabled": false,
   "files.associations": {
     "*.md": "markdown",
     "*.designer.cs": "csharp",
@@ -25,6 +26,10 @@
   "github.copilot.chat.welcomeMessage": "first",
   "github.copilot.chat.showThoughts": false,
   "github.copilot.editor.enableAutoCompletions": true,
+  "github.copilot.chat.agent.enabled": true,
+  "github.copilot.chat.experimental.agentMode": true,
+  "github.copilot.chat.experimental.virtualTools": true,
+  "chat.agent.temperature": 0.3,
 
   // ============================================================================
   // XML Configuration (for .resx resource files)
@@ -194,16 +199,21 @@
   // Spell Checker Configuration
   // ============================================================================
   "cSpell.words": [
+    "CICD",
     "csdevkit",
     "csproj",
     "dotnet",
+    "enforcewinformsthreadaffinityanalyzer",
+    "FormsBorderStyle",
+    "Mgmt",
+    "SfChart",
+    "SfDataGrid",
+    "sqlcmd",
+    "SQLEXPRESS",
     "Syncfusion",
     "Wiley",
     "WileyWidget",
-    "winforms",
-    "SfDataGrid",
-    "SfChart",
-    "FormsBorderStyle"
+    "winforms"
   ],
   "cSpell.enableFiletypes": [
     "csharp",
@@ -218,11 +228,27 @@
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
   "debug.console.fontSize": 12,
+  "debug.showBreakpointsInOverviewRuler": true,
+  "debug.showInlineBreakpointCandidates": true,
+  "debug.showSubSessionsInToolBar": true,
+
+  // .NET Debugging Enhancements
+  "dotnet.server.gcConcurrent": true,
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "fullSolution",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "fullSolution",
+
+  // Exception Handling
+  "debug.javascript.usePreview": true,
+  "debug.node.autoAttach": "on",
+
+  // Symbol Loading
+  "debug.javascript.autoAttachFilter": "onlyWithFlag",
 
   // ============================================================================
   // Continue/Grok Integration
   // ============================================================================
-  "continue.defaultModel": "grok-beta",
+  "continue.defaultModel": "grok-3",
   "continue.chat.model": "grok-4-0709",
   "continue.maxTokens": 4096,
   "continue.temperature": 0.7,
@@ -294,6 +320,13 @@
         "copilot/grok-code-fast-1",
         "copilot/oswe-vscode-prime"
       ]
+    },
+    "Wiley-Widget/.vscode/mcp.json: syncfusion-documentsdk-assistant": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5",
+        "xai/grok-4-1-fast-reasoning"
+      ]
     }
-  }
+  },
+  "FSharp.suggestGitignore": false
 }

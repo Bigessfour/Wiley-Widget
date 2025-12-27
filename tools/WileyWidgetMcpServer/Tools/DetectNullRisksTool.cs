@@ -54,7 +54,7 @@ public static class DetectNullRisksTool
 
                 try
                 {
-                    var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+                    var mockMainForm = MockFactory.CreateMockMainForm();
                     var formType = FormTypeCache.GetFormType(formTypeName);
 
                     if (formType == null)

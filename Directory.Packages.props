@@ -6,31 +6,31 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0" />
-    <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
-    <!-- Core .NET Extensions (stable .NET 9 versions) -->
-    <PackageVersion Include="Microsoft.Extensions.Primitives" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.0.0" />
+  <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
+  <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.0" />
+  <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0" />
+  <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
+  <!-- Core .NET Extensions (stable .NET 9 versions) -->
+  <PackageVersion Include="Microsoft.Extensions.Primitives" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.0.0" />
+  <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
     <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />

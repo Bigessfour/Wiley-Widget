@@ -150,7 +150,7 @@ C# MCP execution revealed 3 integration issues:
 - Dynamic theme switching (if supported)
 - Theme persistence in user settings
 
-**Rationale:** Visual consistency critical; `SfSkinManager` is single source of truth per approved workflow. Office2019Colorful theme must be applied uniformly.
+**Rationale:** Visual consistency critical; ` skinmanager` is single source of truth per approved workflow. Office2019Colorful theme must be applied uniformly.
 
 ---
 
@@ -405,12 +405,12 @@ public class SyncfusionThemingTests
     public void SfSkinManager_ShouldApplyOffice2019Theme()
     {
         // Arrange
-        SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+         skinmanager.LoadAssembly(typeof(Office2019Theme).Assembly);
         var testForm = new Form();
         var button = new SfButton { Parent = testForm };
 
         // Act
-        SfSkinManager.SetVisualStyle(testForm, "Office2019Colorful");
+         skinmanager.SetVisualStyle(testForm, "Office2019Colorful");
 
         // Assert
         Assert.Equal("Office2019Colorful", button.ThemeName);
@@ -420,7 +420,7 @@ public class SyncfusionThemingTests
     public void SfSkinManager_ShouldPropagateTheme_ToChildControls()
     {
         // Arrange
-        SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+         skinmanager.LoadAssembly(typeof(Office2019Theme).Assembly);
         var parentForm = new Form();
         var button1 = new SfButton { Parent = parentForm };
         var button2 = new SfButton { Parent = parentForm };
@@ -428,7 +428,7 @@ public class SyncfusionThemingTests
         var button3 = new SfButton { Parent = panel };
 
         // Act
-        SfSkinManager.SetVisualStyle(parentForm, "Office2019Colorful");
+         skinmanager.SetVisualStyle(parentForm, "Office2019Colorful");
 
         // Assert
         Assert.Equal("Office2019Colorful", button1.ThemeName);
@@ -455,7 +455,7 @@ public class SyncfusionThemingTests
 
 2. **Syncfusion Theme Management Tests**
    - Implement `SyncfusionThemingTests`
-   - Validate `SfSkinManager.LoadAssembly` calls
+   - Validate ` skinmanager.LoadAssembly` calls
    - Test theme propagation to all Syncfusion controls
    - Verify `Office2019Colorful` consistency
 
@@ -717,7 +717,7 @@ Per approved workflow in `.vscode/approved-workflow.md`:
 
 > **Syncfusion API Rule:** Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations.
 
-Ensure all theme tests reference official Syncfusion documentation for `SfSkinManager`, `Office2019Theme`, and control-specific `ThemeName` properties.
+Ensure all theme tests reference official Syncfusion documentation for ` skinmanager`, `Office2019Theme`, and control-specific `ThemeName` properties.
 
 ---
 

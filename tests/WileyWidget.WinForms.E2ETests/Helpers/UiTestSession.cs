@@ -65,10 +65,28 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
 
             internal static SessionState Start(UiTestSessionOptions options)
             {
-                options.ApplyEnvironment();
-
                 var exePath = options.ResolveExecutablePath();
-                var app = Application.Launch(exePath);
+
+                // Create ProcessStartInfo with environment variables for proper test isolation
+                var startInfo = new System.Diagnostics.ProcessStartInfo(exePath)
+                {
+                    UseShellExecute = false,
+                    EnvironmentVariables =
+                    {
+                        ["WILEYWIDGET_UI_TESTS"] = "true",
+                        ["WILEYWIDGET_USE_INMEMORY"] = options.UseInMemory ? "true" : "false",
+                        ["UI__IsUiTestHarness"] = options.IsUiTestHarness ? "true" : "false"
+                    }
+                };
+
+                // Add Syncfusion license if available
+                var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+                if (!string.IsNullOrEmpty(licenseKey))
+                {
+                    startInfo.EnvironmentVariables["SYNCFUSION_LICENSE_KEY"] = licenseKey;
+                }
+
+                var app = Application.Launch(startInfo);
                 var automation = new UIA3Automation();
 
                 // Wait for the main window to be responsive before returning the session
@@ -86,18 +104,13 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
         }
     }
 
-    internal readonly record struct UiTestSessionOptions(string ExecutablePath, bool UseMdiMode, bool UseTabbedMdi, bool UseInMemory, bool IsUiTestHarness)
+    internal readonly record struct UiTestSessionOptions(string ExecutablePath, bool UseInMemory, bool IsUiTestHarness)
     {
         private const string LicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
 
         internal static UiTestSessionOptions UiHarness(string exePath)
         {
-            return new UiTestSessionOptions(exePath, UseMdiMode: false, UseTabbedMdi: false, UseInMemory: true, IsUiTestHarness: true);
-        }
-
-        internal static UiTestSessionOptions MdiHarness(string exePath)
-        {
-            return new UiTestSessionOptions(exePath, UseMdiMode: true, UseTabbedMdi: true, UseInMemory: true, IsUiTestHarness: true);
+            return new UiTestSessionOptions(exePath, UseInMemory: true, IsUiTestHarness: true);
         }
 
         internal void ApplyEnvironment()
@@ -105,8 +118,6 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", UseInMemory ? "true" : "false");
             Environment.SetEnvironmentVariable("UI__IsUiTestHarness", IsUiTestHarness ? "true" : "false");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", UseMdiMode ? "true" : "false");
-            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", UseTabbedMdi ? "true" : "false");
             Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", LicenseKey);
         }
 

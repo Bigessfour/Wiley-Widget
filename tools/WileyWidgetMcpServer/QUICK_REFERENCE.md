@@ -3,12 +3,12 @@
 ## When to Use These Tools
 
 ### ValidateFormTheme
-**When:** You need to check if a single form violates SfSkinManager theming rules.
+**When:** You need to check if a single form violates  skinmanager theming rules.
 
 **Example Prompts:**
 - "Check if MainForm has manual color violations"
 - "Validate AccountsForm theme compliance"
-- "Does SettingsForm use SfSkinManager correctly?"
+- "Does SettingsForm use  skinmanager correctly?"
 
 **Tool Call:**
 ```
@@ -63,7 +63,7 @@ mcp_wileywidget-u_BatchValidateForms(
 **When:** You need to run ad-hoc C# code to test forms or Syncfusion controls.
 
 **Example Prompts:**
-- "Test if MainForm initializes correctly with MDI enabled"
+- "Test if MainForm initializes correctly"
 - "Check if AccountsForm loads theme properly"
 - "Run a quick test of the grid data binding"
 
@@ -71,9 +71,9 @@ mcp_wileywidget-u_BatchValidateForms(
 ```
 mcp_wileywidget-u_EvalCSharp(
   csx: @"
-    var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+    var mockMainForm = MockFactory.CreateMockMainForm();
     var form = new MainForm(mockMainForm);
-    SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+     skinmanager.LoadAssembly(typeof(Office2019Theme).Assembly);
     Console.WriteLine($\"Form created: {form.Text}\");
     return true;
   "
@@ -167,7 +167,7 @@ mcp_wileywidget-u_EvalCSharp(
 ### Manual color violations
 - Remove `BackColor`/`ForeColor` assignments
 - Exception: Semantic status colors (Color.Red/Green/Orange) are allowed
-- Use `SfSkinManager.SetVisualStyle()` instead
+- Use ` skinmanager.SetVisualStyle()` instead
 
 ---
 
@@ -291,7 +291,7 @@ if (-not $json.passed) {
 - [ ] Is form abstract or a base class? (Not validatable)
 - [ ] Are you using latest version of MCP server tools?
 - [ ] Have you built the project after code changes?
-- [ ] Is SfSkinManager loaded in production code?
+- [ ] Is  skinmanager loaded in production code?
 
 ---
 
@@ -299,7 +299,7 @@ if (-not $json.passed) {
 
 - **Full Technical Reference:** `tools/WileyWidgetMcpServer/README.md`
 - **MCP Enforcement Rules:** `.vscode/copilot-mcp-rules.md`
-- **Theme Guidelines:** `.vscode/copilot-instructions.md` (SfSkinManager section)
+- **Theme Guidelines:** `.vscode/copilot-instructions.md` ( skinmanager section)
 - **Approved Workflow:** `.vscode/approved-workflow.md`
 
 ---

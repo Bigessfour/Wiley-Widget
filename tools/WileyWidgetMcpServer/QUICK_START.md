@@ -10,7 +10,7 @@ The WileyWidget MCP server is now **fully functional** with the official Microso
 
 | Tool | Purpose | Key Features |
 |------|---------|--------------|
-| **`ValidateFormTheme`** | Theme compliance checking | - Verifies SfSkinManager usage<br>- Detects manual color violations<br>- Headless form instantiation |
+| **`ValidateFormTheme`** | Theme compliance checking | - Verifies  skinmanager usage<br>- Detects manual color violations<br>- Headless form instantiation |
 | **`InspectSfDataGrid`** | Grid inspection | - Column count/config<br>- Data binding validation<br>- Sample data extraction |
 | **`RunHeadlessFormTest`** | Script execution | - Run .csx test files<br>- Inline C# code<br>- Compilation + runtime errors |
 | **`EvalCSharp`** | Dynamic C# evaluation | - **Rapid prototyping**<br>- Interactive debugging<br>- No recompilation needed |
@@ -63,7 +63,7 @@ tools/WileyWidgetMcpServer/
 
 "Inspect BudgetOverviewForm SfDataGrid and show column config"
 
-"Evaluate this C# code: 
+"Evaluate this C# code:
 var form = new AccountsForm(MockFactory.CreateMockMainForm());
 form.Show();
 Console.WriteLine($\"Columns: {form.Controls.OfType<SfDataGrid>().First().Columns.Count}\");
@@ -112,7 +112,7 @@ The new **`EvalCSharp`** tool provides `mcp_csharp-mcp_eval_c_sharp` functionali
 
 ```csharp
 // Example: Validate BudgetOverviewForm grid columns
-var mockMain = MockFactory.CreateMockMainForm(enableMdi: false);
+var mockMain = MockFactory.CreateMockMainForm();
 var form = new BudgetOverviewForm(mockMain);
 
 SyncfusionTestHelper.TryLoadForm(form);
@@ -173,7 +173,7 @@ if (grid.DataSource != null)
 {
     Console.WriteLine($"DataSource Type: {grid.DataSource.GetType().Name}");
     Console.WriteLine($"Row Count: {grid.View.Records.Count}");
-    
+
     // Sample first row
     if (grid.View.Records.Count > 0)
     {
@@ -190,7 +190,7 @@ form.Dispose();
 ```plaintext
 # In Copilot Chat:
 
-"Using EvalCSharp, instantiate SettingsForm and verify it has 
+"Using EvalCSharp, instantiate SettingsForm and verify it has
 an SfDataGrid with at least 5 columns, then print the column headers"
 
 # Copilot generates appropriate C# code and invokes mcp_csharp-mcp_eval_c_sharp
@@ -389,7 +389,7 @@ Expected output: Theme validation report with pass/fail status.
 ```plaintext
 # In Copilot Chat:
 
-"Using EvalCSharp, list all forms in WileyWidget.WinForms.Forms namespace 
+"Using EvalCSharp, list all forms in WileyWidget.WinForms.Forms namespace
 that have an SfDataGrid control"
 ```
 
@@ -407,7 +407,7 @@ Copilot generates appropriate reflection code and executes it.
 - **Official MCP Spec:** https://modelcontextprotocol.io/
 - **C# SDK Docs:** https://github.com/modelcontextprotocol/csharp-sdk
 - **WileyWidget MCP Server README:** [tools/WileyWidgetMcpServer/README.md](tools/WileyWidgetMcpServer/README.md)
-- **Syncfusion Theme Guidelines:** [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md#syncfusion-sfskinmanager-theme-enforcement)
+- **Syncfusion Theme Guidelines:** [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md#syncfusion- skinmanager-theme-enforcement)
 
 ## Support
 

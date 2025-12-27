@@ -42,7 +42,7 @@ public static class MockFactory
     /// Creates a mock MainForm for isolated form testing using the parameterless constructor.
     /// The MainForm will have a TestServiceProvider injected so GetRequiredService returns mocks.
     /// </summary>
-    public static MainForm CreateMockMainForm(bool enableMdi = false)
+    public static MainForm CreateMockMainForm()
     {
         var mainForm = new MainForm();
 

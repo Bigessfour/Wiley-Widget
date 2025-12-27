@@ -3,7 +3,7 @@
   "configurations": [
 
     {
-      "name": "WinForms: Launch & Debug",
+      "name": "WinForms: Debug with Hot Reload",
       "type": "coreclr",
       "request": "launch",
       "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
@@ -11,25 +11,36 @@
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
       "console": "internalConsole",
-      "preLaunchTask": "build",
-      "postDebugTask": "kill-dotnet",
+      "preLaunchTask": "Debug: Hot Reload Setup",
       "justMyCode": false,
       "enableStepFiltering": false,
       "requireExactSource": false,
       "suppressJITOptimizations": true,
-      "sourceFileMap": {
-        "/src": "${workspaceFolder}/src"
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "true",
+        "XAI_API_KEY": "${env:XAI_API_KEY}",
+        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
+        "WW_DEBUG_EXCEPTIONS": "1"
       },
-      "symbolOptions": {
-        "searchMicrosoftSymbolServer": true,
-        "searchNuGetOrgSymbolServer": true,
-        "cachePath": "${workspaceFolder}/.symbols",
-        "moduleFilter": {
-          "mode": "loadAllButExcluded",
-          "excludedModules": [],
-          "includeSymbolsNextToModules": true
-        }
-      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "WinForms: Debug with Performance Monitoring",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "preLaunchTask": "dotnet: build",
+      "postDebugTask": "Debug: Performance Trace (30s)",
+      "justMyCode": false,
+      "enableStepFiltering": false,
+      "requireExactSource": false,
+      "suppressJITOptimizations": true,
       "logging": {
         "moduleLoad": true,
         "exceptions": true,
@@ -45,28 +56,14 @@
         "trace": true,
         "traceResponse": true
       },
-      "debuggerEventFilter": {
-        "disableTypeLoadMessages": false,
-        "disableThreadExitMessages": false
-      },
-      "expressionEvaluationOptions": {
-        "allowImplicitFuncEval": true,
-        "allowToString": true,
-        "allowFastEvaluate": true,
-        "showRawValues": false
-      },
-      "internalConsoleOptions": "openOnSessionStart",
       "env": {
         "DOTNET_ENVIRONMENT": "Development",
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_EnableDiagnostics": "1",
+        "DOTNET_EnableDiagnostics_Profiler": "1",
         "XAI_API_KEY": "${env:XAI_API_KEY}",
-        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
-        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
-        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
-        "QBO_ENVIRONMENT": "sandbox",
         "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
-        "WW_DEBUG_EXCEPTIONS": "1",
-        "COREHOST_TRACE": "0"
+        "WW_DEBUG_EXCEPTIONS": "1"
       },
       "envFile": "${workspaceFolder}/.env"
     },
@@ -80,7 +77,7 @@
       "name": "Debug C# Tests",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "dotnet: build",
       "program": "${workspaceFolder}/WileyWidget.Tests/bin/Debug/net9.0/WileyWidget.Tests.dll",
       "args": [],
       "cwd": "${workspaceFolder}",
@@ -91,7 +88,7 @@
       "name": "Debug C# UI Tests",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "dotnet: build",
       "program": "${workspaceFolder}/WileyWidget.UiTests/bin/Debug/net9.0/WileyWidget.UiTests.dll",
       "args": [],
       "cwd": "${workspaceFolder}",
@@ -102,7 +99,7 @@
       "name": "Run WileyWidget.Tests (dotnet test)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "dotnet: build",
       "program": "dotnet",
       "args": [
         "test",
@@ -114,6 +111,53 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "stopAtEntry": false
+    },
+
+    {
+      "name": "Run E2E Test (PanelViewModelResolutionTests) - Wait for Debugger",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dotnet: build",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj",
+        "--no-build",
+        "--filter",
+        "FullyQualifiedName~WileyWidget.IntegrationTests.PanelViewModelResolutionTests",
+        "--verbosity",
+        "minimal"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "env": {
+        "VSTEST_HOST_DEBUG": "1"
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "Attach to testhost (pick process)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": false
+    },
+    {
+      "name": "Attach to SUT (pick process)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug E2E: Run & Attach",
+      "configurations": [
+        "Run E2E Test (PanelViewModelResolutionTests) - Wait for Debugger",
+        "Attach to testhost (pick process)"
+      ]
     }
   ]
 }

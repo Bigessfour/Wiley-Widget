@@ -13,9 +13,9 @@ on:
       - main
       - develop
     paths:
-      - "tests/WileyWidget.Integration.Tests/**"
-      - "src/**"
-      - "Directory.Packages.props"
+      - tests/WileyWidget.Integration.Tests/**
+      - src/**
+      - Directory.Packages.props
   push:
     branches:
       - main
@@ -66,6 +66,15 @@ jobs:
 
       - name: Build solution
         run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Check Postgres test password
+        shell: bash
+        run: |
+          if [ -z "$POSTGRES_TEST_PASSWORD" ]; then
+            echo "::warning::POSTGRES_TEST_PASSWORD is not set. Tests will use a runtime-generated password; set repository secret POSTGRES_TEST_PASSWORD for reproducible runs."
+          else
+            echo "POSTGRES_TEST_PASSWORD is set"
+          fi
 
       - name: Run integration tests
         run: |

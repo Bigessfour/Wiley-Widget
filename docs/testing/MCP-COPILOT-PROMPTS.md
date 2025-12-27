@@ -7,7 +7,7 @@ This document provides example prompts and workflows for using the **WileyWidget
 - [Quick Start](#quick-start)
 - [EvalCSharp Prompts](#evalcsharp-prompts)
 - [ValidateFormTheme Prompts](#validateformtheme-prompts)
-- [InspectSfDataGrid Prompts](#inspectfsdatagrid-prompts)
+- [InspectSfDataGrid Prompts](#inspectsfdatagrid-prompts)
 - [RunHeadlessFormTest Prompts](#runheadlessformtest-prompts)
 - [Combined Workflow Prompts](#combined-workflow-prompts)
 - [Advanced Scenarios](#advanced-scenarios)
@@ -106,7 +106,7 @@ return $"{sw.ElapsedMilliseconds}ms";
 
 ## ValidateFormTheme Prompts
 
-The `ValidateFormTheme` tool performs comprehensive theme compliance checks per the SfSkinManager rules.
+The `ValidateFormTheme` tool performs comprehensive theme compliance checks per the skinmanager rules.
 
 ### Single Form Validation
 
@@ -365,27 +365,27 @@ Using EvalCSharp, create BudgetOverviewForm and verify that the "Save" button is
 
 ### Be Specific with Form Names
 
-✅ **Good:** "Validate AccountsForm theme"  
+✅ **Good:** "Validate AccountsForm theme"
 ❌ **Vague:** "Check the accounts form"
 
 ### Use Fully Qualified Types in EvalCSharp
 
-✅ **Good:** `new WileyWidget.WinForms.Forms.AccountsForm(...)`  
+✅ **Good:** `new WileyWidget.WinForms.Forms.AccountsForm(...)`
 ❌ **Bad:** `new AccountsForm(...)` (may not resolve)
 
 ### Request Structured Output
 
-✅ **Good:** "Return a list of column names separated by commas"  
+✅ **Good:** "Return a list of column names separated by commas"
 ❌ **Vague:** "Show me the columns"
 
 ### Chain Operations Logically
 
-✅ **Good:** "First validate theme, then inspect grid, then run test"  
+✅ **Good:** "First validate theme, then inspect grid, then run test"
 ❌ **Bad:** "Do everything at once" (hard to debug)
 
 ### Provide Context for Debugging
 
-✅ **Good:** "Grid shows no data. Inspect binding and sample 3 rows"  
+✅ **Good:** "Grid shows no data. Inspect binding and sample 3 rows"
 ❌ **Bad:** "Grid broken, fix it"
 
 ---
@@ -471,8 +471,8 @@ Using ValidateFormTheme on <FormName>, then use EvalCSharp to manually check whi
 
 **User:** "I just refactored AccountsForm. Verify it's still working correctly."
 
-**Copilot:** [Invokes ValidateFormTheme → ✅ PASS]  
-**Copilot:** [Invokes InspectSfDataGrid → Shows 8 columns configured]  
+**Copilot:** [Invokes ValidateFormTheme → ✅ PASS]
+**Copilot:** [Invokes InspectSfDataGrid → Shows 8 columns configured]
 **Copilot:** [Invokes EvalCSharp to test load time → 187ms]
 
 **Response:** "AccountsForm validation complete:
@@ -511,5 +511,5 @@ Would you like me to set these columns to visible?"
 
 - [WileyWidget MCP Server README](../../tools/WileyWidgetMcpServer/README.md)
 - [MCP Integration Guide](MCP-INTEGRATION-GUIDE.md)
-- [Syncfusion Theme Guidelines](../../.vscode/copilot-instructions.md#syncfusion-sfskinmanager-theme-enforcement)
+- [Syncfusion Theme Guidelines](../../.vscode/copilot-instructions.md#syncfusion- skinmanager-theme-enforcement)
 - [UI Test Helpers Reference](../../tests/WileyWidget.UITests/README.md)

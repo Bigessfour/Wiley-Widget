@@ -215,6 +215,58 @@ jobs:
           path: ./TestResults/
           retention-days: 7
 
+  integration-postgres:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 40
+    env:
+      POSTGRES_TEST_PASSWORD: ${{ secrets.POSTGRES_TEST_PASSWORD }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Check Postgres test password
+        shell: bash
+        run: |
+          if [ -z "$POSTGRES_TEST_PASSWORD" ]; then
+            echo "::warning::POSTGRES_TEST_PASSWORD is not set; consider setting it as a repository secret for reproducible Postgres test passwords"
+          else
+            echo "POSTGRES_TEST_PASSWORD is set"
+          fi
+
+      - name: Start Postgres container
+        shell: pwsh
+        run: |
+          ./scripts/docker/start-postgres.ps1 -TimeoutSeconds 120 -PostgresTestPassword $env:POSTGRES_TEST_PASSWORD
+
+      - name: Restore & Run Integration Tests (Postgres)
+        shell: pwsh
+        run: |
+          dotnet restore WileyWidget.sln --verbosity minimal
+          dotnet test tests/WileyWidget.Integration.Tests/WileyWidget.Integration.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/Postgres
+
+      - name: Stop Postgres container
+        if: always()
+        shell: pwsh
+        run: |
+          ./scripts/docker/stop-postgres.ps1
+
+      - name: Upload Postgres Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-postgres
+          path: ./TestResults/Postgres/
+
   ui-e2e:
     # Manual-only: UI E2E tests are interactive and should be executed on demand
     if: ${{ github.event_name == 'workflow_dispatch' }}

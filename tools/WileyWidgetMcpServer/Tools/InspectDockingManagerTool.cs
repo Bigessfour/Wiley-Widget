@@ -39,8 +39,8 @@ public static class InspectDockingManagerTool
                 return FormatError($"Form type not found: {formTypeName}", outputFormat);
             }
 
-            // Create mock MainForm with MDI enabled
-            mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+            // Create mock MainForm for form testing
+            mockMainForm = MockFactory.CreateMockMainForm();
 
             // Instantiate form
             form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
@@ -273,7 +273,7 @@ public static class InspectDockingManagerTool
         // Validate EnableDocumentMode (WileyWidget standard: should be false)
         if (dm.EnableDocumentMode)
         {
-            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false - use TabbedMDI instead)");
+            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false for docking mode)");
         }
 
         // Validate PersistState is enabled (best practice - strongly recommended)

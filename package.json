@@ -5,17 +5,25 @@
   "description": "Custom Azure MCP Server - Workaround for @azure/mcp dependency injection issues",
   "main": "scripts/custom-azure-mcp-server.js",
   "scripts": {
-    "start": "node scripts/custom-azure-mcp-server.js"
+    "start": "node scripts/custom-azure-mcp-server.js",
+    "mcp:syncfusion-docs": "cd .continue\\mcpServers && ..\\..\\.continue\\venv\\Scripts\\python.exe -m uvicorn simple_mcp.app:app --host 127.0.0.1 --port 61032",
+    "mcp:syncfusion-docs:win": ".continue\\venv\\Scripts\\python.exe -m uvicorn .continue.mcpServers.simple_mcp.app:app --host 127.0.0.1 --port 61032",
+    "mcp:filesystem": "npx -y @modelcontextprotocol/server-filesystem .",
+    "mcp:github": "npx -y @modelcontextprotocol/server-github",
+    "mcp:start-all": "concurrently \"npm run mcp:syncfusion-docs\" \"npm run mcp:filesystem\" \"npm run mcp:github\""
   },
   "dependencies": {
+    "@cyanheads/git-mcp-server": "^2.6.5",
     "@modelcontextprotocol/sdk": "^1.20.1",
     "@modelcontextprotocol/server-everything": "^2025.9.25",
-    "@modelcontextprotocol/server-filesystem": "^2025.8.21"
+    "@modelcontextprotocol/server-filesystem": "^2025.8.21",
+    "@todoforai/puppeteer-mcp-server": "^0.7.14"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "concurrently": "^8.2.0",
     "prettier": "^3.7.4",
     "repomix": "^1.8.0"
   }

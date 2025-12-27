@@ -1203,7 +1203,7 @@ WileyWidget/
 | **Domain**       | .NET 8.0  | -             | xUnit                 | -                   | -              | -            |
 
 **MVVM Framework:** Pure (DryIoc container)
-**Theme System:** Syncfusion SfSkinManager (FluentDark/FluentLight)
+**Theme System:** Syncfusion skinmanager (FluentDark/FluentLight)
 **CI/CD:** Local CI/CD + Trunk (90% success rate target)
 
 This layered architecture ensures WileyWidget is maintainable, testable, and ready for enterprise-scale deployment following Microsoft's recommended patterns for modern .NET applications.
@@ -1492,7 +1492,7 @@ public partial class App : Application
       base.ConfigureRegionAdapterMappings(mappings);
 
       // Fail-fast if theme not ready
-      if (SfSkinManager.ApplicationTheme == null)
+      if ( skinmanager.ApplicationTheme == null)
          throw new InvalidOperationException("Theme must be applied before region adapters");
 
       // Register Syncfusion adapters for DockingManager, SfDataGrid, etc.
@@ -1736,82 +1736,58 @@ WileyWidget/
 - **Coverage Target:** 80% by Phase 4 with CI/CD validation
 - **Test Categories:** unit, smoke, integration, slow (marked appropriately)
 
-### **WinForms MDI Child Form Design Requirements**
+### **WinForms Docking Panel Design Requirements**
 
-#### **Critical Pattern for All Child Forms**
+#### **Critical Pattern for All Panel Views**
 
-WileyWidget uses Windows Forms with MDI (Multiple Document Interface) and Syncfusion controls (`TabbedMDIManager`, `DockingManager`). All child forms **MUST** follow this defensive pattern:
+WileyWidget uses Windows Forms with **DockingManager** (Syncfusion) for panel-based navigation. All panel views **MUST** follow this pattern:
 
 ```csharp
-public MyChildForm(MainForm mainForm)
+public MyPanelView(MainForm mainForm)
 {
     InitializeComponent();
 
-    // MANDATORY: Check IsMdiContainer before setting MdiParent
-    if (mainForm.IsMdiContainer)
-    {
-        MdiParent = mainForm;
-    }
-
-    // Rest of initialization...
+    // Panels are managed by DockingManager - no MDI parent setting needed
+    // Navigation handled by PanelNavigationService.ShowPanel()
 }
 ```
 
-#### **Why This Is Required**
+#### **Why This Pattern Is Required**
 
-1. **Test Compatibility:** Unit tests run with `IsMdiContainer = false`
-2. **ArgumentException Prevention:** Setting `MdiParent` without MDI enabled throws exceptions
-3. **Syncfusion Integration:** `TabbedMDIManager` requires standard MDI pattern
+1. **Docking Integration:** Panels are hosted in DockingManager containers
+2. **Navigation Service:** PanelNavigationService handles showing/hiding panels
+3. **Test Compatibility:** Panels work in both docked and test harness modes
 
 #### **Key Rules**
 
 ✅ **DO:**
 
-- Accept `MainForm` as constructor parameter
-- Check `mainForm.IsMdiContainer` before setting `MdiParent`
-- Use standard MDI pattern: `form.MdiParent = this;`
+- Accept `MainForm` as constructor parameter (for service access)
+- Use `PanelNavigationService.ShowPanel()` for navigation
+- Implement proper disposal in `Dispose()` override
 
 ❌ **DON'T:**
 
-- Set `MdiParent` without checking `IsMdiContainer`
-- Use reflection-based `SetAsMDIChild()` for `Form` types (only for `UserControl`/`Panel`)
-- Instantiate child forms before `MainForm.IsMdiContainer` is set
+- Set `MdiParent` or use MDI patterns
+- Manually show/hide panels (use navigation service)
+- Access docking controls directly
 
-#### **MainForm Requirements**
+#### **Panel Navigation Pattern**
 
 ```csharp
-public MainForm(...)
+// In MainForm or navigation handlers
+private void ShowDashboardPanel()
 {
-    InitializeComponent();
+    _panelNavigator.ShowPanel<DashboardPanel>();
+}
 
-    // Set IsMdiContainer FIRST (before any child form instantiation)
-    if (_useMdiMode || _useTabbedMdi)
-    {
-        IsMdiContainer = true;
-    }
-
-    ValidateAndSanitizeUiConfiguration();
-
-    // TabbedMDIManager works automatically with standard MDI
-    if (_useTabbedMdi)
-    {
-        _tabbedMdiManager = new TabbedMDIManager(this);
-    }
+private void CloseCurrentPanel()
+{
+    _panelNavigator.ClosePanel();
 }
 ```
 
-#### **Example ShowChildFormMdi Method**
-
-```csharp
-private void ShowChildFormMdi<T>() where T : Form
-{
-    var form = _serviceProvider.GetRequiredService<T>();
-    form.MdiParent = this;  // TabbedMDIManager handles tabbing automatically
-    form.Show();
-}
-```
-
-**Reference:** See [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md) for complete implementation details and violation examples.
+**Reference:** See [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md) for complete implementation details.
 
 ---
 
@@ -2135,7 +2111,7 @@ Single-user application scaffold (NET 9) using Syncfusion controls (pinned v30.2
 - Syncfusion license loading supports env var, file, or inline (sample left commented)
 - Logging: Serilog rolling files + basic enrichers; no structured sink beyond file yet
 - Nullable refs intentionally disabled for early simplicity
-- Next likely enhancements: richer UI automation, live theme switching via `SfSkinManager`, packaging/signing
+- Next likely enhancements: richer UI automation, live theme switching via ` skinmanager`, packaging/signing
 
 ## Setup Scripts
 
@@ -2231,7 +2207,7 @@ The application uses local SQL Server Express for development and production:
 ```pwsh
 dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Licensing --version 30.2.7
 dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfGrid.WinForms --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfSkinManager.WinForms --version 30.2.7
+dotnet add WileyWidget/WileyWidget.csproj package Syncfusion. skinmanager.WinForms --version 30.2.7
 dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Tools.WinForms --version 30.2.7
 ```
 
@@ -2367,7 +2343,7 @@ public void Load()
 ## Settings & Theme Persistence
 
 User settings JSON auto-created at `%AppData%/WileyWidget/settings.json`.
-Theme buttons update the stored theme immediately; applied on next launch (applied via planned `SfSkinManager` integration).
+Theme buttons update the stored theme immediately; applied on next launch (applied via planned ` skinmanager` integration).
 
 Environment override (tests / portable mode):
 
@@ -2440,7 +2416,7 @@ CI enforces a minimum line coverage (default 70%). Adjust `COVERAGE_MIN` env var
 
 ## Next (Optional)
 
-- Integrate `SfSkinManager` for live theme switch (doc-backed pattern)
+- Integrate ` skinmanager` for live theme switch (doc-backed pattern)
 - UI automation (FlaUI) for DataGrid + Ribbon smoke
   - Basic smoke test already included: launches app, asserts main window title & UI children
 - Dynamic DataGrid column generation snippet (future):

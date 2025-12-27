@@ -4,6 +4,11 @@
 
 This document describes the logging standardization work completed in December 2025 to enhance debugging visibility across all Wiley Widget components. The focus was on completing coverage, standardizing patterns, and providing test utilities rather than wholesale conversion (85% coverage already existed).
 
+### Centralized logs (repo root)
+
+- All runtime and test logs now write to the centralized `logs/` folder at the repository root by default. The application sets `WILEYWIDGET_LOG_DIR` at startup and the scripts/tooling respect `WILEYWIDGET_LOG_DIR` (fallback: `WW_LOGS_DIR`) so logs are consistently available in one location.
+- File sinks use an explicit timestamped output template (ISO-like format with timezone and milliseconds) so each log line contains a precise timestamp (example: `2025-12-20 11:35:41.637 -07:00`).
+
 ## Summary of Changes
 
 ### 1. Forms - Added Serilog.ILogger and Lifecycle Logging
@@ -349,7 +354,7 @@ The test logging utilities integrate with the [WileyWidget MCP Test Server](../t
 **MCP Tools for Form Testing:**
 
 - `ValidateFormTheme` - Checks single form for manual color violations
-- `BatchValidateForms` - Validates all forms for SfSkinManager compliance
+- `BatchValidateForms` - Validates all forms for skinmanager compliance
 - `InspectSfDataGrid` - Inspects grid configuration and data binding
 - `EvalCSharp` - Runs ad-hoc C# code to test forms/controls
 - `RunHeadlessFormTest` - Executes headless UI tests with pass/fail status

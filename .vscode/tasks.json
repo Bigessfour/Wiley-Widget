@@ -1,109 +1,394 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "MCP: Start syncfusion-docs",
-      "type": "shell",
-      "command": "npm run mcp:syncfusion-docs",
-      "isBackground": false,
-      "problemMatcher": []
-    },
-    {
-      "label": "MCP: Start filesystem",
-      "type": "shell",
-      "command": "npm run mcp:filesystem",
-      "isBackground": false,
-      "problemMatcher": []
-    },
-    {
-      "label": "MCP: Start github",
-      "type": "shell",
-      "command": "npm run mcp:github",
-      "isBackground": false,
-      "problemMatcher": []
-    },
-    {
-      "label": "MCP: Start all",
-      "type": "shell",
-      "command": "npm run mcp:start-all",
-      "isBackground": false,
-      "problemMatcher": []
-    },
-    {
-      "label": "Generate AI Manifest",
-      "type": "shell",
-      "command": "python",
-      "args": ["scripts/generate-ai-manifest.py"],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "run DI tests",
-      "type": "shell",
-      "command": "dotnet test tests/WileyWidget.Unit.Tests/WileyWidget.Unit.Tests.csproj --filter \"DiRegistrationTests\" --no-build",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "type": "dotnet",
-      "task": "build",
-      "group": "build",
-      "problemMatcher": [],
-      "label": "dotnet: build"
-    },
-    {
-      "label": "kill-dotnet",
-      "type": "shell",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/kill-dotnet.ps1\" -WorkspacePath \"${workspaceFolder}\" -Force",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "Run E2E Test (PanelViewModelResolutionTests)",
-      "type": "shell",
-      "command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --filter \"FullyQualifiedName~WileyWidget.IntegrationTests.PanelViewModelResolutionTests\" --no-build --logger \"console;verbosity=minimal\"",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Run E2E Test (PanelViewModelResolutionTests) - wait for debugger",
-      "type": "shell",
-      "command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --filter \"FullyQualifiedName~WileyWidget.IntegrationTests.PanelViewModelResolutionTests\" --no-build --logger \"console;verbosity=minimal\"",
-      "group": "test",
-      "problemMatcher": [],
-      "options": {
-        "env": {
-          "VSTEST_HOST_DEBUG": "1"
-        }
-      },
-      "presentation": {
-        "reveal": "always"
-      }
-    },
-    {
-      "label": "Run all E2E Tests",
-      "type": "shell",
-      "command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --no-build --logger \"console;verbosity=minimal\"",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "Run all tests with coverage",
-      "type": "shell",
-      "command": "dotnet test WileyWidget.sln --collect:\"XPlat Code Coverage\" --settings tests/.runsettings --logger \"trx;LogFileName=all-tests.trx\" --results-directory ./TestResults/All",
-      "group": "test",
-      "problemMatcher": []
-    }
-  ]
-}
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "MCP: Start syncfusion-docs",
+			"type": "shell",
+			"command": "npm run mcp:syncfusion-docs",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "MCP: Start filesystem",
+			"type": "shell",
+			"command": "npm run mcp:filesystem",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "MCP: Start github",
+			"type": "shell",
+			"command": "npm run mcp:github",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "MCP: Start all",
+			"type": "shell",
+			"command": "npm run mcp:start-all",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Generate AI Manifest",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"scripts/generate-ai-manifest.py"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "run DI tests",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.Unit.Tests/WileyWidget.Unit.Tests.csproj --filter \"DiRegistrationTests\" --no-build",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"type": "dotnet",
+			"task": "build",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "dotnet: build"
+		},
+		{
+			"label": "Stop: Orphaned .NET processes (dry-run)",
+			"type": "shell",
+			"command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/kill-dotnet.ps1\" -Project \"WileyWidget\" -AgeMinutes ${input:ageMinutes} -DryRun",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": false
+			}
+		},
+		{
+			"label": "Stop: Orphaned .NET processes (force)",
+			"type": "shell",
+			"command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/scripts/kill-dotnet.ps1\" -Project \"WileyWidget\" -AgeMinutes ${input:ageMinutes} -Force -Confirm:$false",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": false
+			}
+		},
+		{
+			"label": "Stop: Non-Essential Services for Development (WhatIf)",
+			"type": "shell",
+			"command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command 'Get-Service -Name SysMain,WSearch,DiagTrack,XblGameSave,XblAuthManager,XboxNetApiSvc,XboxGipSvc,Spooler,Fax,WerSvc,PcaSvc -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq ''Running'' } | ForEach-Object { try { Stop-Service -InputObject $_ -WhatIf } catch { Write-Warning \"Failed to stop $($_.Name): $_\" } }'",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Stop: Non-Essential Services for Development (Run)",
+			"type": "shell",
+			"command": "pwsh -Command \"Start-Process pwsh -ArgumentList '-File', '$workspaceFolder/scripts/stop-services.ps1' -Verb RunAs -Wait\"",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Run E2E Test (PanelViewModelResolutionTests)",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --filter \"FullyQualifiedName~WileyWidget.IntegrationTests.PanelViewModelResolutionTests\" --no-build --logger \"console;verbosity=minimal\"",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Run E2E Test (PanelViewModelResolutionTests) - wait for debugger",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --filter \"FullyQualifiedName~WileyWidget.IntegrationTests.PanelViewModelResolutionTests\" --no-build --logger \"console;verbosity=minimal\"",
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"env": {
+					"VSTEST_HOST_DEBUG": "1"
+				}
+			},
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"label": "Run all E2E Tests",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.E2ETests/WileyWidget.E2ETests.csproj --no-build --logger \"console;verbosity=minimal\"",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Run all tests with coverage",
+			"type": "shell",
+			"command": "dotnet test WileyWidget.sln --collect:\"XPlat Code Coverage\" --settings tests/.runsettings --logger \"trx;LogFileName=all-tests.trx\" --results-directory ./TestResults/All",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "AI: test services",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.UnitTests/WileyWidget.UnitTests.csproj",
+				"--no-build"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "AI: test winforms",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.UnitTests/WileyWidget.UnitTests.csproj",
+				"--no-build"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "temp: services tests blame",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj",
+				"--no-build",
+				"--logger",
+				"console;verbosity=detailed",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"60s",
+				"--blame-hang-dump-type",
+				"mini",
+				"--diag",
+				"TestResults/services.diag.log"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: services tests blame 2",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj",
+				"--no-build",
+				"--logger",
+				"console;verbosity=minimal",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"60s",
+				"--blame-hang-dump-type",
+				"mini"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp-run-services-tests",
+			"type": "shell",
+			"command": "cd \"C:\\Users\\biges\\Desktop\\Wiley-Widget\" && dotnet test tests/WileyWidget.UnitTests/WileyWidget.UnitTests.csproj --no-build --logger \"console;verbosity=minimal\" --blame-hang-timeout 90s --blame-hang",
+			"problemMatcher": []
+		},
+		{
+			"label": "temp-run-services-tests",
+			"type": "shell",
+			"command": "cd \"C:\\Users\\biges\\Desktop\\Wiley-Widget\" && dotnet test tests/WileyWidget.UnitTests/WileyWidget.UnitTests.csproj --no-build --logger \"console;verbosity=minimal\"",
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Capture Memory Dump",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Get-Process -Name 'WileyWidget*' | ForEach-Object { dotnet-dump collect -p $_.Id -o \"tmp/dumps/dump-$($_.Id)-$(Get-Date -Format 'yyyyMMdd-HHmmss').dmp\" }"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Performance Trace (30s)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"$duration = 30; $output = \"tmp/traces/trace-$(Get-Date -Format 'yyyyMMdd-HHmmss').nettrace\"; Write-Host \"Starting $duration second performance trace...\"; dotnet-trace collect --process-id (Get-Process -Name 'WileyWidget*' | Select-Object -First 1).Id --duration 00:00:$duration --output $output; Write-Host \"Trace saved to: $output\""
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Runtime Counters Monitor",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Write-Host 'Monitoring runtime counters for 60 seconds...'; dotnet-counters monitor --process-id (Get-Process -Name 'WileyWidget*' | Select-Object -First 1).Id --counters 'System.Runtime','Microsoft.AspNetCore.Hosting','Microsoft.AspNetCore.Http.Connections' --duration 60"
+			],
+			"group": "test",
+			"isBackground": false,
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Analyze Dump File",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"$dumpFile = Get-ChildItem 'tmp/dumps/*.dmp' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($dumpFile) { Write-Host \"Analyzing dump: $($dumpFile.FullName)\"; dotnet-dump analyze $dumpFile.FullName } else { Write-Host 'No dump files found in tmp/dumps/' }"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Hot Reload Setup",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Write-Host 'Setting up hot reload for WinForms debugging...'; dotnet watch --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj run --no-launch-profile"
+			],
+			"group": "build",
+			"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Exception Analysis",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Write-Host 'Analyzing recent exceptions from logs...'; Get-ChildItem logs/*.log -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 5 | ForEach-Object { Write-Host \"=== $($_.Name) ===\"; Select-String -Path $_.FullName -Pattern 'Exception|Error' -Context 2 | Select-Object -Last 10 }"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Thread Analysis",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-Command",
+				"Write-Host 'Analyzing managed threads...'; dotnet-stack report --process-id (Get-Process -Name 'WileyWidget*' | Select-Object -First 1).Id"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Run Diagnostics",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-File",
+				"scripts/diagnostics.ps1"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Monitor Processes (Background)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-File",
+				"tmp/capture-dump.ps1",
+				"-MaxCpuPercent",
+				"95"
+			],
+			"group": "test",
+			"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Debug: Watch with Auto-Capture",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-File",
+				"tmp/watch-and-capture.ps1"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		}
+	]
+	,
+	"inputs": [
+		{
+			"id": "ageMinutes",
+			"type": "promptString",
+			"description": "Max age in minutes for orphaned processes (default 60).",
+			"default": "60"
+		}
+	]

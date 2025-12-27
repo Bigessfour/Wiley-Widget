@@ -59,7 +59,7 @@ finally
 **Solution:** Enhanced `SyncfusionTestHelper.ValidateTheme()`:
 
 - Loads `Office2019Theme` assembly before validation
-- Applies theme via ` skinmanager.SetTheme()` during form load
+- Applies theme via `skinmanager.SetTheme()` during form load
 - Checks Syncfusion controls for `ThemeName` property
 - Validates theme cascade (empty theme name = using parent cascade, which is valid)
 - Distinguishes Syncfusion controls from standard WinForms controls

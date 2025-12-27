@@ -16,6 +16,11 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Resolved DI registration ambiguity when resolving the logger for `SynchronizationContextDispatcherHelper` (qualified `GetService` call).
+- Fixed a race condition during application shutdown where global UI exception handlers could attempt to report errors after the `IHost` and logging providers were disposed, causing `ObjectDisposedException` and noisy `AggregateException`s (notably with EventLog sinks). The fix:
+  - Delays host shutdown until after the WinForms UI message loop exits (`host.StopAsync` / `host.Dispose` moved out of `ApplicationContext.OnMainFormClosed`).
+  - Adds defensive catches in global exception handlers to suppress disposal-related exceptions and fall back to `Console.Error` when reporting is suppressed.
+  - Removes host disposal from `src/WileyWidget.WinForms/Forms/WileyWidgetApplicationContext.cs`.
+  - Adds unit/integration tests: `tests/WileyWidget.Unit.Tests/Integration/ErrorHandlersTests.cs`.
 
 ---
 

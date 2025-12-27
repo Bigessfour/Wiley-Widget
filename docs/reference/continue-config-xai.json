@@ -15,17 +15,17 @@
       "apiKey": "YOUR_XAI_API_KEY_HERE"
     },
     {
-      "title": "Grok-beta (Fast)",
+      "title": "Grok-3 (Fast)",
       "provider": "openai",
-      "model": "grok-beta",
+      "model": "grok-3",
       "apiBase": "https://api.x.ai/v1",
       "apiKey": "YOUR_XAI_API_KEY_HERE"
     }
   ],
   "tabAutocompleteModel": {
-    "title": "Grok-beta",
+    "title": "Grok-3 Autocomplete",
     "provider": "openai",
-    "model": "grok-beta",
+    "model": "grok-3",
     "apiBase": "https://api.x.ai/v1",
     "apiKey": "YOUR_XAI_API_KEY_HERE"
   },

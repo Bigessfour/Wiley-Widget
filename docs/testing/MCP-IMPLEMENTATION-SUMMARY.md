@@ -74,7 +74,7 @@ return violations.Count == 0 ? "✅ PASS" : $"❌ {violations.Count} violations"
 
 **Capabilities:**
 
-- Validates SfSkinManager theme compliance
+- Validates skinmanager theme compliance
 - Detects manual BackColor/ForeColor assignments
 - Verifies expected theme (default: Office2019Colorful)
 - Headless instantiation with MockMainForm
@@ -88,7 +88,7 @@ return violations.Count == 0 ? "✅ PASS" : $"❌ {violations.Count} violations"
 Theme Check: ✅ PASS
 Manual Color Check: ✅ PASS
 
-No violations found. Form uses SfSkinManager theming exclusively.
+No violations found. Form uses  skinmanager theming exclusively.
 ```
 
 ---

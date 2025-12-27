@@ -29,8 +29,8 @@
   "focus_mode": true,
   "include_only_extensions": [".cs", ".csproj", ".sln", ".xaml"],
   "must_include_patterns": [
-    "(^|/)readme(\\..*)?$",
-    "(^|/)license(\\..*)?$",
+    "readme",
+    "license",
     "(^|/)copying(\\..*)?$",
     "(^|/)appsettings(\\..*)?\\.json$",
     "(^|/)directory\\.build\\.props$",
