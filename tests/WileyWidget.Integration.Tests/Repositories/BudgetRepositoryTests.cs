@@ -209,7 +209,7 @@ namespace WileyWidget.Integration.Tests.Repositories
             var db = GetRequiredService<AppDbContext>();
 
             var dept = new Department { Name = "Enterprise Dept" };
-            var fund = new Fund { FundCode = "800-Ent", Name = "Enterprise Fund", Type = FundType.GeneralFund };
+            var fund = new Fund { FundCode = "800-Ent", Name = "Enterprise Fund", Type = FundType.EnterpriseFund };
 
             var entry = CreateBudgetEntry("800", 2099, dept, fund, 4000m);
             entry.ActualAmount = 1000m;

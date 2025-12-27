@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using WileyWidget.Integration.Tests.Infrastructure;
 using WileyWidget.Data;
@@ -11,7 +12,8 @@ using WileyWidget.Services;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class BudgetRepositoryPostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class BudgetRepositoryPostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

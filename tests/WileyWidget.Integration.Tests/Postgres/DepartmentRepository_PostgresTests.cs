@@ -10,7 +10,8 @@ using WileyWidget.Models;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class DepartmentRepositoryPostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class DepartmentRepositoryPostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

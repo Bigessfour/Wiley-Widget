@@ -101,15 +101,13 @@ namespace WileyWidget.Integration.Tests
                 _scope.Dispose();
                 _scope = null;
                 DbContext = null!;
-                Services = null!;
-                return;
             }
 
-            if (DbContext != null)
+            if (Services is IDisposable disposableServices)
             {
-                await DbContext.Database.EnsureDeletedAsync();
-                await DbContext.DisposeAsync();
+                disposableServices.Dispose();
             }
+            Services = null!;
         }
 
         protected IServiceScope CreateScope()

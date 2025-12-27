@@ -12,6 +12,8 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Integration.Tests.Shared;
+using Intuit.Ipp.Data;
+using Task = System.Threading.Tasks.Task;
 using Xunit;
 
 namespace WileyWidget.Integration.Tests.Services
@@ -58,8 +60,9 @@ namespace WileyWidget.Integration.Tests.Services
                     var logger = sp.GetRequiredService<ILogger<QuickBooksService>>();
                     var apiClient = sp.GetRequiredService<IQuickBooksApiClient>();
                     var dataService = sp.GetService<IQuickBooksDataService>();
+                    var transactionRepository = sp.GetRequiredService<WileyWidget.Business.Interfaces.ITransactionRepository>();
                     var httpClient = new HttpClient(handler);
-                    return new QuickBooksService(settings, secretVault, logger, apiClient, httpClient, sp, dataService);
+                    return new QuickBooksService(settings, secretVault, logger, apiClient, httpClient, sp, transactionRepository, dataService);
                 });
             })
         {
@@ -204,37 +207,56 @@ namespace WileyWidget.Integration.Tests.Services
             transactions.Should().NotBeEmpty();
         }
 
-        [Fact]
+        [Fact(Timeout = 30000)]
         public async Task SyncAsync_ModifiedInvoice_UpdatesExistingTransaction()
         {
             // Arrange
             await SeedTestDataAsync();
-            // Add existing transaction
+            // Add existing transaction with QuickBooks invoice ID
             var existingTxn = new WileyWidget.Models.Transaction
             {
                 BudgetEntryId = 1,
                 Amount = 50,
                 TransactionDate = DateTime.Now,
-                Description = "Existing"
+                Description = "Existing",
+                QuickBooksInvoiceId = "1"
             };
             DbContext.Transactions.Add(existingTxn);
             await DbContext.SaveChangesAsync();
 
-            var apiMock = new Mock<IQuickBooksApiClient>();
-            apiMock.Setup(a => a.GetInvoicesAsync()).ReturnsAsync(new List<Intuit.Ipp.Data.Invoice>
-            {
-                new Intuit.Ipp.Data.Invoice { Id = "1", TotalAmt = 75, TxnDate = DateTime.Now } // Modified amount
-            });
+            // Mock the data service to return modified invoice
+            var dataServiceMock = new Mock<IQuickBooksDataService>();
+            dataServiceMock.Setup(ds => ds.FindInvoices(It.IsAny<int>(), It.IsAny<int>()))
+                .Returns(new List<Intuit.Ipp.Data.Invoice>
+                {
+                    new Intuit.Ipp.Data.Invoice { Id = "1", TotalAmt = 75, TxnDate = DateTime.Now } // Modified amount
+                });
+            dataServiceMock.Setup(ds => ds.FindCustomers(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Customer>());
+            dataServiceMock.Setup(ds => ds.FindAccounts(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Account>());
+            dataServiceMock.Setup(ds => ds.FindVendors(It.IsAny<int>(), It.IsAny<int>())).Returns(new List<Intuit.Ipp.Data.Vendor>());
 
-            var qbService = GetRequiredService<IQuickBooksService>();
+            // Create a new QuickBooksService instance with the mock data service
+            var settings = Services.GetRequiredService<WileyWidget.Services.Abstractions.ISettingsService>();
+            var secretVault = Services.GetRequiredService<WileyWidget.Services.Abstractions.ISecretVaultService>();
+            var logger = Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<QuickBooksService>>();
+            var apiClient = Services.GetRequiredService<WileyWidget.Services.Abstractions.IQuickBooksApiClient>();
+            var httpClient = Services.GetRequiredService<System.Net.Http.HttpClient>();
+            var serviceProvider = Services;
+            var transactionRepository = Services.GetRequiredService<WileyWidget.Business.Interfaces.ITransactionRepository>();
+
+            var qbService = new QuickBooksService(settings, secretVault, logger, apiClient, httpClient, serviceProvider, transactionRepository, dataServiceMock.Object);
 
             // Act
             var result = await qbService.SyncDataAsync();
 
+            // Verify the mock was called
+            dataServiceMock.Verify(ds => ds.FindInvoices(It.IsAny<int>(), It.IsAny<int>()), Times.AtLeastOnce);
+
             // Assert
             result.Success.Should().BeTrue();
-            var updatedTxn = await DbContext.Transactions.FindAsync(existingTxn.Id);
-            updatedTxn.Amount.Should().Be(75);
+            // Reload from database to ensure we get the latest data
+            await DbContext.Entry(existingTxn).ReloadAsync();
+            existingTxn.Amount.Should().Be(75);
         }
 
         [Fact]

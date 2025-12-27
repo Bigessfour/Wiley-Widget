@@ -1,0 +1,7 @@
+[
+  { "Id": "1", "CustomerName": "Acme Co", "Amount": 100.0 },
+  { "Id": "2", "CustomerName": "Beta LLC", "Amount": 200.0 },
+  { "Id": "3", "CustomerName": "Gamma Inc", "Amount": 300.0 },
+  { "Id": "4", "CustomerName": "Delta Ltd", "Amount": 400.0 },
+  { "Id": "5", "CustomerName": "Epsilon GmbH", "Amount": 500.0 }
+]

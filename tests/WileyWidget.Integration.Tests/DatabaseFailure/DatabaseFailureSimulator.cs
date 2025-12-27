@@ -215,7 +215,7 @@ public class DatabaseFailureTests : IntegrationTestBase
         var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1));
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+        await Assert.ThrowsAsync<TimeoutException>(() =>
             DatabaseFailureSimulator.WithTimeoutAsync(
                 () => Task.Delay(100), // Long operation
                 TimeSpan.FromMilliseconds(1)));

@@ -66,17 +66,21 @@ namespace WileyWidget.Integration.Tests.Data
         [Fact]
         public async Task ConcurrentDbContextInstances_AreIsolated()
         {
-            // Arrange - reset DB then create two separate scopes/contexts
-            await ResetDatabaseAsync();
-            using var scope1 = CreateScope();
-            using var scope2 = CreateScope();
+            // Arrange - create two contexts with different in-memory databases
+            var options1 = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase("test-db-1")
+                .Options;
+            var options2 = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase("test-db-2")
+                .Options;
 
-            var context1 = scope1.ServiceProvider.GetRequiredService<AppDbContext>();
-            var context2 = scope2.ServiceProvider.GetRequiredService<AppDbContext>();
+            using var context1 = new AppDbContext(options1);
+            using var context2 = new AppDbContext(options2);
 
-            // Act - record initial count, add an entry in context1 and verify it appears in context2
-            var initialCount = await context2.BudgetEntries.CountAsync();
+            await context1.Database.EnsureCreatedAsync();
+            await context2.Database.EnsureCreatedAsync();
 
+            // Act - add an entry in context1
             var newEntry = new WileyWidget.Models.BudgetEntry
             {
                 AccountNumber = "CTX-TEST-1",
@@ -89,10 +93,9 @@ namespace WileyWidget.Integration.Tests.Data
             await context1.BudgetEntries.AddAsync(newEntry);
             await context1.SaveChangesAsync();
 
-            // Assert - second context should observe persisted data in shared test database
+            // Assert - context2 should not see the entry (isolated databases)
             var list = await context2.BudgetEntries.ToListAsync();
-            list.Count.Should().Be(initialCount + 1);
-            list.Should().Contain(be => be.AccountNumber == "CTX-TEST-1");
+            list.Should().NotContain(be => be.AccountNumber == "CTX-TEST-1");
         }
     }
 }

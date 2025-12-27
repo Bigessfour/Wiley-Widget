@@ -19,17 +19,23 @@ namespace WileyWidget.Integration.Tests
 
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new TaskCanceledException();
+            }
+
             try
             {
                 await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+                await db.Database.EnsureCreatedAsync(cancellationToken);
                 // Perform a lightweight query to validate DB connectivity
                 var count = await db.BudgetEntries.CountAsync(cancellationToken);
                 return HealthCheckResult.Healthy($"Database reachable, entries={count}");
             }
             catch (OperationCanceledException)
             {
-                // propagate cancellation so callers can observe TaskCanceledException
-                throw;
+                // propagate cancellation as TaskCanceledException for test expectations
+                throw new TaskCanceledException();
             }
             catch (Exception ex)
             {

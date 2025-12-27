@@ -6,7 +6,8 @@ using Xunit.Sdk;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class PostgresConnectivityTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class PostgresConnectivityTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

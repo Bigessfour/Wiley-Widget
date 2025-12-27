@@ -8,7 +8,8 @@ using WileyWidget.Integration.Tests.Infrastructure;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class DataSeedingServicePostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class DataSeedingServicePostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

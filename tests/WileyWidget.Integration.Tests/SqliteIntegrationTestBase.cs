@@ -162,8 +162,13 @@ namespace WileyWidget.Integration.Tests
                 _scope.Dispose();
                 _scope = null;
                 DbContext = null!;
-                Services = null!;
             }
+
+            if (Services is IDisposable disposableServices)
+            {
+                disposableServices.Dispose();
+            }
+            Services = null!;
 
             if (_connection != null)
             {

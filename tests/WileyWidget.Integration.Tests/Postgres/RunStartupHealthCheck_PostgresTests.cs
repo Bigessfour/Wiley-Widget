@@ -15,7 +15,8 @@ using WileyWidget.Services;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class RunStartupHealthCheckPostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class RunStartupHealthCheckPostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

@@ -12,7 +12,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class ReportExportServicePostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class ReportExportServicePostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

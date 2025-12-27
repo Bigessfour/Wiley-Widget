@@ -1,0 +1,51 @@
+permissions:
+  contents: read
+# trunk-ignore-all(checkov/CKV2_GHA_1)
+name: CI - Migrations & Schema Check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: Complex!Passw0rd1
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "bash -c '(/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"Complex!Passw0rd1\" -Q \"SELECT 1\" >/dev/null 2>&1) || exit 1'"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.307
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run migration check
+        env:
+          CI_CONNECTION_STRING: >-
+            Server=localhost,1433;Database=WileyWidgetCI;User Id=sa;Password=Complex!Passw0rd1;TrustServerCertificate=True;
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/ci/check_migrations.ps1
+
+      - name: (Optional) Apply migrations to CI DB
+        if: ${{ failure() == false }}
+        run: |
+          dotnet ef database update --project src/WileyWidget.Data --startup-project src/WileyWidget.WinForms --no-build

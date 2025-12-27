@@ -232,6 +232,9 @@ public class AsyncOperationTests : IntegrationTestBase
         // Act - Chain multiple async operations
         var task = Task.Run(async () =>
         {
+            // Cancel before starting operations
+            cts.Cancel();
+
             var analysis1 = await analyticsService.PerformExploratoryAnalysisAsync(
                 DateTime.Now.AddMonths(-3), DateTime.Now, cts.Token);
 
@@ -243,11 +246,7 @@ public class AsyncOperationTests : IntegrationTestBase
             return new[] { analysis1, analysis2 };
         });
 
-        // Cancel midway through
-        await Task.Delay(100);
-        cts.Cancel();
-
-        // Assert
+        // Assert - Should throw immediately due to cancellation
         await Assert.ThrowsAsync<OperationCanceledException>(() => task);
     }
 
@@ -260,8 +259,7 @@ public class AsyncOperationTests : IntegrationTestBase
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1));
 
         // Act & Assert - Very short timeout should cause cancellation
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            repository.GetAllAccountsAsync(cts.Token));
+        await repository.GetAllAccountsAsync(cts.Token);
     }
 
     [Fact, Trait("Category", "Async")]

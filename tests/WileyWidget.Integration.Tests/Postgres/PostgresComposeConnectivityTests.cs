@@ -31,7 +31,8 @@ namespace WileyWidget.Integration.Tests.Postgres
             }
 
             // DockerComposeFixture ensures Postgres is ready before tests run.
-            var connStr = "Host=db-postgres;Database=WileyWidget_Test;Username=wiley;Password=WileyTestPassw0rd!;Pooling=false";
+            var password = System.Environment.GetEnvironmentVariable("POSTGRES_TEST_PASSWORD") ?? "WileyTestPassw0rd!";
+            var connStr = $"Host=db-postgres;Database=WileyWidget_Test;Username=wiley;Password={password};Pooling=false";
 
             // Try connecting (this will succeed when CI started Postgres via scripts/docker/start-postgres.ps1)
             await using var conn = new NpgsqlConnection(connStr);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Forms;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.Integration.Tests.Services

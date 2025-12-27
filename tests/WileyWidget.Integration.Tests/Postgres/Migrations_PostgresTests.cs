@@ -6,7 +6,8 @@ using WileyWidget.Integration.Tests.Infrastructure;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class MigrationsPostgresTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class MigrationsPostgresTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
 

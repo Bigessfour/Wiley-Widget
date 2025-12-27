@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace WileyWidget.Integration.Tests.Postgres
 {
-    public class MigrationsApplyTests : IClassFixture<PostgresTestcontainerFixture>
+    [Collection("Postgres Testcontainers")]
+    public class MigrationsApplyTests
     {
         private readonly PostgresTestcontainerFixture _fixture;
         public MigrationsApplyTests(PostgresTestcontainerFixture fixture) { _fixture = fixture; }
