@@ -1063,32 +1063,33 @@ namespace WileyWidget.WinForms
                 var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
                 timer.Elapsed += (sender, _) =>
                 {
-                    using (timer)
+                    try
                     {
-                        try
+                        if (mainForm != null && !mainForm.IsDisposed)
                         {
-                            if (mainForm != null && !mainForm.IsDisposed)
+                            mainForm.BeginInvoke(new Action(() =>
                             {
-                                mainForm.BeginInvoke(new Action(() =>
+                                try
                                 {
-                                    try
+                                    if (!mainForm.IsDisposed)
                                     {
-                                        if (!mainForm.IsDisposed)
-                                        {
-                                            mainForm.Close();
-                                        }
+                                        mainForm.Close();
                                     }
-                                    catch (Exception closeEx)
-                                    {
-                                        Log.Debug(closeEx, "Auto-close failed to close main form");
-                                    }
-                                }));
-                            }
+                                }
+                                catch (Exception closeEx)
+                                {
+                                    Log.Debug(closeEx, "Auto-close failed to close main form");
+                                }
+                            }));
                         }
-                        catch (Exception ex)
-                        {
-                            Console.Error.WriteLine($"Auto-close timer failed: {ex}");
-                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"Auto-close timer failed: {ex}");
+                    }
+                    finally
+                    {
+                        (sender as System.Timers.Timer)?.Dispose();
                     }
                 };
                 timer.Start();
