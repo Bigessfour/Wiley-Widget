@@ -422,10 +422,11 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         }
     }
 
-    private async Task RefreshReportsAsync()
+    private Task RefreshReportsAsync()
     {
         LoadAvailableReports();
         UpdateStatus("Reports list refreshed");
+        return Task.CompletedTask;
     }
 
     private void ClosePanel()

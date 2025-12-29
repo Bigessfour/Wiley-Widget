@@ -12,6 +12,7 @@ using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Net.Http;
 using Action = System.Action;
 using System.IO;
 using System.Linq;
@@ -245,7 +246,7 @@ namespace WileyWidget.WinForms
                         Application.DoEvents(); // Keep splash responsive
 
                         // Run async without blocking UI thread
-                        await RunStartupHealthCheckAsync(healthScope.ServiceProvider);
+                        await Task.Run(async () => await RunStartupHealthCheckAsync(healthScope.ServiceProvider));
 
                         Log.Information("[DIAGNOSTIC] RunStartupHealthCheckAsync completed successfully");
                         Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunStartupHealthCheckAsync completed");
@@ -261,7 +262,7 @@ namespace WileyWidget.WinForms
                     Log.Information("[DIAGNOSTIC] IsVerifyStartup=true, running verify-startup mode");
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Running verify-startup mode");
                     splash.Complete("Startup verification complete");
-                    RunVerifyStartup(host);
+                    await RunVerifyStartup(host);
                     return; // Exit Main() after verification
                 }
                 Log.Information("[DIAGNOSTIC] IsVerifyStartup=false, continuing normal startup");
@@ -315,7 +316,7 @@ namespace WileyWidget.WinForms
                         Application.DoEvents(); // Keep splash responsive
 
                         // Run async without blocking UI thread
-                        await UiTestDataSeeder.SeedIfEnabledAsync(host.Services);
+                        await Task.Run(async () => await UiTestDataSeeder.SeedIfEnabledAsync(host.Services));
 
                         Log.Information("Test data seeding completed successfully");
                     }
@@ -715,6 +716,19 @@ namespace WileyWidget.WinForms
             var preBuildXai = builder.Configuration["XAI:ApiKey"];
             Console.WriteLine($"[PRE-BUILD DEBUG] XAI:ApiKey BEFORE builder.Build() = {(preBuildXai != null ? preBuildXai.Substring(0, Math.Min(15, preBuildXai.Length)) + "..." : "NULL")} ({preBuildXai?.Length ?? 0} chars)");
 
+            // Register a global HttpClient with a sensible default timeout to avoid blocking external calls during startup
+            try
+            {
+                var httpTimeoutSeconds = builder.Configuration.GetValue<int>("HttpClient:TimeoutSeconds", 30);
+                // Register a named default HttpClient with configured timeout
+                builder.Services.AddHttpClient("WileyWidgetDefault", c => c.Timeout = TimeSpan.FromSeconds(httpTimeoutSeconds));
+                Console.WriteLine($"[CONFIG] Registered global (named) HttpClient 'WileyWidgetDefault' with {httpTimeoutSeconds}s timeout");
+            }
+            catch (Exception httpRegEx)
+            {
+                Console.WriteLine($"[CONFIG WARNING] Failed to register global HttpClient: {httpRegEx.Message}");
+            }
+
             return builder.Build();
         }
 
@@ -1034,12 +1048,24 @@ namespace WileyWidget.WinForms
                 var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
 
                 _timelineService?.RecordOperation("Test database connectivity", "Database Health Check");
-                Log.Information("[DIAGNOSTIC] Testing database connectivity with CanConnectAsync");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Testing database connectivity with CanConnectAsync");
-                await dbContext.Database.CanConnectAsync();
+                Log.Information("[DIAGNOSTIC] Testing database connectivity with CanConnectAsync (10s timeout)");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Testing database connectivity with CanConnectAsync (10s timeout)");
+                var connectTask = dbContext.Database.CanConnectAsync();
+                var connectTimeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                var connectCompletedTask = await Task.WhenAny(connectTask, connectTimeoutTask).ConfigureAwait(false);
 
-                Log.Information("Startup health check passed: Database connection successful");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Database CanConnectAsync succeeded");
+                if (connectCompletedTask == connectTask)
+                {
+                    await connectTask.ConfigureAwait(false); // Ensure the task completed successfully
+                    Log.Information("Startup health check passed: Database connection successful");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Database CanConnectAsync succeeded");
+                }
+                else
+                {
+                    Log.Warning("Database connectivity test timed out after 10 seconds");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Database CanConnectAsync timed out");
+                    throw new TimeoutException("Database connectivity test timed out after 10 seconds");
+                }
 
                 // Get data statistics for diagnostic purposes — run on threadpool to avoid sync-over-async deadlock
                 Log.Information("[DIAGNOSTIC] Starting data statistics check");
@@ -1126,13 +1152,22 @@ namespace WileyWidget.WinForms
             return args != null && Array.Exists(args, a => string.Equals(a, "--verify-startup", StringComparison.OrdinalIgnoreCase));
         }
 
-        private static void RunVerifyStartup(IHost host)
+        private static async Task RunVerifyStartup(IHost host)
         {
+            // Prevent indefinite startup hang by timing out the StartAsync call
+            using var startupCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
             try
             {
-                host.StartAsync().GetAwaiter().GetResult();
-                host.StopAsync().GetAwaiter().GetResult();
+                await host.StartAsync(startupCts.Token).ConfigureAwait(false);
+                // Immediately stop after successful start for verification mode
+                await host.StopAsync().ConfigureAwait(false);
                 Log.CloseAndFlush();
+            }
+            catch (OperationCanceledException oce)
+            {
+                Log.Fatal(oce, "Verify-startup timed out after 30 seconds");
+                Log.CloseAndFlush();
+                throw new InvalidOperationException("Verify-startup timed out", oce);
             }
             catch (Exception ex)
             {

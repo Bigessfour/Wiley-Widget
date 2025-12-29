@@ -326,6 +326,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     /// </summary>
     protected override void OnViewModelResolved(AuditLogViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes

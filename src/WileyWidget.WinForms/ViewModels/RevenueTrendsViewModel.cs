@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,7 +15,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for Revenue Trends panel displaying monthly revenue data over time.
 /// Provides observable properties for chart and grid display with async data loading.
 /// </summary>
-public partial class RevenueTrendsViewModel : ViewModelBase
+public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
 {
     private readonly IAccountsRepository _accountsRepository;
     private CancellationTokenSource? _loadCancellationTokenSource;
@@ -252,6 +253,30 @@ public partial class RevenueTrendsViewModel : ViewModelBase
 
         return result;
     }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Clean up managed resources if needed
+            _loadCancellationTokenSource?.Dispose();
+            _loadCancellationTokenSource = null;
+        }
+        // Clean up unmanaged resources if any
+    }
 }
 
 /// <summary>
@@ -267,7 +292,7 @@ public class RevenueMonthlyData
     /// <summary>
     /// Display-friendly month label (e.g., "Jan 2025").
     /// </summary>
-    public string MonthLabel => Month.ToString("MMM yyyy");
+    public string MonthLabel => Month.ToString("MMM yyyy", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Total revenue for the month.

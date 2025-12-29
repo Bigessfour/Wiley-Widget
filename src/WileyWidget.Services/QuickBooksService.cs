@@ -947,7 +947,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
 
 
-    public Task<bool> AuthorizeAsync()
+    public System.Threading.Tasks.Task<bool> AuthorizeAsync()
     {
         // Expose the interactive OAuth flow to the UI
         return AcquireTokensInteractiveAsync();
@@ -958,12 +958,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         if (_settingsLoaded) return _settings.Current;
 
         // Use LoadAsync synchronously - called from constructor context where async is not available
-        _settings.LoadAsync().GetAwaiter().GetResult();
+        System.Threading.Tasks.Task.Run(() => _settings.LoadAsync()).GetAwaiter().GetResult();
         _settingsLoaded = true;
         return _settings.Current;
     }
 
-    private async Task<bool> AcquireTokensInteractiveAsync()
+    private async System.Threading.Tasks.Task<bool> AcquireTokensInteractiveAsync()
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         // Test harness / CI: support two related environment flags:
@@ -1189,7 +1189,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
 
-    private async Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
+    private async System.Threading.Tasks.Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
@@ -1218,7 +1218,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         return new TokenResult(access, refresh, expires, refreshExpires);
     }
 
-    private async Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
+    private async System.Threading.Tasks.Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
     {
         const int maxRetries = 3;
         var lastException = (Exception?)null;
@@ -1346,7 +1346,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// This is optional for local development but helps when a public callback URL is required.
     /// For webhooks, we need to tunnel to the webhooks server port, not the main app port.
     /// </summary>
-    private async Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
+    private async System.Threading.Tasks.Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
 
@@ -1456,7 +1456,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    private async Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
+    private async System.Threading.Tasks.Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
     {
         var prefix = redirectUri ?? _redirectUri;
         if (!prefix.EndsWith("/", StringComparison.Ordinal))

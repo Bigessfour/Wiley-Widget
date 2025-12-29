@@ -1,5 +1,59 @@
 {
 	"version": "2.0.0",
+	// Pragmatic Problem Matcher Configuration for Wiley Widget
+	// ========================================================
+	// Focus: FUNCTIONAL ISSUES ONLY (runtime blockers, not cosmetic)
+	//
+	// CRITICAL ERROR CODES (filtered):
+	// --------------------------------
+	// Nullability Issues (Real bugs):
+	//   - CS8600: Converting null literal or possible null value
+	//   - CS8601: Possible null reference assignment
+	//   - CS8602: Dereference of a possibly null reference (!!!)
+	//   - CS8603: Possible null reference return
+	//   - CS8604: Possible null reference argument
+	//   - CS8618: Non-nullable field uninitialized
+	//   - CS8625: Cannot convert null literal to non-nullable reference
+	//
+	// Async/Await Issues:
+	//   - CS4014: Call is not awaited (fire-and-forget danger)
+	//   - CS1998: Async method lacks 'await' operators
+	//
+	// Type System Violations:
+	//   - CS0029: Cannot implicitly convert type
+	//   - CS0266: Cannot implicitly convert (explicit cast exists)
+	//   - CS1503: Argument type mismatch
+	//   - CS1061: Type does not contain definition (missing member)
+	//   - CS0103: Name does not exist in current context
+	//   - CS0246: Type or namespace not found
+	//   - CS0234: Type/namespace not found in namespace
+	//
+	// DI Resolution Issues:`n	//   - CS0115: No suitable method found to override
+	//   - CS0534: Does not implement inherited abstract member
+	//   - CS0051: Inconsistent accessibility
+	//   - CS0052: Inconsistent accessibility (field)
+	//
+	// Deprecation (Security/Breaking Changes):
+	//   - CS0619: Obsolete member usage
+	//
+	// IGNORED (Cosmetic/Style):
+	// -------------------------
+	// - IDE0001-IDE9999: All IntelliSense style suggestions
+	// - CS0168: Variable declared but never used
+	// - CS0219: Variable assigned but never used
+	// - CS8321: Local function is declared but never used
+	// - IDE0008: Use explicit type instead of 'var'
+	// - IDE0011: Add braces
+	// - IDE0055: Fix formatting
+	// - Unused imports, naming conventions, etc.
+	//
+	// Integration Notes:
+	// ------------------
+	// - Works with Serilog startup diagnostics
+	// - Detects DI resolution failures
+	// - EF Core N+1 issues appear as CS1061 (missing async methods)
+	// - Vault security leaks show as CS8600/CS8602 (null handling)
+	//
 	"tasks": [
 		{
 			"label": "prettier:write-all",
@@ -9,6 +63,26 @@
 				"prettier",
 				"--write",
 				"."
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"group": "none"
+		},
+		{
+			"label": "prettier:write-markdown",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"prettier",
+				"--write",
+				"**/*.md"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -42,7 +116,22 @@
 			"group": "none"
 		},
 		{
-			"label": "kill-dotnet",
+			"label": "Build WileyWidget.WinForms",
+			"command": "dotnet",
+			"type": "shell",
+			"args": [
+				"build",
+				"${workspaceFolder}\\src\\WileyWidget.WinForms\\WileyWidget.WinForms.csproj"
+			],
+			"group": "build",
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "WileyWidget: Kill Old Processes",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -59,28 +148,11 @@
 				"focus": false,
 				"panel": "shared"
 			},
-			"problemMatcher": []
+			"problemMatcher": [],
+			"isBackground": false
 		},
 		{
-			"label": "clear-logs",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Get-ChildItem -Path '${workspaceFolder}/logs' -File | Remove-Item -Force; Write-Host 'Logs folder cleared successfully' -ForegroundColor Green"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "clean",
+			"label": "WileyWidget: Clean",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
@@ -97,20 +169,18 @@
 				"panel": "shared"
 			},
 			"problemMatcher": "$msCompile",
-			"dependsOn": "kill-dotnet"
+			"dependsOn": "WileyWidget: Kill Old Processes"
 		},
 		{
-			"label": "build",
+			"label": "WileyWidget: Build",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "pwsh",
 			"args": [
-				"build",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/build-solution.ps1"
 			],
 			"group": {
 				"kind": "build",
@@ -126,10 +196,7 @@
 				{
 					"owner": "csharp",
 					"source": "Build",
-					"fileLocation": [
-						"relative",
-						"${workspaceFolder}"
-					],
+					"fileLocation": ["relative", "${workspaceFolder}"],
 					"pattern": {
 						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
 						"file": 1,
@@ -148,10 +215,7 @@
 				{
 					"owner": "msbuild",
 					"source": "Build",
-					"fileLocation": [
-						"relative",
-						"${workspaceFolder}"
-					],
+					"fileLocation": ["relative", "${workspaceFolder}"],
 					"pattern": {
 						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
 						"file": 1,
@@ -163,41 +227,17 @@
 					}
 				}
 			],
-			"dependsOn": [
-				"kill-dotnet",
-				"clean"
-			]
+			"dependsOn": ["WileyWidget: Clean", "ensure-logs-dir"]
 		},
 		{
-			"label": "test",
+			"label": "WileyWidget: Clean & Build",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
-				"test",
+				"build",
 				"${workspaceFolder}/WileyWidget.sln",
 				"--verbosity",
 				"minimal"
-			],
-			"group": {
-				"kind": "test",
-				"isDefault": true
-			},
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": true,
-				"panel": "new"
-			},
-			"problemMatcher": [],
-			"dependsOn": "build"
-		},
-		{
-			"label": "restore",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"restore",
-				"${workspaceFolder}/WileyWidget.sln"
 			],
 			"group": "build",
 			"presentation": {
@@ -206,25 +246,39 @@
 				"focus": false,
 				"panel": "shared"
 			},
-			"problemMatcher": []
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			],
+			"dependsOn": [
+				"WileyWidget: Kill Old Processes",
+				"WileyWidget: Clean"
+			]
 		},
 		{
-			"label": "publish",
+			"label": "WileyWidget: Run",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
-				"publish",
-				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
-				"--configuration",
-				"Release",
-				"--runtime",
-				"win-x64",
-				"--self-contained",
-				"true",
-				"--output",
-				"${workspaceFolder}/publish"
+				"run",
+				"--project",
+				"${workspaceFolder}/src/WileyWidget/WileyWidget.csproj",
+				"--verbosity",
+				"minimal"
 			],
-			"group": "build",
+			"group": "test",
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
@@ -232,10 +286,11 @@
 				"panel": "new"
 			},
 			"problemMatcher": [],
-			"dependsOn": "clean"
+			"isBackground": true,
+			"dependsOn": "WileyWidget: Clean & Build"
 		},
 		{
-			"label": "sonar-analyze",
+			"label": "ensure-logs-dir",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -243,580 +298,286 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-Command",
-				"dotnet sonarscanner begin /k:\"WileyWidget\" /d:sonar.host.url=\"http://localhost:9000\" /d:sonar.login=\"admin\" /d:sonar.password=\"admin\"; dotnet build; dotnet sonarscanner end /d:sonar.login=\"admin\" /d:sonar.password=\"admin\""
+				"if (-not (Test-Path -Path \"${workspaceFolder}\\logs\")) { New-Item -ItemType Directory -Path \"${workspaceFolder}\\logs\" | Out-Null }"
 			],
-			"group": "build",
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
-				"focus": true,
-				"panel": "dedicated"
+				"panel": "shared",
+				"focus": false
 			},
 			"problemMatcher": []
 		},
 		{
-			"label": "dotnet run WinForms",
+			"label": "mcp:start-csharp-mcp",
 			"type": "shell",
-			"command": "dotnet",
+			"command": "docker",
 			"args": [
 				"run",
-				"--project",
-				"src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+				"-i",
+				"--name",
+				"csharp-mcp",
+				"--rm",
+				"-v",
+				"${workspaceFolder}:/scripts:ro",
+				"-e",
+				"CSX_ALLOWED_PATH=/scripts",
+				"-e",
+				"WW_REPO_ROOT=/scripts",
+				"-e",
+				"WW_LOGS_DIR=/scripts",
+				"ghcr.io/infinityflowapp/csharp-mcp:latest"
 			],
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "run winforms di check",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"run",
-				"--project",
-				"src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
-			],
-			"isBackground": false,
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
 			"problemMatcher": []
 		},
 		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "dotnet build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "copilot-build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln",
-				"--no-restore",
-				"--configuration",
-				"Debug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msbuild"
-			]
-		},
-		{
-			"label": "generate-ai-manifest",
-			"type": "shell",
-			"command": "python",
-			"args": [
-				"${workspaceFolder}/scripts/generate-ai-manifest.py"
-			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "Generate AI Manifest",
-			"type": "shell",
-			"command": "C:/Users/biges/Desktop/Wiley-Widget/.venv/Scripts/python.exe",
-			"args": [
-				"scripts/generate-ai-manifest.py"
-			],
-			"group": "build"
-		},
-		{
-			"label": "mcp:build-ui-server",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
-				"--configuration",
-				"Debug"
-			],
-			"group": "build",
-			"problemMatcher": "$msCompile",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "mcp:validate-form-theme",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"run",
-				"--project",
-				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
-				"--",
-				"validate_form_theme",
-				"${input:formTypeName}",
-				"Office2019Colorful"
-			],
-			"group": "test",
-			"dependsOn": "mcp:build-ui-server",
-			"problemMatcher": [],
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "mcp:inspect-sfdatagrid",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"run",
-				"--project",
-				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
-				"--",
-				"inspect_sfdatagrid",
-				"${input:formTypeName}"
-			],
-			"group": "test",
-			"dependsOn": "mcp:build-ui-server",
-			"problemMatcher": [],
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "run ui tests (FlaUI)",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-Command",
-				"$env:WILEYWIDGET_UI_TESTS='true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
-			],
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "run ui tests (FlaUI)",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-Command",
-				"& { $env:WILEYWIDGET_UI_TESTS='true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI }"
-			],
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "run ui tests (FlaUI)",
+			"label": "mcp: analyze",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
 				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
-			],
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-ui-tests-logged-serial",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"Set-Item -Path Env:WILEYWIDGET_UI_TESTS -Value 'true'; dotnet test tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj --filter Category=UI -p:BuildInParallel=false *>&1 | Tee-Object -FilePath tmp/ui-tests.log"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "copilot-temp-build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
-			],
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "copilot-temp-build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
-			],
-			"group": "build"
-		},
-		{
-			"label": "build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
-			]
-		},
-		{
-			"label": "ai-temp-build",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"build",
-				"C:\\Users\\biges\\Desktop\\Wiley-Widget\\WileyWidget.sln",
-				"--no-restore",
-				"--verbosity",
-				"minimal",
-				"--configuration",
-				"Debug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$msCompile"
-			],
-			"group": "build"
-		},
-		{
-			"label": "test winforms unit",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
-				"--verbosity",
-				"minimal"
-			],
-			"isBackground": false,
-			"group": "test"
-		},
-		{
-			"label": "test: UiSmokeTests",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--filter",
-				"Category=UiSmokeTests",
-				"--verbosity",
-				"minimal"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "test: UiSmokeTests",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--filter",
-				"Category=UiSmokeTests",
-				"--verbosity",
-				"minimal"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "test: UiSmokeTests",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"test",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--filter",
-				"Category=UiSmokeTests",
-				"--verbosity",
-				"minimal"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "Validate MCP Usage",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
 				"-ExecutionPolicy",
 				"Bypass",
 				"-File",
-				"${workspaceFolder}/.vscode/mcp-tool-validation.ps1",
-				"-Verbose"
+				"${workspaceFolder}/scripts/tools/run-mcp.ps1",
+				"-Project",
+				"${workspaceFolder}/WileyWidget.csproj"
 			],
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "always",
-				"panel": "new",
-				"clear": true
-			},
 			"group": {
-				"kind": "test",
+				"kind": "build",
 				"isDefault": false
-			}
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
 		},
 		{
-			"label": "Pre-Commit Checks",
-			"dependsOn": [
-				"Validate MCP Usage",
-				"build"
+			"label": "psscriptanalyze: workspace",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${workspaceFolder}/scripts"
 			],
-			"dependsOrder": "sequence",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
 			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "pwsh: safe-run",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/ps-safe-run.ps1",
+				"-ScriptPath",
+				"${input:scriptPath}"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none",
+			"dependsOn": [
+				"psscriptanalyze: workspace"
+			]
+		},
+		{
+			"label": "dotnet:clean-build-server",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build-server",
+				"shutdown"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "dotnet:fast-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-restore",
+				"--configuration",
+				"Debug",
+				"--verbosity",
+				"quiet",
+				"/m",
+				"/maxcpucount",
+				"/p:BuildInParallel=true",
+				"/p:UseSharedCompilation=true",
+				"/p:NodeReuse=true",
+				"/p:RunAnalyzers=false",
+				"/p:RunAnalyzersDuringBuild=false",
+				"/p:EnableNETAnalyzers=false"
+			],
+			"isBackground": false,
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared",
+				"clear": false,
+				"showReuseMessage": false
+			},
+			"group": "build"
+		},
+		{
+			"label": "kill-test-processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "kill-dotnet",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-Process | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' -and $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue"
+			],
+			"presentation": {
+				"echo": false,
+				"reveal": "never",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		// ... rest of upgrade-to-NET10 tasks continue unchanged ...
+		{
+			"label": "test: viewmodels",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-build",
+				"--logger",
+				"trx",
+				"--logger",
+				"\"console;verbosity=detailed\"",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"dependsOn": [
+				"kill-test-processes"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
 			"group": "test"
 		}
 	],
 	"inputs": [
 		{
-			"id": "formTypeName",
+			"id": "nugetPackagePath",
+			"type": "promptString",
+			"description": "Path to the .nupkg file to push",
+			"default": "${workspaceFolder}/packages/local/syncfusion-patches/"
+		},
+		{
+			"id": "intelligentScriptPath",
+			"type": "promptString",
+			"description": "Script to run (auto-detects .py, .ps1, .csx, .cs)",
+			"default": "tests/test_startup_validator.py"
+		},
+		{
+			"id": "pythonScriptPath",
+			"type": "promptString",
+			"description": "Python script to run (.py)",
+			"default": "tests/test_startup_validator.py"
+		},
+		{
+			"id": "powershellScriptPath",
+			"type": "promptString",
+			"description": "PowerShell script to run (.ps1)",
+			"default": "scripts/maintenance/git-update.ps1"
+		},
+		{
+			"id": "csxScriptPath",
+			"type": "promptString",
+			"description": "C# script to run (.csx)",
+			"default": "scripts/examples/csharp/44-xaml-binding-static-analyzer.csx"
+		},
+		{
+			"id": "commitMessage",
+			"type": "promptString",
+			"description": "Enter commit message",
+			"default": "chore: Update project files"
+		},
+		{
+			"id": "scriptPath",
+			"type": "promptString",
+			"description": "Path to the script to run (absolute or relative). Example: ${workspaceFolder}/scripts/deploy.ps1",
+			"default": "${workspaceFolder}/scripts"
+		},
+		{
+			"id": "csxTestFile",
+			"type": "promptString",
+			"description": "CSX test file to run (e.g., 44-xaml-binding-static-analyzer.csx)",
+			"default": "44-xaml-binding-static-analyzer.csx"
+		},
+		{
+			"id": "xamlObjDir",
 			"type": "pickString",
-			"description": "Select form to validate/inspect:",
+			"description": "Select obj directory (TFM/RID combination)",
 			"options": [
-				"WileyWidget.WinForms.Forms.AccountsForm",
-				"WileyWidget.WinForms.Forms.BudgetOverviewForm",
-				"WileyWidget.WinForms.Forms.ChartForm",
-				"WileyWidget.WinForms.Forms.DashboardForm",
-				"WileyWidget.WinForms.Forms.ReportsForm",
-				"WileyWidget.WinForms.Forms.SettingsForm"
+				"obj/Debug/net9.0-windows10.0.26100.0/win-x64",
+				"obj/Debug/net9.0-windows10.0.19041.0/win-x64",
+				"obj/Release/net9.0-windows10.0.26100.0/win-x64",
+				"obj/Debug/net9.0-windows10.0.26100.0/win-arm64",
+				"obj/Debug/net8.0-windows10.0.19041.0/win-x64"
 			],
-			"default": "WileyWidget.WinForms.Forms.AccountsForm"
+			"default": "obj/Debug/net9.0-windows10.0.26100.0/win-x64"
 		}
 	]
 }

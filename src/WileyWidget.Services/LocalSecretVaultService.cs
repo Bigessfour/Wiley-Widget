@@ -94,7 +94,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         {
             var secrets = LoadSecrets();
             secrets[key] = value;
-            SaveSecretsAsync(secrets).Wait();
+            Task.Run(() => SaveSecretsAsync(secrets)).GetAwaiter().GetResult();
             _logger.LogInformation("Secret {SecretKey} stored in local vault", key);
         }
         catch (Exception ex)

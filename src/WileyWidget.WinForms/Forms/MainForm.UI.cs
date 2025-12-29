@@ -2089,7 +2089,7 @@ public partial class MainForm
     /// <summary>
     /// Load saved docking layout from AppData
     /// </summary>
-    private void LoadDockingLayout()
+    private async void LoadDockingLayout()
     {
         if (!ShouldLoadDockingLayout())
         {
@@ -2107,7 +2107,7 @@ public partial class MainForm
                 return;
             }
 
-            LoadAndApplyDockingLayout(layoutPath);
+            await LoadAndApplyDockingLayout(layoutPath);
         }
         catch (UnauthorizedAccessException authEx)
         {
@@ -2373,7 +2373,7 @@ public partial class MainForm
     /// <summary>
     /// Load and apply docking layout from file with performance monitoring and timeout
     /// </summary>
-    private void LoadAndApplyDockingLayout(string layoutPath)
+    private async Task LoadAndApplyDockingLayout(string layoutPath)
     {
         if (_dockingManager == null)
         {
@@ -2411,7 +2411,10 @@ public partial class MainForm
                     }
                 });
 
-                if (!loadTask.Wait(LayoutLoadTimeoutMs))
+                var timeoutTask = Task.Delay(LayoutLoadTimeoutMs);
+                var completedTask = await Task.WhenAny(loadTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
                 {
                     stopwatch.Stop();
                     _logger.LogError("Layout load exceeded timeout of {TimeoutMs}ms - layout is too complex or corrupted. Auto-resetting to defaults.", LayoutLoadTimeoutMs);

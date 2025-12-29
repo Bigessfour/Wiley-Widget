@@ -285,6 +285,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     /// </summary>
     protected override void OnViewModelResolved(DepartmentSummaryViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes

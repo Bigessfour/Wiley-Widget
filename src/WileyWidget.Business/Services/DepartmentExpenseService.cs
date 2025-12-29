@@ -17,7 +17,7 @@ public class DepartmentExpenseService : IDepartmentExpenseService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<decimal> GetDepartmentExpensesAsync(
+    public Task<decimal> GetDepartmentExpensesAsync(
         string departmentName,
         DateTime startDate,
         DateTime endDate,
@@ -33,14 +33,14 @@ public class DepartmentExpenseService : IDepartmentExpenseService
             // var qbService = ...; var expenses = await qbService.QueryExpenses(...)
 
             // Stub implementation: return sample data
-            return departmentName switch
+            return Task.FromResult(departmentName switch
             {
                 "Water" => 45000m,
                 "Sewer" => 68000m,
                 "Trash" => 28000m,
                 "Apartments" => 95000m,
                 _ => 0m
-            };
+            });
         }
         catch (Exception ex)
         {

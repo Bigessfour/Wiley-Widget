@@ -373,6 +373,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// </summary>
     protected override void OnViewModelResolved(RevenueTrendsViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes

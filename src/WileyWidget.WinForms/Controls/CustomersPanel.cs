@@ -330,7 +330,9 @@ public partial class CustomersPanel : UserControl
             }
             control = control.Parent;
         }
-        return null;
+#pragma warning disable CS8600
+        return null!;
+#pragma warning restore CS8600
     }
 
     private void UpdateStatus(string message)

@@ -1,93 +1,76 @@
 {
   "recommendations": [
-    // Code quality and linting
-    "trunkio.trunk",
-    "trunk.io",
-    "sonarsource.sonarlint-vscode",
-    "usernamehw.errorlens",
-    "streetsidesoftware.code-spell-checker",
-
-    // AI and Copilot
-    "github.copilot",
-    "github.copilot-chat",
-    "continue.continue",
-    "erikkralj.vscode-grok",
-    "block.vscode-mcp-extension",
-
-    // .NET Development
+    // === Core .NET Development ===
     "ms-dotnettools.csdevkit",
     "ms-dotnettools.csharp",
-    "ms-dotnettools.vscode-dotnet-pack",
     "ms-dotnettools.vscode-dotnet-runtime",
 
-    // Python Development
-    "ms-python.python",
-    "ms-python.vscode-pylance",
-    "ms-python.debugpy",
-    "ms-python.black-formatter",
-    "ms-python.vscode-python-envs",
-    "charliermarsh.ruff",
-
-    // Testing
+    // === Testing & Quality ===
     "hbenl.vscode-test-explorer",
-    "ms-vscode.test-adapter-converter",
     "formulahendry.dotnet-test-explorer",
-    "littlefoxteam.vscode-python-test-adapter",
-    "markis.code-coverage",
     "ryanluker.vscode-coverage-gutters",
+    "sonarsource.sonarlint-vscode",
+    "usernamehw.errorlens",
 
-    // Database
-    "ms-mssql.mssql",
-    "ms-mssql.data-workspace-vscode",
-    "ms-mssql.sql-bindings-vscode",
-    "ms-mssql.sql-database-projects-vscode",
+    "redhat.vscode-xml",
+    "dotjoshjohnson.xml",
+
+    // === Python Support ===
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+    "littlefoxteam.vscode-python-test-adapter",
+
+    // === Database & SQL ===
+    "ms-mssql.sql",
     "mtxr.sqltools",
     "mtxr.sqltools-driver-mssql",
 
-    // Git
+    // === PowerShell & Scripting ===
+    "ms-vscode.PowerShell",
+
+    // === Git & Version Control ===
     "eamodio.gitlens",
     "mhutchie.git-graph",
     "donjayamanne.githistory",
-    "github.vscode-pull-request-github",
-    "github.vscode-github-actions",
 
-    // Docker
+    // === AI & Productivity ===
+    "github.copilot",
+    "github.copilot-chat",
+    "aaron-bond.better-comments",
+    "gruntfuggly.todo-tree",
+
+    // === Docker & Containers ===
     "ms-azuretools.vscode-docker",
-    "ms-azuretools.vscode-containers",
     "ms-vscode-remote.remote-containers",
-    "docker.docker",
 
-    // Markup and Config
-    "davidanson.vscode-markdownlint",
-    "yzhang.markdown-all-in-one",
-    "redhat.vscode-yaml",
-    "redhat.vscode-xml",
-    "dotjoshjohnson.xml",
-    "prateekmahendrakar.prettyxml",
-    "esbenp.prettier-vscode",
+    // === Code Quality & Linting ===
+    "trunk.io",
+    "streetsidesoftware.code-spell-checker",
     "editorconfig.editorconfig",
 
-    // Utilities
+    // === Navigation & Productivity ===
     "christian-kohler.path-intellisense",
-    "formulahendry.code-runner",
-    "ms-vscode.powershell",
-    "ms-vscode.live-server",
-    "ms-vscode.remote-repositories",
-    "gingerturtle.html-preview-pro",
-    "tomoki1207.pdf",
-    "humao.rest-client",
-    "rangav.vscode-thunder-client",
-
-    // Todo and Comments
-    "gruntfuggly.todo-tree",
+    "eamodio.toggle-excluded-files",
     "wayou.vscode-todo-highlight",
-    "aaron-bond.better-comments",
 
-    // F# (if needed)
-    "ionide.ionide-fsharp",
+    // === Markdown & Documentation ===
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
 
-    // Icons and Themes
-    "pkief.material-icon-theme",
-    "vscode-icons-team.vscode-icons"
-  ]
-}
+    // === Code Execution ===
+    "formulahendry.code-runner",
+
+    // === REST API Testing ===
+    "humao.rest-client",
+
+    // === File Icons & UI ===
+    "vscode-icons-team.vscode-icons",
+    "pkief.material-icon-theme"
+  ],
+
+    "unwantedRecommendations": [
+      "ms-vscode.csharp"  // csdevkit replaces the old csharp extension
+    ]
+  }

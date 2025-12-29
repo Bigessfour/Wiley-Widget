@@ -1,119 +1,46 @@
 {
   "version": "0.2.0",
   "configurations": [
-
     {
-      "name": "WinForms: Launch & Debug",
+      "name": "Wiley Widget WinForms – Full Symbols + Hot Reload",
       "type": "coreclr",
       "request": "launch",
+      "preLaunchTask": "Build WileyWidget.WinForms",
       "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
-      "console": "internalConsole",
-      "preLaunchTask": "build",
-      "postDebugTask": "kill-dotnet",
-      "justMyCode": false,
-      "enableStepFiltering": false,
-      "requireExactSource": false,
-      "suppressJITOptimizations": true,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
       "sourceFileMap": {
-        "/src": "${workspaceFolder}/src"
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
       },
       "symbolOptions": {
+        "searchPaths": [
+          "${workspaceFolder}/**",
+          "https://symbols.nuget.org/download/symbols",
+          "https://msdl.microsoft.com/download/symbols",
+          "C:\\SyncfusionSymbols**",
+          "${env:USERPROFILE}\\.nuget\\packages"
+        ],
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true,
-        "cachePath": "${workspaceFolder}/.symbols",
-        "moduleFilter": {
-          "mode": "loadAllButExcluded",
-          "excludedModules": [],
-          "includeSymbolsNextToModules": true
+        "cachePath": "${workspaceFolder}/.vsdbg"
+      },
+      "sourceLinkOptions": {
+        "*": {
+          "enabled": true
         }
       },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "enableStepFiltering": false,
       "logging": {
-        "moduleLoad": true,
-        "exceptions": true,
-        "programOutput": true,
-        "diagnosticsLog": {
-          "protocolMessages": false,
-          "startDebugging": true,
-          "engineLogging": true
-        },
-        "threadExit": true,
-        "processExit": true,
-        "elapsedTiming": true,
-        "trace": true,
-        "traceResponse": true
-      },
-      "debuggerEventFilter": {
-        "disableTypeLoadMessages": false,
-        "disableThreadExitMessages": false
-      },
-      "expressionEvaluationOptions": {
-        "allowImplicitFuncEval": true,
-        "allowToString": true,
-        "allowFastEvaluate": true,
-        "showRawValues": false
-      },
-      "internalConsoleOptions": "openOnSessionStart",
-      "env": {
-        "DOTNET_ENVIRONMENT": "Development",
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "XAI_API_KEY": "${env:XAI_API_KEY}",
-        "QBO_CLIENT_ID": "${env:QBO_CLIENT_ID}",
-        "QBO_CLIENT_SECRET": "${env:QBO_CLIENT_SECRET}",
-        "QBO_REALM_ID": "${env:QBO_REALM_ID}",
-        "QBO_ENVIRONMENT": "sandbox",
-        "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}",
-        "WW_DEBUG_EXCEPTIONS": "1",
-        "COREHOST_TRACE": "0"
-      },
-      "envFile": "${workspaceFolder}/.env"
-    },
-    {
-      "name": "Attach to Process",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
-    },
-    {
-      "name": "Debug C# Tests",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/WileyWidget.Tests/bin/Debug/net9.0/WileyWidget.Tests.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "console": "internalConsole",
-      "stopAtEntry": false
-    },
-    {
-      "name": "Debug C# UI Tests",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/WileyWidget.UiTests/bin/Debug/net9.0/WileyWidget.UiTests.dll",
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "console": "internalConsole",
-      "stopAtEntry": false
-    },
-    {
-      "name": "Run WileyWidget.Tests (dotnet test)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "dotnet",
-      "args": [
-        "test",
-        "${workspaceFolder}/WileyWidget.Tests/WileyWidget.Tests.csproj",
-        "--no-restore",
-        "--verbosity",
-        "minimal"
-      ],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "stopAtEntry": false
+        "module": true,
+        "engineLogging": false
+      }
     }
   ]
 }

@@ -28,9 +28,6 @@ public partial class BudgetPanel : UserControl
     private Button? _exportCsvButton;
     private Button? _exportPdfButton;
     private Button? _exportExcelButton;
-    private Button? _applyFiltersButton;
-    private Button? _clearFiltersButton;
-    private Button? _refreshButton;
     private TextBox? _searchTextBox;
     private ComboBox? _fiscalYearComboBox;
     private ComboBox? _departmentComboBox;
@@ -358,7 +355,9 @@ public partial class BudgetPanel : UserControl
         filterTable.Controls.Add(_underBudgetCheckBox, 3, 2);
 
         filterGroup.Controls.Add(filterTable);
-        _filterPanel.Controls.Add(filterGroup);
+#pragma warning disable CS8602
+        _filterPanel!.Controls.Add(filterGroup);
+#pragma warning restore CS8602
         topPanel.Controls.Add(_filterPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
@@ -560,7 +559,9 @@ public partial class BudgetPanel : UserControl
         buttonTable.Controls.Add(_exportPdfButton, 6, 0);
         buttonTable.Controls.Add(_exportExcelButton, 7, 0);
 
-        _buttonPanel.Controls.Add(buttonTable);
+#pragma warning disable CS8602
+        _buttonPanel!.Controls.Add(buttonTable);
+#pragma warning restore CS8602
         bottomPanel.Controls.Add(_buttonPanel);
 
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
@@ -641,12 +642,12 @@ public partial class BudgetPanel : UserControl
         MessageBox.Show("Edit Entry functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
-    private async Task DeleteEntryAsync()
+    private Task DeleteEntryAsync()
     {
         if (_viewModel.BudgetEntries.Count == 0)
         {
             MessageBox.Show("No budget entries to delete", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            return Task.CompletedTask;
         }
 
         var result = MessageBox.Show(
@@ -660,6 +661,7 @@ public partial class BudgetPanel : UserControl
             // Delete logic would go here
             MessageBox.Show("Delete functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+        return Task.CompletedTask;
     }
 
     private void ImportCsvButton_Click(object? sender, EventArgs e)

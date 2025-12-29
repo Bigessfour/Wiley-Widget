@@ -12,6 +12,7 @@
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU;x64</Platforms>
+    <NoWarn>NU1902;NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

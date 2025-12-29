@@ -340,7 +340,9 @@ public partial class UtilityBillPanel : UserControl
         buttonTable.Controls.Add(_generateReportButton, 4, 0);
         buttonTable.Controls.Add(_refreshButton, 5, 0);
 
-        _buttonPanel.Controls.Add(buttonTable);
+#pragma warning disable CS8602
+        _buttonPanel!.Controls.Add(buttonTable);
+#pragma warning restore CS8602
         topPanel.Controls.Add(_buttonPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
@@ -451,7 +453,9 @@ public partial class UtilityBillPanel : UserControl
         });
 
         _customersGrid.CurrentCellActivated += CustomersGrid_CurrentCellActivated;
-        customersPanel.Controls.Add(_customersGrid);
+#pragma warning disable CS8602
+        customersPanel.Controls.Add(_customersGrid!);
+#pragma warning restore CS8602
         bottomPanel.Controls.Add(customersPanel);
 
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);

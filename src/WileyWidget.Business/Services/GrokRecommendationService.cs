@@ -17,7 +17,7 @@ public class GrokRecommendationService : IGrokRecommendationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Dictionary<string, decimal>> GetRecommendedAdjustmentFactorsAsync(
+    public Task<Dictionary<string, decimal>> GetRecommendedAdjustmentFactorsAsync(
         Dictionary<string, decimal> departmentExpenses,
         decimal targetProfitMargin = 15.0m,
         CancellationToken cancellationToken = default)
@@ -54,7 +54,7 @@ public class GrokRecommendationService : IGrokRecommendationService
             _logger.LogInformation("Grok recommendations: {Recommendations}",
                 string.Join(", ", recommendations.Select(r => $"{r.Key}={r.Value:F2}")));
 
-            return recommendations;
+            return Task.FromResult(recommendations);
         }
         catch (Exception ex)
         {
@@ -79,10 +79,10 @@ public class GrokRecommendationService : IGrokRecommendationService
             // Stub implementation
             await Task.Delay(100, cancellationToken);
 
-            return $@"Based on your monthly expenses and a target profit margin of {targetProfitMargin}%, 
-the recommended adjustments ensure full cost recovery plus your desired margin. 
-Water and Sewer departments show higher expenses requiring proportional rate increases. 
-Trash service is operating efficiently with lower adjustment needs. 
+            return $@"Based on your monthly expenses and a target profit margin of {targetProfitMargin}%,
+the recommended adjustments ensure full cost recovery plus your desired margin.
+Water and Sewer departments show higher expenses requiring proportional rate increases.
+Trash service is operating efficiently with lower adjustment needs.
 Apartments reflect bundled utility costs with recommended 12% margin to cover overhead.";
         }
         catch (Exception ex)

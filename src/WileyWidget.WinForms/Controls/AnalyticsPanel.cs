@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -21,8 +22,6 @@ public partial class AnalyticsPanel : UserControl
     // UI Controls
     private SfDataGrid? _metricsGrid;
     private SfDataGrid? _variancesGrid;
-    private SfDataGrid? _trendsGrid;
-    private SfDataGrid? _projectionsGrid;
     private ChartControl? _trendsChart;
     private ChartControl? _forecastChart;
     private Button? _performAnalysisButton;
@@ -35,10 +34,6 @@ public partial class AnalyticsPanel : UserControl
     private TextBox? _projectionYearsTextBox;
     private ListBox? _insightsListBox;
     private ListBox? _recommendationsListBox;
-    private Label? _currentRateLabel;
-    private Label? _projectedRateLabel;
-    private Label? _revenueImpactLabel;
-    private Label? _reserveImpactLabel;
     private Panel? _scenarioPanel;
     private Panel? _resultsPanel;
     private Panel? _chartsPanel;
@@ -293,7 +288,9 @@ public partial class AnalyticsPanel : UserControl
         scenarioTable.Controls.Add(_projectionYearsTextBox, 1, 3);
 
         scenarioGroup.Controls.Add(scenarioTable);
-        _scenarioPanel.Controls.Add(scenarioGroup);
+#pragma warning disable CS8602
+        _scenarioPanel!.Controls.Add(scenarioGroup);
+#pragma warning restore CS8602
         topPanel.Controls.Add(_scenarioPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
@@ -483,7 +480,9 @@ public partial class AnalyticsPanel : UserControl
         forecastPanel.Controls.Add(_forecastChart);
         chartsSplit.Panel2.Controls.Add(forecastPanel);
 
-        _chartsPanel.Controls.Add(chartsSplit);
+#pragma warning disable CS8602
+        _chartsPanel!.Controls.Add(chartsSplit);
+#pragma warning restore CS8602
         bottomPanel.Controls.Add(_chartsPanel);
 
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
@@ -612,7 +611,7 @@ public partial class AnalyticsPanel : UserControl
 
             foreach (var point in _viewModel.ForecastData)
             {
-                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM"), (double)point.PredictedReserves);
+                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", CultureInfo.InvariantCulture), (double)point.PredictedReserves);
             }
 
             _forecastChart.Series.Add(forecastSeries);
@@ -624,7 +623,7 @@ public partial class AnalyticsPanel : UserControl
         }
     }
 
-    private async Task RefreshDataAsync()
+    private Task RefreshDataAsync()
     {
         try
         {
@@ -647,6 +646,7 @@ public partial class AnalyticsPanel : UserControl
             UpdateStatus($"Error: {ex.Message}");
             MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        return Task.CompletedTask;
     }
 
     private void UpdateStatus(string message)
@@ -681,10 +681,10 @@ public partial class AnalyticsPanel : UserControl
         try
         {
             // Initialize scenario parameters
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1");
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1");
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1");
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString();
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
         }
         catch (Exception ex)
         {
