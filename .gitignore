@@ -188,6 +188,11 @@ build-errors.log
 test-logs/
 coverage.xml
 *.cobertura.xml
+*.nettrace
+*.nettrace.etlx
+
+# Debugger files
+.vsdbg/
 
 # Windows system files
 %APPDATA%/
