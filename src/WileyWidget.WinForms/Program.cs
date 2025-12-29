@@ -105,7 +105,7 @@ namespace WileyWidget.WinForms
                 Log.Information("Startup milestone: WinForms Initialization complete");
 
                 SplashReport(0.10, "Validating configuration secrets...");
-                using (var secretPhase = _timelineService?.BeginPhaseScope("Secret Validation"))
+                using (_timelineService?.BeginPhaseScope("Secret Validation"))
                 {
                     var secretServices = host.Services;
                     // Offload secret validation to background thread to avoid UI thread blocking
@@ -125,7 +125,7 @@ namespace WileyWidget.WinForms
                 var mainXaiKey = mainConfig["XAI:ApiKey"];
                 Log.Debug("[MAIN CONFIG] XAI:ApiKey present={Present}, length={Length}", mainXaiKey != null, mainXaiKey?.Length ?? 0);
 
-                using (var syncContextScope = _timelineService?.BeginPhaseScope("SynchronizationContext Capture"))
+                using (_timelineService?.BeginPhaseScope("SynchronizationContext Capture"))
                 {
                     CaptureSynchronizationContext();
                 }
@@ -154,7 +154,7 @@ namespace WileyWidget.WinForms
                     SplashReport(0.50, "Verifying database connectivity...");
                     using (var healthScope = host.Services.CreateScope())
                     {
-                        using (var healthPhaseScope = _timelineService?.BeginPhaseScope("Database Health Check"))
+                        using (_timelineService?.BeginPhaseScope("Database Health Check"))
                         {
                             SplashReport(0.60, "Checking database health...");
                             await Task.Run(async () => await RunStartupHealthCheckAsync(healthScope.ServiceProvider).ConfigureAwait(false)).ConfigureAwait(false);
@@ -797,6 +797,14 @@ namespace WileyWidget.WinForms
             // No additional UI services needed here in Phase 1
         }
 
+        /// <summary>
+        /// Runs a startup health check against the database to validate connectivity before the main UI is shown.
+        /// </summary>
+        /// <remarks>
+        /// This method is <c>internal</c> to allow automated tests to invoke the startup health check logic
+        /// without launching the full application. It should not be called directly by production code
+        /// outside of <c>Program.cs</c>.
+        /// </remarks>
         internal static async Task RunStartupHealthCheckAsync(IServiceProvider services)
         {
             Log.Debug("[DIAGNOSTIC] Entered RunStartupHealthCheckAsync");
@@ -1053,35 +1061,34 @@ namespace WileyWidget.WinForms
             {
                 if (autoCloseMs <= 0) return;
                 var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
-                timer.Elapsed += (_, _) =>
+                timer.Elapsed += (sender, _) =>
                 {
-                    try
+                    using (timer)
                     {
-                        if (mainForm != null && !mainForm.IsDisposed)
+                        try
                         {
-                            mainForm.BeginInvoke(new Action(() =>
+                            if (mainForm != null && !mainForm.IsDisposed)
                             {
-                                try
+                                mainForm.BeginInvoke(new Action(() =>
                                 {
-                                    if (!mainForm.IsDisposed)
+                                    try
                                     {
-                                        mainForm.Close();
+                                        if (!mainForm.IsDisposed)
+                                        {
+                                            mainForm.Close();
+                                        }
                                     }
-                                }
-                                catch (Exception closeEx)
-                                {
-                                    Log.Debug(closeEx, "Auto-close failed to close main form");
-                                }
-                            }));
+                                    catch (Exception closeEx)
+                                    {
+                                        Log.Debug(closeEx, "Auto-close failed to close main form");
+                                    }
+                                }));
+                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"Auto-close timer failed: {ex}");
-                    }
-                    finally
-                    {
-                        timer.Dispose();
+                        catch (Exception ex)
+                        {
+                            Console.Error.WriteLine($"Auto-close timer failed: {ex}");
+                        }
                     }
                 };
                 timer.Start();

@@ -958,7 +958,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         if (_settingsLoaded) return _settings.Current;
 
         // Use LoadAsync synchronously - called from constructor context where async is not available
-        System.Threading.Tasks.Task.Run(() => _settings.LoadAsync()).GetAwaiter().GetResult();
+        _settings.LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         _settingsLoaded = true;
         return _settings.Current;
     }

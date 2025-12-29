@@ -59,6 +59,8 @@
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0 in this application.
+         Revisit upgrading to 15.x once the issues are resolved and full compatibility is verified. -->
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageVersion Include="OpenTelemetry" Version="1.9.0" />

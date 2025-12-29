@@ -340,9 +340,7 @@ public partial class UtilityBillPanel : UserControl
         buttonTable.Controls.Add(_generateReportButton, 4, 0);
         buttonTable.Controls.Add(_refreshButton, 5, 0);
 
-#pragma warning disable CS8602
         _buttonPanel!.Controls.Add(buttonTable);
-#pragma warning restore CS8602
         topPanel.Controls.Add(_buttonPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
