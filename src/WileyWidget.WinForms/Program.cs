@@ -1089,7 +1089,7 @@ namespace WileyWidget.WinForms
                     }
                     finally
                     {
-                        (sender as System.Timers.Timer)?.Dispose();
+                        timer.Dispose();
                     }
                 };
                 timer.Start();
