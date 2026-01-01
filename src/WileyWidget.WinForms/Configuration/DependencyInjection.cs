@@ -62,20 +62,20 @@ namespace WileyWidget.WinForms.Configuration
                         ["Logging:LogLevel:Default"] = "Information"
                     })
                     .Build();
-                _ = services.AddSingleton<IConfiguration>(defaultConfig);
+                services.AddSingleton<IConfiguration>(defaultConfig);
             }
 
             // Logging (Singleton - Serilog logger)
-            _ = services.AddSingleton(Serilog.Log.Logger);
+            services.AddSingleton(Serilog.Log.Logger);
 
             // Health Check Configuration (Singleton)
-            _ = services.AddSingleton(new HealthCheckConfiguration());
+            services.AddSingleton(new HealthCheckConfiguration());
 
             // HTTP Client Factory (Singleton factory, Transient clients)
-            _ = services.AddHttpClient();
+            services.AddHttpClient();
 
             // Named HttpClient for Grok with resilience
-            _ = services.AddHttpClient("GrokClient")
+            services.AddHttpClient("GrokClient")
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5))
                 .AddResilienceHandler("GrokResilience", builder =>
                 {
@@ -99,11 +99,11 @@ namespace WileyWidget.WinForms.Configuration
                 });
 
             // Memory Cache (Singleton)
-            _ = services.AddMemoryCache();
+            services.AddMemoryCache();
 
             // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
             // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
-            _ = services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
+            services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
             // =====================================================================
@@ -113,20 +113,20 @@ namespace WileyWidget.WinForms.Configuration
             // For tests, register DbContext with in-memory database
             if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
             {
-                _ = services.AddDbContext<AppDbContext>(options =>
+                services.AddDbContext<AppDbContext>(options =>
                     options.UseInMemoryDatabase("TestDb"));
             }
             if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
                 // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
-                _ = services.AddSingleton(sp =>
+                services.AddSingleton(sp =>
                 {
                     var builder = new DbContextOptionsBuilder<AppDbContext>();
-                    _ = builder.UseInMemoryDatabase("TestDb");
+                    builder.UseInMemoryDatabase("TestDb");
                     return builder.Options;
                 });
 
-                _ = services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                services.AddDbContextFactory<AppDbContext>((sp, options) =>
                     options.UseInMemoryDatabase("TestDb"));
             }
 
@@ -136,95 +136,95 @@ namespace WileyWidget.WinForms.Configuration
             // Repository pattern over DbContext should also be Scoped
             // =====================================================================
 
-            _ = services.AddScoped<IAccountsRepository, AccountsRepository>();
-            _ = services.AddScoped<Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
-            _ = services.AddScoped<IAuditRepository, AuditRepository>();
-            _ = services.AddScoped<IBudgetRepository, BudgetRepository>();
-            _ = services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-            _ = services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
-            _ = services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
-            _ = services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
-            _ = services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
+            services.AddScoped<IAccountsRepository, AccountsRepository>();
+            services.AddScoped<Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
+            services.AddScoped<IAuditRepository, AuditRepository>();
+            services.AddScoped<IBudgetRepository, BudgetRepository>();
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
+            services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+            services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
+            services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
 
             // =====================================================================
             // CORE APPLICATION SERVICES (Singleton - Stateless, Thread-Safe)
             // =====================================================================
 
-            _ = services.AddSingleton<SettingsService>();
-            _ = services.AddSingleton<ISettingsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<SettingsService>(sp));
-            _ = services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
-            _ = services.AddSingleton<HealthCheckService>();
-            _ = services.AddSingleton<ErrorReportingService>();
-            _ = services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
+            services.AddSingleton<SettingsService>();
+            services.AddSingleton<ISettingsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<SettingsService>(sp));
+            services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+            services.AddSingleton<HealthCheckService>();
+            services.AddSingleton<ErrorReportingService>();
+            services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
-            _ = services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
 
             // Startup orchestration (license, theme, DI validation)
-            _ = services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
+            services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
 
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
-            _ = services.AddSingleton<IDiValidationService, DiValidationService>();
-            _ = services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
+            services.AddSingleton<IDiValidationService, DiValidationService>();
+            services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
 
             // =====================================================================
             // BUSINESS DOMAIN SERVICES
             // =====================================================================
 
             // QuickBooks Integration (Singleton - external API client)
-            _ = services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
-            _ = services.AddSingleton<IQuickBooksService, QuickBooksService>();
+            services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
+            services.AddSingleton<IQuickBooksService, QuickBooksService>();
 
             // Dashboard Service (Transient - short-lived data aggregation)
-            _ = services.AddTransient<IDashboardService, DashboardService>();
+            services.AddTransient<IDashboardService, DashboardService>();
 
             // Budget Category Service (Scoped - works with DbContext)
-            _ = services.AddScoped<IBudgetCategoryService, BudgetCategoryService>();
+            services.AddScoped<IBudgetCategoryService, BudgetCategoryService>();
 
             // Context Service (Scoped - per-request context)
-            _ = services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
+            services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
 
             // AI Services (Scoped - may hold request-specific context)
-            _ = services.AddScoped<IAIService, XAIService>();
-            _ = services.AddSingleton<IAILoggingService, AILoggingService>();
+            services.AddScoped<IAIService, XAIService>();
+            services.AddSingleton<IAILoggingService, AILoggingService>();
 
             // Audit Service (Singleton - writes to repository through scopes)
-            _ = services.AddSingleton<IAuditService, AuditService>();
+            services.AddSingleton<IAuditService, AuditService>();
 
             // =====================================================================
             // REPORTING & EXPORT SERVICES
             // =====================================================================
 
             // Report Services (Singleton - stateless report generation)
-            _ = services.AddSingleton<IReportExportService, ReportExportService>();
-            _ = services.AddSingleton<IReportService, FastReportService>();
+            services.AddSingleton<IReportExportService, ReportExportService>();
+            services.AddSingleton<IReportService, FastReportService>();
 
             // Excel Services (Transient - I/O operations, disposable)
-            _ = services.AddTransient<IExcelReaderService, ExcelReaderService>();
-            _ = services.AddTransient<IExcelExportService, ExcelExportService>();
+            services.AddTransient<IExcelReaderService, ExcelReaderService>();
+            services.AddTransient<IExcelExportService, ExcelExportService>();
 
             // =====================================================================
             // UTILITY & CALCULATION SERVICES (Transient - Stateless, Per-Use)
             // =====================================================================
 
-            _ = services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
-            _ = services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
-            _ = services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
+            services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
+            services.AddTransient<IAnalyticsService, AnalyticsService>();
 
             // Analytics Pipeline (Scoped - may aggregate data across request)
-            _ = services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
-            _ = services.AddScoped<IGrokSupercomputer, NullGrokSupercomputer>();
+            services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
+            services.AddScoped<IGrokSupercomputer, NullGrokSupercomputer>();
 
             // Department Expense & Recommendation Services (Scoped - may query external APIs)
-            _ = services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
-            _ = services.AddScoped<IGrokRecommendationService, Business.Services.GrokRecommendationService>();
+            services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
+            services.AddScoped<IGrokRecommendationService, Business.Services.GrokRecommendationService>();
 
             // =====================================================================
             // UI SERVICES & THEME (Singleton - Application-wide state)
             // =====================================================================
 
-            _ = services.AddSingleton<IThemeService, ThemeService>();
-            _ = services.AddSingleton<IThemeIconService, ThemeIconService>();
+            services.AddSingleton<IThemeService, ThemeService>();
+            services.AddSingleton<IThemeIconService, ThemeIconService>();
 
             // Panel Navigation Service
             // NOTE: This service depends on MainForm's DockingManager + central document panel.
@@ -233,7 +233,7 @@ namespace WileyWidget.WinForms.Configuration
             // MainForm creates PanelNavigationService once docking is ready.
 
             // UI Configuration (Singleton)
-            _ = services.AddSingleton(static sp =>
+            services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
             // =====================================================================
@@ -242,20 +242,20 @@ namespace WileyWidget.WinForms.Configuration
             // view-specific state and shouldn't be shared
             // =====================================================================
 
-            _ = services.AddTransient<ChartViewModel>();
-            _ = services.AddTransient<SettingsViewModel>();
-            _ = services.AddTransient<AccountsViewModel>();
-            _ = services.AddTransient<DashboardViewModel>();
-            _ = services.AddTransient<AnalyticsViewModel>();
-            _ = services.AddTransient<BudgetOverviewViewModel>();
-            _ = services.AddTransient<BudgetViewModel>();
-            _ = services.AddTransient<CustomersViewModel>();
-            _ = services.AddTransient<MainViewModel>();
-            _ = services.AddTransient<ReportsViewModel>();
-            _ = services.AddTransient<DepartmentSummaryViewModel>();
-            _ = services.AddTransient<RevenueTrendsViewModel>();
-            _ = services.AddTransient<AuditLogViewModel>();
-            _ = services.AddTransient<RecommendedMonthlyChargeViewModel>();
+            services.AddTransient<ChartViewModel>();
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<AccountsViewModel>();
+            services.AddTransient<DashboardViewModel>();
+            services.AddTransient<AnalyticsViewModel>();
+            services.AddTransient<BudgetOverviewViewModel>();
+            services.AddTransient<BudgetViewModel>();
+            services.AddTransient<CustomersViewModel>();
+            services.AddTransient<MainViewModel>();
+            services.AddTransient<ReportsViewModel>();
+            services.AddTransient<DepartmentSummaryViewModel>();
+            services.AddTransient<RevenueTrendsViewModel>();
+            services.AddTransient<AuditLogViewModel>();
+            services.AddTransient<RecommendedMonthlyChargeViewModel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
@@ -264,7 +264,7 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
-            _ = services.AddScoped<MainForm>();
+            services.AddScoped<MainForm>();
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()

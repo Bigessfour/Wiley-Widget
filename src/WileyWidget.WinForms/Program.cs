@@ -1409,7 +1409,7 @@ namespace WileyWidget.WinForms
             try
             {
                 if (autoCloseMs <= 0) return;
-                var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
+                using var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
                 timer.Elapsed += (_, _) =>
                 {
                     try
@@ -1435,10 +1435,6 @@ namespace WileyWidget.WinForms
                     catch (Exception ex)
                     {
                         Console.Error.WriteLine($"Auto-close timer failed: {ex}");
-                    }
-                    finally
-                    {
-                        timer.Dispose();
                     }
                 };
                 timer.Start();
