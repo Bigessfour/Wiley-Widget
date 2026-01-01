@@ -861,12 +861,12 @@ namespace WileyWidget.WinForms.Controls
                     {
                         var point = series.Points[i];
                         var variance = list[i].Value;
-                        
+
                         // Try to set point color via reflection for compatibility across Syncfusion versions
                         var interiorProp = point.GetType().GetProperty("Interior");
                         if (interiorProp != null && interiorProp.CanWrite)
                         {
-                            var color = variance >= 0 
+                            var color = variance >= 0
                                 ? Color.FromArgb(76, 175, 80)  // Green for under budget
                                 : Color.FromArgb(244, 67, 54); // Red for over budget
                             interiorProp.SetValue(point, new Syncfusion.Drawing.BrushInfo(color));

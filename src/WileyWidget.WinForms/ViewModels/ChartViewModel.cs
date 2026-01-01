@@ -180,8 +180,6 @@ namespace WileyWidget.WinForms.ViewModels
 
         #region Constructor
 
-        #region Constructor
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ChartViewModel"/> class.
         /// </summary>

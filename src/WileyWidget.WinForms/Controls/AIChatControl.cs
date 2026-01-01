@@ -36,15 +36,15 @@ public partial class AIChatControl : UserControl
 
     #endregion
 
-        /// <summary>
-        /// Raised when a user message is sent from the chat input.
-        /// </summary>
-        public event EventHandler<string>? MessageSent;
+    /// <summary>
+    /// Raised when a user message is sent from the chat input.
+    /// </summary>
+    public event EventHandler<string>? MessageSent;
 
-        /// <summary>
-        /// Exposes the underlying message collection for consumers that need read access.
-        /// </summary>
-        public ObservableCollection<ChatMessage> Messages => _viewModel.Messages;
+    /// <summary>
+    /// Exposes the underlying message collection for consumers that need read access.
+    /// </summary>
+    public ObservableCollection<ChatMessage> Messages => _viewModel.Messages;
 
     #region UI Controls
 

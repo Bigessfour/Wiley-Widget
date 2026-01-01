@@ -17,109 +17,109 @@ using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
-        /// <summary>
-        /// ViewModel for budget management with full CRUD operations.
-        /// Provides filtering, analysis, and export capabilities for budget entries.
-        /// Supports multi-year budgets, hierarchical entries, GASB compliance, and advanced analytics.
-        /// </summary>
-        public partial class BudgetViewModel : ObservableObject, IDisposable
-        {
-            private readonly ILogger<BudgetViewModel> _logger;
-            private readonly IBudgetRepository _budgetRepository;
-            private readonly IReportExportService _reportExportService;
+    /// <summary>
+    /// ViewModel for budget management with full CRUD operations.
+    /// Provides filtering, analysis, and export capabilities for budget entries.
+    /// Supports multi-year budgets, hierarchical entries, GASB compliance, and advanced analytics.
+    /// </summary>
+    public partial class BudgetViewModel : ObservableObject, IDisposable
+    {
+        private readonly ILogger<BudgetViewModel> _logger;
+        private readonly IBudgetRepository _budgetRepository;
+        private readonly IReportExportService _reportExportService;
 
-            /// <summary>Gets or sets the collection of all budget entries.</summary>
-            [ObservableProperty]
-            private ObservableCollection<BudgetEntry> budgetEntries = new();
+        /// <summary>Gets or sets the collection of all budget entries.</summary>
+        [ObservableProperty]
+        private ObservableCollection<BudgetEntry> budgetEntries = new();
 
-            /// <summary>Gets or sets the filtered collection of budget entries based on current filters.</summary>
-            [ObservableProperty]
-            private ObservableCollection<BudgetEntry> filteredBudgetEntries = new();
+        /// <summary>Gets or sets the filtered collection of budget entries based on current filters.</summary>
+        [ObservableProperty]
+        private ObservableCollection<BudgetEntry> filteredBudgetEntries = new();
 
-            /// <summary>Gets or sets the selected budget period.</summary>
-            [ObservableProperty]
-            private BudgetPeriod? selectedPeriod;
+        /// <summary>Gets or sets the selected budget period.</summary>
+        [ObservableProperty]
+        private BudgetPeriod? selectedPeriod;
 
-            /// <summary>Gets or sets the selected fiscal year for filtering.</summary>
-            [ObservableProperty]
-            private int selectedFiscalYear = DateTime.Now.Year;
+        /// <summary>Gets or sets the selected fiscal year for filtering.</summary>
+        [ObservableProperty]
+        private int selectedFiscalYear = DateTime.Now.Year;
 
-            /// <summary>Gets or sets the current error message.</summary>
-            [ObservableProperty]
-            private string errorMessage = string.Empty;
+        /// <summary>Gets or sets the current error message.</summary>
+        [ObservableProperty]
+        private string errorMessage = string.Empty;
 
-            /// <summary>Gets or sets a value indicating whether data is currently loading.</summary>
-            [ObservableProperty]
-            private bool isLoading;
+        /// <summary>Gets or sets a value indicating whether data is currently loading.</summary>
+        [ObservableProperty]
+        private bool isLoading;
 
-            /// <summary>Gets or sets the current status text for the UI.</summary>
-            [ObservableProperty]
-            private string statusText = "Ready";
+        /// <summary>Gets or sets the current status text for the UI.</summary>
+        [ObservableProperty]
+        private string statusText = "Ready";
 
-            // Advanced filtering properties
-            /// <summary>Gets or sets the search text for filtering entries.</summary>
-            [ObservableProperty]
-            private string searchText = string.Empty;
+        // Advanced filtering properties
+        /// <summary>Gets or sets the search text for filtering entries.</summary>
+        [ObservableProperty]
+        private string searchText = string.Empty;
 
-            /// <summary>Gets or sets the selected department ID filter.</summary>
-            [ObservableProperty]
-            private int? selectedDepartmentId;
+        /// <summary>Gets or sets the selected department ID filter.</summary>
+        [ObservableProperty]
+        private int? selectedDepartmentId;
 
-            /// <summary>Gets or sets the selected fund type filter.</summary>
-            [ObservableProperty]
-            private FundType? selectedFundType;
+        /// <summary>Gets or sets the selected fund type filter.</summary>
+        [ObservableProperty]
+        private FundType? selectedFundType;
 
-            /// <summary>Gets or sets the minimum variance threshold filter.</summary>
-            [ObservableProperty]
-            private decimal? varianceThreshold;
+        /// <summary>Gets or sets the minimum variance threshold filter.</summary>
+        [ObservableProperty]
+        private decimal? varianceThreshold;
 
-            /// <summary>Gets or sets a value indicating whether to show only over-budget entries.</summary>
-            [ObservableProperty]
-            private bool showOnlyOverBudget;
+        /// <summary>Gets or sets a value indicating whether to show only over-budget entries.</summary>
+        [ObservableProperty]
+        private bool showOnlyOverBudget;
 
-            /// <summary>Gets or sets a value indicating whether to show only under-budget entries.</summary>
-            [ObservableProperty]
-            private bool showOnlyUnderBudget;
+        /// <summary>Gets or sets a value indicating whether to show only under-budget entries.</summary>
+        [ObservableProperty]
+        private bool showOnlyUnderBudget;
 
-            // Analysis properties
+        // Analysis properties
 
-            /// <summary>Gets or sets the total budgeted amount across all entries.</summary>
-            [ObservableProperty]
-            private decimal totalBudgeted;
+        /// <summary>Gets or sets the total budgeted amount across all entries.</summary>
+        [ObservableProperty]
+        private decimal totalBudgeted;
 
-            /// <summary>Gets or sets the total actual spent amount across all entries.</summary>
-            [ObservableProperty]
-            private decimal totalActual;
+        /// <summary>Gets or sets the total actual spent amount across all entries.</summary>
+        [ObservableProperty]
+        private decimal totalActual;
 
-            /// <summary>Gets or sets the total variance amount (Budgeted - Actual).</summary>
-            [ObservableProperty]
-            private decimal totalVariance;
+        /// <summary>Gets or sets the total variance amount (Budgeted - Actual).</summary>
+        [ObservableProperty]
+        private decimal totalVariance;
 
-            /// <summary>Gets or sets the total encumbrance amount across all entries.</summary>
-            [ObservableProperty]
-            private decimal totalEncumbrance;
+        /// <summary>Gets or sets the total encumbrance amount across all entries.</summary>
+        [ObservableProperty]
+        private decimal totalEncumbrance;
 
-            /// <summary>Gets or sets the percentage of budget used.</summary>
-            [ObservableProperty]
-            private decimal percentUsed;
+        /// <summary>Gets or sets the percentage of budget used.</summary>
+        [ObservableProperty]
+        private decimal percentUsed;
 
-            /// <summary>Gets or sets the count of entries that are over budget.</summary>
-            [ObservableProperty]
-            private int entriesOverBudget;
+        /// <summary>Gets or sets the count of entries that are over budget.</summary>
+        [ObservableProperty]
+        private int entriesOverBudget;
 
-            /// <summary>Gets or sets the count of entries that are under budget.</summary>
-            [ObservableProperty]
-            private int entriesUnderBudget;
+        /// <summary>Gets or sets the count of entries that are under budget.</summary>
+        [ObservableProperty]
+        private int entriesUnderBudget;
 
-            // Grouping properties
+        // Grouping properties
 
-            /// <summary>Gets or sets the field name to group entries by.</summary>
-            [ObservableProperty]
-            private string groupBy = "None";
+        /// <summary>Gets or sets the field name to group entries by.</summary>
+        [ObservableProperty]
+        private string groupBy = "None";
 
-            /// <summary>Gets or sets a value indicating whether to display entries in hierarchical view.</summary>
-            [ObservableProperty]
-            private bool showHierarchy;
+        /// <summary>Gets or sets a value indicating whether to display entries in hierarchical view.</summary>
+        [ObservableProperty]
+        private bool showHierarchy;
 
         /// <summary>Gets the command to load budget entries.</summary>
         public IAsyncRelayCommand LoadBudgetsCommand { get; }
