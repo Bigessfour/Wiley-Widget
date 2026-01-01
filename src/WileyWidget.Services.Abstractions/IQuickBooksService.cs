@@ -32,6 +32,16 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<WileyWidget.Models.QuickBooksBudget> budgets, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Query expense lines for a department between the given dates.
+        /// Implementations should return a collection of expense lines containing at least an Amount property.
+        /// </summary>
+        System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<ExpenseLine>> QueryExpensesByDepartmentAsync(
+            string departmentName,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Connects to the QuickBooks API
         /// </summary>
         /// <param name="cancellationToken">Cancellation token for the operation</param>
@@ -42,7 +52,13 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
+
     }
+
+    /// <summary>
+    /// Simple expense line returned from QuickBooks (abstraction level).
+    /// </summary>
+    public sealed record ExpenseLine(decimal Amount);
 
     public sealed class UrlAclCheckResult
     {

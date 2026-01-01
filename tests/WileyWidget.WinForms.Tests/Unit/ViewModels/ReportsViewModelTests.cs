@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
 
-            var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
+            using var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
             vm.ReportViewer = fakeViewer;
             vm.FromDate = new DateTime(2024, 1, 1);
             vm.ToDate = new DateTime(2024, 6, 1);
@@ -51,7 +51,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
 
-            var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
+            using var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
             vm.ReportViewer = fakeViewer;
             vm.FromDate = new DateTime(2025, 1, 1);
             vm.ToDate = new DateTime(2024, 1, 1); // invalid range
@@ -76,7 +76,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
-            var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
+            using var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
             vm.ReportViewer = fakeViewer;
             vm.SelectedReportType = "Budget Summary";
 
@@ -99,7 +99,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var mockAudit = new Mock<IAuditService>();
             var mockLogger = new Mock<ILogger<ReportsViewModel>>();
             var fakeViewer = new object();
-            var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
+            using var vm = new ReportsViewModel(mockReportSvc.Object, mockLogger.Object, mockAudit.Object);
             vm.ReportViewer = fakeViewer;
             vm.SelectedReportType = "Budget Summary";
 

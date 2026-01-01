@@ -194,10 +194,35 @@ public static class SyncfusionTestHelper
         try
         {
             form.Show();
-            Application.DoEvents();
-            Thread.Sleep(waitMs);
+
+            // Poll for initialization with event pumping, up to waitMs
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var maxWait = TimeSpan.FromMilliseconds(Math.Max(50, waitMs));
+            var initialized = false;
+            while (sw.Elapsed < maxWait)
+            {
+                try
+                {
+                    Application.DoEvents();
+                    if (form.IsHandleCreated)
+                    {
+                        var sfControls = GetAllSyncfusionControls(form);
+                        if ((sfControls != null && sfControls.Count > 0) || (form.Controls != null && form.Controls.Count > 0))
+                        {
+                            initialized = true;
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore transient lookup errors
+                }
+                // No Thread.Sleep; rely on event pumping and stopwatch for polling
+            }
+
             form.Hide();
-            return true;
+            return initialized;
         }
         catch
         {

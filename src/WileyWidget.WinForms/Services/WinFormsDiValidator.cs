@@ -117,7 +117,6 @@ namespace WileyWidget.WinForms.Services
                 typeof(ISettingsService),
                 typeof(ISecretVaultService),
                 typeof(HealthCheckService),
-                typeof(IDialogTrackingService),
                 typeof(IDiValidationService),
 
                 // QuickBooks Services

@@ -26,9 +26,9 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                await db.Database.EnsureCreatedAsync(cancellationToken);
+                await db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
-                var department = await db.Departments.FirstOrDefaultAsync(cancellationToken);
+                var department = await db.Departments.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
                 if (department == null)
                 {
                     department = new Department
@@ -37,10 +37,10 @@ namespace WileyWidget.WinForms.Services
                         DepartmentCode = "GOV"
                     };
                     db.Departments.Add(department);
-                    await db.SaveChangesAsync(cancellationToken);
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
 
-                var period = await db.BudgetPeriods.FirstOrDefaultAsync(cancellationToken);
+                var period = await db.BudgetPeriods.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
                 if (period == null)
                 {
                     var year = DateTime.UtcNow.Year;
@@ -55,10 +55,10 @@ namespace WileyWidget.WinForms.Services
                         IsActive = true
                     };
                     db.BudgetPeriods.Add(period);
-                    await db.SaveChangesAsync(cancellationToken);
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
 
-                if (!await db.MunicipalAccounts.AnyAsync(cancellationToken))
+                if (!await db.MunicipalAccounts.AnyAsync(cancellationToken).ConfigureAwait(false))
                 {
                     db.MunicipalAccounts.AddRange(
                         new MunicipalAccount
@@ -91,7 +91,7 @@ namespace WileyWidget.WinForms.Services
                         });
                 }
 
-                if (!await db.ActivityLogs.AnyAsync(cancellationToken))
+                if (!await db.ActivityLogs.AnyAsync(cancellationToken).ConfigureAwait(false))
                 {
                     db.ActivityLogs.AddRange(
                         new ActivityLog { Timestamp = DateTime.UtcNow.AddMinutes(-10), Activity = "Account Updated", Details = "GL-1000", User = "System" },
@@ -100,7 +100,7 @@ namespace WileyWidget.WinForms.Services
                     );
                 }
 
-                if (!await db.UtilityCustomers.AnyAsync(cancellationToken))
+                if (!await db.UtilityCustomers.AnyAsync(cancellationToken).ConfigureAwait(false))
                 {
                     db.UtilityCustomers.Add(
                         new UtilityCustomer
@@ -125,7 +125,7 @@ namespace WileyWidget.WinForms.Services
                         });
                 }
 
-                await db.SaveChangesAsync(cancellationToken);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 logger?.LogInformation("UI test data seeded for WinForms UI (in-memory: {InMemory})", true);
             }
             catch (Exception ex)

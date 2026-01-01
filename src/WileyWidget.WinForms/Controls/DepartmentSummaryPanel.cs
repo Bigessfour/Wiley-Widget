@@ -285,6 +285,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     /// </summary>
     protected override void OnViewModelResolved(DepartmentSummaryViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes
@@ -315,7 +316,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ShowError(ex)));
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -340,7 +341,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e)));
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -387,7 +388,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(UpdateUI));
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 

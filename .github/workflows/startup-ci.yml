@@ -1,0 +1,82 @@
+name: Startup CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - src/WileyWidget.WinForms/**
+      - src/WileyWidget.WinForms.Forms/**
+      - .github/workflows/startup-ci.yml
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-validate:
+    runs-on: windows-latest
+    env:
+      SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
+
+      - name: Inject Syncfusion license (if provided)
+        if: env.SYNCFUSION_LICENSE_KEY != ''
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "secrets" -Force | Out-Null
+          "Syncfusion:LicenseKey=$env:SYNCFUSION_LICENSE_KEY" | Out-File -FilePath "secrets/my.secrets" -Encoding UTF8
+          echo "SYNCFUSION_LICENSE_KEY=$env:SYNCFUSION_LICENSE_KEY" | Out-File -FilePath "$env:GITHUB_ENV" -Append
+
+      - name: Build WinForms project
+        run: dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
+
+      - name: Run StartupOrchestrator tests (focused)
+        run: dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --filter "FullyQualifiedName~WileyWidget.WinForms.Tests.Unit.Startup.StartupOrchestratorTests"
+
+      - name: Run startup-focused tests
+        run: dotnet test WileyWidget.sln --configuration Release --filter "Category=Startup"
+
+      - name: Log secret fingerprints (masked)
+        shell: pwsh
+        run: |
+          function ShortHash($s) {
+            if ([string]::IsNullOrEmpty($s)) { return '(absent)' }
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($s)
+            $hashBytes = $sha.ComputeHash($bytes)
+            $hex = -join ($hashBytes | ForEach-Object { $_.ToString('x2') })
+            return $hex.Substring(0,8)
+          }
+
+          $syncPresent = -not [string]::IsNullOrEmpty($env:SYNCFUSION_LICENSE_KEY)
+          $xaiPresent = -not [string]::IsNullOrEmpty($env:XAI_API_KEY)
+
+          Write-Host "SYNCFUSION_LICENSE_KEY present: $syncPresent"
+          Write-Host "SYNCFUSION_LICENSE_KEY hash: $(ShortHash $env:SYNCFUSION_LICENSE_KEY)"
+          Write-Host "XAI_API_KEY present: $xaiPresent"
+          Write-Host "XAI_API_KEY hash: $(ShortHash $env:XAI_API_KEY)"
+
+      - name: Optional headless smoke (post-build)
+        if: success()
+        shell: pwsh
+        run: |
+          $exe = "src/WileyWidget.WinForms/bin/Release/net9.0-windows/WileyWidget.WinForms.exe"
+          if (Test-Path $exe) {
+            Write-Host "Launching $exe headlessly for smoke validation";
+            Start-Process -FilePath $exe -ArgumentList "--verify-startup" -Wait -NoNewWindow;
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } else {
+            Write-Host "Skipped smoke launch (exe not present for target tfm)";
+          }

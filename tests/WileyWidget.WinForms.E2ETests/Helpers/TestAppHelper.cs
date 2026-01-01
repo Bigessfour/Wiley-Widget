@@ -60,7 +60,7 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
         /// <summary>
         /// Builds the environment variables dictionary for test app launch.
         /// </summary>
-        public static IDictionary<string, string> BuildTestEnvironment(bool isTestHarness, bool useMdiMode, bool useTabbedMdi)
+        public static IDictionary<string, string> BuildTestEnvironment(bool isTestHarness)
         {
             var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -79,8 +79,6 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
             env["WILEYWIDGET_UI_TESTS"] = "true";
             env["WILEYWIDGET_USE_INMEMORY"] = "true";
             env["UI__IsUiTestHarness"] = isTestHarness ? "true" : "false";
-            env["UI__UseMdiMode"] = useMdiMode ? "true" : "false";
-            env["UI__UseTabbedMdi"] = useTabbedMdi ? "true" : "false";
 
             // Inject Syncfusion license key if available
             var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
@@ -116,8 +114,24 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
                 throw new InvalidOperationException("Failed to start process");
             }
 
-            // Give the process a moment to start up
-            System.Threading.Thread.Sleep(500);
+            // Wait for process to become idle and for a main window handle (up to 2s)
+            try
+            {
+                process.WaitForInputIdle(2000);
+            }
+            catch
+            {
+                // Some processes may not support WaitForInputIdle; continue to polling
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 2000 && !process.HasExited)
+            {
+                if (process.MainWindowHandle != IntPtr.Zero) break;
+                // Pump events for UI responsiveness (if WinForms)
+                try { System.Windows.Forms.Application.DoEvents(); } catch { }
+                // No Thread.Sleep; rely on event pumping and stopwatch for polling
+            }
 
             return process;
         }

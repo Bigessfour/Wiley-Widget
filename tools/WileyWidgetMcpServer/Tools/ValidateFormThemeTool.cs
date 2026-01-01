@@ -36,8 +36,8 @@ public static class ValidateFormThemeTool
                 return FormatError($"Form type not found: {formTypeName}", outputFormat);
             }
 
-            // Create mock MainForm with MDI enabled for realism
-            mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+            // Create mock MainForm with docking enabled for realism
+            mockMainForm = MockFactory.CreateMockMainForm();
 
             // Instantiate form with proper constructor handling
             try

@@ -427,7 +427,7 @@ namespace WileyWidget.Data.Migrations
                     b.Property<bool>("IsGASBCompliant")
                         .HasColumnType("bit");
 
-                    b.Property<int>("MunicipalAccountId")
+                    b.Property<int?>("MunicipalAccountId")
                         .HasColumnType("int");
 
                     b.Property<int?>("ParentId")
@@ -490,7 +490,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -510,7 +509,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -530,7 +528,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -550,7 +547,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -570,7 +566,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -590,7 +585,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -610,7 +604,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -630,7 +623,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -650,7 +642,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -670,7 +661,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -690,7 +680,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -710,7 +699,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -730,7 +718,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -750,7 +737,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -770,7 +756,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -790,7 +775,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -810,7 +794,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -830,7 +813,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -850,7 +832,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -870,7 +851,6 @@ namespace WileyWidget.Data.Migrations
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            MunicipalAccountId = 0,
                             StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
@@ -1128,6 +1108,95 @@ namespace WileyWidget.Data.Migrations
                             DepartmentCode = "REC",
                             Name = "Recreation"
                         });
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.DepartmentCurrentCharge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CurrentCharge")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CustomerCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Department")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("DepartmentCurrentCharges");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.DepartmentGoal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AdjustmentFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(1.0m);
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RecommendationText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("TargetProfitMarginPercent")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Department", "IsActive");
+
+                    b.ToTable("DepartmentGoals");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Enterprise", b =>
@@ -2451,8 +2520,7 @@ namespace WileyWidget.Data.Migrations
                     b.HasOne("WileyWidget.Models.MunicipalAccount", "MunicipalAccount")
                         .WithMany("BudgetEntries")
                         .HasForeignKey("MunicipalAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("WileyWidget.Models.BudgetEntry", "Parent")
                         .WithMany("Children")
@@ -2522,7 +2590,7 @@ namespace WileyWidget.Data.Migrations
                     b.HasOne("WileyWidget.Models.MunicipalAccount", "MunicipalAccount")
                         .WithMany("Invoices")
                         .HasForeignKey("MunicipalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("WileyWidget.Models.Vendor", "Vendor")
@@ -2553,7 +2621,7 @@ namespace WileyWidget.Data.Migrations
                     b.HasOne("WileyWidget.Models.MunicipalAccount", "ParentAccount")
                         .WithMany("ChildAccounts")
                         .HasForeignKey("ParentAccountId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.OwnsOne("WileyWidget.Models.AccountNumber", "AccountNumber", b1 =>
                         {

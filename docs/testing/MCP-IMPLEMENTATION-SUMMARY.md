@@ -213,10 +213,10 @@ Timestamp:      2025-12-16 18:45:32 UTC
 
 **Provides:**
 
-- `CreateMockMainForm(bool enableMdi)` - Safe mock parent form
-- `MockMainForm` class with MDI support
-- Handles both MDI and non-MDI scenarios
-- Prevents `ArgumentException` in test contexts
+- `CreateMockMainForm()` - Safe mock parent form
+- `MockMainForm` class with docking support
+- Handles docking panels only
+- Prevents exceptions in test contexts
 
 ---
 

@@ -33,7 +33,12 @@ namespace WileyWidget.WinForms.Controls
         public string Title
         {
             get => _titleLabel.Text;
-            set => _titleLabel.Text = value ?? string.Empty;
+            set
+            {
+                _titleLabel.Text = value ?? string.Empty;
+                try { _titleLabel.AccessibleName = value ?? string.Empty; } catch { }
+                try { _titleLabel.Name = "headerLabel"; } catch { }
+            }
         }
 
         /// <summary>Whether the panel is pinned (persisted by parent if desired).</summary>
@@ -75,6 +80,7 @@ namespace WileyWidget.WinForms.Controls
             // Title label
             _titleLabel = new Label
             {
+                Name = "headerLabel",
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,

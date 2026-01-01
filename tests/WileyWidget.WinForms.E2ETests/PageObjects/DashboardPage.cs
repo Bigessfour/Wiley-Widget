@@ -124,7 +124,7 @@ public class DashboardPage : BasePage
     {
         var button = ExportButton ?? throw new InvalidOperationException("Export button not found");
         Click(button);
-        System.Threading.Thread.Sleep(200);
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2));
     }
 
     /// <summary>
@@ -178,7 +178,7 @@ public class DashboardPage : BasePage
             throw new InvalidOperationException($"Column header '{columnHeader}' not found");
 
         Click(headerCell);
-        System.Threading.Thread.Sleep(300); // Allow sort to complete
+        WaitForBusyIndicator(TimeSpan.FromSeconds(3)); // Wait for sort to complete
     }
 
     /// <summary>
@@ -254,7 +254,7 @@ public class DashboardPage : BasePage
             throw new InvalidOperationException($"Tab '{tabName}' not found");
 
         Click(tab);
-        System.Threading.Thread.Sleep(200); // Allow tab to load
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2)); // Wait for tab to load
     }
 
     #endregion

@@ -47,7 +47,7 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageVersion Include="Serilog.Sinks.XUnit" Version="3.0.0" />
+    <PackageVersion Include="Serilog.Sinks.XUnit" Version="3.0.3" />
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
     <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <!-- Azure DocumentDB packages -->
@@ -59,7 +59,9 @@
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="15.0.0" />
+    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0. Revisit
+    upgrading to 15.x once compatibility is verified. -->
+    <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageVersion Include="OpenTelemetry" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />

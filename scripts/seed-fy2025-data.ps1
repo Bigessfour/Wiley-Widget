@@ -13,15 +13,17 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sqlDir = Join-Path -Path (Split-Path -Parent $scriptDir) -ChildPath "sql"
 
 # List of SQL files to execute in order
+# NOTE: Seeding is now handled entirely by EF Core migrations in AppDbContext.OnModelCreating
+# These SQL files are kept for reference but are no longer executed
 $sqlFiles = @(
-    "insert_budget_period.sql",
-    "insert_departments.sql",
-    "insert_missing_municipal_accounts.sql",
-    "insert_sewer_expenditures.sql",
-    "insert_sewer_municipal_accounts.sql",
-    "insert_sewer_revenues.sql",
-    "insert_town_wiley_municipal_accounts.sql",
-    "link_budget_entries.sql"
+    # "insert_budget_period.sql",
+    # "insert_departments.sql",
+    # "insert_missing_municipal_accounts.sql",
+    # "insert_sewer_expenditures.sql",
+    # "insert_sewer_municipal_accounts.sql",
+    # "insert_sewer_revenues.sql",
+    # "insert_town_wiley_municipal_accounts.sql",
+    # "link_budget_entries.sql"
 )
 
 foreach ($sqlFile in $sqlFiles) {

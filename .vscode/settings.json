@@ -1,36 +1,90 @@
 {
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "file": ".vscode/copilot-instructions.md"
-    },
-    {
-      "file": ".vscode/copilot-mcp-rules.md"
-    },
-    {
-      "text": "MANDATORY THEME RULE: SfSkinManager has SOLE PROPRIETORSHIP over all theme and color management. STRICTLY FORBIDDEN: (1) Custom color properties/dictionaries/methods (2) Manual BackColor/ForeColor assignments (3) Custom theme application methods (4) Any competing theme systems. ONLY AUTHORIZED: (1) SfSkinManager.SetVisualStyle() (2) ThemeColors.ApplyTheme() which wraps SfSkinManager (3) Program.InitializeTheme() at startup. EXCEPTION: Semantic status colors using Color.Red/Green/Orange only. Violations cause compilation errors and are architectural violations. See copilot-instructions.md SfSkinManager section for complete rules."
-    }
-  ],
   "github.copilot.chat.localeOverride": "en",
   "github.copilot.advanced": {
     "debug.overrideEngine": "gpt-4o-2024-11-20",
-    "debug.useNodeFetcher": true
+    "debug.useNodeFetcher": true,
+    "inlineSuggest.enable": true
   },
+  "copilot.chat.participation": "always",
   "files.associations": {
     "*.md": "markdown",
-    "*.designer.cs": "csharp",
+    "*.xaml": "xml",
     "*.resw": "xml",
     "*.resx": "xml",
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
-  "github.copilot.chat.showThoughts": false,
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
-  // XML Configuration (for .resx resource files)
+  // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
+  "terminal.integrated.hideAgentShellProcesses": false,
+  "task.autoClose": true,
+
+  // ============================================================================
+  // MCP (Model Context Protocol) Server Configuration
+  // ============================================================================
+  "github.copilot.chat.mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "roots": ["${workspaceFolder}"],
+      "env": {
+        "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
+      }
+    },
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "csharp-mcp": {
+      "command": "InfinityFlow.CSharp.Eval",
+      "args": [],
+      "env": {
+        "CSX_ALLOWED_PATH": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_NOLOGO": "1"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {
+        "DISABLE_THOUGHT_LOGGING": "false"
+      }
+    },
+    "mssql": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-mssql"],
+      "env": {
+        "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
+      },
+      "disabled": false
+    },
+    "syncfusion-winforms-assistant": {
+      "command": "npx",
+      "args": ["-y", "@syncfusion/winforms-assistant@latest"],
+      "env": {
+        "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
+      }
+    }
+  },
+
+  // ============================================================================
+  // ============================================================================
+  "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
+  "xamlDiag.autoDetectCompiler": true,
+  "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
+  "xml.format.splitAttributes": "preserve",
   "xml.format.maxLineWidth": 120,
+  "xml.format.splitAttributesIndentSize": 2,
+  "xml.format.preserveSpace": ["*"],
+  "xml.codeLens.enabled": true,
+  "xml.validation.enabled": true,
+  "xml.validation.noGrammar": "ignore",
+  "xml.completion.autoCloseTags": true,
 
   // ============================================================================
   // Editor Configuration
@@ -39,9 +93,9 @@
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
-    "source.organizeImports": "explicit"
+    "source.organizeImports": "explicit",
+    "source.fixAll.powershell": "explicit"
   },
-  "editor.fontSize": 10,
   "editor.minimap.enabled": false,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",
@@ -56,11 +110,6 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-
-  "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
 
   // ============================================================================
   // File Management
@@ -76,8 +125,7 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/bin": true,
-    "**/obj": true,
-    "**/src/legacy/**": true
+    "**/obj": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -86,8 +134,7 @@
     "**/*.nupkg": true,
     "**/TestResults": true,
     "**/.venv": true,
-    "**/__pycache__": true,
-    "**/src/legacy/**": true
+    "**/__pycache__": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
@@ -97,12 +144,11 @@
     "**/obj/**": true,
     "**/*.nupkg": true,
     "**/TestResults/**": true,
-    "**/.venv/**": true,
-    "**/.vs/**": true
+    "**/.venv/**": true
   },
 
   // ============================================================================
-  // .NET & C# Configuration (WinForms + .NET 9)
+  // .NET & C# Configuration
   // ============================================================================
   "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
   "dotnet.completion.showPerProjectDotnetReferences": true,
@@ -111,17 +157,17 @@
   "dotnet.server.searchSubdirectoriesForSolution": true,
   "dotnet.unitTests.runTestsInParallel": true,
   "dotnet.unitTests.showCodeLens": true,
-  "csharp.semanticHighlighting.enabled": true,
-  "csharp.suppressDotnetRestoreNotification": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
-  "omnisharp.enableDecompilationSupport": true,
-  "omnisharp.useModernNet": true,
-  "omnisharp.maxProjectResults": 500,
-  "dotnet.backgroundAnalysis.maxDegreeOfParallelism": 12,
+
+  "csharp.suppressDotnetRestoreNotification": true,
+
+  "[csharp]": {
+    "editor.formatOnSave": true
+  },
 
   // ============================================================================
   // Testing Configuration
@@ -131,6 +177,10 @@
   "dotnet-test-explorer.autoWatch": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
+
+  // Disable Python Test Adapter (primarily a .NET project)
+  "pythonTestExplorer.testFramework": null,
+  "python.testing.autoTestDiscoverOnSaveEnabled": false,
 
   // ============================================================================
   // Git & Version Control
@@ -148,10 +198,18 @@
   // Python Configuration
   // ============================================================================
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-  "python.terminal.activateEnvironment": true,
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.pylintArgs": [
+    "--disable=C0114,C0115,C0116",
+    "--disable=W0611",
+    "--generate-members"
+  ],
+  "python.linting.flake8Args": [
+    "--ignore=E501,W291"
+  ],
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
 
@@ -159,7 +217,10 @@
   // PowerShell Configuration
   // ============================================================================
   "powershell.scriptAnalysis.enable": true,
+  "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.integratedConsole.showOnStartup": false,
 
   // ============================================================================
   // SonarLint Configuration
@@ -201,30 +262,29 @@
     "Wiley",
     "WileyWidget",
     "winforms",
-    "SfDataGrid",
-    "SfChart",
-    "FormsBorderStyle"
+    "XAML"
   ],
-  "cSpell.enableFiletypes": [
-    "csharp",
-    "markdown",
-    "xml"
-  ],
+  "cSpell.enabledFileTypes": {
+    "csharp": true,
+    "markdown": true,
+    "xml": true
+  },
 
   // ============================================================================
-  // Debugging Configuration (WinForms)
+  // Debugging Configuration
   // ============================================================================
-  "debug.toolBarLocation": "floating",
+  "debug.toolBarLocation": "docked",
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
-  "debug.console.fontSize": 12,
 
   // ============================================================================
-  // Continue/Grok Integration
+  // Continue/Grok 4.1 Integration (Updated 2025-12-05)
+  // Models: grok-4-1-fast-reasoning (agentic), grok-4-1-fast-non-reasoning (speed)
+  // Ref: https://docs.x.ai/docs/models | https://x.ai/news/grok-4-1-fast/
   // ============================================================================
-  "continue.defaultModel": "grok-beta",
-  "continue.chat.model": "grok-4-0709",
-  "continue.maxTokens": 4096,
+  "continue.defaultModel": "grok-4-1-fast-reasoning",
+  "continue.chat.model": "grok-4-1-fast-reasoning",
+  "continue.maxTokens": 8192,
   "continue.temperature": 0.7,
   "continue.enableExperimentalFeatures": true,
   "continue.telemetryLevel": "off",
@@ -237,43 +297,26 @@
   "docker.showStartPage": false,
 
   // ============================================================================
-  // Performance & UI (Optimized for WinForms)
+  // Performance & UI
   // ============================================================================
+  "github.copilot.chat.agent.autoStartMcpServers": true,
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
-  "workbench.editor.limit.value": 15,
+  "workbench.editor.limit.value": 10,
   "workbench.iconTheme": "material-icon-theme",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
-  "files.maxMemoryForLargeFilesMB": 16384,
 
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.scrollback": 10000,
-  "terminal.integrated.fontSize": 12,
-  "terminal.integrated.lineHeight": 1.2,
-  "terminal.integrated.wordWrap": true,
-  "terminal.integrated.gpuAcceleration": "off",
-  "terminal.integrated.enablePersistentSessions": true,
-  "terminal.integrated.shellIntegration.enabled": true,
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
-      "icon": "terminal-powershell"
-    },
-    "PowerShell (No Profile)": {
-      "path": "pwsh.exe",
-      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass"],
-      "icon": "terminal-powershell"
-    },
-    "PowerShell (venv)": {
-      "source": "PowerShell",
-      "args": ["-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "& \"${workspaceFolder}\\.venv\\Scripts\\Activate.ps1\""],
       "icon": "terminal-powershell"
     },
     "Command Prompt": {
@@ -283,17 +326,12 @@
       "icon": "terminal-cmd"
     }
   },
-  "terminal.integrated.env.windows": {
-    "SYNCFUSION_LICENSE_KEY": "${env:SYNCFUSION_LICENSE_KEY}"
-  },
   "chat.mcp.serverSampling": {
-    "Wiley-Widget/.vscode/mcp.json: filesystem": {
+    "Wiley-Widget/.vscode/mcp.json: mssql": {
       "allowedModels": [
-        "copilot/claude-sonnet-4.5",
-        "xai/grok-4-1-fast-reasoning",
-        "copilot/grok-code-fast-1",
-        "copilot/oswe-vscode-prime"
+        "copilot/auto"
       ]
     }
   }
 }
+

@@ -1,10 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -21,8 +25,6 @@ public partial class AnalyticsPanel : UserControl
     // UI Controls
     private SfDataGrid? _metricsGrid;
     private SfDataGrid? _variancesGrid;
-    private SfDataGrid? _trendsGrid;
-    private SfDataGrid? _projectionsGrid;
     private ChartControl? _trendsChart;
     private ChartControl? _forecastChart;
     private Button? _performAnalysisButton;
@@ -33,12 +35,15 @@ public partial class AnalyticsPanel : UserControl
     private TextBox? _expenseIncreaseTextBox;
     private TextBox? _revenueTargetTextBox;
     private TextBox? _projectionYearsTextBox;
+    private TextBox? _metricsSearchTextBox;
+    private TextBox? _variancesSearchTextBox;
     private ListBox? _insightsListBox;
     private ListBox? _recommendationsListBox;
-    private Label? _currentRateLabel;
-    private Label? _projectedRateLabel;
-    private Label? _revenueImpactLabel;
-    private Label? _reserveImpactLabel;
+    private Label? _totalBudgetedLabel;
+    private Label? _totalActualLabel;
+    private Label? _totalVarianceLabel;
+    private Label? _averageVarianceLabel;
+    private Label? _recommendationExplanationLabel;
     private Panel? _scenarioPanel;
     private Panel? _resultsPanel;
     private Panel? _chartsPanel;
@@ -50,6 +55,11 @@ public partial class AnalyticsPanel : UserControl
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
 
+    /// <summary>
+    /// Initializes a new instance of the AnalyticsPanel class.
+    /// </summary>
+    /// <param name="viewModel">The analytics view model.</param>
+    /// <param name="logger">The logger instance.</param>
     public AnalyticsPanel(
         AnalyticsViewModel viewModel,
         ILogger<AnalyticsPanel> logger)
@@ -62,10 +72,13 @@ public partial class AnalyticsPanel : UserControl
         InitializeControls();
     }
 
+    /// <summary>
+    /// Initializes all UI controls and sets up the layout.
+    /// </summary>
     private void InitializeControls()
     {
-        // Apply theme to this control - handled by parent form cascade
-        // ThemeColors.ApplyTheme(this);
+        // Apply Syncfusion theme using SkinManager
+        SfSkinManager.SetTheme(this, "Office2019Colorful");
 
         // Set up form properties
         Text = "Budget Analytics";
@@ -74,7 +87,7 @@ public partial class AnalyticsPanel : UserControl
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshDataAsync();
+        _panelHeader.RefreshClicked += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
@@ -120,6 +133,9 @@ public partial class AnalyticsPanel : UserControl
         SetTabOrder();
     }
 
+    /// <summary>
+    /// Initializes the top panel with buttons and scenario inputs.
+    /// </summary>
     private void InitializeTopPanel()
     {
         var topPanel = new Panel { Dock = DockStyle.Fill };
@@ -176,7 +192,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+        _refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
 
         buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
@@ -299,6 +315,9 @@ public partial class AnalyticsPanel : UserControl
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
     }
 
+    /// <summary>
+    /// Initializes the bottom panel with grids, charts, and insights.
+    /// </summary>
     private void InitializeBottomPanel()
     {
         var bottomPanel = new Panel { Dock = DockStyle.Fill };
@@ -334,6 +353,18 @@ public partial class AnalyticsPanel : UserControl
             Padding = new Padding(5)
         };
 
+        // Metrics search
+        var metricsSearchPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+        var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
+        _metricsSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 9 };
+        _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
+        metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
+        metricsSearchPanel.Controls.Add(metricsSearchLabel);
+
         _metricsGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -342,7 +373,7 @@ public partial class AnalyticsPanel : UserControl
             AllowSorting = true,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             SelectionMode = GridSelectionMode.Single,
-            TabIndex = 9,
+            TabIndex = 10,
             AccessibleName = "Analytics Metrics Grid"
         };
 
@@ -351,6 +382,7 @@ public partial class AnalyticsPanel : UserControl
         _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Unit", HeaderText = "Unit" });
 
         metricsPanel.Controls.Add(_metricsGrid);
+        metricsPanel.Controls.Add(metricsSearchPanel);
         gridsSplit.Panel1.Controls.Add(metricsPanel);
 
         // Variances grid
@@ -360,6 +392,18 @@ public partial class AnalyticsPanel : UserControl
             Padding = new Padding(5)
         };
 
+        // Variances search
+        var variancesSearchPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+        var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
+        _variancesSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 11 };
+        _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
+        variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
+        variancesSearchPanel.Controls.Add(variancesSearchLabel);
+
         _variancesGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -368,7 +412,7 @@ public partial class AnalyticsPanel : UserControl
             AllowSorting = true,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             SelectionMode = GridSelectionMode.Single,
-            TabIndex = 10,
+            TabIndex = 12,
             AccessibleName = "Variance Analysis Grid"
         };
 
@@ -380,6 +424,7 @@ public partial class AnalyticsPanel : UserControl
         _variancesGrid.Columns.Add(new GridNumericColumn { MappingName = "VariancePercentage", HeaderText = "Variance %", Format = "P2" });
 
         variancesPanel.Controls.Add(_variancesGrid);
+        variancesPanel.Controls.Add(variancesSearchPanel);
         gridsSplit.Panel2.Controls.Add(variancesPanel);
 
         resultsSplit.Panel1.Controls.Add(gridsSplit);
@@ -404,7 +449,7 @@ public partial class AnalyticsPanel : UserControl
         _insightsListBox = new ListBox
         {
             Dock = DockStyle.Fill,
-            TabIndex = 11,
+            TabIndex = 13,
             AccessibleName = "Key Insights List",
             AccessibleDescription = "List of key insights from analysis"
         };
@@ -422,7 +467,7 @@ public partial class AnalyticsPanel : UserControl
         _recommendationsListBox = new ListBox
         {
             Dock = DockStyle.Fill,
-            TabIndex = 12,
+            TabIndex = 14,
             AccessibleName = "Recommendations List",
             AccessibleDescription = "List of recommendations from scenario analysis"
         };
@@ -433,6 +478,39 @@ public partial class AnalyticsPanel : UserControl
         resultsSplit.Panel2.Controls.Add(insightsSplit);
         _resultsPanel.Controls.Add(resultsSplit);
         bottomPanel.Controls.Add(_resultsPanel);
+
+        // Summary panel
+        var summaryPanel = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 60,
+            Padding = new Padding(10)
+        };
+
+        var summaryTable = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 5,
+            RowCount = 1
+        };
+
+        for (int i = 0; i < 5; i++)
+            summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+
+        _totalBudgetedLabel = new Label { Text = "Total Budgeted: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        _totalActualLabel = new Label { Text = "Total Actual: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        _totalVarianceLabel = new Label { Text = "Total Variance: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        _averageVarianceLabel = new Label { Text = "Avg Variance: 0.00%", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        _recommendationExplanationLabel = new Label { Text = "", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+
+        summaryTable.Controls.Add(_totalBudgetedLabel, 0, 0);
+        summaryTable.Controls.Add(_totalActualLabel, 1, 0);
+        summaryTable.Controls.Add(_totalVarianceLabel, 2, 0);
+        summaryTable.Controls.Add(_averageVarianceLabel, 3, 0);
+        summaryTable.Controls.Add(_recommendationExplanationLabel, 4, 0);
+
+        summaryPanel.Controls.Add(summaryTable);
+        bottomPanel.Controls.Add(summaryPanel);
 
         // Charts panel
         _chartsPanel = new Panel
@@ -455,7 +533,7 @@ public partial class AnalyticsPanel : UserControl
         _trendsChart = new ChartControl
         {
             Dock = DockStyle.Fill,
-            TabIndex = 13,
+            TabIndex = 15,
             AccessibleName = "Trends Chart"
         };
 
@@ -472,7 +550,7 @@ public partial class AnalyticsPanel : UserControl
         _forecastChart = new ChartControl
         {
             Dock = DockStyle.Fill,
-            TabIndex = 14,
+            TabIndex = 16,
             AccessibleName = "Forecast Chart"
         };
 
@@ -489,45 +567,87 @@ public partial class AnalyticsPanel : UserControl
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
     }
 
+    /// <summary>
+    /// Sets the tab order for controls.
+    /// </summary>
     private void SetTabOrder()
     {
         // Tab order set in control initialization
     }
 
+    /// <summary>
+    /// Handles rate increase text box text changed event.
+    /// </summary>
     private void RateIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value))
+        if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
             _viewModel.RateIncreasePercentage = value;
+        else
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Handles expense increase text box text changed event.
+    /// </summary>
     private void ExpenseIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value))
+        if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
             _viewModel.ExpenseIncreasePercentage = value;
+        else
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Handles revenue target text box text changed event.
+    /// </summary>
     private void RevenueTargetTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value))
+        if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value) && value >= 0 && value <= 100)
             _viewModel.RevenueTargetPercentage = value;
+        else
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Handles projection years text box text changed event.
+    /// </summary>
     private void ProjectionYearsTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (int.TryParse(_projectionYearsTextBox?.Text, out var value))
+        if (int.TryParse(_projectionYearsTextBox?.Text, out var value) && value > 0 && value <= 10)
             _viewModel.ProjectionYears = value;
+        else
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Handles metrics search text box text changed event.
+    /// </summary>
+    private void MetricsSearchTextBox_TextChanged(object? sender, EventArgs e)
+    {
+        _viewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Handles variances search text box text changed event.
+    /// </summary>
+    private void VariancesSearchTextBox_TextChanged(object? sender, EventArgs e)
+    {
+        _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Handles view model property changed event.
+    /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.Metrics):
-                if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.Metrics;
+            case nameof(_viewModel.FilteredMetrics):
+                if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.FilteredMetrics;
                 break;
 
-            case nameof(_viewModel.TopVariances):
-                if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.TopVariances;
+            case nameof(_viewModel.FilteredTopVariances):
+                if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.FilteredTopVariances;
                 break;
 
             case nameof(_viewModel.TrendData):
@@ -564,9 +684,32 @@ public partial class AnalyticsPanel : UserControl
             case nameof(_viewModel.StatusText):
                 if (_statusLabel != null) _statusLabel.Text = _viewModel.StatusText;
                 break;
+
+            case nameof(_viewModel.TotalBudgetedAmount):
+                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {_viewModel.TotalBudgetedAmount:C}";
+                break;
+
+            case nameof(_viewModel.TotalActualAmount):
+                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {_viewModel.TotalActualAmount:C}";
+                break;
+
+            case nameof(_viewModel.TotalVarianceAmount):
+                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {_viewModel.TotalVarianceAmount:C}";
+                break;
+
+            case nameof(_viewModel.AverageVariancePercentage):
+                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {_viewModel.AverageVariancePercentage:P}";
+                break;
+
+            case nameof(_viewModel.RecommendationExplanation):
+                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = _viewModel.RecommendationExplanation;
+                break;
         }
     }
 
+    /// <summary>
+    /// Updates the trends chart with current data.
+    /// </summary>
     private void UpdateTrendsChart()
     {
         if (_trendsChart == null || !_viewModel.TrendData.Any())
@@ -598,6 +741,9 @@ public partial class AnalyticsPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Updates the forecast chart with current data.
+    /// </summary>
     private void UpdateForecastChart()
     {
         if (_forecastChart == null || !_viewModel.ForecastData.Any())
@@ -612,7 +758,7 @@ public partial class AnalyticsPanel : UserControl
 
             foreach (var point in _viewModel.ForecastData)
             {
-                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM"), (double)point.PredictedReserves);
+                forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", CultureInfo.InvariantCulture), (double)point.PredictedReserves);
             }
 
             _forecastChart.Series.Add(forecastSeries);
@@ -624,36 +770,9 @@ public partial class AnalyticsPanel : UserControl
         }
     }
 
-    private async Task RefreshDataAsync()
-    {
-        try
-        {
-            _logger.LogInformation("Refreshing analytics data");
-            UpdateStatus("Refreshing analytics data...");
-
-            // Clear existing data
-            _viewModel.Metrics.Clear();
-            _viewModel.TopVariances.Clear();
-            _viewModel.TrendData.Clear();
-            _viewModel.Insights.Clear();
-            _viewModel.Recommendations.Clear();
-            _viewModel.ForecastData.Clear();
-
-            UpdateStatus("Data refreshed successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error refreshing data");
-            UpdateStatus($"Error: {ex.Message}");
-            MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private void UpdateStatus(string message)
-    {
-        if (_statusLabel != null) _statusLabel.Text = message;
-    }
-
+    /// <summary>
+    /// Closes the panel.
+    /// </summary>
     private void ClosePanel()
     {
         try
@@ -674,6 +793,9 @@ public partial class AnalyticsPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Handles the load event.
+    /// </summary>
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
@@ -681,10 +803,15 @@ public partial class AnalyticsPanel : UserControl
         try
         {
             // Initialize scenario parameters
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1");
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1");
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1");
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString();
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+            _metricsSearchTextBox!.Text = _viewModel.MetricsSearchText;
+            _variancesSearchTextBox!.Text = _viewModel.VariancesSearchText;
+
+            // Auto-load data
+            _ = Task.Run(async () => await _viewModel.RefreshCommand.ExecuteAsync(null));
         }
         catch (Exception ex)
         {
@@ -733,6 +860,7 @@ public partial class AnalyticsPanel : UserControl
     {
         this.components = new System.ComponentModel.Container();
         this.Name = "AnalyticsPanel";
+        this.AccessibleName = "Budget Analytics"; // For UI automation
         this.Size = new Size(1400, 900);
     }
 

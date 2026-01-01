@@ -11,12 +11,14 @@ The WileyWidget MCP Test Server provides AI-assisted UI validation tools for Win
 **Problem Solved:** Many forms require `MainForm` constructor parameter. Previous fallback to parameterless constructor often failed or caused incomplete initialization.
 
 **Solution:** `FormInstantiationHelper` now:
+
 - **Prioritizes** constructor with `MainForm` parameter
 - Falls back to parameterless only when no `MainForm` constructor exists
-- Enables MDI mode in mock for realistic initialization
+- Uses docking panels in mock for realistic initialization
 - Provides clear error messages when no suitable constructor found
 
 **Code Example:**
+
 ```csharp
 var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
 var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
@@ -37,6 +39,7 @@ var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 - Disposes both form and mockMainForm gracefully
 
 **Code Example:**
+
 ```csharp
 finally
 {

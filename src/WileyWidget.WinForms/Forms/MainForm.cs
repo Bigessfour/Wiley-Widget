@@ -44,7 +44,6 @@ namespace WileyWidget.WinForms.Forms
         public const string Reports = "Reports";
         public const string Settings = "Settings";
         public const string Docking = "Docking";
-        public const string Mdi = "MDI Mode";
         public const string LoadingText = "Loading...";
     }
 
@@ -54,7 +53,7 @@ namespace WileyWidget.WinForms.Forms
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
-        private readonly IPanelNavigationService _panelNavigator;
+        private IPanelNavigationService? _panelNavigator;
 
         /// <summary>
         /// Public accessor for ServiceProvider used by child forms.
@@ -100,51 +99,24 @@ namespace WileyWidget.WinForms.Forms
                 Program.Services ?? new ServiceCollection().BuildServiceProvider(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(Program.Services ?? throw new InvalidOperationException("Program.Services not initialized")))
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
         {
         }
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IPanelNavigationService panelNavigator)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
-            _panelNavigator = panelNavigator ?? throw new ArgumentNullException(nameof(panelNavigator));
-
-            // Resolve IPanelNavigationService after DockingManager is initialized
-            // This will be resolved lazily in OnLoad() after InitializeSyncfusionDocking() completes
+            _panelNavigator = null;
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
             _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
 
-            // CRITICAL FIX: Set IsMdiContainer based on configuration to prevent conflicts
-            try
-            {
-                if (_uiConfig.UseMdiMode)
-                {
-                    _logger.LogDebug("Setting IsMdiContainer=true (MDI enabled in configuration)");
-                    IsMdiContainer = true;
-                    _logger.LogDebug("IsMdiContainer set successfully");
-                }
-                else
-                {
-                    _logger.LogDebug("MDI mode disabled in configuration - not setting IsMdiContainer");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"ERROR setting IsMdiContainer: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
-                _logger?.LogError(ex, "Failed to set IsMdiContainer");
-
-                // Rethrow with contextual information so callers can more easily identify
-                // that MDI container configuration failed during MainForm construction.
-                throw new InvalidOperationException("Failed to configure MainForm MDI container during construction", ex);
-            }
+            IsMdiContainer = false;
 
             // Enable drag-drop for files
             AllowDrop = true;
@@ -158,38 +130,8 @@ namespace WileyWidget.WinForms.Forms
             // Theme already applied globally in Program.InitializeTheme() via SkinManager.ApplicationVisualTheme
             // No need to set ThemeName here - it cascades automatically to all controls
 
-            // Initialize UI chrome (Ribbon, StatusBar, Navigation)
-            try
-            {
-                _logger.LogDebug("Calling InitializeChrome...");
-                InitializeChrome();
-                _logger.LogDebug("InitializeChrome completed");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"ERROR in InitializeChrome: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
-                _logger?.LogError(ex, "InitializeChrome failed");
-
-                // Rethrow with context so higher-level handlers know which initialization step failed.
-                throw new InvalidOperationException("Failed to initialize UI chrome (InitializeChrome)", ex);
-            }
-
-            try
-            {
-                _logger.LogDebug("Calling InitializeMdiSupport...");
-                InitializeMdiSupport();
-                _logger.LogDebug("InitializeMdiSupport completed");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"ERROR in InitializeMdiSupport: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
-                _logger?.LogError(ex, "InitializeMdiSupport failed");
-
-                // Provide contextual information when rethrowing to aid diagnostics.
-                throw new InvalidOperationException("Failed to initialize MDI support (InitializeMdiSupport)", ex);
-            }
+            // DEFERRED: Chrome initialization happens in OnShown so the form can be
+            // constructed quickly before Application.Run(mainForm) starts the UI loop.
 
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
@@ -312,13 +254,7 @@ namespace WileyWidget.WinForms.Forms
                         logger?.LogDebug(ex, "First-chance docking exception detected: {Message}", ex.Message);
                     }
 
-                    // Log MDI-related exceptions
-                    if (ex.Message.Contains("MDI", StringComparison.OrdinalIgnoreCase) ||
-                        ex.Message.Contains("Mdi", StringComparison.OrdinalIgnoreCase) ||
-                        ex.Message.Contains("IsMdiContainer", StringComparison.OrdinalIgnoreCase))
-                    {
-                        logger?.LogDebug(ex, "First-chance MDI exception detected: {Message}", ex.Message);
-                    }
+                    // Avoid doing anything expensive in a first-chance handler.
                 }
                 catch (Exception logEx)
                 {
@@ -371,40 +307,23 @@ namespace WileyWidget.WinForms.Forms
 
             UpdateDockingStateText();
 
+            // Z-order management: ribbon/status above docking panels.
             try
             {
-                // Z-order: MDI client first
-                if (_uiConfig.UseMdiMode && IsMdiContainer)
-                {
-                    var mdiClient = Controls.OfType<MdiClient>().FirstOrDefault();
-                    if (mdiClient != null)
-                    {
-                        mdiClient.Dock = DockStyle.Fill;
-                        mdiClient.Visible = true;
-
-                        // Phase 1 Simplification: Standard MDI z-order (no TabbedMDI)
-                        mdiClient.SendToBack();
-
-                        _logger?.LogDebug("MDI client configured (TabbedMDI: {TabbedMDI})", _uiConfig.UseTabbedMdi);
-                    }
-                }
-
-                // Ribbon above all
                 if (_ribbon != null)
                 {
                     _ribbon.BringToFront();
                     _logger?.LogDebug("Ribbon brought to front");
                 }
 
-                // Status bar above MDI but below ribbon
                 if (_statusBar != null)
                 {
                     _statusBar.BringToFront();
                     _logger?.LogDebug("Status bar brought to front");
                 }
 
-                this.Refresh();
-                this.Invalidate();
+                Refresh();
+                Invalidate();
                 _logger?.LogDebug("Z-order management completed successfully");
             }
             catch (Exception ex)
@@ -413,22 +332,7 @@ namespace WileyWidget.WinForms.Forms
                 throw;
             }
 
-            // PanelNavigationService is now injected via constructor - no need to resolve again
-            // Kept here for reference - remove if causing issues
-            _logger?.LogDebug("PanelNavigationService already initialized via constructor injection");
-
-            if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
-            {
-                if (_panelNavigator != null)
-                {
-                    _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
-                    _dashboardAutoShown = true;
-                }
-                else
-                {
-                    _logger?.LogWarning("Cannot auto-show dashboard: PanelNavigationService not available");
-                }
-            }
+            // Panel navigation is created after docking is initialized (OnShown).
 
             _logger?.LogInformation("MainForm startup completed successfully");
         }
@@ -517,6 +421,68 @@ namespace WileyWidget.WinForms.Forms
             _initializationCts = new CancellationTokenSource();
             var cancellationToken = _initializationCts.Token;
 
+            // Defer chrome initialization until after the window is visible
+            try
+            {
+                _logger?.LogDebug("OnShown: initializing UI chrome");
+                InitializeChrome();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "OnShown: InitializeChrome failed");
+            }
+
+            // Apply final theme safe point after initial paint (UI thread)
+            try
+            {
+                BeginInvoke((System.Action)(() =>
+                {
+                    try
+                    {
+                        SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                        var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(_serviceProvider ?? Program.Services!);
+                        var themeName = config["UI:Theme"] ?? "Office2019Colorful";
+                        SkinManager.ApplicationVisualTheme = themeName;
+                        _logger?.LogDebug("Global Syncfusion theme applied after first paint: {ThemeName}", themeName);
+                    }
+                    catch (Exception themeEx)
+                    {
+                        _logger?.LogWarning(themeEx, "Deferred theme initialization failed - continuing with current styling");
+                    }
+                }));
+            }
+            catch { }
+
+            // Database health check + test data seeding (background)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_serviceProvider == null) return;
+                    using var scope = _serviceProvider.CreateScope();
+                    await Program.RunStartupHealthCheckAsync(scope.ServiceProvider).ConfigureAwait(false);
+                    _logger?.LogInformation("Deferred startup health check completed");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Deferred startup health check failed (non-fatal)");
+                }
+            });
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_serviceProvider == null) return;
+                    await UiTestDataSeeder.SeedIfEnabledAsync(_serviceProvider).ConfigureAwait(false);
+                    _logger?.LogDebug("Deferred test data seeding completed successfully");
+                }
+                catch (Exception seedEx)
+                {
+                    _logger?.LogWarning(seedEx, "Deferred test data seeding failed (non-critical)");
+                }
+            });
+
             // Track form shown event for startup timeline analysis
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
@@ -566,6 +532,14 @@ namespace WileyWidget.WinForms.Forms
                         InitializeSyncfusionDocking();
                         _syncfusionDockingInitialized = true;
                         _logger?.LogInformation("Docking initialized successfully");
+
+                        EnsurePanelNavigatorInitialized();
+
+                        if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown && _panelNavigator != null)
+                        {
+                            _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                            _dashboardAutoShown = true;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -680,6 +654,27 @@ namespace WileyWidget.WinForms.Forms
                     }
                     catch { /* Swallow MessageBox errors */ }
                 }
+            }
+        }
+
+        private void EnsurePanelNavigatorInitialized()
+        {
+            try
+            {
+                if (_panelNavigator != null) return;
+                if (_serviceProvider == null) return;
+                if (_dockingManager == null) return;
+                if (_centralDocumentPanel == null) return;
+
+                var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
+
+                _panelNavigator = new PanelNavigationService(_dockingManager, _centralDocumentPanel, _serviceProvider, navLogger);
+                _logger?.LogDebug("PanelNavigationService created after docking initialization");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to initialize PanelNavigationService");
             }
         }
 

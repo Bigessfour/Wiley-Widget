@@ -472,7 +472,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e)));
+                    BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
                     return;
                 }
 
@@ -692,7 +692,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    BeginInvoke(new Action(() => OnThemeChanged(sender, theme)));
+                    BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
                     return;
                 }
                 ApplyCurrentTheme();
@@ -707,6 +707,33 @@ namespace WileyWidget.WinForms.Controls
                 ThemeManager.ApplyThemeToControl(this);
             }
             catch { }
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            try
+            {
+                if (!DesignMode && !_vm.IsLoading)
+                {
+                    // Auto-load data on panel load
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _vm.LoadDataCommand.ExecuteAsync(null);
+                        }
+                        catch (Exception ex)
+                        {
+                            Serilog.Log.Error(ex, "BudgetOverviewPanel: OnLoad data fetch failed");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "BudgetOverviewPanel: OnLoad failed");
+            }
         }
 
         protected override void Dispose(bool disposing)

@@ -373,6 +373,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// </summary>
     protected override void OnViewModelResolved(RevenueTrendsViewModel viewModel)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
 
         // Subscribe to ViewModel property changes
@@ -403,7 +404,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ShowError(ex)));
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -428,7 +429,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e)));
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -473,7 +474,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(UpdateUI));
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 
@@ -645,7 +646,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ApplyTheme()));
+                BeginInvoke(new System.Action(() => ApplyTheme()));
             }
             else
             {

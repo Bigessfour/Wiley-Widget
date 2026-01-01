@@ -6,7 +6,7 @@ using System;
 namespace WileyWidget.WinForms.E2ETests.PageObjects;
 
 /// <summary>
-/// Page Object for MainForm - provides access to main window navigation, docking panels, and MDI functionality.
+/// Page Object for MainForm - provides access to main window navigation and docking panels.
 /// Implements the Page Object Model pattern for FlaUI E2E tests.
 /// </summary>
 public class MainFormPage : BasePage
@@ -61,12 +61,6 @@ public class MainFormPage : BasePage
         FindElementByAutomationId("Nav_DockingToggle");
 
     /// <summary>
-    /// Get MDI toggle button.
-    /// </summary>
-    public AutomationElement? MdiToggleButton =>
-        FindElementByAutomationId("Nav_MdiToggle");
-
-    /// <summary>
     /// Get Theme toggle button (light/dark mode switcher).
     /// </summary>
     public AutomationElement? ThemeToggleButton =>
@@ -86,7 +80,7 @@ public class MainFormPage : BasePage
         FindDockPanel("Dashboard");
 
     /// <summary>
-    /// Get central document panel (AI chat and MDI content).
+    /// Get central document panel (AI chat and content).
     /// </summary>
     public AutomationElement? CentralDocumentPanel =>
         FindElementByAutomationId("CentralDocumentPanel");
@@ -113,32 +107,31 @@ public class MainFormPage : BasePage
 
     #endregion
 
-    #region MDI Child Forms
+    #region Panels
 
     /// <summary>
-    /// Find MDI child window by title.
+    /// Find docked panel by name.
     /// </summary>
-    public Window? FindMdiChild(string title, TimeSpan? timeout = null)
+    public AutomationElement? FindPanel(string name, TimeSpan? timeout = null)
     {
         var maxWait = timeout ?? DefaultTimeout;
-        var child = RetryFind(() =>
+        var panel = RetryFind(() =>
         {
-            var windows = Window.FindAllDescendants(cf =>
-                cf.ByControlType(ControlType.Window)
-                  .And(cf.ByName(title)));
-            return windows.FirstOrDefault();
+            var elements = Window.FindAllDescendants(cf =>
+                cf.ByName(name));
+            return elements.FirstOrDefault();
         }, maxWait);
 
-        return child?.AsWindow();
+        return panel;
     }
 
     /// <summary>
-    /// Get all MDI child windows.
+    /// Get all panels.
     /// </summary>
-    public Window[] GetAllMdiChildren()
+    public AutomationElement[] GetAllPanels()
     {
-        var children = Window.FindAllDescendants(cf => cf.ByControlType(ControlType.Window));
-        return children.Select(c => c.AsWindow()).ToArray();
+        var panels = Window.FindAllDescendants(cf => cf.ByControlType(ControlType.Pane));
+        return panels.ToArray();
     }
 
     #endregion
@@ -202,17 +195,7 @@ public class MainFormPage : BasePage
     {
         var button = DockingToggleButton ?? throw new InvalidOperationException("Docking toggle button not found");
         Click(button);
-        System.Threading.Thread.Sleep(500); // Allow layout to reconfigure
-    }
-
-    /// <summary>
-    /// Toggle MDI mode.
-    /// </summary>
-    public void ToggleMdi()
-    {
-        var button = MdiToggleButton ?? throw new InvalidOperationException("MDI toggle button not found");
-        Click(button);
-        System.Threading.Thread.Sleep(500); // Allow layout to reconfigure
+        WaitForBusyIndicator(TimeSpan.FromSeconds(5)); // Wait for layout to reconfigure
     }
 
     /// <summary>

@@ -16,6 +16,10 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
+using System.Net.Http;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -70,20 +74,49 @@ namespace WileyWidget.WinForms.Configuration
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
+            // Named HttpClient for Grok with resilience
+            services.AddHttpClient("GrokClient")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .AddResilienceHandler("GrokResilience", builder =>
+                {
+                    builder.AddRetry(new HttpRetryStrategyOptions
+                    {
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromMilliseconds(600),
+                        BackoffType = DelayBackoffType.Linear
+                    });
+                    builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                    {
+                        FailureRatio = 0.5,
+                        SamplingDuration = TimeSpan.FromMinutes(1),
+                        MinimumThroughput = 5,
+                        BreakDuration = TimeSpan.FromMinutes(2)
+                    });
+                    builder.AddTimeout(new HttpTimeoutStrategyOptions
+                    {
+                        Timeout = TimeSpan.FromSeconds(15)
+                    });
+                });
+
             // Memory Cache (Singleton)
             services.AddMemoryCache();
+
+            // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
+            // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
+            services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
             // For tests, register DbContext with in-memory database
-            if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
             {
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseInMemoryDatabase("TestDb"));
             }
-            if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
                 // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
                 services.AddSingleton(sp =>
@@ -122,14 +155,16 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
             services.AddSingleton<HealthCheckService>();
             services.AddSingleton<ErrorReportingService>();
-            services.AddSingleton<IDialogTrackingService, DialogTrackingService>();
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
             services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
 
+            // Startup orchestration (license, theme, DI validation)
+            services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
+
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
-            _ = services.AddSingleton<IDiValidationService, DiValidationService>();
+            services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
 
             // =====================================================================
@@ -191,16 +226,11 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IThemeService, ThemeService>();
             services.AddSingleton<IThemeIconService, ThemeIconService>();
 
-            // Panel Navigation Service (Singleton - Manages docked panels)
-            // Factory pattern: Resolves DockingManager and parent control from MainForm
-            services.AddSingleton<IPanelNavigationService>(sp =>
-            {
-                var mainForm = DI.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(sp);
-                var dockingManager = mainForm.GetDockingManager();
-                var centralPanel = mainForm.GetCentralDocumentPanel();
-                var logger = DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(sp);
-                return new PanelNavigationService(dockingManager, centralPanel, sp, logger);
-            });
+            // Panel Navigation Service
+            // NOTE: This service depends on MainForm's DockingManager + central document panel.
+            // Those are created during MainForm deferred initialization (OnShown), so we avoid
+            // registering a DI factory that resolves MainForm (circular dependency).
+            // MainForm creates PanelNavigationService once docking is ready.
 
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
@@ -233,8 +263,8 @@ namespace WileyWidget.WinForms.Configuration
             // Child Forms: Transient because they're created/disposed multiple times
             // =====================================================================
 
-            // Main Form (Singleton - Application's primary window)
-            services.AddSingleton<MainForm>();
+            // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
+            services.AddScoped<MainForm>();
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()

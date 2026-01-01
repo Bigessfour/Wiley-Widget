@@ -1,6 +1,6 @@
 # Wiley Widget — Municipal Finance Desktop
 
-**Current production UI: WinForms + .NET 9**
+## Current production UI: WinForms + .NET 9
 
 [![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
 [![WinForms](https://img.shields.io/badge/UI-WinForms-blue.svg)](https://docs.microsoft.com/dotnet/desktop/winforms/)
@@ -23,7 +23,7 @@ Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for 
 - [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
-- [Configuration & Secrets](#configuration--secret-management)
+- [Configuration & Secrets](#configuration--secrets)
 - [Architecture](#architecture)
 - [Development](#development)
 - [Testing](#testing)
@@ -92,7 +92,7 @@ WileyWidget follows a clean, layered architecture with organized file structure 
 
 ### Solution Organization
 
-```
+```text
 WileyWidget/
 ├── src/                          # Application entry point & startup
 │   ├── App.xaml.cs              # application bootstrap
@@ -535,7 +535,7 @@ WileyWidget implements a **secure, encrypted secret management system** using Wi
 
 #### **🗂️ Storage Location**
 
-```
+```text
 %APPDATA%\WileyWidget\Secrets\
 ├── .entropy          # Hidden entropy file for encryption
 ├── QuickBooks-ClientId.secret
@@ -948,7 +948,7 @@ Starting from a traditional project structure, we systematically migrated to a l
 
 #### **Dependency Flow**
 
-```
+```text
 WileyWidget (UI) → WileyWidget.Business → WileyWidget.Data → WileyWidget.Models
      ↓                                                            ↑
 WileyWidget.UiTests                                       WileyWidget.IntegrationTests
@@ -960,7 +960,7 @@ WileyWidget.Tests
 
 ### Layered Workspace Structure
 
-```
+```text
 WileyWidget/
 ├── WileyWidget/                          # 🖥️ PRESENTATION LAYER (.NET 9.0-windows)
 │   ├── Views/                           # XAML UI files
@@ -1320,7 +1320,7 @@ protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
 
 ### Startup Flow (4-Phase Architecture)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │ PHASE 1: Early Validation & Configuration (App.Lifecycle)  │
 │ - Environment validation (memory, dependencies)             │
@@ -1505,6 +1505,30 @@ public partial class App : Application
 **ViewModel Count:** 1 active (SettingsViewModel per manifest analysis)
 
 ---
+
+### GrokRecommendation options
+
+A small configuration section to control caching behavior for AI-driven recommendations and explanations.
+
+- **CacheDuration** (TimeSpan string, e.g. "02:00:00"): controls how long recommendation results and generated explanations are kept in the in-memory cache. Default: `02:00:00` (2 hours).
+
+Sample `appsettings.json` snippet:
+
+```json
+{
+  "GrokRecommendation": {
+    "CacheDuration": "02:00:00"
+  },
+  "XAI": {
+    "Enabled": true,
+    "ApiKey": "YOUR_API_KEY",
+    "Endpoint": "https://api.x.ai/v1/chat/completions",
+    "Model": "grok-beta"
+  }
+}
+```
+
+Changing `CacheDuration` affects when cached recommendations and explanations expire; to force a refresh immediately use **Settings → AI / xAI Settings → Clear AI Cache** (this clears any entries created by the service).
 
 ## 🔧 NuGet Package Resolution System
 
@@ -1698,7 +1722,7 @@ The AssemblyResolve handler automatically logs to Serilog:
 
 ## 📋 **Project Structure**
 
-```
+```text
 WileyWidget/
 ├── Models/           # Enterprise data models (Phase 1)
 ├── Data/            # EF Core DbContext & Repositories
@@ -1736,82 +1760,65 @@ WileyWidget/
 - **Coverage Target:** 80% by Phase 4 with CI/CD validation
 - **Test Categories:** unit, smoke, integration, slow (marked appropriately)
 
-### **WinForms MDI Child Form Design Requirements**
+### **WinForms Docking Panel Design Requirements**
 
-#### **Critical Pattern for All Child Forms**
+#### **Critical Pattern for All Panels**
 
-WileyWidget uses Windows Forms with MDI (Multiple Document Interface) and Syncfusion controls (`TabbedMDIManager`, `DockingManager`). All child forms **MUST** follow this defensive pattern:
+WileyWidget uses Windows Forms with DockingManager for panel-based UI. All panels **MUST** be UserControls managed by PanelNavigationService:
 
 ```csharp
-public MyChildForm(MainForm mainForm)
+public class MyPanel : UserControl
 {
-    InitializeComponent();
-
-    // MANDATORY: Check IsMdiContainer before setting MdiParent
-    if (mainForm.IsMdiContainer)
+    public MyPanel()
     {
-        MdiParent = mainForm;
+        InitializeComponent();
+        // Panel will be docked by DockingManager via PanelNavigationService
     }
-
-    // Rest of initialization...
 }
 ```
 
 #### **Why This Is Required**
 
-1. **Test Compatibility:** Unit tests run with `IsMdiContainer = false`
-2. **ArgumentException Prevention:** Setting `MdiParent` without MDI enabled throws exceptions
-3. **Syncfusion Integration:** `TabbedMDIManager` requires standard MDI pattern
+1. **Test Compatibility:** Panels are tested as isolated UserControls
+2. **Exception Prevention:** Proper DI resolution and docking management
+3. **Syncfusion Integration:** DockingManager handles panel layout and persistence
 
 #### **Key Rules**
 
 ✅ **DO:**
 
-- Accept `MainForm` as constructor parameter
-- Check `mainForm.IsMdiContainer` before setting `MdiParent`
-- Use standard MDI pattern: `form.MdiParent = this;`
+- Implement panels as `UserControl` classes
+- Register panels in DI container
+- Use `PanelNavigationService` for show/hide operations
+- Accept dependencies via constructor injection
 
 ❌ **DON'T:**
 
-- Set `MdiParent` without checking `IsMdiContainer`
-- Use reflection-based `SetAsMDIChild()` for `Form` types (only for `UserControl`/`Panel`)
-- Instantiate child forms before `MainForm.IsMdiContainer` is set
+- Manually set docking properties
+- Instantiate panels directly (use DI)
 
-#### **MainForm Requirements**
+#### **PanelNavigationService Requirements**
 
 ```csharp
-public MainForm(...)
+public interface IPanelNavigationService
 {
-    InitializeComponent();
-
-    // Set IsMdiContainer FIRST (before any child form instantiation)
-    if (_useMdiMode || _useTabbedMdi)
-    {
-        IsMdiContainer = true;
-    }
-
-    ValidateAndSanitizeUiConfiguration();
-
-    // TabbedMDIManager works automatically with standard MDI
-    if (_useTabbedMdi)
-    {
-        _tabbedMdiManager = new TabbedMDIManager(this);
-    }
+    void ShowPanel(string panelName);
+    void HidePanel(string panelName);
+    void ActivatePanel(string panelName);
 }
 ```
 
-#### **Example ShowChildFormMdi Method**
+#### **Example Panel Usage**
 
 ```csharp
-private void ShowChildFormMdi<T>() where T : Form
-{
-    var form = _serviceProvider.GetRequiredService<T>();
-    form.MdiParent = this;  // TabbedMDIManager handles tabbing automatically
-    form.Show();
-}
+// Show a panel
+_panelNavigator.ShowPanel("Settings");
+
+// Hide a panel
+_panelNavigator.HidePanel("Settings");
 ```
 
-**Reference:** See [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md) for complete implementation details and violation examples.
+**Reference:** Panels are resolved via DI and docked automatically by DockingManager.
 
 ---
 
@@ -2109,7 +2116,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards.
 
 **Remember:** This is a hobby-paced project (8-12 weeks to MVP). Small wins, benchmarks, and no pressure—just building something that actually helps your town!
 
-## Documentation
+## 📚 Additional Documentation
 
 ### **Project Documentation**
 
@@ -2406,7 +2413,7 @@ Releases: [GitHub Releases](https://github.com/Bigessfour/Wiley-Widget/releases)
 
 ## Project Structure
 
-```
+```text
 WileyWidget/            # App
 WileyWidget.Tests/      # Unit tests
 WileyWidget.UiTests/    # Placeholder UI harness
@@ -2712,7 +2719,7 @@ To verify your Syncfusion Community License (v30.2.7) is correctly set up:
 
    Open today's `app-YYYYMMDD.log` and look for:
 
-   ```
+   ```text
    Syncfusion license registered from environment variable.
    ```
 
@@ -2776,6 +2783,6 @@ If issues persist, re-set the env var and restart your terminal:
 
 ---
 
-```
+```text
 # Test commit for manifest generation
 ```

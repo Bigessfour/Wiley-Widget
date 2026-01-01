@@ -168,7 +168,7 @@ if ($dotnetProcesses) {
 Write-Host ""
 Write-Host "🏢 Step 3.5: Terminating WileyWidget processes..." -ForegroundColor Yellow
 
-$wileyWidgetProcesses = Get-Process -Name "WileyWidget" -ErrorAction SilentlyContinue
+$wileyWidgetProcesses = Get-Process -Name "WileyWidget", "WileyWidget.WinForms" -ErrorAction SilentlyContinue
 
 if ($wileyWidgetProcesses) {
     $count = ($wileyWidgetProcesses | Measure-Object).Count

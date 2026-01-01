@@ -61,6 +61,25 @@ namespace WileyWidget.WinForms.Models
             };
         }
 
+        public MunicipalAccount ToEntity()
+        {
+            return new MunicipalAccount
+            {
+                Id = this.Id,
+                AccountNumber = new AccountNumber { Value = this.AccountNumber },
+                Name = this.Name,
+                FundDescription = Description ?? string.Empty,
+                Type = this.Type,
+                Fund = this.Fund,
+                DepartmentId = this.DepartmentId ?? 0,
+                Balance = this.Balance,
+                BudgetAmount = this.BudgetAmount,
+                IsActive = this.IsActive,
+                ParentAccountId = this.ParentAccountId,
+                BudgetPeriodId = 1 // Default to first budget period
+            };
+        }
+
         public bool ValidateAll(out List<ValidationResult> results)
         {
             results = new List<ValidationResult>();

@@ -1,5 +1,4 @@
 using System;
-using System.Threading.RateLimiting;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -15,12 +14,7 @@ using Serilog;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
-using Polly;
 using Polly.CircuitBreaker;
-using Polly.Retry;
-using Polly.Timeout;
-using Polly.RateLimiting;
-using Polly.Registry;
 // using Microsoft.ApplicationInsights;
 
 namespace WileyWidget.Services;
@@ -39,8 +33,12 @@ public class XAIService : IAIService, IDisposable
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _concurrencySemaphore;
     private readonly SigNozTelemetryService? _telemetryService;
+    private readonly bool _enabled;
+    private readonly string _endpoint;
+    private readonly string _model;
+    private readonly double _temperature;
+    private readonly int _maxTokens;
     // private readonly dynamic _telemetryClient; // Commented out until Azure is configured
-    private readonly ResiliencePipeline<HttpResponseMessage> _httpPipeline;
     private bool _disposed;
 
     /// <summary>
@@ -72,12 +70,17 @@ public class XAIService : IAIService, IDisposable
         Console.WriteLine($"[XAISERVICE DEBUG] XAI:ApiKey from config = {(_apiKey != null ? _apiKey.Substring(0, Math.Min(15, _apiKey.Length)) + "..." : "NULL")} ({_apiKey?.Length ?? 0} chars)");
         Console.WriteLine($"[XAISERVICE DEBUG] Config type = {configuration.GetType().FullName}");
 
-        if (string.IsNullOrWhiteSpace(_apiKey))
+        _enabled = bool.Parse(configuration["XAI:Enabled"] ?? "false");
+        _endpoint = configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/chat/completions";
+        _model = configuration["XAI:Model"] ?? "grok-4";
+        _temperature = double.Parse(configuration["XAI:Temperature"] ?? "0.3", CultureInfo.InvariantCulture);
+        _maxTokens = int.Parse(configuration["XAI:MaxTokens"] ?? "800", CultureInfo.InvariantCulture);
+
+        if (string.IsNullOrWhiteSpace(_apiKey) && _enabled)
         {
-            throw new InvalidOperationException("XAI API key not configured");
+            throw new InvalidOperationException("XAI API key not configured but XAI is enabled");
         }
 
-        var baseUrl = configuration["XAI:BaseUrl"] ?? "https://api.x.ai/v1/";
         var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
         // Allow tests to override circuit-breaker break duration (seconds) via configuration
         // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
@@ -89,17 +92,20 @@ public class XAIService : IAIService, IDisposable
         }
 
         // Validate API key format (basic check) - wrapped to handle exceptions gracefully
-        try
+        if (_enabled)
         {
-            if (_apiKey.Length < 20)
+            try
             {
-                throw new InvalidOperationException("API key appears to be invalid (too short)");
+                if (_apiKey.Length < 20)
+                {
+                    throw new InvalidOperationException("API key appears to be invalid (too short)");
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "XAI API key validation failed during construction");
-            throw; // Re-throw to prevent invalid service creation
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "XAI API key validation failed during construction");
+                throw; // Re-throw to prevent invalid service creation
+            }
         }
 
         // Initialize concurrency control (limit to 5 concurrent requests to avoid throttling)
@@ -107,106 +113,17 @@ public class XAIService : IAIService, IDisposable
         _concurrencySemaphore = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
 
         // Create or fall back to a default HttpClient if the factory returns null (tests may not set up a named client)
-        var createdClient = httpClientFactory.CreateClient("AIServices");
+        var createdClient = httpClientFactory.CreateClient("GrokClient");
         _httpClient = createdClient ?? new HttpClient();
-        _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         // Set default headers only if not already set by the named client
-        if (!_httpClient.DefaultRequestHeaders.Contains("Authorization"))
+        if (!_httpClient.DefaultRequestHeaders.Contains("Authorization") && _enabled)
         {
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        // Create Polly v8 resilience pipeline with modern API
-        // Following Microsoft's recommended patterns for resilience
-        _httpPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
-            // 1. RATE LIMITER - Prevent client-side throttling (50 requests/minute)
-            .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
-            {
-                PermitLimit = 50,
-                Window = TimeSpan.FromMinutes(1),
-                SegmentsPerWindow = 2,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            }))
-            // 2. TIMEOUT - Prevent hanging requests (15s configured timeout)
-            .AddTimeout(new TimeoutStrategyOptions
-            {
-                Timeout = TimeSpan.FromSeconds(timeoutSeconds),
-                OnTimeout = args =>
-                {
-                    _logger.LogError("xAI API timeout after {Timeout}s", args.Timeout.TotalSeconds);
-                    // Outcome is not available on OnTimeout arguments in this runtime; record a timeout exception instead
-                    var tex = new TimeoutException($"xAI API timeout after {args.Timeout.TotalSeconds} seconds");
-                    _telemetryService?.RecordException(tex, ("xai.timeout", "request_timeout"));
-                    return ValueTask.CompletedTask;
-                }
-            })
-            // 3. CIRCUIT BREAKER - Fail fast during outages
-            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
-            {
-                FailureRatio = 0.5,                    // Open if 50% of requests fail
-                SamplingDuration = TimeSpan.FromSeconds(30),  // Sample window
-                MinimumThroughput = 5,                 // Minimum requests before evaluating
-                BreakDuration = TimeSpan.FromSeconds(circuitBreakerBreakSeconds), // Stay open for configured seconds
-                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
-                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
-                    .Handle<HttpRequestException>()
-                    .Handle<TaskCanceledException>(),
-                OnOpened = args =>
-                {
-                    _logger.LogError("xAI API Circuit Breaker OPEN - too many failures");
-                    _telemetryService?.RecordException(args.Outcome.Exception,
-                        ("xai.circuit_breaker", "opened"));
-                    return ValueTask.CompletedTask;
-                },
-                OnClosed = args =>
-                {
-                    _logger.LogInformation("xAI API Circuit Breaker CLOSED - resuming normal operation");
-                    return ValueTask.CompletedTask;
-                },
-                OnHalfOpened = args =>
-                {
-                    _logger.LogInformation("xAI API Circuit Breaker HALF-OPEN - testing recovery");
-                    return ValueTask.CompletedTask;
-                }
-            })
-            // 4. RETRY - Handle transient errors with smart backoff
-            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
-            {
-                MaxRetryAttempts = 3,
-                BackoffType = DelayBackoffType.Exponential,
-                Delay = TimeSpan.FromMilliseconds(500),        // Base delay
-                UseJitter = true,                               // Critical for AI APIs with rate limits
-                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.RequestTimeout)
-                    .HandleResult(r => r.StatusCode >= HttpStatusCode.InternalServerError)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.BadGateway)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.ServiceUnavailable)
-                    .HandleResult(r => r.StatusCode == HttpStatusCode.GatewayTimeout)
-                    .Handle<HttpRequestException>(),
-                OnRetry = args =>
-                {
-                    var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "Unknown";
-                    _logger.LogWarning("xAI API retry {Attempt}/3 after {Delay}ms due to {StatusCode}",
-                        args.AttemptNumber + 1, args.RetryDelay.TotalMilliseconds, statusCode);
-                    // Prefer logging the exception when available, otherwise log a string error
-                    if (args.Outcome.Exception != null)
-                    {
-                        _aiLoggingService.LogError("Retry", args.Outcome.Exception);
-                    }
-                    else
-                    {
-                        _aiLoggingService.LogError("Retry", $"HTTP {statusCode}", "Retry");
-                    }
-                    return ValueTask.CompletedTask;
-                }
-            })
-            .Build();
-
-        _logger.LogInformation("✓ XAIService initialized with Polly v8 resilience pipeline (rate limit: 50/min, timeout: {Timeout}s, circuit breaker: 50% failure ratio, retry: 3x exponential with jitter)",
+        _logger.LogInformation("✓ XAIService initialized with resilient HttpClient (timeout: {Timeout}s)",
             timeoutSeconds);
     }
 
@@ -262,12 +179,17 @@ public class XAIService : IAIService, IDisposable
     {
         // Start telemetry tracking for AI API call
         using var apiCallSpan = _telemetryService?.StartActivity("ai.xai.get_insights",
-            ("ai.model", _configuration["XAI:Model"] ?? "grok-4-0709"),
+            ("ai.model", _model),
             ("ai.provider", "xAI"));
 
         // Validate and sanitize inputs to prevent injection attacks
         // Do this before the try so ArgumentException for invalid inputs can propagate to callers/tests
         ValidateAndSanitizeInputs(ref context, ref question);
+
+        if (!_enabled)
+        {
+            return "AI service is disabled.";
+        }
 
         var startTime = DateTime.UtcNow;
 
@@ -288,7 +210,7 @@ public class XAIService : IAIService, IDisposable
             {
                 Log.Information("Cache hit for XAI query: {Question}", question);
                 apiCallSpan?.SetTag("ai.cache_hit", true);
-                _aiLoggingService.LogQuery(question, context, _configuration["XAI:Model"] ?? "grok-4-0709");
+                _aiLoggingService.LogQuery(question, context, _model);
                 return cachedResponse;
             }
 
@@ -298,12 +220,10 @@ public class XAIService : IAIService, IDisposable
             await _concurrencySemaphore.WaitAsync(cancellationToken);
             semaphoreEntered = true;
 
-            var model = _configuration["XAI:Model"] ?? "grok-4-0709";
-
             var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
 
             // Log the query
-            _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", model);
+            _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", _model);
 
             // Track telemetry for API call start - commented out until Azure is configured
             // _telemetryClient?.TrackEvent("XAIServiceRequest", new Dictionary<string, string>
@@ -327,15 +247,14 @@ public class XAIService : IAIService, IDisposable
                         content = question
                     }
                 },
-                model = model,
+                model = _model,
                 stream = false,
-                temperature = 0.7
+                temperature = _temperature,
+                max_tokens = _maxTokens
             };
 
-            // Execute HTTP request with Polly v8 resilience pipeline
-            var response = await _httpPipeline.ExecuteAsync(
-                async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
-                ResilienceContextPool.Shared.Get(cancellationToken));
+            // Execute HTTP request with resilient HttpClient
+            var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken);
 
             // Handle non-successful status codes gracefully
             if (!response.IsSuccessStatusCode)
@@ -563,13 +482,17 @@ public class XAIService : IAIService, IDisposable
     /// </summary>
     private async Task<string> GetInsightsInternalAsync(string context, string question, string cacheKey, CancellationToken cancellationToken)
     {
+        if (!_enabled)
+        {
+            return "AI service is disabled.";
+        }
+
         var startTime = DateTime.UtcNow;
-        var model = _configuration["XAI:Model"] ?? "grok-4-0709";
 
         var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
 
         // Log the query
-        _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", model);
+        _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", _model);
 
         var request = new
         {
@@ -586,15 +509,14 @@ public class XAIService : IAIService, IDisposable
                     content = question
                 }
             },
-            model = model,
+            model = _model,
             stream = false,
-            temperature = 0.7
+            temperature = _temperature,
+            max_tokens = _maxTokens
         };
 
-        // Execute HTTP request with Polly v8 resilience pipeline
-        var response = await _httpPipeline.ExecuteAsync(
-            async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
-            ResilienceContextPool.Shared.Get(cancellationToken));
+        // Execute HTTP request with resilient HttpClient
+        var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -666,11 +588,15 @@ public class XAIService : IAIService, IDisposable
         // Validate and sanitize
         ValidateAndSanitizeInputs(ref context, ref question);
 
+        if (!_enabled)
+        {
+            return new AIResponseResult("AI service is disabled.", 503, "Disabled", "AI service is disabled.");
+        }
+
         var startTime = DateTime.UtcNow;
-        var model = _configuration["XAI:Model"] ?? "grok-4-0709";
 
         var systemContext = await _contextService.BuildCurrentSystemContextAsync(cancellationToken);
-        _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", model);
+        _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", _model);
 
         var request = new
         {
@@ -679,15 +605,14 @@ public class XAIService : IAIService, IDisposable
                 new { role = "system", content = $"You are a helpful AI assistant for Wiley Widget. System Context: {systemContext}. Context: {context}" },
                 new { role = "user", content = question }
             },
-            model = model,
+            model = _model,
             stream = false,
-            temperature = 0.7
+            temperature = _temperature,
+            max_tokens = _maxTokens
         };
 
-        // Execute HTTP request with Polly v8 resilience pipeline
-        var response = await _httpPipeline.ExecuteAsync(
-            async context => await _httpClient.PostAsJsonAsync("chat/completions", request, context.CancellationToken),
-            ResilienceContextPool.Shared.Get(cancellationToken));
+        // Execute HTTP request with resilient HttpClient
+        var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -738,6 +663,11 @@ public class XAIService : IAIService, IDisposable
         if (string.IsNullOrWhiteSpace(apiKey))
             return new AIResponseResult("API key is empty", 400, "InvalidKey", null);
 
+        if (!_enabled)
+        {
+            return new AIResponseResult("AI service is disabled.", 503, "Disabled", "AI service is disabled.");
+        }
+
         try
         {
             // Prepare a minimal validation request. Use explicit Authorization header for this request only.
@@ -748,12 +678,13 @@ public class XAIService : IAIService, IDisposable
                     new { role = "system", content = "Validation ping" },
                     new { role = "user", content = "Ping" }
                 },
-                model = _configuration["XAI:Model"] ?? "grok-4-0709",
+                model = _model,
                 stream = false,
-                temperature = 0.0
+                temperature = 0.0,
+                max_tokens = _maxTokens
             };
 
-            using var message = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+            using var message = new HttpRequestMessage(HttpMethod.Post, _endpoint)
             {
                 Content = JsonContent.Create(request, options: new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
             };
@@ -762,10 +693,8 @@ public class XAIService : IAIService, IDisposable
             message.Headers.Remove("Authorization");
             message.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            // Execute HTTP request with Polly v8 resilience pipeline
-            var response = await _httpPipeline.ExecuteAsync(
-                async context => await _httpClient.SendAsync(message, context.CancellationToken),
-                ResilienceContextPool.Shared.Get(cancellationToken));
+            // Execute HTTP request with resilient HttpClient
+            var response = await _httpClient.SendAsync(message, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -913,6 +842,11 @@ public class XAIService : IAIService, IDisposable
         if (string.IsNullOrWhiteSpace(prompt))
             throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
 
+        if (!_enabled)
+        {
+            return new AIResponseResult("AI service is disabled.", 503, "Disabled", "AI service is disabled.");
+        }
+
         try
         {
             _logger.LogInformation("Sending prompt to xAI service, length: {Length}", prompt.Length);
@@ -923,12 +857,13 @@ public class XAIService : IAIService, IDisposable
                 {
                     new { role = "user", content = prompt }
                 },
-                model = "grok-beta",
+                model = _model,
                 stream = false,
-                temperature = 0.7
+                temperature = _temperature,
+                max_tokens = _maxTokens
             };
 
-            var response = await _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken: cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken: cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

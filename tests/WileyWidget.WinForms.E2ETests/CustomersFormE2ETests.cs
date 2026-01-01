@@ -37,8 +37,6 @@ namespace WileyWidget.WinForms.E2ETests
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
             Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI__UseTabbedMdi", "false");
         }
 
         private static string ResolveExecutablePath()
@@ -73,7 +71,7 @@ namespace WileyWidget.WinForms.E2ETests
             throw new FileNotFoundException($"Executable not found. Build Debug output under '{baseDir}'.");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_Opens_And_Displays_Grid()
         {
@@ -91,7 +89,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(dataGrid);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_LoadButton_LoadsCustomers()
         {
@@ -108,7 +106,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(customersPage.IsDataLoaded(), "Status bar should show record count after loading");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_NewButton_EnablesSaveButton()
         {
@@ -125,7 +123,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(customersPage.IsSaveButtonEnabled(), "Save button should be enabled after clicking New");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_SearchBox_IsAccessible()
         {
@@ -141,7 +139,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(searchBox.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_RefreshButton_Exists()
         {
@@ -156,7 +154,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(refreshButton.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_ExportButton_OpensDialog()
         {
@@ -189,7 +187,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_DetailTabs_ArePresent()
         {
@@ -203,7 +201,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(customersPage.AreDetailTabsVisible(), "Detail tabs should be present and visible");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_DataGrid_HasExpectedColumns()
         {
@@ -224,7 +222,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(rowCount > 0, "Grid should contain data rows after loading");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_StatusBar_ShowsRecordCount()
         {
@@ -241,7 +239,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(customersPage.IsDataLoaded(), "Status bar should show record count after loading");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void CustomersForm_SelectionEnablesButtons()
         {
@@ -297,9 +295,7 @@ namespace WileyWidget.WinForms.E2ETests
                 {
                     ["WILEYWIDGET_UI_TESTS"] = "true",
                     ["WILEYWIDGET_USE_INMEMORY"] = "true",
-                    ["UI__IsUiTestHarness"] = "true",
-                    ["UI__UseMdiMode"] = "false",
-                    ["UI__UseTabbedMdi"] = "false"
+                    ["UI__IsUiTestHarness"] = "true"
                 }
             };
 
@@ -322,6 +318,7 @@ namespace WileyWidget.WinForms.E2ETests
             try
             {
                 _app?.Close();
+                if (_app != null && !_app.HasExited) { _app.Kill(); }
                 _app?.Dispose();
             }
             catch { }
@@ -331,6 +328,13 @@ namespace WileyWidget.WinForms.E2ETests
                 _automation?.Dispose();
             }
             catch { }
+
+            // Kill any lingering WileyWidget processes
+            var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+            foreach (var p in processes)
+            {
+                try { p.Kill(); } catch { }
+            }
         }
     }
 }

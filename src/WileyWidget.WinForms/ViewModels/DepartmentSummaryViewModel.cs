@@ -16,7 +16,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for Department Summary panel displaying key metrics and department drill-down grid.
 /// Provides observable properties for summary metrics and async data loading with proper cancellation support.
 /// </summary>
-public partial class DepartmentSummaryViewModel : ViewModelBase
+public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
 {
     private readonly IDepartmentRepository _departmentRepository;
     private CancellationTokenSource? _loadCancellationTokenSource;
@@ -209,6 +209,30 @@ public partial class DepartmentSummaryViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes of resources used by the ViewModel.
+    /// </summary>
+    /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Clean up managed resources if needed
+            _loadCancellationTokenSource?.Dispose();
+            _loadCancellationTokenSource = null;
+        }
+        // Clean up unmanaged resources if any
     }
 }
 

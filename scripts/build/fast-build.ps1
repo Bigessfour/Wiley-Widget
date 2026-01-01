@@ -387,8 +387,15 @@ foreach ($project in $projectsToBuild) {
     $projectBuildTime = Measure-ProjectBuildTime $project {
         & dotnet @buildArgs
     }
-
-    $totalBuildTime += $projectBuildTime
+    # Ensure $projectBuildTime is a number, not an array or string
+    if ($projectBuildTime -is [array]) {
+        $projectBuildTime = $projectBuildTime[0]
+    }
+    if ($projectBuildTime -is [double] -or $projectBuildTime -is [int]) {
+        $totalBuildTime += [double]$projectBuildTime
+    } else {
+        Write-Log "Warning: Skipping non-numeric build time for $project: $projectBuildTime" -Level 'WARN'
+    }
 
     if ($script:BuildMetrics[$project].Success) {
         Write-Log "✅ $project built in $($projectBuildTime.ToString('F2'))s" -Level 'SUCCESS'
