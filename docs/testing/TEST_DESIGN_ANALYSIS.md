@@ -40,7 +40,7 @@ public class TestFileAnalyzer
     {
         // Scans codebase for:
         // - Untested components
-        // - High-risk areas (MDI patterns, DI container, theming)
+        // - High-risk areas (docking patterns, DI container, theming)
         // - Integration points (QuickBooks, xAI Grok)
         // - Business logic (budget calculations, account filtering)
     }
@@ -118,7 +118,7 @@ C# MCP execution revealed 3 integration issues:
 
 ### 🔴 HIGH PRIORITY
 
-#### 1. MainForm MDI Architecture
+#### 1. MainForm Docking Architecture
 
 **Current Coverage:**
 
@@ -126,13 +126,12 @@ C# MCP execution revealed 3 integration issues:
 
 **Recommended Additional Tests:**
 
-- MDI child form lifecycle (open/close/activate)
-- Multiple child forms management
-- TabbedMDIManager integration
-- DockingManager panel coordination
-- Menu state updates based on active child
+- Panel lifecycle (show/hide/activate)
+- Multiple panels management
+- DockingManager integration
+- Menu state updates based on active panel
 
-**Rationale:** Core UI pattern; failures affect entire user experience. The defensive MDI pattern (checking `IsMdiContainer` before setting `MdiParent`) must be validated across all child forms.
+**Rationale:** Core UI pattern; failures affect entire user experience. The panel navigation pattern must be validated across all panels.
 
 ---
 
@@ -237,7 +236,7 @@ C# MCP execution revealed 3 integration issues:
 
 - All tabs present and accessible (Home, Budget, Accounts, Reports, Settings)
 - Command execution from ribbon buttons
-- Contextual tabs appear correctly based on active MDI child
+- Contextual tabs appear correctly based on active panel
 - Keyboard shortcuts work (Alt+H, etc.)
 - Disabled state reflects user permissions
 
@@ -267,49 +266,47 @@ C# MCP execution revealed 3 integration issues:
 
 ## Test Code Templates
 
-### Template 1: MDI Child Form Tests
+### Template 1: Panel Tests
 
 ```csharp
 using Xunit;
 using Moq;
 using System.Windows.Forms;
 using WileyWidget.WinForms;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms;
 
-public class MdiChildFormTests
+public class PanelTests
 {
     [Fact]
-    public void ChildForm_ShouldSetMdiParent_WhenIsMdiContainerIsTrue()
+    public void Panel_ShouldBeShown_WhenNavigationServiceCalled()
     {
         // Arrange
         var mockServiceProvider = new Mock<IServiceProvider>();
-        var mainForm = new MainForm(mockServiceProvider.Object)
-        {
-            IsMdiContainer = true
-        };
+        var mockNavigation = new Mock<IPanelNavigationService>();
+        var mainForm = new MainForm(mockServiceProvider.Object);
 
         // Act
-        var childForm = new SettingsForm(mainForm);
+        mockNavigation.Object.ShowPanel("Settings");
 
         // Assert
-        Assert.NotNull(childForm.MdiParent);
-        Assert.Equal(mainForm, childForm.MdiParent);
+        mockNavigation.Verify(n => n.ShowPanel("Settings"), Times.Once);
     }
 
     [Fact]
-    public void ChildForm_ShouldNotThrow_WhenIsMdiContainerIsFalse()
+    public void Panel_ShouldBeHidden_WhenNavigationServiceCalled()
     {
         // Arrange
         var mockServiceProvider = new Mock<IServiceProvider>();
-        var mainForm = new MainForm(mockServiceProvider.Object)
-        {
-            IsMdiContainer = false
-        };
+        var mockNavigation = new Mock<IPanelNavigationService>();
+        var mainForm = new MainForm(mockServiceProvider.Object);
 
-        // Act & Assert - should not throw ArgumentException
-        var exception = Record.Exception(() => new SettingsForm(mainForm));
-        Assert.Null(exception);
+        // Act
+        mockNavigation.Object.HidePanel("Settings");
+
+        // Assert
+        mockNavigation.Verify(n => n.HidePanel("Settings"), Times.Once);
     }
 }
 ```
@@ -447,11 +444,11 @@ public class SyncfusionThemingTests
 **Timeline:** Week 1-2
 **Focus:** Core infrastructure validation
 
-1. **MDI Architecture Tests**
-   - Implement `MdiChildFormTests` for all child forms (SettingsForm, AccountsForm, BudgetForm, etc.)
-   - Validate `IsMdiContainer` defensive pattern
-   - Test `TabbedMDIManager` integration
-   - Verify `DockingManager` panel coordination
+1. **Docking Architecture Tests**
+   - Implement `PanelTests` for all panels
+   - Validate panel navigation pattern
+   - Test `DockingManager` integration
+   - Verify panel lifecycle
 
 2. **Syncfusion Theme Management Tests**
    - Implement `SyncfusionThemingTests`
@@ -468,7 +465,7 @@ public class SyncfusionThemingTests
 **Acceptance Criteria:**
 
 - All HIGH priority tests passing
-- No ArgumentException on MDI child instantiation
+- No exceptions on panel instantiation
 - Theme applied uniformly across all forms
 - DI container validates at startup
 
@@ -659,7 +656,7 @@ dotnet add package Bogus --version 35.0.1  # For generating test data
 
 ✅ **Phase 1 (Foundation)**
 
-- [ ] All child forms have MDI lifecycle tests
+- [ ] All panels have lifecycle tests
 - [ ] Theme management validated across all Syncfusion controls
 - [ ] DI container resolves all services without errors
 - [ ] Zero HIGH priority test gaps
@@ -688,28 +685,26 @@ dotnet add package Bogus --version 35.0.1  # For generating test data
 
 ## Notes and Considerations
 
-### WinForms MDI Architecture Requirements
+### WinForms Docking Architecture Requirements
 
-Per project guidelines in `.vscode/copilot-instructions.md`:
+Per project guidelines:
 
-> **MANDATORY Pattern for All Child Forms**
+> **MANDATORY Pattern for All Panels**
 >
-> All child forms MUST accept `MainForm` as a constructor parameter and check `IsMdiContainer` before setting `MdiParent`:
+> All panels MUST be UserControls resolved via DI and managed by PanelNavigationService:
 >
 > ```csharp
-> public MyChildForm(MainForm mainForm)
+> public class MyPanel : UserControl
 > {
->     InitializeComponent();
->
->     // CRITICAL: Check IsMdiContainer before setting MdiParent
->     if (mainForm.IsMdiContainer)
+>     public MyPanel()
 >     {
->         MdiParent = mainForm;
+>         InitializeComponent();
+>         // Panel is docked by DockingManager via PanelNavigationService
 >     }
 > }
 > ```
 
-This defensive pattern is essential for test compatibility and production safety.
+This pattern ensures panels are properly managed and themed.
 
 ### Syncfusion Theme Management
 
@@ -753,7 +748,7 @@ Ensure all theme tests reference official Syncfusion documentation for `SfSkinMa
 
 ### ✅ Tests Created (Phase 1 - HIGH Priority)
 
-1. **MdiChildFormTests.cs** - 5 tests covering defensive MDI pattern
+1. **PanelTests.cs** - 5 tests covering panel navigation pattern
 2. **SyncfusionThemingTests.cs** - 6 tests for theme propagation
 3. **ServiceRegistrationTests.cs** - 8 tests for DI container validation
 
@@ -794,7 +789,7 @@ Ensure all theme tests reference official Syncfusion documentation for `SfSkinMa
 #### Test Analysis Metrics
 
 - **Total Tests Implemented:** 19
-- **Tests Requiring Mock Configuration:** 5 (MDI tests)
+- **Tests Requiring Mock Configuration:** 5 (panel tests)
 - **Tests Requiring DbContext:** 3 (ViewModel tests)
 - **Ready-to-Run Tests:** 11 (Configuration, Singleton/Transient, Theme loading)
 

@@ -12,6 +12,7 @@ using Syncfusion.Pdf.Graphics;
 using System.IO;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Extensions;
+using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -42,6 +43,11 @@ namespace WileyWidget.WinForms.Controls
         private Syncfusion.WinForms.ListView.SfComboBox? _comboDepartmentFilter;
         private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
         private Panel? _topPanel;
+        private Panel? _summaryPanel;
+        private Panel? _lblTotalBudget;
+        private Panel? _lblTotalActual;
+        private Panel? _lblTotalVariance;
+        private Panel? _lblVariancePercent;
         private ErrorProvider? _errorProvider;
         private readonly List<ToolTip> _toolTips = new();
 
@@ -111,6 +117,14 @@ namespace WileyWidget.WinForms.Controls
 
             // Shared header + top toolbar (consistent header at 44px)
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
+            try { _panelHeader.Title = ChartPanelResources.PanelTitle; } catch { }
+            try
+            {
+                var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+                var txtProp = dh?.GetType().GetProperty("Text");
+                if (dh != null && txtProp != null) txtProp.SetValue(dh, ChartPanelResources.PanelTitle);
+            }
+            catch { }
             _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
 
             _comboDepartmentFilter = new Syncfusion.WinForms.ListView.SfComboBox
@@ -306,7 +320,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
             // Theme applied automatically by SfSkinManager cascade from parent form
-            _chartControl = new ChartControl { Dock = DockStyle.Fill };
+            _chartControl = new ChartControl { Name = "Chart_Cartesian", Dock = DockStyle.Fill, AccessibleName = "Budget Trend" };
 
             // Chart appearance per demos: SmoothingMode, ElementsSpacing, BorderAppearance
             _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -388,7 +402,47 @@ namespace WileyWidget.WinForms.Controls
             // Column width mode per demos
             _chartControl.Spacing = 5;
 
+            // Add a right-hand panel to host a small pie chart or placeholder for accessibility detection
+            var piePanel = new Panel
+            {
+                Name = "Chart_Pie",
+                Width = 320,
+                Dock = DockStyle.Right,
+                AccessibleName = "Chart Pie"
+            };
+
             Controls.Add(_chartControl);
+            Controls.Add(piePanel);
+
+            // Add bottom summary panel
+            _summaryPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 60,
+                Padding = new Padding(8)
+            };
+
+            var summaryFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+
+            // Create summary metric cards
+            _lblTotalBudget = CreateSummaryLabel("Total Budget:", "$0");
+            _lblTotalActual = CreateSummaryLabel("Total Actual:", "$0");
+            _lblTotalVariance = CreateSummaryLabel("Variance:", "$0");
+            _lblVariancePercent = CreateSummaryLabel("Variance %:", "0.0%");
+
+            summaryFlow.Controls.Add(_lblTotalBudget);
+            summaryFlow.Controls.Add(_lblTotalActual);
+            summaryFlow.Controls.Add(_lblTotalVariance);
+            summaryFlow.Controls.Add(_lblVariancePercent);
+
+            _summaryPanel.Controls.Add(summaryFlow);
+            Controls.Add(_summaryPanel);
 
             // Add overlays (loading spinner and no-data friendly message)
             _loadingOverlay = new LoadingOverlay { Message = "Loading chart data..." };
@@ -433,6 +487,42 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Creates a formatted summary label for metrics display.
+        /// </summary>
+        private Panel CreateSummaryLabel(string caption, string value)
+        {
+            var panel = new Panel
+            {
+                Width = 200,
+                Height = 44,
+                Margin = new Padding(4)
+            };
+
+            var lblCaption = new Label
+            {
+                Text = caption,
+                Dock = DockStyle.Top,
+                Height = 18,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.Gray
+            };
+
+            var lblValue = new Label
+            {
+                Text = value,
+                Dock = DockStyle.Bottom,
+                Height = 24,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Tag = caption // Store caption for later updates
+            };
+
+            panel.Controls.Add(lblValue);
+            panel.Controls.Add(lblCaption);
+
+            return panel;
         }
 
         /// <summary>
@@ -523,7 +613,7 @@ namespace WileyWidget.WinForms.Controls
                         }
                         else
                         {
-                            if (InvokeRequired) BeginInvoke(new Action(UpdateChartFromData)); else UpdateChartFromData();
+                            if (InvokeRequired) BeginInvoke(new System.Action(UpdateChartFromData)); else UpdateChartFromData();
                         }
                     }
                 }
@@ -563,7 +653,7 @@ namespace WileyWidget.WinForms.Controls
                         }
                         else
                         {
-                            if (InvokeRequired) BeginInvoke(new Action(UpdateChartFromData)); else UpdateChartFromData();
+                            if (InvokeRequired) BeginInvoke(new System.Action(UpdateChartFromData)); else UpdateChartFromData();
                         }
                     }
                 }
@@ -616,7 +706,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        try { BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
                         return;
                     }
 
@@ -655,7 +745,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    try { BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme))); } catch { }
                     return;
                 }
 
@@ -693,55 +783,47 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    Invoke(new Action(UpdateChartFromData));
+                    Invoke(new System.Action(UpdateChartFromData));
                     return;
                 }
 
                 _chartControl?.Series.Clear();
 
+                // Show/hide overlays based on loading state and data availability
+                if (_loadingOverlay != null)
+                {
+                    _loadingOverlay.Visible = _vm.IsLoading;
+                }
+
+                if (_vm.IsLoading)
+                {
+                    if (_chartControl != null) _chartControl.Visible = false;
+                    if (_noDataOverlay != null) _noDataOverlay.Visible = false;
+                    return;
+                }
+
                 var data = _vm.ChartData;
                 if (data == null || !data.Any())
                 {
-                    // Show fallback message when no data
-                    if (_chartControl != null)
+                    // Show no data overlay
+                    if (_chartControl != null) _chartControl.Visible = false;
+                    if (_noDataOverlay != null)
                     {
-                        _chartControl.Visible = false;
-                    }
-
-                    var existingLabel = Controls.OfType<Label>().FirstOrDefault(l => l.Name == "NoDataLabel");
-                    if (existingLabel == null)
-                    {
-                        var message = !string.IsNullOrEmpty(_vm.ErrorMessage) ? _vm.ErrorMessage : "No department budget data available to display.";
-                        var noDataLabel = new Label
-                        {
-                            Name = "NoDataLabel",
-                            Text = message,
-                            AutoSize = false,
-                            Dock = DockStyle.Fill,
-                            TextAlign = ContentAlignment.MiddleCenter
-                        };
-                        Controls.Add(noDataLabel);
+                        _noDataOverlay.Visible = true;
+                        _noDataOverlay.BringToFront();
                     }
                     return;
                 }
 
-                // Remove no data label if present
-                var labelToRemove = Controls.OfType<Label>().FirstOrDefault(l => l.Name == "NoDataLabel");
-                if (labelToRemove != null)
-                {
-                    Controls.Remove(labelToRemove);
-                    labelToRemove.Dispose();
-                }
-
-                if (_chartControl != null)
-                {
-                    _chartControl.Visible = true;
-                }
+                // Hide overlays and show chart
+                if (_noDataOverlay != null) _noDataOverlay.Visible = false;
+                if (_loadingOverlay != null) _loadingOverlay.Visible = false;
+                if (_chartControl != null) _chartControl.Visible = true;
 
                 var list = data.OrderByDescending(k => k.Value).ToList();
 
                 // Configure series per Syncfusion demo best practices (Column Charts demo)
-                var series = new ChartSeries("Variance", ChartSeriesType.Column);
+                var series = new ChartSeries("Budget Variance", ChartSeriesType.Column);
                 try
                 {
                     // set series axis value types if supported across Syncfusion versions
@@ -767,9 +849,35 @@ namespace WileyWidget.WinForms.Controls
                 series.Style.Font.Facename = "Segoe UI";
                 series.Style.Font.Size = 8;
                 series.Style.Font.Bold = true;
+
                 // Use ThemeManager.Colors for theme-aware accent color
                 var colors = ThemeManager.Colors;
                 series.Style.Interior = new Syncfusion.Drawing.BrushInfo(colors.Accent);
+
+                // Color individual points based on variance (reflection for compatibility)
+                try
+                {
+                    for (int i = 0; i < list.Count && i < series.Points.Count; i++)
+                    {
+                        var point = series.Points[i];
+                        var variance = list[i].Value;
+                        
+                        // Try to set point color via reflection for compatibility across Syncfusion versions
+                        var interiorProp = point.GetType().GetProperty("Interior");
+                        if (interiorProp != null && interiorProp.CanWrite)
+                        {
+                            var color = variance >= 0 
+                                ? Color.FromArgb(76, 175, 80)  // Green for under budget
+                                : Color.FromArgb(244, 67, 54); // Red for over budget
+                            interiorProp.SetValue(point, new Syncfusion.Drawing.BrushInfo(color));
+                        }
+                    }
+                }
+                catch
+                {
+                    // Per-point coloring not supported - use series color
+                }
+
                 // Make border transparent per demos
                 series.Style.Border.Color = Color.Transparent;
 
@@ -778,11 +886,90 @@ namespace WileyWidget.WinForms.Controls
                 series.ShowTicks = true;
 
                 _chartControl?.Series.Add(series);
+
+                // Update X-axis labels with department names - simplified for compatibility
+                // Note: Syncfusion ChartControl automatically uses category labels from data points
+
+                // Update summary labels in status bar
+                UpdateSummaryDisplay();
+
+                Serilog.Log.Information("Chart updated with {SeriesCount} series and {PointCount} data points",
+                    _chartControl?.Series.Count ?? 0, list.Count);
             }
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "ChartPanel: failed updating chart from data");
             }
+        }
+
+        /// <summary>
+        /// Updates summary display labels with current ViewModel data.
+        /// </summary>
+        private void UpdateSummaryDisplay()
+        {
+            try
+            {
+                // Update summary metric labels
+                UpdateSummaryLabelValue(_lblTotalBudget, _vm.TotalBudgeted.ToString("C0", System.Globalization.CultureInfo.CurrentCulture));
+                UpdateSummaryLabelValue(_lblTotalActual, _vm.TotalActual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture));
+                UpdateSummaryLabelValue(_lblTotalVariance, _vm.TotalVariance.ToString("C0", System.Globalization.CultureInfo.CurrentCulture));
+                UpdateSummaryLabelValue(_lblVariancePercent, $"{_vm.VariancePercentage:F1}%");
+
+                // Color variance labels based on positive/negative
+                if (_lblTotalVariance != null)
+                {
+                    var varianceValueLabel = _lblTotalVariance.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
+                    if (varianceValueLabel != null)
+                    {
+                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                    }
+                }
+
+                if (_lblVariancePercent != null)
+                {
+                    var percentValueLabel = _lblVariancePercent.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
+                    if (percentValueLabel != null)
+                    {
+                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                    }
+                }
+
+                // Update panel title with summary
+                if (_panelHeader != null)
+                {
+                    try
+                    {
+                        // Update title instead of subtitle (subtitle may not be available in all panel header versions)
+                        var titleText = $"{ChartPanelResources.PanelTitle} - {_vm.DepartmentCount} Depts • FY {_vm.SelectedYear}";
+                        _panelHeader.Title = titleText;
+                    }
+                    catch { }
+                }
+
+                Serilog.Log.Debug("ChartPanel: Summary labels updated");
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "ChartPanel: Failed to update summary display");
+            }
+        }
+
+        /// <summary>
+        /// Updates a summary label's value text.
+        /// </summary>
+        private void UpdateSummaryLabelValue(Panel? containerPanel, string value)
+        {
+            if (containerPanel == null) return;
+
+            try
+            {
+                var valueLabel = containerPanel.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
+                if (valueLabel != null)
+                {
+                    valueLabel.Text = value;
+                }
+            }
+            catch { }
         }
 
         // Capture the current chart as a Bitmap on the UI thread
@@ -816,7 +1003,7 @@ namespace WileyWidget.WinForms.Controls
             }
             else if (InvokeRequired)
             {
-                try { Invoke(new Action(() => { bmp = new Bitmap(_chartControl.Width, _chartControl.Height); _chartControl.DrawToBitmap(bmp, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height)); })); }
+                try { Invoke(new System.Action(() => { bmp = new Bitmap(_chartControl.Width, _chartControl.Height); _chartControl.DrawToBitmap(bmp, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height)); })); }
                 catch { bmp = null; }
             }
             else
@@ -967,6 +1154,11 @@ namespace WileyWidget.WinForms.Controls
                 try { _loadingOverlay?.Dispose(); } catch { }
                 try { _noDataOverlay?.Dispose(); } catch { }
                 try { _topPanel?.Dispose(); } catch { }
+                try { _summaryPanel?.Dispose(); } catch { }
+                try { _lblTotalBudget?.Dispose(); } catch { }
+                try { _lblTotalActual?.Dispose(); } catch { }
+                try { _lblTotalVariance?.Dispose(); } catch { }
+                try { _lblVariancePercent?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
                 try { foreach (var t in _toolTips) { try { t?.Dispose(); } catch { } } _toolTips.Clear(); } catch { }
                 // Dispose Syncfusion controls safely

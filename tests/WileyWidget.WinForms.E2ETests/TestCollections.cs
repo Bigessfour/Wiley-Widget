@@ -9,10 +9,10 @@ namespace WileyWidget.WinForms.E2ETests;
 /// </summary>
 
 /// <summary>
-/// Standard UI tests collection - runs with MDI mode disabled for faster, more stable tests.
+/// Standard UI tests collection - runs with panels for stable tests.
 /// Used by AllViewsUITests, AccountsFormE2ETests, CustomersFormE2ETests, etc.
 /// </summary>
-[CollectionDefinition("UI Tests")]
+[CollectionDefinition("UI Tests", DisableParallelization = true)]
 public class UiTestsCollection : ICollectionFixture<UiTestSessionFixture>
 {
     // This class has no code, and is never instantiated.
@@ -20,12 +20,12 @@ public class UiTestsCollection : ICollectionFixture<UiTestSessionFixture>
 }
 
 /// <summary>
-/// MDI-specific tests collection - runs with MDI mode enabled.
-/// Used by MdiTests to validate tabbed MDI, docking, and MDI child form scenarios.
+/// Panel-specific tests collection - runs with panels enabled.
+/// Used by PanelTests to validate docking and panel scenarios.
 /// Isolated from standard UI tests to avoid test environment conflicts.
 /// </summary>
-[CollectionDefinition("MDI Tests")]
-public class MdiTestsCollection : ICollectionFixture<UiTestSessionFixture>
+[CollectionDefinition("Panel Tests", DisableParallelization = true)]
+public class PanelTestsCollection : ICollectionFixture<UiTestSessionFixture>
 {
     // This class has no code, and is never instantiated.
     // It serves as a marker for Xunit to group tests and shares UiTestSessionFixture cleanup.

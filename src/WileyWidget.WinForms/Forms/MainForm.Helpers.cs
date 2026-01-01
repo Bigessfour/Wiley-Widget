@@ -13,20 +13,27 @@ namespace WileyWidget.WinForms.Forms
 {
     /// <summary>
     /// MainForm helper methods for grid operations, export, and panel navigation.
-    /// Cleaned up from MainForm.Extensions.cs - removed all MDI dependencies.
+    /// Provides utility methods for working with Syncfusion SfDataGrid controls and panel management.
     /// </summary>
     public partial class MainForm
     {
         /// <summary>
-        /// Minimal bridge for panels expecting ShowPanel. Delegates to PanelNavigationService.
+        /// Shows a panel of specified type with the given name.
+        /// Delegates to PanelNavigationService for centralized panel management.
         /// </summary>
+        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl)</typeparam>
+        /// <param name="panelName">Name identifier for the panel</param>
         public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(panelName)) return;
+                if (string.IsNullOrWhiteSpace(panelName))
+                {
+                    _logger?.LogWarning("ShowPanel called with null or empty panelName");
+                    return;
+                }
 
-                // Delegate to PanelNavigationService
+                // Delegate to PanelNavigationService for consistent panel management
                 _panelNavigator?.ShowPanel<TPanel>(panelName);
             }
             catch (Exception ex)
@@ -35,6 +42,11 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Gets the currently active or focused SfDataGrid control.
+        /// Searches through the control hierarchy to find a visible grid.
+        /// </summary>
+        /// <returns>The active SfDataGrid, or null if none found</returns>
         private SfDataGrid? GetActiveGrid()
         {
             try
@@ -42,6 +54,7 @@ namespace WileyWidget.WinForms.Forms
                 // Defensive: check for null and disposed state
                 if (IsDisposed || Controls == null) return null;
 
+                // Check if active control is a grid
                 if (ActiveControl is SfDataGrid ac && !ac.IsDisposed)
                     return ac;
 
@@ -61,12 +74,18 @@ namespace WileyWidget.WinForms.Forms
 
                 return null;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger?.LogDebug(ex, "GetActiveGrid failed");
                 return null;
             }
         }
 
+        /// <summary>
+        /// Recursively searches for the currently focused control in a control collection.
+        /// </summary>
+        /// <param name="controls">Collection of controls to search</param>
+        /// <returns>The focused control, or null if none found</returns>
         private Control? FindFocusedControl(Control.ControlCollection? controls)
         {
             if (controls == null) return null;
@@ -82,22 +101,38 @@ namespace WileyWidget.WinForms.Forms
                     var nested = FindFocusedControl(c.Controls);
                     if (nested != null) return nested;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "FindFocusedControl iteration failed for control {ControlName}", c?.Name ?? "<unknown>");
+                }
             }
             return null;
         }
 
+        /// <summary>
+        /// Sorts the active grid by its first sortable column.
+        /// </summary>
+        /// <param name="descending">If true, sorts in descending order; otherwise ascending</param>
         private void SortActiveGridByFirstSortableColumn(bool descending)
         {
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null || grid.IsDisposed) return;
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("SortActiveGrid: No active grid found");
+                    return;
+                }
 
                 var col = grid.Columns?.OfType<GridColumnBase>().FirstOrDefault(c => c != null && c.AllowSorting);
-                if (col == null || string.IsNullOrWhiteSpace(col.MappingName)) return;
+                if (col == null || string.IsNullOrWhiteSpace(col.MappingName))
+                {
+                    _logger?.LogDebug("SortActiveGrid: No sortable column found");
+                    return;
+                }
 
                 grid.SortByColumn(col.MappingName, descending);
+                _logger?.LogDebug("Sorted grid by column {Column} ({Direction})", col.MappingName, descending ? "desc" : "asc");
             }
             catch (Exception ex)
             {
@@ -105,23 +140,48 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Applies a test filter to the active grid based on first row data.
+        /// Useful for UI testing and demonstration purposes.
+        /// </summary>
         private void ApplyTestFilterToActiveGrid()
         {
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null || grid.IsDisposed) return;
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("ApplyTestFilter: No active grid found");
+                    return;
+                }
 
                 // Try to pick a reasonable column and value to filter on.
                 // Use first column with a non-null first-row value and filter by a substring of it.
-                if (!(grid.DataSource is IEnumerable src)) return;
+                if (!(grid.DataSource is IEnumerable src))
+                {
+                    _logger?.LogDebug("ApplyTestFilter: Grid has no data source");
+                    return;
+                }
+
                 var items = src.Cast<object?>().ToList();
-                if (items.Count == 0) return;
+                if (items.Count == 0)
+                {
+                    _logger?.LogDebug("ApplyTestFilter: Grid data source is empty");
+                    return;
+                }
 
                 var first = items.FirstOrDefault(i => i != null);
-                if (first == null) return;
+                if (first == null)
+                {
+                    _logger?.LogDebug("ApplyTestFilter: No non-null items in data source");
+                    return;
+                }
 
-                if (grid.Columns == null) return;
+                if (grid.Columns == null)
+                {
+                    _logger?.LogDebug("ApplyTestFilter: Grid has no columns");
+                    return;
+                }
 
                 foreach (var col in grid.Columns.OfType<GridColumnBase>())
                 {
@@ -137,10 +197,16 @@ namespace WileyWidget.WinForms.Forms
                         // Take a short substring to increase chance of matching multiple rows
                         var substr = val.Length <= 4 ? val : val.Substring(0, 4);
                         grid.ApplyTextContainsFilter(col.MappingName, substr);
+                        _logger?.LogDebug("Applied test filter to column {Column} with value '{Value}'", col.MappingName, substr);
                         return;
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "ApplyTestFilter: Failed to process column {Column}", col?.MappingName ?? "<unknown>");
+                    }
                 }
+
+                _logger?.LogDebug("ApplyTestFilter: No suitable column found for filtering");
             }
             catch (Exception ex)
             {
@@ -148,14 +214,22 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Clears all filters from the active grid.
+        /// </summary>
         private void ClearActiveGridFilter()
         {
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null || grid.IsDisposed) return;
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("ClearActiveGridFilter: No active grid found");
+                    return;
+                }
 
                 grid.ClearFilters();
+                _logger?.LogDebug("Cleared filters from active grid");
             }
             catch (Exception ex)
             {
@@ -163,13 +237,24 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Exports the active grid to an Excel file.
+        /// Shows a SaveFileDialog for user to choose file location.
+        /// In UI test harness mode, creates a fake Excel file for testing.
+        /// </summary>
+        /// <returns>Task representing the async export operation</returns>
         private async Task ExportActiveGridToExcel()
         {
             try
             {
                 var grid = GetActiveGrid();
-                if (grid == null || grid.IsDisposed) return;
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("ExportActiveGridToExcel: No active grid found");
+                    return;
+                }
 
+                // Test harness mode: create fake Excel file
                 if (_uiConfig.IsUiTestHarness)
                 {
                     using var uiTestDialog = new SaveFileDialog
@@ -192,6 +277,7 @@ namespace WileyWidget.WinForms.Forms
                                 Directory.CreateDirectory(dir);
                             }
                             await File.WriteAllTextAsync(path, "%XLSX-FAKE\n");
+                            _logger?.LogDebug("Created test harness fake Excel file: {Path}", path);
                         }
                         catch (Exception ex)
                         {
@@ -216,6 +302,7 @@ namespace WileyWidget.WinForms.Forms
                     {
                         if (string.IsNullOrWhiteSpace(save.FileName)) return;
                         await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, save.FileName);
+                        _logger?.LogInformation("Exported grid to Excel: {Path}", save.FileName);
                     }
                     catch (Exception ex)
                     {

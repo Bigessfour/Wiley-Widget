@@ -18,7 +18,7 @@ namespace WileyWidget.WinForms.E2ETests
     /// </summary>
     [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Process disposed in Cleanup.")]
     [Collection("UI Tests")]
-    public sealed class AccountsFormE2ETests
+    public sealed class AccountsFormE2ETests : IDisposable
     {
         private Process? _testProcess;
         private UIA3Automation? _automation;
@@ -28,7 +28,7 @@ namespace WileyWidget.WinForms.E2ETests
             // Each test gets its own app instance
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_Opens_And_Displays_Grid()
         {
@@ -53,7 +53,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_LoadButton_LoadsAccounts()
         {
@@ -80,7 +80,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_FundFilter_IsPopulated()
         {
@@ -106,7 +106,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_ApplyFilters_Button_Exists()
         {
@@ -128,7 +128,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_EditToggle_ChangesGridEditability()
         {
@@ -157,7 +157,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_DataGrid_HasExpectedColumns()
         {
@@ -185,7 +185,7 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void AccountsForm_StatusBar_ShowsTotalCount()
         {
@@ -217,7 +217,7 @@ namespace WileyWidget.WinForms.E2ETests
             Cleanup();
 
             var exePath = TestAppHelper.GetWileyWidgetExePath();
-            var env = TestAppHelper.BuildTestEnvironment(isTestHarness: true, useMdiMode: true, useTabbedMdi: true);
+            var env = TestAppHelper.BuildTestEnvironment(isTestHarness: true);
 
             _testProcess = TestAppHelper.LaunchApp(exePath, env);
             _automation = new UIA3Automation();
@@ -236,7 +236,12 @@ namespace WileyWidget.WinForms.E2ETests
                         // Ensure window is actually available before returning
                         if (window != null && window.IsAvailable)
                         {
-                            System.Threading.Thread.Sleep(1000); // Extra stabilization time
+                            // Wait for window to stabilize
+                            var sw = System.Diagnostics.Stopwatch.StartNew();
+                            while (sw.ElapsedMilliseconds < 1000 && window.IsAvailable)
+                            {
+                                try { System.Windows.Forms.Application.DoEvents(); } catch { }
+                            }
                             return window;
                         }
                         return null;
@@ -299,6 +304,17 @@ namespace WileyWidget.WinForms.E2ETests
                 return false;
             }
             return true;
+        }
+
+        public void Dispose()
+        {
+            Cleanup();
+            // Kill any lingering WileyWidget processes
+            var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+            foreach (var p in processes)
+            {
+                try { p.Kill(); } catch { }
+            }
         }
     }
 }

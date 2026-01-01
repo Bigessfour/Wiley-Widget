@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
@@ -25,30 +27,43 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     // UI Controls
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
+    private LoadingOverlay? _chartLoadingOverlay;
     private NoDataOverlay? _noDataOverlay;
     private Panel? _filterPanel;
     private SfDataGrid? _auditGrid;
+    private SplitContainer? _mainSplit;
+    private Panel? _chartHostPanel;
+    private ChartControl? _chartControl;
     private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
     private Syncfusion.WinForms.Controls.SfButton? _btnExportCsv;
+    private Syncfusion.WinForms.Controls.SfButton? _btnUpdateChart;
     private CheckBox? _chkAutoRefresh;
     private DateTimePicker? _dtpStartDate;
     private DateTimePicker? _dtpEndDate;
     private Syncfusion.WinForms.ListView.SfComboBox? _cmbActionType;
     private Syncfusion.WinForms.ListView.SfComboBox? _cmbUser;
+    private Syncfusion.WinForms.ListView.SfComboBox? _cmbChartGroupBy;
+    private Label? _lblChartSummary;
+
+    // Auto-refresh timer
+    private System.Windows.Forms.Timer? _autoRefreshTimer;
 
     // Event handlers for cleanup
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _entriesCollectionChangedHandler;
+    private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _chartDataCollectionChangedHandler;
     private EventHandler<AppTheme>? _themeChangedHandler;
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _btnRefreshClickHandler;
     private EventHandler? _btnExportCsvClickHandler;
+    private EventHandler? _btnUpdateChartClickHandler;
     private EventHandler? _chkAutoRefreshCheckedChangedHandler;
     private EventHandler? _dtpStartDateValueChangedHandler;
     private EventHandler? _dtpEndDateValueChangedHandler;
     private EventHandler? _cmbActionTypeSelectedIndexChangedHandler;
     private EventHandler? _cmbUserSelectedIndexChangedHandler;
+    private EventHandler? _cmbChartGroupBySelectedIndexChangedHandler;
 
     /// <summary>
     /// Initializes a new instance with required DI dependencies.
@@ -102,7 +117,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _filterPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 80,
+            Height = 120,
             Padding = new Padding(8),
             AccessibleName = "Audit log filters"
         };
@@ -216,9 +231,82 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.Controls.Add(_btnExportCsv, 5, 0);
 
         _filterPanel.Controls.Add(filterTable);
+
+        // Chart options toolbar
+        var chartOptionsFlow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 36,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            AccessibleName = "Chart options flow"
+        };
+
+        var lblChartGroup = new Label
+        {
+            Text = "Chart Period:",
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(8, 8, 8, 8)
+        };
+
+        _cmbChartGroupBy = new Syncfusion.WinForms.ListView.SfComboBox
+        {
+            Width = 120,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            AllowNull = false,
+            Watermark = "Group",
+            AccessibleName = "Chart grouping",
+            AccessibleDescription = "Select chart grouping period (Day, Week, Month)"
+        };
+        _cmbChartGroupBy.DataSource = Enum.GetNames(typeof(AuditLogViewModel.ChartGroupingPeriod));
+        _cmbChartGroupBySelectedIndexChangedHandler = (s, e) =>
+        {
+            try
+            {
+                if (ViewModel != null && _cmbChartGroupBy?.SelectedItem?.ToString() is string sVal)
+                {
+                    if (Enum.TryParse<AuditLogViewModel.ChartGroupingPeriod>(sVal, out var group))
+                    {
+                        ViewModel.ChartGrouping = group;
+                        _ = ViewModel.LoadChartDataAsync();
+                    }
+                }
+            }
+            catch { }
+        };
+        _cmbChartGroupBy.SelectedIndexChanged += _cmbChartGroupBySelectedIndexChangedHandler;
+
+        _btnUpdateChart = new Syncfusion.WinForms.Controls.SfButton
+        {
+            Text = "Update Chart",
+            Width = 100,
+            Height = 28,
+            AccessibleName = "Update chart",
+            AccessibleDescription = "Refresh chart with current filters"
+        };
+        _btnUpdateChartClickHandler = (s, e) => _ = ViewModel?.LoadChartDataAsync();
+        _btnUpdateChart.Click += _btnUpdateChartClickHandler;
+
+        chartOptionsFlow.Controls.Add(lblChartGroup);
+        chartOptionsFlow.Controls.Add(_cmbChartGroupBy);
+        chartOptionsFlow.Controls.Add(_btnUpdateChart);
+
+        _filterPanel.Controls.Add(chartOptionsFlow);
         Controls.Add(_filterPanel);
 
-        // Audit grid
+        // Main split container: left grid, right chart/details
+        _mainSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            SplitterDistance = (int)(Width * 0.65),
+            Panel1MinSize = 300,
+            Panel2MinSize = 300,
+            AccessibleName = "Audit grid and chart split container"
+        };
+
+        // Audit grid (left)
         _auditGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -238,7 +326,48 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         };
 
         ConfigureGridColumns();
-        Controls.Add(_auditGrid);
+        _mainSplit.Panel1.Controls.Add(_auditGrid);
+
+        // Chart host (right)
+        _chartHostPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(8),
+            AccessibleName = "Chart host panel",
+            AccessibleDescription = "Displays chart of audit events"
+        };
+
+        _chartControl = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Audit events chart",
+            AccessibleDescription = "Chart showing counts of audit events over time"
+        };
+
+        ConfigureChartForAudit();
+
+        _chartHostPanel.Controls.Add(_chartControl);
+
+        _chartLoadingOverlay = new LoadingOverlay
+        {
+            Message = "Loading chart data...",
+            AccessibleName = "Chart loading overlay"
+        };
+        _chartHostPanel.Controls.Add(_chartLoadingOverlay);
+
+        _lblChartSummary = new Label
+        {
+            Dock = DockStyle.Bottom,
+            Height = 26,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular),
+            Padding = new Padding(6, 0, 0, 0)
+        };
+        _chartHostPanel.Controls.Add(_lblChartSummary);
+
+        _mainSplit.Panel2.Controls.Add(_chartHostPanel);
+
+        Controls.Add(_mainSplit);
 
         // Loading and no-data overlays
         _loadingOverlay = new LoadingOverlay
@@ -321,6 +450,49 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     }
 
     /// <summary>
+    /// Configures ChartControl for audit events display per Syncfusion API.
+    /// </summary>
+    private void ConfigureChartForAudit()
+    {
+        if (_chartControl == null) return;
+
+        try
+        {
+            _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            _chartControl.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
+            _chartControl.ElementsSpacing = 5;
+
+            _chartControl.PrimaryXAxis.ValueType = ChartValueType.DateTime;
+            _chartControl.PrimaryXAxis.Title = "Date";
+            _chartControl.PrimaryXAxis.Font = new System.Drawing.Font("Segoe UI", 9F);
+            _chartControl.PrimaryXAxis.LabelRotate = true;
+            _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
+            _chartControl.PrimaryXAxis.DrawGrid = true;
+
+            _chartControl.PrimaryYAxis.Title = "Events";
+            _chartControl.PrimaryYAxis.Font = new System.Drawing.Font("Segoe UI", 9F);
+
+            _chartControl.ShowToolTips = true;
+            _chartControl.ShowLegend = false;
+
+            try
+            {
+                var chartType = _chartControl.GetType();
+                var propZoom = chartType.GetProperty("EnableZooming");
+                if (propZoom != null && propZoom.CanWrite)
+                {
+                    propZoom.SetValue(_chartControl, true);
+                }
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AuditLogPanel: ConfigureChartForAudit failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Called after ViewModel is resolved from scoped service provider.
     /// Binds ViewModel data and initiates data load.
     /// </summary>
@@ -343,8 +515,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Initial UI update
         UpdateUI();
 
+        // Subscribe to ChartData collection changes
+        _chartDataCollectionChangedHandler = (s, e) => UpdateChart();
+        viewModel.ChartData.CollectionChanged += _chartDataCollectionChangedHandler;
+
+        // Initialize chart grouping selection
+        if (_cmbChartGroupBy != null)
+        {
+            try { _cmbChartGroupBy.SelectedItem = viewModel.ChartGrouping.ToString(); } catch { }
+        }
+
         // Load data asynchronously
         _ = LoadDataSafeAsync();
+        _ = viewModel.LoadChartDataAsync();
     }
 
     private void InitializeFilters()
@@ -358,13 +541,77 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _dtpStartDate!.Value = startDate;
         _dtpEndDate!.Value = endDate;
 
-        // Populate action types (common audit actions)
-        var actionTypes = new List<string> { "All", "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT" };
-        _cmbActionType!.DataSource = actionTypes;
+        ViewModel.StartDate = startDate;
+        ViewModel.EndDate = endDate;
 
-        // Populate users (would come from ViewModel in real implementation)
-        var users = new List<string> { "All", "admin", "user1", "user2" }; // Placeholder
-        _cmbUser!.DataSource = users;
+        // Populate action types dynamically from ViewModel
+        _ = PopulateActionTypesAsync();
+
+        // Populate users dynamically from ViewModel
+        _ = PopulateUsersAsync();
+
+        // Default chart grouping to Month for readability
+        try { if (_cmbChartGroupBy != null) _cmbChartGroupBy.SelectedItem = AuditLogViewModel.ChartGroupingPeriod.Month.ToString(); } catch { }
+    }
+
+    /// <summary>
+    /// Populates action type filter from ViewModel data.
+    /// </summary>
+    private async Task PopulateActionTypesAsync()
+    {
+        if (ViewModel == null || _cmbActionType == null) return;
+
+        try
+        {
+            var actionTypes = await ViewModel.GetDistinctActionTypesAsync();
+            var allActions = new List<string> { "All" };
+            allActions.AddRange(actionTypes);
+
+            if (_cmbActionType.InvokeRequired)
+            {
+                _cmbActionType.Invoke(() => _cmbActionType.DataSource = allActions);
+            }
+            else
+            {
+                _cmbActionType.DataSource = allActions;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AuditLogPanel: Failed to populate action types: {ex.Message}");
+            // Fallback to common actions
+            _cmbActionType.DataSource = new List<string> { "All", "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT" };
+        }
+    }
+
+    /// <summary>
+    /// Populates user filter from ViewModel data.
+    /// </summary>
+    private async Task PopulateUsersAsync()
+    {
+        if (ViewModel == null || _cmbUser == null) return;
+
+        try
+        {
+            var users = await ViewModel.GetDistinctUsersAsync();
+            var allUsers = new List<string> { "All" };
+            allUsers.AddRange(users);
+
+            if (_cmbUser.InvokeRequired)
+            {
+                _cmbUser.Invoke(() => _cmbUser.DataSource = allUsers);
+            }
+            else
+            {
+                _cmbUser.DataSource = allUsers;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AuditLogPanel: Failed to populate users: {ex.Message}");
+            // Fallback to placeholder
+            _cmbUser.DataSource = new List<string> { "All" };
+        }
     }
 
     private async Task LoadDataSafeAsync()
@@ -374,13 +621,14 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             if (ViewModel != null)
             {
                 await ViewModel.LoadEntriesAsync();
+                await ViewModel.LoadChartDataAsync();
             }
         }
         catch (Exception ex)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ShowError(ex)));
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -405,7 +653,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e)));
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -418,9 +666,20 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
                         _loadingOverlay.Visible = ViewModel.IsLoading;
                     break;
 
+                case nameof(ViewModel.IsChartLoading):
+                    if (_chartLoadingOverlay != null)
+                        _chartLoadingOverlay.Visible = ViewModel.IsChartLoading;
+                    break;
+
                 case nameof(ViewModel.Entries):
                     UpdateGridData();
                     UpdateNoDataOverlay();
+                    break;
+
+                case nameof(ViewModel.TotalEvents):
+                case nameof(ViewModel.PeakEvents):
+                case nameof(ViewModel.LastChartUpdated):
+                    UpdateChartSummary();
                     break;
 
                 case nameof(ViewModel.ErrorMessage):
@@ -447,13 +706,15 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         if (InvokeRequired)
         {
-            BeginInvoke(new Action(UpdateUI));
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 
         try
         {
             UpdateGridData();
+            UpdateChart();
+            UpdateChartSummary();
             UpdateNoDataOverlay();
         }
         catch (ObjectDisposedException)
@@ -482,6 +743,70 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
+    /// <summary>
+    /// Updates chart series based on ViewModel.ChartData.
+    /// </summary>
+    private void UpdateChart()
+    {
+        if (_chartControl == null || ViewModel == null) return;
+
+        try
+        {
+            _chartControl.Series.Clear();
+
+            if (!ViewModel.ChartData.Any())
+            {
+                _chartControl.Refresh();
+                return;
+            }
+
+            var colSeries = new ChartSeries("Events", ChartSeriesType.Column);
+            colSeries.Style.Border.Width = 1;
+
+            foreach (var p in ViewModel.ChartData)
+            {
+                colSeries.Points.Add(p.Period, (double)p.Count);
+            }
+
+            colSeries.PointsToolTipFormat = "{1:N0}";
+            _chartControl.Series.Add(colSeries);
+
+            // Adjust X-axis DateTime format based on grouping
+            try
+            {
+                var xAxis = _chartControl.PrimaryXAxis;
+                var propDateFormat = xAxis.GetType().GetProperty("DateTimeFormat");
+                if (propDateFormat != null && propDateFormat.CanWrite)
+                {
+                    var fmt = "yyyy-MM-dd";
+                    if (ViewModel.ChartGrouping == AuditLogViewModel.ChartGroupingPeriod.Month) fmt = "MMM yyyy";
+                    else if (ViewModel.ChartGrouping == AuditLogViewModel.ChartGroupingPeriod.Day) fmt = "MMM dd";
+                    propDateFormat.SetValue(xAxis, fmt);
+                }
+            }
+            catch { }
+
+            _chartControl.Refresh();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AuditLogPanel: UpdateChart failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Updates chart summary information shown under the chart.
+    /// </summary>
+    private void UpdateChartSummary()
+    {
+        if (_lblChartSummary == null || ViewModel == null) return;
+        try
+        {
+            _lblChartSummary.Text = $"Total: {ViewModel.TotalEvents:N0}  Peak: {ViewModel.PeakEvents:N0}  Last updated: {ViewModel.LastChartUpdated:yyyy-MM-dd HH:mm}";
+        }
+        catch { }
+    }
+
     private void UpdateNoDataOverlay()
     {
         if (_noDataOverlay == null || ViewModel == null) return;
@@ -503,6 +828,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             if (ViewModel != null)
             {
                 await ViewModel.LoadEntriesAsync();
+                await ViewModel.LoadChartDataAsync();
             }
         }
         catch (Exception ex)
@@ -528,6 +854,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
             // Trigger reload with filters
             _ = ViewModel.LoadEntriesAsync();
+            _ = ViewModel.LoadChartDataAsync();
         }
         catch (Exception ex)
         {
@@ -537,15 +864,36 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
     private void ToggleAutoRefresh()
     {
-        // Implementation for auto-refresh timer would go here
-        // For now, just a placeholder
-        if (_chkAutoRefresh?.Checked == true)
+        try
         {
-            // Start timer
+            if (_chkAutoRefresh?.Checked == true)
+            {
+                // Start timer - refresh every 30 seconds
+                if (_autoRefreshTimer == null)
+                {
+                    _autoRefreshTimer = new System.Windows.Forms.Timer
+                    {
+                        Interval = 30000 // 30 seconds
+                    };
+                    _autoRefreshTimer.Tick += async (s, e) => await RefreshDataAsync();
+                }
+
+                _autoRefreshTimer.Start();
+                Console.WriteLine("AuditLogPanel: Auto-refresh enabled (30s interval)");
+            }
+            else
+            {
+                // Stop timer
+                if (_autoRefreshTimer != null)
+                {
+                    _autoRefreshTimer.Stop();
+                    Console.WriteLine("AuditLogPanel: Auto-refresh disabled");
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Stop timer
+            Console.WriteLine($"AuditLogPanel: ToggleAutoRefresh failed: {ex.Message}");
         }
     }
 
@@ -555,20 +903,32 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             using var sfd = new SaveFileDialog
             {
-                Filter = "CSV Files|*.csv",
+                Filter = "CSV Files|*.csv|All Files|*.*",
                 DefaultExt = "csv",
-                FileName = $"audit_log_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                FileName = $"audit_log_{DateTime.Now:yyyyMMdd_HHmmss}.csv",
+                Title = "Export Audit Log to CSV"
             };
 
             if (sfd.ShowDialog() != DialogResult.OK) return;
 
-            // Export logic would go here
-            // For now, just show success message
-            MessageBox.Show($"Audit log exported to {sfd.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Use ViewModel's export command
+            if (ViewModel?.ExportToCsvCommand?.CanExecute(sfd.FileName) == true)
+            {
+                ViewModel.ExportToCsvCommand.Execute(sfd.FileName);
+                MessageBox.Show(
+                    $"Successfully exported {ViewModel.Entries.Count} audit entries to:\n{sfd.FileName}",
+                    "Export Complete",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(
+                $"Export failed: {ex.Message}",
+                "Export Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
     }
 
@@ -600,7 +960,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ApplyTheme()));
+                BeginInvoke(new System.Action(() => ApplyTheme()));
             }
             else
             {
@@ -656,6 +1016,13 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
             try
             {
+                if (ViewModel != null && _chartDataCollectionChangedHandler != null)
+                    ViewModel.ChartData.CollectionChanged -= _chartDataCollectionChangedHandler;
+            }
+            catch { }
+
+            try
+            {
                 if (_panelHeader != null)
                 {
                     if (_panelHeaderRefreshHandler != null)
@@ -669,21 +1036,41 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Unsubscribe control events
             try { if (_btnRefresh != null && _btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler; } catch { }
             try { if (_btnExportCsv != null && _btnExportCsvClickHandler != null) _btnExportCsv.Click -= _btnExportCsvClickHandler; } catch { }
+            try { if (_btnUpdateChart != null && _btnUpdateChartClickHandler != null) _btnUpdateChart.Click -= _btnUpdateChartClickHandler; } catch { }
             try { if (_chkAutoRefresh != null && _chkAutoRefreshCheckedChangedHandler != null) _chkAutoRefresh.CheckedChanged -= _chkAutoRefreshCheckedChangedHandler; } catch { }
             try { if (_dtpStartDate != null && _dtpStartDateValueChangedHandler != null) _dtpStartDate.ValueChanged -= _dtpStartDateValueChangedHandler; } catch { }
             try { if (_dtpEndDate != null && _dtpEndDateValueChangedHandler != null) _dtpEndDate.ValueChanged -= _dtpEndDateValueChangedHandler; } catch { }
             try { if (_cmbActionType != null && _cmbActionTypeSelectedIndexChangedHandler != null) _cmbActionType.SelectedIndexChanged -= _cmbActionTypeSelectedIndexChangedHandler; } catch { }
             try { if (_cmbUser != null && _cmbUserSelectedIndexChangedHandler != null) _cmbUser.SelectedIndexChanged -= _cmbUserSelectedIndexChangedHandler; } catch { }
+            try { if (_cmbChartGroupBy != null && _cmbChartGroupBySelectedIndexChangedHandler != null) _cmbChartGroupBy.SelectedIndexChanged -= _cmbChartGroupBySelectedIndexChangedHandler; } catch { }
+
+            // Stop and dispose auto-refresh timer
+            try
+            {
+                if (_autoRefreshTimer != null)
+                {
+                    _autoRefreshTimer.Stop();
+                    _autoRefreshTimer.Dispose();
+                    _autoRefreshTimer = null;
+                }
+            }
+            catch { }
 
             // Dispose controls using SafeDispose pattern
             try { _auditGrid?.SafeClearDataSource(); } catch { }
             try { _auditGrid?.SafeDispose(); } catch { }
+            try { _chartControl?.Dispose(); } catch { }
+            try { _chartHostPanel?.Dispose(); } catch { }
+            try { _mainSplit?.Dispose(); } catch { }
+            try { _lblChartSummary?.Dispose(); } catch { }
+            try { _chartLoadingOverlay?.Dispose(); } catch { }
             try { _panelHeader?.Dispose(); } catch { }
             try { _loadingOverlay?.Dispose(); } catch { }
             try { _noDataOverlay?.Dispose(); } catch { }
             try { _filterPanel?.Dispose(); } catch { }
             try { _btnRefresh?.Dispose(); } catch { }
             try { _btnExportCsv?.Dispose(); } catch { }
+            try { _btnUpdateChart?.Dispose(); } catch { }
             try { _chkAutoRefresh?.Dispose(); } catch { }
             try { _dtpStartDate?.Dispose(); } catch { }
             try { _dtpEndDate?.Dispose(); } catch { }
@@ -691,6 +1078,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             try { _cmbActionType?.SafeDispose(); } catch { }
             try { _cmbUser?.SafeClearDataSource(); } catch { }
             try { _cmbUser?.SafeDispose(); } catch { }
+            try { _cmbChartGroupBy?.SafeClearDataSource(); } catch { }
+            try { _cmbChartGroupBy?.SafeDispose(); } catch { }
         }
 
         base.Dispose(disposing);

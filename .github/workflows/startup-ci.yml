@@ -42,16 +42,31 @@ jobs:
       - name: Build WinForms project
         run: dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore
 
-      - name: Run startup-focused tests
-        run: dotnet test WileyWidget.sln --configuration Release --no-build --filter "Category=Startup"
+      - name: Run StartupOrchestrator tests (focused)
+        run: dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --filter "FullyQualifiedName~WileyWidget.WinForms.Tests.Unit.Startup.StartupOrchestratorTests"
 
-      - name: Log secret presence (no values)
+      - name: Run startup-focused tests
+        run: dotnet test WileyWidget.sln --configuration Release --filter "Category=Startup"
+
+      - name: Log secret fingerprints (masked)
         shell: pwsh
         run: |
-          $sync = [string]::IsNullOrEmpty($env:SYNCFUSION_LICENSE_KEY) ? 'absent' : 'present'
-          $xai  = [string]::IsNullOrEmpty($env:XAI_API_KEY) ? 'absent' : 'present'
-          Write-Host "SYNCFUSION_LICENSE_KEY: $sync"
-          Write-Host "XAI_API_KEY: $xai"
+          function ShortHash($s) {
+            if ([string]::IsNullOrEmpty($s)) { return '(absent)' }
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($s)
+            $hashBytes = $sha.ComputeHash($bytes)
+            $hex = -join ($hashBytes | ForEach-Object { $_.ToString('x2') })
+            return $hex.Substring(0,8)
+          }
+
+          $syncPresent = -not [string]::IsNullOrEmpty($env:SYNCFUSION_LICENSE_KEY)
+          $xaiPresent = -not [string]::IsNullOrEmpty($env:XAI_API_KEY)
+
+          Write-Host "SYNCFUSION_LICENSE_KEY present: $syncPresent"
+          Write-Host "SYNCFUSION_LICENSE_KEY hash: $(ShortHash $env:SYNCFUSION_LICENSE_KEY)"
+          Write-Host "XAI_API_KEY present: $xaiPresent"
+          Write-Host "XAI_API_KEY hash: $(ShortHash $env:XAI_API_KEY)"
 
       - name: Optional headless smoke (post-build)
         if: success()

@@ -141,46 +141,23 @@
 				"-File",
 				"${workspaceFolder}/scripts/maintenance/cleanup-dotnet-processes.ps1"
 			],
-			"group": "build",
-			"presentation": {
-				"echo": true,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared"
-			},
-			"problemMatcher": [],
-			"isBackground": false
-		},
-		{
-			"label": "WileyWidget: Clean",
-			"type": "shell",
-			"command": "dotnet",
-			"args": [
-				"clean",
-				"${workspaceFolder}/WileyWidget.sln",
-				"--verbosity",
-				"minimal"
-			],
-			"group": "build",
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
 				"focus": false,
 				"panel": "shared"
 			},
-			"problemMatcher": "$msCompile",
-			"dependsOn": "WileyWidget: Kill Old Processes"
+			"problemMatcher": []
 		},
 		{
-			"label": "WileyWidget: Build",
+			"label": "Build WileyWidget",
 			"type": "shell",
-			"command": "pwsh",
+			"command": "dotnet",
 			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/scripts/build-solution.ps1"
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--verbosity",
+				"minimal"
 			],
 			"group": {
 				"kind": "build",
@@ -205,30 +182,30 @@
 						"severity": 4,
 						"code": 5,
 						"message": 6
-					},
-					"background": {
-						"activeOnStart": false,
-						"beginsPattern": "^Build started",
-						"endsPattern": "^Build (succeeded|failed)"
-					}
-				},
-				{
-					"owner": "msbuild",
-					"source": "Build",
-					"fileLocation": ["relative", "${workspaceFolder}"],
-					"pattern": {
-						"regexp": "^(.*\\.targets)\\((\\d+),(\\d+)\\):\\s+error\\s+(MSB3073):\\s+(.*)$",
-						"file": 1,
-						"line": 2,
-						"column": 3,
-						"severity": "error",
-						"code": 4,
-						"message": 5
 					}
 				}
 			],
-			"dependsOn": ["WileyWidget: Clean", "ensure-logs-dir"]
+			"isBackground": false
 		},
+		{
+			"label": "WileyWidget: Clean",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"clean",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--verbosity",
+				"minimal"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+
 		{
 			"label": "WileyWidget: Clean & Build",
 			"type": "shell",
@@ -274,31 +251,7 @@
 			"args": [
 				"run",
 				"--project",
-				"${workspaceFolder}/src/WileyWidget/WileyWidget.csproj",
-				"--verbosity",
-				"minimal"
-			],
-			"group": "test",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": true,
-				"panel": "new"
-			},
-			"problemMatcher": [],
-			"isBackground": true,
-			"dependsOn": "WileyWidget: Clean & Build"
-		},
-		{
-			"label": "ensure-logs-dir",
-			"type": "shell",
-			"command": "pwsh",
-			"args": [
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-Command",
-				"if (-not (Test-Path -Path \"${workspaceFolder}\\logs\")) { New-Item -ItemType Directory -Path \"${workspaceFolder}\\logs\" | Out-Null }"
+				"src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
 			],
 			"presentation": {
 				"echo": true,
@@ -477,7 +430,7 @@
 				"-ExecutionPolicy",
 				"Bypass",
 				"-Command",
-				"Get-Process | Where-Object { $_.ProcessName -match 'dotnet|WileyWidget' -and $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue"
+				"Get-Process -Name dotnet,WileyWidget -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue"
 			],
 			"presentation": {
 				"echo": false,
@@ -498,7 +451,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"\"console;verbosity=detailed\"",
+				"console;verbosity=detailed",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -514,6 +467,119 @@
 				"clear": false
 			},
 			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ui",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj",
+				"--no-build",
+				"--filter",
+				"Category!=UI",
+				"--logger",
+				"trx",
+				"--logger",
+				"console;verbosity=detailed",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"dependsOn": [
+				"kill-test-processes"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ui-integration",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-build",
+				"--logger",
+				"trx",
+				"--logger",
+				"console;verbosity=detailed",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"dependsOn": [
+				"kill-test-processes"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ui-e2e",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"${workspaceFolder}/tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj",
+				"--no-build",
+				"--filter",
+				"Category=UI",
+				"--logger",
+				"trx",
+				"--logger",
+				"console;verbosity=detailed",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"dependsOn": [
+				"Build WileyWidget.WinForms",
+				"WileyWidget: Kill Old Processes",
+				"kill-test-processes"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "ui: dump-tree",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tools/dump-ui-tree.ps1"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
 			"group": "test"
 		}
 	],

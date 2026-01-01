@@ -7,6 +7,7 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using WileyWidget.WinForms.E2ETests.Helpers;
 
 namespace WileyWidget.WinForms.E2ETests
 {
@@ -19,9 +20,7 @@ namespace WileyWidget.WinForms.E2ETests
 
         public Grid_FlaUI_Tests()
         {
-            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
-            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
+            _exePath = TestAppHelper.GetWileyWidgetExePath();
         }
 
         private Window GetMainWindow()
@@ -38,7 +37,8 @@ namespace WileyWidget.WinForms.E2ETests
             _automation = new UIA3Automation();
         }
 
-        [Fact]
+        [StaFact]
+        [Trait("Category", "UI")]
         public void Dashboard_Grid_SortFilterExport_EndToEnd()
         {
             // Skip if not interactive environment
@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Sort by first column header
             dashboard.SortByColumn(fundsGrid, "Fund");
-            System.Threading.Thread.Sleep(300);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(2));
             var firstCellAfterSort = dashboard.GetCellValue(fundsGrid, 0, 0);
             Assert.False(string.IsNullOrEmpty(firstCellAfterSort));
 
@@ -71,7 +71,7 @@ namespace WileyWidget.WinForms.E2ETests
             applyFilterBtn.Result.AsButton().Invoke();
 
             // Wait for filter to apply
-            System.Threading.Thread.Sleep(500);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(2));
             var afterCount = dashboard.GetFundsRowCount();
             Assert.True(afterCount <= beforeCount, "Filtered rows should be <= original");
 
@@ -113,7 +113,18 @@ namespace WileyWidget.WinForms.E2ETests
 #pragma warning disable CA1063 // Implement IDisposable correctly - test class doesn't need full pattern
 #pragma warning disable CA1816 // Dispose should call GC.SuppressFinalize - not needed for sealed test class
             try { _automation?.Dispose(); } catch { }
-            try { _app?.Close(); } catch { }
+            try { if (_app != null && !_app.HasExited) { _app.Kill(); } } catch { }
+            try { _app?.Dispose(); } catch { }
+            // Kill any lingering WileyWidget processes, but skip when running inside the IDE test host
+            var vstestHost = Environment.GetEnvironmentVariable("VSTEST_HOST_PROCESSID");
+            if (string.IsNullOrWhiteSpace(vstestHost))
+            {
+                var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+                foreach (var p in processes)
+                {
+                    try { p.Kill(); } catch { }
+                }
+            }
 #pragma warning restore CA1816
 #pragma warning restore CA1063
         }

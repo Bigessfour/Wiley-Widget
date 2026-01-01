@@ -53,6 +53,7 @@ namespace WileyWidget.WinForms.Extensions
 #if DEBUG
                 System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfDataGrid: {ex.Message}");
 #endif
+                _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
         }
@@ -74,6 +75,7 @@ namespace WileyWidget.WinForms.Extensions
 #if DEBUG
                 System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfComboBox: {ex.Message}");
 #endif
+                _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
         }
@@ -94,6 +96,7 @@ namespace WileyWidget.WinForms.Extensions
 #if DEBUG
                 System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfListView: {ex.Message}");
 #endif
+                _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
         }
@@ -118,6 +121,7 @@ namespace WileyWidget.WinForms.Extensions
 #if DEBUG
                 System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {control.GetType().Name}: {ex.Message}");
 #endif
+                _ = ex;
                 // Silently ignore - these are non-fatal dispose quirks
             }
         }
@@ -142,6 +146,7 @@ namespace WileyWidget.WinForms.Extensions
 #if DEBUG
                 System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {component.GetType().Name}: {ex.Message}");
 #endif
+                _ = ex;
                 // Silently ignore
             }
         }

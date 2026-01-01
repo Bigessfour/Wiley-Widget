@@ -1,7 +1,7 @@
 {
   "version": 2,
   "dependencies": {
-    "net9.0-windows10.0.26100": {
+    "net9.0": {
       "IppDotNetSdkForQuickBooksApiV3": {
         "type": "Direct",
         "requested": "[14.7.0.3, )",
@@ -1126,6 +1126,15 @@
           "Serilog.Sinks.Async": "[2.1.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
           "WileyWidget.Abstractions": "[1.0.0, )"
+        }
+      },
+      "wileywidget.services.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "IppDotNetSdkForQuickBooksApiV3": "[14.7.0.3, )",
+          "Microsoft.Extensions.Logging": "[10.0.0, )",
+          "Microsoft.Extensions.Primitives": "[10.0.0, )",
+          "WileyWidget.Models": "[1.0.0, )"
         }
       },
       "FluentValidation": {

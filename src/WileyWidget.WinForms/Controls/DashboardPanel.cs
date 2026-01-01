@@ -173,6 +173,7 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             Name = "DashboardPanel";
+            AccessibleName = DashboardPanelResources.PanelTitle; // "Dashboard"
             Size = new Size(1200, 800);
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
@@ -183,10 +184,22 @@ namespace WileyWidget.WinForms.Controls
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
+            try { _panelHeader.Title = DashboardPanelResources.PanelTitle; } catch { }
+            try
+            {
+                var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+                var txtProp = dh?.GetType().GetProperty("Text");
+                if (dh != null && txtProp != null) txtProp.SetValue(dh, DashboardPanelResources.PanelTitle);
+            }
+            catch { }
             _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
-            _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
+            _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
+
+            // Load button (automation-friendly id)
+            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
+            btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDashboardCommand != null) await _vm.LoadDashboardCommand.ExecuteAsync(null); } catch { } };
             _refreshCommand = _vm.RefreshCommand;
             _btnRefresh.Click += (s, e) =>
             {
@@ -220,7 +233,7 @@ namespace WileyWidget.WinForms.Controls
                             var parent = _btnRefresh.GetCurrentParent();
                             if (parent != null && parent.InvokeRequired)
                             {
-                                parent.BeginInvoke(new Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
+                                parent.BeginInvoke(new System.Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
                             }
                             else
                             {
@@ -234,7 +247,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
-            _lblLastRefreshed = new Label { AutoSize = true, Text = "Last: -", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
+            _lblLastRefreshed = new Label { Name = "LastUpdatedLabel", AutoSize = true, Text = "Last: -", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
 
             // Dashboard label with home icon
             var dashboardLabel = new ToolStripLabel("Dashboard");
@@ -252,10 +265,11 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(dashboardLabel);
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(_btnRefresh);
+            _toolStrip.Items.Add(btnLoadDashboard);
             _toolStrip.Items.Add(new ToolStripSeparator());
 
             // Export buttons (Excel / PDF)
-            var btnExportExcel = new ToolStripButton("Export Excel") { ToolTipText = "Export details to Excel" };
+            var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
             try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
@@ -270,7 +284,7 @@ namespace WileyWidget.WinForms.Controls
             };
             _toolStrip.Items.Add(btnExportExcel);
 
-            var btnExportPdf = new ToolStripButton("Export PDF") { ToolTipText = "Export details/chart to PDF" };
+            var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
             try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
@@ -572,7 +586,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard..." };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No dashboard data available" };
+            _noDataOverlay = new NoDataOverlay { Message = "No data yet – import or add entries to get started." };
             Controls.Add(_noDataOverlay);
 
             // Bindings
@@ -591,7 +605,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        try { BeginInvoke(new Action(ApplyCurrentTheme)); } catch { }
+                        try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
                         return;
                     }
                     ApplyCurrentTheme();
@@ -614,13 +628,13 @@ namespace WileyWidget.WinForms.Controls
 
             if (_detailsGrid != null && !_detailsGrid.IsDisposed && _detailsGrid.InvokeRequired)
             {
-                try { _detailsGrid.BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
+                try { _detailsGrid.BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
                 return;
             }
 
             if (this.InvokeRequired)
             {
-                try { BeginInvoke(new Action(TryApplyViewModelBindings)); } catch { }
+                try { BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
                 return;
             }
 
@@ -715,7 +729,7 @@ namespace WileyWidget.WinForms.Controls
                         {
                             try
                             {
-                                if (this.InvokeRequired) BeginInvoke(new Action(UpdateNoData)); else UpdateNoData();
+                                if (this.InvokeRequired) BeginInvoke(new System.Action(UpdateNoData)); else UpdateNoData();
                             }
                             catch { }
                         }
@@ -897,7 +911,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
                     return;
                 }
 

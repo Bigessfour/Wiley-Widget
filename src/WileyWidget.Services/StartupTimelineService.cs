@@ -45,8 +45,8 @@ public record PhaseConfig(int ExpectedOrder, bool IsUiCritical, string? DependsO
         // Phase 8: Chrome/Ribbon (after MainForm, on UI thread)
         { "Chrome Initialization", new(8, true, "MainForm Creation") },
 
-        // Phase 9: MDI/Docking (after Chrome)
-        { "MDI Support Initialization", new(9, true, "Chrome Initialization") },
+        // Phase 9: Docking (after Chrome)
+        { "Docking Support Initialization", new(9, true, "Chrome Initialization") },
 
         // Phase 10: Data Prefetch (background, non-blocking)
         { "Data Prefetch", new(10, false, "MainForm Creation") },

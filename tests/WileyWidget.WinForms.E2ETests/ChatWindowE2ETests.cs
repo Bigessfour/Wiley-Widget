@@ -71,7 +71,7 @@ namespace WileyWidget.WinForms.E2ETests
             throw new FileNotFoundException($"Executable not found. Build Debug output under '{baseDir}'.");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_Opens_WithCorrectTitle()
         {
@@ -85,7 +85,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.Contains("AI Chat", chatWindow.Title, StringComparison.OrdinalIgnoreCase);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_StatusPanel_IsVisible()
         {
@@ -104,7 +104,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(statusLabel);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_ChatControl_IsPresent()
         {
@@ -119,7 +119,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(inputBox);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_SendButton_IsAccessible()
         {
@@ -141,7 +141,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(sendButton.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_InputBox_AcceptsText()
         {
@@ -164,7 +164,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.Equal("Hello, this is a test message", inputBox.AsTextBox().Text);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         [Trait("Category", "Slow")]
         public void ChatWindow_SendMessage_UpdatesStatusToProcessing()
@@ -193,16 +193,15 @@ namespace WileyWidget.WinForms.E2ETests
             WaitUntilResponsive(sendButton);
             sendButton.AsButton().Invoke();
 
-            // Wait briefly for status to update
-            Thread.Sleep(500);
-
-            // Status should change from "Ready" to "Processing" or similar
+            // Wait for status label to change from "Ready" to something else (e.g., "Processing")
             var statusLabel = WaitForElement(chatWindow, cf => cf.ByControlType(ControlType.Text));
             Assert.NotNull(statusLabel);
+            var initialText = statusLabel.Name;
+            Retry.WhileTrue(() => statusLabel.Name == initialText, timeout: TimeSpan.FromSeconds(2));
             // Note: Status may quickly return to "Ready" if AI service is fast or unavailable
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_MessageDisplay_ShowsMessages()
         {
@@ -231,7 +230,15 @@ namespace WileyWidget.WinForms.E2ETests
             sendButton.AsButton().Invoke();
 
             // Wait for message to appear in chat display
-            Thread.Sleep(2000);
+            Retry.WhileNull(() =>
+            {
+                var messageDisplay = chatWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.List));
+                if (messageDisplay == null)
+                {
+                    messageDisplay = chatWindow.FindFirstDescendant(cf => cf.ByControlType(ControlType.DataGrid));
+                }
+                return messageDisplay;
+            }, timeout: TimeSpan.FromSeconds(5));
 
             // Look for list or message display area
             var messageDisplay = WaitForElement(chatWindow, cf => cf.ByControlType(ControlType.List));
@@ -244,7 +251,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(messageDisplay);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_CloseButton_ClosesWindow()
         {
@@ -261,7 +268,12 @@ namespace WileyWidget.WinForms.E2ETests
             chatWindow.Close();
 
             // Wait for window to close
-            Thread.Sleep(1000);
+            Retry.WhileTrue(() =>
+            {
+                var desktop = _automation!.GetDesktop();
+                var closedWindow = desktop.FindFirstChild(cf => cf.ByName("AI Chat Assistant"));
+                return closedWindow != null && closedWindow.IsAvailable;
+            }, timeout: TimeSpan.FromSeconds(3));
 
             // Verify window is closed (should not be found anymore)
             var desktop = _automation!.GetDesktop();
@@ -271,7 +283,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(closedWindow == null || !closedWindow.IsAvailable);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_EscapeKey_ClosesWindow()
         {
@@ -283,13 +295,18 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Send Escape key to window
             chatWindow.Focus();
-            Thread.Sleep(200);
+            WaitUntilResponsive(chatWindow, 500);
 
             // Use keyboard to send Escape (Keyboard is static in FlaUI)
             FlaUI.Core.Input.Keyboard.Type(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE);
 
             // Wait for window to close
-            Thread.Sleep(1000);
+            Retry.WhileTrue(() =>
+            {
+                var desktop = _automation!.GetDesktop();
+                var closedWindow = desktop.FindFirstChild(cf => cf.ByName("AI Chat Assistant"));
+                return closedWindow != null && closedWindow.IsAvailable;
+            }, timeout: TimeSpan.FromSeconds(3));
 
             // Verify window is closed
             var desktop = _automation!.GetDesktop();
@@ -298,7 +315,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(closedWindow == null || !closedWindow.IsAvailable);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_CanBeReopened_AfterClosing()
         {
@@ -313,7 +330,12 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Close it
             chatWindow1.Close();
-            Thread.Sleep(1000);
+            Retry.WhileTrue(() =>
+            {
+                var desktop = _automation!.GetDesktop();
+                var closedWindow = desktop.FindFirstChild(cf => cf.ByName("AI Chat Assistant"));
+                return closedWindow != null && closedWindow.IsAvailable;
+            }, timeout: TimeSpan.FromSeconds(3));
 
             // Open chat window again
             var chatWindow2 = OpenChatWindow(mainWindow);
@@ -321,7 +343,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.Contains("AI Chat", chatWindow2.Title, StringComparison.OrdinalIgnoreCase);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_HasProperLayout()
         {
@@ -352,7 +374,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(chatWindow.Patterns.Window.IsSupported && chatWindow.Patterns.Window.Pattern.CanMaximize.Value);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void ChatWindow_HasMinimumSize()
         {
@@ -486,6 +508,7 @@ namespace WileyWidget.WinForms.E2ETests
             try
             {
                 _app?.Close();
+                if (_app != null && !_app.HasExited) { _app.Kill(); }
                 _app?.Dispose();
             }
             catch { }
@@ -495,6 +518,13 @@ namespace WileyWidget.WinForms.E2ETests
                 _automation?.Dispose();
             }
             catch { }
+
+            // Kill any lingering WileyWidget processes
+            var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+            foreach (var p in processes)
+            {
+                try { p.Kill(); } catch { }
+            }
         }
     }
 }

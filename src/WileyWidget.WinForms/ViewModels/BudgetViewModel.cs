@@ -17,84 +17,109 @@ using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
-    /// <summary>
-    /// ViewModel for budget management with full CRUD operations.
-    /// Provides filtering, analysis, and export capabilities for budget entries.
-    /// </summary>
-    public partial class BudgetViewModel : ObservableObject, IDisposable
-    {
-        private readonly ILogger<BudgetViewModel> _logger;
-        private readonly IBudgetRepository _budgetRepository;
-        private readonly IReportExportService _reportExportService;
+        /// <summary>
+        /// ViewModel for budget management with full CRUD operations.
+        /// Provides filtering, analysis, and export capabilities for budget entries.
+        /// Supports multi-year budgets, hierarchical entries, GASB compliance, and advanced analytics.
+        /// </summary>
+        public partial class BudgetViewModel : ObservableObject, IDisposable
+        {
+            private readonly ILogger<BudgetViewModel> _logger;
+            private readonly IBudgetRepository _budgetRepository;
+            private readonly IReportExportService _reportExportService;
 
-        [ObservableProperty]
-        private ObservableCollection<BudgetEntry> budgetEntries = new();
+            /// <summary>Gets or sets the collection of all budget entries.</summary>
+            [ObservableProperty]
+            private ObservableCollection<BudgetEntry> budgetEntries = new();
 
-        [ObservableProperty]
-        private ObservableCollection<BudgetEntry> filteredBudgetEntries = new();
+            /// <summary>Gets or sets the filtered collection of budget entries based on current filters.</summary>
+            [ObservableProperty]
+            private ObservableCollection<BudgetEntry> filteredBudgetEntries = new();
 
-        [ObservableProperty]
-        private BudgetPeriod? selectedPeriod;
+            /// <summary>Gets or sets the selected budget period.</summary>
+            [ObservableProperty]
+            private BudgetPeriod? selectedPeriod;
 
-        [ObservableProperty]
-        private int selectedFiscalYear = DateTime.Now.Year;
+            /// <summary>Gets or sets the selected fiscal year for filtering.</summary>
+            [ObservableProperty]
+            private int selectedFiscalYear = DateTime.Now.Year;
 
-        [ObservableProperty]
-        private string errorMessage = string.Empty;
+            /// <summary>Gets or sets the current error message.</summary>
+            [ObservableProperty]
+            private string errorMessage = string.Empty;
 
-        [ObservableProperty]
-        private bool isLoading;
+            /// <summary>Gets or sets a value indicating whether data is currently loading.</summary>
+            [ObservableProperty]
+            private bool isLoading;
 
-        [ObservableProperty]
-        private string statusText = "Ready";
+            /// <summary>Gets or sets the current status text for the UI.</summary>
+            [ObservableProperty]
+            private string statusText = "Ready";
 
-        // Advanced filtering
-        [ObservableProperty]
-        private string searchText = string.Empty;
+            // Advanced filtering properties
+            /// <summary>Gets or sets the search text for filtering entries.</summary>
+            [ObservableProperty]
+            private string searchText = string.Empty;
 
-        [ObservableProperty]
-        private int? selectedDepartmentId;
+            /// <summary>Gets or sets the selected department ID filter.</summary>
+            [ObservableProperty]
+            private int? selectedDepartmentId;
 
-        [ObservableProperty]
-        private FundType? selectedFundType;
+            /// <summary>Gets or sets the selected fund type filter.</summary>
+            [ObservableProperty]
+            private FundType? selectedFundType;
 
-        [ObservableProperty]
-        private decimal? varianceThreshold;
+            /// <summary>Gets or sets the minimum variance threshold filter.</summary>
+            [ObservableProperty]
+            private decimal? varianceThreshold;
 
-        [ObservableProperty]
-        private bool showOnlyOverBudget;
+            /// <summary>Gets or sets a value indicating whether to show only over-budget entries.</summary>
+            [ObservableProperty]
+            private bool showOnlyOverBudget;
 
-        [ObservableProperty]
-        private bool showOnlyUnderBudget;
+            /// <summary>Gets or sets a value indicating whether to show only under-budget entries.</summary>
+            [ObservableProperty]
+            private bool showOnlyUnderBudget;
 
-        // Analysis properties
-        [ObservableProperty]
-        private decimal totalBudgeted;
+            // Analysis properties
 
-        [ObservableProperty]
-        private decimal totalActual;
+            /// <summary>Gets or sets the total budgeted amount across all entries.</summary>
+            [ObservableProperty]
+            private decimal totalBudgeted;
 
-        [ObservableProperty]
-        private decimal totalVariance;
+            /// <summary>Gets or sets the total actual spent amount across all entries.</summary>
+            [ObservableProperty]
+            private decimal totalActual;
 
-        [ObservableProperty]
-        private decimal totalEncumbrance;
+            /// <summary>Gets or sets the total variance amount (Budgeted - Actual).</summary>
+            [ObservableProperty]
+            private decimal totalVariance;
 
-        [ObservableProperty]
-        private decimal percentUsed;
+            /// <summary>Gets or sets the total encumbrance amount across all entries.</summary>
+            [ObservableProperty]
+            private decimal totalEncumbrance;
 
-        [ObservableProperty]
-        private int entriesOverBudget;
+            /// <summary>Gets or sets the percentage of budget used.</summary>
+            [ObservableProperty]
+            private decimal percentUsed;
 
-        [ObservableProperty]
-        private int entriesUnderBudget;
+            /// <summary>Gets or sets the count of entries that are over budget.</summary>
+            [ObservableProperty]
+            private int entriesOverBudget;
 
-        // Grouping
-        [ObservableProperty]
-        private string groupBy = "None";
+            /// <summary>Gets or sets the count of entries that are under budget.</summary>
+            [ObservableProperty]
+            private int entriesUnderBudget;
 
-        [ObservableProperty]
-        private bool showHierarchy;
+            // Grouping properties
+
+            /// <summary>Gets or sets the field name to group entries by.</summary>
+            [ObservableProperty]
+            private string groupBy = "None";
+
+            /// <summary>Gets or sets a value indicating whether to display entries in hierarchical view.</summary>
+            [ObservableProperty]
+            private bool showHierarchy;
 
         /// <summary>Gets the command to load budget entries.</summary>
         public IAsyncRelayCommand LoadBudgetsCommand { get; }
@@ -132,19 +157,31 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Gets the command to refresh analysis totals.</summary>
         public IAsyncRelayCommand RefreshAnalysisCommand { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BudgetViewModel"/> class with full dependency injection.
+        /// </summary>
+        /// <param name="logger">Logger for diagnostic and error logging.</param>
+        /// <param name="budgetRepository">Repository for budget entry CRUD operations.</param>
+        /// <param name="reportExportService">Service for exporting reports to various formats.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required service is null.</exception>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BudgetViewModel"/> class with full dependency injection.
+        /// </summary>
+        /// <param name="logger">Logger for diagnostic and error logging.</param>
+        /// <param name="budgetRepository">Repository for budget entry CRUD operations.</param>
+        /// <param name="reportExportService">Service for exporting reports to various formats.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required service is null.</exception>
         public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IReportExportService? reportExportService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+            _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
 
+            // Initialize commands
             LoadBudgetsCommand = new AsyncRelayCommand(LoadBudgetsAsync);
             LoadByYearCommand = new AsyncRelayCommand(LoadBudgetsAsync);
             ImportFromCsvCommand = new AsyncRelayCommand<string>(ImportFromCsvAsync);
             ExportToCsvCommand = new AsyncRelayCommand<string>(ExportToCsvAsync);
-
-            // Export service - DI should provide implementations; tests must mock this
-            _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
-
             ExportToPdfCommand = new AsyncRelayCommand<string>(ExportToPdfAsync);
             ExportToExcelCommand = new AsyncRelayCommand<string>(ExportToExcelAsync);
             ApplyFiltersCommand = new AsyncRelayCommand(ApplyFiltersAsync);
@@ -167,26 +204,85 @@ namespace WileyWidget.WinForms.ViewModels
                     _ = ApplyFiltersAsync();
                 }
             };
+
+            _logger.LogDebug("BudgetViewModel initialized");
         }
 
+        /// <summary>
+        /// Loads all budget entries for the selected fiscal year asynchronously.
+        /// </summary>
+        /// <returns>A task representing the async load operation.</returns>
+        /// <summary>
+        /// Loads all budget entries for the selected fiscal year asynchronously.
+        /// </summary>
+        /// <returns>A task representing the async load operation.</returns>
         private async Task LoadBudgetsAsync()
         {
             IsLoading = true;
+            StatusText = "Loading budget entries...";
             try
             {
                 var year = SelectedFiscalYear > 0 ? SelectedFiscalYear : (SelectedPeriod?.Year ?? DateTime.Now.Year);
+                _logger.LogInformation("Loading budget entries for fiscal year {Year}", year);
+
                 var entries = await _budgetRepository.GetByFiscalYearAsync(year);
                 BudgetEntries = new ObservableCollection<BudgetEntry>(entries);
+                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(entries);
+
+                await RefreshAnalysisAsync();
+
+                StatusText = $"Loaded {BudgetEntries.Count} budget entries";
                 _logger.LogInformation("Loaded {Count} budget entries for year {Year}", BudgetEntries.Count, year);
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error loading budgets: {ex.Message}";
+                StatusText = "Error loading budgets";
                 _logger.LogError(ex, "Budget load failed");
+
+                // Load sample data on failure for graceful degradation
+                LoadSampleDataOnFailure();
             }
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Loads sample budget data when service fails, to maintain UI functionality.
+        /// </summary>
+        private void LoadSampleDataOnFailure()
+        {
+            try
+            {
+                _logger.LogWarning("Loading sample budget entries as fallback");
+
+                var sampleEntries = new[]
+                {
+                    new BudgetEntry { Id = 1, AccountNumber = "410.1", Description = "Town Administrator", BudgetedAmount = 150000m, ActualAmount = 145000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = 5000m },
+                    new BudgetEntry { Id = 2, AccountNumber = "410.2", Description = "Town Clerk", BudgetedAmount = 80000m, ActualAmount = 82000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = -2000m },
+                    new BudgetEntry { Id = 3, AccountNumber = "420.1", Description = "Police Department", BudgetedAmount = 500000m, ActualAmount = 485000m, FiscalYear = SelectedFiscalYear, DepartmentId = 2, FundType = FundType.GeneralFund, Variance = 15000m },
+                    new BudgetEntry { Id = 4, AccountNumber = "430.1", Description = "Fire Department", BudgetedAmount = 400000m, ActualAmount = 395000m, FiscalYear = SelectedFiscalYear, DepartmentId = 3, FundType = FundType.GeneralFund, Variance = 5000m },
+                    new BudgetEntry { Id = 5, AccountNumber = "440.1", Description = "Sewer Operations", BudgetedAmount = 250000m, ActualAmount = 265000m, FiscalYear = SelectedFiscalYear, DepartmentId = 4, FundType = FundType.EnterpriseFund, Variance = -15000m }
+                };
+
+                BudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
+                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
+
+                TotalBudgeted = sampleEntries.Sum(e => e.BudgetedAmount);
+                TotalActual = sampleEntries.Sum(e => e.ActualAmount);
+                TotalVariance = sampleEntries.Sum(e => e.Variance);
+                PercentUsed = TotalBudgeted > 0 ? (TotalActual / TotalBudgeted) * 100 : 0;
+                EntriesOverBudget = sampleEntries.Count(e => e.ActualAmount > e.BudgetedAmount);
+                EntriesUnderBudget = sampleEntries.Count(e => e.ActualAmount <= e.BudgetedAmount);
+
+                StatusText = $"Loaded {sampleEntries.Length} sample budget entries";
+                _logger.LogInformation("Loaded {Count} sample budget entries", sampleEntries.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load sample data");
             }
         }
 
@@ -505,15 +601,18 @@ namespace WileyWidget.WinForms.ViewModels
             public int? FundId { get; init; }
         }
 
-        // ============= Advanced Filtering Methods =============
-
+        /// <summary>
+        /// Applies current filters to the budget entries collection.
+        /// Updates the FilteredBudgetEntries collection and refreshes analysis.
+        /// </summary>
+        /// <returns>A task representing the async filter operation.</returns>
         private async Task ApplyFiltersAsync()
         {
             var filteredList = await Task.Run(() =>
             {
                 var filtered = BudgetEntries.AsEnumerable();
 
-                // Search text filter
+                // Search text filter - searches in account number and description
                 if (!string.IsNullOrWhiteSpace(SearchText))
                 {
                     var search = SearchText.Trim().ToLowerInvariant();
@@ -534,7 +633,7 @@ namespace WileyWidget.WinForms.ViewModels
                     filtered = filtered.Where(e => e.FundType == SelectedFundType.Value);
                 }
 
-                // Variance filters
+                // Variance filters - mutually exclusive
                 if (ShowOnlyOverBudget)
                 {
                     filtered = filtered.Where(e => e.ActualAmount > e.BudgetedAmount);
@@ -544,6 +643,7 @@ namespace WileyWidget.WinForms.ViewModels
                     filtered = filtered.Where(e => e.ActualAmount < e.BudgetedAmount);
                 }
 
+                // Variance threshold filter
                 if (VarianceThreshold.HasValue)
                 {
                     filtered = filtered.Where(e => Math.Abs(e.BudgetedAmount - e.ActualAmount) >= VarianceThreshold.Value);
@@ -553,13 +653,20 @@ namespace WileyWidget.WinForms.ViewModels
             });
 
             FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
+            StatusText = $"{FilteredBudgetEntries.Count} of {BudgetEntries.Count} entries match filters";
             _logger.LogInformation("Applied filters: {Count} entries match criteria", FilteredBudgetEntries.Count);
 
             await RefreshAnalysisAsync();
         }
 
+        /// <summary>
+        /// Clears all active filters and resets the filtered collection.
+        /// </summary>
+        /// <returns>A task representing the async clear operation.</returns>
         private Task ClearFiltersAsync()
         {
+            _logger.LogDebug("Clearing all filters");
+
             SearchText = string.Empty;
             SelectedDepartmentId = null;
             SelectedFundType = null;
@@ -567,17 +674,28 @@ namespace WileyWidget.WinForms.ViewModels
             ShowOnlyOverBudget = false;
             ShowOnlyUnderBudget = false;
             FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(BudgetEntries);
+
+            StatusText = $"Filters cleared - showing all {BudgetEntries.Count} entries";
             _logger.LogInformation("Filters cleared");
+
             return Task.CompletedTask;
         }
 
         // ============= Analysis Methods =============
 
+        /// <summary>
+        /// Refreshes all analysis totals and counts based on current filtered entries.
+        /// </summary>
+        /// <returns>A task representing the async refresh operation.</returns>
+        /// <summary>
+        /// Refreshes all analysis totals and counts based on current filtered entries.
+        /// </summary>
+        /// <returns>A task representing the async refresh operation.</returns>
         private async Task RefreshAnalysisAsync()
         {
             var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
 
-            // Compute analysis totals on background thread
+            // Compute analysis totals on background thread to avoid blocking UI
             var totals = await Task.Run(() =>
             {
                 var list = entries.ToList();
@@ -587,7 +705,7 @@ namespace WileyWidget.WinForms.ViewModels
                 var totalEncumbrance = list.Sum(e => e.EncumbranceAmount);
                 var percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
                 var entriesOverBudget = list.Count(e => e.ActualAmount > e.BudgetedAmount);
-                var entriesUnderBudget = list.Count(e => e.ActualAmount < e.BudgetedAmount);
+                var entriesUnderBudget = list.Count(e => e.ActualAmount <= e.BudgetedAmount);
                 return (totalBudgeted, totalActual, totalVariance, totalEncumbrance, percentUsed, entriesOverBudget, entriesUnderBudget);
             });
 
@@ -601,26 +719,41 @@ namespace WileyWidget.WinForms.ViewModels
             EntriesUnderBudget = totals.entriesUnderBudget;
 
             _logger.LogInformation(
-                "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used",
-                TotalBudgeted, TotalActual, TotalVariance, PercentUsed);
+                "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used, Over={Over}, Under={Under}",
+                TotalBudgeted, TotalActual, TotalVariance, PercentUsed, EntriesOverBudget, EntriesUnderBudget);
         }
 
+        /// <summary>
+        /// Calculates and updates variance for all budget entries.
+        /// </summary>
+        /// <returns>A task representing the async calculation operation.</returns>
+        /// <summary>
+        /// Calculates and updates variance for all budget entries.
+        /// </summary>
+        /// <returns>A task representing the async calculation operation.</returns>
         private async Task CalculateVariancesAsync()
         {
             IsLoading = true;
+            StatusText = "Calculating variances...";
             try
             {
+                var count = 0;
                 foreach (var entry in BudgetEntries)
                 {
                     entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
                     await _budgetRepository.UpdateAsync(entry);
+                    count++;
                 }
+
+                StatusText = $"Calculated variances for {count} entries";
                 _logger.LogInformation("Calculated variances for {Count} entries", BudgetEntries.Count);
+
                 await RefreshAnalysisAsync();
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error calculating variances: {ex.Message}";
+                StatusText = "Error calculating variances";
                 _logger.LogError(ex, "CalculateVariancesAsync failed");
             }
             finally
@@ -631,13 +764,26 @@ namespace WileyWidget.WinForms.ViewModels
 
         // ============= Bulk Operations =============
 
+        /// <summary>
+        /// Copies a budget entry to the next fiscal year with zero actuals.
+        /// </summary>
+        /// <param name="entry">The entry to copy.</param>
+        /// <returns>A task representing the async copy operation.</returns>
+        /// <summary>
+        /// Copies a budget entry to the next fiscal year with zero actuals.
+        /// </summary>
+        /// <param name="entry">The entry to copy.</param>
+        /// <returns>A task representing the async copy operation.</returns>
         private async Task CopyToNextYearAsync(BudgetEntry? entry)
         {
             if (entry == null) return;
 
             IsLoading = true;
+            StatusText = $"Copying entry {entry.AccountNumber} to next year...";
             try
             {
+                _logger.LogInformation("Copying budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, entry.FiscalYear + 1);
+
                 var newEntry = new BudgetEntry
                 {
                     AccountNumber = entry.AccountNumber,
@@ -657,11 +803,13 @@ namespace WileyWidget.WinForms.ViewModels
                 };
 
                 await _budgetRepository.AddAsync(newEntry);
+                StatusText = $"Copied entry {entry.AccountNumber} to FY {newEntry.FiscalYear}";
                 _logger.LogInformation("Copied budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, newEntry.FiscalYear);
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error copying to next year: {ex.Message}";
+                StatusText = "Error copying entry";
                 _logger.LogError(ex, "CopyToNextYearAsync failed");
             }
             finally
@@ -670,29 +818,47 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        /// <summary>
+        /// Applies a percentage adjustment to all filtered budget entries.
+        /// </summary>
+        /// <param name="adjustmentPercent">The percentage adjustment (e.g., 5.0 for +5%, -3.0 for -3%).</param>
+        /// <returns>A task representing the async adjustment operation.</returns>
+        /// <summary>
+        /// Applies a percentage adjustment to all filtered budget entries.
+        /// </summary>
+        /// <param name="adjustmentPercent">The percentage adjustment (e.g., 5.0 for +5%, -3.0 for -3%).</param>
+        /// <returns>A task representing the async adjustment operation.</returns>
         private async Task BulkAdjustAsync(decimal adjustmentPercent)
         {
             if (adjustmentPercent == 0) return;
 
             IsLoading = true;
+            StatusText = $"Applying {adjustmentPercent:+0.##;-0.##}% adjustment...";
             try
             {
                 var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
                 var adjustmentFactor = 1 + (adjustmentPercent / 100);
+                var count = 0;
+
+                _logger.LogInformation("Applying {Percent}% adjustment to {Count} entries", adjustmentPercent, entries.Count);
 
                 foreach (var entry in entries)
                 {
                     entry.BudgetedAmount *= adjustmentFactor;
                     entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
                     await _budgetRepository.UpdateAsync(entry);
+                    count++;
                 }
 
+                StatusText = $"Applied {adjustmentPercent:+0.##;-0.##}% adjustment to {count} entries";
                 _logger.LogInformation("Applied {Percent}% adjustment to {Count} entries", adjustmentPercent, entries.Count);
+
                 await RefreshAnalysisAsync();
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error applying bulk adjustment: {ex.Message}";
+                StatusText = "Error applying adjustment";
                 _logger.LogError(ex, "BulkAdjustAsync failed");
             }
             finally

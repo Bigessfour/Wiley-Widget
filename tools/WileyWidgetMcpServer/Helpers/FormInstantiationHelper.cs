@@ -384,8 +384,33 @@ public static class FormInstantiationHelper
 
             // Show/hide to trigger component initialization
             form.Show();
-            Application.DoEvents();
-            Thread.Sleep(waitMs);
+
+            // Poll for initialization with event pumping, up to waitMs
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var maxWait = TimeSpan.FromMilliseconds(Math.Max(50, waitMs));
+                while (sw.Elapsed < maxWait)
+                {
+                    try
+                    {
+                        Application.DoEvents();
+                        if (form.IsHandleCreated)
+                        {
+                            var sfControls = SyncfusionTestHelper.GetAllSyncfusionControls(form);
+                            if ((sfControls != null && sfControls.Count > 0) || (form.Controls != null && form.Controls.Count > 0))
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore transient errors while querying control tree
+                    }
+
+                    // No Thread.Sleep; rely on event pumping and stopwatch for polling
+                }
+            }
             form.Hide();
 
             return true;

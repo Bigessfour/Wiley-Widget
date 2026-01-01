@@ -39,8 +39,8 @@ public static class InspectDockingManagerTool
                 return FormatError($"Form type not found: {formTypeName}", outputFormat);
             }
 
-            // Create mock MainForm with MDI enabled
-            mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+            // Create mock MainForm with docking enabled
+            mockMainForm = MockFactory.CreateMockMainForm();
 
             // Instantiate form
             form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using WileyWidget.WinForms.Models;
+using WileyWidget.Business.Interfaces;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -13,6 +14,8 @@ namespace WileyWidget.WinForms.ViewModels;
 public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposable
 {
     private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
+    private readonly IDepartmentExpenseService? _departmentExpenseService;
+    private readonly IGrokRecommendationService? _grokRecommendationService;
     private bool _disposed;
 
     #region Observable Properties
@@ -78,6 +81,12 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     private string? errorMessage;
 
     /// <summary>
+    /// AI-generated explanation for the recommendations
+    /// </summary>
+    [ObservableProperty]
+    private string? recommendationExplanation;
+
+    /// <summary>
     /// Status text for display
     /// </summary>
     [ObservableProperty]
@@ -95,10 +104,14 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     #endregion
 
     public RecommendedMonthlyChargeViewModel(
-        ILogger<RecommendedMonthlyChargeViewModel>? logger)
+        ILogger<RecommendedMonthlyChargeViewModel>? logger,
+        IDepartmentExpenseService? departmentExpenseService = null,
+        IGrokRecommendationService? grokRecommendationService = null)
         : base(logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _departmentExpenseService = departmentExpenseService;
+        _grokRecommendationService = grokRecommendationService;
 
         RefreshDataCommand = new AsyncRelayCommand(RefreshDataAsync);
         SaveCurrentChargesCommand = new AsyncRelayCommand(SaveCurrentChargesAsync);
@@ -118,7 +131,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// Parameterless constructor for design-time support
     /// </summary>
     public RecommendedMonthlyChargeViewModel()
-        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance)
+        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance, null, null)
     {
     }
 
@@ -135,13 +148,29 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
             _logger.LogInformation("Refreshing recommended monthly charge data");
 
-            // TODO: Load actual data from QuickBooks service
-            // For now, load sample data
-            await Task.Delay(500); // Simulate API call
+            // Clear existing data
+            Departments.Clear();
 
-            LoadDepartmentData();
+            // Load real expense data if service is available
+            if (_departmentExpenseService != null)
+            {
+                await LoadRealDepartmentDataAsync();
+            }
+            else
+            {
+                _logger.LogWarning("IDepartmentExpenseService not available - loading sample data");
+                LoadSampleDepartmentData();
+            }
+
             LoadBenchmarkData();
             CalculateTotals();
+
+            // Optionally query Grok AI automatically after refresh
+            // Uncomment to enable automatic AI recommendations on refresh:
+            // if (_grokRecommendationService != null && Departments.Any())
+            // {
+            //     await QueryGrokForRecommendationsAsync();
+            // }
 
             LastUpdated = DateTime.Now;
             StatusText = $"Loaded {Departments.Count} departments";
@@ -153,6 +182,12 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             _logger.LogError(ex, "Error refreshing recommended monthly charge data");
             ErrorMessage = $"Failed to refresh data: {ex.Message}";
             StatusText = "Error loading data";
+
+            // Fallback to sample data on error
+            _logger.LogWarning("Falling back to sample data due to error");
+            LoadSampleDepartmentData();
+            LoadBenchmarkData();
+            CalculateTotals();
         }
         finally
         {
@@ -202,28 +237,96 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
             _logger.LogInformation("Querying Grok API for rate recommendations");
 
-            // TODO: Call xAI Grok API with department expense data
-            // Example prompt: "Based on monthly expenses [Water: $45000, Sewer: $68000, ...], 
-            // recommend adjustment factors for full cost recovery + 15% profit margin"
+            if (_grokRecommendationService == null)
+            {
+                _logger.LogWarning("IGrokRecommendationService not available - applying default recommendations");
+                foreach (var dept in Departments)
+                {
+                    dept.UpdateSuggested(1.15m);
+                }
 
-            await Task.Delay(1000); // Simulate API call
+                RecommendationExplanation = "AI service not available; applied default 15% margin recommendations.";
+                CalculateTotals();
+                StatusText = "Default recommendations applied (AI unavailable)";
+                return;
+            }
 
-            // Apply sample AI recommendations
+            if (!Departments.Any())
+            {
+                _logger.LogWarning("No departments loaded - cannot query Grok");
+                RecommendationExplanation = "No department data available to analyze.";
+                StatusText = "No data to analyze";
+                return;
+            }
+
+            // Build prompt with department summary
+            var promptBuilder = new System.Text.StringBuilder();
+            promptBuilder.AppendLine("Analyze the following municipal utility department data and recommend optimal monthly charge adjustments:");
+            promptBuilder.AppendLine();
+
             foreach (var dept in Departments)
             {
-                dept.UpdateSuggested(1.15m); // 15% profit margin
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- {dept.Department}:");
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  Current Charge: ${dept.CurrentCharge:F2}");
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  Monthly Expenses: ${dept.MonthlyExpenses:F2}");
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  Customers: {dept.CustomerCount}");
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  State Average: ${dept.StateAverage:F2}");
+                promptBuilder.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  Current Gain/Loss: ${dept.MonthlyGainLoss:F2}");
+                promptBuilder.AppendLine();
+            }
+
+            promptBuilder.AppendLine("Consider:");
+            promptBuilder.AppendLine("- Maintaining 15% profit margin for operational stability");
+            promptBuilder.AppendLine("- Competitive positioning against state averages");
+            promptBuilder.AppendLine("- Customer affordability and rate shock avoidance");
+            promptBuilder.AppendLine("- Long-term financial sustainability");
+
+            var prompt = promptBuilder.ToString();
+            _logger.LogDebug("Grok prompt: {Prompt}", prompt);
+
+            // Build expense dictionary
+            var deptExpenses = Departments.ToDictionary(d => d.Department, d => d.MonthlyExpenses);
+
+            // Query Grok for recommendations
+            var result = await _grokRecommendationService.GetRecommendedAdjustmentFactorsAsync(deptExpenses, 15.0m);
+
+            // Apply adjustment factors
+            foreach (var dept in Departments)
+            {
+                if (result.AdjustmentFactors.TryGetValue(dept.Department, out var factor))
+                {
+                    dept.UpdateSuggested(factor);
+                    _logger.LogDebug("Applied factor {Factor} to {Department}", factor, dept.Department);
+                }
+                else
+                {
+                    _logger.LogDebug("No adjustment factor returned for {Department}; keeping existing suggestion", dept.Department);
+                }
+            }
+
+            // Set explanation from the result
+            RecommendationExplanation = result.Explanation;
+
+            // Log warnings if any
+            if (result.Warnings.Any())
+            {
+                foreach (var warning in result.Warnings)
+                {
+                    _logger.LogWarning("Grok recommendation warning: {Warning}", warning);
+                }
             }
 
             CalculateTotals();
 
-            StatusText = "AI recommendations applied";
-            _logger.LogInformation("Grok recommendations applied successfully");
+            StatusText = $"AI recommendations applied ({result.ApiModelUsed})";
+            _logger.LogInformation("Grok recommendations applied successfully using {Model}", result.ApiModelUsed);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error querying Grok API");
             ErrorMessage = $"Failed to get AI recommendations: {ex.Message}";
             StatusText = "Error querying AI";
+            RecommendationExplanation = $"Error: {ex.Message}";
         }
         finally
         {
@@ -261,50 +364,150 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     }
 
     /// <summary>
-    /// Loads department expense data (from QuickBooks in production)
+    /// Loads department expense data from QuickBooks using real service
     /// </summary>
-    private void LoadDepartmentData()
+    private async Task LoadRealDepartmentDataAsync()
+    {
+        if (_departmentExpenseService == null)
+        {
+            _logger.LogWarning("IDepartmentExpenseService is null");
+            return;
+        }
+
+        try
+        {
+            _logger.LogInformation("Loading real department expense data from QuickBooks");
+
+            // Get last 12 months of data
+            var endDate = DateTime.Now;
+            var startDate = endDate.AddMonths(-12);
+
+            // Get all department expenses
+            var expenseData = await _departmentExpenseService.GetAllDepartmentExpensesAsync(startDate, endDate);
+
+            // Calculate monthly average (divide by 12)
+            var monthlyExpenses = expenseData.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value / 12m
+            );
+
+            _logger.LogInformation("Loaded expense data for {Count} departments", monthlyExpenses.Count);
+
+            // Define realistic configuration for each department
+            var departmentConfigs = new Dictionary<string, (decimal CurrentCharge, int CustomerCount, decimal StateAverage)>
+            {
+                ["Water"] = (55.00m, 3200, 55.00m),
+                ["Sewer"] = (75.00m, 3200, 75.00m),
+                ["Trash"] = (30.00m, 2800, 32.00m),
+                ["Apartments"] = (120.00m, 280, 135.00m),
+                ["Electric"] = (85.00m, 2500, 90.00m),
+                ["Gas"] = (45.00m, 2200, 48.00m)
+            };
+
+            // Create department models with real expense data
+            foreach (var kvp in monthlyExpenses)
+            {
+                var deptName = kvp.Key;
+                var expenses = kvp.Value;
+
+                if (!departmentConfigs.TryGetValue(deptName, out var config))
+                {
+                    _logger.LogWarning("Unknown department {Department} in expense data - using defaults", deptName);
+                    config = (50.00m, 1000, 50.00m);
+                }
+
+                var dept = new DepartmentRateModel
+                {
+                    Department = deptName,
+                    MonthlyExpenses = expenses,
+                    CurrentCharge = config.CurrentCharge,
+                    CustomerCount = config.CustomerCount,
+                    StateAverage = config.StateAverage,
+                    AiAdjustmentFactor = 1.15m // Default 15% margin
+                };
+
+                // Calculate suggested charge: (expenses / customers) * margin, rounded to nearest $0.05
+                var calculatedCharge = (expenses / config.CustomerCount) * 1.15m;
+                var roundedCharge = Math.Round(calculatedCharge * 20m) / 20m; // Round to nearest $0.05
+                dept.SuggestedCharge = roundedCharge;
+
+                Departments.Add(dept);
+                _logger.LogDebug("Loaded {Department}: Expenses=${Expenses:F2}, Customers={Customers}, Suggested=${Suggested:F2}",
+                    deptName, expenses, config.CustomerCount, roundedCharge);
+            }
+
+            _logger.LogInformation("Successfully loaded {Count} departments with real expense data", Departments.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading real department data - falling back to sample data");
+            LoadSampleDepartmentData();
+        }
+    }
+
+    /// <summary>
+    /// Loads sample department expense data (fallback when service unavailable)
+    /// </summary>
+    private void LoadSampleDepartmentData()
     {
         Departments.Clear();
 
-        // Sample data - replace with QuickBooks integration
+        // Sample data - realistic values for design/testing
         var departments = new[]
         {
             new DepartmentRateModel
             {
                 Department = "Water",
-                MonthlyExpenses = 45000m,
-                CurrentCharge = 50.00m,
-                CustomerCount = 850,
+                MonthlyExpenses = 168000m,
+                CurrentCharge = 55.00m,
+                CustomerCount = 3200,
                 StateAverage = 55.00m,
                 AiAdjustmentFactor = 1.1m
             },
             new DepartmentRateModel
             {
                 Department = "Sewer",
-                MonthlyExpenses = 68000m,
-                CurrentCharge = 70.00m,
-                CustomerCount = 850,
+                MonthlyExpenses = 276000m,
+                CurrentCharge = 75.00m,
+                CustomerCount = 3200,
                 StateAverage = 75.00m,
-                AiAdjustmentFactor = 1.1m
+                AiAdjustmentFactor = 1.12m
             },
             new DepartmentRateModel
             {
                 Department = "Trash",
-                MonthlyExpenses = 28000m,
+                MonthlyExpenses = 78400m,
                 CurrentCharge = 30.00m,
-                CustomerCount = 850,
+                CustomerCount = 2800,
                 StateAverage = 32.00m,
-                AiAdjustmentFactor = 1.05m
+                AiAdjustmentFactor = 1.08m
             },
             new DepartmentRateModel
             {
                 Department = "Apartments",
-                MonthlyExpenses = 95000m,
+                MonthlyExpenses = 38640m,
                 CurrentCharge = 120.00m,
                 CustomerCount = 280,
                 StateAverage = 135.00m,
-                AiAdjustmentFactor = 1.12m
+                AiAdjustmentFactor = 1.15m
+            },
+            new DepartmentRateModel
+            {
+                Department = "Electric",
+                MonthlyExpenses = 195000m,
+                CurrentCharge = 85.00m,
+                CustomerCount = 2500,
+                StateAverage = 90.00m,
+                AiAdjustmentFactor = 1.1m
+            },
+            new DepartmentRateModel
+            {
+                Department = "Gas",
+                MonthlyExpenses = 92400m,
+                CurrentCharge = 45.00m,
+                CustomerCount = 2200,
+                StateAverage = 48.00m,
+                AiAdjustmentFactor = 1.1m
             }
         };
 
@@ -313,6 +516,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             dept.UpdateSuggested(dept.AiAdjustmentFactor);
             Departments.Add(dept);
         }
+
+        _logger.LogDebug("Loaded {Count} sample departments", Departments.Count);
     }
 
     /// <summary>
@@ -410,7 +615,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// </summary>
     private void InitializeSampleData()
     {
-        LoadDepartmentData();
+        LoadSampleDepartmentData();
         LoadBenchmarkData();
         CalculateTotals();
 

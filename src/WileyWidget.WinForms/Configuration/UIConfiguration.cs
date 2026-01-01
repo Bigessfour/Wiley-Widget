@@ -15,16 +15,6 @@ public sealed record UIConfiguration
     public bool UseSyncfusionDocking { get; init; } = true;
 
     /// <summary>
-    /// Always use MDI mode for child forms (Phase 1: const true).
-    /// </summary>
-    public bool UseMdiMode { get; init; } = true;
-
-    /// <summary>
-    /// TabbedMDI permanently disabled (Phase 1: const false).
-    /// </summary>
-    public bool UseTabbedMdi { get; init; } = false;
-
-    /// <summary>
     /// Test harness mode - disables MessageBox, dialogs, and heavyweight UI for automated testing.
     /// </summary>
     public bool IsUiTestHarness { get; init; } = false;
@@ -82,8 +72,6 @@ public sealed record UIConfiguration
         {
             // Phase 1: Hard-coded architecture, but configurable for tests
             UseSyncfusionDocking = true,
-            UseMdiMode = configuration.GetValue("UI:UseMdiMode", true),
-            UseTabbedMdi = configuration.GetValue("UI:UseTabbedMdi", false),
 
             // Read from config
             IsUiTestHarness = isTestHarness,
@@ -144,6 +132,6 @@ public sealed record UIConfiguration
     /// </summary>
     public string GetArchitectureDescription()
     {
-        return $"Docking={UseSyncfusionDocking}, MDI={UseMdiMode}, TabbedMDI={UseTabbedMdi}, TestHarness={IsUiTestHarness}";
+        return $"Docking={UseSyncfusionDocking}, TestHarness={IsUiTestHarness}";
     }
 }

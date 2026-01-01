@@ -145,7 +145,7 @@ public class CustomersPage : BasePage
     {
         var button = NewButton ?? throw new InvalidOperationException("New button not found");
         Click(button);
-        System.Threading.Thread.Sleep(500); // Allow form to reset
+        WaitForBusyIndicator(TimeSpan.FromSeconds(5)); // Wait for form to reset
     }
 
     /// <summary>
@@ -155,7 +155,7 @@ public class CustomersPage : BasePage
     {
         var button = SaveButton ?? throw new InvalidOperationException("Save button not found");
         Click(button);
-        System.Threading.Thread.Sleep(500); // Allow save to complete
+        WaitForBusyIndicator(TimeSpan.FromSeconds(5)); // Wait for save to complete
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public class CustomersPage : BasePage
     {
         var textBox = SearchBox ?? throw new InvalidOperationException("Search box not found");
         SetText(textBox, searchText);
-        System.Threading.Thread.Sleep(500); // Allow search to execute
+        WaitForBusyIndicator(TimeSpan.FromSeconds(5)); // Wait for search to execute
     }
 
     /// <summary>
@@ -203,7 +203,7 @@ public class CustomersPage : BasePage
     {
         var tab = BasicInfoTab ?? throw new InvalidOperationException("Basic Info tab not found");
         Click(tab);
-        System.Threading.Thread.Sleep(200);
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2));
     }
 
     /// <summary>
@@ -213,7 +213,7 @@ public class CustomersPage : BasePage
     {
         var tab = ServiceAddressTab ?? throw new InvalidOperationException("Service Address tab not found");
         Click(tab);
-        System.Threading.Thread.Sleep(200);
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2));
     }
 
     /// <summary>
@@ -223,7 +223,7 @@ public class CustomersPage : BasePage
     {
         var tab = MailingAddressTab ?? throw new InvalidOperationException("Mailing Address tab not found");
         Click(tab);
-        System.Threading.Thread.Sleep(200);
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2));
     }
 
     /// <summary>
@@ -233,7 +233,7 @@ public class CustomersPage : BasePage
     {
         var tab = AccountDetailsTab ?? throw new InvalidOperationException("Account Details tab not found");
         Click(tab);
-        System.Threading.Thread.Sleep(200);
+        WaitForBusyIndicator(TimeSpan.FromSeconds(2));
     }
 
     /// <summary>

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Align TFM with solution-wide Windows target to avoid project compatibility (NU1201) -->
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <GenerateWinMD>false</GenerateWinMD>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -10,7 +10,7 @@
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Enable APIs (DispatcherPriority etc.) used by some abstractions -->
-    <UseWPF>true</UseWPF>
+
   </PropertyGroup>
 
   <ItemGroup>

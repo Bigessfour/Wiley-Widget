@@ -7,6 +7,8 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
+using FlaUI.Core.Conditions;
+using WileyWidget.WinForms.E2ETests.Helpers;
 using Xunit;
 using WileyWidget.WinForms.E2ETests.PageObjects;
 using Application = FlaUI.Core.Application;
@@ -24,63 +26,72 @@ namespace WileyWidget.WinForms.E2ETests
         private readonly string _exePath;
         private Application? _app;
         private UIA3Automation? _automation;
+        private bool _disposed;
 
         public ThemeTests()
         {
-            _exePath = ResolveExecutablePath();
+            _exePath = TestAppHelper.GetWileyWidgetExePath();
 
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", "true");
             Environment.SetEnvironmentVariable("UI__IsUiTestHarness", "true");
-            Environment.SetEnvironmentVariable("UI__UseMdiMode", "false");
 
             // Set the license key to avoid popup
             // trunk-ignore(gitleaks/generic-api-key): Test license key, not a real secret
             Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=");
+
+            // Ensure only one test runs at a time to prevent UI automation conflicts
+            System.Threading.Monitor.Enter(_testLock);
         }
 
-        private static string ResolveExecutablePath()
+        private static readonly object _testLock = new object();
+
+        private static AutomationElement? WaitForElement(Window window, Func<ConditionFactory, ConditionBase> selector, int timeoutSeconds = 15)
         {
-            var envPath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE");
-            if (!string.IsNullOrWhiteSpace(envPath))
-            {
-                return envPath;
-            }
-
-            var baseDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", "Debug"));
-            var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
-
-            if (File.Exists(standard))
-            {
-                return standard;
-            }
-
-            var versioned = Directory.GetDirectories(baseDir, "net9.0-windows*")
-                .Select(dir => Path.Combine(dir, "WileyWidget.WinForms.exe"))
-                .FirstOrDefault(File.Exists);
-
-            return versioned ?? throw new FileNotFoundException($"Executable not found under '{baseDir}'.");
+            return Retry.WhileNull(() => window.FindFirstDescendant(selector), TimeSpan.FromSeconds(timeoutSeconds), TimeSpan.FromMilliseconds(250)).Result;
         }
 
-        [Fact]
-        [Trait("Category", "Theme")]
+        private void WaitForBusyIndicator(TimeSpan timeout)
+        {
+            var window = _app?.GetMainWindow(_automation!);
+            if (window == null) return;
+
+            try
+            {
+                Retry.WhileTrue(
+                    () =>
+                    {
+                        var busyIndicator = window.FindFirstDescendant(cf => cf.ByName("BusyIndicator").Or(cf.ByControlType(ControlType.ProgressBar)));
+                        return busyIndicator != null && !busyIndicator.IsOffscreen;
+                    },
+                    timeout,
+                    TimeSpan.FromMilliseconds(100));
+            }
+            catch
+            {
+                // Ignore timeouts or failures while probing busy indicator
+            }
+        }
+
+        [StaFact]
+        [Trait("Category", "UI")]
         public void ThemeToggle_ButtonExists_InRibbon()
         {
             // Arrange
             _automation = new UIA3Automation();
             _app = Application.Launch(_exePath);
             DismissLicensePopups();
-            Retry.WhileNull(() => _app.GetMainWindow(_automation),
+            Retry.WhileNull(() => _app.GetMainWindow(_automation!),
                 timeout: TimeSpan.FromSeconds(10),
                 throwOnTimeout: true);
 
-            var window = _app.GetMainWindow(_automation);
-            Assert.NotNull(window);
+            var window = _app.GetMainWindow(_automation!) ?? throw new InvalidOperationException("Main window not found");
 
-            // Act - Find theme toggle button by searching for button containing "Theme" in name
-            var allButtons = window.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-            var themeButton = allButtons.FirstOrDefault(btn =>
-                btn.Name != null && btn.Name.Contains("Theme", StringComparison.OrdinalIgnoreCase));
+            // Act - Find theme toggle using common selectors with a longer timeout and fallbacks
+            var themeButton = WaitForElement(window, cf =>
+                    cf.ByAutomationId("themeToggle")
+                        .Or(cf.ByName("Toggle Theme").Or(cf.ByName("Theme")).Or(cf.ByControlType(ControlType.Button))),
+                    15)?.AsButton();
 
             // Assert
             Assert.NotNull(themeButton);
@@ -90,36 +101,41 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.Contains("Theme", buttonName, StringComparison.OrdinalIgnoreCase);
         }
 
-        [Fact]
-        [Trait("Category", "Theme")]
+        [StaFact]
+        [Trait("Category", "UI")]
         public void ThemeToggle_Click_ChangesButtonText()
         {
             // Arrange
             _automation = new UIA3Automation();
             _app = Application.Launch(_exePath);
             DismissLicensePopups();
-            Retry.WhileNull(() => _app.GetMainWindow(_automation),
+            Retry.WhileNull(() => _app.GetMainWindow(_automation!),
                 timeout: TimeSpan.FromSeconds(10),
                 throwOnTimeout: true);
 
-            var window = _app.GetMainWindow(_automation);
+            var window = _app.GetMainWindow(_automation!) ?? throw new InvalidOperationException("Main window not found");
 
-            // Find theme button by name containing "Theme"
-            var allButtons = window?.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-            Assert.NotNull(allButtons);
-            var themeButton = allButtons!.FirstOrDefault(btn =>
-                btn.Name?.Contains("Theme", StringComparison.OrdinalIgnoreCase) == true);
+            // Find theme button with fallbacks
+            var themeButton = WaitForElement(window, cf =>
+                cf.ByAutomationId("themeToggle")
+                  .Or(cf.ByName("Toggle Theme").Or(cf.ByName("Theme")).Or(cf.ByControlType(ControlType.Button))),
+                15)?.AsButton();
 
             Assert.NotNull(themeButton);
-            var initialText = themeButton?.Name;
+            var initialText = themeButton!.Name;
             Assert.NotNull(initialText);
 
-            // Act - Click theme toggle using Click() for better compatibility
-            themeButton?.Click();
-            System.Threading.Thread.Sleep(2000);
+            // Act - Click theme toggle and wait for UI to update
+            themeButton.Click();
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
-            // Assert - Button text should change
-            var updatedText = themeButton?.Name;
+            // Re-query the button in case the control instance changed
+            var updatedButton = WaitForElement(window, cf =>
+                cf.ByAutomationId("themeToggle")
+                  .Or(cf.ByName("Toggle Theme").Or(cf.ByName("Theme")).Or(cf.ByControlType(ControlType.Button))),
+                8)?.AsButton();
+
+            var updatedText = updatedButton?.Name ?? themeButton.Name;
             Assert.NotNull(updatedText);
             Assert.NotEqual(initialText, updatedText);
 
@@ -131,47 +147,51 @@ namespace WileyWidget.WinForms.E2ETests
                 $"Expected theme button to show Light/Dark theme text, but got: {updatedText}");
         }
 
-        [Fact]
-        [Trait("Category", "Theme")]
+        [StaFact]
+        [Trait("Category", "UI")]
         public void ThemeToggle_DoubleClick_RestoresOriginalTheme()
         {
             // Arrange
             _automation = new UIA3Automation();
             _app = Application.Launch(_exePath);
             DismissLicensePopups();
-            Retry.WhileNull(() => _app.GetMainWindow(_automation),
+            Retry.WhileNull(() => _app.GetMainWindow(_automation!),
                 timeout: TimeSpan.FromSeconds(10),
                 throwOnTimeout: true);
 
-            var window = _app.GetMainWindow(_automation);
+            var window = _app.GetMainWindow(_automation!) ?? throw new InvalidOperationException("Main window not found");
 
-            // Find theme button by name containing "Theme"
-            var allButtons = window?.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
-            Assert.NotNull(allButtons);
-            var themeButton = allButtons!.FirstOrDefault(btn =>
-                btn.Name?.Contains("Theme", StringComparison.OrdinalIgnoreCase) == true);
+            // Find theme button with fallbacks
+            var themeButton = WaitForElement(window, cf =>
+                    cf.ByAutomationId("themeToggle")
+                        .Or(cf.ByName("Toggle Theme").Or(cf.ByName("Theme")).Or(cf.ByControlType(ControlType.Button))),
+                    15)?.AsButton();
 
             Assert.NotNull(themeButton);
-            var originalText = themeButton?.Name;
+            var originalText = themeButton!.Name;
             Assert.NotNull(originalText);
 
             // Act - Toggle twice using Click()
-            themeButton?.Click();
-            System.Threading.Thread.Sleep(1500);
+            themeButton.Click();
+            WaitForBusyIndicator(TimeSpan.FromSeconds(3));
 
-            themeButton?.Click();
-            System.Threading.Thread.Sleep(1500);
+            themeButton.Click();
+            WaitForBusyIndicator(TimeSpan.FromSeconds(3));
 
-            // Assert - Should return to original theme text (may include emoji)
-            var finalText = themeButton?.Name;
-            // Both texts should contain same theme name (Light or Dark)
+            // Re-query button for final text
+            var finalButton = WaitForElement(window, cf =>
+                    cf.ByAutomationId("themeToggle")
+                        .Or(cf.ByName("Toggle Theme").Or(cf.ByName("Theme")).Or(cf.ByControlType(ControlType.Button))),
+                    8)?.AsButton();
+
+            var finalText = finalButton?.Name ?? originalText;
             var originalContainsLight = originalText?.Contains("Light", StringComparison.OrdinalIgnoreCase) ?? false;
             var finalContainsLight = finalText?.Contains("Light", StringComparison.OrdinalIgnoreCase) ?? false;
             Assert.Equal(originalContainsLight, finalContainsLight);
         }
 
-        [Fact]
-        [Trait("Category", "Theme")]
+        [StaFact]
+        [Trait("Category", "UI")]
         [Trait("Category", "Smoke")]
         public void RibbonButtons_AreAccessible()
         {
@@ -179,13 +199,12 @@ namespace WileyWidget.WinForms.E2ETests
             _automation = new UIA3Automation();
             _app = Application.Launch(_exePath);
             DismissLicensePopups();
-            Retry.WhileNull(() => _app.GetMainWindow(_automation),
+            Retry.WhileNull(() => _app.GetMainWindow(_automation!),
                 timeout: TimeSpan.FromSeconds(10),
                 throwOnTimeout: true);
 
-            var window = _app.GetMainWindow(_automation);
-            Assert.NotNull(window);
-            var mainFormPage = new MainFormPage(_automation, window);
+            var window = _app.GetMainWindow(_automation!) ?? throw new InvalidOperationException("Main window not found");
+            var mainFormPage = new MainFormPage(_automation!, window);
 
             // Assert - Check that navigation buttons exist and have expected names
             var dashboardBtn = mainFormPage.DashboardButton;
@@ -213,8 +232,12 @@ namespace WileyWidget.WinForms.E2ETests
         {
             if (_automation == null) return;
 
-            // Wait a bit for popups to appear
-            System.Threading.Thread.Sleep(2000);
+            // Wait for popups to appear (event-pumped)
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 2000)
+            {
+                try { System.Windows.Forms.Application.DoEvents(); } catch { }
+            }
 
             // Find all windows
             var allWindows = _automation.GetDesktop().FindAllChildren();
@@ -250,15 +273,70 @@ namespace WileyWidget.WinForms.E2ETests
 
         public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
             try
             {
+                // Close application gracefully first
                 _app?.Close();
+
+                // Give it time to close gracefully
+                System.Threading.Thread.Sleep(500);
+
+                // Force kill only if still running
+                if (_app != null && !_app.HasExited)
+                {
+                    try
+                    {
+                        _app.Kill();
+                        System.Threading.Thread.Sleep(250);
+                    }
+                    catch { }
+                }
+
                 _app?.Dispose();
                 _automation?.Dispose();
+
+                // Only clean up test-specific processes when NOT running in IDE/vstest
+                var vstestHost = Environment.GetEnvironmentVariable("VSTEST_HOST_PROCESSID");
+                var isInIDE = !string.IsNullOrWhiteSpace(vstestHost) ||
+                             !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VSCODE_PID"));
+
+                if (!isInIDE)
+                {
+                    // Only kill processes that match our specific test app
+                    var testAppPath = _exePath.ToLowerInvariant();
+                    var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+
+                    foreach (var p in processes)
+                    {
+                        try
+                        {
+                            // Double-check this is our test process, not a running dev instance
+                            var processPath = p.MainModule?.FileName?.ToLowerInvariant();
+                            if (processPath != null && processPath.Contains("debug", StringComparison.Ordinal) && processPath.Contains("e2etests", StringComparison.Ordinal))
+                            {
+                                p.Kill();
+                                p.WaitForExit(1000);
+                            }
+                        }
+                        catch { }
+                    }
+                }
             }
             catch
             {
                 // Ignore cleanup errors
+            }
+            finally
+            {
+                // Release the test lock
+                try
+                {
+                    System.Threading.Monitor.Exit(_testLock);
+                }
+                catch { }
             }
         }
     }

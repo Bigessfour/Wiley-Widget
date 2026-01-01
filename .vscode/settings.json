@@ -17,15 +17,26 @@
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
+  // Terminal Configuration - Agent Terminals Disabled
+  // ============================================================================
+  "terminal.integrated.hideAgentShellProcesses": false,
+  "task.autoClose": true,
+
+  // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
   "github.copilot.chat.mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\biges\\Desktop\\Wiley-Widget"],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "roots": ["${workspaceFolder}"],
       "env": {
         "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
       }
+    },
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
     },
     "csharp-mcp": {
       "command": "InfinityFlow.CSharp.Eval",
@@ -166,6 +177,10 @@
   "dotnet-test-explorer.autoWatch": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
+
+  // Disable Python Test Adapter (primarily a .NET project)
+  "pythonTestExplorer.testFramework": null,
+  "python.testing.autoTestDiscoverOnSaveEnabled": false,
 
   // ============================================================================
   // Git & Version Control

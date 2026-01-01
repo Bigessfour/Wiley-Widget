@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows;
 using Serilog;
 using Serilog.Events;
 using System.Collections.Generic;
@@ -114,10 +113,10 @@ public class ErrorReportingService
         try { ErrorReported?.Invoke(exception, context); } catch { /* do not fail reporting */ }
 
         // Show user-friendly dialog if requested and not suppressed
-        if (showToUser && !SuppressUserDialogs && System.Windows.Application.Current?.Dispatcher != null)
+        if (showToUser && !SuppressUserDialogs)
         {
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                ShowErrorDialog(exception, context, correlationId));
+            // Note: UI notification removed for library compatibility
+            _logger.LogWarning("Error occurred but UI notification suppressed or not available: {Message}", exception.Message);
         }
     }
 
@@ -462,37 +461,8 @@ public class ErrorReportingService
 
     private void ShowErrorDialog(Exception exception, string context, string correlationId)
     {
-        try
-        {
-            if (exception is null) throw new ArgumentNullException(nameof(exception));
-            if (SuppressUserDialogs)
-            {
-                // Respect suppression setting
-                return;
-            }
-            var message = $"An error occurred in {context ?? "the application"}.\n\n" +
-                         $"Error: {exception.Message}\n\n" +
-                         $"Reference ID: {correlationId}\n\n" +
-                         "Would you like to continue? (Some features may not work properly)";
-
-            var result = System.Windows.MessageBox.Show(message, "Application Error",
-                                       MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.No)
-            {
-                Log.Information("User chose to exit after error (CorrelationId: {CorrelationId})", correlationId);
-                System.Windows.Application.Current?.Shutdown();
-            }
-            else
-            {
-                Log.Information("User chose to continue after error (CorrelationId: {CorrelationId})", correlationId);
-            }
-        }
-        catch
-        {
-            // If dialog fails, at least log it
-            Log.Error("Failed to show error dialog for correlation ID {CorrelationId}", correlationId);
-        }
+        // Note: UI dialog removed for library compatibility
+        _logger.LogError("Error dialog would be shown for correlation ID {CorrelationId}: {Message}", correlationId, exception.Message);
     }
 }
 

@@ -62,7 +62,7 @@
 ```text
 19. MainForm.OnLoad
     - Load MRU from registry
-    - Configure MDI client z-order
+    - Configure docking panel z-order
     - Update docking state text
 ```
 
@@ -168,35 +168,34 @@ Program.Main (UI thread):
 
 ---
 
-### Issue 5: MDI/Docking Initialization Order ⚠️ MEDIUM
+### Issue 5: Docking Initialization Order ⚠️ MEDIUM
 
-**Problem:** MainForm constructor sets `IsMdiContainer` and calls `InitializeMdiSupport()` which creates `TabbedMDIManager` BEFORE the form is loaded.
+**Problem:** Chrome initialization (ribbon/status) is done in constructor, but DockingManager initialization is deferred to OnShown.
 
 **Timeline:**
 
 ```text
 MainForm ctor:
-  ├─ IsMdiContainer = true (if config enabled)
+  ├─ IsMdiContainer = false
   ├─ ApplyTheme()
-  ├─ InitializeChrome()
-  └─ InitializeMdiSupport()
-       └─ new TabbedMDIManager(this) ← form not yet in control tree
+  ├─ InitializeChrome() ← ribbon/status/navigation
+  └─ (panels only)
 
 MainForm.OnLoad:
-  ├─ Configure MDI client z-order
-  └─ (MdiClient already exists from constructor)
+  ├─ Configure docking panel z-order
+  └─ (no MdiClient)
 
 MainForm.OnShown:
   └─ InitializeDocking() ← DEFERRED heavy operation
 ```
 
-**Issue:** MDI infrastructure is created before form is loaded, but docking is deferred to OnShown. This creates timing mismatch.
+**Issue:** Chrome is created before form is loaded, but docking is deferred to OnShown. This creates timing mismatch.
 
 **Fix:** Standardize initialization order:
 
 - Constructor: Only set flags and wire events
-- OnLoad: Initialize theme, chrome, MDI structure
-- OnShown: Initialize docking and show first panels
+- OnLoad: Initialize theme, chrome, docking structure
+- OnShown: Show first panels
 
 ---
 
@@ -319,9 +318,8 @@ protected override void OnLoad(EventArgs e)
     base.OnLoad(e);
     if (_initialized) return;
 
-    // Set MDI mode
-    if (_uiConfig.UseMdiMode)
-        IsMdiContainer = true;
+    // Set docking mode
+    IsMdiContainer = false;
 
     // Apply theme
     ApplyThemeToForm();
@@ -329,8 +327,8 @@ protected override void OnLoad(EventArgs e)
     // Initialize chrome
     InitializeChrome();
 
-    // Initialize MDI structure
-    InitializeMdiSupport();
+    // Initialize docking structure
+    // (deferred to OnShown)
 
     _initialized = true;
 }
@@ -416,7 +414,7 @@ internal sealed class SplashForm : IDisposable
 
 4. MainForm Creation
    ├─ Constructor: Wire events, store dependencies
-   ├─ OnLoad: Set MDI mode, apply theme, init chrome/MDI
+   ├─ OnLoad: Set docking mode, apply theme, init chrome/docking
    └─ Show form to user
 
 5. Background Operations (after form shown)
@@ -454,7 +452,7 @@ After implementing fixes, verify:
 - [ ] Database health check doesn't block startup
 - [ ] MainForm shows immediately after DI container built
 - [x] Background operations complete without errors ✅ **VERIFIED**
-- [ ] MDI/Docking works correctly after deferred init
+- [ ] Docking works correctly after deferred init
 
 ---
 
@@ -479,14 +477,16 @@ Target: <2s to first paint, <5s to fully interactive.
 
 **Status:** ✅ **FULLY IMPLEMENTED** - Production-ready with all enhancements
 
-#### 🎯 Key Features (All Implemented):
+#### 🎯 Key Features (All Implemented)
 
 ##### 1. **Canonical Syncfusion Phase Configuration**
+
 - Pre-defined expected phases with order, UI-criticality, and dependencies
 - Auto-detection of phase properties from configuration
 - Based on Syncfusion best practices: License → Theme → Controls → Data
 
 **Example Configuration:**
+
 ```csharp
 public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases = new()
 {
@@ -498,7 +498,7 @@ public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases =
     { "Database Health Check", new(6, false, "DI Container Build") },
     { "MainForm Creation", new(7, true, "Theme Initialization") },
     { "Chrome Initialization", new(8, true, "MainForm Creation") },
-    { "MDI Support Initialization", new(9, true, "Chrome Initialization") },
+    { "Docking Support Initialization", new(9, true, "Chrome Initialization") },
     { "Data Prefetch", new(10, false, "MainForm Creation") },
     { "Splash Screen Hide", new(11, true, "Data Prefetch") },
     { "UI Message Loop", new(12, true, "MainForm Creation") }
@@ -506,37 +506,43 @@ public static readonly IReadOnlyDictionary<string, PhaseConfig> ExpectedPhases =
 ```
 
 ##### 2. **Dependency Validation**
+
 - Detects when phases start before their dependencies complete
 - Immediate warnings logged when dependency violations occur
 - Example: MainForm Creation depends on Theme Initialization
 
 ##### 3. **Thread Affinity Detection**
+
 - Explicit `IsUiCritical` flag (not fragile name heuristics)
 - Detects UI operations on background threads
 - Warns about blocking operations >300ms on UI thread (industry standard)
 
 ##### 4. **RAII Pattern Support**
+
 - `BeginPhaseScope()` for automatic phase end on disposal
 - Prevents missed `RecordPhaseEnd()` calls
 - Recommended for all phase tracking
 
 ##### 5. **Conditional Reporting**
+
 - Only enabled in DEBUG builds or with `WILEYWIDGET_TRACK_STARTUP_TIMELINE=true`
 - Zero overhead in Release builds by default
 - `IsEnabled` property for runtime checks
 
 ##### 6. **WinForms Lifecycle Integration**
+
 - `RecordFormLifecycleEvent()` for Load/Shown/Activated events
 - Auto-records as checkpoints under current phase
 - Helps track form initialization timing
 
 ##### 7. **Enhanced Reporting**
+
 - Beautiful formatted ASCII report with summary statistics
 - Shows longest UI phase, total UI blocked time, potential freezes
 - Nested timeline with operations grouped under phases
 - Emoji markers: 🔒 (UI-critical), ⚡ (async)
 
-#### 🚀 Usage Examples:
+#### 🚀 Usage Examples
 
 **1. RAII Pattern (Recommended - Auto-closes phases):**
 
@@ -580,7 +586,7 @@ if (report.Errors.Any() || report.Warnings.Any())
 }
 ```
 
-#### 📊 Example Enhanced Output:
+#### 📊 Example Enhanced Output
 
 ```text
 ╔════════════════════════════════════════════════════════════════╗
@@ -625,7 +631,7 @@ if (report.Errors.Any() || report.Warnings.Any())
 ╚════════════════════════════════════════════════════════════════╝
 ```
 
-#### ✅ Benefits:
+#### ✅ Benefits
 
 1. **Auto-validates against canonical Syncfusion phase order**
 2. **Detects dependency violations** (e.g., MainForm before Theme)
@@ -636,7 +642,7 @@ if (report.Errors.Any() || report.Warnings.Any())
 7. **Generates beautiful formatted report** with all violation types
 8. **Structured logging** for querying in production telemetry
 
-#### 🔧 Integration Steps:
+#### 🔧 Integration Steps
 
 1. **Add to DI Container:** ✅ Already registered in DependencyInjection.cs
 2. **Enable in DEBUG:** ✅ Automatic
@@ -644,7 +650,7 @@ if (report.Errors.Any() || report.Warnings.Any())
 4. **Wire up phases:** Add tracking to Program.cs (see usage examples)
 5. **Generate report:** Call at end of startup or on errors
 
-#### 🎖️ Production-Ready Features:
+#### 🎖️ Production-Ready Features
 
 - ✅ Thread-safe (ConcurrentBag, ConcurrentDictionary)
 - ✅ Real-time logging (violations logged as they happen)

@@ -63,7 +63,7 @@ mcp_wileywidget-u_BatchValidateForms(
 **When:** You need to run ad-hoc C# code to test forms or Syncfusion controls.
 
 **Example Prompts:**
-- "Test if MainForm initializes correctly with MDI enabled"
+- "Test if MainForm initializes correctly with docking enabled"
 - "Check if AccountsForm loads theme properly"
 - "Run a quick test of the grid data binding"
 

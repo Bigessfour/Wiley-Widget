@@ -56,12 +56,60 @@ public partial class BudgetPanel : UserControl
         BudgetViewModel viewModel,
         ILogger<BudgetPanel> logger)
     {
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
+        if (logger == null) throw new ArgumentNullException(nameof(logger));
+
+        _viewModel = viewModel;
+        _logger = logger;
+
         InitializeComponent();
-
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
         InitializeControls();
+    }
+
+    /// <summary>
+    /// Parameterless constructor for DI/designer support.
+    /// </summary>
+    public BudgetPanel() : this(ResolveBudgetViewModel(), ResolveLogger())
+    {
+    }
+
+    private static BudgetViewModel ResolveBudgetViewModel()
+    {
+        if (Program.Services == null)
+        {
+            throw new InvalidOperationException("BudgetPanel: Program.Services is null - cannot resolve BudgetViewModel");
+        }
+        try
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<BudgetViewModel>(Program.Services);
+            if (vm != null)
+            {
+                return vm;
+            }
+            throw new InvalidOperationException("BudgetPanel: BudgetViewModel not registered in DI container");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "BudgetPanel: Failed to resolve BudgetViewModel from DI");
+            throw;
+        }
+    }
+
+    private static ILogger<BudgetPanel> ResolveLogger()
+    {
+        if (Program.Services == null)
+        {
+            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<BudgetPanel>>(Program.Services)
+                ?? new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
+        catch
+        {
+            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
     }
 
     private void InitializeControls()
@@ -355,9 +403,7 @@ public partial class BudgetPanel : UserControl
         filterTable.Controls.Add(_underBudgetCheckBox, 3, 2);
 
         filterGroup.Controls.Add(filterTable);
-#pragma warning disable CS8602
         _filterPanel!.Controls.Add(filterGroup);
-#pragma warning restore CS8602
         topPanel.Controls.Add(_filterPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
@@ -559,9 +605,7 @@ public partial class BudgetPanel : UserControl
         buttonTable.Controls.Add(_exportPdfButton, 6, 0);
         buttonTable.Controls.Add(_exportExcelButton, 7, 0);
 
-#pragma warning disable CS8602
         _buttonPanel!.Controls.Add(buttonTable);
-#pragma warning restore CS8602
         bottomPanel.Controls.Add(_buttonPanel);
 
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
@@ -632,34 +676,245 @@ public partial class BudgetPanel : UserControl
 
     private void AddEntryButton_Click(object? sender, EventArgs e)
     {
-        // Add entry dialog would be implemented here
-        MessageBox.Show("Add Entry functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        try
+        {
+            _logger.LogInformation("Add Entry button clicked");
+
+            // Create a simple input form for adding new budget entry
+            using var form = new Form
+            {
+                Text = "Add Budget Entry",
+                Width = 500,
+                Height = 400,
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 9,
+                Padding = new Padding(10)
+            };
+
+            // Account Number
+            tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
+            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill };
+            tableLayout.Controls.Add(txtAccountNumber, 1, 0);
+
+            // Description
+            tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
+            var txtDescription = new TextBox { Dock = DockStyle.Fill };
+            tableLayout.Controls.Add(txtDescription, 1, 1);
+
+            // Budgeted Amount
+            tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
+            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
+            tableLayout.Controls.Add(txtBudgeted, 1, 2);
+
+            // Actual Amount
+            tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
+            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
+            tableLayout.Controls.Add(txtActual, 1, 3);
+
+            // Department ID
+            tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
+            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = "1" };
+            tableLayout.Controls.Add(txtDepartmentId, 1, 4);
+
+            // Fund Type
+            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
+            cmbFundType.SelectedIndex = 0;
+            tableLayout.Controls.Add(cmbFundType, 1, 5);
+
+            // Buttons
+            var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
+            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            btnPanel.Controls.Add(btnCancel);
+            btnPanel.Controls.Add(btnOK);
+            tableLayout.Controls.Add(btnPanel, 1, 8);
+            tableLayout.SetColumnSpan(btnPanel, 2);
+
+            form.Controls.Add(tableLayout);
+            form.AcceptButton = btnOK;
+            form.CancelButton = btnCancel;
+
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                if (!decimal.TryParse(txtBudgeted.Text, out var budgeted) ||
+                    !decimal.TryParse(txtActual.Text, out var actual) ||
+                    !int.TryParse(txtDepartmentId.Text, out var deptId))
+                {
+                    MessageBox.Show("Invalid input values. Please check your entries.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var entry = new BudgetEntry
+                {
+                    AccountNumber = txtAccountNumber.Text.Trim(),
+                    Description = txtDescription.Text.Trim(),
+                    BudgetedAmount = budgeted,
+                    ActualAmount = actual,
+                    DepartmentId = deptId,
+                    FiscalYear = _viewModel.SelectedFiscalYear,
+                    FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund"),
+                    Variance = budgeted - actual,
+                    StartPeriod = new DateTime(_viewModel.SelectedFiscalYear, 1, 1),
+                    EndPeriod = new DateTime(_viewModel.SelectedFiscalYear, 12, 31),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                Task.Run(async () => await _viewModel.AddEntryAsync(entry));
+                UpdateStatus("Budget entry added successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in AddEntryButton_Click");
+            MessageBox.Show($"Error adding entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void EditEntryButton_Click(object? sender, EventArgs e)
     {
-        // Edit entry dialog would be implemented here
-        MessageBox.Show("Edit Entry functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        try
+        {
+            if (_budgetGrid?.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select a budget entry to edit.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
+            if (selectedEntry == null) return;
+
+            _logger.LogInformation("Edit Entry button clicked for entry {Id}", selectedEntry.Id);
+
+            // Similar dialog to Add but pre-populated with existing values
+            using var form = new Form
+            {
+                Text = "Edit Budget Entry",
+                Width = 500,
+                Height = 400,
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 9,
+                Padding = new Padding(10)
+            };
+
+            // Pre-populate fields
+            tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
+            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.AccountNumber };
+            tableLayout.Controls.Add(txtAccountNumber, 1, 0);
+
+            tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
+            var txtDescription = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.Description };
+            tableLayout.Controls.Add(txtDescription, 1, 1);
+
+            tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
+            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.BudgetedAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            tableLayout.Controls.Add(txtBudgeted, 1, 2);
+
+            tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
+            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            tableLayout.Controls.Add(txtActual, 1, 3);
+
+            tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
+            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
+            tableLayout.Controls.Add(txtDepartmentId, 1, 4);
+
+            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
+            cmbFundType.SelectedItem = selectedEntry.FundType.ToString();
+            tableLayout.Controls.Add(cmbFundType, 1, 5);
+
+            var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
+            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            btnPanel.Controls.Add(btnCancel);
+            btnPanel.Controls.Add(btnOK);
+            tableLayout.Controls.Add(btnPanel, 1, 8);
+            tableLayout.SetColumnSpan(btnPanel, 2);
+
+            form.Controls.Add(tableLayout);
+            form.AcceptButton = btnOK;
+            form.CancelButton = btnCancel;
+
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                if (!decimal.TryParse(txtBudgeted.Text, out var budgeted) ||
+                    !decimal.TryParse(txtActual.Text, out var actual) ||
+                    !int.TryParse(txtDepartmentId.Text, out var deptId))
+                {
+                    MessageBox.Show("Invalid input values. Please check your entries.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                selectedEntry.AccountNumber = txtAccountNumber.Text.Trim();
+                selectedEntry.Description = txtDescription.Text.Trim();
+                selectedEntry.BudgetedAmount = budgeted;
+                selectedEntry.ActualAmount = actual;
+                selectedEntry.DepartmentId = deptId;
+                selectedEntry.FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund");
+                selectedEntry.Variance = budgeted - actual;
+                selectedEntry.UpdatedAt = DateTime.UtcNow;
+
+                Task.Run(async () => await _viewModel.UpdateEntryAsync(selectedEntry));
+                UpdateStatus("Budget entry updated successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in EditEntryButton_Click");
+            MessageBox.Show($"Error editing entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private Task DeleteEntryAsync()
     {
-        if (_viewModel.BudgetEntries.Count == 0)
+        try
         {
-            MessageBox.Show("No budget entries to delete", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return Task.CompletedTask;
+            if (_budgetGrid?.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select a budget entry to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return Task.CompletedTask;
+            }
+
+            var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
+            if (selectedEntry == null) return Task.CompletedTask;
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete budget entry '{selectedEntry.AccountNumber} - {selectedEntry.Description}'?\n\nThis action cannot be undone.",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                _logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
+                Task.Run(async () => await _viewModel.DeleteEntryAsync(selectedEntry.Id));
+                UpdateStatus($"Deleted budget entry {selectedEntry.AccountNumber}");
+            }
         }
-
-        var result = MessageBox.Show(
-            "Are you sure you want to delete the selected budget entry?",
-            "Confirm Delete",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-
-        if (result == DialogResult.Yes)
+        catch (Exception ex)
         {
-            // Delete logic would go here
-            MessageBox.Show("Delete functionality not yet implemented", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            _logger.LogError(ex, "Error in DeleteEntryAsync");
+            MessageBox.Show($"Error deleting entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         return Task.CompletedTask;
     }

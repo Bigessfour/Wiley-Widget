@@ -20,7 +20,6 @@
     "ms-python.black-formatter",
     "ms-python.debugpy",
     "charliermarsh.ruff",
-    "littlefoxteam.vscode-python-test-adapter",
 
     // === Database & SQL ===
     "ms-mssql.sql",
@@ -70,7 +69,8 @@
     "pkief.material-icon-theme"
   ],
 
-    "unwantedRecommendations": [
-      "ms-vscode.csharp"  // csdevkit replaces the old csharp extension
-    ]
+  "unwantedRecommendations": [
+    "ms-vscode.csharp",  // csdevkit replaces the old csharp extension
+    "littlefoxteam.vscode-python-test-adapter"  // Causing crashes, not needed for .NET project
+  ]
   }

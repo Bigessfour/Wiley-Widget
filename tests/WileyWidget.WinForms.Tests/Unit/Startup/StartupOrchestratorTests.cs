@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
@@ -17,16 +16,6 @@ public sealed class StartupOrchestratorTests
     public StartupOrchestratorTests(WinFormsUiThreadFixture ui)
     {
         _ui = ui;
-    }
-
-    [Fact]
-    [Trait("Category", "Startup")]
-    public void RegisterLicense_WithConfiguredKey_DoesNotThrow()
-    {
-        using var provider = BuildProvider();
-        var orchestrator = provider.GetRequiredService<IStartupOrchestrator>();
-
-        _ui.Run(() => orchestrator.RegisterLicenseAsync().GetAwaiter().GetResult());
     }
 
     [StaFact]
@@ -51,16 +40,20 @@ public sealed class StartupOrchestratorTests
 
     private static ServiceProvider BuildProvider()
     {
+        return BuildProviderWithConfig(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = "Data Source=:memory:",
+            ["AppSettings:Environment"] = "Test",
+            ["XAI:ApiKey"] = "ci-test-xai-key-0123456789-abcdefghijklmnopqrstuvwxyz-VALID"
+        });
+    }
+
+    private static ServiceProvider BuildProviderWithConfig(Dictionary<string, string?> values)
+    {
         var services = WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection();
 
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Syncfusion:LicenseKey"] = "ci-test-license-key",
-                ["ConnectionStrings:DefaultConnection"] = "Data Source=:memory:",
-                ["AppSettings:Environment"] = "Test",
-                ["XAI:ApiKey"] = "ci-test-xai-key-0123456789-abcdefghijklmnopqrstuvwxyz-VALID"
-            })
+            .AddInMemoryCollection(values)
             .Build();
 
         services.AddSingleton<IConfiguration>(config);

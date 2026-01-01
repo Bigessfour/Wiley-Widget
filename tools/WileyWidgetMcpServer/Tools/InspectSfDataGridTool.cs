@@ -37,8 +37,8 @@ public static class InspectSfDataGridTool
                 return $"❌ Form type not found: {formTypeName}";
             }
 
-            // Create mock MainForm with MDI enabled
-            mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+            // Create mock MainForm with docking enabled
+            mockMainForm = MockFactory.CreateMockMainForm();
 
             // Instantiate form
             try

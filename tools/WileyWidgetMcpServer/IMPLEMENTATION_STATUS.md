@@ -35,7 +35,7 @@ The WileyWidget MCP server is **fully functional** and ready for production use.
 
 - ✅ **`MockFactory.cs`**
   - `CreateMockMainForm()` - Mock MainForm for testing
-  - Configurable MDI mode
+  - Panel navigation support
   - Proper IDisposable implementation
 
 ### 3. MCP Tools (5 Production Tools)

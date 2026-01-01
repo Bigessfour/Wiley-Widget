@@ -495,6 +495,56 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    public async System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<ExpenseLine>> QueryExpensesByDepartmentAsync(string department, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        var results = new List<ExpenseLine>();
+        try
+        {
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var p = GetDataService();
+            var query = $"SELECT * FROM Purchase WHERE DepartmentRef.Name = '{department}' AND TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
+            var qs = new QueryService<Purchase>(p.Ctx);
+            var purchases = qs.ExecuteIdsQuery(query).ToList();
+
+            foreach (var purchase in purchases)
+            {
+                try
+                {
+                    // Prefer TotalAmt if available; otherwise sum line amounts
+                    decimal amount = 0m;
+                    try { amount = purchase.TotalAmt; } catch { }
+
+                    if (amount == 0m && purchase.Line != null)
+                    {
+                        foreach (var l in purchase.Line)
+                        {
+                            try { amount += Convert.ToDecimal(l.Amount); } catch { }
+                        }
+                    }
+
+                    if (amount != 0m)
+                    {
+                        results.Add(new ExpenseLine(amount));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Skipping purchase while computing amount for department {Department}", department);
+                }
+            }
+
+            return results;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "QBO expenses query failed");
+            throw;
+        }
+    }
+
     public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync()
     {
         try
@@ -569,6 +619,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             throw;
         }
     }
+
+
 
     public async System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync()
     {
@@ -958,7 +1010,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         if (_settingsLoaded) return _settings.Current;
 
         // Use LoadAsync synchronously - called from constructor context where async is not available
-        System.Threading.Tasks.Task.Run(() => _settings.LoadAsync()).GetAwaiter().GetResult();
+        _settings.LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         _settingsLoaded = true;
         return _settings.Current;
     }

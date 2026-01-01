@@ -12,7 +12,12 @@ echo Executing SQL files...
 echo.
 
 REM List of SQL files to execute
-set SQL_FILES=insert_budget_period.sql insert_departments.sql insert_missing_municipal_accounts.sql insert_sewer_expenditures.sql insert_sewer_municipal_accounts.sql insert_sewer_revenues.sql insert_town_wiley_municipal_accounts.sql link_budget_entries.sql
+REM NOTE: Seeding is now handled entirely by EF Core migrations in AppDbContext.OnModelCreating
+REM These SQL files are kept for reference but are no longer executed
+REM set SQL_FILES=insert_budget_period.sql insert_departments.sql insert_missing_municipal_accounts.sql insert_sewer_expenditures.sql insert_sewer_municipal_accounts.sql insert_sewer_revenues.sql insert_town_wiley_municipal_accounts.sql link_budget_entries.sql
+
+REM Disable SQL file execution since seeding is now in EF migrations
+set SQL_FILES=
 
 for %%f in (%SQL_FILES%) do (
     echo Executing %%f...

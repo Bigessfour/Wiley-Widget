@@ -80,7 +80,7 @@ public static class FlaUITestLoggerHelper
         string testName,
         Microsoft.Extensions.Logging.LogLevel minimumLevel = Microsoft.Extensions.Logging.LogLevel.Debug)
     {
-        var factory = CreateFlaUILoggerFactory(testName, minimumLevel);
+        using var factory = CreateFlaUILoggerFactory(testName, minimumLevel);
         return factory.CreateLogger<T>();
     }
 

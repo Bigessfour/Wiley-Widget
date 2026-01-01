@@ -111,12 +111,20 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
     private void InitializeControls()
     {
         Name = "ReportsPanel";
+        AccessibleName = "Reports"; // Panel title for UI automation
         Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
 
         // Panel header
         _panelHeader = new PanelHeader { Dock = DockStyle.Top };
         _panelHeader.Title = "Reports";
+        try
+        {
+            var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+            var txtProp = dh?.GetType().GetProperty("Text");
+            if (dh != null && txtProp != null) txtProp.SetValue(dh, "Reports");
+        }
+        catch { }
         _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
@@ -149,6 +157,8 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         _reportSelector = new ComboBox
         {
+            Name = "reportSelector",
+            AccessibleName = "reportSelector",
             Location = new Point(65, 10),
             Size = new Size(300, 25),
             DropDownStyle = ComboBoxStyle.DropDownList
@@ -159,7 +169,9 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         // Load button
         _loadReportButton = new Button
         {
-            Text = "&Load Report",
+            Text = "Generate",
+            Name = "Toolbar_Generate",
+            AccessibleName = "Generate",
             Location = new Point(380, 10),
             Size = new Size(100, 30),
             Enabled = false
@@ -170,7 +182,9 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         // Export buttons
         _exportPdfButton = new Button
         {
-            Text = "Export &PDF",
+            Text = "Export PDF",
+            Name = "Toolbar_ExportPdf",
+            AccessibleName = "Export PDF",
             Location = new Point(490, 10),
             Size = new Size(100, 30),
             Enabled = false
@@ -180,7 +194,9 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         _exportExcelButton = new Button
         {
-            Text = "Export &Excel",
+            Text = "Export Excel",
+            Name = "Toolbar_ExportExcel",
+            AccessibleName = "Export Excel",
             Location = new Point(600, 10),
             Size = new Size(100, 30),
             Enabled = false
@@ -192,6 +208,8 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         _printButton = new Button
         {
             Text = "&Print",
+            Name = "Toolbar_Print",
+            AccessibleName = "Print",
             Location = new Point(710, 10),
             Size = new Size(100, 30),
             Enabled = false
@@ -210,6 +228,8 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         // Initialize report viewer panel (placeholder for FastReport viewer)
         _reportViewer = new Panel
         {
+            Name = "PreviewPanel",
+            AccessibleName = "Report Preview",
             Dock = DockStyle.Fill,
             BackColor = SystemColors.ControlLight,
             BorderStyle = BorderStyle.FixedSingle
@@ -237,6 +257,8 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
         _statusLabel = new ToolStripStatusLabel
         {
+            Name = "StatusLabel",
+            AccessibleName = "Status",
             Text = "Ready",
             Spring = true,
             TextAlign = ContentAlignment.MiddleLeft

@@ -24,6 +24,16 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     protected TViewModel? ViewModel => _viewModel;
 
     /// <summary>
+    /// Gets the logger instance for diagnostic logging.
+    /// </summary>
+    protected ILogger Logger => _logger;
+
+    /// <summary>
+    /// Gets the scoped service provider for resolving additional dependencies.
+    /// </summary>
+    protected IServiceProvider? ServiceProvider => _scope?.ServiceProvider;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ScopedPanelBase{TViewModel}"/> class.
     /// </summary>
     /// <param name="scopeFactory">The service scope factory for creating scopes to resolve scoped dependencies.</param>

@@ -21,7 +21,7 @@ The agent produces **production-ready views** that are:
 
 - Perfectly themed via **SfSkinManager** (Office2019Colorful default, consistent ThemeName propagation)
 - Structured with clean **MVVM** (ViewModels with INotifyPropertyChanged, Commands via RelayCommand/CommunityToolkit.Mvvm, DataBinding only)
-- Integrated seamlessly with **DockingManager** and **TabbedMDIManager** for MDI/TDI layouts
+- Integrated seamlessly with **DockingManager** for panel layouts
 - Validated against latest Syncfusion best practices (2025 Volume releases)
 
 ## When to Use This Agent
@@ -31,7 +31,7 @@ Invoke this agent for:
 - **Creating New Views**: Designing complete UserControl/Form views with Syncfusion controls (SfDataGrid, RibbonControlAdv, Chart, SfButton, DockingManager, etc.)
 - **Refactoring Existing Views**: Migrating legacy code-behind to pure MVVM, fixing theme inconsistencies, optimizing Docking/TabbedMDI layouts
 - **Theming Mastery**: Ensuring app-wide consistent theming with SfSkinManager (Office2019Colorful, HighContrast, etc.)
-- **Complex Layouts**: Building MDI applications with DockingManager + TabbedMDIManager, tabbed documents, dock hints, persistence
+- **Complex Layouts**: Building panel-based applications with DockingManager, dock hints, persistence
 - **Control Configuration**: Precise property/event setup for any Syncfusion control (grids, charts, navigation, inputs)
 - **MVVM Implementation**: Wiring ViewModels, Commands, Bindings, Validation – zero code-behind logic
 - **Troubleshooting Syncfusion Issues**: Rendering problems, licensing dialogs, theme propagation failures, docking conflicts
@@ -49,7 +49,7 @@ Invoke this agent for:
 
 - Views are UserControls or SfForms with designer-friendly layouts
 - Controls docked via DockingManager where appropriate
-- Tabbed MDI via TabbedMDIManager with Office2019-style tabs
+- Panel docking with Office2019-style themes
 - Sparse, purposeful comments; clean, readable Designer.cs separation
 
 ### MVVM Mastery
@@ -67,11 +67,11 @@ Invoke this agent for:
 - No competing theme managers or per-control overrides
 - Consistent inheritance to child controls
 
-### Docking & MDI Specialization
+### Docking Specialization
 
-- Seamless DockingManager + TabbedMDIManager integration
-- Proper SetAsMDIChild, DockAsDocument, AttachToMdiContainer
-- TabRendererOffice2016Colorful or matching theme
+- Seamless DockingManager integration
+- Proper panel docking and layout management
+- Theme-consistent rendering
 - Persistence of layouts if requested
 
 ## Boundaries & Limitations
@@ -98,7 +98,7 @@ This agent **will NOT**:
 - **Complete pristine views**: UserControl/SfForm with Designer.cs, .cs (MVVM bindings), .resx
 - **ViewModel classes**: Fully implemented with properties, commands, INotifyPropertyChanged
 - **Theme integration patches**: Program.cs/MainForm updates for SfSkinManager
-- **Docking/MDI setup**: Configured managers with persistence if needed
+- **Docking setup**: Configured managers with persistence if needed
 - Detailed rationale with references to Syncfusion documentation
 - Validation steps (build task, visual checks)
 
@@ -115,14 +115,14 @@ This agent **will NOT**:
 
 - Specific data models or services for binding
 - Preferred theme (default: Office2019Colorful)
-- MDI vs. single-document preference
+- Panel vs. single-document preference
 - Integration with existing navigation/shell
 - Performance constraints for large grids/charts
 
 ## Example Use Cases
 
 - "Create a pristine DashboardView with SfDataGrid, SfChart, and Ribbon – pure MVVM"
-- "Refactor MainForm to use DockingManager + TabbedMDIManager with Office2019Colorful theme"
+- "Refactor MainForm to use DockingManager with Office2019Colorful theme"
 - "Build an AnalyticsView with PivotGrid and BulletGraph, bound to AnalyticsViewModel"
 - "Fix theme inconsistencies across all views using SfSkinManager"
 - "Generate a SettingsView with SfTreeViewAdv and property grid – full MVVM commands"

@@ -8,13 +8,11 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 using Xunit;
+using WileyWidget.WinForms.E2ETests.Helpers;
 using FlaUIApplication = FlaUI.Core.Application;
 
 namespace WileyWidget.WinForms.E2ETests
 {
-    [CollectionDefinition("UI Tests", DisableParallelization = true)]
-    public class UITestsCollection { }
-
     [Collection("UI Tests")]
     public class Dashboard_FlaUI_ConvertedTests : IDisposable
     {
@@ -24,12 +22,10 @@ namespace WileyWidget.WinForms.E2ETests
 
         public Dashboard_FlaUI_ConvertedTests()
         {
-            // Try environment variable first so CI/test runners can provide published exe.
-            _exePath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE") ?? Path.Combine("..", "..", "..", "WileyWidget.WinForms", "bin", "Debug", "net9.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
+            // Resolve the executable path using shared helper (supports env override)
+            _exePath = TestAppHelper.GetWileyWidgetExePath();
 
-            // Disable MDI mode for UI tests so forms open as separate windows
-            Environment.SetEnvironmentVariable("UI:UseMdiMode", "false");
-            Environment.SetEnvironmentVariable("UI:UseTabbedMdi", "false");
+            // UI tests use separate windows
         }
 
         private static bool IsModalWindow(Window candidate)
@@ -86,7 +82,8 @@ namespace WileyWidget.WinForms.E2ETests
             return Retry.WhileNull(() => window.FindFirstDescendant(selector), TimeSpan.FromSeconds(timeoutSeconds), TimeSpan.FromMilliseconds(250)).Result;
         }
 
-        [Fact]
+        [StaFact]
+        [Trait("Category", "UI")]
         public void Dashboard_LaunchesAndShowsMainWindow()
         {
             if (!EnsureInteractiveOrSkip()) return;
@@ -106,7 +103,8 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(exportBtn);
         }
 
-        [Fact]
+        [StaFact]
+        [Trait("Category", "UI")]
         public void Dashboard_Export_PDF_CreatesValidFile_Or_ShowsHelpfulMissingDependencyMessage()
         {
             if (!EnsureInteractiveOrSkip()) return;
@@ -181,7 +179,8 @@ namespace WileyWidget.WinForms.E2ETests
             }
         }
 
-        [Fact]
+        [StaFact]
+        [Trait("Category", "UI")]
         public Task Dashboard_AutoRefresh_UpdatesData_WhenRefreshed()
         {
             if (!EnsureInteractiveOrSkip()) return Task.CompletedTask;

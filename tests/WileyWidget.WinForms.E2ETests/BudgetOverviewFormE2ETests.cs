@@ -70,7 +70,7 @@ namespace WileyWidget.WinForms.E2ETests
             throw new FileNotFoundException($"Executable not found. Build Debug output under '{baseDir}'.");
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_Opens_And_Displays_MetricsGrid()
         {
@@ -88,7 +88,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(metricsGrid);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_SummaryCards_AreVisible()
         {
@@ -99,7 +99,7 @@ namespace WileyWidget.WinForms.E2ETests
             var budgetWindow = OpenBudgetOverviewView(mainWindow);
 
             // Wait for form to load data
-            Thread.Sleep(2000);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
             // Find labels containing budget summary values
             var allLabels = budgetWindow.FindAllDescendants(cf => cf.ByControlType(ControlType.Text));
@@ -112,7 +112,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.Contains(labelTexts, text => text.Contains("% USED", StringComparison.OrdinalIgnoreCase));
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_RefreshButton_IsAccessible()
         {
@@ -127,7 +127,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(refreshButton.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_PeriodSelector_Exists()
         {
@@ -148,7 +148,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotEmpty(comboBox.Items);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_ExportButton_Exists()
         {
@@ -163,7 +163,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(exportButton.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_AddCategoryButton_Exists()
         {
@@ -178,7 +178,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(addButton.IsEnabled);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_EditButton_ExistsButDisabledWithoutSelection()
         {
@@ -193,7 +193,7 @@ namespace WileyWidget.WinForms.E2ETests
             // May be disabled if no selection
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_DeleteButton_Exists()
         {
@@ -207,7 +207,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(deleteButton);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_MetricsGrid_HasExpectedColumns()
         {
@@ -221,7 +221,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(metricsGrid);
 
             // Wait for grid to populate
-            Thread.Sleep(2000);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
             var gridItems = Retry.WhileEmpty(() => metricsGrid.FindAllDescendants(),
                 timeout: TimeSpan.FromSeconds(5)).Result;
@@ -229,7 +229,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotEmpty(gridItems!);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_ProgressBar_IsVisible()
         {
@@ -244,7 +244,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(progressBar);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_StatusBar_ShowsLastUpdated()
         {
@@ -255,14 +255,14 @@ namespace WileyWidget.WinForms.E2ETests
             var budgetWindow = OpenBudgetOverviewView(mainWindow);
 
             // Wait for data to load
-            Thread.Sleep(2000);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
             // Find status bar
             var statusBar = WaitForElement(budgetWindow, cf => cf.ByControlType(ControlType.StatusBar));
             Assert.NotNull(statusBar);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_PeriodSelector_ChangesData()
         {
@@ -285,15 +285,15 @@ namespace WileyWidget.WinForms.E2ETests
                 // Select second item
                 comboBox.Select(1);
 
-                // Give UI time to refresh data
-                Thread.Sleep(2000);
+                // Wait for UI to refresh data
+                WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
                 // Verify selection changed (check selected item exists)
                 Assert.NotNull(comboBox.SelectedItem);
             }
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_RefreshButton_ReloadsData()
         {
@@ -310,14 +310,14 @@ namespace WileyWidget.WinForms.E2ETests
             refreshButton.AsButton().Invoke();
 
             // Wait for refresh to complete (status bar should update)
-            Thread.Sleep(2000);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
             // Verify status bar shows "Last updated"
             var statusBar = WaitForElement(budgetWindow, cf => cf.ByControlType(ControlType.StatusBar));
             Assert.NotNull(statusBar);
         }
 
-        [Fact]
+        [StaFact]
         [Trait("Category", "UI")]
         public void BudgetOverviewForm_ExportButton_OpensDialog()
         {
@@ -328,7 +328,7 @@ namespace WileyWidget.WinForms.E2ETests
             var budgetWindow = OpenBudgetOverviewView(mainWindow);
 
             // Wait for data to load
-            Thread.Sleep(2000);
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
             var exportButton = WaitForElement(budgetWindow, cf => cf.ByName("Export"));
             Assert.NotNull(exportButton);
@@ -367,7 +367,7 @@ namespace WileyWidget.WinForms.E2ETests
                 // Try finding through Dashboard first
                 var dashboardNav = WaitForElement(mainWindow, cf => cf.ByAutomationId("Nav_Dashboard"), timeoutMs: 10000);
                 dashboardNav?.Click();
-                Thread.Sleep(1000);
+                WaitForBusyIndicator(TimeSpan.FromSeconds(2));
 
                 navButton = WaitForElement(mainWindow, cf => cf.ByName("Budget Overview"), timeoutMs: 10000);
             }
@@ -476,6 +476,7 @@ namespace WileyWidget.WinForms.E2ETests
             try
             {
                 _app?.Close();
+                if (_app != null && !_app.HasExited) { _app.Kill(); }
                 _app?.Dispose();
             }
             catch { }
@@ -485,6 +486,13 @@ namespace WileyWidget.WinForms.E2ETests
                 _automation?.Dispose();
             }
             catch { }
+
+            // Kill any lingering WileyWidget processes
+            var processes = System.Diagnostics.Process.GetProcessesByName("WileyWidget.WinForms");
+            foreach (var p in processes)
+            {
+                try { p.Kill(); } catch { }
+            }
         }
     }
 }
