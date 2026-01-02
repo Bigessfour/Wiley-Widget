@@ -75,7 +75,7 @@ namespace WileyWidget.WinForms.E2ETests
             _app = FlaUIApplication.Launch(_exePath);
             DismissLicensePopups();
             var window = Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(250), throwOnTimeout: true).Result ?? throw new InvalidOperationException("Main window not found");
-            var accounts = NavigationHelper.OpenView(_automation!, window, "Nav_Accounts", "Municipal Accounts");
+            var accounts = NavigationHelper.OpenView(_automation!, window!, "Nav_Accounts", "Municipal Accounts");
             Assert.NotNull(accounts);
 
             var header = WaitForElement(accounts, cf => cf.ByAutomationId("headerLabel").Or(cf.ByName("Municipal Accounts")), 8);
@@ -189,7 +189,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(mainThemeBtn);
             var original = mainThemeBtn!.Name ?? string.Empty;
 
-            var settings = NavigationHelper.OpenView(_automation!, window, "Nav_Settings", "Settings");
+            var settings = NavigationHelper.OpenView(_automation!, window!, "Nav_Settings", "Settings");
             Assert.NotNull(settings);
 
             var themeCombo = WaitForElement(settings, cf => cf.ByAutomationId("themeCombo"), 8)?.AsComboBox();

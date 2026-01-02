@@ -88,18 +88,51 @@ public static class DockingHostFactory
     /// <summary>
     /// Create and configure DockingManager component with proper Office2019 theme integration.
     /// Follows Syncfusion best practices for SfSkinManager theme application.
+    /// CRITICAL FIX: Ensures MainForm handle is created before HostControl assignment to prevent
+    /// ArgumentOutOfRangeException in DockHost.GetPaintInfo during early paint events.
     /// </summary>
     private static DockingManager CreateDockingManager(MainForm mainForm, ILogger? logger)
     {
-        var dockingManager = new DockingManager(mainForm.components ?? new System.ComponentModel.Container())
+        // CRITICAL FIX: Validate components container exists before DockingManager creation
+        // This prevents fallback to throwaway container and ensures proper lifecycle management
+        if (mainForm.components == null)
         {
-            HostControl = mainForm,
+            var errorMsg = "MainForm.components must be initialized before DockingManager creation. " +
+                          "Call InitializeChrome() before InitializeSyncfusionDocking(), or initialize " +
+                          "components in MainForm constructor.";
+            logger?.LogError(errorMsg);
+            throw new InvalidOperationException(errorMsg);
+        }
+
+        logger?.LogDebug("CreateDockingManager: Components container validated - not null");
+
+        // CRITICAL FIX: Ensure MainForm handle is created BEFORE setting HostControl property
+        // Per Microsoft docs: Accessing Handle property forces handle creation if not already created
+        // This prevents ArgumentOutOfRangeException in DockHost.GetPaintInfo() during paint events
+        // before DockingManager's internal control collections are properly initialized
+        if (!mainForm.IsHandleCreated)
+        {
+            logger?.LogInformation("CreateDockingManager: MainForm handle not created yet - forcing handle creation before HostControl assignment");
+            _ = mainForm.Handle; // Force handle creation (Microsoft recommended pattern)
+            logger?.LogInformation("CreateDockingManager: MainForm handle created successfully - Handle={Handle}", mainForm.Handle);
+        }
+        else
+        {
+            logger?.LogDebug("CreateDockingManager: MainForm handle already created - Handle={Handle}", mainForm.Handle);
+        }
+
+        // Now safe to create DockingManager with guaranteed handle and components container
+        var dockingManager = new DockingManager(mainForm.components)
+        {
+            HostControl = mainForm, // Safe: handle is guaranteed to exist
             EnableDocumentMode = false, // Panel mode only
             PersistState = true,
             AnimateAutoHiddenWindow = true,
             ShowCaption = true,
             EnableAutoAdjustCaption = true, // Auto-size captions based on font
         };
+
+        logger?.LogInformation("CreateDockingManager: DockingManager created successfully - HostControl assigned to MainForm with handle {Handle}", mainForm.Handle);
 
         // CRITICAL: Apply SfSkinManager theme to DockingManager
         // This ensures theme cascade to all docked panels and controls
@@ -143,6 +176,7 @@ public static class DockingHostFactory
 
     /// <summary>
     /// Create left dock panel with dashboard cards.
+    /// CRITICAL: Follows Syncfusion official pattern - dock panel BEFORE adding child controls.
     /// </summary>
     private static Panel CreateLeftDockPanel(
         DockingManager dockingManager,
@@ -155,6 +189,7 @@ public static class DockingHostFactory
         // Logger fallback to NullLogger for safe operation
         var safeLogger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
+        // STEP 1: Create empty panel
         var leftPanel = new Panel
         {
             Name = "LeftDockPanel",
@@ -165,16 +200,21 @@ public static class DockingHostFactory
             Visible = true // Explicitly set visible
         };
 
+        safeLogger.LogDebug("[DOCKING] Step 1: Created {PanelName} (empty panel)", leftPanel.Name);
         Console.WriteLine($"[DIAGNOSTIC] CreateLeftDockPanel: Created {leftPanel.Name}, Visible={leftPanel.Visible}");
 
+        // STEP 2-4: Dock panel BEFORE adding content (Syncfusion official pattern)
+        // This ensures DockingManager's internal control collections are populated before child controls are added
+        ConfigurePanelDocking(dockingManager, leftPanel, mainForm, DockingStyle.Left, 280, "Dashboard", safeLogger);
+
+        // STEP 5: Add child controls AFTER docking
         // Note: panelNavigator may be null here - dashboard cards will be inert until
         // EnsurePanelNavigatorInitialized() is called after docking setup completes
+        safeLogger.LogDebug("[DOCKING] Step 5: Adding dashboard content to {PanelName}", leftPanel.Name);
         var dashboardContent = DashboardFactory.CreateDashboardPanel(panelNavigator, mainForm, safeLogger);
         leftPanel.Controls.Add(dashboardContent);
 
-        ConfigurePanelDocking(dockingManager, leftPanel, mainForm, DockingStyle.Left, 280, "Dashboard", safeLogger);
-
-        safeLogger.LogInformation("Left dock panel created and docked (dashboard)");
+        safeLogger.LogInformation("Left dock panel created and docked (dashboard) - child controls added after docking");
         safeLogger.LogDebug("Left dock panel ready (navigator: {NavigatorStatus})",
             panelNavigator == null ? "pending" : "ready");
         return leftPanel;
@@ -210,6 +250,7 @@ public static class DockingHostFactory
 
     /// <summary>
     /// Create right dock panel with activity grid.
+    /// CRITICAL: Follows Syncfusion official pattern - dock panel BEFORE adding child controls.
     /// </summary>
     private static (Panel panel, Syncfusion.WinForms.DataGrid.SfDataGrid? grid, System.Windows.Forms.Timer? timer) CreateRightDockPanel(
         DockingManager dockingManager,
@@ -217,6 +258,7 @@ public static class DockingHostFactory
         IServiceProvider serviceProvider,
         ILogger? logger)
     {
+        // STEP 1: Create empty panel
         var rightPanel = new Panel
         {
             Name = "RightDockPanel",
@@ -226,19 +268,29 @@ public static class DockingHostFactory
             Visible = true // Explicitly set visible
         };
 
+        logger?.LogDebug("[DOCKING] Step 1: Created {PanelName} (empty panel)", rightPanel.Name);
         Console.WriteLine($"[DIAGNOSTIC] CreateRightDockPanel: Created {rightPanel.Name}, Visible={rightPanel.Visible}");
 
+        // STEP 2-4: Dock panel BEFORE adding content (Syncfusion official pattern)
+        // This ensures DockingManager's internal control collections are populated before child controls are added
+        ConfigurePanelDocking(dockingManager, rightPanel, mainForm, DockingStyle.Right, 280, "Activity", logger);
+
+        // STEP 5: Add child controls AFTER docking
+        logger?.LogDebug("[DOCKING] Step 5: Adding activity grid to {PanelName}", rightPanel.Name);
         var (activityContent, activityGrid, activityTimer) = CreateActivityGridPanel(serviceProvider, logger);
         rightPanel.Controls.Add(activityContent);
 
-        ConfigurePanelDocking(dockingManager, rightPanel, mainForm, DockingStyle.Right, 280, "Activity", logger);
-
-        logger?.LogInformation("Right dock panel created with activity grid");
+        logger?.LogInformation("Right dock panel created with activity grid - child controls added after docking");
         return (rightPanel, activityGrid, activityTimer);
     }
 
     /// <summary>
     /// Configure docking behavior for a panel.
+    /// CRITICAL: Follows Syncfusion official pattern from documentation:
+    /// 1. DockControl (positions and adds to DockingManager)
+    /// 2. SetEnableDocking (enables docking features)
+    /// 3. SetDockLabel (sets caption text)
+    /// This sequence ensures DockingManager's internal control collections are properly initialized.
     /// </summary>
     private static void ConfigurePanelDocking(
         DockingManager dockingManager,
@@ -249,20 +301,36 @@ public static class DockingHostFactory
         string label,
         ILogger? logger)
     {
+        logger?.LogDebug("[DOCKING] Step 2: Configuring {PanelName} - style={Style}, size={Size}, label='{Label}'",
+            panel.Name, style, size, label);
         Console.WriteLine($"[DIAGNOSTIC] ConfigurePanelDocking: Configuring {panel.Name} - style={style}, size={size}, label={label}");
 
-        dockingManager.SetEnableDocking(panel, true);
-        Console.WriteLine($"[DIAGNOSTIC] ConfigurePanelDocking: EnableDocking set for {panel.Name}");
-
+        // STEP 2: DockControl FIRST (per Syncfusion official pattern)
+        // This adds the panel to DockingManager's internal control collections
         dockingManager.DockControl(panel, mainForm, style, size);
+        logger?.LogInformation("[DOCKING] Step 2: DockControl({PanelName}, {Style}, {Size}) completed",
+            panel.Name, style, size);
         Console.WriteLine($"[DIAGNOSTIC] ConfigurePanelDocking: DockControl called for {panel.Name}");
 
-        dockingManager.SetAutoHideMode(panel, true);
+        // STEP 3: SetEnableDocking SECOND (per Syncfusion official pattern)
+        // This enables docking features after panel is positioned
+        dockingManager.SetEnableDocking(panel, true);
+        logger?.LogInformation("[DOCKING] Step 3: SetEnableDocking({PanelName}, true) completed", panel.Name);
+        Console.WriteLine($"[DIAGNOSTIC] ConfigurePanelDocking: EnableDocking set for {panel.Name}");
+
+        // STEP 4: SetDockLabel THIRD (per Syncfusion official pattern)
+        // This sets the caption after panel is docked and enabled
         dockingManager.SetDockLabel(panel, label);
+        logger?.LogInformation("[DOCKING] Step 4: SetDockLabel({PanelName}, '{Label}') completed", panel.Name, label);
+
+        // Additional configuration
+        dockingManager.SetAutoHideMode(panel, true);
         dockingManager.SetAllowFloating(panel, true);
 
         // CRITICAL: Make panel visible after docking
         panel.Visible = true;
+        logger?.LogDebug("[DOCKING] Final state - {PanelName}: Visible={Visible}, Parent={Parent}, Docked={Docked}",
+            panel.Name, panel.Visible, panel.Parent?.Name, style);
         Console.WriteLine($"[DIAGNOSTIC] ConfigurePanelDocking: Final state - {panel.Name} Visible={panel.Visible}, Parent={panel.Parent?.Name}");
 
         logger?.LogDebug(

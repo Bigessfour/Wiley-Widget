@@ -459,7 +459,7 @@ namespace WileyWidget.WinForms.Controls
             UpdateUI();
         }
 
-        private void BudgetMetrics_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void BudgetMetrics_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (InvokeRequired)
             {

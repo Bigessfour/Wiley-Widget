@@ -251,7 +251,7 @@ namespace WileyWidget.WinForms.Services
                     "quickbooks" or "accounting" or "accounts" or "finance" or "money" or "budget" => SystemIcons.Shield,
                     "invoice" or "bill" or "payment" => SystemIcons.Shield,
                     "wallet" or "purse" or "funds" => SystemIcons.Shield,
-                    
+
                     // Media and printing
                     "play" or "start" or "run" => SystemIcons.Application,
                     "pause" or "stop" => SystemIcons.Shield,

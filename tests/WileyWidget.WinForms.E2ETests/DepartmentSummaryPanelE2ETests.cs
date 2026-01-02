@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -147,7 +147,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find refresh button
             var refreshBtn = WaitForElement(window, cf => cf.ByName("Refresh").Or(cf.ByAutomationId("RefreshButton")))?.AsButton();
-            
+
             if (refreshBtn != null)
             {
                 refreshBtn.Click();
@@ -176,7 +176,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find drill-down or view details button
             var viewDetailsBtn = WaitForElement(window, cf => cf.ByName("View Details").Or(cf.ByAutomationId("ViewDetailsButton")))?.AsButton();
-            
+
             if (viewDetailsBtn != null && viewDetailsBtn.IsEnabled)
             {
                 viewDetailsBtn.Click();

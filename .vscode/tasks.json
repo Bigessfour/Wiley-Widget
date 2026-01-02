@@ -660,6 +660,25 @@
 			},
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "ai: generate-manifest",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"${workspaceFolder}/scripts/generate-ai-manifest.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none"
 		}
 	],
 	"inputs": [

@@ -27,7 +27,7 @@ public class SettingsPanelTests : PanelTestBase<SettingsPanel, SettingsViewModel
     {
         // SettingsViewModel requires ILogger<SettingsViewModel> and optional ISettingsService
         // Pass null for ISettingsService since it's optional in the constructor
-        return new Mock<SettingsViewModel>(_mockViewModelLogger.Object, null);
+        return new Mock<SettingsViewModel>(_mockViewModelLogger.Object, null!);
     }
 
     protected override void ConfigureServices(ServiceCollection services)

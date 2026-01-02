@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -121,7 +121,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find disconnect button (may be disabled if not connected)
             var disconnectBtn = WaitForElement(window, cf => cf.ByName("Disconnect").Or(cf.ByAutomationId("DisconnectButton")))?.AsButton();
-            
+
             if (disconnectBtn != null)
             {
                 // Button exists, check if it's enabled/disabled based on connection state
@@ -221,7 +221,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find sync all button
             var syncAllBtn = WaitForElement(window, cf => cf.ByName("Sync All").Or(cf.ByAutomationId("SyncAllButton")))?.AsButton();
-            
+
             if (syncAllBtn != null && syncAllBtn.IsEnabled)
             {
                 syncAllBtn.Click();
@@ -250,7 +250,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find refresh button
             var refreshBtn = WaitForElement(window, cf => cf.ByName("Refresh").Or(cf.ByAutomationId("RefreshButton")))?.AsButton();
-            
+
             if (refreshBtn != null)
             {
                 refreshBtn.Click();
@@ -277,7 +277,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find error log or issues panel
             var errorLog = WaitForElement(window, cf => cf.ByName("Error Log").Or(cf.ByAutomationId("ErrorLogPanel")));
-            
+
             if (errorLog != null)
             {
                 Assert.True(errorLog.IsEnabled);
@@ -299,7 +299,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find settings button
             var settingsBtn = WaitForElement(window, cf => cf.ByName("Settings").Or(cf.ByAutomationId("SettingsButton")))?.AsButton();
-            
+
             if (settingsBtn != null && settingsBtn.IsEnabled)
             {
                 settingsBtn.Click();

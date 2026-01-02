@@ -284,8 +284,8 @@ namespace WileyWidget.WinForms
                     host = BuildHost(args);
                     hostBuildScope.Stop();
                     Log.Debug("DI Container built in {Elapsed}ms", hostBuildScope.ElapsedMilliseconds);
-                    Log.Information("Startup milestone: DI Container Build complete");
                 }
+                Log.Information("Startup milestone: DI Container Build complete");
                 SplashReport(0.20, "DI container ready");
 
                 // Get required services early
@@ -302,23 +302,33 @@ namespace WileyWidget.WinForms
                     Log.Debug("[TIMELINE] StartupTimelineService enabled - tracking startup phases");
                 }
 
-                SplashReport(0.30, "Validating configuration and services...", isIndeterminate: true);
+                SplashReport(0.30, "Validating configuration...", isIndeterminate: true);
                 using (_timelineService?.BeginPhaseScope("Secret Validation"))
                 {
                     ValidateSecrets(host.Services);
-                    Log.Debug("Secret validation complete");
                 }
+                Log.Debug("Secret validation complete");
 
-                var diValidationTask = Task.Run(() =>
+                // Microsoft guidance: Defer DI validation to background - it's diagnostic, not functional
+                // "ValidateOnBuild is false by default in non-Development modes for performance reasons"
+                // Move validation off UI thread to prevent 985ms startup blocking
+#if DEBUG
+                _ = Task.Run(async () =>
                 {
-                    using (_timelineService?.BeginPhaseScope("DI Validation"))
+                    try
                     {
-                        startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).GetAwaiter().GetResult();
-                        Log.Debug("DI validation complete");
+                        Log.Debug("Starting background DI validation (Development mode only)");
+                        await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
+                        Log.Information("Background DI validation complete - all services valid");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Background DI validation failed - check service registrations");
                     }
                 });
-
-                diValidationTask.GetAwaiter().GetResult();
+#else
+                Log.Debug("DI validation skipped (Release mode - validates at build time via ValidateOnBuild)");
+#endif
                 SplashReport(0.50, "Validation complete");
 
                 // Verification mode: run deeper checks before exiting
@@ -348,8 +358,9 @@ namespace WileyWidget.WinForms
                 using (_timelineService?.BeginPhaseScope("MainForm Creation"))
                 {
                     mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
+                    Log.Debug("MainForm instance created");
                 }
-                Log.Debug("MainForm created");
+                Log.Information("Startup milestone: MainForm Creation complete");
                 SplashReport(0.70, "Main window created");
 
                 using (_timelineService?.BeginPhaseScope("Chrome Initialization"))
@@ -357,14 +368,15 @@ namespace WileyWidget.WinForms
                     _timelineService?.RecordOperation("Configure error reporting", "Chrome Initialization");
                     ConfigureErrorReporting();
                     WireGlobalExceptionHandlers();
-                    Log.Debug("Exception handlers wired");
                 }
+                Log.Debug("Exception handlers wired");
+                Log.Information("Startup milestone: Chrome Initialization complete");
 
-                var prefetchTask = Task.Run(async () =>
+                using (_timelineService?.BeginPhaseScope("Data Prefetch"))
                 {
-                    try
+                    var prefetchTask = Task.Run(async () =>
                     {
-                        using (_timelineService?.BeginPhaseScope("Data Prefetch"))
+                        try
                         {
                             SplashReport(0.85, "Prefetching dashboard data...", isIndeterminate: true);
 
@@ -378,14 +390,15 @@ namespace WileyWidget.WinForms
                                 }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Data prefetch failed (non-critical)");
-                    }
-                });
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Data prefetch failed (non-critical)");
+                        }
+                    });
 
-                prefetchTask.GetAwaiter().GetResult();
+                    prefetchTask.GetAwaiter().GetResult();
+                }
+                Log.Information("Startup milestone: Data Prefetch complete");
 
                 SplashReport(0.90, "Finalizing startup...");
                 SplashReport(0.95, "Launching application...");
@@ -393,6 +406,7 @@ namespace WileyWidget.WinForms
                 {
                     SplashComplete("Ready");
                     splash.Dispose();
+                    Log.Information("Splash screen hidden");
                 }
                 Log.Information("Startup milestone: Ready");
 
@@ -550,46 +564,41 @@ namespace WileyWidget.WinForms
             }
             else if (e.Exception is ArgumentException argEx)
             {
-                // Suppress benign Syncfusion DockingManager ArgumentOutOfRangeException during paint/layout
-                // These are internal to Syncfusion and do not affect application stability
-                if (argEx is ArgumentOutOfRangeException &&
-                    argEx.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools.Dock", StringComparison.Ordinal) == true &&
-                    (argEx.StackTrace.Contains("GetPaintInfo", StringComparison.Ordinal) ||
-                     argEx.StackTrace.Contains("GetControlsSequence", StringComparison.Ordinal)))
-                {
-                    // Benign Syncfusion internal error during paint/mouse operations - suppress logging
-                    return;
-                }
+                // REMOVED: Exception suppression for DockingManager ArgumentOutOfRangeException
+                // Root cause fixed in DockingHostFactory.CreateDockingManager by ensuring
+                // MainForm handle is created before HostControl assignment and components
+                // container is properly initialized. If these exceptions still occur, they
+                // should be investigated rather than suppressed.
 
                 if (Interlocked.Increment(ref _firstChanceArgumentExceptionCount) <= 3)
                 {
                     var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
                     var exceptionStackTrace = new StackTrace(argEx, true).ToString();
                     var envStackTrace = Environment.StackTrace;
-                Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: ArgumentException ═══");
-                Console.WriteLine($"Message:    {argEx.Message}");
-                Console.WriteLine($"ParamName:  {argEx.ParamName ?? "(none)"}");
-                Console.WriteLine($"Source:     {argEx.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {argEx.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine("Stack Trace (exception):");
-                Console.WriteLine(string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd());
-                Console.WriteLine("Stack Trace (environment):");
-                Console.WriteLine(string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
-                Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+                    Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: ArgumentException ═══");
+                    Console.WriteLine($"Message:    {argEx.Message}");
+                    Console.WriteLine($"ParamName:  {argEx.ParamName ?? "(none)"}");
+                    Console.WriteLine($"Source:     {argEx.Source ?? "(unknown)"}");
+                    Console.WriteLine($"TargetSite: {argEx.TargetSite?.ToString() ?? "(unknown)"}");
+                    Console.WriteLine("Stack Trace (exception):");
+                    Console.WriteLine(string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd());
+                    Console.WriteLine("Stack Trace (environment):");
+                    Console.WriteLine(string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
+                    Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
 
-                try
-                {
-                    Log.Warning(argEx, "[FIRST CHANCE] ArgumentException detected at {TargetSite} (param: {Param})\nStackTrace:\n{StackTrace}\nEnvironmentStack:\n{EnvStack}",
-                        argEx.TargetSite?.ToString() ?? "(unknown)",
-                        argEx.ParamName ?? "(none)",
-                        string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd(),
-                        string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
+                    try
+                    {
+                        Log.Warning(argEx, "[FIRST CHANCE] ArgumentException detected at {TargetSite} (param: {Param})\nStackTrace:\n{StackTrace}\nEnvironmentStack:\n{EnvStack}",
+                            argEx.TargetSite?.ToString() ?? "(unknown)",
+                            argEx.ParamName ?? "(none)",
+                            string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd(),
+                            string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
+                    }
+                    catch
+                    {
+                        // Serilog might not be initialized yet - ignore
+                    }
                 }
-                catch
-                {
-                    // Serilog might not be initialized yet - ignore
-                }
-            }
             }
             else if (e.Exception is InvalidOperationException ioe &&
                      (ioe.Source?.Contains("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal) == true))

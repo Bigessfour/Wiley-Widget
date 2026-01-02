@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -202,7 +202,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find chart grouping combo (Day/Week/Month)
             var groupingCombo = WaitForElement(window, cf => cf.ByName("Group By").Or(cf.ByAutomationId("ChartGroupingCombo")))?.AsComboBox();
-            
+
             if (groupingCombo != null && groupingCombo.Items.Length > 1)
             {
                 groupingCombo.Select(1);
@@ -229,11 +229,11 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find auto-refresh toggle checkbox
             var autoRefreshCheck = WaitForElement(window, cf => cf.ByName("Auto Refresh").Or(cf.ByAutomationId("AutoRefreshCheckBox")))?.AsCheckBox();
-            
+
             if (autoRefreshCheck != null)
             {
                 var originalState = autoRefreshCheck.IsChecked;
-                
+
                 // Toggle
                 autoRefreshCheck.Toggle();
                 Assert.NotEqual(originalState, autoRefreshCheck.IsChecked);

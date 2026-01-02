@@ -43,7 +43,9 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         public void Constructor_WithValidDependencies_InitializesViewModel()
         {
             // Arrange & Act
+#pragma warning disable CA2000 // Object is properly disposed in test Dispose method
             var vm = new AccountsViewModel(_mockLogger.Object, _mockAccountsRepository.Object, _mockMunicipalAccountRepository.Object);
+#pragma warning restore CA2000
 
             // Assert
             Assert.NotNull(vm);
@@ -357,6 +359,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
         {
             if (disposing)
             {
+                _viewModel?.Dispose();
                 _dbContext?.Dispose();
             }
         }

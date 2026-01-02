@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -128,7 +128,7 @@ namespace WileyWidget.WinForms.E2ETests
             if (reportCombo != null && reportCombo.Items.Length > 0)
             {
                 reportCombo.Select(0);
-                
+
                 // Wait for parameters to load
                 System.Threading.Thread.Sleep(1000);
 
@@ -207,7 +207,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find export to PDF button
             var exportPdfBtn = WaitForElement(window, cf => cf.ByName("Export to PDF").Or(cf.ByAutomationId("ExportPdfButton")))?.AsButton();
-            
+
             if (exportPdfBtn != null)
             {
                 Assert.True(exportPdfBtn.IsOffscreen || !exportPdfBtn.IsEnabled || exportPdfBtn.IsEnabled);
@@ -229,7 +229,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find export to Excel button
             var exportExcelBtn = WaitForElement(window, cf => cf.ByName("Export to Excel").Or(cf.ByAutomationId("ExportExcelButton")))?.AsButton();
-            
+
             if (exportExcelBtn != null)
             {
                 Assert.True(exportExcelBtn.IsOffscreen || !exportExcelBtn.IsEnabled || exportExcelBtn.IsEnabled);
@@ -251,7 +251,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find print button
             var printBtn = WaitForElement(window, cf => cf.ByName("Print").Or(cf.ByAutomationId("PrintButton")))?.AsButton();
-            
+
             if (printBtn != null)
             {
                 Assert.NotNull(printBtn);
@@ -273,7 +273,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find refresh button
             var refreshBtn = WaitForElement(window, cf => cf.ByName("Refresh").Or(cf.ByAutomationId("RefreshButton")))?.AsButton();
-            
+
             if (refreshBtn != null)
             {
                 refreshBtn.Click();
@@ -308,7 +308,7 @@ namespace WileyWidget.WinForms.E2ETests
                 // Find parameters grid
                 var paramsGrid = WaitForElement(window, cf => cf.ByName("Report Parameters"));
                 Assert.NotNull(paramsGrid);
-                
+
                 // Verify grid is enabled for input
                 Assert.True(paramsGrid.IsEnabled);
             }
@@ -329,7 +329,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find preview button
             var previewBtn = WaitForElement(window, cf => cf.ByName("Preview").Or(cf.ByAutomationId("PreviewButton")))?.AsButton();
-            
+
             if (previewBtn != null && previewBtn.IsEnabled)
             {
                 previewBtn.Click();

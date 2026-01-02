@@ -1117,22 +1117,42 @@ public partial class MainForm
 
             HideStandardPanelsForDocking();
 
-            // Load layout asynchronously with proper error handling (fire-and-forget with logging)
-            _ = Task.Run(async () =>
+            // CRITICAL FIX: Load layout SYNCHRONOUSLY to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
+            // The exception occurs when paint events fire before DockingManager's internal control collections are populated
+            // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
+            try
             {
-                try
+                // Use Task.Run().GetAwaiter().GetResult() to synchronously wait without blocking UI thread context
+                // This ensures layout load completes before any paint events can occur
+                Task.Run(async () =>
                 {
                     await _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).ConfigureAwait(false);
-                    _logger?.LogDebug("Docking layout loaded successfully");
-                }
-                catch (Exception layoutEx)
-                {
-                    _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} (non-critical)", GetDockingLayoutPath());
-                    // Layout load failure is non-critical - docking will use default layout
-                }
-            });
+                }).GetAwaiter().GetResult();
+                _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
+                Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
+            }
+            catch (Exception layoutEx)
+            {
+                _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
+                Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
+                // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
+            }
 
             _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel, centralPanel);
+
+            // CRITICAL: Apply SfSkinManager theme AFTER DockingManager is fully initialized and panels are docked
+            // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
+            try
+            {
+                var themeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                SfSkinManager.SetVisualStyle(this, themeName);
+                _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme}", themeName);
+                Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName}");
+            }
+            catch (Exception themeEx)
+            {
+                _logger?.LogWarning(themeEx, "Failed to apply SfSkinManager theme to MainForm after DockingManager setup");
+            }
 
             // Subscribe to theme changes for runtime theme updates
             ThemeManager.ThemeChanged += OnThemeChanged;
@@ -1621,6 +1641,11 @@ public partial class MainForm
 
             _statePanel.Text = stateInfo.ToString();
             _logger?.LogTrace("Status state updated: {State}", _statePanel.Text);
+
+            // DIAGNOSTIC: Log control count for troubleshooting docking issues
+            _logger?.LogDebug("UpdateDockingStateText: DockingManager control count = {ControlCount}, MainForm control count = {FormControlCount}",
+                childCount, this.Controls.Count);
+            Console.WriteLine($"[DIAGNOSTIC] UpdateDockingStateText: DockingManager controls={childCount}, MainForm controls={this.Controls.Count}");
         }
         catch (Exception ex)
         {

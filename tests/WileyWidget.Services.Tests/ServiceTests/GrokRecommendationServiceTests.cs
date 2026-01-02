@@ -627,7 +627,9 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var cacheMock = new Mock<IMemoryCache>();
             object? cachedObj = cachedResult;
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
             cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cachedObj)).Returns(true);
+#pragma warning restore CS8600
 
             var httpFactory = new Mock<IHttpClientFactory>();
             var svc = new GrokRecommendationService(_logger.Object, config, httpFactory.Object, cacheMock.Object);
@@ -654,8 +656,11 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var cacheMock = new Mock<IMemoryCache>();
             string cachedExplanation = "Cached explanation text";
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
             object? cachedObj = cachedExplanation;
+            _ = cachedObj;
             cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cachedObj)).Returns(true);
+#pragma warning restore CS8600
 
             var httpFactory = new Mock<IHttpClientFactory>();
             var svc = new GrokRecommendationService(_logger.Object, config, httpFactory.Object, cacheMock.Object);

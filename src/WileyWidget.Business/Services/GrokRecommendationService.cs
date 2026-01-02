@@ -620,11 +620,11 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
                     {
                         var index = _cache.GetOrCreate(CacheIndexKey, (ICacheEntry entry) =>
                         {
-                        entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
-                        return new HashSet<string>();
+                            entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
+                            return new HashSet<string>();
                         });
                         if (index != null)
-                        index.Add(explanationCacheKey);
+                            index.Add(explanationCacheKey);
                     }
                 }
                 catch (Exception ex)

@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -136,7 +136,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find chart type combo
             var chartTypeCombo = WaitForElement(window, cf => cf.ByName("Chart Type").Or(cf.ByAutomationId("ChartTypeCombo")))?.AsComboBox();
-            
+
             if (chartTypeCombo != null && chartTypeCombo.Items.Length > 1)
             {
                 chartTypeCombo.Select(1);

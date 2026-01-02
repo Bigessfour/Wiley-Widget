@@ -11,10 +11,10 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Provides activity log data for dashboards and docking panels.
 /// Persists to the ActivityLog table.
-    /// CRITICAL: All read-only queries use .AsNoTracking() to prevent ObjectDisposedException
-    /// when binding entities to UI controls after the scoped DbContext is disposed.
-    /// This is a mandatory pattern for disconnected/UI scenarios per EF Core best practices.
-    /// </summary>
+/// CRITICAL: All read-only queries use .AsNoTracking() to prevent ObjectDisposedException
+/// when binding entities to UI controls after the scoped DbContext is disposed.
+/// This is a mandatory pattern for disconnected/UI scenarios per EF Core best practices.
+/// </summary>
 public sealed class ActivityLogRepository : IActivityLogRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.ActivityLogRepository");

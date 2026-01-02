@@ -197,16 +197,16 @@ public static class RibbonFactory
 
         var gridSortAscBtn = CreateGridButton("Grid_SortAsc", "⬆ Sort",
             () => form.SortActiveGridByFirstSortableColumnInternal(descending: false));
-        
+
         var gridSortDescBtn = CreateGridButton("Grid_SortDesc", "⬇ Sort",
             () => form.SortActiveGridByFirstSortableColumnInternal(descending: true));
-        
+
         var gridFilterBtn = CreateGridButton("Grid_ApplyTestFilter", "🔍 Filter",
             () => form.ApplyTestFilterToActiveGridInternal());
-        
+
         var gridClearBtn = CreateGridButton("Grid_ClearFilter", "✖ Clear",
             () => form.ClearActiveGridFilterInternal());
-        
+
         var gridExportBtn = CreateGridButton("Grid_ExportExcel", "📊 Export",
             async () => await form.ExportActiveGridToExcelInternal());
 
@@ -235,7 +235,7 @@ public static class RibbonFactory
 
         // Add ToolStripEx to the tab
         homeTab.Panel.AddToolStrip(homeToolStrip);
-        
+
         // Add tab to ribbon
         ribbon.Header.AddMainItem(homeTab);
 

@@ -401,7 +401,7 @@ namespace WileyWidget.WinForms.ViewModels
                         // Successfully loaded—exit retry loop
                         break;
                     }
-                    catch (OperationCanceledException oce)
+                    catch (OperationCanceledException)
                     {
                         // Gracefully handle cancellation (usually from starting a new load)
                         _logger.LogInformation("Dashboard load cancelled (likely due to concurrent load request)");

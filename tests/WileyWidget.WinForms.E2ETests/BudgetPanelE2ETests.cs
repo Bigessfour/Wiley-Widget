@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -174,7 +174,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find variance filter checkbox
             var varianceCheck = WaitForElement(window, cf => cf.ByName("Show Variance Only").Or(cf.ByAutomationId("VarianceOnlyCheckBox")))?.AsCheckBox();
-            
+
             if (varianceCheck != null)
             {
                 varianceCheck.IsChecked = true;
@@ -245,7 +245,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find search box
             var searchBox = WaitForElement(window, cf => cf.ByName("Search Budget Entries").Or(cf.ByAutomationId("SearchTextBox")))?.AsTextBox();
-            
+
             if (searchBox != null)
             {
                 searchBox.Text = "Salary";

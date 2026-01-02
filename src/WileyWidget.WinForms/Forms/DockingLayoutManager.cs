@@ -125,7 +125,7 @@ public class DockingLayoutManager : IDisposable
 
             // Load the actual dock state
             LogDockStateLoad(layoutPath);
-            await LoadDockStateAsync(dockingManager, layoutPath);
+            await LoadDockStateAsync(dockingManager, parentForm, layoutPath);
 
             // Recreate dynamic panels
             RecreateDynamicPanels(dockingManager, parentForm, panelInfos);
@@ -170,26 +170,79 @@ public class DockingLayoutManager : IDisposable
 
         try
         {
-            // Defensive check: Verify DockingManager has been properly initialized
-            // Prevents NullReferenceException in Syncfusion's DockingMgrSerializationWrapperAdv constructor
-            // Check if DockingManager has a HostControl and at least one docked control
+            // CRITICAL: Verify DockingManager has been properly initialized
+            // Prevents NullReferenceException in Syncfusion's internal serialization
             if (dockingManager.HostControl == null)
             {
                 _logger?.LogDebug("SaveDockingLayout skipped - DockingManager has no HostControl");
                 return;
             }
 
-            var tempPath = layoutPath + ".tmp";
+            // Guard: Check if DockingManager has any docked controls
+            // Prevents NullReferenceException when accessing internal control collections
+            var hostForm = dockingManager.HostControl as Form;
+            if (hostForm == null)
+            {
+                _logger?.LogDebug("SaveDockingLayout skipped - HostControl is not a Form");
+                return;
+            }
+
+            // Count docked controls by checking for panels that are docked
+            int dockedControlCount = 0;
+            foreach (Control ctrl in hostForm.Controls)
+            {
+                if (ctrl is Panel panel && ctrl.Visible)
+                {
+                    try
+                    {
+                        // Check if this panel is managed by DockingManager
+                        var isDocked = dockingManager.GetEnableDocking(panel);
+                        if (isDocked)
+                        {
+                            dockedControlCount++;
+                        }
+                    }
+                    catch { /* Skip panels not managed by DockingManager */ }
+                }
+            }
+
+            if (dockedControlCount == 0)
+            {
+                _logger?.LogDebug("SaveDockingLayout skipped - no docked controls present (count: {Count})", dockedControlCount);
+                return;
+            }
+
+            _logger?.LogDebug("Saving dock state with {Count} docked controls", dockedControlCount);
+
+            // Use BinaryFile serialization mode per Syncfusion best practices
+            // Binary format is faster and more reliable than XML for large layouts
+            var binaryLayoutPath = Path.ChangeExtension(layoutPath, ".bin");
+            var tempPath = binaryLayoutPath + ".tmp";
 
             // Save dock state using Syncfusion API (wrapped in try-catch for Syncfusion internal errors)
             var serializerType = typeof(AppStateSerializer);
-            var serializer = Activator.CreateInstance(serializerType, new object[] { Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, tempPath })!;
+            var serializer = Activator.CreateInstance(serializerType, new object[] {
+                Syncfusion.Runtime.Serialization.SerializeMode.BinaryFile,
+                tempPath
+            })!;
+
             var saveMethod = dockingManager.GetType().GetMethod("SaveDockState", new Type[] { serializerType });
 
             if (saveMethod != null)
             {
                 saveMethod.Invoke(dockingManager, new object[] { serializer });
-                _logger?.LogDebug("Saved dock state to temp file {TempPath}", tempPath);
+
+                // CRITICAL: Call PersistNow() to actually write the serializer to disk
+                var persistMethod = serializerType.GetMethod("PersistNow");
+                if (persistMethod != null)
+                {
+                    persistMethod.Invoke(serializer, null);
+                    _logger?.LogDebug("Saved and persisted dock state to temp file {TempPath}", tempPath);
+                }
+                else
+                {
+                    _logger?.LogWarning("PersistNow method not found - layout may not be persisted correctly");
+                }
             }
             else
             {
@@ -197,13 +250,13 @@ public class DockingLayoutManager : IDisposable
                 return;
             }
 
-            // Save dynamic panels metadata
+            // Save dynamic panels metadata (still use XML for metadata)
             SaveDynamicPanels(layoutPath);
 
             // Atomic file replacement
-            ReplaceDockingLayoutFile(tempPath, layoutPath);
+            ReplaceDockingLayoutFile(tempPath, binaryLayoutPath);
 
-            _logger?.LogInformation("Docking layout saved to {Path}", layoutPath);
+            _logger?.LogInformation("Docking layout saved to {Path} (binary format)", binaryLayoutPath);
         }
         catch (Exception ex)
         {
@@ -316,22 +369,105 @@ public class DockingLayoutManager : IDisposable
 
     // Private helper methods
 
-    private async Task LoadDockStateAsync(DockingManager dockingManager, string layoutPath)
+    private async Task LoadDockStateAsync(DockingManager dockingManager, Control parentForm, string layoutPath)
     {
+        // Use BinaryFile serialization mode per Syncfusion best practices
+        // Binary format is faster and more reliable than XML for large layouts
+        var binaryLayoutPath = Path.ChangeExtension(layoutPath, ".bin");
+        if (File.Exists(binaryLayoutPath))
+        {
+            layoutPath = binaryLayoutPath;
+            _logger?.LogDebug("Using binary layout file: {Path}", layoutPath);
+        }
+
         var serializerType = typeof(AppStateSerializer);
-        var serializer = Activator.CreateInstance(serializerType, new object[] { Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath })!;
+        var serializer = Activator.CreateInstance(serializerType, new object[] {
+            Syncfusion.Runtime.Serialization.SerializeMode.BinaryFile,
+            layoutPath
+        })!;
+
         var loadMethod = dockingManager.GetType().GetMethod("LoadDockState", new Type[] { serializerType });
 
         if (loadMethod != null)
         {
-            // Run on thread pool to avoid blocking UI
-            await Task.Run(() => loadMethod.Invoke(dockingManager, new object[] { serializer }));
-            _logger?.LogDebug("Loaded dock state from {Path}", layoutPath);
+            try
+            {
+                // Run on thread pool to avoid blocking UI
+                bool success = false;
+                await Task.Run(() =>
+                {
+                    var result = loadMethod.Invoke(dockingManager, new object[] { serializer });
+                    // LoadDockState returns bool indicating success
+                    if (result is bool boolResult)
+                    {
+                        success = boolResult;
+                    }
+                });
+
+                if (success)
+                {
+                    _logger?.LogInformation("Successfully loaded dock state from {Path}", layoutPath);
+                }
+                else
+                {
+                    _logger?.LogWarning("LoadDockState returned false - layout file may be corrupt or incompatible. Falling back to default docking.");
+
+                    // Fallback: Re-dock panels programmatically
+                    await ReDockPanelsProgrammatically(dockingManager, parentForm);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Exception during LoadDockState - falling back to default docking");
+
+                // Fallback: Re-dock panels programmatically
+                await ReDockPanelsProgrammatically(dockingManager, parentForm);
+            }
         }
         else
         {
             _logger?.LogWarning("LoadDockState method not found - using default layout");
         }
+    }
+
+    /// <summary>
+    /// Re-docks left and right panels programmatically using default positions.
+    /// Used as a fallback when LoadDockState fails or layout file is missing/corrupt.
+    /// </summary>
+    /// <param name="dockingManager">The DockingManager instance to configure.</param>
+    /// <param name="parentForm">The parent form to dock panels to.</param>
+    private Task ReDockPanelsProgrammatically(DockingManager dockingManager, Control parentForm)
+    {
+        try
+        {
+            _logger?.LogInformation("Re-docking panels programmatically to default positions");
+
+            // Re-dock left panel (Dashboard) if it exists
+            if (_leftDockPanel != null)
+            {
+                _logger?.LogDebug("Re-docking {PanelName} to Left with width 280px", _leftDockPanel.Name);
+                dockingManager.DockControl(_leftDockPanel, parentForm, DockingStyle.Left, 280);
+                dockingManager.SetEnableDocking(_leftDockPanel, true);
+                dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
+            }
+
+            // Re-dock right panel (Activity) if it exists
+            if (_rightDockPanel != null)
+            {
+                _logger?.LogDebug("Re-docking {PanelName} to Right with width 280px", _rightDockPanel.Name);
+                dockingManager.DockControl(_rightDockPanel, parentForm, DockingStyle.Right, 280);
+                dockingManager.SetEnableDocking(_rightDockPanel, true);
+                dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+            }
+
+            _logger?.LogInformation("Successfully re-docked panels to default positions");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to re-dock panels programmatically");
+        }
+
+        return Task.CompletedTask;
     }
 
     private void LogDockStateLoad(string layoutPath)
@@ -417,9 +553,25 @@ public class DockingLayoutManager : IDisposable
 
         try
         {
+            // STEP 1: Create empty panel
             var panel = new Panel { Name = panelInfo.Name };
 
-            // Add basic content based on panel name
+            // STEP 2-4: Dock panel FIRST (Syncfusion official pattern)
+            // Set up docking if DockingManager is available
+            if (dockingManager != null)
+            {
+                // Dock the panel BEFORE adding content (position will be restored by LoadDockState)
+                dockingManager.DockControl(panel, parentForm, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
+                dockingManager.SetEnableDocking(panel, true);
+                dockingManager.SetDockLabel(panel, panelInfo.DockLabel ?? panelInfo.Name);
+                if (panelInfo.IsAutoHide)
+                {
+                    dockingManager.SetAutoHideMode(panel, true);
+                }
+            }
+
+            // STEP 5: Add child content AFTER docking (Syncfusion official pattern)
+            // Adding content after DockControl ensures DockingManager's internal control collections are ready
             if (panelInfo.Name.Contains("Chat", StringComparison.OrdinalIgnoreCase))
             {
                 panel.Controls.Add(new Label { Text = "AI Chat Panel", Dock = DockStyle.Top });
@@ -433,20 +585,8 @@ public class DockingLayoutManager : IDisposable
                 panel.Controls.Add(new Label { Text = $"{panelInfo.Name} Panel", Dock = DockStyle.Top });
             }
 
-            // Set up docking if DockingManager is available
-            if (dockingManager != null)
-            {
-                dockingManager.SetDockLabel(panel, panelInfo.DockLabel ?? panelInfo.Name);
-                if (panelInfo.IsAutoHide)
-                {
-                    dockingManager.SetAutoHideMode(panel, true);
-                }
-                // Dock the panel (position will be restored by LoadDockState)
-                dockingManager.DockControl(panel, parentForm, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
-            }
-
             _dynamicDockPanels[panelInfo.Name] = panel;
-            _logger?.LogDebug("Recreated dynamic panel: {PanelName}", panelInfo.Name);
+            _logger?.LogDebug("Recreated dynamic panel: {PanelName} (content added after docking)", panelInfo.Name);
         }
         catch (Exception ex)
         {

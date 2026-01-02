@@ -179,6 +179,8 @@ public class StartupTimelineReport
 
     /// <summary>
     /// Detects dependency violations (phase started before dependency completed).
+    /// Only reports violations where the dependency phase was actually tracked.
+    /// If dependency phase was never recorded, it's assumed to have happened before timeline tracking started.
     /// </summary>
     public List<string> GetDependencyViolations()
     {
@@ -189,16 +191,26 @@ public class StartupTimelineReport
         {
             if (!string.IsNullOrEmpty(evt.DependsOn))
             {
-                var dependency = Events.FirstOrDefault(e =>
+                // Check if dependency was ever started
+                var dependencyEverStarted = Events.Any(e =>
                     e.Type == "Phase" &&
-                    e.Name == evt.DependsOn &&
-                    e.EndTime.HasValue &&
-                    e.EndTime.Value <= evt.StartTime);
+                    e.Name == evt.DependsOn);
 
-                if (dependency == null)
+                if (dependencyEverStarted)
                 {
-                    violations.Add($"Phase '{evt.Name}' started without dependency '{evt.DependsOn}' completing first");
+                    // Dependency was tracked - verify it completed before this phase started
+                    var dependency = Events.FirstOrDefault(e =>
+                        e.Type == "Phase" &&
+                        e.Name == evt.DependsOn &&
+                        e.EndTime.HasValue &&
+                        e.EndTime.Value <= evt.StartTime);
+
+                    if (dependency == null)
+                    {
+                        violations.Add($"Phase '{evt.Name}' started without dependency '{evt.DependsOn}' completing first");
+                    }
                 }
+                // If dependency was never tracked, assume it happened before timeline tracking started (not a violation)
             }
 
             if (evt.EndTime.HasValue)
@@ -536,8 +548,19 @@ public class StartupTimelineService : IStartupTimelineService
 
             if (dependency == null)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not completed",
-                    phaseName, config.DependsOn);
+                // Check if dependency was ever started (may have been recorded before timeline tracking enabled)
+                var dependencyEverStarted = _events.Any(e => e.Name == config.DependsOn);
+                if (dependencyEverStarted)
+                {
+                    _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not yet completed",
+                        phaseName, config.DependsOn);
+                }
+                else
+                {
+                    // Dependency phase never recorded - likely happened before timeline tracking started (e.g., Theme Initialization before DI container built)
+                    _logger.LogDebug("[TIMELINE] Phase '{PhaseName}' depends on '{Dependency}' which was not tracked (likely pre-timeline initialization)",
+                        phaseName, config.DependsOn);
+                }
             }
         }
     }

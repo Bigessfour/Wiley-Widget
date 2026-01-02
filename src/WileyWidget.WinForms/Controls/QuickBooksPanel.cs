@@ -907,24 +907,24 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Alternate row coloring
         if (e.DataRow.RowIndex % 2 == 0)
-        // Alternating row styling removed - let SkinManager handle theming
+            // Alternating row styling removed - let SkinManager handle theming
 
-        // Status column color coding
-        if (e.Column.MappingName == nameof(QuickBooksSyncHistoryRecord.Status) && e.DataRow.RowData is QuickBooksSyncHistoryRecord record)
-        {
-            switch (record.Status)
+            // Status column color coding
+            if (e.Column.MappingName == nameof(QuickBooksSyncHistoryRecord.Status) && e.DataRow.RowData is QuickBooksSyncHistoryRecord record)
             {
-                case "Success":
-                    e.Style.TextColor = Color.Green; // Semantic success color
-                    e.Style.Font.Bold = true;
-                    break;
-                case "Failed":
-                case "Error":
-                    e.Style.TextColor = Color.Red; // Semantic error color
-                    e.Style.Font.Bold = true;
-                    break;
+                switch (record.Status)
+                {
+                    case "Success":
+                        e.Style.TextColor = Color.Green; // Semantic success color
+                        e.Style.Font.Bold = true;
+                        break;
+                    case "Failed":
+                    case "Error":
+                        e.Style.TextColor = Color.Red; // Semantic error color
+                        e.Style.Font.Bold = true;
+                        break;
+                }
             }
-        }
     }
 
     #endregion

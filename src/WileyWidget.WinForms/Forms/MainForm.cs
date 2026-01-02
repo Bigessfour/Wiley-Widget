@@ -126,27 +126,27 @@ namespace WileyWidget.WinForms.Forms
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
 
-    /// <summary>
-    /// Internal helper for StatusBarFactory to wire panel references.
-    /// Called from StatusBarFactory.CreateStatusBar to establish back-references.
-    /// </summary>
-    internal void SetStatusBarPanels(
-        StatusBarAdv statusBar,
-        StatusBarAdvPanel statusLabel,
-        StatusBarAdvPanel statusTextPanel,
-        StatusBarAdvPanel statePanel,
-        StatusBarAdvPanel progressPanel,
-        Syncfusion.Windows.Forms.Tools.ProgressBarAdv progressBar,
-        StatusBarAdvPanel clockPanel)
-    {
-        _statusBar = statusBar;
-        _statusLabel = statusLabel;
-        _statusTextPanel = statusTextPanel;
-        _statePanel = statePanel;
-        _progressPanel = progressPanel;
-        _progressBar = progressBar;
-        _clockPanel = clockPanel;
-    }
+        /// <summary>
+        /// Internal helper for StatusBarFactory to wire panel references.
+        /// Called from StatusBarFactory.CreateStatusBar to establish back-references.
+        /// </summary>
+        internal void SetStatusBarPanels(
+            StatusBarAdv statusBar,
+            StatusBarAdvPanel statusLabel,
+            StatusBarAdvPanel statusTextPanel,
+            StatusBarAdvPanel statePanel,
+            StatusBarAdvPanel progressPanel,
+            Syncfusion.Windows.Forms.Tools.ProgressBarAdv progressBar,
+            StatusBarAdvPanel clockPanel)
+        {
+            _statusBar = statusBar;
+            _statusLabel = statusLabel;
+            _statusTextPanel = statusTextPanel;
+            _statePanel = statePanel;
+            _progressPanel = progressPanel;
+            _progressBar = progressBar;
+            _clockPanel = clockPanel;
+        }
         private bool _syncfusionDockingInitialized;
         private bool _initialized;
         internal System.ComponentModel.IContainer? components;
@@ -175,6 +175,12 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
             _panelNavigator = null;
+
+            // CRITICAL FIX: Initialize components container in constructor
+            // This ensures components is available when DockingManager is created
+            // Per Syncfusion best practices: DockingManager requires a valid IContainer
+            components = new System.ComponentModel.Container();
+            _logger.LogDebug("MainForm constructor: Components container initialized");
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
@@ -442,6 +448,60 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "OnLoad: Failed to ensure docking z-order");
+            }
+
+            // CRITICAL: Verify docking state after potential LoadDockState
+            // If layout load failed or panels are not visible, force default docking
+            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
+            {
+                try
+                {
+                    var dockedControlCount = 0;
+                    foreach (Control ctrl in this.Controls)
+                    {
+                        if (ctrl is Panel panel && panel.Visible)
+                        {
+                            try
+                            {
+                                if (_dockingManager.GetEnableDocking(panel))
+                                {
+                                    dockedControlCount++;
+                                }
+                            }
+                            catch { /* Skip non-docked panels */ }
+                        }
+                    }
+
+                    _logger?.LogDebug("OnLoad: Post-LoadDockState verification - {DockedCount} docked panels found", dockedControlCount);
+                    Console.WriteLine($"[DIAGNOSTIC] OnLoad: Post-LoadDockState verification - {dockedControlCount} docked panels");
+
+                    // If no docked panels found, layout load likely failed - force default docking via layout manager
+                    if (dockedControlCount == 0 && _dockingLayoutManager != null)
+                    {
+                        _logger?.LogWarning("OnLoad: No docked panels found after layout load - forcing default docking");
+                        Console.WriteLine("[DIAGNOSTIC] OnLoad: No docked panels found - forcing default docking");
+
+                        // Use layout manager's fallback re-docking method
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                // ReDockPanelsProgrammatically is private, so we'll trigger a re-dock via layout manager
+                                // by attempting to load a non-existent file, which will trigger the fallback
+                                var tempPath = Path.Combine(Path.GetTempPath(), $"force_default_dock_{Guid.NewGuid()}.xml");
+                                await _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, tempPath).ConfigureAwait(false);
+                            }
+                            catch (Exception fallbackEx)
+                            {
+                                _logger?.LogDebug(fallbackEx, "OnLoad: Fallback re-docking completed (expected file-not-found)");
+                            }
+                        });
+                    }
+                }
+                catch (Exception verifyEx)
+                {
+                    _logger?.LogWarning(verifyEx, "OnLoad: Failed to verify docking state post-load");
+                }
             }
 
             UpdateDockingStateText();

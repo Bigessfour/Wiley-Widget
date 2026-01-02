@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.E2ETests
         private Window GetMainWindow(int timeoutSeconds = 15)
         {
             if (_app == null || _automation == null) throw new InvalidOperationException("Application not started");
-            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result 
+            return Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(timeoutSeconds)).Result
                 ?? throw new InvalidOperationException("Main window not found");
         }
 
@@ -129,7 +129,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Verify forecast section or chart is present
             var forecastSection = WaitForElement(window, cf => cf.ByName("Revenue Forecast").Or(cf.ByAutomationId("RevenueForecastSection")));
-            
+
             if (forecastSection != null)
             {
                 Assert.NotNull(forecastSection);
@@ -151,7 +151,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find export button
             var exportBtn = WaitForElement(window, cf => cf.ByName("Export").Or(cf.ByAutomationId("ExportButton")))?.AsButton();
-            
+
             if (exportBtn != null)
             {
                 Assert.True(exportBtn.IsEnabled);
@@ -173,7 +173,7 @@ namespace WileyWidget.WinForms.E2ETests
 
             // Find refresh button
             var refreshBtn = WaitForElement(window, cf => cf.ByName("Refresh").Or(cf.ByAutomationId("RefreshButton")))?.AsButton();
-            
+
             if (refreshBtn != null)
             {
                 refreshBtn.Click();
