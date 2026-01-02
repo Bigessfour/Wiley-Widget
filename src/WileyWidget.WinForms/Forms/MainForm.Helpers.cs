@@ -17,24 +17,111 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     public partial class MainForm
     {
+        #region Internal Methods for RibbonFactory
+
         /// <summary>
-        /// Shows a panel of specified type with the given name.
-        /// Delegates to PanelNavigationService for centralized panel management.
+        /// Internal method for RibbonFactory to call PerformGlobalSearch.
+        /// Validates search text before delegating to internal search logic.
         /// </summary>
-        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl)</typeparam>
-        /// <param name="panelName">Name identifier for the panel</param>
-        public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
+        /// <param name="searchText">The text to search for across all grids.</param>
+        internal void PerformGlobalSearchInternal(string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                _logger?.LogDebug("PerformGlobalSearchInternal called with empty searchText");
+                return;
+            }
+            PerformGlobalSearch(searchText);
+        }
+
+        /// <summary>
+        /// Internal method for RibbonFactory to call theme toggle handler.
+        /// </summary>
+        internal void ThemeToggleBtnClickInternal(object? sender, EventArgs e) => ThemeToggleBtn_Click(sender, e);
+
+        /// <summary>
+        /// Internal method for RibbonFactory to call grid sort (ascending/descending).
+        /// Safely handles cases where no active grid is available.
+        /// </summary>
+        /// <param name="descending">If true, sorts descending; otherwise ascending.</param>
+        internal void SortActiveGridByFirstSortableColumnInternal(bool descending)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(panelName))
+                SortActiveGridByFirstSortableColumn(descending);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to sort active grid");
+            }
+        }
+
+        /// <summary>
+        /// Internal method for RibbonFactory to call grid filter apply.
+        /// Safely handles cases where no active grid is available.
+        /// </summary>
+        internal void ApplyTestFilterToActiveGridInternal()
+        {
+            try
+            {
+                ApplyTestFilterToActiveGrid();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to apply filter to active grid");
+            }
+        }
+
+        /// <summary>
+        /// Internal method for RibbonFactory to call grid filter clear.
+        /// Safely handles cases where no active grid is available.
+        /// </summary>
+        internal void ClearActiveGridFilterInternal()
+        {
+            try
+            {
+                ClearActiveGridFilter();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to clear active grid filter");
+            }
+        }
+
+        /// <summary>
+        /// Internal method for RibbonFactory to call grid export.
+        /// </summary>
+        internal async Task ExportActiveGridToExcelInternal() => await ExportActiveGridToExcel();
+
+        #endregion
+
+
+
+        /// <summary>
+        /// Shows a panel of specified type with the given name.
+        /// Delegates to PanelNavigationService for centralized panel management.
+        /// Thread-safe: can be called from any thread.
+        /// </summary>
+        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl).</typeparam>
+        /// <param name="panelName">Name identifier for the panel.</param>
+        public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+            {
+                _logger?.LogWarning("ShowPanel called with null or empty panelName");
+                return;
+            }
+
+            try
+            {
+                if (_panelNavigator == null)
                 {
-                    _logger?.LogWarning("ShowPanel called with null or empty panelName");
+                    _logger?.LogWarning("Cannot show panel '{PanelName}' - PanelNavigationService not initialized", panelName);
                     return;
                 }
 
                 // Delegate to PanelNavigationService for consistent panel management
-                _panelNavigator?.ShowPanel<TPanel>(panelName);
+                _panelNavigator.ShowPanel<TPanel>(panelName);
             }
             catch (Exception ex)
             {

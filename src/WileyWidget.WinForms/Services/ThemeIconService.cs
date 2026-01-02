@@ -23,7 +23,7 @@ namespace WileyWidget.WinForms.Services
         private static readonly HashSet<string> KnownIconNames = new(StringComparer.OrdinalIgnoreCase)
         {
             // File operations
-            "save", "open", "load", "export", "import", "folder", "file", "document",
+            "save", "open", "load", "export", "import", "folder", "file", "document", "excel", "pdf",
 
             // Edit operations
             "add", "new", "plus", "delete", "remove", "minus", "edit", "pencil", "copy", "paste", "cut",
@@ -42,7 +42,10 @@ namespace WileyWidget.WinForms.Services
 
             // Business
             "dashboard", "chart", "report", "reports", "user", "profile", "chat", "ai", "assistant",
-            "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget"
+            "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget", "wallet",
+            
+            // Media and actions
+            "play", "pause", "stop", "print", "printer"
         };
 
         public ThemeIconService(ILogger logger)
@@ -217,6 +220,8 @@ namespace WileyWidget.WinForms.Services
                     "export" or "download" => SystemIcons.Shield,
                     "import" or "upload" => SystemIcons.Shield,
                     "document" or "report" or "reports" => SystemIcons.Application,
+                    "excel" or "xls" or "xlsx" or "spreadsheet" => SystemIcons.Application,
+                    "pdf" => SystemIcons.Application,
 
                     // Edit operations
                     "refresh" or "reload" or "sync" => SystemIcons.Shield,
@@ -245,6 +250,12 @@ namespace WileyWidget.WinForms.Services
                     "chat" or "message" or "ai" or "assistant" => SystemIcons.Information,
                     "quickbooks" or "accounting" or "accounts" or "finance" or "money" or "budget" => SystemIcons.Shield,
                     "invoice" or "bill" or "payment" => SystemIcons.Shield,
+                    "wallet" or "purse" or "funds" => SystemIcons.Shield,
+                    
+                    // Media and printing
+                    "play" or "start" or "run" => SystemIcons.Application,
+                    "pause" or "stop" => SystemIcons.Shield,
+                    "print" or "printer" => SystemIcons.Application,
 
                     // Fallback for unknown icons
                     _ => null

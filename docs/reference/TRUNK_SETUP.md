@@ -1,6 +1,6 @@
 # Trunk CLI & VS Code extension — Setup
 
-This project uses Trunk (https://trunk.io) for repository checks and some automation (see `.trunk/trunk.yaml`). The repo expects the `trunk` CLI to be available on PATH (min CLI version: 1.25.0).
+This project uses Trunk (<https://trunk.io>) for repository checks and some automation (see `.trunk/trunk.yaml`). The repo expects the `trunk` CLI to be available on PATH (min CLI version: 1.25.0).
 
 ## Install Trunk CLI (recommended)
 

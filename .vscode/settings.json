@@ -277,6 +277,12 @@
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
 
+  // Always break on ArgumentException (for enumType debugging)
+  "csharp.exceptionOptions": {
+    "System.ArgumentException": "always",
+    "System.Exception": "never"
+  },
+
   // ============================================================================
   // Continue/Grok 4.1 Integration (Updated 2025-12-05)
   // Models: grok-4-1-fast-reasoning (agentic), grok-4-1-fast-non-reasoning (speed)

@@ -20,6 +20,7 @@ using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using System.Net.Http;
+using System.Linq;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -118,16 +119,10 @@ namespace WileyWidget.WinForms.Configuration
             }
             if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
-                // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
-                services.AddSingleton(sp =>
-                {
-                    var builder = new DbContextOptionsBuilder<AppDbContext>();
-                    builder.UseInMemoryDatabase("TestDb");
-                    return builder.Options;
-                });
-
+                // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
                 services.AddDbContextFactory<AppDbContext>((sp, options) =>
-                    options.UseInMemoryDatabase("TestDb"));
+                    options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
             }
 
             // =====================================================================
@@ -157,8 +152,14 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ErrorReportingService>();
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
+            // Telemetry startup service for DB health checks
+            services.AddHostedService<TelemetryStartupService>();
+
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
-            services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            if (!services.Any(sd => sd.ServiceType == typeof(IStartupTimelineService)))
+            {
+                services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            }
 
             // Startup orchestration (license, theme, DI validation)
             services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
@@ -187,6 +188,7 @@ namespace WileyWidget.WinForms.Configuration
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, XAIService>();
             services.AddSingleton<IAILoggingService, AILoggingService>();
+            services.AddSingleton<IConversationRepository, StubConversationRepository>();
 
             // Audit Service (Singleton - writes to repository through scopes)
             services.AddSingleton<IAuditService, AuditService>();
@@ -256,6 +258,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddTransient<RevenueTrendsViewModel>();
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<RecommendedMonthlyChargeViewModel>();
+            services.AddTransient<QuickBooksViewModel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

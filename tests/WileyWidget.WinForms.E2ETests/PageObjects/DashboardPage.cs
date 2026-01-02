@@ -24,7 +24,7 @@ public class DashboardPage : BasePage
     /// Get Load Dashboard button from toolbar.
     /// </summary>
     public AutomationElement? LoadButton =>
-        FindElementByAutomationId("Toolbar_LoadButton") ??
+        FindElementByAutomationId("Toolbar_Load") ??
         FindElementByName("Load Dashboard");
 
     /// <summary>

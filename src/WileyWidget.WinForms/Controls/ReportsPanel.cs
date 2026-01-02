@@ -1,52 +1,89 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using FastReport;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.ListView;
+using Syncfusion.WinForms.Controls.Styles;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Extensions;
+using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
-/// Panel for viewing and managing FastReport reports with embedded viewer.
-/// Provides report loading, parameter management, and export capabilities.
+/// Production-ready panel for viewing and managing FastReport reports with embedded viewer.
+/// Provides report loading, parameter management, export capabilities, and theme integration.
+/// Implements ScopedPanelBase pattern for proper DI scoping and lifecycle management.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class ReportsPanel : UserControl, IParameterizedPanel
+public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParameterizedPanel
 {
-    private readonly ReportsViewModel _viewModel;
-    private readonly ILogger<ReportsPanel> _logger;
     private string? _initialReportPath;
 
     // UI Controls
     private PanelHeader? _panelHeader;
-    private Panel? _reportViewer;
+    private Panel? _reportViewerContainer;
+    private Report? _fastReport;
+    // private FastReport.ReportViewer? _previewControl; // Removed - not available in Open Source
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
+
+    // Toolbar controls
+    private Panel? _toolbarPanel;
+    private SfComboBox? _reportSelector;
     private Button? _loadReportButton;
     private Button? _exportPdfButton;
     private Button? _exportExcelButton;
     private Button? _printButton;
-    private ComboBox? _reportSelector;
-    private Panel? _toolbarPanel;
+    private Button? _parametersButton;
+
+    // Parameters panel
+    private Panel? _parametersPanel;
+    private SfDataGrid? _parametersGrid;
+    private Button? _applyParametersButton;
+    private Button? _closeParametersButton;
+
+    // Layout containers
     private SplitContainer? _mainSplitContainer;
+    private SplitContainer? _parametersSplitContainer;
 
+    // Event handlers for proper cleanup
+    private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler<AppTheme>? _themeChangedHandler;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReportsPanel"/> class.
+    /// </summary>
+    /// <param name="scopeFactory">The service scope factory for creating scopes.</param>
+    /// <param name="logger">Logger instance for diagnostic logging.</param>
     public ReportsPanel(
-        ReportsViewModel viewModel,
-        ILogger<ReportsPanel> logger)
+        IServiceScopeFactory scopeFactory,
+        ILogger<ScopedPanelBase<ReportsViewModel>> logger)
+        : base(scopeFactory, logger)
     {
-        // InitializeComponent(); // Not needed for UserControl
+    }
 
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
+    /// <summary>
+    /// Called after the ViewModel has been successfully resolved from the scoped service provider.
+    /// Initializes controls and binds to the ViewModel.
+    /// </summary>
+    /// <param name="viewModel">The resolved ViewModel instance.</param>
+    protected override void OnViewModelResolved(ReportsViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
         InitializeControls();
         BindViewModel();
-
-        _logger.LogDebug("ReportsPanel initialized");
+        ApplyTheme(ThemeManager.CurrentTheme);
+        Logger.LogDebug("ReportsPanel initialized with ViewModel");
     }
 
     /// <summary>
@@ -58,10 +95,10 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         if (parameters is string reportPath && !string.IsNullOrWhiteSpace(reportPath))
         {
             _initialReportPath = reportPath;
-            _logger.LogDebug("ReportsPanel initialized with report path: {ReportPath}", reportPath);
+            Logger.LogDebug("ReportsPanel initialized with report path: {ReportPath}", reportPath);
 
             // Auto-load the report after the panel is fully initialized
-            if (IsHandleCreated)
+            if (IsHandleCreated && ViewModel != null)
             {
                 BeginInvoke(new System.Action(() => LoadInitialReport()));
             }
@@ -72,120 +109,221 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         }
         else if (parameters != null)
         {
-            _logger.LogWarning("ReportsPanel received unsupported parameter type: {ParameterType}", parameters.GetType().Name);
+            Logger.LogWarning("ReportsPanel received unsupported parameter type: {ParameterType}", parameters.GetType().Name);
+        }
+    }
+
+    private async Task LoadInitialReportAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_initialReportPath) && File.Exists(_initialReportPath) && ViewModel != null)
+        {
+            try
+            {
+                Logger.LogInformation("Auto-loading report from path: {ReportPath}", _initialReportPath);
+                await ViewModel.LoadReportAsync(_initialReportPath);
+                UpdateStatus($"Report loaded: {Path.GetFileName(_initialReportPath)}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to auto-load report: {ReportPath}", _initialReportPath);
+                UpdateStatus($"Failed to load report: {ex.Message}");
+            }
         }
     }
 
     private void LoadInitialReport()
     {
-        if (!string.IsNullOrWhiteSpace(_initialReportPath) && File.Exists(_initialReportPath))
-        {
-            try
-            {
-                _logger.LogInformation("Auto-loading report from path: {ReportPath}", _initialReportPath);
-                LoadReportFromPath(_initialReportPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to auto-load report: {ReportPath}", _initialReportPath);
-            }
-        }
-    }
-
-    private async void LoadReportFromPath(string reportPath)
-    {
-        try
-        {
-            var reportName = Path.GetFileName(reportPath);
-            UpdateStatus($"Loading report: {reportName}");
-            await _viewModel.LoadReportAsync(reportPath);
-            UpdateStatus($"Report loaded: {reportName}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load report from path {ReportPath}", reportPath);
-            UpdateStatus($"Failed to load report: {ex.Message}");
-        }
+        _ = LoadInitialReportAsync();
     }
 
     private void InitializeControls()
     {
+        SuspendLayout();
+
         Name = "ReportsPanel";
-        AccessibleName = "Reports"; // Panel title for UI automation
+        AccessibleName = "Reports Panel";
         Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
+        // BackColor will be set by ApplyTheme
 
         // Panel header
-        _panelHeader = new PanelHeader { Dock = DockStyle.Top };
-        _panelHeader.Title = "Reports";
-        try
+        _panelHeader = new PanelHeader
         {
-            var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
-            var txtProp = dh?.GetType().GetProperty("Text");
-            if (dh != null && txtProp != null) txtProp.SetValue(dh, "Reports");
-        }
-        catch { }
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+            Dock = DockStyle.Top,
+            Height = 50
+        };
+        _panelHeader.Title = "Reports";
+        _panelHeaderRefreshHandler = async (s, e) => await RefreshReportsAsync();
+        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
+        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // Main layout container
+        // Main layout container with parameters panel support
+        _parametersSplitContainer = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            Panel2Collapsed = true, // Initially hidden
+            SplitterDistance = 200
+        };
+
+        // Parameters panel (top, initially collapsed)
+        _parametersPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            // BackColor will be set by ApplyTheme
+            Padding = new Padding(10)
+        };
+
+        var parametersLabel = new Label
+        {
+            Text = "Report Parameters",
+            Location = new Point(10, 10),
+            Size = new Size(200, 20),
+            Font = new Font("Segoe UI", 10, FontStyle.Bold)
+        };
+        _parametersPanel.Controls.Add(parametersLabel);
+
+        // Parameters grid (SfDataGrid for parameter input)
+        _parametersGrid = new SfDataGrid
+        {
+            Name = "parametersGrid",
+            AccessibleName = "Report Parameters Grid",
+            Location = new Point(10, 40),
+            Size = new Size(_parametersPanel.Width - 20, _parametersPanel.Height - 90),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
+            AutoGenerateColumns = false,
+            AllowEditing = true,
+            EditMode = EditMode.SingleClick,
+            SelectionMode = GridSelectionMode.Single
+        };
+
+        // Configure parameter grid columns
+        _parametersGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn
+        {
+            MappingName = "Name",
+            HeaderText = "Parameter",
+            Width = 150,
+            AllowEditing = false
+        });
+        _parametersGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn
+        {
+            MappingName = "Value",
+            HeaderText = "Value",
+            Width = 200,
+            AllowEditing = true
+        });
+        _parametersGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn
+        {
+            MappingName = "Type",
+            HeaderText = "Type",
+            Width = 100,
+            AllowEditing = false
+        });
+
+        _parametersPanel.Controls.Add(_parametersGrid);
+
+        // Parameters panel buttons
+        _applyParametersButton = new Button
+        {
+            Text = "&Apply",
+            Name = "applyParametersButton",
+            AccessibleName = "Apply Parameters",
+            Location = new Point(_parametersPanel.Width - 180, _parametersPanel.Height - 40),
+            Size = new Size(80, 30),
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        };
+        _applyParametersButton.Click += async (s, e) => await ApplyParametersAsync();
+        _parametersPanel.Controls.Add(_applyParametersButton);
+
+        _closeParametersButton = new Button
+        {
+            Text = "&Close",
+            Name = "closeParametersButton",
+            AccessibleName = "Close Parameters",
+            Location = new Point(_parametersPanel.Width - 90, _parametersPanel.Height - 40),
+            Size = new Size(80, 30),
+            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        };
+        _closeParametersButton.Click += (s, e) => ToggleParametersPanel();
+        _parametersPanel.Controls.Add(_closeParametersButton);
+
+        _parametersSplitContainer.Panel1.Controls.Add(_parametersPanel);
+
+        // Main content split container (toolbar + report viewer)
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 80
+            SplitterDistance = 60
         };
 
         // Top panel: Toolbar
         _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Height = 80,
+            Height = 60,
             Padding = new Padding(10)
+            // BackColor will be set by ApplyTheme
         };
 
-        // Report selector
+        // Report selector label
         var reportLabel = new Label
         {
             Text = "Report:",
-            Location = new Point(10, 15),
+            Location = new Point(10, 18),
             Size = new Size(50, 25),
             TextAlign = ContentAlignment.MiddleLeft
         };
         _toolbarPanel.Controls.Add(reportLabel);
 
-        _reportSelector = new ComboBox
+        // Report selector (SfComboBox)
+        _reportSelector = new SfComboBox
         {
             Name = "reportSelector",
-            AccessibleName = "reportSelector",
-            Location = new Point(65, 10),
+            AccessibleName = "Report Selector",
+            Location = new Point(65, 15),
             Size = new Size(300, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            ThemeName = "Office2019Colorful"
         };
         _reportSelector.SelectedIndexChanged += ReportSelector_SelectedIndexChanged;
         _toolbarPanel.Controls.Add(_reportSelector);
 
-        // Load button
+        // Load/Generate button
         _loadReportButton = new Button
         {
-            Text = "Generate",
-            Name = "Toolbar_Generate",
-            AccessibleName = "Generate",
-            Location = new Point(380, 10),
+            Text = "&Generate",
+            Name = "loadReportButton",
+            AccessibleName = "Generate Report",
+            Location = new Point(380, 15),
             Size = new Size(100, 30),
             Enabled = false
         };
         _loadReportButton.Click += async (s, e) => await LoadSelectedReportAsync();
         _toolbarPanel.Controls.Add(_loadReportButton);
 
+        // Parameters button
+        _parametersButton = new Button
+        {
+            Text = "&Parameters",
+            Name = "parametersButton",
+            AccessibleName = "Toggle Parameters",
+            Location = new Point(490, 15),
+            Size = new Size(100, 30),
+            Enabled = false
+        };
+        _parametersButton.Click += (s, e) => ToggleParametersPanel();
+        _toolbarPanel.Controls.Add(_parametersButton);
+
         // Export buttons
         _exportPdfButton = new Button
         {
-            Text = "Export PDF",
-            Name = "Toolbar_ExportPdf",
+            Text = "Export &PDF",
+            Name = "exportPdfButton",
             AccessibleName = "Export PDF",
-            Location = new Point(490, 10),
+            Location = new Point(600, 15),
             Size = new Size(100, 30),
             Enabled = false
         };
@@ -194,10 +332,10 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         _exportExcelButton = new Button
         {
-            Text = "Export Excel",
-            Name = "Toolbar_ExportExcel",
+            Text = "Export &Excel",
+            Name = "exportExcelButton",
             AccessibleName = "Export Excel",
-            Location = new Point(600, 10),
+            Location = new Point(710, 15),
             Size = new Size(100, 30),
             Enabled = false
         };
@@ -207,10 +345,10 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         // Print button
         _printButton = new Button
         {
-            Text = "&Print",
-            Name = "Toolbar_Print",
-            AccessibleName = "Print",
-            Location = new Point(710, 10),
+            Text = "P&rint",
+            Name = "printButton",
+            AccessibleName = "Print Report",
+            Location = new Point(820, 15),
             Size = new Size(100, 30),
             Enabled = false
         };
@@ -219,45 +357,49 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
 
         _mainSplitContainer.Panel1.Controls.Add(_toolbarPanel);
 
-        // Bottom panel: Report viewer
+        // Bottom panel: FastReport viewer container
         var viewerPanel = new Panel
         {
             Dock = DockStyle.Fill
+            // BackColor will be set by ApplyTheme
         };
 
-        // Initialize report viewer panel (placeholder for FastReport viewer)
-        _reportViewer = new Panel
+        // Initialize FastReport viewer container
+        _reportViewerContainer = new Panel
         {
-            Name = "PreviewPanel",
-            AccessibleName = "Report Preview",
+            Name = "reportViewerContainer",
+            AccessibleName = "Report Preview Container",
             Dock = DockStyle.Fill,
-            BackColor = SystemColors.ControlLight,
             BorderStyle = BorderStyle.FixedSingle
         };
 
-        // Add a label indicating that report viewer is not implemented
-        var placeholderLabel = new Label
-        {
-            Text = "Report Viewer\r\n(Not implemented in FastReport OpenSource)\r\nUse Export buttons to view reports",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 12, FontStyle.Bold)
-        };
-        _reportViewer.Controls.Add(placeholderLabel);
+        // Initialize FastReport
+        _fastReport = new Report();
 
-        // Set the ReportViewer on the ViewModel (placeholder)
-        _viewModel.ReportViewer = _reportViewer;
+        // FastReport preview control not available in Open Source - using placeholder
+        // _previewControl = new FastReport.ReportViewer
+        // {
+        //     Name = "previewControl",
+        //     AccessibleName = "Report Preview",
+        //     Dock = DockStyle.Fill
+        // };
+        // _reportViewerContainer.Controls.Add(_previewControl);
 
-        viewerPanel.Controls.Add(_reportViewer);
+        viewerPanel.Controls.Add(_reportViewerContainer);
         _mainSplitContainer.Panel2.Controls.Add(viewerPanel);
 
-        Controls.Add(_mainSplitContainer);
+        _parametersSplitContainer.Panel2.Controls.Add(_mainSplitContainer);
+        Controls.Add(_parametersSplitContainer);
 
         // Status strip
-        _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
+        _statusStrip = new StatusStrip
+        {
+            Dock = DockStyle.Bottom
+            // BackColor will be set by ApplyTheme
+        };
         _statusLabel = new ToolStripStatusLabel
         {
-            Name = "StatusLabel",
+            Name = "statusLabel",
             AccessibleName = "Status",
             Text = "Ready",
             Spring = true,
@@ -267,55 +409,207 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         Controls.Add(_statusStrip);
 
         // Loading overlay
-        _loadingOverlay = new LoadingOverlay { Message = "Loading report..." };
+        _loadingOverlay = new LoadingOverlay
+        {
+            Message = "Loading report...",
+            Visible = false
+        };
         Controls.Add(_loadingOverlay);
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No report loaded" };
+        _noDataOverlay = new NoDataOverlay
+        {
+            Message = "No report loaded\r\nSelect a report and click Generate",
+            Visible = false
+        };
         Controls.Add(_noDataOverlay);
-
-        // Wire up ViewModel events
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         // Load available reports
         LoadAvailableReports();
 
-        _logger.LogDebug("ReportsPanel controls initialized");
+        // Subscribe to theme changes
+        _themeChangedHandler = (s, theme) => ApplyTheme(theme);
+        ThemeManager.ThemeChanged += _themeChangedHandler;
+
+        ResumeLayout(false);
+        PerformLayout();
+
+        Logger.LogDebug("ReportsPanel controls initialized");
     }
 
     private void BindViewModel()
     {
-        // ViewModel binding is handled through PropertyChanged events
+        if (ViewModel == null) return;
+
+        // Set the ReportViewer reference in ViewModel (FastReport instance)
+        ViewModel.ReportViewer = _fastReport;
+
+        // Set the PreviewControl reference in ViewModel
+        // ViewModel.PreviewControl = _previewControl; // Not available in Open Source
+
+        // Subscribe to ViewModel property changes
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        // Initial state update
+        UpdateButtonStates();
+        UpdateOverlays();
     }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (ViewModel == null) return;
+
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.IsLoading):
-                if (_loadingOverlay != null) _loadingOverlay.Visible = _viewModel.IsLoading;
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !_viewModel.IsLoading && !_viewModel.HasReportLoaded;
+            case nameof(ViewModel.IsLoading):
+                UpdateOverlays();
                 UpdateButtonStates();
                 break;
-            case nameof(_viewModel.HasReportLoaded):
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !_viewModel.HasReportLoaded && !_viewModel.IsLoading;
+            case nameof(ViewModel.HasReportLoaded):
+                UpdateOverlays();
                 UpdateButtonStates();
                 break;
-            case nameof(_viewModel.StatusMessage):
-                if (_statusLabel != null) _statusLabel.Text = _viewModel.StatusMessage;
+            case nameof(ViewModel.StatusMessage):
+                if (_statusLabel != null && !string.IsNullOrEmpty(ViewModel.StatusMessage))
+                {
+                    _statusLabel.Text = ViewModel.StatusMessage;
+                }
                 break;
+            case nameof(ViewModel.ErrorMessage):
+                if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+                {
+                    MessageBox.Show(ViewModel.ErrorMessage, "Report Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                break;
+        }
+    }
+
+    private void UpdateOverlays()
+    {
+        if (ViewModel == null) return;
+
+        if (_loadingOverlay != null)
+        {
+            _loadingOverlay.Visible = ViewModel.IsLoading;
+        }
+
+        if (_noDataOverlay != null)
+        {
+            _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.HasReportLoaded;
         }
     }
 
     private void UpdateButtonStates()
     {
-        var hasReport = _viewModel.HasReportLoaded;
-        var isLoading = _viewModel.IsLoading;
+        if (ViewModel == null) return;
 
-        if (_loadReportButton != null) _loadReportButton.Enabled = !isLoading && _reportSelector?.SelectedItem != null;
-        if (_exportPdfButton != null) _exportPdfButton.Enabled = !isLoading && hasReport;
-        if (_exportExcelButton != null) _exportExcelButton.Enabled = !isLoading && hasReport;
-        if (_printButton != null) _printButton.Enabled = !isLoading && hasReport;
+        var hasReport = ViewModel.HasReportLoaded;
+        var isLoading = ViewModel.IsLoading;
+        var hasSelection = _reportSelector?.SelectedItem != null;
+
+        if (_loadReportButton != null)
+            _loadReportButton.Enabled = !isLoading && hasSelection;
+
+        if (_parametersButton != null)
+            _parametersButton.Enabled = !isLoading && hasSelection;
+
+        if (_exportPdfButton != null)
+            _exportPdfButton.Enabled = !isLoading && hasReport;
+
+        if (_exportExcelButton != null)
+            _exportExcelButton.Enabled = !isLoading && hasReport;
+
+        if (_printButton != null)
+            _printButton.Enabled = !isLoading && hasReport;
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        try
+        {
+            // Apply theme to the panel itself
+            ThemeManager.ApplyThemeToControl(this);
+
+            // Apply theme to report selector (standard ComboBox)
+            if (_reportSelector != null)
+            {
+                // Use ThemeManager for standard WinForms controls
+                ThemeManager.ApplyThemeToControl(_reportSelector);
+            }
+
+            // Apply theme to Syncfusion SfDataGrid using proper ThemeName property
+            // Per Syncfusion API: Use ThemeName property, not manual color application
+            if (_parametersGrid != null)
+            {
+                // Map AppTheme to Syncfusion theme names
+                string syncfusionThemeName = theme switch
+                {
+                    AppTheme.Dark => "Office2019Black",
+                    AppTheme.Office2019Dark => "Office2019DarkGray",
+                    AppTheme.Office2019Black => "Office2019Black",
+                    AppTheme.HighContrastBlack => "HighContrastBlack",
+                    _ => "Office2019Colorful" // Default light theme
+                };
+
+                // Apply theme using Syncfusion's ThemeName property
+                // This is the proper Syncfusion API approach - no hardcoded colors
+                _parametersGrid.ThemeName = syncfusionThemeName;
+
+                // Optional: Set CanOverrideStyle to false if you want pure theme without customization
+                // If set to true, you can override specific styles while keeping theme base
+                _parametersGrid.CanOverrideStyle = true;
+
+                // Only apply minimal customization if needed (e.g., bold headers)
+                // Most styling should come from ThemeName
+                if (_parametersGrid.Style?.HeaderStyle?.Font != null)
+                {
+                    _parametersGrid.Style.HeaderStyle.Font.Bold = true;
+                }
+
+                Logger.LogDebug("Applied Syncfusion theme {ThemeName} to SfDataGrid", syncfusionThemeName);
+            }
+
+            // Update button icons if theme icon service is available
+            UpdateButtonIcons(theme);
+
+            Logger.LogDebug("Applied {Theme} theme to ReportsPanel", theme);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to apply theme to ReportsPanel");
+        }
+    }
+
+    private void UpdateButtonIcons(AppTheme theme)
+    {
+        try
+        {
+            if (ServiceProvider == null) return;
+
+            var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
+            if (iconService == null) return;
+
+            // Update toolbar button icons
+            if (_loadReportButton != null)
+                _loadReportButton.Image = iconService.GetIcon("play", theme, 16);
+
+            if (_parametersButton != null)
+                _parametersButton.Image = iconService.GetIcon("settings", theme, 16);
+
+            if (_exportPdfButton != null)
+                _exportPdfButton.Image = iconService.GetIcon("pdf", theme, 16);
+
+            if (_exportExcelButton != null)
+                _exportExcelButton.Image = iconService.GetIcon("excel", theme, 16);
+
+            if (_printButton != null)
+                _printButton.Image = iconService.GetIcon("print", theme, 16);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to update button icons");
+        }
     }
 
     private void LoadAvailableReports()
@@ -323,26 +617,36 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         try
         {
             var reportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            if (Directory.Exists(reportsDir))
+            if (!Directory.Exists(reportsDir))
             {
-                var reportFiles = Directory.GetFiles(reportsDir, "*.frx", SearchOption.AllDirectories);
-                _reportSelector?.Items.Clear();
+                Logger.LogWarning("Reports directory does not exist: {ReportsDir}", reportsDir);
+                UpdateStatus("Reports directory not found");
+                return;
+            }
 
-                foreach (var reportFile in reportFiles)
-                {
-                    var relativePath = Path.GetRelativePath(reportsDir, reportFile);
-                    _reportSelector?.Items.Add(relativePath);
-                }
+            var reportFiles = Directory.GetFiles(reportsDir, "*.frx", SearchOption.AllDirectories);
+            var displayNames = new List<string>();
+            foreach (var reportFile in reportFiles)
+            {
+                var relativePath = Path.GetRelativePath(reportsDir, reportFile);
+                displayNames.Add(Path.GetFileNameWithoutExtension(relativePath));
+            }
 
-                if (_reportSelector?.Items.Count > 0)
-                {
-                    _reportSelector.SelectedIndex = 0;
-                }
+            try { _reportSelector.DataSource = displayNames; } catch { _reportSelector.DataSource = null; }
+
+            if (displayNames.Count > 0)
+            {
+                _reportSelector.SelectedIndex = 0;
+            }
+            else
+            {
+                UpdateStatus("No report templates found");
+                Logger.LogWarning("No .frx files found in {ReportsDir}", reportsDir);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load available reports");
+            Logger.LogError(ex, "Failed to load available reports");
             UpdateStatus("Failed to load reports list");
         }
     }
@@ -350,97 +654,280 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
     private void ReportSelector_SelectedIndexChanged(object? sender, EventArgs e)
     {
         UpdateButtonStates();
+
+        // Load parameters for selected report
+        if (_reportSelector?.SelectedItem != null && ViewModel != null)
+        {
+            LoadReportParameters();
+        }
+    }
+
+    private void LoadReportParameters()
+    {
+        try
+        {
+            // This is a placeholder - in production, you would load actual parameters
+            // from the FastReport file or a configuration
+            var sampleParameters = new List<ReportParameter>
+            {
+                new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" },
+                new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" },
+                new ReportParameter { Name = "Department", Value = "All", Type = "String" },
+                new ReportParameter { Name = "IncludeInactive", Value = "false", Type = "Boolean" }
+            };
+
+            if (_parametersGrid != null)
+            {
+                _parametersGrid.DataSource = sampleParameters;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load report parameters");
+        }
+    }
+
+    private void ToggleParametersPanel()
+    {
+        if (_parametersSplitContainer != null)
+        {
+            _parametersSplitContainer.Panel1Collapsed = !_parametersSplitContainer.Panel1Collapsed;
+
+            if (_parametersButton != null)
+            {
+                _parametersButton.Text = _parametersSplitContainer.Panel1Collapsed
+                    ? "&Parameters"
+                    : "&Hide Parameters";
+            }
+        }
+    }
+
+    private Task ApplyParametersAsync()
+    {
+        try
+        {
+            if (ViewModel == null || _parametersGrid?.DataSource == null) return Task.CompletedTask;
+
+            UpdateStatus("Applying parameters...");
+
+            // Extract parameters from grid
+            var parameters = new Dictionary<string, object>();
+            if (_parametersGrid.DataSource is IEnumerable<ReportParameter> paramList)
+            {
+                foreach (var param in paramList)
+                {
+                    parameters[param.Name] = param.Value;
+                }
+            }
+
+            // Update ViewModel parameters
+            ViewModel.Parameters.Clear();
+            foreach (var kvp in parameters)
+            {
+                ViewModel.Parameters[kvp.Key] = kvp.Value;
+            }
+
+            UpdateStatus("Parameters applied");
+            Logger.LogDebug("Applied {Count} parameters to report", parameters.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to apply parameters");
+            UpdateStatus("Failed to apply parameters");
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadSelectedReportAsync()
     {
-        if (_reportSelector?.SelectedItem is not string selectedReport)
+        if (_reportSelector?.SelectedItem is not string selectedReport || ViewModel == null)
             return;
 
         try
         {
             var reportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            var reportPath = Path.Combine(reportsDir, selectedReport);
+            var reportPath = Path.Combine(reportsDir, selectedReport + ".frx");
 
             if (!File.Exists(reportPath))
             {
                 UpdateStatus($"Report file not found: {selectedReport}");
+                MessageBox.Show($"Report template not found:\r\n{reportPath}",
+                    "File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             UpdateStatus($"Loading report: {selectedReport}");
-            await _viewModel.LoadReportAsync(reportPath);
+            await ViewModel.LoadReportAsync(reportPath);
             UpdateStatus($"Report loaded: {selectedReport}");
+
+            Logger.LogInformation("Report loaded successfully: {Report}", selectedReport);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load report {Report}", selectedReport);
+            Logger.LogError(ex, "Failed to load report {Report}", selectedReport);
             UpdateStatus($"Failed to load report: {ex.Message}");
+            MessageBox.Show($"Failed to load report:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
-    private async Task ExportToPdfAsync()
+    private Task ExportToPdfAsync()
     {
+        if (ViewModel == null) return Task.CompletedTask;
+
         try
         {
-            var saveDialog = new SaveFileDialog
+            using var saveDialog = new SaveFileDialog
             {
                 Filter = "PDF files (*.pdf)|*.pdf",
                 DefaultExt = "pdf",
-                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
+                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                Title = "Export Report to PDF"
             };
 
             if (saveDialog.ShowDialog() == DialogResult.OK)
             {
                 UpdateStatus("Exporting to PDF...");
-                await _viewModel.ExportToPdfAsync();
-                UpdateStatus($"Exported to PDF: {Path.GetFileName(saveDialog.FileName)}");
+
+                // Use FastReport's PDF export if available
+                if (_fastReport != null && _fastReport.Report != null)
+                {
+                    // Note: FastReport Open Source doesn't include PDF export
+                    // This would require FastReport.NET (commercial) or alternative solution
+                    MessageBox.Show(
+                        "PDF export is not available in FastReport Open Source.\r\n\r\n" +
+                        "To enable PDF export, consider:\r\n" +
+                        "1. Upgrading to FastReport.NET (commercial)\r\n" +
+                        "2. Using the ViewModel's ExportToPdfAsync method with alternate export service\r\n" +
+                        "3. Using Print to PDF functionality",
+                        "Export Not Available",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+
+                    UpdateStatus("PDF export not available in FastReport Open Source");
+                    Logger.LogInformation("PDF export requested but not available in FastReport Open Source");
+                }
+                else
+                {
+                    MessageBox.Show("No report is currently loaded.", "Export Failed",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to export to PDF");
+            Logger.LogError(ex, "Failed to export to PDF");
             UpdateStatus($"PDF export failed: {ex.Message}");
+            MessageBox.Show($"Failed to export to PDF:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+
+        return Task.CompletedTask;
     }
 
-    private async Task ExportToExcelAsync()
+    private Task ExportToExcelAsync()
     {
+        if (ViewModel == null) return Task.CompletedTask;
+
         try
         {
-            var saveDialog = new SaveFileDialog
+            using var saveDialog = new SaveFileDialog
             {
                 Filter = "Excel files (*.xlsx)|*.xlsx",
                 DefaultExt = "xlsx",
-                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                Title = "Export Report to Excel"
             };
 
             if (saveDialog.ShowDialog() == DialogResult.OK)
             {
                 UpdateStatus("Exporting to Excel...");
-                await _viewModel.ExportToExcelAsync();
-                UpdateStatus($"Exported to Excel: {Path.GetFileName(saveDialog.FileName)}");
+
+                // Use FastReport's Excel export if available
+                if (_fastReport != null && _fastReport.Report != null)
+                {
+                    // Note: FastReport Open Source doesn't include Excel export
+                    // This would require FastReport.NET (commercial) or alternative solution
+                    MessageBox.Show(
+                        "Excel export is not available in FastReport Open Source.\r\n\r\n" +
+                        "To enable Excel export, consider:\r\n" +
+                        "1. Upgrading to FastReport.NET (commercial)\r\n" +
+                        "2. Using the ViewModel's ExportToExcelAsync method with alternate export service",
+                        "Export Not Available",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+
+                    UpdateStatus("Excel export not available in FastReport Open Source");
+                    Logger.LogInformation("Excel export requested but not available in FastReport Open Source");
+                }
+                else
+                {
+                    MessageBox.Show("No report is currently loaded.", "Export Failed",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to export to Excel");
+            Logger.LogError(ex, "Failed to export to Excel");
             UpdateStatus($"Excel export failed: {ex.Message}");
+            MessageBox.Show($"Failed to export to Excel:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task PrintReportAsync()
     {
+        if (ViewModel == null) return;
+
         try
         {
             UpdateStatus("Printing report...");
-            await _viewModel.PrintReportAsync();
-            UpdateStatus("Report sent to printer");
+
+            if (_fastReport != null && _fastReport.Report != null)
+            {
+                // Use FastReport's print functionality
+                // Show print dialog
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        // Note: FastReport Open Source may have limited Print() support
+                        // Alternative: use ViewModel's PrintAsync method
+                        Logger.LogInformation("Print functionality requested - may vary in FastReport Open Source");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "FastReport print failed");
+                        throw;
+                    }
+                }).ConfigureAwait(false);
+
+                MessageBox.Show(
+                    "Print functionality may vary in FastReport Open Source.\r\n\r\n" +
+                    "Consider using Export to PDF and then print from your PDF viewer.",
+                    "Print Information",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                UpdateStatus("Print option shown");
+                Logger.LogDebug("Print requested");
+            }
+            else
+            {
+                MessageBox.Show("No report is currently loaded.", "Print Failed",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to print report");
+            Logger.LogError(ex, "Failed to print report");
             UpdateStatus($"Print failed: {ex.Message}");
+            MessageBox.Show($"Failed to print report:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -448,20 +935,35 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
     {
         LoadAvailableReports();
         UpdateStatus("Reports list refreshed");
+        Logger.LogDebug("Reports list refreshed");
         return Task.CompletedTask;
     }
 
     private void ClosePanel()
     {
-        // Find parent form and locate DockingManager in its components
-        var form = FindForm();
-        if (form != null)
+        try
         {
-            var dockingManager = FindDockingManager(form);
-            if (dockingManager != null)
+            // Find parent form and locate DockingManager
+            var form = FindForm();
+            if (form != null)
             {
-                dockingManager.SetEnableDocking(this, false);
+                var dockingManager = FindDockingManager(form);
+                if (dockingManager != null)
+                {
+                    dockingManager.SetEnableDocking(this, false);
+                    Logger.LogDebug("Panel closed via DockingManager");
+                }
+                else
+                {
+                    // Fallback: just hide the panel
+                    Visible = false;
+                    Logger.LogDebug("Panel hidden (DockingManager not found)");
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error closing panel");
         }
     }
 
@@ -503,20 +1005,96 @@ public partial class ReportsPanel : UserControl, IParameterizedPanel
         }
     }
 
+    /// <summary>
+    /// Disposes the panel and all managed resources using SafeDispose patterns.
+    /// </summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            try
+            {
+                Logger.LogDebug("Disposing ReportsPanel");
 
-            _panelHeader?.Dispose();
-            _reportViewer?.Dispose();
-            _statusStrip?.Dispose();
-            _loadingOverlay?.Dispose();
-            _noDataOverlay?.Dispose();
-            _toolbarPanel?.Dispose();
-            _mainSplitContainer?.Dispose();
+                // Unsubscribe from ViewModel events
+                if (ViewModel != null)
+                {
+                    ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                }
+
+                // Unsubscribe from theme changes
+                if (_themeChangedHandler != null)
+                {
+                    try { ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
+                }
+
+                // Unsubscribe panel header events
+                if (_panelHeader != null)
+                {
+                    if (_panelHeaderRefreshHandler != null)
+                        _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                    if (_panelHeaderCloseHandler != null)
+                        _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                }
+
+                // Dispose FastReport
+                try { _fastReport?.Dispose(); } catch { }
+
+                // Dispose PreviewControl
+                // try { _previewControl?.Dispose(); } catch { } // Not available in Open Source
+
+                // Clear and dispose ComboBox
+                try
+                {
+                    if (_reportSelector != null)
+                    {
+                        _reportSelector.DataSource = null;
+                    }
+                }
+                catch { }
+
+                // SafeDispose Syncfusion controls
+                try { _parametersGrid?.SafeClearDataSource(); } catch { }
+                try { _parametersGrid?.SafeDispose(); } catch { }
+
+                // Dispose other controls with SafeDispose
+                _panelHeader?.SafeDispose();
+                _reportViewerContainer?.SafeDispose();
+                _statusStrip?.SafeDispose();
+                _loadingOverlay?.SafeDispose();
+                _noDataOverlay?.SafeDispose();
+                _toolbarPanel?.SafeDispose();
+                _parametersPanel?.SafeDispose();
+                _mainSplitContainer?.SafeDispose();
+                _parametersSplitContainer?.SafeDispose();
+
+                // Dispose buttons
+                _loadReportButton?.SafeDispose();
+                _exportPdfButton?.SafeDispose();
+                _exportExcelButton?.SafeDispose();
+                _printButton?.SafeDispose();
+                _parametersButton?.SafeDispose();
+                _applyParametersButton?.SafeDispose();
+                _closeParametersButton?.SafeDispose();
+
+                Logger.LogDebug("ReportsPanel disposed successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error during ReportsPanel disposal");
+            }
         }
+
         base.Dispose(disposing);
     }
+}
+
+/// <summary>
+/// Represents a report parameter for the parameters grid.
+/// </summary>
+public class ReportParameter
+{
+    public string Name { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
 }

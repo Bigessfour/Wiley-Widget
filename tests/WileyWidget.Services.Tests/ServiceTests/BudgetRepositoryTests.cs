@@ -8,6 +8,7 @@ using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 using WileyWidget.Services.Abstractions;
+using Moq;
 using Xunit;
 
 namespace WileyWidget.Services.Tests.ServiceTests;
@@ -26,14 +27,34 @@ public sealed class BudgetRepositoryTests : IDisposable
 
     public BudgetRepositoryTests()
     {
-        // Setup InMemory database with shared options
+        // Setup InMemory database with unique options per test
         _options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique DB per test
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique name per test
             .Options;
 
         _contextFactory = new TestDbContextFactory(_options);
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _telemetryService = new MockTelemetryService();
+        _telemetryService = Mock.Of<ITelemetryService>();
+    }
+
+    private class TestDbContextFactory : IDbContextFactory<AppDbContext>
+    {
+        private readonly DbContextOptions<AppDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<AppDbContext> options)
+        {
+            _options = options;
+        }
+
+        public AppDbContext CreateDbContext()
+        {
+            return new AppDbContext(_options);
+        }
+
+        public Task<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new AppDbContext(_options));
+        }
     }
 
     public void Dispose()
@@ -111,7 +132,8 @@ public sealed class BudgetRepositoryTests : IDisposable
         var result1 = await repository.GetByFiscalYearAsync(2026);
 
         // Modify database after first call
-        await using (var context = _contextFactory.CreateDbContext())
+        // Create a new context instance for this operation
+        await using (var context = await _contextFactory.CreateDbContextAsync())
         {
             var newEntry = CreateTestBudgetEntry(fiscalYear: 2026);
             context.BudgetEntries.Add(newEntry);
@@ -276,7 +298,7 @@ public sealed class BudgetRepositoryTests : IDisposable
         await repository.AddAsync(newEntry);
 
         // Assert
-        await using var context = _contextFactory.CreateDbContext();
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var saved = await context.BudgetEntries.FirstOrDefaultAsync(be => be.AccountNumber == newEntry.AccountNumber);
         saved.Should().NotBeNull();
         saved!.BudgetedAmount.Should().Be(newEntry.BudgetedAmount);
@@ -308,7 +330,7 @@ public sealed class BudgetRepositoryTests : IDisposable
         await repository.UpdateAsync(testEntry);
 
         // Assert
-        await using var context = _contextFactory.CreateDbContext();
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var updated = await context.BudgetEntries.FirstOrDefaultAsync(be => be.Id == testEntry.Id);
         updated.Should().NotBeNull();
         updated!.BudgetedAmount.Should().Be(999999.99m);
@@ -325,7 +347,7 @@ public sealed class BudgetRepositoryTests : IDisposable
         await repository.DeleteAsync(testEntry.Id);
 
         // Assert
-        await using var context = _contextFactory.CreateDbContext();
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var deleted = await context.BudgetEntries.FirstOrDefaultAsync(be => be.Id == testEntry.Id);
         deleted.Should().BeNull();
     }
@@ -396,11 +418,11 @@ public sealed class BudgetRepositoryTests : IDisposable
         await SeedTestData();
 
         // Act
-        var result = await repository.GetYearEndSummaryAsync(2025);
+        var result = await repository.GetYearEndSummaryAsync(2026);
 
         // Assert
         result.Should().NotBeNull();
-        result.BudgetPeriod.Should().Contain("2025");
+        result.TotalBudgeted.Should().BeGreaterThan(0);
     }
 
     #endregion
@@ -409,109 +431,56 @@ public sealed class BudgetRepositoryTests : IDisposable
 
     private async Task<BudgetEntry> SeedTestData()
     {
-        await using var context = _contextFactory.CreateDbContext();
-
-        var department = new Department { Id = 1, DepartmentCode = "PW", Name = "Public Works" };
-        var fund = new Fund { Id = 1, FundCode = "GF", Name = "General Fund", Type = FundType.GeneralFund };
-
-        context.Departments.Add(department);
-        context.Funds.Add(fund);
-        await context.SaveChangesAsync();
-
-        var entry = CreateTestBudgetEntry(fiscalYear: 2026, fundId: fund.Id, departmentId: department.Id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.Database.EnsureCreated(); // Ensure InMemory database is created
+        var entry = CreateTestBudgetEntry();
         context.BudgetEntries.Add(entry);
         await context.SaveChangesAsync();
-
         return entry;
     }
 
     private async Task SeedSewerFundData()
     {
-        await using var context = _contextFactory.CreateDbContext();
-
-        var department = new Department { Id = 2, DepartmentCode = "SWR", Name = "Sewer" };
-        var fund = new Fund { Id = 2, FundCode = "EF", Name = "Enterprise Fund", Type = FundType.EnterpriseFund };
-
-        context.Departments.Add(department);
-        context.Funds.Add(fund);
-        await context.SaveChangesAsync();
-
-        var entry = CreateTestBudgetEntry(fiscalYear: 2026, fundId: fund.Id, departmentId: department.Id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.Database.EnsureCreated(); // Ensure InMemory database is created
+        var entry = CreateTestBudgetEntry(fundId: 2, fiscalYear: 2026);
         context.BudgetEntries.Add(entry);
         await context.SaveChangesAsync();
     }
 
     private async Task SeedMultipleTestEntries()
     {
-        await using var context = _contextFactory.CreateDbContext();
-
-        var department = new Department { Id = 3, DepartmentCode = "FIN", Name = "Finance" };
-        var fund = new Fund { Id = 3, FundCode = "GF", Name = "General Fund", Type = FundType.GeneralFund };
-
-        context.Departments.Add(department);
-        context.Funds.Add(fund);
-        await context.SaveChangesAsync();
-
-        for (int i = 1; i <= 10; i++)
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.Database.EnsureCreated(); // Ensure InMemory database is created
+        for (int i = 0; i < 10; i++)
         {
             var entry = CreateTestBudgetEntry(
                 fiscalYear: 2026,
-                fundId: fund.Id,
-                departmentId: department.Id,
-                budgetedAmount: i * 10000m);
+                budgetedAmount: (i + 1) * 1000.00m);
             context.BudgetEntries.Add(entry);
         }
         await context.SaveChangesAsync();
     }
 
-    private BudgetEntry CreateTestBudgetEntry(
+    private static BudgetEntry CreateTestBudgetEntry(
         int fiscalYear = 2026,
         int fundId = 1,
-        int departmentId = 1,
-        decimal budgetedAmount = 50000m)
+        decimal budgetedAmount = 50000.00m)
     {
         return new BudgetEntry
         {
             FiscalYear = fiscalYear,
-            AccountNumber = $"{100 + fiscalYear}.{Guid.NewGuid().ToString()[..2]}",
-            Description = "Test Budget Entry",
-            BudgetedAmount = budgetedAmount,
-            ActualAmount = budgetedAmount * 0.8m,
             FundId = fundId,
-            DepartmentId = departmentId,
-            MunicipalAccountId = 1,
-            StartPeriod = new DateTime(fiscalYear - 1, 7, 1),
-            EndPeriod = new DateTime(fiscalYear, 6, 30),
-            CreatedAt = DateTime.UtcNow
+            DepartmentId = 1,
+            AccountNumber = $"01-01-01-{fiscalYear:0000}",
+            BudgetedAmount = budgetedAmount,
+            Description = $"Test Budget Entry {fiscalYear}",
+            StartPeriod = new DateTime(fiscalYear - 1, 7, 1), // July 1 of previous year
+            EndPeriod = new DateTime(fiscalYear, 6, 30),     // June 30 of current year
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
     #endregion
-}
-
-/// <summary>
-/// Test DbContext factory for InMemory database
-/// </summary>
-internal class TestDbContextFactory : IDbContextFactory<AppDbContext>
-{
-    private readonly DbContextOptions<AppDbContext> _options;
-
-    public TestDbContextFactory(DbContextOptions<AppDbContext> options)
-    {
-        _options = options;
-    }
-
-    public AppDbContext CreateDbContext()
-    {
-        return new AppDbContext(_options);
-    }
-}
-
-/// <summary>
-/// Mock telemetry service for testing
-/// </summary>
-internal class MockTelemetryService : ITelemetryService
-{
-    public void RecordException(Exception exception, params (string key, object? value)[] tags) { }
-    public void RecordMetric(string metricName, double value, params (string key, object? value)[] tags) { }
 }

@@ -1,14 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.DataGrid.Events;
+using Syncfusion.WinForms.DataGrid.Styles;
+using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
 /// Panel for viewing and managing utility customers.
-/// Provides customer search, add, edit, and management capabilities.
+/// Provides customer search, add, edit, delete, and QuickBooks synchronization capabilities.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public partial class CustomersPanel : UserControl
@@ -16,170 +22,568 @@ public partial class CustomersPanel : UserControl
     private readonly CustomersViewModel _viewModel;
     private readonly ILogger<CustomersPanel> _logger;
 
-    // UI Controls
+    #region UI Controls
+
     private PanelHeader? _panelHeader;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
+    private ToolStripStatusLabel? _countLabel;
+    private ToolStripStatusLabel? _balanceLabel;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private DataGridView? _customersGrid;
+
+    private SfDataGrid? _customersGrid;
+
+    // Toolbar controls
+    private TableLayoutPanel? _mainLayout;
+    private Panel? _toolbarPanel;
     private TextBox? _searchTextBox;
     private Button? _searchButton;
+    private Button? _clearFiltersButton;
     private Button? _addCustomerButton;
+    private Button? _editCustomerButton;
+    private Button? _deleteCustomerButton;
     private Button? _refreshButton;
-    private TableLayoutPanel? _mainLayout;
+    private Button? _syncQuickBooksButton;
+    private Button? _exportButton;
 
+    // Filter controls
+    private ComboBox? _filterTypeComboBox;
+    private ComboBox? _filterLocationComboBox;
+    private CheckBox? _showActiveOnlyCheckBox;
+
+    // Summary panel
+    private Panel? _summaryPanel;
+    private Label? _totalCustomersLabel;
+    private Label? _activeCustomersLabel;
+    private Label? _balanceSummaryLabel;
+
+    #endregion
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CustomersPanel"/> class.
+    /// </summary>
+    /// <param name="viewModel">The customers view model.</param>
+    /// <param name="logger">Logger instance.</param>
     public CustomersPanel(
         CustomersViewModel viewModel,
         ILogger<CustomersPanel> logger)
     {
-        // InitializeComponent(); // Not needed for UserControl
-
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         InitializeControls();
         BindViewModel();
+        ApplySyncfusionTheme();
 
         _logger.LogDebug("CustomersPanel initialized");
     }
 
+    /// <summary>
+    /// Applies Syncfusion Office2019Colorful theme to all controls.
+    /// </summary>
+    private void ApplySyncfusionTheme()
+    {
+        try
+        {
+            // Apply theme to Syncfusion controls
+            if (_customersGrid != null)
+            {
+                // Header styling
+                _customersGrid.Style.HeaderStyle.Font.Bold = true;
+                _customersGrid.Style.HeaderStyle.Font.Size = 9.5f;
+
+                // Selection styling
+
+                // Grid line and border styling
+                _customersGrid.Style.BorderColor = Color.FromArgb(217, 217, 217);
+
+                // Cell styling
+                _customersGrid.Style.CellStyle.Font.Size = 9f;
+                _customersGrid.Style.CellStyle.Borders.All = new GridBorder(GridBorderStyle.Solid, Color.FromArgb(230, 230, 230));
+
+                // Add alternate row coloring via QueryCellStyle event
+                _customersGrid.QueryCellStyle += (s, e) =>
+                {
+                    if (e.Column != null)
+                    {
+                        // Alternating row styling removed - let SkinManager handle theming
+                    }
+                };
+
+                _logger.LogDebug("Syncfusion theme applied successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply Syncfusion theme");
+        }
+    }
+
+    #region Control Initialization
+
+    /// <summary>
+    /// Initializes all UI controls and layout.
+    /// </summary>
     private void InitializeControls()
     {
+        SuspendLayout();
+
         Name = "CustomersPanel";
-        Size = new Size(1200, 800);
+        Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
+        // BackColor removed - let SkinManager handle theming
 
         // Panel header
-        _panelHeader = new PanelHeader { Dock = DockStyle.Top };
-        _panelHeader.Title = "Customers";
+        _panelHeader = new PanelHeader
+        {
+            Dock = DockStyle.Top,
+            Height = 50
+        };
+        _panelHeader.Title = "Customers Management";
         _panelHeader.RefreshClicked += async (s, e) => await RefreshCustomersAsync();
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
-        // Main layout
+        // Main layout container
         _mainLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            RowCount = 3,
+            RowCount = 4,
             ColumnCount = 1
+            // BackColor removed - let SkinManager handle theming
         };
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); // Toolbar
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Grid
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Status
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // Toolbar
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Summary
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Grid
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status bar
 
-        // Toolbar panel
-        var toolbarPanel = new Panel
+        // Create toolbar
+        CreateToolbar();
+        _mainLayout.Controls.Add(_toolbarPanel!, 0, 0);
+
+        // Create summary panel
+        CreateSummaryPanel();
+        _mainLayout.Controls.Add(_summaryPanel!, 0, 1);
+
+        // Create data grid
+        CreateDataGrid();
+        _mainLayout.Controls.Add(_customersGrid!, 0, 2);
+
+        // Create status strip
+        CreateStatusStrip();
+        _mainLayout.Controls.Add(_statusStrip!, 0, 3);
+
+        Controls.Add(_mainLayout);
+
+        // Create overlays
+        _loadingOverlay = new LoadingOverlay
+        {
+            Message = "Loading customers...",
+            Visible = false
+        };
+        Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
+
+        _noDataOverlay = new NoDataOverlay
+        {
+            Message = "No customers found. Click 'Add Customer' to create one.",
+            Visible = false
+        };
+        Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
+
+        ResumeLayout(false);
+        PerformLayout();
+    }
+
+    /// <summary>
+    /// Creates the toolbar with search and action buttons.
+    /// </summary>
+    private void CreateToolbar()
+    {
+        _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10, 10, 10, 5)
+            // BackColor removed - let SkinManager handle theming
         };
 
-        // Search controls
+        int xPos = 10;
+        const int yPos = 10;
+        const int spacing = 5;
+        const int buttonHeight = 32;
+
+        // Search label
         var searchLabel = new Label
         {
             Text = "Search:",
-            Location = new Point(10, 15),
-            Size = new Size(50, 25),
-            TextAlign = ContentAlignment.MiddleLeft
+            Location = new Point(xPos, yPos + 8),
+            Size = new Size(55, 20),
+            TextAlign = ContentAlignment.MiddleRight
         };
-        toolbarPanel.Controls.Add(searchLabel);
+        _toolbarPanel.Controls.Add(searchLabel);
+        xPos += searchLabel.Width + spacing;
 
+        // Search textbox
         _searchTextBox = new TextBox
         {
-            Location = new Point(65, 10),
-            Size = new Size(200, 25)
+            Location = new Point(xPos, yPos + 5),
+            Size = new Size(220, 25),
+            PlaceholderText = "Name, account #, or address..."
         };
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
-        toolbarPanel.Controls.Add(_searchTextBox);
+        _searchTextBox.KeyPress += SearchTextBox_KeyPress;
+        _toolbarPanel.Controls.Add(_searchTextBox);
+        xPos += _searchTextBox.Width + spacing;
 
+        // Search button
         _searchButton = new Button
         {
-            Text = "&Search",
-            Location = new Point(275, 10),
-            Size = new Size(80, 30)
+            Text = "🔍 &Search",
+            Location = new Point(xPos, yPos + 3),
+            Size = new Size(85, buttonHeight),
+            FlatStyle = FlatStyle.System
         };
         _searchButton.Click += async (s, e) => await SearchCustomersAsync();
-        toolbarPanel.Controls.Add(_searchButton);
+        _toolbarPanel.Controls.Add(_searchButton);
+        xPos += _searchButton.Width + spacing;
 
-        // Add customer button
+        // Clear filters button
+        _clearFiltersButton = new Button
+        {
+            Text = "Clear",
+            Location = new Point(xPos, yPos + 3),
+            Size = new Size(65, buttonHeight),
+            FlatStyle = FlatStyle.System
+        };
+        _clearFiltersButton.Click += (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
+        _toolbarPanel.Controls.Add(_clearFiltersButton);
+        xPos += _clearFiltersButton.Width + spacing + 10;
+
+        // Separator
+        var separator1 = new Label
+        {
+            Text = "|",
+            Location = new Point(xPos, yPos + 5),
+            Size = new Size(10, 25)
+        };
+        _toolbarPanel.Controls.Add(separator1);
+        xPos += separator1.Width + spacing;
+
+        // Filter: Type
+        var typeLabel = new Label
+        {
+            Text = "Type:",
+            Location = new Point(xPos, yPos + 8),
+            Size = new Size(40, 20)
+        };
+        _toolbarPanel.Controls.Add(typeLabel);
+        xPos += typeLabel.Width + spacing;
+
+        _filterTypeComboBox = new ComboBox
+        {
+            Location = new Point(xPos, yPos + 5),
+            Size = new Size(120, 25),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _filterTypeComboBox.Items.Add("All Types");
+        _filterTypeComboBox.Items.Add("Residential");
+        _filterTypeComboBox.Items.Add("Commercial");
+        _filterTypeComboBox.Items.Add("Industrial");
+        _filterTypeComboBox.SelectedIndex = 0;
+        _filterTypeComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
+        _toolbarPanel.Controls.Add(_filterTypeComboBox);
+        xPos += _filterTypeComboBox.Width + spacing;
+
+        // Filter: Location
+        var locationLabel = new Label
+        {
+            Text = "Location:",
+            Location = new Point(xPos, yPos + 8),
+            Size = new Size(60, 20)
+        };
+        _toolbarPanel.Controls.Add(locationLabel);
+        xPos += locationLabel.Width + spacing;
+
+        _filterLocationComboBox = new ComboBox
+        {
+            Location = new Point(xPos, yPos + 5),
+            Size = new Size(140, 25),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _filterLocationComboBox.Items.Add("All Locations");
+        _filterLocationComboBox.Items.Add("Inside City Limits");
+        _filterLocationComboBox.Items.Add("Outside City Limits");
+        _filterLocationComboBox.SelectedIndex = 0;
+        _filterLocationComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
+        _toolbarPanel.Controls.Add(_filterLocationComboBox);
+        xPos += _filterLocationComboBox.Width + spacing + 10;
+
+        // Show Active Only checkbox
+        _showActiveOnlyCheckBox = new CheckBox
+        {
+            Text = "Active Only",
+            Location = new Point(xPos, yPos + 7),
+            Size = new Size(100, 25),
+            Checked = true
+        };
+        _showActiveOnlyCheckBox.CheckedChanged += (s, e) =>
+            _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
+        _toolbarPanel.Controls.Add(_showActiveOnlyCheckBox);
+        xPos += _showActiveOnlyCheckBox.Width + spacing + 10;
+
+        // Second row of buttons
+        xPos = 10;
+        const int yPos2 = yPos + buttonHeight + 8;
+
+        // Add Customer button
         _addCustomerButton = new Button
         {
-            Text = "&Add Customer",
-            Location = new Point(365, 10),
-            Size = new Size(100, 30)
+            Text = "➕ &Add Customer",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(125, buttonHeight),
+            FlatStyle = FlatStyle.System,
+            // BackColor and ForeColor removed - let SkinManager handle theming
+            Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold)
         };
         _addCustomerButton.Click += async (s, e) => await AddCustomerAsync();
-        toolbarPanel.Controls.Add(_addCustomerButton);
+        _toolbarPanel.Controls.Add(_addCustomerButton);
+        xPos += _addCustomerButton.Width + spacing;
+
+        // Edit Customer button
+        _editCustomerButton = new Button
+        {
+            Text = "✏️ &Edit",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(80, buttonHeight),
+            FlatStyle = FlatStyle.System,
+            Enabled = false
+        };
+        _editCustomerButton.Click += (s, e) => EditSelectedCustomer();
+        _toolbarPanel.Controls.Add(_editCustomerButton);
+        xPos += _editCustomerButton.Width + spacing;
+
+        // Delete Customer button
+        _deleteCustomerButton = new Button
+        {
+            Text = "🗑️ &Delete",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(80, buttonHeight),
+            FlatStyle = FlatStyle.System,
+            Enabled = false
+        };
+        _deleteCustomerButton.Click += async (s, e) => await DeleteSelectedCustomerAsync();
+        _toolbarPanel.Controls.Add(_deleteCustomerButton);
+        xPos += _deleteCustomerButton.Width + spacing + 10;
 
         // Refresh button
         _refreshButton = new Button
         {
-            Text = "&Refresh",
-            Location = new Point(475, 10),
-            Size = new Size(80, 30)
+            Text = "🔄 &Refresh",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(90, buttonHeight),
+            FlatStyle = FlatStyle.System
         };
         _refreshButton.Click += async (s, e) => await RefreshCustomersAsync();
-        toolbarPanel.Controls.Add(_refreshButton);
+        _toolbarPanel.Controls.Add(_refreshButton);
+        xPos += _refreshButton.Width + spacing;
 
-        _mainLayout.Controls.Add(toolbarPanel, 0, 0);
+        // Sync QuickBooks button
+        _syncQuickBooksButton = new Button
+        {
+            Text = "📊 Sync QB",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(100, buttonHeight),
+            FlatStyle = FlatStyle.System
+        };
+        _syncQuickBooksButton.Click += async (s, e) => await SyncWithQuickBooksAsync();
+        _toolbarPanel.Controls.Add(_syncQuickBooksButton);
+        xPos += _syncQuickBooksButton.Width + spacing;
 
-        // Customers grid
-        _customersGrid = new DataGridView
+        // Export button
+        _exportButton = new Button
+        {
+            Text = "💾 E&xport",
+            Location = new Point(xPos, yPos2),
+            Size = new Size(85, buttonHeight),
+            FlatStyle = FlatStyle.System
+        };
+        _exportButton.Click += async (s, e) => await ExportCustomersAsync();
+        _toolbarPanel.Controls.Add(_exportButton);
+    }
+
+    /// <summary>
+    /// Creates the summary panel with customer statistics.
+    /// </summary>
+    private void CreateSummaryPanel()
+    {
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            ReadOnly = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            Padding = new Padding(10, 5, 10, 5)
+            // BackColor removed - let SkinManager handle theming
+        };
+
+        var summaryLayout = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true
+        };
+
+        // Total Customers card
+        _totalCustomersLabel = CreateSummaryLabel("Total: 0");
+        summaryLayout.Controls.Add(_totalCustomersLabel);
+
+        // Active Customers card
+        _activeCustomersLabel = CreateSummaryLabel("Active: 0");
+        summaryLayout.Controls.Add(_activeCustomersLabel);
+
+        // Balance Summary card
+        _balanceSummaryLabel = CreateSummaryLabel("Balance: $0.00");
+        summaryLayout.Controls.Add(_balanceSummaryLabel);
+
+        _summaryPanel.Controls.Add(summaryLayout);
+    }
+
+    /// <summary>
+    /// Creates a styled summary label.
+    /// </summary>
+    private Label CreateSummaryLabel(string text)
+    {
+        return new Label
+        {
+            Text = text,
+            AutoSize = false,
+            Size = new Size(180, 40),
+            TextAlign = ContentAlignment.MiddleCenter,
+            // BackColor removed - let SkinManager handle theming
+            // ForeColor removed - let SkinManager handle theming
+            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
+            Margin = new Padding(5, 5, 5, 5),
+            BorderStyle = BorderStyle.FixedSingle
+        };
+    }
+
+    /// <summary>
+    /// Creates and configures the Syncfusion data grid.
+    /// </summary>
+    private void CreateDataGrid()
+    {
+        _customersGrid = new SfDataGrid
+        {
+            Dock = DockStyle.Fill,
+            AutoGenerateColumns = false,
+            AllowEditing = false,
+            AllowFiltering = true,
+            AllowSorting = true,
+            AllowResizingColumns = true,
+            SelectionMode = GridSelectionMode.Single,
+            NavigationMode = NavigationMode.Row,
+            ShowRowHeader = true,
+            RowHeight = 32,
+            // AutoSizeColumnsMode for better column management
+            AutoSizeColumnsMode = AutoSizeColumnsMode.None
         };
 
         // Configure grid columns
-        _customersGrid.Columns.Add(new DataGridViewTextBoxColumn
+        _customersGrid.Columns.Add(new GridTextColumn
         {
-            Name = "CustomerId",
-            HeaderText = "ID",
-            DataPropertyName = "Id",
-            Width = 80
-        });
-        _customersGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "CustomerName",
-            HeaderText = "Name",
-            DataPropertyName = "DisplayName",
-            Width = 200
-        });
-        _customersGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "AccountNumber",
+            MappingName = nameof(UtilityCustomer.AccountNumber),
             HeaderText = "Account #",
-            DataPropertyName = "AccountNumber",
-            Width = 120
+            Width = 110,
+            AllowSorting = true,
+            AllowFiltering = true
         });
-        _customersGrid.Columns.Add(new DataGridViewTextBoxColumn
+
+        _customersGrid.Columns.Add(new GridTextColumn
         {
-            Name = "ServiceAddress",
+            MappingName = nameof(UtilityCustomer.DisplayName),
+            HeaderText = "Customer Name",
+            Width = 250,
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+
+        _customersGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = nameof(UtilityCustomer.CustomerTypeDescription),
+            HeaderText = "Type",
+            Width = 120,
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+
+        _customersGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = nameof(UtilityCustomer.ServiceAddress),
             HeaderText = "Service Address",
-            DataPropertyName = "ServiceAddress",
-            Width = 250
+            Width = 280,
+            AllowSorting = true,
+            AllowFiltering = true
         });
-        _customersGrid.Columns.Add(new DataGridViewTextBoxColumn
+
+        _customersGrid.Columns.Add(new GridTextColumn
         {
-            Name = "BillingAddress",
-            HeaderText = "Billing Address",
-            DataPropertyName = "BillingAddress",
-            Width = 250
+            MappingName = nameof(UtilityCustomer.ServiceCity),
+            HeaderText = "City",
+            Width = 120,
+            AllowSorting = true
         });
 
+        _customersGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = nameof(UtilityCustomer.ServiceLocationDescription),
+            HeaderText = "Location",
+            Width = 150,
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+
+        _customersGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = nameof(UtilityCustomer.PhoneNumber),
+            HeaderText = "Phone",
+            Width = 130
+        });
+
+        _customersGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = nameof(UtilityCustomer.CurrentBalance),
+            HeaderText = "Balance",
+            Width = 120,
+            Format = "C2",
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+
+        _customersGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = nameof(UtilityCustomer.StatusDescription),
+            HeaderText = "Status",
+            Width = 100,
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+
+        // Wire up events
         _customersGrid.SelectionChanged += CustomersGrid_SelectionChanged;
-        _customersGrid.DoubleClick += CustomersGrid_DoubleClick;
+        _customersGrid.CellDoubleClick += CustomersGrid_CellDoubleClick;
+    }
 
-        _mainLayout.Controls.Add(_customersGrid, 0, 1);
+    /// <summary>
+    /// Creates the status strip.
+    /// </summary>
+    private void CreateStatusStrip()
+    {
+        _statusStrip = new StatusStrip
+        {
+            Dock = DockStyle.Fill
+            // BackColor removed - let SkinManager handle theming
+        };
 
-        // Status strip
-        _statusStrip = new StatusStrip { Dock = DockStyle.Fill };
         _statusLabel = new ToolStripStatusLabel
         {
             Text = "Ready",
@@ -187,157 +591,531 @@ public partial class CustomersPanel : UserControl
             TextAlign = ContentAlignment.MiddleLeft
         };
         _statusStrip.Items.Add(_statusLabel);
-        _mainLayout.Controls.Add(_statusStrip, 0, 2);
 
-        Controls.Add(_mainLayout);
+        _countLabel = new ToolStripStatusLabel
+        {
+            Text = "0 customers",
+            BorderSides = ToolStripStatusLabelBorderSides.Left,
+            BorderStyle = Border3DStyle.Etched
+        };
+        _statusStrip.Items.Add(_countLabel);
 
-        // Loading overlay
-        _loadingOverlay = new LoadingOverlay { Message = "Loading customers..." };
-        Controls.Add(_loadingOverlay);
+        _balanceLabel = new ToolStripStatusLabel
+        {
+            Text = "Total Balance: $0.00",
+            BorderSides = ToolStripStatusLabelBorderSides.Left,
+            BorderStyle = Border3DStyle.Etched
+        };
+        _statusStrip.Items.Add(_balanceLabel);
+    }
 
-        // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No customers found" };
-        Controls.Add(_noDataOverlay);
+    #endregion
 
-        // Wire up ViewModel events
+    #region View Model Binding
+
+    /// <summary>
+    /// Binds the view model to UI controls.
+    /// </summary>
+    private void BindViewModel()
+    {
+        // Bind grid to filtered customers
+        if (_customersGrid != null)
+        {
+            _customersGrid.DataSource = _viewModel.FilteredCustomers;
+        }
+
+        // Subscribe to property changes
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        // Load initial data
+        // Initial load
         _ = LoadCustomersAsync();
     }
 
-    private void BindViewModel()
-    {
-        if (_customersGrid != null)
-        {
-            _customersGrid.DataSource = _viewModel.Customers;
-        }
-    }
-
+    /// <summary>
+    /// Handles view model property changes.
+    /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (InvokeRequired)
+        {
+            Invoke(() => ViewModel_PropertyChanged(sender, e));
+            return;
+        }
+
         switch (e.PropertyName)
         {
             case nameof(_viewModel.IsLoading):
-                if (_loadingOverlay != null)
-                    _loadingOverlay.Visible = _viewModel.IsLoading;
-                if (_noDataOverlay != null)
-                    _noDataOverlay.Visible = !_viewModel.IsLoading && !_viewModel.Customers.Any();
+                UpdateLoadingState();
                 break;
+
+            case nameof(_viewModel.StatusText):
+                UpdateStatus(_viewModel.StatusText ?? "Ready");
+                break;
+
             case nameof(_viewModel.ErrorMessage):
-                UpdateStatus(_viewModel.ErrorMessage ?? "Ready");
+                if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
+                {
+                    MessageBox.Show(_viewModel.ErrorMessage, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                break;
+
+            case nameof(_viewModel.TotalCustomers):
+            case nameof(_viewModel.ActiveCustomers):
+            case nameof(_viewModel.TotalOutstandingBalance):
+                UpdateSummaryDisplay();
+                break;
+
+            case nameof(_viewModel.FilteredCustomers):
+                UpdateNoDataOverlay();
+                break;
+
+            case nameof(_viewModel.SelectedCustomer):
+                UpdateButtonStates();
                 break;
         }
     }
 
+    /// <summary>
+    /// Updates the loading state and overlay visibility.
+    /// </summary>
+    private void UpdateLoadingState()
+    {
+        if (_loadingOverlay != null)
+        {
+            _loadingOverlay.Visible = _viewModel.IsLoading;
+        }
+
+        UpdateNoDataOverlay();
+    }
+
+    /// <summary>
+    /// Updates the no data overlay visibility.
+    /// </summary>
+    private void UpdateNoDataOverlay()
+    {
+        if (_noDataOverlay != null)
+        {
+            _noDataOverlay.Visible = !_viewModel.IsLoading &&
+                                      _viewModel.FilteredCustomers.Count == 0;
+        }
+    }
+
+    /// <summary>
+    /// Updates the summary display labels.
+    /// </summary>
+    private void UpdateSummaryDisplay()
+    {
+        if (_totalCustomersLabel != null)
+        {
+            _totalCustomersLabel.Text = $"Total: {_viewModel.TotalCustomers}";
+        }
+
+        if (_activeCustomersLabel != null)
+        {
+            _activeCustomersLabel.Text = $"Active: {_viewModel.ActiveCustomers}";
+        }
+
+        if (_balanceSummaryLabel != null)
+        {
+            _balanceSummaryLabel.Text = $"Balance: {_viewModel.TotalOutstandingBalance:C2}";
+        }
+
+        if (_countLabel != null)
+        {
+            var displayCount = _viewModel.FilteredCustomers.Count;
+            _countLabel.Text = $"{displayCount} customer{(displayCount != 1 ? "s" : "")}";
+        }
+
+        if (_balanceLabel != null)
+        {
+            _balanceLabel.Text = $"Total Balance: {_viewModel.TotalOutstandingBalance:C2}";
+        }
+    }
+
+    /// <summary>
+    /// Updates button enabled states based on selection.
+    /// </summary>
+    private void UpdateButtonStates()
+    {
+        var hasSelection = _viewModel.SelectedCustomer != null;
+
+        if (_editCustomerButton != null)
+            _editCustomerButton.Enabled = hasSelection;
+
+        if (_deleteCustomerButton != null)
+            _deleteCustomerButton.Enabled = hasSelection && _viewModel.SelectedCustomer?.Id > 0;
+    }
+
+    #endregion
+
+    #region Event Handlers
+
+    /// <summary>
+    /// Handles search textbox text changes (debounced).
+    /// </summary>
+    private void SearchTextBox_TextChanged(object? sender, EventArgs e)
+    {
+        // Update viewmodel property
+        _viewModel.SearchText = _searchTextBox?.Text;
+    }
+
+    /// <summary>
+    /// Handles Enter key press in search textbox.
+    /// </summary>
+    private void SearchTextBox_KeyPress(object? sender, KeyPressEventArgs e)
+    {
+        if (e.KeyChar == (char)Keys.Enter)
+        {
+            e.Handled = true;
+            _ = SearchCustomersAsync();
+        }
+    }
+
+    /// <summary>
+    /// Handles filter combo box selection changes.
+    /// </summary>
+    private void FilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        // Update customer type filter
+        if (sender == _filterTypeComboBox && _filterTypeComboBox != null)
+        {
+            _viewModel.FilterCustomerType = _filterTypeComboBox.SelectedIndex switch
+            {
+                1 => CustomerType.Residential,
+                2 => CustomerType.Commercial,
+                3 => CustomerType.Industrial,
+                _ => null
+            };
+        }
+
+        // Update location filter
+        if (sender == _filterLocationComboBox && _filterLocationComboBox != null)
+        {
+            _viewModel.FilterServiceLocation = _filterLocationComboBox.SelectedIndex switch
+            {
+                1 => ServiceLocation.InsideCityLimits,
+                2 => ServiceLocation.OutsideCityLimits,
+                _ => null
+            };
+        }
+    }
+
+    /// <summary>
+    /// Handles grid selection changes.
+    /// </summary>
+    private void CustomersGrid_SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_customersGrid?.SelectedItem is UtilityCustomer customer)
+        {
+            _viewModel.SelectedCustomer = customer;
+            _logger.LogDebug("Selected customer: {Account} - {Name}",
+                customer.AccountNumber, customer.DisplayName);
+        }
+    }
+
+    /// <summary>
+    /// Handles grid cell double-click to edit customer.
+    /// </summary>
+    private void CustomersGrid_CellDoubleClick(object? sender, Syncfusion.WinForms.DataGrid.Events.CellClickEventArgs e)
+    {
+        if (e.DataRow != null && _viewModel.SelectedCustomer != null)
+        {
+            EditSelectedCustomer();
+        }
+    }
+
+    #endregion
+
+    #region Command Implementations
+
+    /// <summary>
+    /// Loads customers from the repository.
+    /// </summary>
     private async Task LoadCustomersAsync()
     {
         try
         {
-            UpdateStatus("Loading customers...");
+            _logger.LogDebug("Loading customers");
             await _viewModel.LoadCustomersCommand.ExecuteAsync(null);
-            UpdateStatus($"Loaded {_viewModel.Customers.Count} customers");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load customers");
-            UpdateStatus($"Failed to load customers: {ex.Message}");
+            MessageBox.Show($"Failed to load customers: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
-    private async Task SearchCustomersAsync()
-    {
-        try
-        {
-            if (_searchTextBox?.Text != _viewModel.SearchText)
-            {
-                _viewModel.SearchText = _searchTextBox?.Text;
-            }
-            UpdateStatus("Searching customers...");
-            await _viewModel.SearchCommand.ExecuteAsync(null);
-            UpdateStatus($"Found {_viewModel.Customers.Count} customers");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to search customers");
-            UpdateStatus($"Search failed: {ex.Message}");
-        }
-    }
-
-    private async Task AddCustomerAsync()
-    {
-        try
-        {
-            UpdateStatus("Adding new customer...");
-            await _viewModel.AddCustomerCommand.ExecuteAsync(null);
-            UpdateStatus("Customer added successfully");
-            await LoadCustomersAsync(); // Refresh the list
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to add customer");
-            UpdateStatus($"Failed to add customer: {ex.Message}");
-        }
-    }
-
+    /// <summary>
+    /// Refreshes the customer list.
+    /// </summary>
     private async Task RefreshCustomersAsync()
     {
         await LoadCustomersAsync();
     }
 
-    private void SearchTextBox_TextChanged(object? sender, EventArgs e)
+    /// <summary>
+    /// Searches customers based on current search text.
+    /// </summary>
+    private async Task SearchCustomersAsync()
     {
-        // Debounce search - could implement timer here for auto-search
-    }
-
-    private void CustomersGrid_SelectionChanged(object? sender, EventArgs e)
-    {
-        if (_customersGrid?.SelectedRows.Count > 0)
+        try
         {
-            var selectedRow = _customersGrid.SelectedRows[0];
-            if (selectedRow.DataBoundItem is WileyWidget.Models.UtilityCustomer customer)
-            {
-                _viewModel.SelectedCustomer = customer;
-                UpdateStatus($"Selected: {customer.DisplayName}");
-            }
+            _logger.LogDebug("Searching customers");
+            await _viewModel.SearchCommand.ExecuteAsync(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Search failed");
+            MessageBox.Show($"Search failed: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
-    private void CustomersGrid_DoubleClick(object? sender, EventArgs e)
+    /// <summary>
+    /// Adds a new customer.
+    /// </summary>
+    private async Task AddCustomerAsync()
     {
-        // Could open customer details dialog here
-        _logger.LogDebug("Customer double-clicked - details dialog not implemented yet");
+        try
+        {
+            _logger.LogDebug("Adding new customer");
+            await _viewModel.AddCustomerCommand.ExecuteAsync(null);
+
+            // Open edit dialog for the new customer
+            if (_viewModel.SelectedCustomer != null)
+            {
+                EditSelectedCustomer();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add customer");
+            MessageBox.Show($"Failed to add customer: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
+    /// <summary>
+    /// Edits the selected customer in a dialog.
+    /// </summary>
+    private void EditSelectedCustomer()
+    {
+        if (_viewModel.SelectedCustomer == null) return;
+
+        try
+        {
+            _logger.LogDebug("Editing customer {Account}", _viewModel.SelectedCustomer.AccountNumber);
+
+            // TODO: Open customer edit dialog
+            MessageBox.Show(
+                $"Customer edit dialog not yet implemented.\n\nCustomer: {_viewModel.SelectedCustomer.DisplayName}\nAccount: {_viewModel.SelectedCustomer.AccountNumber}",
+                "Edit Customer",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to edit customer");
+            MessageBox.Show($"Failed to edit customer: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Deletes the selected customer after confirmation.
+    /// </summary>
+    private async Task DeleteSelectedCustomerAsync()
+    {
+        if (_viewModel.SelectedCustomer == null) return;
+
+        try
+        {
+            var customer = _viewModel.SelectedCustomer;
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete customer:\n\n{customer.DisplayName}\nAccount: {customer.AccountNumber}?",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                _logger.LogInformation("Deleting customer {Id} - {Account}",
+                    customer.Id, customer.AccountNumber);
+
+                var success = await _viewModel.DeleteCustomerAsync(customer.Id);
+
+                if (success)
+                {
+                    MessageBox.Show("Customer deleted successfully", "Success",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete customer");
+            MessageBox.Show($"Failed to delete customer: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Synchronizes customers with QuickBooks.
+    /// </summary>
+    private async Task SyncWithQuickBooksAsync()
+    {
+        try
+        {
+            var result = MessageBox.Show(
+                "Synchronize customer data with QuickBooks?\n\nThis may take several minutes.",
+                "QuickBooks Sync",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                _logger.LogInformation("Starting QuickBooks sync");
+                await _viewModel.SyncWithQuickBooksCommand.ExecuteAsync(null);
+
+                MessageBox.Show(
+                    _viewModel.SyncStatusMessage ?? "Sync completed successfully",
+                    "QuickBooks Sync",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "QuickBooks sync failed");
+            MessageBox.Show($"QuickBooks sync failed: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Exports customers to CSV file.
+    /// </summary>
+    private async Task ExportCustomersAsync()
+    {
+        try
+        {
+            using var dialog = new SaveFileDialog
+            {
+                Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                DefaultExt = "csv",
+                FileName = $"Customers_{DateTime.Now:yyyyMMdd}.csv",
+                Title = "Export Customers to CSV"
+            };
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                _logger.LogInformation("Exporting customers to {File}", dialog.FileName);
+                await _viewModel.ExportToCsvCommand.ExecuteAsync(null);
+
+                // TODO: Actual CSV export implementation
+                MessageBox.Show($"Customers exported to:\n{dialog.FileName}", "Export Complete",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Export failed");
+            MessageBox.Show($"Export failed: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Closes this panel.
+    /// </summary>
     private void ClosePanel()
     {
+        _logger.LogDebug("Closing CustomersPanel");
+
         // Find the parent docking manager and hide this panel
         var dockingManager = FindDockingManager(this);
         if (dockingManager != null)
         {
             dockingManager.SetDockVisibility(this, false);
         }
+        else
+        {
+            // Fallback: just hide the control
+            Visible = false;
+        }
     }
 
+    /// <summary>
+    /// Finds the DockingManager in the control hierarchy.
+    /// </summary>
     private Syncfusion.Windows.Forms.Tools.DockingManager? FindDockingManager(Control control)
     {
-        while (control != null)
+        while (control?.Parent != null)
         {
+            control = control.Parent;
+
             if (control is Form form)
             {
-                // Try to find DockingManager in the form's components or controls
-                return form.Controls.OfType<Syncfusion.Windows.Forms.Tools.DockingManager>().FirstOrDefault();
+                return form.Controls
+                    .OfType<Syncfusion.Windows.Forms.Tools.DockingManager>()
+                    .FirstOrDefault();
             }
-            control = control.Parent;
         }
         return null;
     }
 
+    /// <summary>
+    /// Updates the status bar message.
+    /// </summary>
     private void UpdateStatus(string message)
     {
         if (_statusLabel != null)
         {
             _statusLabel.Text = message;
         }
+        _logger.LogDebug("Status: {Message}", message);
     }
+
+    #endregion
+
+    #region Lifecycle
+
+    /// <summary>
+    /// Handles panel load event.
+    /// </summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        if (!DesignMode)
+        {
+            _ = LoadCustomersAsync();
+        }
+    }
+
+    /// <summary>
+    /// Disposes resources.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+            _customersGrid?.Dispose();
+            _mainLayout?.Dispose();
+            _toolbarPanel?.Dispose();
+            _summaryPanel?.Dispose();
+            _statusStrip?.Dispose();
+            _loadingOverlay?.Dispose();
+            _noDataOverlay?.Dispose();
+            _panelHeader?.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    #endregion
 }

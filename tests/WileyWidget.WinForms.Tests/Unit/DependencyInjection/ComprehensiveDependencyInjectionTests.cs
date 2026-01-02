@@ -274,21 +274,22 @@ public class ComprehensiveDependencyInjectionTests
             ValidateOnBuild = true
         });
 
-        // Assert - Test singleton services can be resolved from root provider
-        var mainForm = provider.GetRequiredService<WileyWidget.WinForms.Forms.MainForm>();
-        mainForm.Should().NotBeNull("MainForm should be resolvable");
-
-        var settingsService = provider.GetRequiredService<ISettingsService>();
-        settingsService.Should().NotBeNull("ISettingsService should be resolvable");
-
-        // Test scoped-dependent services within a scope
+        // Assert - Test services can be resolved
         using (var scope = provider.CreateScope())
         {
             var scopedProvider = scope.ServiceProvider;
 
+            // MainForm is scoped, must resolve from scoped provider
+            var mainForm = scopedProvider.GetRequiredService<WileyWidget.WinForms.Forms.MainForm>();
+            mainForm.Should().NotBeNull("MainForm should be resolvable");
+
             var dashboardVm = scopedProvider.GetRequiredService<DashboardViewModel>();
             dashboardVm.Should().NotBeNull("DashboardViewModel should be resolvable within scope");
         }
+
+        // Singleton services can be resolved from root provider
+        var settingsService = provider.GetRequiredService<ISettingsService>();
+        settingsService.Should().NotBeNull("ISettingsService should be resolvable");
     }
 
     [Fact]

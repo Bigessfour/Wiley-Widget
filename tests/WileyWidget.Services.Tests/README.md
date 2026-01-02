@@ -122,12 +122,15 @@ trunk check --ci
    ```
 
 3. **Use FluentAssertions** for readable assertions:
+
    ```csharp
    result.Should().NotBeNull();
    result.Should().BeEquivalentTo(expected);
    exception.Should().BeOfType<InvalidOperationException>();
    ```
+
 4. **Mock external dependencies**:
+
    ```csharp
    var mockLogger = new Mock<ILogger<MyService>>();
    var mockHttp = new Mock<HttpMessageHandler>();

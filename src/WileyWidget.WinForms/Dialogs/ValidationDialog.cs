@@ -112,7 +112,7 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 Dock = DockStyle.Fill,
                 BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.FromArgb(40, Color.Red),  // Light red tint for error list
+                // BackColor removed - let SkinManager handle theming
                 Font = new Font("Segoe UI", 9F),
                 SelectionMode = SelectionMode.MultiExtended,
                 IntegralHeight = false,

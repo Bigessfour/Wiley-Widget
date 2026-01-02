@@ -28,11 +28,11 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public GrokRecommendationServiceTests()
         {
             // Setup cache mock to handle TryGetValue and Set calls
-#pragma warning disable CS8601 // Possible null reference assignment
-            _cache.Setup(c => c.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny)).Returns(false);
+#pragma warning disable CS8600, CS8601 // Possible null reference assignment and conversion
+            _cache.Setup(c => c.TryGetValue(It.IsAny<object>(), out It.Ref<object?>.IsAny!)).Returns(false);
             var mockCacheEntry = new Mock<ICacheEntry>();
             _cache.Setup(c => c.CreateEntry(It.IsAny<object>())).Returns(mockCacheEntry.Object);
-#pragma warning restore CS8601
+#pragma warning restore CS8600, CS8601
         }
 
         public void Dispose()

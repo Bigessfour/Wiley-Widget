@@ -16,8 +16,9 @@ public static class NavigationHelper
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ShortTimeout = TimeSpan.FromSeconds(5);
-    // Post-click delay increased to give DockingManager time to render and update UI tree
-    private static readonly TimeSpan PostClickDelay = TimeSpan.FromMilliseconds(2000);
+    // Post-click delay increased to 10s for Syncfusion DockingManager activation (was 5s)
+    // Syncfusion controls have async initialization; this delay ensures panels are stable before element search.
+    private static readonly TimeSpan PostClickDelay = TimeSpan.FromMilliseconds(10000);
 
     /// <summary>
     /// Opens a view by clicking navigation button and finding the resulting window/form.
@@ -30,7 +31,7 @@ public static class NavigationHelper
     /// <param name="timeout">Optional timeout for finding form (default 30s)</param>
     /// <returns>Window element for the opened view</returns>
     /// <exception cref="InvalidOperationException">Thrown if navigation fails or form not found</exception>
-    public static Window OpenView(
+    public static async Task<Window> OpenViewAsync(
         AutomationBase automation,
         Window mainWindow,
         string navAutomationId,
@@ -93,7 +94,16 @@ public static class NavigationHelper
         // Wait longer to allow panel to fully render after click, especially for docked panels
         System.Threading.Thread.Sleep((int)PostClickDelay.TotalMilliseconds);
 
-        // Step 2: Search for form window using multiple strategies
+        // Step 2: Verify panel activation with robust detection
+        var panelLoaded = await WaitForPanelActivationAsync(mainWindow, expectedFormIdentifier, TimeSpan.FromSeconds(10));
+        if (!panelLoaded)
+        {
+            Console.WriteLine($"[NavigationHelper] WARNING: Panel '{expectedFormIdentifier}' failed to activate after {PostClickDelay.TotalSeconds}s");
+            // Dump tree for debugging
+            try { DumpAutomationTree(mainWindow, maxDepth: 4, maxChildren: 15); } catch { }
+        }
+
+        // Step 3: Search for form window using multiple strategies
         var formWindow = Retry.WhileNull(() =>
         {
             // Strategy 1: Find as docked panel header label (Syncfusion often exposes a Text label inside the dock tab)
@@ -164,6 +174,19 @@ public static class NavigationHelper
 
         Console.WriteLine($"[NavigationHelper] Successfully found panel '{expectedFormIdentifier}' (control type: {formWindow.ControlType})");
         return formWindow;
+    }
+
+    /// <summary>
+    /// Synchronous wrapper for OpenViewAsync. Blocks until operation completes.
+    /// </summary>
+    public static Window OpenView(
+        AutomationBase automation,
+        Window mainWindow,
+        string navAutomationId,
+        string expectedFormIdentifier,
+        TimeSpan? timeout = null)
+    {
+        return OpenViewAsync(automation, mainWindow, navAutomationId, expectedFormIdentifier, timeout).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -318,6 +341,55 @@ public static class NavigationHelper
     }
 
     /// <summary>
+    /// Waits for panel activation by detecting DockPattern support or visible content.
+    /// Returns true if panel is confirmed active, false on timeout.
+    /// </summary>
+    private static async Task<bool> WaitForPanelActivationAsync(AutomationElement root, string identifier, TimeSpan timeout)
+    {
+        var endTime = DateTime.Now + timeout;
+        while (DateTime.Now < endTime)
+        {
+            try
+            {
+                // Try to find the panel and check if it's docked/visible
+                var panel = root.FindFirstDescendant(cf =>
+                    (cf.ByControlType(ControlType.Pane).Or(cf.ByControlType(ControlType.Custom)))
+                    .And(new OrCondition(
+                        cf.ByName(identifier),
+                        new PropertyCondition(root.Automation.PropertyLibrary.Element.Name, identifier, PropertyConditionFlags.MatchSubstring)
+                    ))
+                );
+
+                if (panel != null && panel.IsAvailable)
+                {
+                    // Check if panel has DockPattern support (indicates docking activation)
+                    if (panel.Patterns.Dock.IsSupported)
+                    {
+                        Console.WriteLine($"[NavigationHelper] Panel '{identifier}' activated with DockPattern support");
+                        return await Task.FromResult(true);
+                    }
+
+                    // Fallback: Check if panel has visible children (content loaded)
+                    var hasChildren = panel.FindAllChildren().Length > 0;
+                    if (hasChildren)
+                    {
+                        Console.WriteLine($"[NavigationHelper] Panel '{identifier}' activated with visible children");
+                        return await Task.FromResult(true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NavigationHelper] Panel activation check exception: {ex.Message}");
+            }
+
+            await Task.Delay(500);
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Dumps the top Pane/Custom descendant names to the console for diagnostics.
     /// </summary>
     private static void DumpTopDescendants(AutomationElement root, int max = 30)
@@ -345,15 +417,15 @@ public static class NavigationHelper
                 var allDescendants = root.FindAllDescendants();
 
                 // Try to find a header label first (exact or substring match)
-                var headerLabel = allDescendants.FirstOrDefault(el => el.ControlType == ControlType.Text && el.IsAvailable && MatchesIdentifier(el, identifier));
+                var headerLabel = allDescendants.FirstOrDefault(el => IsTextControl(el) && el.IsAvailable && MatchesIdentifier(el, identifier));
                 if (headerLabel != null)
                 {
                     var parent = headerLabel.Parent;
-                    var parentTypeStr = parent != null ? parent.ControlType.ToString() : "null";
+                    var parentTypeStr = parent != null ? GetControlTypeString(parent) : "null";
                     Console.WriteLine($"[NavigationHelper] Found docked header Label '{headerLabel.Name}' - parent: {parentTypeStr}");
 
                     // Walk up to nearest Pane/Custom/Window ancestor
-                    while (parent != null && parent.ControlType != ControlType.Pane && parent.ControlType != ControlType.Custom && parent.ControlType != ControlType.Window)
+                    while (parent != null && !IsPaneControl(parent) && !IsCustomControl(parent) && !IsWindowControl(parent))
                     {
                         parent = parent.Parent;
                     }
@@ -361,14 +433,14 @@ public static class NavigationHelper
                     if (parent != null)
                     {
                         // Prefer a Pane/Custom descendant within this parent if present (actual content)
-                        var content = parent.FindAllDescendants().FirstOrDefault(el => (el.ControlType == ControlType.Pane || el.ControlType == ControlType.Custom) && MatchesIdentifier(el, identifier));
+                        var content = parent.FindAllDescendants().FirstOrDefault(el => (IsPaneControl(el) || IsCustomControl(el)) && MatchesIdentifier(el, identifier));
                         if (content != null)
                         {
                             Console.WriteLine($"[NavigationHelper] Found content inside parent for identifier '{identifier}'");
                             return content;
                         }
 
-                        Console.WriteLine($"[NavigationHelper] Returning parent panel (type: {parent.ControlType}) for identifier '{identifier}'");
+                        Console.WriteLine($"[NavigationHelper] Returning parent panel (type: {GetControlTypeString(parent)}) for identifier '{identifier}'");
                         return parent;
                     }
 
@@ -377,11 +449,11 @@ public static class NavigationHelper
 
                 // Strategy 2: Direct Pane/Custom window with matching properties
                 var directPanel = allDescendants.FirstOrDefault(el =>
-                    (el.ControlType == ControlType.Pane || el.ControlType == ControlType.Custom || el.ControlType == ControlType.Window)
+                    (IsPaneControl(el) || IsCustomControl(el) || IsWindowControl(el))
                     && MatchesIdentifier(el, identifier));
                 if (directPanel != null)
                 {
-                    Console.WriteLine($"[NavigationHelper] Found direct panel '{directPanel.Name}' (type: {directPanel.ControlType})");
+                    Console.WriteLine($"[NavigationHelper] Found direct panel '{directPanel.Name}' (type: {GetControlTypeString(directPanel)})");
                     return directPanel;
                 }
 
@@ -389,7 +461,7 @@ public static class NavigationHelper
                 var substringMatch = allDescendants.FirstOrDefault(el => !string.IsNullOrEmpty(el.Name) && el.Name.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0);
                 if (substringMatch != null)
                 {
-                    Console.WriteLine($"[NavigationHelper] Found element by name substring: '{substringMatch.Name}' (type: {substringMatch.ControlType})");
+                    Console.WriteLine($"[NavigationHelper] Found element by name substring: '{substringMatch.Name}' (type: {GetControlTypeString(substringMatch)})");
                     return substringMatch;
                 }
             }
@@ -407,6 +479,86 @@ public static class NavigationHelper
     }
 
     /// <summary>
+    /// Safely checks if an element is a Text control type, handling unsupported ControlType exceptions.
+    /// </summary>
+    private static bool IsTextControl(AutomationElement element)
+    {
+        try
+        {
+            return element.ControlType == ControlType.Text;
+        }
+        catch (Exception)
+        {
+            // ControlType not supported by FlaUI - assume it's not a Text control
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Safely checks if an element is a Pane control type, handling unsupported ControlType exceptions.
+    /// </summary>
+    private static bool IsPaneControl(AutomationElement element)
+    {
+        try
+        {
+            return element.ControlType == ControlType.Pane;
+        }
+        catch (Exception)
+        {
+            // ControlType not supported by FlaUI - assume it's not a Pane control
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Safely checks if an element is a Custom control type, handling unsupported ControlType exceptions.
+    /// </summary>
+    private static bool IsCustomControl(AutomationElement element)
+    {
+        try
+        {
+            return element.ControlType == ControlType.Custom;
+        }
+        catch (Exception)
+        {
+            // ControlType not supported by FlaUI - assume it's not a Custom control
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Safely checks if an element is a Window control type, handling unsupported ControlType exceptions.
+    /// </summary>
+    private static bool IsWindowControl(AutomationElement element)
+    {
+        try
+        {
+            return element.ControlType == ControlType.Window;
+        }
+        catch (Exception)
+        {
+            // ControlType not supported by FlaUI - assume it's not a Window control
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Safely gets the string representation of an element's ControlType, handling unsupported ControlType exceptions.
+    /// </summary>
+    private static string GetControlTypeString(AutomationElement element)
+    {
+        try
+        {
+            return element.ControlType.ToString();
+        }
+        catch (Exception ex)
+        {
+            // ControlType not supported by FlaUI
+            return $"Unsupported ControlType (Exception: {ex.Message})";
+        }
+    }
+
+    /// <summary>
     /// Finds navigation button using AutomationId with comprehensive fallback strategies.
     /// Searches ribbon controls, navigation strips, and toolbars.
     /// </summary>
@@ -417,7 +569,7 @@ public static class NavigationHelper
         if (byAid != null) return byAid;
 
         // Fallback: Name substring (e.g., "Accounts" for Nav_Accounts)
-        var fallbackId = navAutomationId.Replace("Nav_", "");
+        var fallbackId = navAutomationId.Replace("Nav_", "", StringComparison.Ordinal);
         var byName = Retry.WhileNull(() =>
             mainWindow.FindFirstDescendant(cf =>
                 cf.ByControlType(ControlType.Button).And(
@@ -502,6 +654,10 @@ public static class NavigationHelper
     /// </summary>
     public static void DumpAutomationTree(AutomationElement root, int maxDepth = 3, int maxChildren = 10)
     {
+        if (root == null)
+        {
+            throw new ArgumentNullException(nameof(root));
+        }
         Console.WriteLine($"[TreeDump] Automation Tree for '{root.Name ?? "Unnamed"}' (ControlType: {root.ControlType}):");
         DumpElementRecursive(root, 0, maxDepth, maxChildren);
     }

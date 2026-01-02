@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using Xunit;
 

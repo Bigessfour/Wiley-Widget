@@ -527,6 +527,7 @@ Track MCP effectiveness in testing:
    ```
 
 5. **Test SQL Server MCP** with Docker Compose:
+
    ```bash
    docker-compose up -d db
    npx @modelcontextprotocol/server-mssql --connection-string "Server=localhost;..."

@@ -1,8 +1,16 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Collections.Concurrent;
+using System.Timers;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using WileyWidget.Data;
+using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services.Telemetry;
@@ -18,15 +26,34 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
 {
     private readonly ILogger<SigNozTelemetryService> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ConcurrentQueue<TelemetryLog> _telemetryQueue = new();
+    private readonly System.Timers.Timer _flushTimer;
 
     public static readonly ActivitySource ActivitySource = new("WileyWidget");
     public static readonly string ServiceName = "wiley-widget";
     public static readonly string ServiceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
 
-    public SigNozTelemetryService(ILogger<SigNozTelemetryService> logger, IConfiguration configuration)
+    public SigNozTelemetryService(ILogger<SigNozTelemetryService> logger, IConfiguration configuration, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+        // Set up periodic flush timer (every 30 seconds)
+        _flushTimer = new System.Timers.Timer(30000);
+        _flushTimer.Elapsed += async (sender, e) =>
+        {
+            try
+            {
+                await FlushTelemetryLogsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in telemetry flush timer");
+            }
+        };
+        _flushTimer.Start();
     }
 
     /// <summary>
@@ -63,6 +90,7 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
 
     /// <summary>
     /// Record an exception into the current activity and the application logger.
+    /// Also buffers the exception for periodic DB logging.
     /// </summary>
     public void RecordException(Exception exception, params (string key, object? value)[] additionalTags)
     {
@@ -80,6 +108,24 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
             }
         }
 
+        // Buffer for DB logging
+        var telemetryLog = new TelemetryLog
+        {
+            EventType = "Exception",
+            Message = exception.Message,
+            Details = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Type = exception.GetType().Name,
+                AdditionalTags = additionalTags
+            }),
+            StackTrace = exception.StackTrace,
+            CorrelationId = Activity.Current?.Id,
+            Timestamp = DateTime.UtcNow,
+            User = Environment.UserName,
+            SessionId = Guid.NewGuid().ToString() // Could be improved to track sessions
+        };
+        _telemetryQueue.Enqueue(telemetryLog);
+
         _logger.LogError(exception, "Exception recorded in telemetry fallback");
     }
 
@@ -90,6 +136,40 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     {
         _logger.LogDebug("Telemetry fallback connectivity check (no-op)");
         return true;
+    }
+
+    /// <summary>
+    /// Flushes buffered telemetry logs to the database using a fresh context.
+    /// </summary>
+    private async Task FlushTelemetryLogsAsync()
+    {
+        if (_telemetryQueue.IsEmpty)
+            return;
+
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+            using var context = factory.CreateDbContext();
+
+            var logs = new List<TelemetryLog>();
+            while (_telemetryQueue.TryDequeue(out var log))
+            {
+                logs.Add(log);
+            }
+
+            if (logs.Any())
+            {
+                await context.TelemetryLogs.AddRangeAsync(logs);
+                await context.SaveChangesAsync();
+                _logger.LogDebug("Flushed {Count} telemetry logs to database", logs.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error flushing telemetry logs to database");
+            // Re-queue failed logs? For simplicity, log and continue
+        }
     }
 
     /// <summary>
@@ -111,6 +191,12 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     {
         try
         {
+            _flushTimer?.Stop();
+            _flushTimer?.Dispose();
+
+            // Final flush on dispose
+            FlushTelemetryLogsAsync().GetAwaiter().GetResult(); // Synchronous wait for final flush
+
             // ActivitySource does not require explicit dispose in all runtimes, but keep method for symmetry.
             _logger.LogDebug("Disposing telemetry fallback");
         }

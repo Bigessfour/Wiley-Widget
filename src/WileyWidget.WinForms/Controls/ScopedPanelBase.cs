@@ -24,6 +24,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     protected TViewModel? ViewModel => _viewModel;
 
     /// <summary>
+    /// Gets the ViewModel instance for testing purposes. Exposes the protected ViewModel property.
+    /// </summary>
+    public TViewModel? GetViewModelForTesting() => _viewModel;
+
+    /// <summary>
     /// Gets the logger instance for diagnostic logging.
     /// </summary>
     protected ILogger Logger => _logger;
@@ -59,6 +64,13 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             return;
         }
 
+        // Skip initialization if the control is being disposed or disposed
+        if (Disposing || IsDisposed)
+        {
+            _logger.LogDebug("Skipping scope creation for {PanelType} - control is disposing/disposed", GetType().Name);
+            return;
+        }
+
         try
         {
             // Create scope for scoped services (DbContext, repositories, etc.)
@@ -71,6 +83,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
 
             // Allow derived classes to perform additional initialization with the resolved ViewModel
             OnViewModelResolved(_viewModel);
+        }
+        catch (ObjectDisposedException ex)
+        {
+            _logger.LogWarning(ex, "Service provider disposed during handle creation for {PanelType} - skipping ViewModel resolution", GetType().Name);
+            // Don't throw - allow the panel to continue without ViewModel (common in test scenarios)
         }
         catch (Exception ex)
         {

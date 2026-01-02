@@ -426,7 +426,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = AppTheme.Office2019Colorful;
                 btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                 btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -488,7 +488,7 @@ namespace WileyWidget.WinForms.Controls
                 Width = 80,
                 Height = 32,
                 Margin = new Padding(6, 10, 6, 6),
-                // BackColor/ForeColor set by ThemeManager.StyleButton() based on button name
+                // Button styling handled by SkinManager theme cascade
                 FlatStyle = FlatStyle.Flat,
                 AccessibleName = "Add new account",
                 AccessibleDescription = "Opens dialog to create a new municipal account"
@@ -500,7 +500,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = AppTheme.Office2019Colorful;
                 btnAdd.Image = iconService?.GetIcon("add", theme, 14);
                 btnAdd.ImageAlign = ContentAlignment.MiddleLeft;
                 btnAdd.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -551,7 +551,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = AppTheme.Office2019Colorful;
                 btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
                 btnEdit.ImageAlign = ContentAlignment.MiddleLeft;
                 btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -601,7 +601,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = AppTheme.Office2019Colorful;
                 btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
                 btnDelete.ImageAlign = ContentAlignment.MiddleLeft;
                 btnDelete.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -649,7 +649,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = ThemeManager.CurrentTheme;
+                var theme = AppTheme.Office2019Colorful;
                 btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
                 btnExportExcel.ImageAlign = ContentAlignment.MiddleLeft;
                 btnExportExcel.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -715,7 +715,7 @@ namespace WileyWidget.WinForms.Controls
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
                 var theme = ThemeManager.CurrentTheme;
-                btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
+                btnExportPdf.Image = iconService?.GetIcon("pdf", AppTheme.Office2019Colorful, 14);
                 btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
                 btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
                 _btnExportPdfThemeChangedHandler = (s, t) =>
@@ -784,7 +784,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                btnViewCharts.Image = iconService?.GetIcon("chart", ThemeManager.CurrentTheme, 14);
+                btnViewCharts.Image = iconService?.GetIcon("chart", AppTheme.Office2019Colorful, 14);
                 btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnViewCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
             }
@@ -812,7 +812,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                btnDashboard.Image = iconService?.GetIcon("home", ThemeManager.CurrentTheme, 14);
+                btnDashboard.Image = iconService?.GetIcon("home", AppTheme.Office2019Colorful, 14);
                 btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
                 btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
             }
@@ -1357,11 +1357,11 @@ namespace WileyWidget.WinForms.Controls
                     : null;
 
                 var miEdit = new ToolStripMenuItem("Edit");
-                try { miEdit.Image = iconService?.GetIcon("edit", ThemeManager.CurrentTheme, 14); } catch { }
+                try { miEdit.Image = iconService?.GetIcon("edit", AppTheme.Office2019Colorful, 14); } catch { }
                 miEdit.Click += (s, a) => BtnEdit_Click(sender, EventArgs.Empty);
 
                 var miDelete = new ToolStripMenuItem("Delete");
-                try { miDelete.Image = iconService?.GetIcon("delete", ThemeManager.CurrentTheme, 14); } catch { }
+                try { miDelete.Image = iconService?.GetIcon("delete", AppTheme.Office2019Colorful, 14); } catch { }
                 miDelete.Click += (s, a) => BtnDelete_Click(sender, EventArgs.Empty);
 
                 cm.Items.Add(miEdit);
@@ -1559,9 +1559,9 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                ThemeManager.ApplyThemeToControl(this);
-                // Apply Syncfusion skin using global theme (FluentDark default, FluentLight fallback)
-                // Per-form Syncfusion theming is already applied by ThemeManager.ApplyTheme(this) above
+                SfSkinManager.SetVisualStyle(this, WwThemeColors.DefaultTheme);
+                // Apply Syncfusion skin using global theme (Office2019Colorful)
+                // Per-control Syncfusion theming applied directly via SfSkinManager
             }
             catch { }
         }

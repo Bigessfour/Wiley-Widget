@@ -47,6 +47,7 @@ namespace WileyWidget.Data
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
         public DbSet<DepartmentCurrentCharge> DepartmentCurrentCharges { get; set; } = null!;
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
+        public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

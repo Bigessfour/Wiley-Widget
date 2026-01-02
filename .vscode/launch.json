@@ -41,6 +41,22 @@
         "module": true,
         "engineLogging": false
       }
+    },
+    {
+      "name": "Attach Native (cppvsdbg)",
+      "type": "cppvsdbg",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "stopAtEntry": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Wiley Widget - Managed + Native",
+      "configurations": [
+        "Wiley Widget WinForms – Full Symbols + Hot Reload",
+        "Attach Native (cppvsdbg)"
+      ]
     }
   ]
 }

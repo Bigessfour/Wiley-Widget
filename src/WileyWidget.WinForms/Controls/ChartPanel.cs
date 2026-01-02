@@ -13,6 +13,8 @@ using System.IO;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Extensions;
 using Syncfusion.Windows.Forms.Tools;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -26,13 +28,14 @@ namespace WileyWidget.WinForms.Controls
     }
 
     /// <summary>
-    /// Budget analytics panel (UserControl) with Syncfusion ChartControl.
+    /// Budget analytics panel with Syncfusion ChartControl.
+    /// Inherits from ScopedPanelBase for proper DI lifecycle management.
     /// Designed for embedding in DockingManager.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class ChartPanel : UserControl
+    public partial class ChartPanel : ScopedPanelBase<ChartViewModel>
     {
-        private readonly ChartViewModel _vm;
+        private ChartViewModel? _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
         private ChartControl? _chartControl;
         private PanelHeader? _panelHeader;
@@ -68,36 +71,22 @@ namespace WileyWidget.WinForms.Controls
         public new object? DataContext { get; private set; }
 
         /// <summary>
-        /// Parameterless constructor for DI/designer support.
-        /// Guards against null Program.Services and provides safe fallback.
+        /// Constructor for DI with scoped service factory.
         /// </summary>
-        public ChartPanel() : this(ResolveChartViewModel()) { }
-
-        private static ChartViewModel ResolveChartViewModel()
+        public ChartPanel(IServiceScopeFactory serviceScopeFactory, ILogger<ChartPanel> logger)
+            : base(serviceScopeFactory, logger)
         {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Error("ChartPanel: Program.Services is null - cannot resolve ChartViewModel");
-                throw new InvalidOperationException("ChartPanel requires DI services to be initialized. Ensure Program.Services is set before creating ChartPanel.");
-            }
             try
             {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ChartViewModel>(Program.Services);
-                Serilog.Log.Debug("ChartPanel: ChartViewModel resolved from DI container");
-                return vm;
+                _dispatcherHelper = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services)
+                    : null;
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "ChartPanel: Failed to resolve ChartViewModel from DI");
-                throw;
+                Logger.LogWarning(ex, "ChartPanel: Failed to resolve IDispatcherHelper");
             }
-        }
 
-        public ChartPanel(ChartViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
-        {
-            _dispatcherHelper = dispatcherHelper;
-            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-            DataContext = vm;
             InitializeComponent();
 
             // Apply current theme
@@ -106,6 +95,24 @@ namespace WileyWidget.WinForms.Controls
             // Subscribe to theme changes
             _themeChangedHandler = OnThemeChanged;
             ThemeManager.ThemeChanged += _themeChangedHandler;
+        }
+
+        /// <summary>
+        /// Called when the ViewModel is resolved from DI. Initialize data bindings here.
+        /// </summary>
+        protected override void OnViewModelResolved(ChartViewModel viewModel)
+        {
+            _vm = viewModel;
+            DataContext = viewModel;
+
+            // Subscribe to ViewModel property changes
+            _viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
+            if (_vm is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged += _viewModelPropertyChangedHandler;
+            }
+
+            Logger.LogInformation("ChartPanel: ViewModel resolved and bound");
         }
 
         private void InitializeComponent()
@@ -220,6 +227,54 @@ namespace WileyWidget.WinForms.Controls
             catch { }
             btnGoToDashboard.Click += (s, e) => NavigateToDashboard();
 
+            // Add "Go to Budget" navigation button
+            var btnGoToBudget = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Text = "Budget",
+                Width = 100,
+                Height = 28,
+                AccessibleName = "Go to Budget Panel",
+                AccessibleDescription = "Navigate to the Budget panel"
+            };
+            var budgetToolTip = new ToolTip();
+            _toolTips.Add(budgetToolTip);
+            budgetToolTip.SetToolTip(btnGoToBudget, "Open the Budget panel (Ctrl+B)");
+            try
+            {
+                var iconSvc = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
+                    : null;
+                btnGoToBudget.Image = iconSvc?.GetIcon("budget", ThemeManager.CurrentTheme, 14);
+                btnGoToBudget.ImageAlign = ContentAlignment.MiddleLeft;
+                btnGoToBudget.TextImageRelation = TextImageRelation.ImageBeforeText;
+            }
+            catch { }
+            btnGoToBudget.Click += (s, e) => NavigateToPanel<BudgetPanel>();
+
+            // Add "Go to Accounts" navigation button
+            var btnGoToAccounts = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Text = "Accounts",
+                Width = 100,
+                Height = 28,
+                AccessibleName = "Go to Accounts Panel",
+                AccessibleDescription = "Navigate to the Accounts panel"
+            };
+            var accountsToolTip = new ToolTip();
+            _toolTips.Add(accountsToolTip);
+            accountsToolTip.SetToolTip(btnGoToAccounts, "Open the Accounts panel (Ctrl+A)");
+            try
+            {
+                var iconSvc = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
+                    : null;
+                btnGoToAccounts.Image = iconSvc?.GetIcon("account", ThemeManager.CurrentTheme, 14);
+                btnGoToAccounts.ImageAlign = ContentAlignment.MiddleLeft;
+                btnGoToAccounts.TextImageRelation = TextImageRelation.ImageBeforeText;
+            }
+            catch { }
+            btnGoToAccounts.Click += (s, e) => NavigateToPanel<AccountsPanel>();
+
             var flow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -228,6 +283,10 @@ namespace WileyWidget.WinForms.Controls
             };
             flow.Controls.Add(_comboDepartmentFilter);
             flow.Controls.Add(_btnRefresh);
+            // Navigation buttons
+            flow.Controls.Add(btnGoToDashboard);
+            flow.Controls.Add(btnGoToBudget);
+            flow.Controls.Add(btnGoToAccounts);
             // Export buttons
             _btnExportPng = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PNG", Width = 100, Height = 28, AccessibleName = "Export chart as PNG" };
             var exportPngTip = new ToolTip();
@@ -458,7 +517,7 @@ namespace WileyWidget.WinForms.Controls
 
             try
             {
-                if (_vm.ChartData != null)
+                if (_vm != null && _vm.ChartData != null)
                 {
                     _comboDepartmentFilter.DataSource = _vm.ChartData.Select(k => k.Key).ToList();
                     _comboSelectedIndexChangedHandler = ComboFilter_SelectedIndexChanged;
@@ -466,13 +525,6 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { }
-
-            // Watch for view model changes to update chart UI
-            if (_vm is INotifyPropertyChanged npc)
-            {
-                _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-                npc.PropertyChanged += _viewModelPropertyChangedHandler;
-            }
 
             // Wire panel header actions
             try
@@ -506,8 +558,7 @@ namespace WileyWidget.WinForms.Controls
                 Text = caption,
                 Dock = DockStyle.Top,
                 Height = 18,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.Gray
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
 
             var lblValue = new Label
@@ -554,6 +605,92 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Warning(ex, "ChartPanel: NavigateToDashboard failed");
             }
+        }
+
+        /// <summary>
+        /// Generic navigation helper for panel navigation via DockingManager.
+        /// </summary>
+        private void NavigateToPanel<TPanel>() where TPanel : UserControl
+        {
+            try
+            {
+                var parentForm = this.FindForm();
+                if (parentForm == null) return;
+
+                // Extract panel name from type (e.g., "BudgetPanel" -> "Budget")
+                var panelName = typeof(TPanel).Name.Replace("Panel", "", StringComparison.Ordinal);
+
+                // Prefer direct API on MainForm where available
+                if (parentForm is Forms.MainForm mf)
+                {
+                    try { mf.ShowPanel<TPanel>(panelName); return; } catch { }
+                }
+
+                // Fallback to reflection
+                var method = parentForm.GetType().GetMethod("DockUserControlPanel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (method != null)
+                {
+                    var genericMethod = method.MakeGenericMethod(typeof(TPanel));
+                    genericMethod.Invoke(parentForm, new object[] { panelName });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "ChartPanel: NavigateToPanel<{PanelType}> failed", typeof(TPanel).Name);
+            }
+        }
+
+        /// <summary>
+        /// Handles keyboard shortcuts for chart operations and navigation.
+        /// F5: Refresh chart data
+        /// Ctrl+E: Export to PNG
+        /// Ctrl+Shift+E: Export to PDF
+        /// Ctrl+B: Navigate to Budget panel
+        /// Ctrl+A: Navigate to Accounts panel
+        /// Ctrl+Shift+D: Navigate to Dashboard
+        /// Esc: Close panel
+        /// </summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            try
+            {
+                switch (keyData)
+                {
+                    case Keys.F5:
+                        BtnRefresh_Click(this, EventArgs.Empty);
+                        return true;
+
+                    case Keys.Control | Keys.E:
+                        ExportPng_Click(this, EventArgs.Empty);
+                        return true;
+
+                    case Keys.Control | Keys.Shift | Keys.E:
+                        ExportPdf_Click(this, EventArgs.Empty);
+                        return true;
+
+                    case Keys.Control | Keys.B:
+                        NavigateToPanel<BudgetPanel>();
+                        return true;
+
+                    case Keys.Control | Keys.A:
+                        NavigateToPanel<AccountsPanel>();
+                        return true;
+
+                    case Keys.Control | Keys.Shift | Keys.D:
+                        NavigateToDashboard();
+                        return true;
+
+                    case Keys.Escape:
+                        OnPanelHeaderCloseClicked(this, EventArgs.Empty);
+                        return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "ChartPanel: ProcessCmdKey failed for key {KeyData}", keyData);
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         /// <summary>
@@ -635,7 +772,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (IsDisposed) return;
+                if (IsDisposed || _vm == null) return;
 
                 await _vm.LoadChartDataAsync().ConfigureAwait(false);
 
@@ -691,7 +828,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Handles ViewModel property changes with thread safety.
         /// </summary>
-        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             try
             {
@@ -701,12 +838,12 @@ namespace WileyWidget.WinForms.Controls
                 {
                     if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                     {
-                        try { _ = _dispatcherHelper.InvokeAsync(() => ViewModel_PropertyChanged(sender, e)); } catch { }
+                        try { _ = _dispatcherHelper.InvokeAsync(() => OnViewModelPropertyChanged(sender, e)); } catch { }
                         return;
                     }
                     if (InvokeRequired)
                     {
-                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                        try { BeginInvoke(new System.Action(() => OnViewModelPropertyChanged(sender, e))); } catch { }
                         return;
                     }
 
@@ -766,10 +903,45 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 ThemeManager.ApplyThemeToControl(this);
-                // Apply Syncfusion skin using global theme (FluentDark default, FluentLight fallback)
-                // Per-form Syncfusion theming is already applied by ThemeManager.ApplyTheme(this) above
+                ApplySyncfusionTheme();
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Applies Syncfusion-specific theme styling to ChartControl.
+        /// Uses Syncfusion skins for modern appearance.
+        /// </summary>
+        private void ApplySyncfusionTheme()
+        {
+            try
+            {
+                if (_chartControl == null) return;
+
+                var isDark = ThemeManager.CurrentTheme == AppTheme.Dark;
+
+                // Apply Syncfusion skin per demos - ChartControl uses Office2016 skin names
+                _chartControl.Skins = isDark ? Skins.Office2016Black : Skins.Office2016Colorful;
+
+                // Chart area styling - transparent to show theme background
+                _chartControl.ChartArea.BackInterior = new Syncfusion.Drawing.BrushInfo(Color.Transparent);
+
+                // Colors removed - let SkinManager handle theming
+                // Chart skins applied above should handle appearance
+
+                // Primary X Axis styling
+
+                // Primary Y Axis styling
+
+                // Legend styling
+                _chartControl.Legend.Font = new Font("Segoe UI", 9F);
+
+                Logger.LogDebug("ChartPanel: Syncfusion theme styling applied");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "ChartPanel: Failed to apply Syncfusion theme styling");
+            }
         }
 
         private void UpdateChartFromData()
@@ -921,7 +1093,7 @@ namespace WileyWidget.WinForms.Controls
                     var varianceValueLabel = _lblTotalVariance.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (varianceValueLabel != null)
                     {
-                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.Green : Color.Red;
                     }
                 }
 
@@ -930,7 +1102,7 @@ namespace WileyWidget.WinForms.Controls
                     var percentValueLabel = _lblVariancePercent.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (percentValueLabel != null)
                     {
-                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.Green : Color.Red;
                     }
                 }
 
@@ -1113,6 +1285,8 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
+                Logger.LogDebug("ChartPanel: Disposing resources");
+
                 // Unsubscribe event handlers
                 try { if (_themeChangedHandler != null) ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { if (_btnRefreshThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
@@ -1121,6 +1295,8 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
                 try { if (_comboSelectedIndexChangedHandler != null && _comboDepartmentFilter != null) _comboDepartmentFilter.SelectedIndexChanged -= _comboSelectedIndexChangedHandler; } catch { }
                 try { if (_btnRefresh != null) _btnRefresh.Click -= BtnRefresh_Click; } catch { }
+                try { if (_btnExportPng != null) _btnExportPng.Click -= ExportPng_Click; } catch { }
+                try { if (_btnExportPdf != null) _btnExportPdf.Click -= ExportPdf_Click; } catch { }
                 try { this.Load -= ChartPanel_Load; } catch { }
 
                 // Unsubscribe from PanelHeader events using stored named handlers
@@ -1134,22 +1310,30 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch (Exception ex)
                 {
-                    Serilog.Log.Debug(ex, "ChartPanel: Failed to unsubscribe PanelHeader events");
+                    Logger.LogDebug(ex, "ChartPanel: Failed to unsubscribe PanelHeader events");
                 }
 
-                // Dispose controls
+                // Clear event handler references
+                _themeChangedHandler = null;
+                _btnRefreshThemeChangedHandler = null;
+                _btnExportPngThemeChangedHandler = null;
+                _btnExportPdfThemeChangedHandler = null;
+                _viewModelPropertyChangedHandler = null;
+                _comboSelectedIndexChangedHandler = null;
+                _panelHeaderRefreshHandler = null;
+                _panelHeaderCloseHandler = null;
+
+                // Dispose ChartControl (specific to Syncfusion ChartControl)
                 try { _chartControl?.Dispose(); } catch { }
 
-                // Clear DataSource and dispose Syncfusion combo safely via helper
-                try { _comboDepartmentFilter.SafeClearDataSource(); } catch { }
-                try { _comboDepartmentFilter.SafeDispose(); } catch { }
-                try { _btnRefresh?.Dispose(); } catch { }
-                try { if (_btnExportPng != null) _btnExportPng.Click -= ExportPng_Click; } catch { }
-                try { if (_btnExportPdf != null) _btnExportPdf.Click -= ExportPdf_Click; } catch { }
-                try { _btnExportPngThemeChangedHandler = null; } catch { }
-                try { _btnExportPdfThemeChangedHandler = null; } catch { }
-                try { _btnExportPng?.Dispose(); } catch { }
-                try { _btnExportPdf?.Dispose(); } catch { }
+                // Dispose Syncfusion controls safely with SafeDispose extension
+                try { _comboDepartmentFilter?.SafeClearDataSource(); } catch { }
+                try { _comboDepartmentFilter?.SafeDispose(); } catch { }
+                try { _btnRefresh?.SafeDispose(); } catch { }
+                try { _btnExportPng?.SafeDispose(); } catch { }
+                try { _btnExportPdf?.SafeDispose(); } catch { }
+
+                // Dispose other controls
                 try { _panelHeader?.Dispose(); } catch { }
                 try { _loadingOverlay?.Dispose(); } catch { }
                 try { _noDataOverlay?.Dispose(); } catch { }
@@ -1161,8 +1345,8 @@ namespace WileyWidget.WinForms.Controls
                 try { _lblVariancePercent?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
                 try { foreach (var t in _toolTips) { try { t?.Dispose(); } catch { } } _toolTips.Clear(); } catch { }
-                // Dispose Syncfusion controls safely
-                _comboDepartmentFilter?.SafeDispose();
+
+                Logger.LogDebug("ChartPanel: Disposal complete");
             }
 
             base.Dispose(disposing);

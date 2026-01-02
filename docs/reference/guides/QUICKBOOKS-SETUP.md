@@ -193,9 +193,9 @@ Write-Output "Environment: $env:QBO_ENVIRONMENT"
 
 ## 📚 Additional Resources
 
-- **QuickBooks Sandbox**: https://developer.intuit.com/app/developer/sandbox
-- **OAuth 2.0 Guide**: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0
-- **API Explorer**: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account
+- **QuickBooks Sandbox**: <https://developer.intuit.com/app/developer/sandbox>
+- **OAuth 2.0 Guide**: <https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0>
+- **API Explorer**: <https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account>
 
 ---
 
@@ -220,6 +220,6 @@ Write-Output "Environment: $env:QBO_ENVIRONMENT"
 
 ## 📞 Need Help?
 
-- **Intuit Developer Support**: https://help.developer.intuit.com/
-- **Developer Forums**: https://help.developer.intuit.com/s/
-- **QuickBooks API Reference**: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account
+- **Intuit Developer Support**: <https://help.developer.intuit.com/>
+- **Developer Forums**: <https://help.developer.intuit.com/s/>
+- **QuickBooks API Reference**: <https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account>

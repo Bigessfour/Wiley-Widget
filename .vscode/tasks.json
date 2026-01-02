@@ -116,6 +116,29 @@
 			"group": "none"
 		},
 		{
+			"label": "copilot: sync-instructions",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.vscode/scripts/sync-copilot-instructions.ps1"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"group": "none"
+		},
+		{
 			"label": "Build WileyWidget.WinForms",
 			"command": "dotnet",
 			"type": "shell",
@@ -188,6 +211,40 @@
 			"isBackground": false
 		},
 		{
+			"label": "WileyWidget: Build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			]
+		},
+		{
 			"label": "WileyWidget: Clean",
 			"type": "shell",
 			"command": "dotnet",
@@ -245,6 +302,24 @@
 			]
 		},
 		{
+			"label": "logs: clean",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Remove-Item -Path \"${workspaceFolder}/logs/*\" -Force -ErrorAction SilentlyContinue"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "WileyWidget: Run",
 			"type": "shell",
 			"command": "dotnet",
@@ -259,7 +334,11 @@
 				"panel": "shared",
 				"focus": false
 			},
-			"problemMatcher": []
+			"problemMatcher": [],
+			"dependsOn": [
+				"WileyWidget: Kill Old Processes",
+				"logs: clean"
+			]
 		},
 		{
 			"label": "mcp:start-csharp-mcp",

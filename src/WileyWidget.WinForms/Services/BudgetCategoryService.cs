@@ -16,13 +16,13 @@ namespace WileyWidget.WinForms.Services
     {
         private const int DefaultRetryCount = 3;
         private readonly IBudgetRepository _budgetRepository;
-        private readonly AppDbContext _context;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly ILogger _logger;
 
-        public BudgetCategoryService(IBudgetRepository budgetRepository, AppDbContext context, ILogger logger)
+        public BudgetCategoryService(IBudgetRepository budgetRepository, IDbContextFactory<AppDbContext> contextFactory, ILogger logger)
         {
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger?.ForContext<BudgetCategoryService>() ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -46,7 +46,8 @@ namespace WileyWidget.WinForms.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var entry = await _context.BudgetEntries
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var entry = await context.BudgetEntries
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
@@ -64,8 +65,9 @@ namespace WileyWidget.WinForms.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var department = await EnsureDefaultDepartmentAsync(cancellationToken);
-            var municipalAccount = await EnsureDefaultMunicipalAccountAsync(department, cancellationToken);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var department = await EnsureDefaultDepartmentAsync(context, cancellationToken);
+            var municipalAccount = await EnsureDefaultMunicipalAccountAsync(context, department, cancellationToken);
 
             var entry = new BudgetEntry
             {
@@ -80,11 +82,11 @@ namespace WileyWidget.WinForms.Services
                 FundType = FundType.GeneralFund
             };
 
-            _context.BudgetEntries.Add(entry);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.BudgetEntries.Add(entry);
+            await context.SaveChangesAsync(cancellationToken);
 
             // Reload with relationships to populate names
-            var saved = await _context.BudgetEntries
+            var saved = await context.BudgetEntries
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
@@ -102,7 +104,8 @@ namespace WileyWidget.WinForms.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var entry = await _context.BudgetEntries.FindAsync(new object[] { category.Id }, cancellationToken);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var entry = await context.BudgetEntries.FindAsync(new object[] { category.Id }, cancellationToken);
             if (entry is null)
             {
                 throw new InvalidOperationException($"Budget category with id {category.Id} not found");
@@ -116,9 +119,9 @@ namespace WileyWidget.WinForms.Services
             entry.FiscalYear = category.FiscalYear;
             entry.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
-            var updated = await _context.BudgetEntries
+            var updated = await context.BudgetEntries
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
@@ -131,14 +134,15 @@ namespace WileyWidget.WinForms.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var entry = await _context.BudgetEntries.FindAsync(new object[] { id }, cancellationToken);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var entry = await context.BudgetEntries.FindAsync(new object[] { id }, cancellationToken);
             if (entry is null)
             {
                 return false;
             }
 
-            _context.BudgetEntries.Remove(entry);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.BudgetEntries.Remove(entry);
+            await context.SaveChangesAsync(cancellationToken);
             return true;
         }
 
@@ -174,10 +178,10 @@ namespace WileyWidget.WinForms.Services
             return Enumerable.Empty<BudgetEntry>();
         }
 
-        private async Task<Department> EnsureDefaultDepartmentAsync(CancellationToken cancellationToken)
+        private async Task<Department> EnsureDefaultDepartmentAsync(AppDbContext context, CancellationToken cancellationToken)
         {
-            var department = await _context.Departments.FirstOrDefaultAsync(d => d.Name == "General", cancellationToken)
-                              ?? await _context.Departments.FirstOrDefaultAsync(cancellationToken);
+            var department = await context.Departments.FirstOrDefaultAsync(d => d.Name == "General", cancellationToken)
+                              ?? await context.Departments.FirstOrDefaultAsync(cancellationToken);
 
             if (department != null)
             {
@@ -190,14 +194,14 @@ namespace WileyWidget.WinForms.Services
                 DepartmentCode = "GEN"
             };
 
-            _context.Departments.Add(defaultDepartment);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.Departments.Add(defaultDepartment);
+            await context.SaveChangesAsync(cancellationToken);
             return defaultDepartment;
         }
 
-        private async Task<BudgetPeriod> EnsureBudgetPeriodAsync(CancellationToken cancellationToken)
+        private async Task<BudgetPeriod> EnsureBudgetPeriodAsync(AppDbContext context, CancellationToken cancellationToken)
         {
-            var period = await _context.BudgetPeriods.OrderBy(bp => bp.Id).FirstOrDefaultAsync(cancellationToken);
+            var period = await context.BudgetPeriods.OrderBy(bp => bp.Id).FirstOrDefaultAsync(cancellationToken);
             if (period != null)
             {
                 return period;
@@ -215,17 +219,17 @@ namespace WileyWidget.WinForms.Services
                 IsActive = true
             };
 
-            _context.BudgetPeriods.Add(defaultPeriod);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.BudgetPeriods.Add(defaultPeriod);
+            await context.SaveChangesAsync(cancellationToken);
             return defaultPeriod;
         }
 
-        private async Task<MunicipalAccount> EnsureDefaultMunicipalAccountAsync(Department department, CancellationToken cancellationToken)
+        private async Task<MunicipalAccount> EnsureDefaultMunicipalAccountAsync(AppDbContext context, Department department, CancellationToken cancellationToken)
         {
-            var account = await _context.MunicipalAccounts
+            var account = await context.MunicipalAccounts
                 .Include(ma => ma.AccountNumber)
                 .FirstOrDefaultAsync(ma => ma.Name == "General Fund", cancellationToken)
-                ?? await _context.MunicipalAccounts
+                ?? await context.MunicipalAccounts
                     .Include(ma => ma.AccountNumber)
                     .FirstOrDefaultAsync(cancellationToken);
 
@@ -234,7 +238,7 @@ namespace WileyWidget.WinForms.Services
                 return account;
             }
 
-            var period = await EnsureBudgetPeriodAsync(cancellationToken);
+            var period = await EnsureBudgetPeriodAsync(context, cancellationToken);
 
             var defaultAccount = new MunicipalAccount
             {
@@ -249,8 +253,8 @@ namespace WileyWidget.WinForms.Services
                 IsActive = true
             };
 
-            _context.MunicipalAccounts.Add(defaultAccount);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.MunicipalAccounts.Add(defaultAccount);
+            await context.SaveChangesAsync(cancellationToken);
             return defaultAccount;
         }
 

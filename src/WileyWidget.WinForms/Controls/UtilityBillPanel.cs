@@ -214,10 +214,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         for (int i = 0; i < 4; i++)
             summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        _totalOutstandingLabel = CreateSummaryLabel("Total Outstanding: $0.00", Color.OrangeRed);
-        _overdueCountLabel = CreateSummaryLabel("Overdue Bills: 0", Color.Crimson);
-        _totalRevenueLabel = CreateSummaryLabel("Total Revenue: $0.00", Color.Green);
-        _billsThisMonthLabel = CreateSummaryLabel("Bills This Month: 0", Color.SteelBlue);
+        _totalOutstandingLabel = CreateSummaryLabel("Total Outstanding: $0.00");
+        _overdueCountLabel = CreateSummaryLabel("Overdue Bills: 0");
+        _totalRevenueLabel = CreateSummaryLabel("Total Revenue: $0.00");
+        _billsThisMonthLabel = CreateSummaryLabel("Bills This Month: 0");
 
         summaryTable.Controls.Add(_totalOutstandingLabel, 0, 0);
         summaryTable.Controls.Add(_overdueCountLabel, 1, 0);
@@ -227,13 +227,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _summaryPanel.Controls.Add(summaryTable);
     }
 
-    private Label CreateSummaryLabel(string text, Color foreColor)
+    private Label CreateSummaryLabel(string text)
     {
         return new Label
         {
             Text = text,
             Font = new Font(Font.FontFamily, DpiAware.LogicalToDeviceUnits(10f), FontStyle.Bold),
-            ForeColor = foreColor,
+            // ForeColor removed - let SkinManager handle theming
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AutoSize = false
@@ -733,8 +733,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             if (e.DataRow.RowData is UtilityBill bill && bill.IsOverdue)
             {
-                e.Style.BackColor = Color.LightCoral;
-                e.Style.TextColor = Color.DarkRed;
+                e.Style.TextColor = Color.Red;
             }
         }
     }

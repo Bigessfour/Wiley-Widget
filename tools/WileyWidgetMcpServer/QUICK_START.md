@@ -404,8 +404,8 @@ Copilot generates appropriate reflection code and executes it.
 
 ## Resources
 
-- **Official MCP Spec:** https://modelcontextprotocol.io/
-- **C# SDK Docs:** https://github.com/modelcontextprotocol/csharp-sdk
+- **Official MCP Spec:** <https://modelcontextprotocol.io/>
+- **C# SDK Docs:** <https://github.com/modelcontextprotocol/csharp-sdk>
 - **WileyWidget MCP Server README:** [tools/WileyWidgetMcpServer/README.md](tools/WileyWidgetMcpServer/README.md)
 - **Syncfusion Theme Guidelines:** [.vscode/copilot-instructions.md](.vscode/copilot-instructions.md#syncfusion-sfskinmanager-theme-enforcement)
 

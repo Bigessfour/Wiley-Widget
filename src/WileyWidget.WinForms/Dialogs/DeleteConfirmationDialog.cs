@@ -150,9 +150,7 @@ namespace WileyWidget.WinForms.Dialogs
                 Text = "Delete",
                 Size = new Size(90, 32),
                 DialogResult = DialogResult.OK,
-                UseVisualStyleBackColor = false,
-                BackColor = Color.Red,  // Semantic danger color (allowed exception)
-                ForeColor = Color.White,  // High contrast text for semantic button (allowed exception)
+                // Colors removed - let SkinManager handle theming
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 8, 0)

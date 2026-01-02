@@ -205,8 +205,8 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Top,
             Height = 40,
-            Visible = false,
-            BackColor = Color.FromArgb(240, 240, 240)
+            Visible = false
+            // BackColor removed - let SkinManager handle theming
         };
 
         _progressLabel = new Label
@@ -214,7 +214,7 @@ public partial class AIChatControl : UserControl
             Dock = DockStyle.Fill,
             Text = "Processing...",
             TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = Color.OrangeRed,
+            ForeColor = Color.Orange, // Semantic processing color
             Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
             AccessibleName = "Progress indicator"
         };
@@ -555,7 +555,7 @@ public partial class AIChatControl : UserControl
             {
                 if (_statusLabel != null)
                 {
-                    _statusLabel.ForeColor = Color.Red;
+                    _statusLabel.ForeColor = Color.Red; // Semantic error color (allowed exception)
                     _statusLabel.Text = _viewModel.ErrorMessage;
                 }
             }
@@ -563,7 +563,8 @@ public partial class AIChatControl : UserControl
             {
                 if (_statusLabel != null)
                 {
-                    _statusLabel.ForeColor = SystemColors.ControlText;
+                    // ForeColor reset to default - let SkinManager handle theming
+                    _statusLabel.Text = "";
                 }
             }
         }
@@ -656,7 +657,7 @@ public partial class AIChatControl : UserControl
             _messagesDisplay.AppendText($"{message.Message}\n");
 
             // Separator
-            _messagesDisplay.SelectionColor = Color.LightGray;
+            // SelectionColor removed - let SkinManager handle theming
             _messagesDisplay.AppendText(new string('-', 80) + "\n\n");
 
             // Auto-scroll to bottom

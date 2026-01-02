@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms;
@@ -8,6 +9,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Controls;
@@ -17,10 +19,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Features exploratory analysis, rate scenarios, trend visualization, and predictive modeling.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class AnalyticsPanel : UserControl
+public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 {
-    private readonly AnalyticsViewModel _viewModel;
-    private readonly ILogger<AnalyticsPanel> _logger;
 
     // UI Controls
     private SfDataGrid? _metricsGrid;
@@ -31,6 +31,9 @@ public partial class AnalyticsPanel : UserControl
     private Button? _runScenarioButton;
     private Button? _generateForecastButton;
     private Button? _refreshButton;
+    private Button? _navigateToBudgetButton;
+    private Button? _navigateToAccountsButton;
+    private Button? _navigateToDashboardButton;
     private TextBox? _rateIncreaseTextBox;
     private TextBox? _expenseIncreaseTextBox;
     private TextBox? _revenueTargetTextBox;
@@ -54,22 +57,37 @@ public partial class AnalyticsPanel : UserControl
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
+    private ErrorProvider? _errorProvider;
 
     /// <summary>
     /// Initializes a new instance of the AnalyticsPanel class.
     /// </summary>
-    /// <param name="viewModel">The analytics view model.</param>
+    /// <param name="scopeFactory">The service scope factory for resolving scoped dependencies.</param>
     /// <param name="logger">The logger instance.</param>
     public AnalyticsPanel(
-        AnalyticsViewModel viewModel,
-        ILogger<AnalyticsPanel> logger)
+        IServiceScopeFactory scopeFactory,
+        ILogger<ScopedPanelBase<AnalyticsViewModel>> logger)
+        : base(scopeFactory, logger)
     {
         InitializeComponent();
-
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
         InitializeControls();
+    }
+
+    /// <summary>
+    /// Called after the ViewModel has been resolved from the scoped service provider.
+    /// Binds the ViewModel to UI controls and subscribes to events.
+    /// </summary>
+    /// <param name="viewModel">The resolved ViewModel instance.</param>
+    protected override void OnViewModelResolved(AnalyticsViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+
+        // Wire up ViewModel events
+        if (viewModel == null)
+            throw new ArgumentNullException(nameof(viewModel));
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        Logger.LogDebug("AnalyticsPanel ViewModel resolved and bound");
     }
 
     /// <summary>
@@ -87,7 +105,11 @@ public partial class AnalyticsPanel : UserControl
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
-        _panelHeader.RefreshClicked += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _panelHeader.RefreshClicked += async (s, e) =>
+        {
+            if (ViewModel != null)
+                await ViewModel.RefreshCommand.ExecuteAsync(null);
+        };
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
@@ -126,8 +148,12 @@ public partial class AnalyticsPanel : UserControl
         Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
 
-        // Wire up ViewModel events
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Error provider for validation
+        _errorProvider = new ErrorProvider
+        {
+            BlinkStyle = ErrorBlinkStyle.NeverBlink,
+            BlinkRate = 0
+        };
 
         // Set tab order
         SetTabOrder();
@@ -151,12 +177,12 @@ public partial class AnalyticsPanel : UserControl
         var buttonTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 4,
+            ColumnCount = 7,
             RowCount = 1
         };
 
-        for (int i = 0; i < 4; i++)
-            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        for (int i = 0; i < 7; i++)
+            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.28f));
 
         _performAnalysisButton = new Button
         {
@@ -165,7 +191,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Perform Analysis",
             AccessibleDescription = "Run exploratory data analysis on budget data"
         };
-        _performAnalysisButton.Click += async (s, e) => await _viewModel.PerformAnalysisCommand.ExecuteAsync(null);
+        _performAnalysisButton.Click += async (s, e) => await ViewModel!.PerformAnalysisCommand.ExecuteAsync(null);
 
         _runScenarioButton = new Button
         {
@@ -174,7 +200,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Run Scenario",
             AccessibleDescription = "Run rate adjustment scenario analysis"
         };
-        _runScenarioButton.Click += async (s, e) => await _viewModel.RunScenarioCommand.ExecuteAsync(null);
+        _runScenarioButton.Click += async (s, e) => await ViewModel!.RunScenarioCommand.ExecuteAsync(null);
 
         _generateForecastButton = new Button
         {
@@ -183,7 +209,7 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Generate Forecast",
             AccessibleDescription = "Generate predictive reserve forecast"
         };
-        _generateForecastButton.Click += async (s, e) => await _viewModel.GenerateForecastCommand.ExecuteAsync(null);
+        _generateForecastButton.Click += async (s, e) => await ViewModel!.GenerateForecastCommand.ExecuteAsync(null);
 
         _refreshButton = new Button
         {
@@ -192,12 +218,42 @@ public partial class AnalyticsPanel : UserControl
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _refreshButton.Click += async (s, e) => await ViewModel!.RefreshCommand.ExecuteAsync(null);
+
+        _navigateToBudgetButton = new Button
+        {
+            Text = "Go to &Budget",
+            TabIndex = 5,
+            AccessibleName = "Navigate to Budget Panel",
+            AccessibleDescription = "Navigate to the Budget panel"
+        };
+        _navigateToBudgetButton.Click += (s, e) => NavigateToPanel("BudgetPanel");
+
+        _navigateToAccountsButton = new Button
+        {
+            Text = "Go to &Accounts",
+            TabIndex = 6,
+            AccessibleName = "Navigate to Accounts Panel",
+            AccessibleDescription = "Navigate to the Accounts panel"
+        };
+        _navigateToAccountsButton.Click += (s, e) => NavigateToPanel("AccountsPanel");
+
+        _navigateToDashboardButton = new Button
+        {
+            Text = "Go to &Dashboard",
+            TabIndex = 7,
+            AccessibleName = "Navigate to Dashboard Panel",
+            AccessibleDescription = "Navigate to the Dashboard panel"
+        };
+        _navigateToDashboardButton.Click += (s, e) => NavigateToPanel("DashboardPanel");
 
         buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
         buttonTable.Controls.Add(_generateForecastButton, 2, 0);
         buttonTable.Controls.Add(_refreshButton, 3, 0);
+        buttonTable.Controls.Add(_navigateToBudgetButton, 4, 0);
+        buttonTable.Controls.Add(_navigateToAccountsButton, 5, 0);
+        buttonTable.Controls.Add(_navigateToDashboardButton, 6, 0);
 
         _buttonPanel.Controls.Add(buttonTable);
         topPanel.Controls.Add(_buttonPanel);
@@ -580,10 +636,17 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void RateIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.RateIncreasePercentage = value;
+        if (_rateIncreaseTextBox == null || ViewModel == null) return;
+
+        if (decimal.TryParse(_rateIncreaseTextBox.Text, out var value) && value >= 0 && value <= 100)
+        {
+            ViewModel.RateIncreasePercentage = value;
+            _errorProvider?.SetError(_rateIncreaseTextBox, string.Empty);
+        }
         else
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        {
+            _errorProvider?.SetError(_rateIncreaseTextBox, "Rate increase must be between 0 and 100");
+        }
     }
 
     /// <summary>
@@ -591,10 +654,17 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void ExpenseIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.ExpenseIncreasePercentage = value;
+        if (_expenseIncreaseTextBox == null || ViewModel == null) return;
+
+        if (decimal.TryParse(_expenseIncreaseTextBox.Text, out var value) && value >= 0 && value <= 100)
+        {
+            ViewModel.ExpenseIncreasePercentage = value;
+            _errorProvider?.SetError(_expenseIncreaseTextBox, string.Empty);
+        }
         else
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        {
+            _errorProvider?.SetError(_expenseIncreaseTextBox, "Expense increase must be between 0 and 100");
+        }
     }
 
     /// <summary>
@@ -602,10 +672,17 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void RevenueTargetTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.RevenueTargetPercentage = value;
+        if (_revenueTargetTextBox == null || ViewModel == null) return;
+
+        if (decimal.TryParse(_revenueTargetTextBox.Text, out var value) && value >= 0 && value <= 100)
+        {
+            ViewModel.RevenueTargetPercentage = value;
+            _errorProvider?.SetError(_revenueTargetTextBox, string.Empty);
+        }
         else
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+        {
+            _errorProvider?.SetError(_revenueTargetTextBox, "Revenue target must be between 0 and 100");
+        }
     }
 
     /// <summary>
@@ -613,10 +690,17 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void ProjectionYearsTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (int.TryParse(_projectionYearsTextBox?.Text, out var value) && value > 0 && value <= 10)
-            _viewModel.ProjectionYears = value;
+        if (_projectionYearsTextBox == null || ViewModel == null) return;
+
+        if (int.TryParse(_projectionYearsTextBox.Text, out var value) && value > 0 && value <= 10)
+        {
+            ViewModel.ProjectionYears = value;
+            _errorProvider?.SetError(_projectionYearsTextBox, string.Empty);
+        }
         else
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+        {
+            _errorProvider?.SetError(_projectionYearsTextBox, "Projection years must be between 1 and 10");
+        }
     }
 
     /// <summary>
@@ -624,7 +708,8 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void MetricsSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
-        _viewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
+        if (ViewModel != null)
+            ViewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
     }
 
     /// <summary>
@@ -632,7 +717,8 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void VariancesSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
-        _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
+        if (ViewModel != null)
+            ViewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
     }
 
     /// <summary>
@@ -640,69 +726,71 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (ViewModel == null) return;
+
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.FilteredMetrics):
-                if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.FilteredMetrics;
+            case nameof(ViewModel.FilteredMetrics):
+                if (_metricsGrid != null) _metricsGrid.DataSource = ViewModel.FilteredMetrics;
                 break;
 
-            case nameof(_viewModel.FilteredTopVariances):
-                if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.FilteredTopVariances;
+            case nameof(ViewModel.FilteredTopVariances):
+                if (_variancesGrid != null) _variancesGrid.DataSource = ViewModel.FilteredTopVariances;
                 break;
 
-            case nameof(_viewModel.TrendData):
+            case nameof(ViewModel.TrendData):
                 UpdateTrendsChart();
                 break;
 
-            case nameof(_viewModel.Insights):
+            case nameof(ViewModel.Insights):
                 if (_insightsListBox != null)
                 {
                     _insightsListBox.Items.Clear();
-                    foreach (var insight in _viewModel.Insights)
+                    foreach (var insight in ViewModel.Insights)
                         _insightsListBox.Items.Add(insight);
                 }
                 break;
 
-            case nameof(_viewModel.Recommendations):
+            case nameof(ViewModel.Recommendations):
                 if (_recommendationsListBox != null)
                 {
                     _recommendationsListBox.Items.Clear();
-                    foreach (var rec in _viewModel.Recommendations)
+                    foreach (var rec in ViewModel.Recommendations)
                         _recommendationsListBox.Items.Add(rec);
                 }
                 break;
 
-            case nameof(_viewModel.ForecastData):
+            case nameof(ViewModel.ForecastData):
                 UpdateForecastChart();
                 break;
 
-            case nameof(_viewModel.IsLoading):
-                if (_loadingOverlay != null) _loadingOverlay.Visible = _viewModel.IsLoading;
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !_viewModel.IsLoading && !_viewModel.Metrics.Any();
+            case nameof(ViewModel.IsLoading):
+                if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
+                if (_noDataOverlay != null) _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Metrics.Any();
                 break;
 
-            case nameof(_viewModel.StatusText):
-                if (_statusLabel != null) _statusLabel.Text = _viewModel.StatusText;
+            case nameof(ViewModel.StatusText):
+                if (_statusLabel != null) _statusLabel.Text = ViewModel.StatusText;
                 break;
 
-            case nameof(_viewModel.TotalBudgetedAmount):
-                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {_viewModel.TotalBudgetedAmount:C}";
+            case nameof(ViewModel.TotalBudgetedAmount):
+                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {ViewModel.TotalBudgetedAmount:C}";
                 break;
 
-            case nameof(_viewModel.TotalActualAmount):
-                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {_viewModel.TotalActualAmount:C}";
+            case nameof(ViewModel.TotalActualAmount):
+                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {ViewModel.TotalActualAmount:C}";
                 break;
 
-            case nameof(_viewModel.TotalVarianceAmount):
-                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {_viewModel.TotalVarianceAmount:C}";
+            case nameof(ViewModel.TotalVarianceAmount):
+                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {ViewModel.TotalVarianceAmount:C}";
                 break;
 
-            case nameof(_viewModel.AverageVariancePercentage):
-                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {_viewModel.AverageVariancePercentage:P}";
+            case nameof(ViewModel.AverageVariancePercentage):
+                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {ViewModel.AverageVariancePercentage:P}";
                 break;
 
-            case nameof(_viewModel.RecommendationExplanation):
-                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = _viewModel.RecommendationExplanation;
+            case nameof(ViewModel.RecommendationExplanation):
+                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = ViewModel.RecommendationExplanation;
                 break;
         }
     }
@@ -712,7 +800,7 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void UpdateTrendsChart()
     {
-        if (_trendsChart == null || !_viewModel.TrendData.Any())
+        if (_trendsChart == null || ViewModel == null || !ViewModel.TrendData.Any())
             return;
 
         try
@@ -725,7 +813,7 @@ public partial class AnalyticsPanel : UserControl
             budgetedSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(54, 162, 235)); // Blue
             actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(255, 99, 132)); // Red
 
-            foreach (var trend in _viewModel.TrendData)
+            foreach (var trend in ViewModel.TrendData)
             {
                 budgetedSeries.Points.Add(trend.Month, (double)trend.Budgeted);
                 actualSeries.Points.Add(trend.Month, (double)trend.Actual);
@@ -737,7 +825,7 @@ public partial class AnalyticsPanel : UserControl
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating trends chart");
+            Logger.LogError(ex, "Error updating trends chart");
         }
     }
 
@@ -746,7 +834,7 @@ public partial class AnalyticsPanel : UserControl
     /// </summary>
     private void UpdateForecastChart()
     {
-        if (_forecastChart == null || !_viewModel.ForecastData.Any())
+        if (_forecastChart == null || ViewModel == null || !ViewModel.ForecastData.Any())
             return;
 
         try
@@ -756,7 +844,7 @@ public partial class AnalyticsPanel : UserControl
             var forecastSeries = new ChartSeries("Predicted Reserves", ChartSeriesType.Line);
             forecastSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(75, 192, 192)); // Green
 
-            foreach (var point in _viewModel.ForecastData)
+            foreach (var point in ViewModel.ForecastData)
             {
                 forecastSeries.Points.Add(point.Date.ToString("yyyy-MM", CultureInfo.InvariantCulture), (double)point.PredictedReserves);
             }
@@ -766,7 +854,46 @@ public partial class AnalyticsPanel : UserControl
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating forecast chart");
+            Logger.LogError(ex, "Error updating forecast chart");
+        }
+    }
+
+    /// <summary>
+    /// Navigates to the specified panel.
+    /// </summary>
+    /// <param name="panelName">The name of the panel to navigate to.</param>
+    private void NavigateToPanel(string panelName)
+    {
+        try
+        {
+            var parentForm = this.FindForm();
+            if (parentForm is Forms.MainForm mainForm)
+            {
+                // Map panel names to types
+                switch (panelName)
+                {
+                    case "BudgetPanel":
+                        mainForm.ShowPanel<BudgetPanel>("Budget Management");
+                        break;
+                    case "AccountsPanel":
+                        mainForm.ShowPanel<AccountsPanel>("Municipal Accounts");
+                        break;
+                    case "DashboardPanel":
+                        mainForm.ShowPanel<DashboardPanel>("Dashboard");
+                        break;
+                    default:
+                        Logger.LogWarning("Unknown panel name: {PanelName}", panelName);
+                        break;
+                }
+                return;
+            }
+
+            var method = parentForm?.GetType().GetMethod("ShowPanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(parentForm, new object[] { panelName });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "AnalyticsPanel: NavigateToPanel failed for {PanelName}", panelName);
         }
     }
 
@@ -789,7 +916,7 @@ public partial class AnalyticsPanel : UserControl
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "AnalyticsPanel: ClosePanel failed");
+            Logger.LogWarning(ex, "AnalyticsPanel: ClosePanel failed");
         }
     }
 
@@ -800,22 +927,34 @@ public partial class AnalyticsPanel : UserControl
     {
         base.OnLoad(e);
 
+        if (ViewModel == null)
+        {
+            Logger.LogWarning("ViewModel not initialized in OnLoad");
+            return;
+        }
+
         try
         {
             // Initialize scenario parameters
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
-            _metricsSearchTextBox!.Text = _viewModel.MetricsSearchText;
-            _variancesSearchTextBox!.Text = _viewModel.VariancesSearchText;
+            if (_rateIncreaseTextBox != null)
+                _rateIncreaseTextBox.Text = ViewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            if (_expenseIncreaseTextBox != null)
+                _expenseIncreaseTextBox.Text = ViewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            if (_revenueTargetTextBox != null)
+                _revenueTargetTextBox.Text = ViewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            if (_projectionYearsTextBox != null)
+                _projectionYearsTextBox.Text = ViewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+            if (_metricsSearchTextBox != null)
+                _metricsSearchTextBox.Text = ViewModel.MetricsSearchText;
+            if (_variancesSearchTextBox != null)
+                _variancesSearchTextBox.Text = ViewModel.VariancesSearchText;
 
             // Auto-load data
-            _ = Task.Run(async () => await _viewModel.RefreshCommand.ExecuteAsync(null));
+            _ = Task.Run(async () => await ViewModel.RefreshCommand.ExecuteAsync(null));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error initializing panel");
+            Logger.LogError(ex, "Error initializing panel");
         }
     }
 
@@ -832,17 +971,21 @@ public partial class AnalyticsPanel : UserControl
     {
         if (disposing)
         {
-            _viewModel?.Dispose();
+            // Unsubscribe from events before disposal
+            if (ViewModel != null)
+                ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
-            _metricsGrid?.Dispose();
-            _variancesGrid?.Dispose();
-            _trendsChart?.Dispose();
-            _forecastChart?.Dispose();
-            _mainSplitContainer?.Dispose();
-            _statusStrip?.Dispose();
-            _panelHeader?.Dispose();
-            _loadingOverlay?.Dispose();
-            _noDataOverlay?.Dispose();
+            // Use SafeDispose for Syncfusion controls
+            _metricsGrid.SafeDispose();
+            _variancesGrid.SafeDispose();
+            _trendsChart.SafeDispose();
+            _forecastChart.SafeDispose();
+            _mainSplitContainer.SafeDispose();
+            _statusStrip.SafeDispose();
+            _panelHeader.SafeDispose();
+            _loadingOverlay.SafeDispose();
+            _noDataOverlay.SafeDispose();
+            _errorProvider.SafeDispose();
 
             components?.Dispose();
         }

@@ -198,7 +198,7 @@ namespace WileyWidget.WinForms.E2ETests
         }
 
         [StaTheory]
-        [InlineData("Nav_Dashboard", "Dashboard", "Toolbar_LoadButton", "Load Dashboard")]
+        [InlineData("Nav_Dashboard", "Dashboard", "Toolbar_Load", "Load Dashboard")]
         [InlineData("Nav_Accounts", "Municipal Accounts", "dataGridAccounts", "Apply Filters")]
         [InlineData("Nav_Charts", "Budget Analytics", "Chart_Cartesian", "Budget Trend")]
         [InlineData("Nav_Settings", "Settings", "themeCombo", "Close")]
@@ -218,8 +218,32 @@ namespace WileyWidget.WinForms.E2ETests
             var viewWindow = NavigationHelper.OpenView(session.Automation, mainWindow, navAutomationId, expectedTitleContains);
             Assert.NotNull(viewWindow);
 
+            // Wait for panel to stabilize (docking activation)
+            System.Threading.Thread.Sleep(3000);
+
+            // Verify child controls exist post-activation
+            if (!string.IsNullOrEmpty(elementAutomationId))
+            {
+                var childControl = WaitForElement(viewWindow, cf => cf.ByAutomationId(elementAutomationId).Or(cf.ByName(fallbackElementName)), timeoutSeconds: 15);
+                Assert.NotNull(childControl); // No message parameter - use separate assertion if child not found
+                if (childControl == null)
+                {
+                    throw new Xunit.Sdk.XunitException($"{elementAutomationId ?? fallbackElementName} not found after {expectedTitleContains} activation");
+                }
+            }
+
             var target = WaitForElement(viewWindow, cf => BuildElementCondition(cf, elementAutomationId, fallbackElementName));
             Assert.NotNull(target);
+
+            // Fallback verification: Check status bar text as alternative validation
+            // Status bars typically contain "Ready", panel titles, or load confirmations
+            var statusBar = WaitForElement(viewWindow, cf => cf.ByControlType(ControlType.StatusBar), timeoutSeconds: 5);
+            if (statusBar != null)
+            {
+                var statusLabels = statusBar.FindAllChildren(cf => cf.ByControlType(ControlType.Text));
+                var hasStatusText = statusLabels.Any(label => !string.IsNullOrWhiteSpace(label.Name));
+                Assert.True(hasStatusText, $"Status bar found but contains no readable text after {expectedTitleContains} activation");
+            }
 
             // Close the view to ensure test isolation
             NavigationHelper.CloseView(viewWindow);

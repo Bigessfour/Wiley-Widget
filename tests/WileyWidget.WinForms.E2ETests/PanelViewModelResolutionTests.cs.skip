@@ -68,7 +68,7 @@ public class PanelViewModelResolutionTests : IDisposable
         _scope = _serviceProvider.CreateScope();
     }
 
-    [Fact]
+    [STAFact]
     public void AccountsViewModel_CanResolveFromScope_WithRepositoryDependencies()
     {
         // Arrange & Act
@@ -78,7 +78,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotNull(viewModel);
     }
 
-    [Fact]
+    [STAFact]
     public void DashboardViewModel_CanResolveFromScope_WithRepositoryDependencies()
     {
         // Arrange & Act
@@ -88,7 +88,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotNull(viewModel);
     }
 
-    [Fact]
+    [STAFact]
     public void ChartViewModel_CanResolveFromScope()
     {
         // Arrange & Act
@@ -98,7 +98,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotNull(viewModel);
     }
 
-    [Fact]
+    [STAFact]
     public void BudgetOverviewViewModel_CanResolveFromScope()
     {
         // Arrange & Act
@@ -108,7 +108,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotNull(viewModel);
     }
 
-    [Fact]
+    [STAFact]
     public void SettingsViewModel_CanResolveFromScope()
     {
         // Arrange & Act
@@ -118,7 +118,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotNull(viewModel);
     }
 
-    [Fact]
+    [STAFact]
     public void ResolvingViewModelFromRootProvider_ThrowsException_WhenHasScopedDependencies()
     {
         // This test verifies that the DI container correctly enforces scope validation
@@ -136,7 +136,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.Contains("scope", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [STAFact]
     public void Repository_IsScoped_NotSingleton()
     {
         // Arrange: Create two separate scopes
@@ -151,7 +151,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotSame(repo1, repo2);
     }
 
-    [Fact]
+    [STAFact]
     public void ViewModel_ResolvedMultipleTimes_FromSameScope_ReturnsDifferentInstances()
     {
         // ViewModels are registered as Transient, so each resolution should return a new instance
@@ -164,7 +164,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotSame(viewModel1, viewModel2);
     }
 
-    [Fact]
+    [STAFact]
     public void DbContext_IsScoped_NotSingleton()
     {
         // Arrange: Create two separate scopes
@@ -179,7 +179,7 @@ public class PanelViewModelResolutionTests : IDisposable
         Assert.NotSame(context1, context2);
     }
 
-    [Fact]
+    [STAFact]
     public void Repository_ResolvedMultipleTimes_FromSameScope_ReturnsSameInstance()
     {
         // Repositories are registered as Scoped, so multiple resolutions from the same scope

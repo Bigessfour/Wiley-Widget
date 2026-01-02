@@ -19,14 +19,14 @@ public class AccountsRepository : IAccountsRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AccountsRepository");
 
-    private readonly AppDbContext _dbContext;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly ILogger<AccountsRepository> _logger;
 
     public AccountsRepository(
-        AppDbContext dbContext,
+        IDbContextFactory<AppDbContext> contextFactory,
         ILogger<AccountsRepository> logger)
     {
-        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -39,7 +39,9 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving all municipal accounts");
 
-            var result = await _dbContext.Set<MunicipalAccount>()
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var result = await context.Set<MunicipalAccount>()
+                .AsNoTracking()
                 .OrderBy(a => a.AccountNumber_Value)
                 .ToListAsync(cancellationToken);
 
@@ -69,7 +71,9 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving accounts for fund type: {FundType}", fundType);
 
-            var result = await _dbContext.Set<MunicipalAccount>()
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var result = await context.Set<MunicipalAccount>()
+                .AsNoTracking()
                 .Where(a => a.Fund == fundType)
                 .OrderBy(a => a.AccountNumber_Value)
                 .ToListAsync(cancellationToken);
@@ -94,7 +98,9 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving accounts for account type: {AccountType}", accountType);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a => a.Type == accountType)
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
@@ -108,7 +114,9 @@ public class AccountsRepository : IAccountsRepository
         _logger.LogDebug("Retrieving accounts for fund type: {FundType} and account type: {AccountType}",
             fundType, accountType);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a => a.Fund == fundType && a.Type == accountType)
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
@@ -120,7 +128,9 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving account with ID: {AccountId}", accountId);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
     }
 
@@ -138,7 +148,9 @@ public class AccountsRepository : IAccountsRepository
 
         var normalizedSearch = searchTerm.ToLowerInvariant();
 
-        return await _dbContext.Set<MunicipalAccount>()
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a =>
                 a.Name.ToLower().Contains(normalizedSearch) ||
                 (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower().Contains(normalizedSearch)) ||

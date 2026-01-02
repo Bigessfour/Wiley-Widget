@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Services.Abstractions\WileyWidget.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
   </ItemGroup>
 
 </Project>

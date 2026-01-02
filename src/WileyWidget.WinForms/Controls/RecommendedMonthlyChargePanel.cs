@@ -73,7 +73,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         Name = "RecommendedMonthlyChargePanel";
         Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
-        BackColor = System.Drawing.SystemColors.Control;
 
         // ============================================================================
         // Panel Header
@@ -95,8 +94,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Top,
             Height = 60,
-            Padding = new Padding(10),
-            BackColor = System.Drawing.SystemColors.Control
+            Padding = new Padding(10)
         };
 
         _refreshButton = new Button
@@ -151,8 +149,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Top,
             Height = 180,
-            Padding = new Padding(15),
-            BackColor = System.Drawing.SystemColors.Window
+            Padding = new Padding(15)
         };
 
         var summaryTitleLabel = new Label
@@ -161,7 +158,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 10),
             Size = new Size(200, 25),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-            ForeColor = System.Drawing.SystemColors.ControlDarkDark
+            // ForeColor removed - let SkinManager handle theming
         };
         _summaryPanel.Controls.Add(summaryTitleLabel);
 
@@ -171,7 +168,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 40),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            ForeColor = System.Drawing.Color.DarkBlue,
+            // ForeColor removed - let SkinManager handle theming
             TabIndex = 4,
             AccessibleName = "Total Current Revenue",
             AccessibleDescription = "Total monthly revenue from all departments at current rates"
@@ -183,7 +180,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 65),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            ForeColor = System.Drawing.Color.DarkGreen,
+            // ForeColor removed - let SkinManager handle theming
             TabIndex = 5,
             AccessibleName = "Total Suggested Revenue",
             AccessibleDescription = "Total monthly revenue at AI-suggested rates"
@@ -195,7 +192,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 90),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F),
-            ForeColor = System.Drawing.Color.DarkRed,
+            // ForeColor removed - let SkinManager handle theming
             TabIndex = 6,
             AccessibleName = "Total Monthly Expenses",
             AccessibleDescription = "Total monthly expenses across all departments"
@@ -219,7 +216,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 120),
             Size = new Size(1200, 45),
             ScrollBars = ScrollBars.Vertical,
-            BackColor = System.Drawing.Color.FromArgb(245, 245, 245),
             BorderStyle = BorderStyle.FixedSingle,
             TabIndex = 8,
             Font = new Font("Segoe UI", 9F),
@@ -470,16 +466,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _chartPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
-            BackColor = System.Drawing.SystemColors.Window
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         _chartControl = new ChartControl
         {
             Dock = DockStyle.Fill,
             TabIndex = 11,
-            AccessibleName = "Department Expense Chart",
-            BackColor = System.Drawing.SystemColors.Window
+            AccessibleName = "Department Expense Chart"
         };
 
         // Configure chart appearance
@@ -598,10 +592,10 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                     // Use semantic status colors (approved exception to SfSkinManager)
                     _overallStatusLabel.ForeColor = _viewModel.OverallStatusColor switch
                     {
-                        "Red" => System.Drawing.Color.FromArgb(192, 0, 0),
-                        "Orange" => System.Drawing.Color.FromArgb(255, 140, 0),
-                        "Green" => System.Drawing.Color.FromArgb(0, 128, 0),
-                        _ => System.Drawing.Color.Gray
+                        "Red" => Color.Red,
+                        "Orange" => Color.Orange,
+                        "Green" => Color.Green,
+                        _ => SystemColors.ControlText
                     };
                 }
                 break;

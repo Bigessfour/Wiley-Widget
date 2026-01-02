@@ -177,7 +177,7 @@ Based on the [official documentation](https://code.visualstudio.com/docs/termina
 - `TERM_PROGRAM` = "vscode"
 - Shell integration variables (auto-set by VS Code)
 
-### C#
+### C #
 
 - `WW_REPO_ROOT` = "/app" (Docker) or workspace root
 - `WW_LOGS_DIR` = Logs directory path
@@ -250,7 +250,7 @@ validator
 **Solution:**
 
 1. Install Python 3.11 from Microsoft Store (recommended)
-2. Or download from https://www.python.org/downloads/
+2. Or download from <https://www.python.org/downloads/>
 3. Ensure added to PATH
 
 ### PowerShell Version Too Old
@@ -259,7 +259,7 @@ validator
 
 **Solution:**
 
-1. Install PowerShell 7.5+ from https://aka.ms/powershell
+1. Install PowerShell 7.5+ from <https://aka.ms/powershell>
 2. Update `.vscode/settings.json` terminal profile path if installed elsewhere
 
 ### Shell Integration Not Working

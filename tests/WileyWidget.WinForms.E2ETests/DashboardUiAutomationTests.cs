@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using FlaUI.Core;
 using FlaUI.UIA3;
+using WileyWidget.WinForms.E2ETests.PageObjects;
 using Xunit;
 
 namespace WileyWidget.WinForms.E2ETests
@@ -39,26 +40,18 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(window);
             Assert.Contains("Dashboard - Wiley Widget", window.Title, StringComparison.OrdinalIgnoreCase);
 
-            // Wait for the window to be ready
-            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
+            // Use MainFormPage for UI interactions
+            var mainFormPage = new MainFormPage(automation, window);
 
-            // Try to find and click the Load Dashboard button
-            var loadButton = window.FindFirstDescendant(cf => cf.ByName("Toolbar_LoadButton"));
-            if (loadButton != null)
-            {
-                loadButton.Click();
-                // Wait for loading to complete
-                WaitForBusyIndicator(TimeSpan.FromSeconds(10));
+            // Navigate to Dashboard to ensure it's loaded (may already be loaded based on title)
+            mainFormPage.NavigateToDashboard();
 
-                // Verify no crash - window should still be responsive
-                Assert.NotNull(window);
-                Assert.True(window.IsAvailable);
-            }
-            else
-            {
-                // If button not found, at least verify the window loaded
-                Assert.NotNull(window);
-            }
+            // Verify no crash - window should still be responsive
+            Assert.NotNull(window);
+            Assert.True(window.IsAvailable);
+
+            // Verify dashboard elements are present
+            Assert.True(mainFormPage.IsLoaded(), "MainForm should be loaded with navigation elements");
         }
     }
 }

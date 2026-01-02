@@ -3,14 +3,17 @@
 ## When to Use These Tools
 
 ### ValidateFormTheme
+
 **When:** You need to check if a single form violates SfSkinManager theming rules.
 
 **Example Prompts:**
+
 - "Check if MainForm has manual color violations"
 - "Validate AccountsForm theme compliance"
 - "Does SettingsForm use SfSkinManager correctly?"
 
 **Tool Call:**
+
 ```
 mcp_wileywidget-u_ValidateFormTheme(
   formTypeName: "WileyWidget.WinForms.Forms.MainForm",
@@ -21,14 +24,17 @@ mcp_wileywidget-u_ValidateFormTheme(
 ---
 
 ### InspectSfDataGrid
+
 **When:** You need to see SfDataGrid configuration (columns, data binding, theme).
 
 **Example Prompts:**
+
 - "Inspect the accounts grid on AccountsForm"
 - "Show me the columns in the budget grid"
 - "What data is bound to the transactions grid?"
 
 **Tool Call:**
+
 ```
 mcp_wileywidget-u_InspectSfDataGrid(
   formTypeName: "WileyWidget.WinForms.Forms.AccountsForm",
@@ -40,14 +46,17 @@ mcp_wileywidget-u_InspectSfDataGrid(
 ---
 
 ### BatchValidateForms
+
 **When:** You need to validate all forms in the project or a subset of forms.
 
 **Example Prompts:**
+
 - "Validate all forms for theme compliance"
 - "Check which forms have manual color violations"
 - "Generate an HTML report of theme validation"
 
 **Tool Call:**
+
 ```
 mcp_wileywidget-u_BatchValidateForms(
   formTypeNames: null,  // null = all forms
@@ -60,14 +69,17 @@ mcp_wileywidget-u_BatchValidateForms(
 ---
 
 ### EvalCSharp
+
 **When:** You need to run ad-hoc C# code to test forms or Syncfusion controls.
 
 **Example Prompts:**
+
 - "Test if MainForm initializes correctly with docking enabled"
 - "Check if AccountsForm loads theme properly"
 - "Run a quick test of the grid data binding"
 
 **Tool Call:**
+
 ```
 mcp_wileywidget-u_EvalCSharp(
   csx: @"
@@ -87,6 +99,7 @@ mcp_wileywidget-u_EvalCSharp(
 ### 1. Fix Theme Violations on a Form
 
 **Steps:**
+
 1. Run `ValidateFormTheme` to identify violations
 2. Open the form's `.cs` file
 3. Remove manual `BackColor`/`ForeColor` assignments
@@ -94,6 +107,7 @@ mcp_wileywidget-u_EvalCSharp(
 5. Re-run `ValidateFormTheme` to confirm fix
 
 **Copilot Prompt:**
+
 ```
 "Fix manual color violations on AccountsForm using ValidateFormTheme to verify"
 ```
@@ -103,6 +117,7 @@ mcp_wileywidget-u_EvalCSharp(
 ### 2. Validate All Forms Before PR
 
 **Steps:**
+
 1. Run `BatchValidateForms` with `outputFormat: "json"`
 2. Check for failed forms
 3. Fix violations using workflow above
@@ -110,6 +125,7 @@ mcp_wileywidget-u_EvalCSharp(
 5. Commit when all pass
 
 **Copilot Prompt:**
+
 ```
 "Run batch validation on all forms and show which ones failed"
 ```
@@ -119,6 +135,7 @@ mcp_wileywidget-u_EvalCSharp(
 ### 3. Debug Grid Configuration
 
 **Steps:**
+
 1. Run `InspectSfDataGrid` to see current state
 2. Check column mappings and data binding
 3. Use `EvalCSharp` to test changes
@@ -126,6 +143,7 @@ mcp_wileywidget-u_EvalCSharp(
 5. Re-run `InspectSfDataGrid` to verify
 
 **Copilot Prompt:**
+
 ```
 "Inspect the accounts grid and tell me if the columns are configured correctly"
 ```
@@ -135,6 +153,7 @@ mcp_wileywidget-u_EvalCSharp(
 ### 4. Test Form Constructor Changes
 
 **Steps:**
+
 1. Write test code in `EvalCSharp`
 2. Verify form instantiates correctly
 3. Check theme application
@@ -142,6 +161,7 @@ mcp_wileywidget-u_EvalCSharp(
 5. Run unit tests
 
 **Copilot Prompt:**
+
 ```
 "Test if AccountsForm constructor works with MainForm parameter using EvalCSharp"
 ```
@@ -151,20 +171,24 @@ mcp_wileywidget-u_EvalCSharp(
 ## Error Handling
 
 ### "Form type not found"
+
 - Check that form name is fully qualified: `WileyWidget.WinForms.Forms.FormName`
 - Ensure form exists in the project
 
 ### "Failed to instantiate"
+
 - Form may have custom constructor requirements beyond MainForm parameter
 - Check form constructor signature
 - Use `EvalCSharp` to test instantiation manually
 
 ### "Failed to load form"
+
 - Form may have initialization errors
 - Check form's `InitializeComponent()` method
 - Look for missing dependencies or services
 
 ### Manual color violations
+
 - Remove `BackColor`/`ForeColor` assignments
 - Exception: Semantic status colors (Color.Red/Green/Orange) are allowed
 - Use `SfSkinManager.SetVisualStyle()` instead
@@ -174,22 +198,27 @@ mcp_wileywidget-u_EvalCSharp(
 ## Output Format Options
 
 ### Text (Default)
+
 Human-readable output with emoji indicators (✅/❌).
 
 **Use When:** Running interactively or viewing in terminal
 
 ### JSON
+
 Structured data, machine-parsable.
 
 **Use When:**
+
 - CI/CD pipelines
 - Parsing results in scripts
 - Automated reporting
 
 ### HTML (BatchValidateForms only)
+
 Visual dashboard with color-coded results.
 
 **Use When:**
+
 - Generating reports for stakeholders
 - Need visual overview of validation status
 - Archiving validation history
@@ -209,6 +238,7 @@ Visual dashboard with color-coded results.
 ## Integration Examples
 
 ### VS Code Task
+
 ```json
 {
   "label": "Validate All Forms",
@@ -229,6 +259,7 @@ Visual dashboard with color-coded results.
 ```
 
 ### PowerShell Script
+
 ```powershell
 $result = dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj -- `
   ValidateFormTheme "WileyWidget.WinForms.Forms.MainForm" "Office2019Colorful" "json"
@@ -247,21 +278,25 @@ if (-not $json.passed) {
 ### Best Prompts for Copilot
 
 **❌ Vague:**
+
 ```
 "Check the forms"
 ```
 
 **✅ Specific:**
+
 ```
 "Run BatchValidateForms to check all forms for manual color violations and show results in JSON format"
 ```
 
 **❌ Missing Context:**
+
 ```
 "Validate theme"
 ```
 
 **✅ Full Context:**
+
 ```
 "Use ValidateFormTheme on WileyWidget.WinForms.Forms.AccountsForm with Office2019Colorful theme and output as JSON"
 ```

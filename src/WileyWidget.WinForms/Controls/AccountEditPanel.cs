@@ -96,7 +96,7 @@ namespace WileyWidget.WinForms.Controls
             AutoScaleMode = AutoScaleMode.Dpi;
             Size = new Size(520, 580);
             Padding = new Padding(16);
-            BackColor = Color.White;
+            // BackColor removed - let SkinManager handle theming
 
             _toolTip = new ToolTip
             {

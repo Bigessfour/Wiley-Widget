@@ -35,9 +35,11 @@ SQL Server LocalDB is required for development and testing. Choose one of the in
    - Complete the installation
 
 3. **Verify installation**:
+
    ```powershell
    sqllocaldb info
    ```
+
    Should show available LocalDB instances.
 
 #### Option 2: Install via Chocolatey (Alternative)
@@ -698,7 +700,7 @@ ORDER BY table_name, index_name;
 
 _Last updated: August 28, 2025_
 
-#### Manual Database Management:
+#### Manual Database Management
 
 ```powershell
 # List LocalDB instances

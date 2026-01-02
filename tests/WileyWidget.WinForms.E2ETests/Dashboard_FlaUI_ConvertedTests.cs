@@ -94,7 +94,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.True(window.Title?.IndexOf("Wiley", StringComparison.OrdinalIgnoreCase) >= 0, "Main window title should contain the app name (Wiley)");
 
             // Basic smoke: ensure top-level toolbar controls are present
-            var loadBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_LoadButton").Or(cf.ByName("Load Dashboard")))?.AsButton();
+            var loadBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_Load").Or(cf.ByName("Load Dashboard")))?.AsButton();
             var refreshBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_RefreshButton").Or(cf.ByName("Refresh")))?.AsButton();
             var exportBtn = WaitForElement(window, cf => cf.ByAutomationId("Toolbar_ExportButton").Or(cf.ByName("Export")))?.AsButton();
 

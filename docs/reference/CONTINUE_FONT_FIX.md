@@ -22,7 +22,7 @@ document.querySelectorAll(".continue-gui-view, .continue-chat-container, .contin
 
 ---
 
-## Quick Fix Options:
+## Quick Fix Options
 
 ### Option 1: VS Code Settings (Recommended)
 
@@ -85,6 +85,7 @@ If font settings don't appear:
    - Type: **"Developer: Reload Window"**
 
 3. **Reinstall Continue.dev** (if needed):
+
    ```powershell
    code --uninstall-extension Continue.continue
    code --install-extension Continue.continue
@@ -92,7 +93,7 @@ If font settings don't appear:
 
 ---
 
-## If Still Not Working:
+## If Still Not Working
 
 The font size issue is often caused by CSS conflicts. Try this:
 

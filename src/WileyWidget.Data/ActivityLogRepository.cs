@@ -11,7 +11,10 @@ namespace WileyWidget.Data;
 /// <summary>
 /// Provides activity log data for dashboards and docking panels.
 /// Persists to the ActivityLog table.
-/// </summary>
+    /// CRITICAL: All read-only queries use .AsNoTracking() to prevent ObjectDisposedException
+    /// when binding entities to UI controls after the scoped DbContext is disposed.
+    /// This is a mandatory pattern for disconnected/UI scenarios per EF Core best practices.
+    /// </summary>
 public sealed class ActivityLogRepository : IActivityLogRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.ActivityLogRepository");
@@ -25,6 +28,23 @@ public sealed class ActivityLogRepository : IActivityLogRepository
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>
+    /// Retrieves recent activity log entries for UI display (dashboard panels, grids, etc.)
+    /// PERFORMANCE & SAFETY:
+    /// - Uses .AsNoTracking() for read-only queries - prevents change tracking overhead.
+    /// - Projects to ActivityItem DTO - decouples UI from EF entity, prevents ObjectDisposedException.
+    /// - ActivityItem DTOs are detached from DbContext and safe for binding after scope disposal.
+    /// This pattern is MANDATORY for all UI-bound repository methods to prevent:
+    /// - ObjectDisposedException when grid operations (sort, filter, render) access disposed DbContext.
+    /// - Memory overhead from tracking entities that will never be modified.
+    /// References:
+    /// - EF Core docs: https://learn.microsoft.com/en-us/ef/core/querying/tracking#no-tracking-queries
+    /// - Syncfusion binding: https://help.syncfusion.com/windowsforms/datagrid/data-binding
+    /// </summary>
+    /// <param name="skip">Number of records to skip for pagination.</param>
+    /// <param name="take">Maximum number of records to retrieve (default: 50).</param>
+    /// <param name="cancellationToken">Cancellation token for async operation.</param>
+    /// <returns>List of ActivityItem DTOs safe for UI binding.</returns>
     public async Task<List<ActivityItem>> GetRecentActivitiesAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("ActivityLogRepository.GetRecentActivities");

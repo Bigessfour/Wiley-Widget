@@ -213,7 +213,8 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
                         entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
                         return new HashSet<string>();
                     });
-                    index.Add(cacheKey);
+                    if (index != null)
+                        index.Add(cacheKey);
                 }
             }
             catch (Exception ex)
@@ -293,8 +294,8 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         if (string.IsNullOrWhiteSpace(content))
             throw new InvalidOperationException("Grok API returned empty or invalid content");
 
-        // Parse response (content is non-null due to check above)
-        var safeContent = content!;
+        // Parse response (content is guaranteed non-null by check above)
+        var safeContent = content ?? string.Empty;
         var recommendationResult = ParseGrokResponse(safeContent, departmentExpenses.Keys, targetProfitMargin);
 
         _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
@@ -619,9 +620,10 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
                     {
                         var index = _cache.GetOrCreate(CacheIndexKey, (ICacheEntry entry) =>
                         {
-                            entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
-                            return new HashSet<string>();
+                        entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
+                        return new HashSet<string>();
                         });
+                        if (index != null)
                         index.Add(explanationCacheKey);
                     }
                 }
@@ -720,7 +722,7 @@ Explain why these adjustments are necessary in 2-3 paragraphs suitable for publi
         }
 
         // Trim and normalize whitespace to avoid returning spurious blank strings
-        return explanation!.Trim();
+        return (explanation ?? string.Empty).Trim();
     }
 
     private string GenerateRuleBasedExplanation(Dictionary<string, decimal> departmentExpenses, decimal targetProfitMargin)

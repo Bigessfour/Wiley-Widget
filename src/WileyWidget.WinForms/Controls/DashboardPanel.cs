@@ -153,13 +153,28 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                Serilog.Log.Debug("DashboardPanel.EnsureLoadedAsync: START - _vm={VmNotNull}, LoadCommand={CmdNotNull}, IsLoading={IsLoading}",
+                    _vm != null, _vm?.LoadDashboardCommand != null, _vm?.IsLoading ?? false);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] EnsureLoadedAsync: START - LoadCommand={_vm?.LoadDashboardCommand != null}, IsLoading={_vm?.IsLoading ?? false}");
+
                 if (_vm.LoadDashboardCommand != null && !_vm.IsLoading)
                 {
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Executing LoadDashboardCommand...");
                     await _vm.LoadDashboardCommand.ExecuteAsync(null).ConfigureAwait(true);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] LoadDashboardCommand completed");
+                    Serilog.Log.Debug("DashboardPanel.EnsureLoadedAsync: LoadDashboardCommand completed successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Skipping load - Command={_vm.LoadDashboardCommand != null}, IsLoading={_vm.IsLoading}");
+                    Serilog.Log.Warning("DashboardPanel.EnsureLoadedAsync: Skipping load - Command={CmdNotNull}, IsLoading={IsLoading}",
+                        _vm.LoadDashboardCommand != null, _vm.IsLoading);
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD ERROR] EnsureLoadedAsync failed: {ex.Message}");
+                Serilog.Log.Error(ex, "DashboardPanel.EnsureLoadedAsync: Failed to load dashboard data");
                 try
                 {
                     _errorProvider ??= new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
@@ -197,8 +212,8 @@ namespace WileyWidget.WinForms.Controls
 
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
 
-            // Load button (automation-friendly id)
-            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
+            // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
+            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_Load", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
             btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDashboardCommand != null) await _vm.LoadDashboardCommand.ExecuteAsync(null); } catch { } };
             _refreshCommand = _vm.RefreshCommand;
             _btnRefresh.Click += (s, e) =>
@@ -395,14 +410,27 @@ namespace WileyWidget.WinForms.Controls
                 var viewProp = t.GetProperty("View");
                 if (viewProp != null && viewProp.CanWrite)
                 {
-                    // Try to set enum by name if the enum exists
+                    // Try to set enum by name if the enum exists (safe against Syncfusion API changes)
                     var viewEnumType = viewProp.PropertyType;
-                    try
+                    if (viewEnumType != null)
                     {
-                        var tileVal = Enum.Parse(viewEnumType, "Tiles");
-                        viewProp.SetValue(_kpiList, tileVal);
+                        if (viewEnumType.IsEnum)
+                        {
+                            try
+                            {
+                                var tileVal = Enum.Parse(viewEnumType, "Tiles");
+                                viewProp.SetValue(_kpiList, tileVal);
+                            }
+                            catch (Exception ex)
+                            {
+                                Serilog.Log.Warning(ex, "DashboardPanel: Failed to set 'View' property to 'Tiles' for type {TypeName}", viewEnumType.FullName);
+                            }
+                        }
+                        else
+                        {
+                            Serilog.Log.Debug("DashboardPanel: 'View' property type is not an enum: {TypeName}; skipping Tiles assignment (this is expected for Syncfusion.DataSource.DataSource)", viewEnumType.FullName);
+                        }
                     }
-                    catch { }
                 }
 
                 var allowMulti = t.GetProperty("AllowMultiSelection");

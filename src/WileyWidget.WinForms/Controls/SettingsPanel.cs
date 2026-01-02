@@ -6,6 +6,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls
@@ -29,11 +30,10 @@ namespace WileyWidget.WinForms.Controls
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class SettingsPanel : UserControl
+    public partial class SettingsPanel : ScopedPanelBase<SettingsViewModel>
     {
         public new object? DataContext { get; private set; }
 
-        private readonly SettingsViewModel _vm;
         private readonly IThemeService _themeService;
 
         // Controls
@@ -86,29 +86,66 @@ namespace WileyWidget.WinForms.Controls
         private ToolTip? _aiToolTip;
 
         /// <summary>
-        /// Parameterless constructor for DI/designer support.
-        /// Guards against null Program.Services.
+        /// Constructor that accepts required dependencies from DI container.
         /// </summary>
-        public SettingsPanel() : this(ResolveSettingsViewModel(), ResolveThemeService())
+        /// <param name="scopeFactory">Factory for creating service scopes</param>
+        /// <param name="logger">Logger for diagnostic logging</param>
+        /// <param name="themeService">Theme service for applying themes</param>
+        public SettingsPanel(
+            IServiceScopeFactory scopeFactory,
+            ILogger<ScopedPanelBase<SettingsViewModel>> logger,
+            IThemeService themeService)
+            : base(scopeFactory, logger)
+        {
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+            InitializeComponent();
+        }
+
+        /// <summary>
+        /// Parameterless constructor for designer support ONLY.
+        /// DO NOT USE in production - use DI constructor instead.
+        /// </summary>
+        [Obsolete("Use DI constructor with IServiceScopeFactory, ILogger, and IThemeService parameters", error: false)]
+        public SettingsPanel() : this(ResolveServiceScopeFactory(), ResolveLogger(), ResolveThemeService())
         {
         }
 
-        private static SettingsViewModel ResolveSettingsViewModel()
+        private static IServiceScopeFactory ResolveServiceScopeFactory()
         {
             if (Program.Services == null)
             {
-                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve SettingsViewModel");
+                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve IServiceScopeFactory");
                 throw new InvalidOperationException("SettingsPanel requires DI services to be initialized. Ensure Program.Services is set before creating SettingsPanel.");
             }
             try
             {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(Program.Services);
-                Serilog.Log.Debug("SettingsPanel: SettingsViewModel resolved from DI container");
-                return vm;
+                var factory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services);
+                Serilog.Log.Debug("SettingsPanel: IServiceScopeFactory resolved from DI container");
+                return factory;
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve SettingsViewModel from DI");
+                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve IServiceScopeFactory from DI");
+                throw;
+            }
+        }
+
+        private static ILogger<ScopedPanelBase<SettingsViewModel>> ResolveLogger()
+        {
+            if (Program.Services == null)
+            {
+                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve ILogger");
+                throw new InvalidOperationException("SettingsPanel requires DI services to be initialized. Ensure Program.Services is set before creating SettingsPanel.");
+            }
+            try
+            {
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<SettingsViewModel>>>(Program.Services);
+                Serilog.Log.Debug("SettingsPanel: ILogger resolved from DI container");
+                return logger;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve ILogger from DI");
                 throw;
             }
         }
@@ -133,14 +170,16 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        public SettingsPanel(SettingsViewModel vm, IThemeService themeService)
+        /// <summary>
+        /// Called after ViewModel is resolved from scoped provider.
+        /// Performs UI setup and initial data binding.
+        /// </summary>
+        protected override void OnViewModelResolved(SettingsViewModel viewModel)
         {
-            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+            base.OnViewModelResolved(viewModel);
 
-            DataContext = vm;
+            DataContext = viewModel;
 
-            InitializeComponent();
             SetupUI();
             ApplyCurrentTheme();
 
@@ -184,7 +223,7 @@ namespace WileyWidget.WinForms.Controls
             _themeGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, Location = new Point(padding, y), Size = new Size(440, 140), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
 
             _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 30), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
-            try { _themeCombo.DataSource = _vm?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
+            try { _themeCombo.DataSource = ViewModel?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
             try { _themeCombo.SelectedItem = _themeService.Preference; } catch { }
             _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.SetTheme(sel); } catch { } };
 
@@ -203,15 +242,15 @@ namespace WileyWidget.WinForms.Controls
             y += 160;
 
             // Behavior settings
-            _chkOpenEditFormsDocked = new CheckBox { Text = "Open edit forms docked (as floating tool windows)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.OpenEditFormsDocked ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Open edit forms docked", AccessibleDescription = "Open account edit forms as dockable floating windows" };
-            _dockedToolTip = new ToolTip(); _dockedToolTip.SetToolTip(_chkOpenEditFormsDocked, "Open account edit forms as dockable floating windows instead of modal dialogs"); _chkOpenEditFormsDocked.CheckedChanged += (s, e) => { if (_vm != null) _vm.OpenEditFormsDocked = _chkOpenEditFormsDocked.Checked; };
+            _chkOpenEditFormsDocked = new CheckBox { Text = "Open edit forms docked (as floating tool windows)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.OpenEditFormsDocked ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Open edit forms docked", AccessibleDescription = "Open account edit forms as dockable floating windows" };
+            _dockedToolTip = new ToolTip(); _dockedToolTip.SetToolTip(_chkOpenEditFormsDocked, "Open account edit forms as dockable floating windows instead of modal dialogs"); _chkOpenEditFormsDocked.CheckedChanged += (s, e) => { if (ViewModel != null) ViewModel.OpenEditFormsDocked = _chkOpenEditFormsDocked.Checked; };
             _mainPanel.Controls.Add(_chkOpenEditFormsDocked);
             y += 30;
 
             // Demo mode toggle
-            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = _vm?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.DarkOrange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
+            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Orange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
             _demoDataToolTip = new ToolTip(); _demoDataToolTip.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data. Useful for demonstrations or when database is unavailable.");
-            _chkUseDemoData.CheckedChanged += (s, e) => { if (_vm != null) _vm.UseDemoData = _chkUseDemoData.Checked; };
+            _chkUseDemoData.CheckedChanged += (s, e) => { if (ViewModel != null) ViewModel.UseDemoData = _chkUseDemoData.Checked; };
             _mainPanel.Controls.Add(_chkUseDemoData);
             y += 35;
 
@@ -222,8 +261,8 @@ namespace WileyWidget.WinForms.Controls
             _exportPathToolTip = new ToolTip(); _exportPathToolTip.SetToolTip(_txtExportPath, "Directory where exported data files will be saved");
             _btnBrowseExportPath = new Syncfusion.WinForms.Controls.SfButton { Name = "btnBrowseExportPath", Text = "...", Size = new Size(40, 24), Location = new Point(360, 26), AccessibleName = "Browse for export path", AccessibleDescription = "Open folder browser to select export directory" };
             _browseExportPathHandler = (s, e) => OnBrowseExportPath();
-            try { if (_vm != null) _vm.BrowseExportPathRequested += _browseExportPathHandler; } catch { }
-            _btnBrowseExportPath.Click += (s, e) => { try { _vm?.BrowseExportPathCommand?.Execute(null); } catch { } };
+            try { if (ViewModel != null) ViewModel.BrowseExportPathRequested += _browseExportPathHandler; } catch { }
+            _btnBrowseExportPath.Click += (s, e) => { try { ViewModel?.BrowseExportPathCommand?.Execute(null); } catch { } };
             exportGroup.Controls.Add(lblExportPath); exportGroup.Controls.Add(_txtExportPath); exportGroup.Controls.Add(_btnBrowseExportPath);
             _mainPanel.Controls.Add(exportGroup);
             y += 85;
@@ -231,16 +270,16 @@ namespace WileyWidget.WinForms.Controls
             // Auto-save and Logging group
             var behaviorGroup = new GroupBox { Text = "Behavior & Logging", Location = new Point(padding, y), Size = new Size(440, 110), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             var lblAutoSave = new Label { Text = "Auto-save interval (min):", AutoSize = true, Location = new Point(20, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numAutoSaveInterval", Location = new Point(170, 27), Size = new Size(80, 24), MinValue = 1, MaxValue = 60, Value = _vm?.AutoSaveIntervalMinutes ?? 5, AccessibleName = "Auto-save interval", AccessibleDescription = "Interval in minutes for auto-saving" };
+            _numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numAutoSaveInterval", Location = new Point(170, 27), Size = new Size(80, 24), MinValue = 1, MaxValue = 60, Value = ViewModel?.AutoSaveIntervalMinutes ?? 5, AccessibleName = "Auto-save interval", AccessibleDescription = "Interval in minutes for auto-saving" };
             _autoSaveToolTip = new ToolTip(); _autoSaveToolTip.SetToolTip(_numAutoSaveInterval, "How often data is auto-saved (1-60 minutes)");
-            _numAutoSaveInterval.ValueChanged += (s, e) => { try { if (_vm != null && _numAutoSaveInterval.Value.HasValue) _vm.AutoSaveIntervalMinutes = (int)_numAutoSaveInterval.Value.Value; } catch { } };
+            _numAutoSaveInterval.ValueChanged += (s, e) => { try { if (ViewModel != null && _numAutoSaveInterval.Value.HasValue) ViewModel.AutoSaveIntervalMinutes = (int)_numAutoSaveInterval.Value.Value; } catch { } };
             behaviorGroup.Controls.Add(lblAutoSave); behaviorGroup.Controls.Add(_numAutoSaveInterval);
 
             var lblLogLevel = new Label { Text = "Log Level:", AutoSize = true, Location = new Point(20, 65), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _cmbLogLevel = new Syncfusion.WinForms.ListView.SfComboBox { Name = "cmbLogLevel", Location = new Point(100, 62), Size = new Size(150, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AccessibleName = "Log level", AccessibleDescription = "Select application logging verbosity" };
             _logLevelToolTip = new ToolTip(); _logLevelToolTip.SetToolTip(_cmbLogLevel, "Verbosity level for application logging");
-            try { _cmbLogLevel.DataSource = new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" }.ToList(); _cmbLogLevel.SelectedItem = _vm?.LogLevel ?? "Information"; } catch { }
-            _cmbLogLevel.SelectedIndexChanged += (s, e) => { try { if (_vm != null && _cmbLogLevel.SelectedItem is string level) _vm.LogLevel = level; } catch { } };
+            try { _cmbLogLevel.DataSource = new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" }.ToList(); _cmbLogLevel.SelectedItem = ViewModel?.LogLevel ?? "Information"; } catch { }
+            _cmbLogLevel.SelectedIndexChanged += (s, e) => { try { if (ViewModel != null && _cmbLogLevel.SelectedItem is string level) ViewModel.LogLevel = level; } catch { } };
             behaviorGroup.Controls.Add(lblLogLevel); behaviorGroup.Controls.Add(_cmbLogLevel);
             _mainPanel.Controls.Add(behaviorGroup);
             y += 125;
@@ -248,44 +287,44 @@ namespace WileyWidget.WinForms.Controls
             // AI / xAI settings group
             _aiGroup = new GroupBox { Text = "AI / xAI Settings", Location = new Point(padding, y), Size = new Size(440, 240), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
 
-            _chkEnableAi = new CheckBox { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = _vm?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
-            _chkEnableAi.CheckedChanged += (s, e) => { try { if (_vm != null) _vm.EnableAi = _chkEnableAi.Checked; } catch { } };
+            _chkEnableAi = new CheckBox { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
+            _chkEnableAi.CheckedChanged += (s, e) => { try { if (ViewModel != null) ViewModel.EnableAi = _chkEnableAi.Checked; } catch { } };
 
             var lblEndpoint = new Label { Text = "API Endpoint:", AutoSize = true, Location = new Point(20, 56), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtXaiApiEndpoint = new TextBox { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = _vm?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
-            _txtXaiApiEndpoint.TextChanged += (s, e) => { try { if (_vm != null) _vm.XaiApiEndpoint = _txtXaiApiEndpoint.Text; } catch { } };
+            _txtXaiApiEndpoint = new TextBox { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = ViewModel?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
+            _txtXaiApiEndpoint.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiEndpoint = _txtXaiApiEndpoint.Text; } catch { } };
 
             var lblModel = new Label { Text = "Model:", AutoSize = true, Location = new Point(20, 84), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _cmbXaiModel = new Syncfusion.WinForms.ListView.SfComboBox { Name = "cmbXaiModel", Location = new Point(120, 80), Size = new Size(220, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList };
-            try { _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList(); _cmbXaiModel.SelectedItem = _vm?.XaiModel ?? "grok-4-0709"; } catch { }
-            _cmbXaiModel.SelectedIndexChanged += (s, e) => { try { if (_cmbXaiModel.SelectedItem is string str && _vm != null) _vm.XaiModel = str; } catch { } };
+            try { _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList(); _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4-0709"; } catch { }
+            _cmbXaiModel.SelectedIndexChanged += (s, e) => { try { if (_cmbXaiModel.SelectedItem is string str && ViewModel != null) ViewModel.XaiModel = str; } catch { } };
 
             var lblApiKey = new Label { Text = "API Key:", AutoSize = true, Location = new Point(20, 112), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtXaiApiKey = new TextBox { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = _vm?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
-            _txtXaiApiKey.TextChanged += (s, e) => { try { if (_vm != null) _vm.XaiApiKey = _txtXaiApiKey.Text; } catch { } };
+            _txtXaiApiKey = new TextBox { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = ViewModel?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
+            _txtXaiApiKey.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiKey = _txtXaiApiKey.Text; } catch { } };
 
             _btnShowApiKey = new Syncfusion.WinForms.Controls.SfButton { Name = "btnShowApiKey", Text = "Show", Size = new Size(50, 24), Location = new Point(350, 106), AccessibleName = "Show API Key", AccessibleDescription = "Toggle display of API key" };
             _btnShowApiKey.Click += (s, e) => { try { if (_txtXaiApiKey != null) { _txtXaiApiKey.UseSystemPasswordChar = !_txtXaiApiKey.UseSystemPasswordChar; _btnShowApiKey.Text = _txtXaiApiKey.UseSystemPasswordChar ? "Show" : "Hide"; } } catch { } };
 
             var lblTimeout = new Label { Text = "Timeout (s):", AutoSize = true, Location = new Point(20, 140), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTimeout", Location = new Point(120, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 300, Value = _vm?.XaiTimeout ?? 30 };
-            _numXaiTimeout.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiTimeout.Value.HasValue) _vm.XaiTimeout = (int)_numXaiTimeout.Value.Value; } catch { } };
+            _numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTimeout", Location = new Point(120, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 300, Value = ViewModel?.XaiTimeout ?? 30 };
+            _numXaiTimeout.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiTimeout.Value.HasValue) ViewModel.XaiTimeout = (int)_numXaiTimeout.Value.Value; } catch { } };
 
             var lblMaxTokens = new Label { Text = "Max tokens:", AutoSize = true, Location = new Point(210, 140), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiMaxTokens", Location = new Point(290, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 65536, Value = _vm?.XaiMaxTokens ?? 2000 };
-            _numXaiMaxTokens.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiMaxTokens.Value.HasValue) _vm.XaiMaxTokens = (int)_numXaiMaxTokens.Value.Value; } catch { } };
+            _numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiMaxTokens", Location = new Point(290, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 65536, Value = ViewModel?.XaiMaxTokens ?? 2000 };
+            _numXaiMaxTokens.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiMaxTokens.Value.HasValue) ViewModel.XaiMaxTokens = (int)_numXaiMaxTokens.Value.Value; } catch { } };
 
             var lblTemperature = new Label { Text = "Temperature:", AutoSize = true, Location = new Point(20, 168), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTemperature", Location = new Point(120, 164), Size = new Size(80, 24), MinValue = 0.0, MaxValue = 1.0, Value = _vm?.XaiTemperature ?? 0.7 };
-            _numXaiTemperature.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiTemperature.Value.HasValue) _vm.XaiTemperature = Convert.ToDouble(_numXaiTemperature.Value.Value); } catch { } };
+            _numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTemperature", Location = new Point(120, 164), Size = new Size(80, 24), MinValue = 0.0, MaxValue = 1.0, Value = ViewModel?.XaiTemperature ?? 0.7 };
+            _numXaiTemperature.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiTemperature.Value.HasValue) ViewModel.XaiTemperature = Convert.ToDouble(_numXaiTemperature.Value.Value); } catch { } };
 
             // Help and guidance for AI settings
-            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), ForeColor = Color.Gray, AutoEllipsis = true };
+            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), AutoEllipsis = true };
             _lnkAiLearnMore = new LinkLabel { Text = SettingsPanelResources.AiSettingsLearnMoreLabel, Location = new Point(20, 220), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             _lnkAiLearnMore.LinkClicked += (s, e) => ShowAiHelpDialog();
 
             // Cache note label
-            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), ForeColor = Color.DarkBlue, AutoEllipsis = true, AccessibleName = "AI cache note" };
+            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), AutoEllipsis = true, AccessibleName = "AI cache note" };
 
             _aiToolTip = new ToolTip();
             _aiToolTip.SetToolTip(_chkEnableAi, "Enable or disable AI features. When disabled, the app uses rule-based recommendations.");
@@ -298,7 +337,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Reset and Clear Cache buttons
             var btnResetAi = new Syncfusion.WinForms.Controls.SfButton { Name = "btnResetAi", Text = "Reset to defaults", Size = new Size(120, 24), Location = new Point(260, 220), AccessibleName = "Reset AI settings", AccessibleDescription = "Reset AI settings to their default values" };
-            btnResetAi.Click += (s, e) => { try { _vm?.ResetAiCommand?.Execute(null); MessageBox.Show(this, "AI settings reset to defaults. Save settings to persist changes.", "AI settings reset", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Reset AI defaults failed"); } };
+            btnResetAi.Click += (s, e) => { try { ViewModel?.ResetAiCommand?.Execute(null); MessageBox.Show(this, "AI settings reset to defaults. Save settings to persist changes.", "AI settings reset", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Reset AI defaults failed"); } };
 
             var btnClearAiCache = new Syncfusion.WinForms.Controls.SfButton { Name = "btnClearAiCache", Text = "Clear AI Cache", Size = new Size(120, 24), Location = new Point(120, 220), AccessibleName = "Clear AI cache", AccessibleDescription = "Clear cached AI recommendations and explanations" };
             btnClearAiCache.Click += (s, e) =>
@@ -354,13 +393,13 @@ namespace WileyWidget.WinForms.Controls
             // Format settings group
             var formatGroup = new GroupBox { Text = "Display Formats", Location = new Point(padding, y), Size = new Size(440, 80), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             var lblDateFormat = new Label { Text = "Date Format:", AutoSize = true, Location = new Point(20, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtDateFormat = new TextBox { Name = "txtDateFormat", Location = new Point(110, 27), Width = 120, Font = new Font("Segoe UI", 10F), Text = _vm?.DateFormat ?? "yyyy-MM-dd", AccessibleName = "Date format", AccessibleDescription = "Format string for displaying dates" };
-            _txtDateFormat.TextChanged += (s, e) => { try { if (_vm != null) _vm.DateFormat = _txtDateFormat.Text; } catch { } };
+            _txtDateFormat = new TextBox { Name = "txtDateFormat", Location = new Point(110, 27), Width = 120, Font = new Font("Segoe UI", 10F), Text = ViewModel?.DateFormat ?? "yyyy-MM-dd", AccessibleName = "Date format", AccessibleDescription = "Format string for displaying dates" };
+            _txtDateFormat.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.DateFormat = _txtDateFormat.Text; } catch { } };
             formatGroup.Controls.Add(lblDateFormat); formatGroup.Controls.Add(_txtDateFormat);
 
             var lblCurrencyFormat = new Label { Text = "Currency Format:", AutoSize = true, Location = new Point(250, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtCurrencyFormat = new TextBox { Name = "txtCurrencyFormat", Location = new Point(360, 27), Width = 60, Font = new Font("Segoe UI", 10F), Text = _vm?.CurrencyFormat ?? "C2", AccessibleName = "Currency format", AccessibleDescription = "Format string for displaying currency values" };
-            _txtCurrencyFormat.TextChanged += (s, e) => { try { if (_vm != null) _vm.CurrencyFormat = _txtCurrencyFormat.Text; } catch { } };
+            _txtCurrencyFormat = new TextBox { Name = "txtCurrencyFormat", Location = new Point(360, 27), Width = 60, Font = new Font("Segoe UI", 10F), Text = ViewModel?.CurrencyFormat ?? "C2", AccessibleName = "Currency format", AccessibleDescription = "Format string for displaying currency values" };
+            _txtCurrencyFormat.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.CurrencyFormat = _txtCurrencyFormat.Text; } catch { } };
             formatGroup.Controls.Add(lblCurrencyFormat); formatGroup.Controls.Add(_txtCurrencyFormat);
             _mainPanel.Controls.Add(formatGroup);
             y += 95;
@@ -405,7 +444,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 // Ensure we have a BindingSource connected to the ViewModel for data bindings
                 _settingsBinding = new BindingSource();
-                try { _settingsBinding.DataSource = _vm; } catch { }
+                try { _settingsBinding.DataSource = ViewModel; } catch { }
             }
             catch { }
 
@@ -421,17 +460,17 @@ namespace WileyWidget.WinForms.Controls
             // Setup ErrorProviderBinding for ViewModel-driven validation
             try
             {
-                if (_error_provider != null && _vm != null)
+                if (_error_provider != null && ViewModel != null)
                 {
-                    _errorBinding = new ErrorProviderBinding(_error_provider, _vm);
-                    _errorBinding.MapControl(nameof(_vm.DefaultExportPath), _txtExportPath!);
-                    _errorBinding.MapControl(nameof(_vm.DateFormat), _txtDateFormat!);
-                    _errorBinding.MapControl(nameof(_vm.CurrencyFormat), _txtCurrencyFormat!);
-                    _errorBinding.MapControl(nameof(_vm.LogLevel), _cmbLogLevel!);
+                    _errorBinding = new ErrorProviderBinding(_error_provider, ViewModel);
+                    _errorBinding.MapControl(nameof(ViewModel.DefaultExportPath), _txtExportPath!);
+                    _errorBinding.MapControl(nameof(ViewModel.DateFormat), _txtDateFormat!);
+                    _errorBinding.MapControl(nameof(ViewModel.CurrencyFormat), _txtCurrencyFormat!);
+                    _errorBinding.MapControl(nameof(ViewModel.LogLevel), _cmbLogLevel!);
 
                     // XAI mappings
-                    try { _errorBinding.MapControl(nameof(_vm.XaiApiEndpoint), _txtXaiApiEndpoint!); } catch { }
-                    try { _errorBinding.MapControl(nameof(_vm.XaiApiKey), _txtXaiApiKey!); } catch { }
+                    try { _errorBinding.MapControl(nameof(ViewModel.XaiApiEndpoint), _txtXaiApiEndpoint!); } catch { }
+                    try { _errorBinding.MapControl(nameof(ViewModel.XaiApiKey), _txtXaiApiKey!); } catch { }
                 }
             }
             catch (Exception ex)
@@ -447,11 +486,11 @@ namespace WileyWidget.WinForms.Controls
                 Description = "Select Export Directory",
                 UseDescriptionForTitle = true,
                 ShowNewFolderButton = true,
-                InitialDirectory = Directory.Exists(_vm?.DefaultExportPath) ? _vm.DefaultExportPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+                InitialDirectory = Directory.Exists(ViewModel?.DefaultExportPath) ? ViewModel.DefaultExportPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
             };
             if (folderDialog.ShowDialog(this) == DialogResult.OK)
             {
-                if (_vm != null) _vm.DefaultExportPath = folderDialog.SelectedPath;
+                if (ViewModel != null) ViewModel.DefaultExportPath = folderDialog.SelectedPath;
             }
         }
 
@@ -468,7 +507,7 @@ namespace WileyWidget.WinForms.Controls
 
         private async Task LoadViewDataAsync()
         {
-            try { Serilog.Log.Debug("SettingsPanel: LoadViewDataAsync starting"); if (_vm != null) { await (_vm.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask); Serilog.Log.Information("SettingsPanel: settings loaded successfully"); } }
+            try { Serilog.Log.Debug("SettingsPanel: LoadViewDataAsync starting"); if (ViewModel != null) { await (ViewModel.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask); Serilog.Log.Information("SettingsPanel: settings loaded successfully"); } }
             catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: LoadViewDataAsync failed"); }
         }
 
@@ -483,11 +522,11 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Validate settings before closing if there are unsaved changes
-                if (_vm.HasUnsavedChanges)
+                if (ViewModel.HasUnsavedChanges)
                 {
-                    if (!_vm.ValidateSettings())
+                    if (!ViewModel.ValidateSettings())
                     {
-                        var errors = _vm.GetValidationSummary();
+                        var errors = ViewModel.GetValidationSummary();
                         if (errors.Count > 0)
                         {
                             MessageBox.Show(
@@ -500,7 +539,7 @@ namespace WileyWidget.WinForms.Controls
                     }
 
                     // Persist settings if a Save command is available
-                    try { _vm.SaveCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Failed to save settings on close"); }
+                    try { ViewModel.SaveCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Failed to save settings on close"); }
                 }
 
                 var parentForm = this.FindForm();
@@ -570,7 +609,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 try { if (_panelThemeChangedHandler != null) _themeService.ThemeChanged -= _panelThemeChangedHandler; } catch { }
                 try { if (_btnCloseThemeChangedHandler != null) _themeService.ThemeChanged -= _btnCloseThemeChangedHandler; } catch { }
-                try { if (_browseExportPathHandler != null) _vm.BrowseExportPathRequested -= _browseExportPathHandler; } catch { }
+                try { if (_browseExportPathHandler != null) ViewModel.BrowseExportPathRequested -= _browseExportPathHandler; } catch { }
 
                 try { if (_themeCombo != null && !_themeCombo.IsDisposed) { try { _themeCombo.DataSource = null; } catch { } _themeCombo.Dispose(); } } catch { }
                 try { if (_fontCombo != null && !_fontCombo.IsDisposed) { try { _fontCombo.DataSource = null; } catch { } _fontCombo.Dispose(); } } catch { }

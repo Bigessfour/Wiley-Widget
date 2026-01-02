@@ -11,19 +11,19 @@ This guide walks you through configuring QuickBooks Online (QBO) OAuth for Wiley
 
 ## Before you start
 
-- Intuit Developer account: https://developer.intuit.com/
+- Intuit Developer account: <https://developer.intuit.com/>
 - Windows admin access (needed once to create a URL ACL for the local OAuth callback)
 
 ## 1) Create or configure your Intuit app
 
-1. Open: https://developer.intuit.com/ and sign in
+1. Open: <https://developer.intuit.com/> and sign in
 2. Top-right: Dashboard
 3. Left menu: My Apps
 4. Create an app → Choose “QuickBooks Online and Payments” (or open your existing app)
 5. App settings → Keys & OAuth
 6. Note your “Client ID” and “Client Secret”
 7. In “Redirect URIs”, add EXACTLY this value (case sensitive):
-   - http://localhost:8080/callback
+   - <http://localhost:8080/callback>
 8. Save changes
 
 Notes
@@ -33,7 +33,7 @@ Notes
 
 ## 2) One-time Windows URL ACL for local callback
 
-Wiley Widget listens locally to capture the OAuth redirect. Windows requires an ACL for http://localhost:8080/.
+Wiley Widget listens locally to capture the OAuth redirect. Windows requires an ACL for <http://localhost:8080/>.
 
 - Open an elevated PowerShell (Run as Administrator)
 - Execute:
@@ -51,7 +51,7 @@ If you ever change the port, run the same command with the new URL.
 3. Fill in:
    - Client ID: from Intuit portal (Keys & OAuth)
    - Client Secret: from Intuit portal
-   - Redirect URI: http://localhost:8080/callback
+   - Redirect URI: <http://localhost:8080/callback>
    - Environment: Sandbox first (recommended)
 4. Click “Check URL ACL” → Should report Ready (green). If not, re-run the netsh command above as admin.
 5. Click “Connect to QuickBooks”
@@ -83,7 +83,7 @@ If you ever change the port, run the same command with the new URL.
 
 Links (official docs)
 
-- OAuth 2.0 overview: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0
-- Scopes: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/scopes
-- Keys & OAuth: https://developer.intuit.com/app/developer/qbo/docs/get-started/authentication-keys
-- Sandboxes: https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
+- OAuth 2.0 overview: <https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0>
+- Scopes: <https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/scopes>
+- Keys & OAuth: <https://developer.intuit.com/app/developer/qbo/docs/get-started/authentication-keys>
+- Sandboxes: <https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes>

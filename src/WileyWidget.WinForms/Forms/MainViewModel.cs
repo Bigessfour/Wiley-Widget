@@ -9,7 +9,7 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 
-namespace WileyWidget.WinForms.ViewModels
+namespace WileyWidget.WinForms.Forms
 {
     /// <summary>
     /// ViewModel for the main dashboard. Orchestrates UI interactions and delegates

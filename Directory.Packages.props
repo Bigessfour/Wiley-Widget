@@ -118,6 +118,7 @@
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
     <PackageVersion Include="FastReport.OpenSource" Version="2024.2.0" />
+    <PackageVersion Include="FastReport.OpenSource.WinForms" Version="2024.2.0" />
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
     <!-- Data handling packages -->

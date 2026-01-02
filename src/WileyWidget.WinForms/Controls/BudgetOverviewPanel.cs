@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -80,7 +81,6 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler<AppTheme>? _btnExportCsvThemeChangedHandler;
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
-        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _metricsCollectionChangedHandler;
 
         /// <summary>
         /// Parameterless constructor for DI/designer support.
@@ -452,10 +452,20 @@ namespace WileyWidget.WinForms.Controls
             _vm.PropertyChanged += _viewModelPropertyChangedHandler;
 
             // Subscribe to metrics collection changes
-            _metricsCollectionChangedHandler = (s, e) => UpdateUI();
-            _vm.Metrics.CollectionChanged += _metricsCollectionChangedHandler;
+            _vm.Metrics.CollectionChanged -= (s, e) => UpdateUI();  // Remove old
+            _vm.Metrics.CollectionChanged += BudgetMetrics_CollectionChanged;  // Add safe handler
 
             // Initial UI update
+            UpdateUI();
+        }
+
+        private void BudgetMetrics_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke((MethodInvoker)(() => BudgetMetrics_CollectionChanged(sender, e)));
+                return;
+            }
             UpdateUI();
         }
 
@@ -745,7 +755,7 @@ namespace WileyWidget.WinForms.Controls
                 try { ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
                 try { ThemeManager.ThemeChanged -= _btnExportCsvThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null) _vm.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
-                try { if (_metricsCollectionChangedHandler != null) _vm.Metrics.CollectionChanged -= _metricsCollectionChangedHandler; } catch { }
+                try { _vm.Metrics.CollectionChanged -= BudgetMetrics_CollectionChanged; } catch { }
 
                 try
                 {

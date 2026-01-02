@@ -225,6 +225,18 @@ class McpServerManager {
                 # Test GitHub MCP server (if token is available)
                 return $env:GITHUB_TOKEN -and $env:GITHUB_TOKEN.Length -gt 0
             }
+            "syncfusion-winforms-assistant" {
+                # Test Syncfusion WinForms Assistant MCP server
+                try {
+                    # Check if npm package is available and API key is set
+                    $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY")
+                    $npmCheck = & npm view @syncfusion/winforms-assistant version 2>$null
+                    return $LASTEXITCODE -eq 0 -and $apiKey
+                }
+                catch {
+                    return $false
+                }
+            }
             default {
                 # Generic health check - check if process is running
                 return $server.Process -and -not $server.Process.HasExited

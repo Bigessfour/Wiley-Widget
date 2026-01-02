@@ -25,6 +25,7 @@ public class BudgetRepository : IBudgetRepository
 
     /// <summary>
     /// Constructor with dependency injection
+    /// Uses IDbContextFactory to create scoped contexts per operation.
     /// </summary>
     public BudgetRepository(
         IDbContextFactory<AppDbContext> contextFactory,
@@ -169,7 +170,7 @@ public class BudgetRepository : IBudgetRepository
         bool sortDescending = false,
         int? fiscalYear = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
@@ -200,14 +201,15 @@ public class BudgetRepository : IBudgetRepository
 
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
+    /// NOTE: This returns an IQueryable tied to a DbContext created here; caller is responsible for materializing results promptly.
     /// </summary>
-    public async Task<IQueryable<BudgetEntry>> GetQueryableAsync()
+    public Task<IQueryable<BudgetEntry>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.BudgetEntries
+        var context = _contextFactory.CreateDbContext();
+        return Task.FromResult(context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .AsQueryable();
+            .AsQueryable());
     }
 
     /// <summary>

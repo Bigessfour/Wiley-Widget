@@ -3,6 +3,7 @@
 Place workspace-specific helper tools here.
 
 Recommended:
+
 - Put `mcp-csharp.exe` (pinned version) at `./tools/mcp-csharp.exe` so the workspace wrapper (`scripts/tools/run-mcp.ps1`) will pick it up.
 - Install PSScriptAnalyzer locally for the user:
 

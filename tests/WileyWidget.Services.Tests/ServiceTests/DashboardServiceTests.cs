@@ -327,6 +327,67 @@ public sealed class DashboardServiceTests : IDisposable
         };
     }
 
+    [Fact]
+    public async Task GetDashboardDataAsync_ShouldHandleConcurrentCalls_WithoutObjectDisposedException()
+    {
+        // Arrange
+        var testData = new List<BudgetEntry>
+        {
+            new() { Id = 1, AccountNumber = "1001", BudgetedAmount = 1000m, ActualAmount = 900m, FiscalYear = 2025 },
+            new() { Id = 2, AccountNumber = "2001", BudgetedAmount = 2000m, ActualAmount = 1800m, FiscalYear = 2025 }
+        };
+
+        _mockBudgetRepository
+            .Setup(r => r.GetByFiscalYearAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testData);
+
+        _mockBudgetRepository
+            .Setup(r => r.GetDataStatisticsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((2, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow));
+
+        // Disable caching for this test to force actual DB calls
+        _mockCacheService
+            .Setup(c => c.GetAsync<List<DashboardItem>>(It.IsAny<string>()))
+            .ReturnsAsync((List<DashboardItem>?)null);
+
+        // Act - simulate concurrent calls from different threads (like startup scenarios)
+        var tasks = Enumerable.Range(0, 10)
+            .Select(_ => Task.Run(async () => await _service.GetDashboardDataAsync(CancellationToken.None)))
+            .ToArray();
+
+        // Assert - should complete without ObjectDisposedException or TaskCanceledException
+        var results = await Task.WhenAll(tasks);
+        results.Should().AllSatisfy(result => result.Should().NotBeNull());
+
+        // Verify repository was called (may be more than 10 times due to no caching)
+        _mockBudgetRepository.Verify(
+            r => r.GetByFiscalYearAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task GetDataStatisticsAsync_ShouldHandleConcurrentCalls_WithoutObjectDisposedException()
+    {
+        // Arrange
+        _mockBudgetRepository
+            .Setup(r => r.GetDataStatisticsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((100, DateTime.UtcNow.AddDays(-365), DateTime.UtcNow));
+
+        // Act - simulate concurrent calls from startup health check and data prefetch
+        var tasks = Enumerable.Range(0, 5)
+            .Select(_ => Task.Run(async () => await _service.GetDataStatisticsAsync(CancellationToken.None)))
+            .ToArray();
+
+        // Assert
+        var results = await Task.WhenAll(tasks);
+        results.Should().AllSatisfy(result =>
+        {
+            result.TotalRecords.Should().Be(100);
+            result.OldestRecord.Should().NotBeNull();
+            result.NewestRecord.Should().NotBeNull();
+        });
+    }
+
     public void Dispose()
     {
         // Cleanup if needed

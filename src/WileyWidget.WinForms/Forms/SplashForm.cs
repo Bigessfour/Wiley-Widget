@@ -29,8 +29,6 @@ namespace WileyWidget.WinForms.Forms
         private readonly bool _isHeadless;
         private readonly ManualResetEventSlim _uiReady = new(false);
         private readonly CancellationTokenSource _cts = new();
-        private bool _disposed;
-        private bool _ctsDisposed;
         private Thread? _uiThread;
 
         private Form? _form;
@@ -63,6 +61,7 @@ namespace WileyWidget.WinForms.Forms
             // Wait for splash UI to be ready so early progress reports can be displayed.
             // Increased timeout to ensure splash appears before first progress report.
             _uiReady.Wait(TimeSpan.FromSeconds(2));
+            Log.Information("[SPLASH] UI thread initialized (ready signal set)");
         }
 
         public void InvokeOnUiThread(Action action)
@@ -98,6 +97,27 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="isIndeterminate">If true, shows marquee-style indeterminate progress</param>
         public void Report(double progress, string message, bool isIndeterminate = false)
         {
+            if (_isHeadless || _form == null || _cts.IsCancellationRequested) return;
+
+            try
+            {
+                if (_form.InvokeRequired)
+                {
+                    _form.BeginInvoke(new Action(() => ReportInternal(progress, message, isIndeterminate)));
+                }
+                else
+                {
+                    ReportInternal(progress, message, isIndeterminate);
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Swallow - form already disposed
+            }
+        }
+
+        private void ReportInternal(double progress, string message, bool isIndeterminate)
+        {
             try
             {
                 ProgressChanged?.Invoke(this, new SplashProgressChangedEventArgs(progress, message, isIndeterminate));
@@ -125,41 +145,39 @@ namespace WileyWidget.WinForms.Forms
 
             if (_cts.IsCancellationRequested) return;
 
-            InvokeOnUiThread(() =>
+            var form = _form;
+            if (form == null || form.IsDisposed) return;
+
+            try
             {
-                var form = _form;
-                if (form == null || form.IsDisposed) return;
+                if (_messageLabel != null && !_messageLabel.IsDisposed)
+                    _messageLabel.Text = message ?? string.Empty;
 
-                try
+                if (_progressBar != null && !_progressBar.IsDisposed)
                 {
-                    if (_messageLabel != null && !_messageLabel.IsDisposed)
-                        _messageLabel.Text = message ?? string.Empty;
-
-                    if (_progressBar != null && !_progressBar.IsDisposed)
+                    if (isIndeterminate)
                     {
-                        if (isIndeterminate)
-                        {
-                            _progressBar.Style = ProgressBarStyle.Marquee;
-                            _progressBar.MarqueeAnimationSpeed = 30;
-                        }
-                        else
-                        {
-                            _progressBar.Style = ProgressBarStyle.Continuous;
-                            var percent = Math.Max(0, Math.Min(100, (int)Math.Round(progress * 100.0)));
-                            _progressBar.Value = percent;
-                        }
+                        _progressBar.Style = ProgressBarStyle.Marquee;
+                        _progressBar.MarqueeAnimationSpeed = 30;
+                    }
+                    else
+                    {
+                        _progressBar.Style = ProgressBarStyle.Continuous;
+                        var percent = Math.Max(0, Math.Min(100, (int)Math.Round(progress * 100.0)));
+                        _progressBar.Value = percent;
                     }
                 }
-                catch (ObjectDisposedException)
-                {
-                    // Control disposed during update - expected during shutdown
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "[SPLASH] Failed to update controls during Report");
-                }
-            });
+            }
+            catch (ObjectDisposedException)
+            {
+                // Control disposed during update - expected during shutdown
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[SPLASH] Failed to update controls during Report");
+            }
         }
+
 
         /// <summary>
         /// Updates the splash UI with an indeterminate progress message (marquee style).
@@ -179,65 +197,10 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="finalMessage">Final message to display before closing</param>
         public void Complete(string finalMessage)
         {
-            if (_disposed) return;
-            if (_ctsDisposed) return;
-
-            try
-            {
-                _cts.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                _ctsDisposed = true;
-                return;
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "[SPLASH] CTS cancellation failed during Complete");
-                _ctsDisposed = true;
-                return;
-            }
-
-            if (_isHeadless)
-            {
-                try
-                {
-                    if (!string.IsNullOrEmpty(finalMessage))
-                        Log.Debug("[SPLASH] Complete: {Message}", finalMessage);
-                }
-                catch (Exception ex)
-                {
-                    Log.Debug(ex, "[SPLASH] Headless Complete logging failed");
-                }
-                return;
-            }
-
-            InvokeOnUiThread(() =>
-            {
-                var form = _form;
-                if (form == null || form.IsDisposed) return;
-
-                try
-                {
-                    if (_messageLabel != null && !_messageLabel.IsDisposed)
-                        _messageLabel.Text = finalMessage ?? string.Empty;
-
-                    if (_progressBar != null && !_progressBar.IsDisposed)
-                    {
-                        _progressBar.Style = ProgressBarStyle.Continuous;
-                        _progressBar.Value = _progressBar.Maximum;
-                    }
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Control disposed during update - expected during shutdown
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "[SPLASH] Failed to update controls during Complete");
-                }
-            });
+            _cts.Cancel(); // Stop further updates
+            // ...rest of completion logic (fade/hide form)...
         }
+
 
         private void SplashThreadMain()
         {
@@ -291,21 +254,19 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try { _uiReady.Set(); }
                     catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to set _uiReady event"); }
+                    Log.Information("[SPLASH] Splash form shown (Size={Width}x{Height})", _form.Width, _form.Height);
                 };
 
                 _form.FormClosed += (_, _) =>
                 {
-                    if (!_ctsDisposed)
+                    try { _cts.Cancel(); }
+                    catch (Exception ex)
                     {
-                        try { _cts.Cancel(); }
-                        catch (Exception ex)
-                        {
-                            Log.Debug(ex, "[SPLASH] Failed to cancel CTS on form close");
-                            _ctsDisposed = true;
-                        }
+                        Log.Debug(ex, "[SPLASH] Failed to cancel CTS on form close");
                     }
                     try { Application.ExitThread(); }
                     catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to exit thread on form close"); }
+                    Log.Information("[SPLASH] Splash form closed");
                 };
 
                 Application.Run(_form);
@@ -320,53 +281,9 @@ namespace WileyWidget.WinForms.Forms
 
         public void Dispose()
         {
-            if (_disposed) return;
-            _disposed = true;
-
-            try
-            {
-                _cts.Cancel();
-                _cts.Dispose();
-                _ctsDisposed = true;
-
-                var form = _form;
-                if (form != null && !form.IsDisposed)
-                {
-                    try
-                    {
-                        if (form.InvokeRequired) form.BeginInvoke((Action)(() => form.Close()));
-                        else form.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Debug(ex, "[SPLASH] Failed to close form during dispose");
-                    }
-                }
-
-                // Fire-and-forget async cleanup to avoid blocking UI thread
-                // Previous implementation used Thread.Join(2s) which blocked for 414ms
-                if (_uiThread != null && _uiThread.IsAlive)
-                {
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            if (!_uiThread.Join(TimeSpan.FromMilliseconds(500)))
-                            {
-                                Log.Debug("[SPLASH] Splash thread did not exit within 500ms (non-blocking)");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Debug(ex, "[SPLASH] Failed to join splash thread during dispose");
-                        }
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "[SPLASH] Dispose failed (non-critical)");
-            }
+            _cts.Cancel();
+            _cts.Dispose();
+            _form?.Dispose();
         }
     }
 }

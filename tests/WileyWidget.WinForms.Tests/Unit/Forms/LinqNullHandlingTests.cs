@@ -38,7 +38,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var mockLogger = new Mock<ILogger<AccountsViewModel>>();
             var mockAccountsRepo = new Mock<IAccountsRepository>();
             var mockMunicipalRepo = new Mock<IMunicipalAccountRepository>();
-            var vm = new AccountsViewModel(mockLogger.Object, mockAccountsRepo.Object, mockMunicipalRepo.Object);
+            using var vm = new AccountsViewModel(mockLogger.Object, mockAccountsRepo.Object, mockMunicipalRepo.Object);
             vm.Accounts = null!; // Simulate null data
 
             // Act & Assert
