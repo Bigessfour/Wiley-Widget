@@ -47,7 +47,7 @@ public class DockingLayoutManager : IDisposable
     private Font? _dockTabFont;
     private Panel? _leftDockPanel;
     private Panel? _rightDockPanel;
-    private Panel? _centralDocumentPanel;
+    // REMOVED: _centralDocumentPanel - Option A pure docking architecture
 
     public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger)
     {
@@ -59,29 +59,57 @@ public class DockingLayoutManager : IDisposable
     /// <summary>
     /// Transfer ownership of managed docking panels and fonts to this manager
     /// </summary>
-    public void SetManagedResources(Panel? leftPanel, Panel? rightPanel, Panel? centralPanel, Font? dockAutoHideTabFont, Font? dockTabFont)
+    /// <remarks>Option A architecture - no central panel, pure left/right docking</remarks>
+    public void SetManagedResources(Panel? leftPanel, Panel? rightPanel, Font? dockAutoHideTabFont, Font? dockTabFont)
     {
         _leftDockPanel = leftPanel;
         _rightDockPanel = rightPanel;
-        _centralDocumentPanel = centralPanel;
         _dockAutoHideTabFont = dockAutoHideTabFont;
         _dockTabFont = dockTabFont;
-        _logger?.LogDebug("DockingLayoutManager now owns: {LeftPanel}, {RightPanel}, {CentralPanel}, {AutoHideFont}, {TabFont}",
-            leftPanel != null, rightPanel != null, centralPanel != null, dockAutoHideTabFont != null, dockTabFont != null);
+        _logger?.LogDebug("DockingLayoutManager now owns: {LeftPanel}, {RightPanel}, {AutoHideFont}, {TabFont}",
+            leftPanel != null, rightPanel != null, dockAutoHideTabFont != null, dockTabFont != null);
     }
 
     /// <summary>
-    /// Attach this manager to a DockingManager instance
+    /// Initialize DockingManager with best practice settings
+    /// </summary>
+    public void InitializeDockingManager(DockingManager dockingManager)
+    {
+        if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
+
+        try
+        {
+            // Set global docking manager properties for optimal behavior
+            dockingManager.PersistState = false; // We handle persistence manually for better control
+            dockingManager.MaximizeButtonEnabled = true;
+            dockingManager.ShowCaptionImages = true;
+
+            // AnimationStep is a static property
+            DockingManager.AnimationStep = 5; // Smooth animation
+
+            _logger?.LogInformation("DockingManager initialized with best practice settings");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to initialize some DockingManager settings - using defaults");
+        }
+    }
+
+    /// <summary>
+    /// Attach this manager to a DockingManager instance with comprehensive event handling
     /// </summary>
     public void AttachTo(DockingManager dockingManager)
     {
         if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
 
+        // Attach all necessary event handlers for proper state management
         dockingManager.DockStateChanged += DockingManager_DockStateChanged;
         dockingManager.DockControlActivated += DockingManager_DockControlActivated;
         dockingManager.DockVisibilityChanged += DockingManager_DockVisibilityChanged;
+        dockingManager.NewDockStateBeginLoad += DockingManager_NewDockStateBeginLoad;
+        dockingManager.NewDockStateEndLoad += DockingManager_NewDockStateEndLoad;
 
-        _logger?.LogInformation("DockingLayoutManager attached to DockingManager");
+        _logger?.LogInformation("DockingLayoutManager attached to DockingManager with comprehensive event handling");
     }
 
     /// <summary>
@@ -91,9 +119,19 @@ public class DockingLayoutManager : IDisposable
     {
         if (dockingManager == null) return;
 
-        try { dockingManager.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
-        try { dockingManager.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
-        try { dockingManager.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
+        try
+        {
+            // Detach all event handlers safely
+            dockingManager.DockStateChanged -= DockingManager_DockStateChanged;
+            dockingManager.DockControlActivated -= DockingManager_DockControlActivated;
+            dockingManager.DockVisibilityChanged -= DockingManager_DockVisibilityChanged;
+            dockingManager.NewDockStateBeginLoad -= DockingManager_NewDockStateBeginLoad;
+            dockingManager.NewDockStateEndLoad -= DockingManager_NewDockStateEndLoad;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error detaching some event handlers from DockingManager");
+        }
 
         _logger?.LogInformation("DockingLayoutManager detached from DockingManager");
     }
@@ -150,7 +188,7 @@ public class DockingLayoutManager : IDisposable
     }
 
     /// <summary>
-    /// Save docking layout to disk
+    /// Save docking layout to disk using proper Syncfusion API patterns
     /// </summary>
     public void SaveLayout(DockingManager dockingManager, string layoutPath)
     {
@@ -219,34 +257,23 @@ public class DockingLayoutManager : IDisposable
             var binaryLayoutPath = Path.ChangeExtension(layoutPath, ".bin");
             var tempPath = binaryLayoutPath + ".tmp";
 
-            // Save dock state using Syncfusion API (wrapped in try-catch for Syncfusion internal errors)
-            var serializerType = typeof(AppStateSerializer);
-            var serializer = Activator.CreateInstance(serializerType, new object[] {
-                Syncfusion.Runtime.Serialization.SerializeMode.BinaryFile,
-                tempPath
-            })!;
-
-            var saveMethod = dockingManager.GetType().GetMethod("SaveDockState", new Type[] { serializerType });
-
-            if (saveMethod != null)
+            // Create AppStateSerializer with proper error handling
+            AppStateSerializer? serializer = null;
+            try
             {
-                saveMethod.Invoke(dockingManager, new object[] { serializer });
+                serializer = new AppStateSerializer(SerializeMode.BinaryFile, tempPath);
+
+                // Save dock state using Syncfusion API directly (no reflection needed)
+                dockingManager.SaveDockState(serializer);
 
                 // CRITICAL: Call PersistNow() to actually write the serializer to disk
-                var persistMethod = serializerType.GetMethod("PersistNow");
-                if (persistMethod != null)
-                {
-                    persistMethod.Invoke(serializer, null);
-                    _logger?.LogDebug("Saved and persisted dock state to temp file {TempPath}", tempPath);
-                }
-                else
-                {
-                    _logger?.LogWarning("PersistNow method not found - layout may not be persisted correctly");
-                }
+                serializer.PersistNow();
+
+                _logger?.LogDebug("Saved and persisted dock state to temp file {TempPath}", tempPath);
             }
-            else
+            catch (Exception ex)
             {
-                _logger?.LogWarning("SaveDockState method not found - layout will not be persisted");
+                _logger?.LogError(ex, "Failed to save dock state with AppStateSerializer");
                 return;
             }
 
@@ -271,7 +298,8 @@ public class DockingLayoutManager : IDisposable
     /// <summary>
     /// Apply theme to docking panels
     /// </summary>
-    public void ApplyThemeToDockingPanels(DockingManager? dockingManager, Panel? leftPanel, Panel? rightPanel, Panel? centralPanel)
+    /// <remarks>Option A architecture - left and right panels only</remarks>
+    public void ApplyThemeToDockingPanels(DockingManager? dockingManager, Panel? leftPanel, Panel? rightPanel)
     {
         try
         {
@@ -282,7 +310,6 @@ public class DockingLayoutManager : IDisposable
 
             ApplyPanelTheme(leftPanel);
             ApplyPanelTheme(rightPanel);
-            ApplyPanelTheme(centralPanel);
 
             _logger?.LogInformation("Applied SkinManager theme to docking panels");
         }
@@ -292,22 +319,7 @@ public class DockingLayoutManager : IDisposable
         }
     }
 
-    /// <summary>
-    /// Ensure central panel visibility and z-order
-    /// </summary>
-    public void EnsureCentralPanelVisibility(Panel? centralPanel, Panel? leftPanel, Panel? rightPanel)
-    {
-        try
-        {
-            EnsureCentralPanelVisible(centralPanel);
-            EnsureSidePanelsZOrder(leftPanel, rightPanel);
-            _logger?.LogDebug("Central panel visibility ensured for docked layout");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to ensure central panel visibility in docked layout");
-        }
-    }
+    // REMOVED: EnsureCentralPanelVisibility - Option A has no central panel
 
     /// <summary>
     /// Set floating mode for a panel
@@ -380,59 +392,61 @@ public class DockingLayoutManager : IDisposable
             _logger?.LogDebug("Using binary layout file: {Path}", layoutPath);
         }
 
-        var serializerType = typeof(AppStateSerializer);
-        var serializer = Activator.CreateInstance(serializerType, new object[] {
-            Syncfusion.Runtime.Serialization.SerializeMode.BinaryFile,
-            layoutPath
-        })!;
-
-        var loadMethod = dockingManager.GetType().GetMethod("LoadDockState", new Type[] { serializerType });
-
-        if (loadMethod != null)
+        AppStateSerializer? serializer = null;
+        try
         {
-            try
+            serializer = new AppStateSerializer(SerializeMode.BinaryFile, layoutPath);
+
+            // Load dock state using Syncfusion API directly (no reflection needed)
+            // Run on thread pool to avoid blocking UI
+            bool success = await Task.Run(() =>
             {
-                // Run on thread pool to avoid blocking UI
-                bool success = false;
-                await Task.Run(() =>
+                try
                 {
-                    var result = loadMethod.Invoke(dockingManager, new object[] { serializer });
-                    // LoadDockState returns bool indicating success
-                    if (result is bool boolResult)
-                    {
-                        success = boolResult;
-                    }
-                });
-
-                if (success)
-                {
-                    _logger?.LogInformation("Successfully loaded dock state from {Path}", layoutPath);
+                    return dockingManager.LoadDockState(serializer);
                 }
-                else
+                catch (Exception ex)
                 {
-                    _logger?.LogWarning("LoadDockState returned false - layout file may be corrupt or incompatible. Falling back to default docking.");
-
-                    // Fallback: Re-dock panels programmatically
-                    await ReDockPanelsProgrammatically(dockingManager, parentForm);
+                    _logger?.LogWarning(ex, "Exception during LoadDockState - falling back to default docking");
+                    return false;
                 }
+            });
+
+            if (success)
+            {
+                // Ensure caption buttons are visible after load (LoadDockState can overwrite some per-panel visibility)
+                try
+                {
+                    EnsureCaptionButtonsVisible(dockingManager, parentForm);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to ensure caption buttons visible after LoadDockState");
+                }
+
+                _logger?.LogInformation("Successfully loaded dock state from {Path}", layoutPath);
             }
-            catch (Exception ex)
+            else
             {
-                _logger?.LogError(ex, "Exception during LoadDockState - falling back to default docking");
+                _logger?.LogWarning("LoadDockState returned false - layout file may be corrupt or incompatible. Falling back to default docking.");
 
                 // Fallback: Re-dock panels programmatically
                 await ReDockPanelsProgrammatically(dockingManager, parentForm);
             }
         }
-        else
+        catch (Exception ex)
         {
-            _logger?.LogWarning("LoadDockState method not found - using default layout");
+            _logger?.LogError(ex, "Exception during LoadDockState - falling back to default docking");
+
+            // Fallback: Re-dock panels programmatically
+            await ReDockPanelsProgrammatically(dockingManager, parentForm);
         }
     }
 
     /// <summary>
     /// Re-docks left and right panels programmatically using default positions.
     /// Used as a fallback when LoadDockState fails or layout file is missing/corrupt.
+    /// Follows Syncfusion best practices for programmatic docking.
     /// </summary>
     /// <param name="dockingManager">The DockingManager instance to configure.</param>
     /// <param name="parentForm">The parent form to dock panels to.</param>
@@ -445,19 +459,65 @@ public class DockingLayoutManager : IDisposable
             // Re-dock left panel (Dashboard) if it exists
             if (_leftDockPanel != null)
             {
-                _logger?.LogDebug("Re-docking {PanelName} to Left with width 280px", _leftDockPanel.Name);
-                dockingManager.DockControl(_leftDockPanel, parentForm, DockingStyle.Left, 280);
-                dockingManager.SetEnableDocking(_leftDockPanel, true);
-                dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
+                try
+                {
+                    _logger?.LogDebug("Re-docking {PanelName} to Left with width 280px", _leftDockPanel.Name);
+
+                    // Enable docking first (Syncfusion requirement)
+                    dockingManager.SetEnableDocking(_leftDockPanel, true);
+
+                    // Set dock label
+                    dockingManager.SetDockLabel(_leftDockPanel, "Dashboard");
+
+                    // Configure floating behavior
+                    dockingManager.SetAllowFloating(_leftDockPanel, true);
+
+                    // Dock the panel
+                    dockingManager.DockControl(_leftDockPanel, parentForm, DockingStyle.Left, 280);
+
+                    // Ensure caption buttons are visible
+                    dockingManager.SetCloseButtonVisibility(_leftDockPanel, true);
+                    dockingManager.SetAutoHideButtonVisibility(_leftDockPanel, true);
+                    dockingManager.SetMenuButtonVisibility(_leftDockPanel, true);
+
+                    _logger?.LogDebug("Successfully re-docked left panel");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to re-dock left panel");
+                }
             }
 
             // Re-dock right panel (Activity) if it exists
             if (_rightDockPanel != null)
             {
-                _logger?.LogDebug("Re-docking {PanelName} to Right with width 280px", _rightDockPanel.Name);
-                dockingManager.DockControl(_rightDockPanel, parentForm, DockingStyle.Right, 280);
-                dockingManager.SetEnableDocking(_rightDockPanel, true);
-                dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+                try
+                {
+                    _logger?.LogDebug("Re-docking {PanelName} to Right with width 280px", _rightDockPanel.Name);
+
+                    // Enable docking first (Syncfusion requirement)
+                    dockingManager.SetEnableDocking(_rightDockPanel, true);
+
+                    // Set dock label
+                    dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+
+                    // Configure floating behavior
+                    dockingManager.SetAllowFloating(_rightDockPanel, true);
+
+                    // Dock the panel
+                    dockingManager.DockControl(_rightDockPanel, parentForm, DockingStyle.Right, 280);
+
+                    // Ensure caption buttons are visible
+                    dockingManager.SetCloseButtonVisibility(_rightDockPanel, true);
+                    dockingManager.SetAutoHideButtonVisibility(_rightDockPanel, true);
+                    dockingManager.SetMenuButtonVisibility(_rightDockPanel, true);
+
+                    _logger?.LogDebug("Successfully re-docked right panel");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to re-dock right panel");
+                }
             }
 
             _logger?.LogInformation("Successfully re-docked panels to default positions");
@@ -568,6 +628,15 @@ public class DockingLayoutManager : IDisposable
                 {
                     dockingManager.SetAutoHideMode(panel, true);
                 }
+
+                // Ensure caption buttons are visible for recreated dynamic panels
+                try
+                {
+                    dockingManager.SetCloseButtonVisibility(panel, true);
+                    dockingManager.SetAutoHideButtonVisibility(panel, true);
+                    dockingManager.SetMenuButtonVisibility(panel, true);
+                }
+                catch { }
             }
 
             // STEP 5: Add child content AFTER docking (Syncfusion official pattern)
@@ -722,6 +791,83 @@ public class DockingLayoutManager : IDisposable
         }
     }
 
+    /// <summary>
+    /// Ensure standard caption buttons (Close, AutoHide, Menu) are visible for all docked controls.
+    /// Also enforces global DockingManager caption-related settings (maximize button, caption images).
+    /// Follows Syncfusion best practices for caption management.
+    /// </summary>
+    private void EnsureCaptionButtonsVisible(DockingManager dockingManager, Control parentForm)
+    {
+        if (dockingManager == null || parentForm == null) return;
+
+        try
+        {
+            // Set global DockingManager properties for consistent behavior
+            try { dockingManager.MaximizeButtonEnabled = true; } catch { }
+            try { dockingManager.ShowCaptionImages = true; } catch { }
+
+            // Get all docked controls and ensure they have proper caption buttons
+            var dockedControls = GetAllDockedControls(dockingManager, parentForm);
+            int successCount = 0;
+
+            foreach (var ctrl in dockedControls)
+            {
+                try
+                {
+                    // Set caption button visibility with proper error handling
+                    dockingManager.SetCloseButtonVisibility(ctrl, true);
+                    dockingManager.SetAutoHideButtonVisibility(ctrl, true);
+                    dockingManager.SetMenuButtonVisibility(ctrl, true);
+
+                    // Ensure the control is properly enabled for docking operations
+                    if (!dockingManager.GetEnableDocking(ctrl))
+                    {
+                        dockingManager.SetEnableDocking(ctrl, true);
+                    }
+
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to set caption buttons for control '{ControlName}'", ctrl.Name);
+                }
+            }
+
+            _logger?.LogInformation("Ensured caption buttons visible for {SuccessCount}/{TotalCount} docked controls",
+                successCount, dockedControls.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to ensure caption buttons visible for docking manager");
+        }
+    }
+
+    private List<Control> GetAllDockedControls(DockingManager dockingManager, Control root)
+    {
+        var results = new List<Control>();
+        if (dockingManager == null || root == null) return results;
+
+        void Walk(Control parent)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                try
+                {
+                    if (dockingManager.GetEnableDocking(child))
+                    {
+                        results.Add(child);
+                    }
+                }
+                catch { /* not managed by docking manager or API not available */ }
+
+                if (child.HasChildren) Walk(child);
+            }
+        }
+
+        Walk(root);
+        return results;
+    }
+
     private void InjectLayoutVersion(string layoutPath)
     {
         try
@@ -759,21 +905,7 @@ public class DockingLayoutManager : IDisposable
         Debug.WriteLine("Panel uses cascaded theme from ApplicationVisualTheme");
     }
 
-    private static void EnsureCentralPanelVisible(Panel? centralPanel)
-    {
-        if (centralPanel == null) return;
-
-        try
-        {
-            centralPanel.Visible = true;
-            centralPanel.BringToFront();
-            centralPanel.Invalidate();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to set central document panel visibility: {ex.Message}");
-        }
-    }
+    // REMOVED: EnsureCentralPanelVisible - Option A architecture has no central panel
 
     private static void EnsureSidePanelsZOrder(Panel? leftPanel, Panel? rightPanel)
     {
@@ -817,19 +949,31 @@ public class DockingLayoutManager : IDisposable
 
     private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
     {
-        _logger?.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}", e.NewState, e.OldState);
-        // Note: Central panel visibility and debounced save would be handled by the form
+        _logger?.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}",
+            e.NewState, e.OldState);
+
+        // Note: Debounced save is handled by the form, not here, to avoid circular dependencies
     }
 
     private void DockingManager_DockControlActivated(object? sender, DockActivationChangedEventArgs e)
     {
-        _logger?.LogDebug("Dock control activated: {Control}", e.Control.Name);
+        _logger?.LogDebug("Dock control activated: {Control}", e.Control?.Name ?? "null");
     }
 
     private void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
     {
-        _logger?.LogDebug("Dock visibility changed");
-        // Note: Central panel visibility would be handled by the form
+        _logger?.LogDebug("Dock visibility changed: Control={Control}, Visible={Visible}",
+            e.Control?.Name ?? "null", e.Control?.Visible ?? false);
+    }
+
+    private void DockingManager_NewDockStateBeginLoad(object? sender, EventArgs e)
+    {
+        _logger?.LogDebug("DockingManager beginning to load new dock state");
+    }
+
+    private void DockingManager_NewDockStateEndLoad(object? sender, EventArgs e)
+    {
+        _logger?.LogDebug("DockingManager finished loading new dock state");
     }
 
     /// <summary>
@@ -887,8 +1031,7 @@ public class DockingLayoutManager : IDisposable
             try { _rightDockPanel?.Dispose(); } catch { }
             _rightDockPanel = null;
 
-            try { _centralDocumentPanel?.Dispose(); } catch { }
-            _centralDocumentPanel = null;
+            // REMOVED: _centralDocumentPanel disposal - Option A has no central panel
 
             // Dispose fonts used by DockingManager
             try { _dockAutoHideTabFont?.Dispose(); } catch { }

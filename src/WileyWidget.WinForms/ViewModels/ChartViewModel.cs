@@ -12,6 +12,8 @@ using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -27,8 +29,10 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly ILogger<ChartViewModel> _logger;
         private readonly IDashboardService _dashboardService;
         private readonly IBudgetRepository _budgetRepository;
+        private readonly IPathProvider _pathProvider;
         private readonly IConfiguration _configuration;
         private CancellationTokenSource? _loadCancellationTokenSource;
+        private bool _initialized;
 
         #endregion
 
@@ -191,11 +195,13 @@ namespace WileyWidget.WinForms.ViewModels
             ILogger<ChartViewModel> logger,
             IDashboardService dashboardService,
             IBudgetRepository budgetRepository,
+            IPathProvider pathProvider,
             IConfiguration? configuration = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+            _pathProvider = pathProvider ?? throw new ArgumentNullException(nameof(pathProvider));
             _configuration = configuration ?? new ConfigurationBuilder().Build();
 
             // Determine default fiscal year using consistent logic
@@ -214,6 +220,8 @@ namespace WileyWidget.WinForms.ViewModels
             ResetFiltersCommand = new RelayCommand(ResetFilters);
 
             _logger.LogInformation("ChartViewModel constructed for FY {FiscalYear}", SelectedYear);
+            // Allow property change handlers to trigger loads only after construction completes
+            _initialized = true;
         }
 
         /// <summary>
@@ -224,6 +232,7 @@ namespace WileyWidget.WinForms.ViewModels
                 WileyWidget.WinForms.Logging.NullLogger<ChartViewModel>.Instance,
                 new FakeDashboardService(),
                 new FakeBudgetRepository(),
+                new PathProvider(new ConfigurationBuilder().Build(), new UIConfiguration()),
                 null)
         {
         }
@@ -567,8 +576,11 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnSelectedDepartmentChanged(string? value)
         {
             _logger.LogDebug("Department filter changed to: {Department}", value ?? "All");
-            // Reload data with new filter
-            _ = LoadChartDataAsync();
+            // Reload data with new filter (only after initialization to avoid constructor-triggered loads)
+            if (_initialized)
+            {
+                _ = LoadChartDataAsync();
+            }
         }
 
         /// <summary>
@@ -582,8 +594,11 @@ namespace WileyWidget.WinForms.ViewModels
             SelectedStartDate = new DateTime(value - 1, 7, 1, 0, 0, 0, DateTimeKind.Utc);
             SelectedEndDate = new DateTime(value, 6, 30, 23, 59, 59, DateTimeKind.Utc);
 
-            // Reload data for new year
-            _ = LoadChartDataAsync();
+            // Reload data for new year (only after initialization to avoid constructor-triggered loads)
+            if (_initialized)
+            {
+                _ = LoadChartDataAsync();
+            }
         }
 
         /// <summary>
@@ -592,33 +607,77 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnSelectedCategoryChanged(string value)
         {
             _logger.LogDebug("Category filter changed to: {Category}", value);
-            _ = LoadChartDataAsync();
+            if (_initialized)
+            {
+                _ = LoadChartDataAsync();
+            }
         }
+
+        /// <summary>
+        /// Public path to the last exported file for test verification.
+        /// </summary>
+        public string? LastExportedFilePath { get; private set; }
 
         /// <summary>
         /// Exports current chart data to CSV format.
         /// </summary>
         private void ExportData()
         {
+            LastExportedFilePath = null;
             try
             {
                 var csv = new System.Text.StringBuilder();
                 csv.AppendLine("Department,Budgeted,Actual,Variance,Variance %");
 
-                foreach (var dept in DepartmentDetails)
+                // Snapshot the collection to avoid race conditions where the UI thread or concurrent loads
+                // modify the collection while we are creating the CSV. Use a stable list for deterministic output.
+                var snapshot = DepartmentDetails.ToList();
+                _logger.LogDebug("ExportData: snapshot contains {Count} department rows", snapshot.Count);
+                foreach (var dept in snapshot)
                 {
                     csv.Append(System.FormattableString.Invariant($"{dept.DepartmentName},{dept.Budgeted:F2},{dept.Actual:F2},{dept.Variance:F2},{dept.VariancePercentage:F2}"));
                     csv.AppendLine();
                 }
 
-                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var exportDir = _pathProvider.GetExportDirectory();
                 var fileName = $"BudgetChart_FY{SelectedYear}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-                var filePath = System.IO.Path.Combine(desktopPath, fileName);
+                var filePath = System.IO.Path.Combine(exportDir, fileName);
 
-                System.IO.File.WriteAllText(filePath, csv.ToString());
+                // Ensure export directory exists to avoid race conditions in parallel tests
+                try
+                {
+                    Directory.CreateDirectory(exportDir);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to ensure export directory exists: {Dir}", exportDir);
+                }
 
-                StatusText = $"Data exported to {fileName}";
-                _logger.LogInformation("Chart data exported to {FilePath}", filePath);
+                // Write with WriteThrough to reduce chance of transient disk visibility issues in heavy test runs
+                try
+                {
+                    using (var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+                    using (var sw = new System.IO.StreamWriter(fs, System.Text.Encoding.UTF8))
+                    {
+                        sw.Write(csv.ToString());
+                        sw.Flush();
+                        // Ensure OS-level flush to storage when supported
+#if NET6_0_OR_GREATER
+                        fs.Flush(true);
+#else
+                        fs.Flush();
+#endif
+                    }
+
+                    LastExportedFilePath = filePath;
+                    StatusText = $"Data exported to {fileName}";
+                    _logger.LogInformation("Chart data exported to {FilePath}", filePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to write exported CSV file to {FilePath}", filePath);
+                    ErrorMessage = $"Export failed: {ex.Message}";
+                }
             }
             catch (Exception ex)
             {

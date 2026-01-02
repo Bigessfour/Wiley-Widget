@@ -91,7 +91,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         ApplySyncfusionTheme();
         ApplyTheme(ThemeManager.CurrentTheme);
 
-        Logger.LogDebug("BudgetPanel initialized with ViewModel");
+        Logger.LogInformation("BudgetPanel initialized with ViewModel");
     }
 
     private void InitializeControls()

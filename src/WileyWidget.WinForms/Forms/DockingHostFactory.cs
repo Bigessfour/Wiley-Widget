@@ -31,11 +31,11 @@ public static class DockingHostFactory
     /// <param name="serviceProvider">Service provider for dependency resolution</param>
     /// <param name="panelNavigator">Panel navigation service</param>
     /// <param name="logger">Logger instance</param>
-    /// <returns>Tuple of (DockingManager, leftPanel, centralPanel, rightPanel, activityGrid, activityRefreshTimer)</returns>
+    /// <returns>Tuple of (DockingManager, leftPanel, rightPanel, activityGrid, activityRefreshTimer)</returns>
+    /// <remarks>No central panel - pure docking panel architecture per Option A design</remarks>
     public static (
         DockingManager dockingManager,
         Panel leftDockPanel,
-        Panel centralDocumentPanel,
         Panel rightDockPanel,
         Syncfusion.WinForms.DataGrid.SfDataGrid? activityGrid,
         System.Windows.Forms.Timer? activityRefreshTimer
@@ -61,21 +61,19 @@ public static class DockingHostFactory
             // Initialize DockingManager
             var dockingManager = CreateDockingManager(mainForm, logger);
 
-            // Create panels
+            // Create panels (no central panel - pure docking architecture)
             var leftPanel = CreateLeftDockPanel(dockingManager, mainForm, panelNavigator, logger);
-            var centralPanel = CreateCentralDocumentPanel(mainForm, logger);
             var (rightPanel, activityGrid, activityTimer) = CreateRightDockPanel(dockingManager, mainForm, serviceProvider, logger);
 
             stopwatch.Stop();
             logger?.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
 
             logger?.LogDebug(
-                "Docking host created with panels - Left={LeftName}, Central={CentralName}, Right={RightName}",
+                "Docking host created with panels - Left={LeftName}, Right={RightName}",
                 leftPanel.Name,
-                centralPanel.Name,
                 rightPanel.Name);
 
-            return (dockingManager, leftPanel, centralPanel, rightPanel, activityGrid, activityTimer);
+            return (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer);
         }
         catch (Exception ex)
         {
@@ -126,10 +124,13 @@ public static class DockingHostFactory
         {
             HostControl = mainForm, // Safe: handle is guaranteed to exist
             EnableDocumentMode = false, // Panel mode only
-            PersistState = true,
+            PersistState = false, // DISABLED: Using manual serialization via DockingLayoutManager instead
             AnimateAutoHiddenWindow = true,
             ShowCaption = true,
+            ShowCaptionImages = true, // Ensure caption button images are shown
             EnableAutoAdjustCaption = true, // Auto-size captions based on font
+            MaximizeButtonEnabled = true, // Enable maximize/restore buttons
+            EnableContextMenu = true, // Enable context menus for docking operations
         };
 
         logger?.LogInformation("CreateDockingManager: DockingManager created successfully - HostControl assigned to MainForm with handle {Handle}", mainForm.Handle);
@@ -220,33 +221,8 @@ public static class DockingHostFactory
         return leftPanel;
     }
 
-    /// <summary>
-    /// Create central document panel for main content area.
-    /// Phase 1: Central panel is NOT added to MainForm.Controls - DockingManager handles panel layout.
-    /// </summary>
-    private static Panel CreateCentralDocumentPanel(MainForm mainForm, ILogger? logger)
-    {
-        var centralPanel = new Panel
-        {
-            Name = "CentralDocumentPanel",
-            AccessibleName = "CentralDocumentPanel",
-            Dock = DockStyle.None, // Changed from Fill - let DockingManager handle layout
-            Visible = true,
-            BorderStyle = BorderStyle.None,
-            BackColor = Color.Transparent
-        };
-
-        // CRITICAL FIX: Do NOT add central panel to MainForm.Controls
-        // Adding it causes conflicts with DockingManager's panel hosting.
-        // The DockingManager uses MainForm as HostControl and manages all docked panels.
-        // mainForm.Controls.Add(centralPanel); // REMOVED
-
-        logger?.LogInformation("Central document panel created (managed by DockingManager, not added to MainForm.Controls)");
-        logger?.LogDebug("Central document panel created (layout delegated to DockingManager)");
-
-        Console.WriteLine($"[DIAGNOSTIC] CreateCentralDocumentPanel: Created {centralPanel.Name}, NOT added to MainForm.Controls");
-        return centralPanel;
-    }
+    // REMOVED: CreateCentralDocumentPanel - Option A uses pure docking panel architecture without central panel
+    // All content is hosted in docked panels (Left/Right) managed by DockingManager
 
     /// <summary>
     /// Create right dock panel with activity grid.
@@ -326,6 +302,15 @@ public static class DockingHostFactory
         // Additional configuration
         dockingManager.SetAutoHideMode(panel, true);
         dockingManager.SetAllowFloating(panel, true);
+
+        // Ensure caption buttons are available for docked containers
+        try
+        {
+            dockingManager.SetCloseButtonVisibility(panel, true);
+            dockingManager.SetAutoHideButtonVisibility(panel, true);
+            dockingManager.SetMenuButtonVisibility(panel, true);
+        }
+        catch { }
 
         // CRITICAL: Make panel visible after docking
         panel.Visible = true;

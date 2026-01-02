@@ -32,6 +32,9 @@ using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Forms
 {
+    /// <summary>
+    /// Resource strings used by <see cref="MainForm"/> for labels, titles and navigation text.
+    /// </summary>
     internal static class MainFormResources
     {
         public const string FormTitle = "Wiley Widget — Running on WinForms + .NET 9";
@@ -44,6 +47,15 @@ namespace WileyWidget.WinForms.Forms
         public const string LoadingText = "Loading...";
     }
 
+    /// <summary>
+    /// Main application window. Hosts navigation chrome, Syncfusion docking manager, and provides
+    /// access to application-level services and panel navigation helpers used by child controls.
+    /// </summary>
+    /// <remarks>
+    /// Initialization sequence: <see cref="InitializeChrome"/>,
+    /// <see cref="InitializeSyncfusionDocking"/>, then deferred ViewModel initialization in <see cref="OnShown(EventArgs)"/>.
+    /// Dispose will clean up scoped services and UI resources.
+    /// </remarks>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class MainForm : SfForm
     {
@@ -53,26 +65,19 @@ namespace WileyWidget.WinForms.Forms
         private IPanelNavigationService? _panelNavigator;
 
         /// <summary>
-        /// Public accessor for ServiceProvider used by child forms.
+        /// The root <see cref="IServiceProvider"/> for the application. Child forms and controls
+        /// should use this provider to resolve services. Throws <see cref="InvalidOperationException"/>
+        /// if the provider has not been initialized during startup.
         /// </summary>
         public IServiceProvider ServiceProvider => _serviceProvider ?? throw new InvalidOperationException("ServiceProvider not initialized");
 
         /// <summary>
-        /// Public accessor for DockingManager used by PanelNavigationService.
+        /// Returns the active <see cref="DockingManager"/> instance used by the form. Throws
+        /// <see cref="InvalidOperationException"/> if docking has not been initialized.
         /// </summary>
         public DockingManager GetDockingManager() => _dockingManager ?? throw new InvalidOperationException("DockingManager not initialized");
 
-        /// <summary>
-        /// Public accessor for central document panel used by PanelNavigationService.
-        /// Note: Central panel is now managed by DockingLayoutManager.
-        /// </summary>
-        public Control? GetCentralDocumentPanel()
-        {
-            // Central panel is now managed by DockingLayoutManager
-            // Return a placeholder for backwards compatibility
-            _logger?.LogDebug("GetCentralDocumentPanel called - central panel is now managed by DockingLayoutManager");
-            return null;
-        }
+        // All content hosted in DockingManager-controlled left/right panels
 
         /// <summary>
         /// Shows or activates a docked panel. Creates it if not already present.
@@ -158,11 +163,16 @@ namespace WileyWidget.WinForms.Forms
 
         public MainForm()
             : this(
-                Program.Services ?? new ServiceCollection().BuildServiceProvider(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
+                GetDefaultServiceProvider(),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(GetDefaultServiceProvider()) ?? new ConfigurationBuilder().Build(),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(GetDefaultServiceProvider()) ?? NullLogger<MainForm>.Instance,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(GetDefaultServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
         {
+        }
+
+        private static IServiceProvider GetDefaultServiceProvider()
+        {
+            return Program.Services ?? WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: true).BuildServiceProvider();
         }
 
         public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
@@ -195,8 +205,19 @@ namespace WileyWidget.WinForms.Forms
             // DragDrop += MainForm_DragDrop;
 
             // Set reasonable form size constraints to prevent unusable states
-            this.MinimumSize = new Size(800, 600);
-            this.MaximumSize = new Size(Screen.PrimaryScreen?.WorkingArea.Width ?? 1920, Screen.PrimaryScreen?.WorkingArea.Height ?? 1080);
+            // Use settings from UIConfiguration and avoid touching the real Desktop in test harness mode
+            this.MinimumSize = _uiConfig.MinimumFormSize;
+            if (_uiConfig.IsUiTestHarness)
+            {
+                // In test harness, avoid referencing Screen.PrimaryScreen which may require a real desktop
+                this.MaximumSize = new Size(1920, 1080);
+            }
+            else
+            {
+                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
+                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
+                this.MaximumSize = new Size(screenWidth, screenHeight);
+            }
 
             // Theme already applied globally in Program.InitializeTheme() via SkinManager.ApplicationVisualTheme
             // No need to set ThemeName here - it cascades automatically to all controls
@@ -1536,10 +1557,14 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 // Import using CsvExcelImportService
-                var importService = ServiceProviderServiceExtensions.GetService<WileyWidget.Services.CsvExcelImportService>(_serviceProvider);
-                if (importService == null)
+                WileyWidget.Services.CsvExcelImportService importService;
+                try
                 {
-                    _logger?.LogError("CsvExcelImportService not available in service provider");
+                    importService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.CsvExcelImportService>(_serviceProvider);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "CsvExcelImportService not available in service provider");
                     MessageBox.Show(
                         "Import service is not available. Please check application configuration.",
                         "Import Error",

@@ -143,7 +143,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Name = "ReportsPanel";
         AccessibleName = "Reports Panel";
         Size = new Size(1400, 900);
-        Dock = DockStyle.Fill;
+        // DockingManager will handle docking; do not set Dock here.
         // BackColor will be set by ApplyTheme
 
         // Panel header

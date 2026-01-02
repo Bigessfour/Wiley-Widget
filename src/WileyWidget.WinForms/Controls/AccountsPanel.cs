@@ -207,7 +207,7 @@ namespace WileyWidget.WinForms.Controls
                 this.AutoScaleMode = AutoScaleMode.Dpi;
             }
             catch { }
-            Dock = DockStyle.Fill;
+            // DockingManager will handle docking; do not set Dock here.
             Serilog.Log.Debug("AccountsPanel: InitializeComponent completed");
 
             // Add load event handler for initial data loading

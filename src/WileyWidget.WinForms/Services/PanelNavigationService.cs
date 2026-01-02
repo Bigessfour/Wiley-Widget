@@ -133,12 +133,18 @@ namespace WileyWidget.WinForms.Services
                 _dockingManager.SetDockLabel(panel, panelName);
                 _dockingManager.SetAllowFloating(panel, allowFloating);
 
+                // Enable docking features for the panel (required for headers and buttons to appear)
+                _dockingManager.SetEnableDocking(panel, true);
+
+                // Ensure caption buttons are visible for docked panels
+                _dockingManager.SetCloseButtonVisibility(panel, true);
+                _dockingManager.SetAutoHideButtonVisibility(panel, true);
+                _dockingManager.SetMenuButtonVisibility(panel, true);
+
                 // Dock the panel
-                _dockingManager.DockControl(
-                    panel,
-                    _parentControl,
-                    preferredStyle,
-                    allowFloating ? 193 : 1); // DockVisibility values: 1=Docked, 193=AutoHideOrDockedOrFloating
+                // Determine a sensible initial size rather than using magic numbers.
+                int dockSize = CalculateDockSize(preferredStyle, _parentControl);
+                _dockingManager.DockControl(panel, _parentControl, preferredStyle, dockSize);
 
                 _dockingManager.SetDockVisibility(panel, true);
                 _dockingManager.ActivateControl(panel);
@@ -209,6 +215,25 @@ namespace WileyWidget.WinForms.Services
         public void Dispose()
         {
             _cachedPanels.Clear();
+        }
+
+        private static int CalculateDockSize(DockingStyle style, Control container)
+        {
+            if (container == null) return 300;
+            // Use sensible defaults relative to available container size.
+            switch (style)
+            {
+                case DockingStyle.Left:
+                case DockingStyle.Right:
+                    return Math.Max(300, Math.Max(100, container.Width / 4));
+                case DockingStyle.Top:
+                case DockingStyle.Bottom:
+                    return Math.Max(200, Math.Max(80, container.Height / 4));
+                case DockingStyle.Tabbed:
+                case DockingStyle.Fill:
+                default:
+                    return Math.Max(400, Math.Min(container.Width, container.Height) / 2);
+            }
         }
 
         /// <summary>

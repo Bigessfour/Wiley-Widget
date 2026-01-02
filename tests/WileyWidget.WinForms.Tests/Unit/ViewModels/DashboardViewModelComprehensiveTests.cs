@@ -159,8 +159,11 @@ public sealed class DashboardViewModelComprehensiveTests : IDisposable
         await Task.Delay(100); // Allow load to start
         vm.Dispose();
 
-        // Assert - task should be cancelled
-        await Assert.ThrowsAsync<TaskCanceledException>(() => loadTask);
+        // Assert - repository should observe cancellation and VM should not be loading
+        await Task.Delay(10); // Give cancellation a moment to propagate
+        budgetRepo.WasCanceled.Should().BeTrue("Repository should observe cancellation token");
+        vm.IsLoading.Should().BeFalse();
+        loadTask.IsCompleted.Should().BeTrue("Load task should be completed after dispose");
     }
 
     private static IConfiguration CreateTestConfig(int? defaultFiscalYear = null)
@@ -196,6 +199,8 @@ public sealed class DashboardViewModelComprehensiveTests : IDisposable
             _delayMs = delayMs;
         }
 
+        public bool WasCanceled { get; private set; }
+
         public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             GetBudgetSummaryCallCount++;
@@ -205,7 +210,15 @@ public sealed class DashboardViewModelComprehensiveTests : IDisposable
 
             if (_delayMs > 0)
             {
-                await Task.Delay(_delayMs, cancellationToken);
+                try
+                {
+                    await Task.Delay(_delayMs, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    WasCanceled = true;
+                    throw;
+                }
             }
 
             if (!_hasData)

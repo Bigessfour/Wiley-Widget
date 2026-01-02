@@ -32,6 +32,10 @@ using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 namespace WileyWidget.WinForms.Forms;
 
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
+/// <summary>
+/// Partial UI implementation for <see cref="MainForm"/> containing UI element initialization
+/// helpers (chrome, ribbons, navigation strip, status bar) and visual theming helpers.
+/// </summary>
 public partial class MainForm
 {
     #region UI Fields
@@ -73,6 +77,9 @@ public partial class MainForm
         try
         {
             SuspendLayout();
+
+            // Enable Per-Monitor V2 DPI Awareness (syncs with app.manifest)
+            AutoScaleMode = AutoScaleMode.Dpi;
 
             // Theme is inherited from Program.InitializeTheme() which sets ApplicationVisualTheme globally
 
@@ -197,6 +204,11 @@ public partial class MainForm
     /// <summary>
     /// Initialize simple navigation strip for test harness mode.
     /// </summary>
+    /// <summary>
+    /// Initialize the navigation <see cref="ToolStripEx"/> with named <see cref="ToolStripButton"/>
+    /// controls used for quick navigation. Buttons are assigned deterministic <see cref="Control.Name"/>
+    /// and <see cref="Control.AccessibleName"/> values for automation and testing.
+    /// </summary>
     private void InitializeNavigationStrip()
     {
         try
@@ -296,7 +308,7 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Settings clicked");
             };
 
-            // Theme toggle removed - session-only theme switching via menu or hotkey only
+            // Theme toggle (session-only)
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
@@ -304,7 +316,7 @@ public partial class MainForm
                 AutoSize = true
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
-            themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+            themeToggleBtn.Text = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
             // Grid test helpers (navigation strip)
             var navGridApplyFilter = new ToolStripButton("Apply Grid Filter") { Name = "Nav_ApplyGridFilter" };
@@ -638,7 +650,6 @@ public partial class MainForm
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) =>
             {
                 // Refresh all open panels via PanelNavigationService
-                // REMOVED: ActiveMdiChild - panels managed by DockingManager
                 this.Refresh();
             })
             {
@@ -846,6 +857,11 @@ public partial class MainForm
     /// Apply theme colors to menu dropdown items.
     /// </summary>
     /// <param name="menuItem">Parent menu item to theme</param>
+    /// <summary>
+    /// Apply Syncfusion visual styling to a menu dropdown and recursively to its child items.
+    /// Ensures the dropdown receives the current <see cref="Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme"/>.
+    /// </summary>
+    /// <param name="menuItem">Parent menu item whose dropdown should be themed.</param>
     private void ApplyMenuTheme(ToolStripMenuItem menuItem)
     {
         if (menuItem?.DropDown == null)
@@ -859,16 +875,22 @@ public partial class MainForm
             dropdown.ShowImageMargin = true;
             dropdown.ShowCheckMargin = false;
             dropdown.Font = new Font("Segoe UI", 9F);
-            // REMOVED: Manual BackColor override - let Syncfusion theme handle colors
 
-            // Apply theme to child items
+            // Explicitly ensure the dropdown inherits the current Syncfusion visual style
+            try
+            {
+                Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+            }
+            catch (Exception setEx)
+            {
+                _logger?.LogDebug(setEx, "Failed to set visual style on menu dropdown {MenuName}", menuItem.Name);
+            }
+
+            // Apply theme to child items (structure only; visual style applied at dropdown level)
             foreach (ToolStripItem item in dropdown.Items)
             {
                 if (item is ToolStripMenuItem childMenuItem)
                 {
-                    // REMOVED: Manual BackColor/ForeColor overrides - let Syncfusion theme handle colors
-
-                    // Recursively apply to sub-items
                     ApplyMenuTheme(childMenuItem);
                 }
             }
@@ -883,16 +905,23 @@ public partial class MainForm
     /// Handle theme toggle - switches between Dark and Light themes (session-only, no config persistence).
     /// Can be invoked via keyboard shortcut or programmatically.
     /// </summary>
+    /// <summary>
+    /// Handles user-initiated theme toggling for the current session.
+    /// Switches between <c>Office2019Colorful</c> and <c>Office2019Dark</c> and reapplies
+    /// the visual style to open forms. This preference is session-only and not persisted.
+    /// </summary>
+    /// <param name="sender">The event sender (typically a ToolStripButton).</param>
+    /// <param name="e">Event arguments.</param>
     private void ThemeToggleBtn_Click(object? sender, EventArgs e)
     {
         try
         {
-            var currentTheme = SkinManager.ApplicationVisualTheme;
+            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme;
             var newTheme = currentTheme == "Office2019Dark" ? "Office2019Colorful" : "Office2019Dark";
             var isLightMode = newTheme == "Office2019Colorful";
 
-            // Apply new theme globally
-            SkinManager.ApplicationVisualTheme = newTheme;
+            // Apply new theme globally via SfSkinManager
+            Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = newTheme;
 
             // Update button text
             if (sender is ToolStripButton btn)
@@ -900,16 +929,26 @@ public partial class MainForm
                 btn.Text = isLightMode ? "🌙 Dark Mode" : "☀️ Light Mode";
             }
 
-            // SESSION-ONLY: Theme preference does NOT persist to configuration.
-            // Resets to default (Office2019Colorful) on next application start.
             _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
 
-            // Refresh all open forms to apply new theme via ThemeManager (centralized)
+            // Ensure open forms explicitly refresh their visual style
             foreach (Form form in Application.OpenForms)
             {
                 try
                 {
+                    // Use centralized ThemeManager (which uses SfSkinManager internally)
                     WileyWidget.WinForms.Theming.ThemeManager.ApplyThemeToControl(form);
+
+                    // Also explicitly set visual style on the form to avoid renderer race conditions
+                    try
+                    {
+                        Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(form, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+                    }
+                    catch (Exception innerEx)
+                    {
+                        _logger?.LogDebug(innerEx, "Failed to SetVisualStyle on form {FormName}", form.Name);
+                    }
+
                     form.Refresh();
                 }
                 catch (Exception ex)
@@ -1095,7 +1134,7 @@ public partial class MainForm
             _logger?.LogInformation("InitializeSyncfusionDocking start - handleCreated={HandleCreated}", IsHandleCreated);
             Console.WriteLine($"[DIAGNOSTIC] InitializeSyncfusionDocking: started, handleCreated={IsHandleCreated}");
 
-            var (dockingManager, leftPanel, centralPanel, rightPanel, activityGrid, activityTimer) =
+            var (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer) =
                 DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
 
             _dockingManager = dockingManager;
@@ -1103,7 +1142,7 @@ public partial class MainForm
             _activityRefreshTimer = activityTimer;
 
             Console.WriteLine($"[DIAGNOSTIC] DockingManager created: HostControl={_dockingManager?.HostControl?.Name}");
-            Console.WriteLine($"[DIAGNOSTIC] LeftPanel: {leftPanel?.Name}, CentralPanel: {centralPanel?.Name}, RightPanel: {rightPanel?.Name}");
+            Console.WriteLine($"[DIAGNOSTIC] LeftPanel: {leftPanel?.Name}, RightPanel: {rightPanel?.Name} (no central panel - pure docking)");
 
             // Create and attach layout manager for state management
             _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
@@ -1111,7 +1150,7 @@ public partial class MainForm
             // Transfer ownership of panels and fonts to the layout manager
             var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
             var dockTabFont = new Font(SegoeUiFontName, 9F);
-            _dockingLayoutManager.SetManagedResources(leftPanel, rightPanel, centralPanel, dockAutoHideTabFont, dockTabFont);
+            _dockingLayoutManager.SetManagedResources(leftPanel, rightPanel, dockAutoHideTabFont, dockTabFont);
 
             _dockingLayoutManager.AttachTo(_dockingManager);
 
@@ -1138,7 +1177,7 @@ public partial class MainForm
                 // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
             }
 
-            _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel, centralPanel);
+            _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
 
             // CRITICAL: Apply SfSkinManager theme AFTER DockingManager is fully initialized and panels are docked
             // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events

@@ -60,7 +60,8 @@ namespace WileyWidget.WinForms.Configuration
                     .AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:DefaultConnection"] = "Data Source=:memory:",
-                        ["Logging:LogLevel:Default"] = "Information"
+                        ["Logging:LogLevel:Default"] = "Information",
+                        ["UI:IsUiTestHarness"] = "true"
                     })
                     .Build();
                 services.AddSingleton<IConfiguration>(defaultConfig);
@@ -227,6 +228,12 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddSingleton<IThemeService, ThemeService>();
             services.AddSingleton<IThemeIconService, ThemeIconService>();
+
+            // DPI-aware image service using Syncfusion ImageListAdv (automatic multi-DPI support)
+            services.AddSingleton<DpiAwareImageService>();
+
+            // Path provider: supplies export and other filesystem paths in a testable way
+            services.AddSingleton<IPathProvider, PathProvider>();
 
             // Panel Navigation Service
             // NOTE: This service depends on MainForm's DockingManager + central document panel.

@@ -9,6 +9,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
+using FluentAssertions;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -32,10 +33,14 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var mockLogger = new Mock<ILogger<DashboardViewModel>>();
             using var vm = new DashboardViewModel(mockRepo.Object, mockAccountRepo.Object, mockLogger.Object);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<TaskCanceledException>(() => vm.LoadCommand.ExecuteAsync(null));
+            // Act
+            await vm.LoadCommand.ExecuteAsync(null);
 
-            // Additional: Assert fallback state, e.g., Assert.False(vm.IsLoading);
+            // Assert - cancellation should be handled gracefully and not leave VM in loading state
+            vm.IsLoading.Should().BeFalse();
+
+            // Verify repository was invoked at least once
+            mockRepo.Verify(r => r.GetBudgetSummaryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Fact]

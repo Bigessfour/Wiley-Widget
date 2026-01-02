@@ -26,6 +26,8 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     internal sealed class SplashForm : IDisposable
     {
+        private bool _disposed;
+        private readonly object _disposeLock = new();
         private readonly bool _isHeadless;
         private readonly ManualResetEventSlim _uiReady = new(false);
         private readonly CancellationTokenSource _cts = new();
@@ -281,9 +283,50 @@ namespace WileyWidget.WinForms.Forms
 
         public void Dispose()
         {
-            _cts.Cancel();
-            _cts.Dispose();
-            _form?.Dispose();
+            lock (_disposeLock)
+            {
+                if (_disposed) return;
+                _disposed = true;
+
+                _cts.Cancel();
+                _cts.Dispose();
+
+                if (_form != null && !_form.IsDisposed)
+                {
+                    try
+                    {
+                        if (_form.IsHandleCreated)
+                        {
+                            if (_form.InvokeRequired)
+                            {
+                                Log.Debug("[SPLASH] Disposing form via BeginInvoke (UI thread)");
+                                _form.BeginInvoke(new Action(() =>
+                                {
+                                    if (!_form.IsDisposed)
+                                    {
+                                        _form.Dispose();
+                                        Log.Debug("[SPLASH] Form disposed via BeginInvoke");
+                                    }
+                                }));
+                            }
+                            else
+                            {
+                                Log.Debug("[SPLASH] Disposing form directly (safe path)");
+                                _form.Dispose();
+                            }
+                        }
+                        else
+                        {
+                            Log.Debug("[SPLASH] Form handle not created, skipping dispose");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log and swallow: disposing during CreateHandle or already disposed
+                        Log.Warning(ex, "[SPLASH] Suppressed Dispose() exception");
+                    }
+                }
+            }
         }
     }
 }

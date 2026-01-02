@@ -202,19 +202,10 @@ public static class InspectDockingManagerTool
             info.IsVisible = control.Visible;
             info.Size = $"{control.Width}x{control.Height}";
 
-            // Note: CloseEnabled and DockToFill may not be available in all DockingManager versions
-            // Skipping these to avoid API errors
-        }
-        catch (Exception ex)
-        {
-            info.Error = $"Failed to inspect: {ex.Message}";
-        }
-
-        return info;
-    }
-
-    private static List<string> ValidateConfiguration(DockingManager dm, Form form, DockingManagerInspectionResult result)
-    {
+                // Per-control caption button visibility (may not be available in older Syncfusion versions)
+                try { info.CloseButtonVisible = dm.GetCloseButtonVisibility(control); } catch { }
+                try { info.AutoHideButtonVisible = dm.GetAutoHideButtonVisibility(control); } catch { }
+                try { info.MenuButtonVisible = dm.GetMenuButtonVisibility(control); } catch { }
         var issues = new List<string>();
 
         // Validate HostControl is set
@@ -467,5 +458,11 @@ internal class DockedControlInfo
     public bool EnableDocking { get; set; }
     public bool IsVisible { get; set; }
     public string Size { get; set; } = string.Empty;
+
+    // Caption button visibility (may not be supported in older Syncfusion versions)
+    public bool CloseButtonVisible { get; set; }
+    public bool AutoHideButtonVisible { get; set; }
+    public bool MenuButtonVisible { get; set; }
+
     public string? Error { get; set; }
 }

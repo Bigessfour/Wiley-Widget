@@ -127,7 +127,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
-        Dock = DockStyle.Fill;
+        // DockingManager will handle docking; do not set Dock here.
 
         // Panel header
         _panelHeader = new PanelHeader

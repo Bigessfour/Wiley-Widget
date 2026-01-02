@@ -612,7 +612,8 @@ namespace WileyWidget.Services.Tests.ServiceTests
             explanation.Should().Be(explanationText);
             memoryCache.TryGetValue(explanationCacheKey, out object? cachedObj).Should().BeTrue();
             cachedObj.Should().BeOfType<string>();
-            ((string)cachedObj).Should().Be(explanationText);
+            (cachedObj as string).Should().NotBeNull();
+            (cachedObj as string).Should().Be(explanationText);
         }
 
         [Fact]

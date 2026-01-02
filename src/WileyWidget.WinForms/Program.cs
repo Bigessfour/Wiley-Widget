@@ -382,12 +382,10 @@ namespace WileyWidget.WinForms
 
                             using (var prefetchScope = host.Services.CreateScope())
                             {
-                                var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IDashboardService>(prefetchScope.ServiceProvider);
-                                if (dashboardService != null)
-                                {
-                                    _ = await dashboardService.GetDashboardDataAsync(CancellationToken.None).ConfigureAwait(false);
-                                    Log.Debug("Dashboard data prefetched successfully");
-                                }
+                                // Resolve dashboard service as required for prefetch; allow inner try/catch to handle missing registration
+                                var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IDashboardService>(prefetchScope.ServiceProvider);
+                                _ = await dashboardService.GetDashboardDataAsync(CancellationToken.None).ConfigureAwait(false);
+                                Log.Debug("Dashboard data prefetched successfully");
                             }
                         }
                         catch (Exception ex)
@@ -786,7 +784,9 @@ namespace WileyWidget.WinForms
         private static void InitializeWinForms()
         {
             // Order matters: DPI mode -> visual styles -> text rendering
-            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            // Use PerMonitorV2 for best high-DPI support (Windows 10 1703+)
+            // This matches app.manifest dpiAwareness setting
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 

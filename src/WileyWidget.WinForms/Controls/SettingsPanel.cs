@@ -196,7 +196,7 @@ namespace WileyWidget.WinForms.Controls
             Name = "SettingsPanel";
             AccessibleName = SettingsPanelResources.PanelTitle; // "Settings"
             Size = new Size(500, 400);
-            Dock = DockStyle.Fill;
+            // DockingManager will handle docking; do not set Dock here.
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
         }
 

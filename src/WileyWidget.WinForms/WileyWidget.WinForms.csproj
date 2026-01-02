@@ -9,6 +9,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600</NoWarn>
+    <!-- Enable High DPI support via app.manifest -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

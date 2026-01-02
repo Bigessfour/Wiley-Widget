@@ -75,7 +75,7 @@ namespace WileyWidget.WinForms.E2ETests
             _app = FlaUIApplication.Launch(_exePath);
             DismissLicensePopups();
             var window = Retry.WhileNull(() => _app.GetMainWindow(_automation), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(250), throwOnTimeout: true).Result ?? throw new InvalidOperationException("Main window not found");
-            var accounts = NavigationHelper.OpenView(_automation!, window!, "Nav_Accounts", "Municipal Accounts");
+            var accounts = NavigationHelper.OpenView(_automation!, window, "Nav_Accounts", "Municipal Accounts");
             Assert.NotNull(accounts);
 
             var header = WaitForElement(accounts, cf => cf.ByAutomationId("headerLabel").Or(cf.ByName("Municipal Accounts")), 8);
@@ -205,8 +205,11 @@ namespace WileyWidget.WinForms.E2ETests
                 // Wait for main theme button text to change
                 var changed = Retry.WhileTrue(() =>
                 {
-                    var btn = window.FindFirstDescendant(cf => cf.ByAutomationId("ThemeToggle").Or(cf.ByName("Theme_Toggle")).Or(cf.ByControlType(ControlType.Button)))?.AsButton();
-                    return btn == null || string.Equals(btn.Name ?? string.Empty, original, StringComparison.Ordinal);
+                    var btnElement = window!.FindFirstDescendant(cf => cf.ByAutomationId("ThemeToggle").Or(cf.ByName("Theme_Toggle")).Or(cf.ByControlType(ControlType.Button)));
+                    if (btnElement is null)
+                        throw new InvalidOperationException("Theme toggle button not found");
+                    var btn = btnElement.AsButton();
+                    return string.Equals(btn.Name ?? string.Empty, original, StringComparison.Ordinal);
                 }, TimeSpan.FromSeconds(8), TimeSpan.FromMilliseconds(200));
 
                 Assert.True(changed.Success, "Theme did not change after selecting new theme");
