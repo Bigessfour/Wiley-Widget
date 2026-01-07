@@ -680,7 +680,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 try
                 {
                     // Dummy HTTP request to simulate sync
-                    var response = await _httpClient.GetAsync("http://dummy", cancellationToken).ConfigureAwait(false);
+                    var response = await _httpClient.GetAsync(new Uri("http://dummy"), cancellationToken).ConfigureAwait(false);
                     response.EnsureSuccessStatusCode();
                     synced++;
                 }

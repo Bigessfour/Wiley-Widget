@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -841,22 +842,22 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
         var diagnostics = new StringBuilder();
-        diagnostics.AppendLine("=== Encrypted Secret Vault Diagnostics ===");
-        diagnostics.AppendLine($"Vault Directory: {_vaultDirectory}");
-        diagnostics.AppendLine($"Directory Exists: {Directory.Exists(_vaultDirectory)}");
-        diagnostics.AppendLine($"Entropy File: {_entropyFile}");
-        diagnostics.AppendLine($"Entropy File Exists: {File.Exists(_entropyFile)}");
-        diagnostics.AppendLine($"Entropy Loaded: {_entropy != null}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"=== Encrypted Secret Vault Diagnostics ===");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Vault Directory: {_vaultDirectory}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Directory Exists: {Directory.Exists(_vaultDirectory)}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Entropy File: {_entropyFile}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Entropy File Exists: {File.Exists(_entropyFile)}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Entropy Loaded: {_entropy != null}");
 
         if (Directory.Exists(_vaultDirectory))
         {
             try
             {
                 var secretFiles = Directory.GetFiles(_vaultDirectory, "*.secret");
-                diagnostics.AppendLine($"Secret Files Found: {secretFiles.Length}");
+                diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Secret Files Found: {secretFiles.Length}");
 
                 var keys = await ListSecretKeysAsync();
-                diagnostics.AppendLine($"Secret Keys: {string.Join(", ", keys)}");
+                diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Secret Keys: {string.Join(", ", keys)}");
 
                 // Test write permissions
                 var testFile = Path.Combine(_vaultDirectory, ".diagnostic_test");
@@ -864,22 +865,22 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 {
                     File.WriteAllText(testFile, "test");
                     File.Delete(testFile);
-                    diagnostics.AppendLine("Write Permissions: OK");
+                    diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Write Permissions: OK");
                 }
                 catch (Exception ex)
                 {
-                    diagnostics.AppendLine($"Write Permissions: FAILED - {ex.Message}");
+                    diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Write Permissions: FAILED - {ex.Message}");
                 }
             }
             catch (Exception ex)
             {
-                diagnostics.AppendLine($"Directory Access Error: {ex.Message}");
+                diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Directory Access Error: {ex.Message}");
             }
         }
 
         // Test connection
         var connectionTest = await TestConnectionAsync();
-        diagnostics.AppendLine($"Connection Test: {(connectionTest ? "PASSED" : "FAILED")}");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Connection Test: {(connectionTest ? "PASSED" : "FAILED")}");
 
         return diagnostics.ToString();
     }

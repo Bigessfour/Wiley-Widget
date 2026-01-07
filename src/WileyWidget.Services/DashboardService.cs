@@ -157,7 +157,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Total Budget",
-                        Value = budgetSummary.TotalBudgeted.ToString("C0"),
+                        Value = budgetSummary.TotalBudgeted.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = $"Total budgeted for FY {currentFiscalYear}",
                         Category = "Budget"
                     });
@@ -165,7 +165,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Total Actual",
-                        Value = budgetSummary.TotalActual.ToString("C0"),
+                        Value = budgetSummary.TotalActual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = "Total actual spending",
                         Category = "Budget"
                     });
@@ -173,7 +173,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Variance",
-                        Value = budgetSummary.TotalVariance.ToString("C0"),
+                        Value = budgetSummary.TotalVariance.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = $"{budgetSummary.TotalVariancePercentage:F1}% {(budgetSummary.TotalVariance >= 0 ? "under" : "over")} budget",
                         Category = "Budget"
                     });
@@ -184,7 +184,7 @@ namespace WileyWidget.Services
                         items.Add(new DashboardItem
                         {
                             Title = $"Fund: {fund.FundName}",
-                            Value = fund.Actual.ToString("C0"),
+                            Value = fund.Actual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                             Description = $"Budgeted: {fund.Budgeted:C0}, Variance: {fund.Variance:C0}",
                             Category = "Funds"
                         });
@@ -206,7 +206,7 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Active Accounts",
-                    Value = accountCount.ToString(),
+                    Value = accountCount.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Total municipal accounts",
                     Category = "Accounts"
                 });
@@ -221,7 +221,7 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Revenue Accounts",
-                    Value = revenueAccounts.ToString(),
+                    Value = revenueAccounts.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Accounts with revenue activity",
                     Category = "Activity"
                 });
@@ -229,7 +229,7 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Expense Accounts",
-                    Value = expenseAccounts.ToString(),
+                    Value = expenseAccounts.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Accounts with expense activity",
                     Category = "Activity"
                 });
@@ -260,11 +260,11 @@ namespace WileyWidget.Services
                 var (totalRecords, oldestRecord, newestRecord) = await _budgetRepository.GetDataStatisticsAsync(currentFiscalYear, cancellationToken);
 
                 stopwatch.Stop();
-                _logger.LogInformation("DashboardService: Data statistics retrieved in {ElapsedMs}ms - {Count} records, Oldest: {Oldest:yyyy-MM-dd HH:mm:ss}, Newest: {Newest:yyyy-MM-dd HH:mm:ss}",
+                _logger.LogInformation("DashboardService: Data statistics retrieved in {ElapsedMs}ms - {Count} records, Oldest: {Oldest}, Newest: {Newest}",
                     stopwatch.ElapsedMilliseconds,
                     totalRecords,
-                    oldestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A",
-                    newestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A");
+                    oldestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
+                    newestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A");
 
                 if (totalRecords == 0)
                 {

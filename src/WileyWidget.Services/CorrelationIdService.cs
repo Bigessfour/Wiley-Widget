@@ -170,6 +170,7 @@ public static class CorrelationIdExtensions
     /// <returns>Disposable scope</returns>
     public static IDisposable BeginCorrelationScope(this ILogger logger, string correlationId)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         return logger.BeginScope(new Dictionary<string, object>
         {
             ["CorrelationId"] = correlationId

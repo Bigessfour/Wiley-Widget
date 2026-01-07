@@ -76,6 +76,7 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     /// </summary>
     public Activity? StartActivity(string operationName, params (string key, object? value)[] tags)
     {
+        ArgumentNullException.ThrowIfNull(tags);
         var activity = ActivitySource.StartActivity(operationName);
         if (activity != null)
         {
@@ -94,6 +95,8 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     /// </summary>
     public void RecordException(Exception exception, params (string key, object? value)[] additionalTags)
     {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentNullException.ThrowIfNull(additionalTags);
         var activity = Activity.Current;
         if (activity != null)
         {
@@ -189,6 +192,13 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing) return;
         try
         {
             _flushTimer?.Stop();

@@ -101,7 +101,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
                 });
 
         _retryPolicy = Policy
-            .Handle<HttpRequestException>(ex => !ex.Message.Contains("401")) // Don't retry auth failures
+            .Handle<HttpRequestException>(ex => !ex.Message.Contains("401", System.StringComparison.Ordinal)) // Don't retry auth failures
             .Or<TaskCanceledException>()
             .WaitAndRetryAsync(
                 retryCount: 3,

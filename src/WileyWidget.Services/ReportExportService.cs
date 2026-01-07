@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -397,7 +398,7 @@ public class ReportExportService : IReportExportService
                 wsSummary.Range[1, 1].CellStyle.Font.Size = 16;
 
                 wsSummary.Range[2, 1].Text = "Enterprise ID";
-                wsSummary.Range[2, 2].Text = report.EnterpriseId.ToString();
+                wsSummary.Range[2, 2].Text = report.EnterpriseId.ToString(CultureInfo.InvariantCulture);
 
                 wsSummary.Range[3, 1].Text = "Generated";
                 wsSummary.Range[3, 2].DateTime = report.GeneratedDate;

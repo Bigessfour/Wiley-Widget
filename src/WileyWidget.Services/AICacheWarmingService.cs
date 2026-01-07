@@ -44,7 +44,7 @@ public class AICacheWarmingService : IHostedService
 
         // Check if cache warming is enabled
         _enabled = bool.Parse(configuration["AI:CacheWarming:Enabled"] ?? "true");
-        _delaySeconds = int.Parse(configuration["AI:CacheWarming:DelaySeconds"] ?? "10");
+        _delaySeconds = int.Parse(configuration["AI:CacheWarming:DelaySeconds"] ?? "10", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>

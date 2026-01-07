@@ -175,6 +175,7 @@ namespace WileyWidget.Services
             IEnumerable<Type> serviceTypes,
             string categoryName)
         {
+            ArgumentNullException.ThrowIfNull(serviceTypes);
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var result = new DiValidationResult();
 
@@ -344,10 +345,10 @@ namespace WileyWidget.Services
                 })
                 .Where(type => type.IsInterface)
                 .Where(type => type.IsPublic)
-                .Where(type => type.Name.StartsWith("I") && type.Name.Length > 1 && char.IsUpper(type.Name[1]))
+                .Where(type => type.Name.StartsWith("I", StringComparison.Ordinal) && type.Name.Length > 1 && char.IsUpper(type.Name[1]))
                 .Where(type => !IsExcludedInterface(type))
                 .Where(type => !type.IsGenericType || includeGenerics)
-                .Where(type => type.Namespace?.StartsWith("WileyWidget") == true)
+                .Where(type => type.Namespace?.StartsWith("WileyWidget", StringComparison.Ordinal) == true)
                 .Distinct();
         }
 
@@ -372,7 +373,7 @@ namespace WileyWidget.Services
                 "ICommand"
             };
 
-            return excludedPrefixes.Any(prefix => type.Name.StartsWith(prefix));
+            return excludedPrefixes.Any(prefix => type.Name.StartsWith(prefix, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -383,14 +384,14 @@ namespace WileyWidget.Services
             var serviceName = serviceType.Name;
 
             // Try to find implementation by convention (IFooService -> FooService)
-            string implName = serviceName.StartsWith("I") && serviceName.Length > 1
+            string implName = serviceName.StartsWith("I", StringComparison.Ordinal) && serviceName.Length > 1
                 ? serviceName.Substring(1)
                 : $"{serviceName}Impl";
 
             // Determine likely lifetime
-            string lifetime = serviceName.Contains("Repository") || serviceName.Contains("DbContext")
+            string lifetime = serviceName.Contains("Repository", StringComparison.Ordinal) || serviceName.Contains("DbContext", StringComparison.Ordinal)
                 ? "Scoped"
-                : serviceName.Contains("Service") || serviceName.Contains("Client")
+                : serviceName.Contains("Service", StringComparison.Ordinal) || serviceName.Contains("Client", StringComparison.Ordinal)
                     ? "Singleton"
                     : "Transient";
 

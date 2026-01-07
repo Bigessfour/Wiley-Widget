@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,8 @@ public class AuditRepository : IAuditRepository
     {
         using var activity = ActivitySource.StartActivity("AuditRepository.GetAuditTrail");
         activity?.SetTag("operation.type", "query");
-        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd"));
-        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd"));
+        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
         try
         {

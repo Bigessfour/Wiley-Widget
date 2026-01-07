@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -271,22 +272,22 @@ public class StartupTimelineReport
         sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
         sb.AppendLine("║         STARTUP TIMELINE ANALYSIS REPORT (Syncfusion)          ║");
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
-        sb.AppendLine($"║ Start Time:      {StartTime:HH:mm:ss.fff}                                  ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Start Time:      {StartTime:HH:mm:ss.fff}                                  ║");
         if (EndTime.HasValue)
         {
-            sb.AppendLine($"║ End Time:        {EndTime.Value:HH:mm:ss.fff}                                  ║");
-            sb.AppendLine($"║ Total Duration:  {TotalDuration.TotalMilliseconds,6:F0}ms                                     ║");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"║ End Time:        {EndTime.Value:HH:mm:ss.fff}                                  ║");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total Duration:  {TotalDuration.TotalMilliseconds,6:F0}ms                                     ║");
         }
-        sb.AppendLine($"║ UI Thread ID:    {UiThreadId,4}                                           ║");
-        sb.AppendLine($"║ Total Events:    {Events.Count,4}                                           ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ UI Thread ID:    {UiThreadId,4}                                           ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total Events:    {Events.Count,4}                                           ║");
 
         // Summary stats
         var (longestMs, longestName, totalBlocked, freezes) = GetSummaryStats();
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
         sb.AppendLine("║ SUMMARY STATISTICS:                                            ║");
-        sb.AppendLine($"║ Longest UI Phase: {TruncateString(longestName, 30),-30} {longestMs,6:F0}ms ║");
-        sb.AppendLine($"║ Total UI Blocked: {totalBlocked,6:F0}ms                                     ║");
-        sb.AppendLine($"║ Potential Freezes (>500ms): {freezes,2}                                   ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Longest UI Phase: {TruncateString(longestName, 30),-30} {longestMs,6:F0}ms ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total UI Blocked: {totalBlocked,6:F0}ms                                     ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Potential Freezes (>500ms): {freezes,2}                                   ║");
 
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
         sb.AppendLine("║ TIMELINE (chronological, 🔒=UI-critical, ⚡=async):             ║");
@@ -306,11 +307,11 @@ public class StartupTimelineReport
             string line;
             if (evt.Type == "Phase")
             {
-                line = $"║ [{offset,6:F0}ms] {asyncMarker}{criticalMarker}[{threadMarker,3}] ▶ {TruncateString(evt.Name, 26),-26} {duration,6:F0}ms ║";
+                line = string.Format(CultureInfo.InvariantCulture, "║ [{0,6:F0}ms] {1}{2}[{3,3}] ▶ {4,-26} {5,6:F0}ms ║", offset, asyncMarker, criticalMarker, threadMarker, TruncateString(evt.Name, 26), duration);
             }
             else // Operation - indent under phase
             {
-                line = $"║ [{offset,6:F0}ms] {asyncMarker}{criticalMarker}[{threadMarker,3}]   → {TruncateString(evt.Name, 24),-24} {duration,6:F0}ms ║";
+                line = string.Format(CultureInfo.InvariantCulture, "║ [{0,6:F0}ms] {1}{2}[{3,3}]   → {4,-24} {5,6:F0}ms ║", offset, asyncMarker, criticalMarker, threadMarker, TruncateString(evt.Name, 24), duration);
             }
 
             sb.AppendLine(line.Length > 68 ? line.Substring(0, 68) + "║" : line);
@@ -328,7 +329,7 @@ public class StartupTimelineReport
                 var lines = WrapText(violation, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ✗ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
                 }
             }
         }
@@ -345,7 +346,7 @@ public class StartupTimelineReport
                 var lines = WrapText(violation, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
                 }
             }
         }
@@ -362,7 +363,7 @@ public class StartupTimelineReport
                 var lines = WrapText(issue, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
                 }
             }
         }
@@ -375,12 +376,12 @@ public class StartupTimelineReport
             sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
             foreach (var error in Errors)
             {
-                var lines = WrapText(error, 60);
-                foreach (var line in lines)
-                {
-                    sb.AppendLine($"║ ✗ {line,-59} ║");
+                    var lines = WrapText(error, 60);
+                    foreach (var line in lines)
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
+                   }
                 }
-            }
         }
 
         // Warnings
@@ -394,8 +395,8 @@ public class StartupTimelineReport
                 var lines = WrapText(warning, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
-                }
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
+               }
             }
         }
 
@@ -567,6 +568,7 @@ public class StartupTimelineService : IStartupTimelineService
 
     public void RecordPhaseEnd(string phaseName)
     {
+        ArgumentNullException.ThrowIfNull(phaseName);
         if (!_isEnabled) return;
 
         if (_activePhases.TryRemove(phaseName, out var evt))
