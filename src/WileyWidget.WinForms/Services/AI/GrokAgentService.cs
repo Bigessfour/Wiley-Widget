@@ -219,6 +219,14 @@ namespace WileyWidget.WinForms.Services.AI
         public DateTime? LastApiKeyValidation => _lastApiKeyValidation;
 
         /// <summary>
+        /// Get a streaming response using direct HTTP (delegates to GetSimpleResponse).
+        /// </summary>
+        public async Task<string> GetStreamingResponseAsync(string userMessage, CancellationToken ct = default)
+        {
+            return await GetSimpleResponse(userMessage, ct: ct);
+        }
+
+        /// <summary>
         /// Simple chat helper used for smoke tests and quick interactions.
         /// If no API key is configured this returns a clear diagnostic string.
         /// Supports providing an optional system prompt and model override and accepts a cancellation token.

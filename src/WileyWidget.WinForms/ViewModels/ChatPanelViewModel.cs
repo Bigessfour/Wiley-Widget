@@ -648,68 +648,10 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
                 Logger.LogInformation("[XAI] Grok config: model={Model}, endpoint={Endpoint}", _grokService.Model, _grokService.Endpoint);
 
-                // Quick validation ping (one-shot) if we haven't validated recently
-                if (!_grokService.IsApiKeyValidated && _grokService.HasApiKey)
-                {
-                    try
-                    {
-                        using var ctsValidate = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                        var (valid, validationMsg) = await _grokService.ValidateApiKeyAsync(ctsValidate.Token);
-                        if (valid)
-                        {
-                            Logger.LogInformation("[XAI] API key validation succeeded (model={Model})", _grokService.Model);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("[XAI] API key validation failed (model={Model}): {Msg}", _grokService.Model, validationMsg);
-
-                            // Try the exact model used in the curl activation test as a fallback
-                            if (!string.Equals(_grokService.Model, "grok-4-latest", StringComparison.OrdinalIgnoreCase))
-                            {
-                                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                                var (fbValid, fbMsg) = await _grokService.ValidateApiKeyAsync(ctsFallback.Token, modelOverride: "grok-4-latest");
-                                if (fbValid)
-                                {
-                                    Logger.LogInformation("[XAI] API key validation succeeded with fallback model 'grok-4-latest'");
-                                }
-                                else
-                                {
-                                    Logger.LogWarning("[XAI] API key validation fallback also failed: {Msg}", fbMsg);
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(ex, "[XAI] API key validation attempt failed unexpectedly");
-                    }
-                }
-
-                // If validation failed, attempt quick HTTP fallback to provide an immediate response
-                if (_grokService.HasApiKey && !_grokService.IsApiKeyValidated)
-                {
-                    Logger.LogWarning("[XAI] API key validation failed; attempting HTTP fallback for this prompt");
-                    try
-                    {
-                        using var ctsFallbackResp = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                        var fallbackResp = await _grokService.GetSimpleResponse(userMessage, systemPrompt: "You are a test assistant.", modelOverride: null, ct: ctsFallbackResp.Token);
-                        aiPlaceholder.Message = fallbackResp;
-                        Logger.LogInformation("HTTP fallback provided a response (length={Length})", fallbackResp?.Length ?? 0);
-
-                        // Finalize UI and bookkeeping for fallback response
-                        OnPropertyChanged(nameof(Messages));
-                        await ExtractContextEntitiesAsync(userMessage, fallbackResp);
-                        await LogChatActivityAsync(userMessage, startTime);
-                        await AutoSaveConversationAsync();
-                        LastUpdated = DateTime.UtcNow;
-                        StatusText = "Ready";
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(ex, "HTTP fallback attempt failed; proceeding to streaming attempt");
-                    }
-                }
+                // Skip API key validation check - proceed directly to streaming
+                // Validation adds unnecessary latency and can timeout on slower connections
+                // The streaming call will fail fast with a proper error if the key is invalid
+                Logger.LogDebug("[XAI] Skipping validation check; proceeding directly to streaming chat completion");
 
                 chatService = _grokService.Kernel.GetRequiredService<IChatCompletionService>();
                 Logger.LogInformation("Successfully obtained IChatCompletionService from kernel");
@@ -801,13 +743,29 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
                 Logger.LogWarning("No streaming content received or stream timed out; attempting HTTP fallback");
                 try
                 {
-                    var fallback = await _grokService.GetSimpleResponse(userMessage);
-                    aiPlaceholder.Message = fallback;
-                    Logger.LogInformation("Fallback HTTP response used (length {Length})", fallback?.Length ?? 0);
+                    using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    var fallback = await _grokService.GetSimpleResponse(userMessage, systemPrompt: "You are a helpful AI assistant.", ct: ctsFallback.Token);
+                    
+                    if (!string.IsNullOrEmpty(fallback) && fallback.Length >= 5)
+                    {
+                        aiPlaceholder.Message = fallback;
+                        Logger.LogInformation("Fallback HTTP response used (length={Length})", fallback.Length);
+                    }
+                    else
+                    {
+                        aiPlaceholder.Message = $"⚠️ Empty response from server: {fallback}";
+                        Logger.LogWarning("HTTP fallback returned very short response: {Response}", fallback);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogWarning("HTTP fallback request timed out");
+                    aiPlaceholder.Message = "❌ Request timed out. Please try again.";
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "HTTP fallback also failed");
+                    Logger.LogError(ex, "HTTP fallback failed");
+                    aiPlaceholder.Message = $"❌ Error: {ex.Message}";
                     throw;
                 }
             }
