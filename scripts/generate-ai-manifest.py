@@ -165,18 +165,24 @@ class AIManifestGenerator:
 
     def _extract_owner_repo(self, remote_url: str) -> str:
         """Extract owner/repo from git remote URL."""
-        # Handle various URL formats
-        patterns = [
-            r"github\.com[\/:]([^\/]+\/[^\/\.]+)",
-            r"gitlab\.com[\/:]([^\/]+\/[^\/\.]+)",
-        ]
+        cleaned = remote_url.strip()
+        cleaned = cleaned.removesuffix(".git")
 
-        for pattern in patterns:
-            match = re.search(pattern, remote_url, re.IGNORECASE)
-            if match:
-                return match.group(1).removesuffix(".git")
+        # Normalize ssh and https forms
+        if cleaned.startswith("git@"):  # git@github.com:owner/repo
+            cleaned = cleaned.replace(":", "/", 1)
+            cleaned = cleaned.partition("@")[2]
 
-        # Fallback
+        # Drop protocol prefixes
+        cleaned = re.sub(r"^[a-zA-Z]+://", "", cleaned)
+
+        parts = cleaned.split("/")
+        if len(parts) >= 2:
+            owner = parts[-2]
+            repo = parts[-1]
+            if owner and repo:
+                return f"{owner}/{repo}"
+
         return "unknown/unknown"
 
     def _calculate_sha256(self, file_path: Path) -> str:
