@@ -23,6 +23,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+try:
+    from git import Repo  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    Repo = None
+
 
 class AIManifestGenerator:
     """Generates AI fetchable manifest for repository visibility."""
@@ -32,6 +37,22 @@ class AIManifestGenerator:
         self.config = self._load_config()
         self.exclude_patterns = self._compile_patterns()
         self.focus_extensions = set(self.config.get("include_only_extensions", []))
+        self.max_file_size_bytes = int(
+            self.config.get("max_file_size_bytes", 5 * 1024 * 1024)
+        )
+        self.max_files = int(self.config.get("max_files", 5000))
+
+        self.repo = self._load_repo()
+        self.repo_info = self._get_repo_info()
+
+    def _load_repo(self):
+        """Load git repository using gitpython when available."""
+        if Repo is None:
+            return None
+        try:
+            return Repo(self.repo_root)
+        except Exception:
+            return None
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from .ai-manifest-config.json."""
@@ -54,53 +75,73 @@ class AIManifestGenerator:
                 )
         return patterns
 
-    def _should_include_file(self, file_path: Path) -> bool:
-        """Determine if a file should be included in the manifest."""
-        # Check exclude patterns
-        relative_path = file_path.relative_to(self.repo_root)
+    def _should_include_path(self, path: Path, is_dir: bool = False) -> bool:
+        """Determine if a path should be included in the manifest/tree."""
+        relative_path = path.relative_to(self.repo_root)
         path_str = str(relative_path)
 
         for pattern in self.exclude_patterns:
             if pattern.search(path_str):
                 return False
 
-        # Check focus mode
+        if is_dir:
+            return True
+
         if self.config.get("focus_mode", False):
             if self.focus_extensions:
-                ext = file_path.suffix.lower()
+                ext = path.suffix.lower()
                 if ext not in self.focus_extensions:
                     return False
 
         return True
 
+    def _is_tracked(self, relative_path: Path) -> bool:
+        """Determine if a file is tracked by git (best-effort)."""
+        if self.repo:
+            try:
+                tracked = self.repo.git.ls_files(str(relative_path))
+                return bool(tracked.strip())
+            except Exception:
+                return False
+        return True
+
     def _get_repo_info(self) -> Dict[str, Any]:
         """Get repository information using git."""
+        if hasattr(self, "_repo_info_cache"):
+            return self._repo_info_cache  # type: ignore[attr-defined]
+
         try:
-            # Get remote URL
-            remote_url = subprocess.check_output(
-                ["git", "config", "--get", "remote.origin.url"],
-                cwd=self.repo_root,
-                text=True,
-            ).strip()
+            if self.repo:
+                remote_url = next(self.repo.remote().urls)
+                branch = (
+                    self.repo.active_branch.name
+                    if not self.repo.head.is_detached
+                    else "(detached)"
+                )
+                commit_hash = self.repo.head.commit.hexsha
+                is_dirty = self.repo.is_dirty(untracked_files=True)
+            else:
+                remote_url = subprocess.check_output(
+                    ["git", "config", "--get", "remote.origin.url"],
+                    cwd=self.repo_root,
+                    text=True,
+                ).strip()
 
-            # Get current branch
-            branch = subprocess.check_output(
-                ["git", "branch", "--show-current"], cwd=self.repo_root, text=True
-            ).strip()
+                branch = subprocess.check_output(
+                    ["git", "branch", "--show-current"], cwd=self.repo_root, text=True
+                ).strip()
 
-            # Get commit hash
-            commit_hash = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=self.repo_root, text=True
-            ).strip()
+                commit_hash = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=self.repo_root, text=True
+                ).strip()
 
-            # Check if dirty
-            status = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=self.repo_root,
-                capture_output=True,
-                text=True,
-            )
-            is_dirty = bool(status.stdout.strip())
+                status = subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    cwd=self.repo_root,
+                    capture_output=True,
+                    text=True,
+                )
+                is_dirty = bool(status.stdout.strip())
 
             # Extract owner/repo from URL
             owner_repo = self._extract_owner_repo(remote_url)
@@ -108,7 +149,7 @@ class AIManifestGenerator:
             generated_at = datetime.now().isoformat()
             valid_until = (datetime.now() + timedelta(days=7)).isoformat()
 
-            return {
+            self._repo_info_cache = {
                 "remote_url": remote_url,
                 "owner_repo": owner_repo,
                 "branch": branch,
@@ -117,6 +158,7 @@ class AIManifestGenerator:
                 "generated_at": generated_at,
                 "valid_until": valid_until,
             }
+            return self._repo_info_cache
 
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to get git info: {e}") from e
@@ -132,7 +174,7 @@ class AIManifestGenerator:
         for pattern in patterns:
             match = re.search(pattern, remote_url, re.IGNORECASE)
             if match:
-                return match.group(1).rstrip(".git")
+                return match.group(1).removesuffix(".git")
 
         # Fallback
         return "unknown/unknown"
@@ -171,19 +213,26 @@ class AIManifestGenerator:
         categories = {}
         languages = {}
 
-        # Cache repo_info to avoid repeated calls
-        repo_info = self._get_repo_info()
+        repo_info = self.repo_info
+        files_truncated = False
 
         for file_path in self.repo_root.rglob("*"):
             if not file_path.is_file():
                 continue
 
-            if not self._should_include_file(file_path):
+            if not self._should_include_path(file_path):
                 continue
+
+            if self.max_files and len(files) >= self.max_files:
+                files_truncated = True
+                break
 
             try:
                 stat = file_path.stat()
                 size = stat.st_size
+                if self.max_file_size_bytes and size > self.max_file_size_bytes:
+                    files_truncated = True
+                    continue
                 last_modified = datetime.fromtimestamp(stat.st_mtime).isoformat()
 
                 relative_path = file_path.relative_to(self.repo_root)
@@ -203,6 +252,8 @@ class AIManifestGenerator:
 
                 total_size += size
 
+                tracked = self._is_tracked(relative_path)
+
                 file_info = {
                     "metadata": {
                         "path": str(relative_path),
@@ -217,7 +268,7 @@ class AIManifestGenerator:
                     },
                     "context": {
                         "category": category,
-                        "tracked": True,  # Assume tracked for now
+                        "tracked": tracked,
                         "extension": file_path.suffix,
                         "sha256": sha256,
                     },
@@ -233,6 +284,7 @@ class AIManifestGenerator:
         self._total_size = total_size
         self._categories = categories
         self._languages = languages
+        self._files_truncated = files_truncated
 
         return files
 
@@ -241,7 +293,7 @@ class AIManifestGenerator:
         return {
             "total_files": self._total_files,
             "files_in_manifest": self._total_files,
-            "files_truncated": False,
+            "files_truncated": self._files_truncated,
             "total_size": self._total_size,
             "categories": self._categories,
             "languages": self._languages,
@@ -323,7 +375,10 @@ class AIManifestGenerator:
             children = []
             try:
                 for child in sorted(path.iterdir()):
-                    if self._should_include_file(child):
+                    if child.is_dir():
+                        if self._should_include_path(child, is_dir=True):
+                            children.append(build_tree(child))
+                    elif self._should_include_path(child):
                         children.append(build_tree(child))
             except PermissionError:
                 pass
