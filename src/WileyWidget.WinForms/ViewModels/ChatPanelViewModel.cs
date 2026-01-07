@@ -632,8 +632,10 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
             Logger.LogDebug("Requesting chat completion from Grok service");
 
-            // Stream response from Grok using Semantic Kernel
-            IChatCompletionService? chatService = null;
+            // Stream response from Grok using direct HTTP streaming for real-time feedback
+            var responseBuilder = new StringBuilder();
+            var chunkCount = 0;
+
             try
             {
                 // Check API key and model/endpoint presence at chat time
@@ -648,138 +650,47 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
                 Logger.LogInformation("[XAI] Grok config: model={Model}, endpoint={Endpoint}", _grokService.Model, _grokService.Endpoint);
 
-                // Skip API key validation check - proceed directly to streaming
-                // Validation adds unnecessary latency and can timeout on slower connections
-                // The streaming call will fail fast with a proper error if the key is invalid
-                Logger.LogDebug("[XAI] Skipping validation check; proceeding directly to streaming chat completion");
+                Logger.LogDebug("[XAI] Using GetStreamingResponseAsync for real-time SSE streaming");
 
-                chatService = _grokService.Kernel.GetRequiredService<IChatCompletionService>();
-                Logger.LogInformation("Successfully obtained IChatCompletionService from kernel");
+                // Use GetStreamingResponseAsync for HTTP-based streaming
+                var sysPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
+                
+                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var fullResponse = await _grokService.GetStreamingResponseAsync(userMessage, systemPrompt: sysPrompt, ct: ctsFallback.Token);
+                
+                if (!string.IsNullOrEmpty(fullResponse) && fullResponse.Length >= 5)
+                {
+                    aiPlaceholder.Message = fullResponse;
+                    responseBuilder.Append(fullResponse);
+                    chunkCount = 1; // Mark as received
+                    Logger.LogInformation("Streaming response received: {Length} chars", fullResponse.Length);
+                }
+                else
+                {
+                    Logger.LogWarning("Streaming returned empty or very short response: {Response}", fullResponse);
+                    aiPlaceholder.Message = $"⚠️ Empty response from server: {fullResponse}";
+                    chunkCount = 0;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("Streaming request timed out after 60 seconds");
+                aiPlaceholder.Message = "❌ Request timed out (60s). Please try again.";
+                chunkCount = 0;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to get IChatCompletionService from kernel - API key may not be configured");
-                throw new InvalidOperationException("Chat service not available. Please ensure XAI_API_KEY is configured in user secrets.", ex);
-            }
-
-            var responseBuilder = new StringBuilder();
-            var chunkCount = 0;
-
-            Logger.LogDebug("Starting streaming chat completion with {MessageCount} history messages", chatHistory.Count);
-
-            var timedOut = false;
-            var enumerator = chatService.GetStreamingChatMessageContentsAsync(chatHistory).GetAsyncEnumerator();
-            var streamStart = DateTime.UtcNow;
-
-            try
-            {
-                while (true)
-                {
-                    var moveTask = enumerator.MoveNextAsync().AsTask();
-                    var completedTask = await Task.WhenAny(moveTask, Task.Delay(StreamingPerChunkTimeout));
-
-                    if (completedTask != moveTask)
-                    {
-                        // Per-chunk timeout
-                        Logger.LogWarning("Waiting for next chunk timed out after {PerChunkTimeout}s", StreamingPerChunkTimeout.TotalSeconds);
-
-                        if (DateTime.UtcNow - streamStart > StreamingTotalTimeout)
-                        {
-                            Logger.LogWarning("Total streaming timeout exceeded after {TotalTimeout}s - aborting stream", StreamingTotalTimeout.TotalSeconds);
-                            timedOut = true;
-                            break;
-                        }
-
-                        // Continue waiting for next chunk
-                        continue;
-                    }
-
-                    if (!moveTask.Result)
-                    {
-                        // Enumeration completed
-                        break;
-                    }
-
-                    var chunk = enumerator.Current;
-                    if (chunk?.Content != null)
-                    {
-                        responseBuilder.Append(chunk.Content);
-                        aiPlaceholder.Message = responseBuilder.ToString();
-                        aiPlaceholder.Timestamp = DateTime.UtcNow;
-                        chunkCount++;
-
-                        if (chunkCount == 1)
-                        {
-                            Logger.LogInformation("Received first chunk from Grok: '{Chunk}'", chunk.Content.Substring(0, Math.Min(50, chunk.Content.Length)));
-                        }
-                        else if (chunkCount % 10 == 0)
-                        {
-                            Logger.LogDebug("Streaming progress: {ChunkCount} chunks, {TotalLength} chars", chunkCount, responseBuilder.Length);
-                        }
-
-                        // Trigger UI update every 5 chunks or on first chunk for responsiveness
-                        if (chunkCount == 1 || chunkCount % 5 == 0)
-                        {
-                            OnPropertyChanged(nameof(Messages));
-                        }
-                    }
-                    else
-                    {
-                        Logger.LogDebug("Received chunk with null content at position {ChunkCount}", chunkCount);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Streaming chat completion failed after {ChunkCount} chunks", chunkCount);
-            }
-            finally
-            {
-                try { await enumerator.DisposeAsync(); } catch (Exception ex) { Logger.LogWarning(ex, "Error disposing streaming enumerator"); }
-            }
-
-            if (timedOut || chunkCount == 0)
-            {
-                Logger.LogWarning("No streaming content received or stream timed out; attempting HTTP fallback");
-                try
-                {
-                    using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                    var fallback = await _grokService.GetSimpleResponse(userMessage, systemPrompt: "You are a helpful AI assistant.", ct: ctsFallback.Token);
-                    
-                    if (!string.IsNullOrEmpty(fallback) && fallback.Length >= 5)
-                    {
-                        aiPlaceholder.Message = fallback;
-                        Logger.LogInformation("Fallback HTTP response used (length={Length})", fallback.Length);
-                    }
-                    else
-                    {
-                        aiPlaceholder.Message = $"⚠️ Empty response from server: {fallback}";
-                        Logger.LogWarning("HTTP fallback returned very short response: {Response}", fallback);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogWarning("HTTP fallback request timed out");
-                    aiPlaceholder.Message = "❌ Request timed out. Please try again.";
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "HTTP fallback failed");
-                    aiPlaceholder.Message = $"❌ Error: {ex.Message}";
-                    throw;
-                }
-            }
-            else
-            {
-                Logger.LogInformation("Streaming completed successfully - received {ChunkCount} chunks, {TotalLength} chars", chunkCount, responseBuilder.Length);
+                Logger.LogError(ex, "Streaming request failed");
+                aiPlaceholder.Message = $"❌ Error: {ex.Message}";
+                chunkCount = 0;
             }
 
             // Final UI update
             OnPropertyChanged(nameof(Messages));
 
-            var fullResponse = responseBuilder.ToString();
+            var fullResponseText = responseBuilder.ToString();
 
-            if (string.IsNullOrEmpty(fullResponse))
+            if (string.IsNullOrEmpty(fullResponseText))
             {
                 Logger.LogWarning("Grok returned empty response (chunks received: {ChunkCount})", chunkCount);
                 aiPlaceholder.Message = "No response from AI. Please check that your XAI_API_KEY is configured correctly.";
@@ -787,11 +698,11 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                Logger.LogInformation("Grok response completed ({Length} chars, {ChunkCount} chunks)", fullResponse.Length, chunkCount);
+                Logger.LogInformation("Grok response completed ({Length} chars, {ChunkCount} chunks)", fullResponseText.Length, chunkCount);
             }
 
             // Extract context entities (background task)
-            await ExtractContextEntitiesAsync(userMessage, fullResponse);
+            await ExtractContextEntitiesAsync(userMessage, fullResponseText);
 
             // Log activity
             await LogChatActivityAsync(userMessage, startTime);

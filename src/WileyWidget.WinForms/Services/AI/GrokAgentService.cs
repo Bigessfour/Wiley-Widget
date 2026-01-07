@@ -219,11 +219,108 @@ namespace WileyWidget.WinForms.Services.AI
         public DateTime? LastApiKeyValidation => _lastApiKeyValidation;
 
         /// <summary>
-        /// Get a streaming response using direct HTTP (delegates to GetSimpleResponse).
+        /// Get a streaming response using direct HTTP with SSE (Server-Sent Events).
+        /// Returns complete response after streaming all chunks.
         /// </summary>
-        public async Task<string> GetStreamingResponseAsync(string userMessage, CancellationToken ct = default)
+        public async Task<string> GetStreamingResponseAsync(string userMessage, string? systemPrompt = null, string? modelOverride = null, CancellationToken ct = default)
         {
-            return await GetSimpleResponse(userMessage, ct: ct);
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger?.LogInformation("GetStreamingResponseAsync called but no Grok API key configured.");
+                return "No API key configured for Grok";
+            }
+
+            var model = modelOverride ?? _model ?? "grok-4-latest";
+            var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
+
+            // Use OpenAI-compatible chat call to xAI (Grok) endpoint with streaming enabled
+            var requestObj = new
+            {
+                model = model,
+                messages = new[] {
+                    new { role = "system", content = sysPrompt },
+                    new { role = "user", content = userMessage }
+                },
+                stream = true,  // CRITICAL: Enable streaming for Server-Sent Events
+                temperature = 0.7  // Allow some variation in responses
+            };
+
+            var json = JsonSerializer.Serialize(requestObj);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            try
+            {
+                _logger?.LogDebug("GetStreamingResponseAsync -> POST {Url} with streaming=true (model={Model})", _endpoint, model);
+                var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+                
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger?.LogWarning("Grok streaming API returned non-success status: {Status}", resp.StatusCode);
+                    var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    return $"Grok API error {resp.StatusCode}: {body}";
+                }
+
+                // Read streaming response chunks (SSE format)
+                var responseBuilder = new StringBuilder();
+                var responseStream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                using var reader = new System.IO.StreamReader(responseStream);
+
+                while (!ct.IsCancellationRequested)
+                {
+                    var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+                    if (line == null)
+                        break; // End of stream
+
+                    // SSE format: "data: {json}"
+                    if (line.StartsWith("data: ", StringComparison.Ordinal))
+                    {
+                        var dataJson = line.Substring(6); // Remove "data: " prefix
+
+                        if (dataJson == "[DONE]")
+                        {
+                            _logger?.LogDebug("Stream ended with [DONE] marker");
+                            break; // Stream complete
+                        }
+
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(dataJson);
+                            var choices = doc.RootElement.GetProperty("choices");
+                            if (choices.GetArrayLength() > 0)
+                            {
+                                var delta = choices[0].GetProperty("delta");
+                                if (delta.TryGetProperty("content", out var contentElem))
+                                {
+                                    var contentText = contentElem.GetString();
+                                    if (!string.IsNullOrEmpty(contentText))
+                                    {
+                                        responseBuilder.Append(contentText);
+                                    }
+                                }
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            _logger?.LogWarning(ex, "Failed to parse SSE chunk: {Data}", dataJson);
+                        }
+                    }
+                    // Skip empty lines or other SSE metadata
+                }
+
+                var fullResponse = responseBuilder.ToString();
+                _logger?.LogDebug("Streaming completed: {Length} chars", fullResponse.Length);
+                return fullResponse;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogWarning("GetStreamingResponseAsync canceled by token");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Grok streaming request failed");
+                return $"Grok streaming failed: {ex.Message}";
+            }
         }
 
         /// <summary>
