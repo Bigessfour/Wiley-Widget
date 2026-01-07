@@ -6,6 +6,8 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
+using Syncfusion.Windows.Forms;
+using ThemeColorsAlias = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.Models;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
@@ -52,24 +54,19 @@ public sealed class ChatPanel : UserControl
         Dock = DockStyle.Fill;
 
         // Top panel with title and context (themed header)
-#pragma warning disable WW0001 // Semantic colors for header styling
         _topPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 89,
             Padding = new Padding(18, 17, 18, 17),
-            BorderStyle = BorderStyle.None,
-            BackColor = Color.FromArgb(0, 120, 215),
-            BackgroundColor = new BrushInfo(Color.FromArgb(0, 120, 215))
+            BorderStyle = BorderStyle.None
         };
-#pragma warning restore WW0001
 
         _titleLabel = new Label
         {
             Dock = DockStyle.Top,
             Text = "AI Chat",
             Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
-            ForeColor = Color.White,
             AutoSize = true,
             BackColor = Color.Transparent
         };
@@ -79,9 +76,6 @@ public sealed class ChatPanel : UserControl
             Dock = DockStyle.Top,
             Text = string.Empty,
             Font = new Font("Segoe UI", 9F),
-#pragma warning disable WW0001 // Semantic color for context text visibility
-            ForeColor = Color.FromArgb(230, 230, 230),
-#pragma warning restore WW0001
             AutoSize = true,
             Visible = false,
             BackColor = Color.Transparent
@@ -92,7 +86,6 @@ public sealed class ChatPanel : UserControl
             Dock = DockStyle.Right,
             Text = "Ready",
             Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-            ForeColor = Color.White,
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
             BackColor = Color.Transparent
@@ -107,20 +100,16 @@ public sealed class ChatPanel : UserControl
         {
             Dock = DockStyle.Fill
         };
-        SfSkinManager.SetVisualStyle(_messageList, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_messageList, ThemeColorsAlias.DefaultTheme);
 
         // Bottom panel with input controls (themed footer)
-#pragma warning disable WW0001 // Semantic color for footer styling
         _bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 62,
             Padding = new Padding(18, 12, 18, 12),
-            BorderStyle = BorderStyle.None,
-            BackColor = Color.FromArgb(245, 245, 245),
-            BackgroundColor = new BrushInfo(Color.FromArgb(245, 245, 245))
+            BorderStyle = BorderStyle.None
         };
-#pragma warning restore WW0001
 
         _inputTextBox = new TextBoxExt
         {
@@ -138,7 +127,7 @@ public sealed class ChatPanel : UserControl
             Text = "📎",
             Font = new Font("Segoe UI", 12F)
         };
-        SfSkinManager.SetVisualStyle(_attachButton, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_attachButton, ThemeColorsAlias.DefaultTheme);
 
         _removeButton = new SfButton
         {
@@ -149,7 +138,7 @@ public sealed class ChatPanel : UserControl
             Font = new Font("Segoe UI Symbol", 9.75F, FontStyle.Bold),
             Visible = false
         };
-        SfSkinManager.SetVisualStyle(_removeButton, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_removeButton, ThemeColorsAlias.DefaultTheme);
 
         _sendButton = new SfButton
         {
@@ -159,7 +148,7 @@ public sealed class ChatPanel : UserControl
             Text = "Send",
             Font = new Font("Segoe UI Semibold", 9.75F, FontStyle.Bold)
         };
-        SfSkinManager.SetVisualStyle(_sendButton, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_sendButton, ThemeColorsAlias.DefaultTheme);
 
         _bottomPanel.Controls.Add(_inputTextBox);
         _bottomPanel.Controls.Add(_attachButton);
@@ -430,6 +419,7 @@ public sealed class ChatPanel : UserControl
             if (_viewModel != null)
             {
                 _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                _viewModel.Messages.CollectionChanged -= Messages_CollectionChanged;
             }
 
             _fileDialog?.Dispose();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -106,7 +107,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             // Act
             await _viewModel.LoadAccountsCommand.ExecuteAsync(null);
 
-            // Assert - Total balance includes seed data (4100000) so just verify it's positive
+            // Assert - Total balance should stay positive with the realistic seed data
             Assert.True(_viewModel.TotalBalance > 0, $"Total balance should be positive, got {_viewModel.TotalBalance}");
             Assert.True(_viewModel.ActiveAccountCount >= 3, $"Expected at least 3 active accounts, got {_viewModel.ActiveAccountCount}");
         }
@@ -291,43 +292,106 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 {
                     Id = 1,
                     AccountNumber = new AccountNumber("100-001"),
-                    Name = "Cash",
+                    Name = "General Fund Cash",
                     Fund = MunicipalFundType.General,
                     Type = AccountType.Asset,
-                    Balance = 1000m,
-                    BudgetAmount = 1500m,
+                    TypeDescription = "Cash",
+                    Balance = 2_450_000m,
+                    BudgetAmount = 2_470_000m,
                     IsActive = true,
-                    DepartmentId = 1,
+                    DepartmentId = 10,
                     BudgetPeriodId = 1,
-                    FundDescription = "General Fund Cash"
+                    FundDescription = "General Fund operating cash"
                 },
                 new MunicipalAccount
                 {
                     Id = 2,
-                    AccountNumber = new AccountNumber("200-002"),
-                    Name = "Accounts Receivable",
+                    AccountNumber = new AccountNumber("100-020"),
+                    Name = "General Fund Receivables",
                     Fund = MunicipalFundType.General,
                     Type = AccountType.Asset,
-                    Balance = 2500m,
-                    BudgetAmount = 3000m,
+                    TypeDescription = "Receivables",
+                    Balance = 600_000m,
+                    BudgetAmount = 640_000m,
                     IsActive = true,
-                    DepartmentId = 1,
+                    DepartmentId = 20,
                     BudgetPeriodId = 1,
-                    FundDescription = "General Fund Receivables"
+                    FundDescription = "General Fund receivables"
                 },
                 new MunicipalAccount
                 {
                     Id = 3,
-                    AccountNumber = new AccountNumber("300-003"),
-                    Name = "Revenue",
+                    AccountNumber = new AccountNumber("200-110"),
+                    Name = "General Fund Salaries",
+                    Fund = MunicipalFundType.General,
+                    Type = AccountType.Salaries,
+                    TypeDescription = "Salaries",
+                    Balance = -1_200_000m,
+                    BudgetAmount = 1_250_000m,
+                    IsActive = true,
+                    DepartmentId = 30,
+                    BudgetPeriodId = 1,
+                    FundDescription = "General Fund payroll"
+                },
+                new MunicipalAccount
+                {
+                    Id = 4,
+                    AccountNumber = new AccountNumber("300-001"),
+                    Name = "Water Enterprise Revenue",
                     Fund = MunicipalFundType.Enterprise,
                     Type = AccountType.Revenue,
-                    Balance = 4000m,
-                    BudgetAmount = 5000m,
+                    TypeDescription = "Revenue",
+                    Balance = 1_000_000m,
+                    BudgetAmount = 1_100_000m,
                     IsActive = true,
-                    DepartmentId = 1,
+                    DepartmentId = 40,
                     BudgetPeriodId = 1,
-                    FundDescription = "Enterprise Revenue"
+                    FundDescription = "Enterprise water revenue"
+                },
+                new MunicipalAccount
+                {
+                    Id = 5,
+                    AccountNumber = new AccountNumber("400-010"),
+                    Name = "Special Revenue Grants",
+                    Fund = MunicipalFundType.SpecialRevenue,
+                    Type = AccountType.Grants,
+                    TypeDescription = "Grants",
+                    Balance = 350_000m,
+                    BudgetAmount = 400_000m,
+                    IsActive = true,
+                    DepartmentId = 50,
+                    BudgetPeriodId = 1,
+                    FundDescription = "Special revenue grants"
+                },
+                new MunicipalAccount
+                {
+                    Id = 6,
+                    AccountNumber = new AccountNumber("500-100"),
+                    Name = "Capital Projects Construction",
+                    Fund = MunicipalFundType.CapitalProjects,
+                    Type = AccountType.CapitalOutlay,
+                    TypeDescription = "Capital Outlay",
+                    Balance = -750_000m,
+                    BudgetAmount = 1_200_000m,
+                    IsActive = true,
+                    DepartmentId = 60,
+                    BudgetPeriodId = 1,
+                    FundDescription = "Capital construction"
+                },
+                new MunicipalAccount
+                {
+                    Id = 7,
+                    AccountNumber = new AccountNumber("600-001"),
+                    Name = "Debt Service Bonds",
+                    Fund = MunicipalFundType.DebtService,
+                    Type = AccountType.Debt,
+                    TypeDescription = "Debt",
+                    Balance = -2_100_000m,
+                    BudgetAmount = 2_150_000m,
+                    IsActive = true,
+                    DepartmentId = 70,
+                    BudgetPeriodId = 1,
+                    FundDescription = "Debt service payments"
                 }
             };
 
@@ -335,17 +399,17 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var generalFundAccounts = accounts.Where(a => a.Fund == MunicipalFundType.General).ToArray();
             var revenueAccounts = accounts.Where(a => a.Type == AccountType.Revenue).ToArray();
 
-            _mockAccountsRepository.Setup(r => r.GetAllAccountsAsync(default))
+            _mockAccountsRepository.Setup(r => r.GetAllAccountsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accounts);
-            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Asset, default))
+            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Asset, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(assetAccounts);
-            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Revenue, default))
+            _mockAccountsRepository.Setup(r => r.GetAccountsByTypeAsync(AccountType.Revenue, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(revenueAccounts);
-            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.General, default))
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.General, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(generalFundAccounts);
-            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.Enterprise, default))
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAsync(MunicipalFundType.Enterprise, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accounts.Where(a => a.Fund == MunicipalFundType.Enterprise).ToArray());
-            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAndTypeAsync(MunicipalFundType.General, AccountType.Asset, default))
+            _mockAccountsRepository.Setup(r => r.GetAccountsByFundAndTypeAsync(MunicipalFundType.General, AccountType.Asset, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accounts.Where(a => a.Fund == MunicipalFundType.General && a.Type == AccountType.Asset).ToArray());
         }
 

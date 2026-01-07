@@ -274,16 +274,6 @@ public static class FormInstantiationHelper
             {
                 // Suppress disposal errors (common with DockingManager/Ribbon background threads)
             }
-
-            // Suppress finalization to prevent phantom cleanup errors
-            try
-            {
-                GC.SuppressFinalize(form);
-            }
-            catch
-            {
-                // Ignore
-            }
         }
 
         if (mockMainForm != null)
@@ -298,15 +288,6 @@ public static class FormInstantiationHelper
             catch
             {
                 // Suppress disposal errors
-            }
-
-            try
-            {
-                GC.SuppressFinalize(mockMainForm);
-            }
-            catch
-            {
-                // Ignore
             }
         }
     }

@@ -93,6 +93,7 @@ public static class SyncfusionTestHelper
         };
 
         // Allowed system/default colors (including common WinForms defaults)
+#pragma warning disable WW0001 // Color.FromArgb used for test helper color matching
         var allowedSystemColors = new[]
         {
             SystemColors.Control,
@@ -107,6 +108,7 @@ public static class SyncfusionTestHelper
             Color.FromArgb(240, 240, 240), // Alternative default background
             Color.FromArgb(68, 68, 68)      // Common WinForms default dark gray text
         };
+#pragma warning restore WW0001
 
         // Check BackColor
         if (!allowedSystemColors.Contains(control.BackColor) &&

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Windows.Forms;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Themes;
+using ThemeColorsAlias = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.ChatUI;
 
@@ -35,7 +36,7 @@ public sealed class ChatMessageList : UserControl
     {
         AutoScaleMode = AutoScaleMode.Dpi;
         Dock = DockStyle.Fill;
-        BackColor = Color.White;
+        // Inherit theme background from parent
 
         _itemsPanel = new GradientPanelExt
         {
@@ -43,14 +44,14 @@ public sealed class ChatMessageList : UserControl
             AutoScroll = true,
             Padding = new Padding(10),
             Name = "ChatItemsPanel",
-            BorderStyle = BorderStyle.None,
-            BackColor = Color.White
+            BorderStyle = BorderStyle.None
         };
 
         Controls.Add(_itemsPanel);
 
         // Apply theme to panel for proper rendering
-        SfSkinManager.SetVisualStyle(_itemsPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_itemsPanel, ThemeColorsAlias.DefaultTheme);
+        SfSkinManager.SetVisualStyle(this, ThemeColorsAlias.DefaultTheme);
 
         Resize += (_, _) => ApplyBubbleWidthToAllItems();
 
@@ -119,7 +120,7 @@ public sealed class ChatMessageList : UserControl
                 chatItem.Name = "chatItem" + _itemsPanel.Controls.Count;
                 chatItem.Dock = DockStyle.Top;
                 _itemsPanel.Controls.Add(chatItem);
-                chatItem.BringToFront();
+                chatItem.SendToBack();
             }
         }
         finally
@@ -140,7 +141,7 @@ public sealed class ChatMessageList : UserControl
         item.Name = "chatItem" + _itemsPanel.Controls.Count;
         item.Dock = DockStyle.Top;
         _itemsPanel.Controls.Add(item);
-        item.BringToFront();
+        item.SendToBack();
 
         ApplyBubbleWidth(item);
         ScrollToBottom();

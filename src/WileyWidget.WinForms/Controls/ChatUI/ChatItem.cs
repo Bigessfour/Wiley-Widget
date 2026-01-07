@@ -1,9 +1,13 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using AppThemeColors = WileyWidget.WinForms.Themes.AppThemeColors;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.ChatUI;
 
@@ -46,9 +50,7 @@ public sealed class ChatItem : UserControl
             Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
             Text = "System - " + DateTime.Now.ToShortTimeString(),
             AutoSize = true,
-#pragma warning disable WW0001 // Semantic color for UI element visibility
-            ForeColor = Color.FromArgb(100, 100, 100)
-#pragma warning restore WW0001
+                ForeColor = SystemColors.GrayText
         };
 
         _authorPanel.Controls.Add(_authorLabel);
@@ -58,12 +60,9 @@ public sealed class ChatItem : UserControl
         {
             Dock = DockStyle.Left,
             Padding = new Padding(10, 8, 10, 8),
-            Width = 424,
             Height = 46,
             BorderStyle = BorderStyle.FixedSingle,
-#pragma warning disable WW0001 // Semantic color for message bubble border
-            BorderColor = Color.FromArgb(210, 210, 210),
-#pragma warning restore WW0001
+            BorderColor = SystemColors.ControlDark,
             BorderSingle = ButtonBorderStyle.Solid
         };
 
@@ -84,6 +83,9 @@ public sealed class ChatItem : UserControl
         // Add panels to control
         Controls.Add(_bodyPanel);
         Controls.Add(_authorPanel);
+
+        // Inherit theme from parent; ensure Syncfusion styling cascades
+        Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
 
         UpdateAppearance();
     }
@@ -136,6 +138,76 @@ public sealed class ChatItem : UserControl
             UpdateAppearance();
         }
     }
+        private void UpdateBubbleRegion()
+        {
+            if (_bodyPanel.Width <= 0 || _bodyPanel.Height <= 0)
+                return;
+
+            const int bubbleRadius = 18;
+            const int tailRadius = 4;
+
+            int topLeftRadius = bubbleRadius;
+            int topRightRadius = bubbleRadius;
+            int bottomRightRadius = _isIncoming ? bubbleRadius : tailRadius;
+            int bottomLeftRadius = _isIncoming ? tailRadius : bubbleRadius;
+
+            var bounds = _bodyPanel.ClientRectangle;
+            var path = CreateBubblePath(bounds, topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius);
+
+            var oldRegion = _bodyPanel.Region;
+            _bodyPanel.Region = new Region(path);
+            oldRegion?.Dispose();
+            path.Dispose();
+        }
+
+        private static GraphicsPath CreateBubblePath(Rectangle bounds, int topLeft, int topRight, int bottomRight, int bottomLeft)
+        {
+            var path = new GraphicsPath();
+
+            int maxRadius = Math.Min(bounds.Width, bounds.Height) / 2;
+            topLeft = Math.Max(0, Math.Min(topLeft, maxRadius));
+            topRight = Math.Max(0, Math.Min(topRight, maxRadius));
+            bottomRight = Math.Max(0, Math.Min(bottomRight, maxRadius));
+            bottomLeft = Math.Max(0, Math.Min(bottomLeft, maxRadius));
+
+            int left = bounds.Left;
+            int top = bounds.Top;
+            int right = bounds.Right;
+            int bottom = bounds.Bottom;
+
+            path.StartFigure();
+
+            if (topLeft > 0)
+                path.AddArc(left, top, topLeft * 2, topLeft * 2, 180, 90);
+            else
+                path.AddLine(left, top, left, top);
+
+            path.AddLine(left + topLeft, top, right - topRight, top);
+
+            if (topRight > 0)
+                path.AddArc(right - topRight * 2, top, topRight * 2, topRight * 2, 270, 90);
+            else
+                path.AddLine(right, top, right, top);
+
+            path.AddLine(right, top + topRight, right, bottom - bottomRight);
+
+            if (bottomRight > 0)
+                path.AddArc(right - bottomRight * 2, bottom - bottomRight * 2, bottomRight * 2, bottomRight * 2, 0, 90);
+            else
+                path.AddLine(right, bottom, right, bottom);
+
+            path.AddLine(right - bottomRight, bottom, left + bottomLeft, bottom);
+
+            if (bottomLeft > 0)
+                path.AddArc(left, bottom - bottomLeft * 2, bottomLeft * 2, bottomLeft * 2, 90, 90);
+            else
+                path.AddLine(left, bottom, left, bottom);
+
+            path.AddLine(left, bottom - bottomLeft, left, top + topLeft);
+            path.CloseFigure();
+
+            return path;
+        }
 
     /// <summary>
     /// Resize the message bubble to fit within the specified maximum width.
@@ -200,6 +272,7 @@ public sealed class ChatItem : UserControl
 
             // Set total control height
             Height = _bodyPanel.Height + _authorPanel.Height + Padding.Vertical + Margin.Vertical;
+                UpdateBubbleRegion();
         }
         finally
         {
@@ -209,31 +282,19 @@ public sealed class ChatItem : UserControl
 
     private void UpdateAppearance()
     {
-#pragma warning disable WW0001 // Semantic colors for message bubble styling - incoming/outgoing distinction
         // Update alignment and styling based on message direction
         if (_isIncoming)
         {
             _bodyPanel.Dock = DockStyle.Left;
             _authorLabel.Dock = DockStyle.Left;
             _bodyTextBox.TextAlign = HorizontalAlignment.Left;
-
-            // Incoming messages: light blue background
-            _bodyPanel.BackColor = Color.FromArgb(232, 240, 254);
-            _bodyTextBox.BackColor = Color.FromArgb(232, 240, 254);
-            _bodyTextBox.ForeColor = Color.FromArgb(33, 33, 33);
         }
         else
         {
             _bodyPanel.Dock = DockStyle.Right;
             _authorLabel.Dock = DockStyle.Right;
             _bodyTextBox.TextAlign = HorizontalAlignment.Right;
-
-            // Outgoing messages: light gray background
-            _bodyPanel.BackColor = Color.FromArgb(245, 245, 245);
-            _bodyTextBox.BackColor = Color.FromArgb(245, 245, 245);
-            _bodyTextBox.ForeColor = Color.FromArgb(33, 33, 33);
         }
-#pragma warning restore WW0001
 
         // Update author label with timestamp
         if (_timestamp > DateTime.Today)
@@ -245,7 +306,19 @@ public sealed class ChatItem : UserControl
             _authorLabel.Text = $"{_author}, {_timestamp.ToShortDateString()}";
         }
 
+        ApplyBubbleColors();
         Invalidate();
+    }
+
+    private void ApplyBubbleColors()
+    {
+        var (startColor, endColor, textColor) = _isIncoming
+            ? (AppThemeColors.ChatIncomingStart, AppThemeColors.ChatIncomingEnd, AppThemeColors.ChatIncomingText)
+            : (AppThemeColors.ChatOutgoingStart, AppThemeColors.ChatOutgoingEnd, AppThemeColors.ChatOutgoingText);
+
+        _bodyPanel.BackgroundColor = new BrushInfo(GradientStyle.Vertical, startColor, endColor);
+        _bodyTextBox.BackColor = textColor;
+        _bodyPanel.Invalidate();
     }
 
     protected override void Dispose(bool disposing)

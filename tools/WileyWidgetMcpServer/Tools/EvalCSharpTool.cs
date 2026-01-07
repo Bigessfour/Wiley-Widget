@@ -50,28 +50,72 @@ public static class EvalCSharpTool
             }
 
             // Configure script options with WileyWidget references
-            var scriptOptions = ScriptOptions.Default
-                .WithReferences(typeof(System.Windows.Forms.Form).Assembly)
-                .WithReferences(typeof(Syncfusion.WinForms.Controls.SfForm).Assembly)
-                .WithReferences(typeof(Syncfusion.WinForms.DataGrid.SfDataGrid).Assembly)
-                .WithReferences(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly) // Theme support
-                .WithReferences(typeof(Syncfusion.Windows.Forms.SkinManager).Assembly) // SkinManager
-                .WithReferences(typeof(WileyWidget.WinForms.Forms.MainForm).Assembly)
-                .WithReferences(typeof(WileyWidget.McpServer.Helpers.SyncfusionTestHelper).Assembly)
-                .WithReferences(typeof(Moq.Mock).Assembly)
-                .WithImports(
-                    "System",
-                    "System.Collections.Generic",
-                    "System.Linq",
-                    "System.Windows.Forms",
-                    "System.Drawing",
-                    "Syncfusion.WinForms.Controls",
-                    "Syncfusion.WinForms.DataGrid",
-                    "Syncfusion.WinForms.Themes",
-                    "WileyWidget.WinForms.Forms",
-                    "WileyWidget.WinForms.Themes",
-                    "WileyWidget.McpServer.Helpers",
-                    "Moq");
+            // CRITICAL: Collect loaded assemblies WITHOUT using typeof() for external types
+            var assembliesToAdd = new List<System.Reflection.Assembly>();
+
+            // Safe base assemblies
+            assembliesToAdd.Add(typeof(System.Windows.Forms.Form).Assembly);
+            assembliesToAdd.Add(typeof(System.Drawing.Color).Assembly);
+            assembliesToAdd.Add(typeof(WileyWidget.McpServer.Helpers.SyncfusionTestHelper).Assembly);
+
+            // Load and reference all already-loaded WileyWidget, Syncfusion, and Moq assemblies
+            // This avoids trying to reference types that don't exist in this context
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var name = asm.GetName().Name ?? "";
+                if (name.StartsWith("WileyWidget") || name.StartsWith("Syncfusion") || name == "Moq")
+                {
+                    assembliesToAdd.Add(asm);
+                }
+            }
+
+            // Build script options with collected assemblies
+            var scriptOptions = ScriptOptions.Default;
+            foreach (var asm in assembliesToAdd.Distinct())
+            {
+                scriptOptions = scriptOptions.WithReferences(asm);
+            }
+
+            // Add resolver and direct DLL references from the MCP server bin directory
+            var baseDir = System.IO.Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? AppContext.BaseDirectory;
+            scriptOptions = scriptOptions.WithMetadataResolver(ScriptMetadataResolver.Default.WithBaseDirectory(baseDir));
+
+            var dllReferences = System.IO.Directory.EnumerateFiles(baseDir, "*.dll")
+                .Where(path =>
+                {
+                    var file = System.IO.Path.GetFileName(path);
+                    return file.StartsWith("WileyWidget", StringComparison.OrdinalIgnoreCase)
+                        || file.StartsWith("Syncfusion", StringComparison.OrdinalIgnoreCase)
+                        || file.Equals("Moq.dll", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToList();
+
+            if (dllReferences.Count > 0)
+            {
+                scriptOptions = scriptOptions.WithReferences(dllReferences);
+            }
+
+            // Add common imports
+            scriptOptions = scriptOptions.WithImports(
+                "System",
+                "System.Collections.Generic",
+                "System.Collections.ObjectModel",
+                "System.Linq",
+                "System.Windows.Forms",
+                "System.Drawing",
+                "Syncfusion.WinForms.Controls",
+                "Syncfusion.WinForms.DataGrid",
+                "Syncfusion.WinForms.Themes",
+                "Syncfusion.Windows.Forms",
+                "Syncfusion.Windows.Forms.Tools",
+                "Syncfusion.Drawing",
+                "WileyWidget.WinForms.Forms",
+                "WileyWidget.WinForms.Controls.ChatUI",
+                "WileyWidget.WinForms.Themes",
+                "WileyWidget.WinForms.ViewModels",
+                "WileyWidget.Models",
+                "WileyWidget.McpServer.Helpers",
+                "Moq");
 
             // Capture stdout/stderr
             var output = new StringBuilder();

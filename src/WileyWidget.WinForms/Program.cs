@@ -894,16 +894,27 @@ IsDisposed: {Disposed}
         {
             try
             {
-                // Make Serilog self-logging forward internal errors to the configured logger
+                // Make Serilog self-logging forward internal errors to a simple debug output
+                // CRITICAL: Do NOT use Log.Warning() or any Serilog method inside SelfLog callback
+                // This creates infinite recursion if logging encounters any error.
+                // Instead, use Debug.WriteLine() which is primitive and won't trigger Serilog.
+                // NOTE: ObjectDisposedException here is expected during shutdown when file sinks
+                // are closing while async operations complete. Suppress these in output.
                 Serilog.Debugging.SelfLog.Enable(msg =>
                 {
                     try
                     {
-                        Log.Warning("[SERILOG] {Message}", msg);
+                        // Suppress disposal exceptions - they're expected during graceful shutdown
+                        // and are handled properly by the shutdown sequence in RunUiLoop
+                        if (!msg.Contains("disposed", StringComparison.OrdinalIgnoreCase) &&
+                            !msg.Contains("Cannot access a disposed object", StringComparison.OrdinalIgnoreCase))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SERILOG INTERNAL] {msg}");
+                        }
                     }
                     catch
                     {
-                        // If logging is unavailable, swallow to avoid recursion.
+                        // If even Debug.WriteLine fails, silently swallow to avoid cascading errors
                     }
                 });
 
@@ -1501,22 +1512,73 @@ Timestamp: {Timestamp}
             }
             finally
             {
-                // CRITICAL: Dispose application-lifetime scope here (after UI loop exits)
-                _applicationScope?.Dispose();
-                Log.Information("Application exited normally.");
+                // CRITICAL: Graceful shutdown sequence per Serilog best practices
+                // Reference: https://github.com/serilog/serilog/wiki/Disposing
+                //
+                // The issue: DI container disposal triggers finalizers and dispose handlers
+                // which may try to log. If we dispose the scope while Serilog has pending
+                // log operations, file sinks can be disposed before writes complete.
+                //
+                // Solution: Log the exit message BEFORE disposing the scope to prevent
+                // new log calls during scope disposal, then wait for async operations.
 
-                // DEFENSIVE: Allow 500ms for inflight log operations to complete before closing sinks
-                // This prevents ObjectDisposedException from delayed dispose handlers still trying to log
+                // Step 1: Log exit before disposing scope (avoids logs during disposal)
                 try
                 {
-                    System.Threading.Thread.Sleep(500);
+                    Log.Information("Application exiting - beginning graceful shutdown.");
+                }
+                catch (Exception logEx)
+                {
+                    // If logging already failed, continue with shutdown
+                    System.Diagnostics.Debug.WriteLine($"Failed to log exit message: {logEx.Message}");
+                }
+
+                // Step 2: Dispose application-lifetime scope (may trigger dispose handlers)
+                // These handlers should avoid logging or use try-catch internally
+                try
+                {
+                    _applicationScope?.Dispose();
+                }
+                catch (Exception disposeEx)
+                {
+                    // Log any errors during scope disposal, but don't let them prevent shutdown
+                    try { Log.Error(disposeEx, "Error during DI container disposal"); } catch { /* Ignore */ }
+                }
+
+                // Step 3: CRITICAL - Allow time for pending operations per Serilog documentation:
+                // - Pending log writes to complete (batching, disk I/O, async sinks)
+                // - File handles to flush and release
+                // - Background threads (RollingFileSink timer, async batching) to finish
+                // Increased from 500ms to 1000ms to ensure rolling file sink completes flush
+                // See: https://github.com/serilog/serilog-sinks-file/blob/main/src/Serilog.Sinks.File/Sinks/File/RollingFileSink.cs
+                try
+                {
+                    System.Threading.Thread.Sleep(1000);
                 }
                 catch
                 {
                     // Timing not critical, continue with flush
                 }
 
-                Log.CloseAndFlush();
+                // Step 4: Graceful shutdown of Serilog per official documentation
+                // CloseAndFlush() performs (in order):
+                // 1. Waits for pending events in the async pipeline
+                // 2. Calls Close() on each sink (orderly shutdown signal)
+                // 3. Waits for all sinks to finish their final writes
+                // 4. Disposes all sinks
+                // 5. Stops background threads
+                // Reference: https://github.com/serilog/serilog/blob/main/src/Serilog/Log.cs
+                try
+                {
+                    Log.CloseAndFlush();
+                }
+                catch (Exception flushEx)
+                {
+                    // Even if flush fails, the sinks should still be disposed
+                    System.Diagnostics.Debug.WriteLine($"[SHUTDOWN] Serilog.CloseAndFlush failed: {flushEx.Message}");
+                    // Note: We cannot dispose Log.Logger directly as ILogger is not IDisposable
+                    // CloseAndFlush handles all sink disposal internally
+                }
             }
         }
 

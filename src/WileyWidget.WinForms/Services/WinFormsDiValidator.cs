@@ -281,8 +281,33 @@ namespace WileyWidget.WinForms.Services
                             t.BaseType.GetGenericTypeDefinition() == typeof(ScopedPanelBase<>))
                 .ToList();
 
+            IServiceScopeFactory scopeFactory;
+            try
+            {
+                scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(serviceProvider);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                result.Errors.Add($"✗ Failed to resolve IServiceScopeFactory: {ex.Message}");
+                result.ValidationDuration = stopwatch.Elapsed;
+                result.IsValid = false;
+                result.CategoryResults["Scoped Panels"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
+                return result;
+            }
+
+            if (scopeFactory == null)
+            {
+                stopwatch.Stop();
+                result.Errors.Add("✗ IServiceScopeFactory is not registered");
+                result.ValidationDuration = stopwatch.Elapsed;
+                result.IsValid = false;
+                result.CategoryResults["Scoped Panels"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
+                return result;
+            }
+
             // Create a scope to resolve scoped services
-            using var scope = ((IServiceScopeFactory)serviceProvider).CreateScope();
+            using var scope = scopeFactory.CreateScope();
             var scopedProvider = scope.ServiceProvider;
 
             foreach (var panelType in scopedPanelTypes)

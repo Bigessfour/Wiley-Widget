@@ -6,7 +6,6 @@ using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.McpServer.Helpers;
 using WileyWidget.WinForms.Forms;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
 
 namespace WileyWidget.McpServer.Tools;
 
@@ -17,7 +16,6 @@ namespace WileyWidget.McpServer.Tools;
 [McpServerToolType]
 public static class InspectDockingManagerTool
 {
-    private static object issues;
 
     [McpServerTool]
     [Description("Inspects and validates Syncfusion DockingManager configuration on a form. " +

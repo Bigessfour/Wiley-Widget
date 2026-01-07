@@ -23,13 +23,21 @@ namespace WileyWidget.WinForms.Services.AI
     {
         private readonly Kernel _kernel;
         private readonly string? _apiKey;
+        private readonly Uri _baseEndpoint;
         private readonly Uri _endpoint;
         private readonly string _model;
         private readonly ILogger<GrokAgentService>? _logger;
         private readonly HttpClient _httpClient;
 
-        // Normalized completions endpoint (handles both base endpoint or full /chat/completions config)
-        private Uri CompletionsEndpoint => _endpoint.AbsoluteUri.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase) ? _endpoint : new Uri(_endpoint, "chat/completions");
+        private const string ChatCompletionSuffix = "/chat/completions";
+        private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
+        private static readonly (EnvironmentVariableTarget Target, string Source)[] ApiKeyEnvironmentTargets =
+        {
+            (EnvironmentVariableTarget.Process, "process env"),
+            (EnvironmentVariableTarget.User, "user env"),
+            (EnvironmentVariableTarget.Machine, "machine env")
+        };
+        internal static Func<EnvironmentVariableTarget, string?>? EnvironmentVariableGetterOverride { get; set; }
         private const string DefaultArchitectPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
 
         public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null)
@@ -37,18 +45,54 @@ namespace WileyWidget.WinForms.Services.AI
             if (config == null) throw new ArgumentNullException(nameof(config));
             _logger = logger;
 
-            // Read and sanitize API key (trim whitespace and surrounding quotes that may be introduced by env config)
-            var rawApiKey = config["Grok:ApiKey"] ?? config["XAI:ApiKey"] ?? config["XAI_API_KEY"];
-            _apiKey = string.IsNullOrWhiteSpace(rawApiKey) ? null : rawApiKey.Trim().Trim('"');
+            // Read API key candidates
+            var configApiKey = config["Grok:ApiKey"] ?? config["XAI:ApiKey"] ?? config[ApiKeyEnvironmentVariable];
+            var (envApiKey, envSource) = TryGetEnvironmentScopedApiKey();
+            var selectedKey = configApiKey;
+            var selectedSource = "config";
+
+            if (!string.IsNullOrWhiteSpace(envApiKey))
+            {
+                if (string.IsNullOrWhiteSpace(configApiKey))
+                {
+                    selectedKey = envApiKey;
+                    selectedSource = envSource;
+                }
+                else if (envApiKey.Length != configApiKey.Length)
+                {
+                    _logger?.LogWarning("XAI API key length mismatch: config={ConfigLength}, env={EnvLength}. Using env value from {EnvSource}.", configApiKey.Length, envApiKey.Length, envSource);
+                    selectedKey = envApiKey;
+                    selectedSource = envSource;
+                }
+                else
+                {
+                    _logger?.LogDebug("XAI API key lengths match between config and env ({Length}).", envApiKey.Length);
+                }
+            }
+
+            _logger?.LogInformation("[XAI] Environment variable length: {EnvLength}, Config API key length: {ConfigLength}", envApiKey?.Length ?? 0, configApiKey?.Length ?? 0);
+            _logger?.LogInformation("[XAI] Using API key from {Source}", selectedSource);
+
+            _apiKey = string.IsNullOrWhiteSpace(selectedKey) ? null : selectedKey.Trim().Trim('"');
 
             _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4-latest";
-            var endpointStr = config["Grok:Endpoint"] ?? config["XAI:Endpoint"] ?? "https://api.x.ai/v1";
-            // Ensure endpoint ends with a trailing slash so relative URIs append correctly (avoids 404 when combining URIs)
-            if (!endpointStr.EndsWith('/'))
+            var endpointStr = (config["Grok:Endpoint"] ?? config["XAI:Endpoint"] ?? "https://api.x.ai/v1").Trim();
+            if (string.IsNullOrEmpty(endpointStr))
             {
-                endpointStr += '/';
+                endpointStr = "https://api.x.ai/v1";
             }
-            _endpoint = new Uri(endpointStr);
+
+            var baseEndpointCandidate = endpointStr.TrimEnd('/');
+            if (baseEndpointCandidate.EndsWith(ChatCompletionSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - ChatCompletionSuffix.Length);
+            }
+
+            baseEndpointCandidate = baseEndpointCandidate.TrimEnd('/');
+            var normalizedBase = baseEndpointCandidate + '/';
+
+            _baseEndpoint = new Uri(normalizedBase, UriKind.Absolute);
+            _endpoint = new Uri(_baseEndpoint, "chat/completions");
 
             // Log the API key presence for diagnostics (do not log the full key)
             if (!string.IsNullOrWhiteSpace(_apiKey))
@@ -63,7 +107,7 @@ namespace WileyWidget.WinForms.Services.AI
             }
 
             // Log environment and configuration details for diagnostics
-            logger?.LogInformation("[XAI] Environment variable XAI_API_KEY length: {EnvLength}, Config API key length: {ConfigLength}", Environment.GetEnvironmentVariable("XAI_API_KEY")?.Length ?? 0, _apiKey?.Length ?? 0);
+            logger?.LogInformation("[XAI] Environment variable {EnvVar} length: {EnvLength}, Config API key length: {ConfigLength}", ApiKeyEnvironmentVariable, Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable)?.Length ?? 0, _apiKey?.Length ?? 0);
             logger?.LogInformation("[XAI] Using model={Model}, endpoint={Endpoint}", _model, _endpoint);
 
             var builder = Kernel.CreateBuilder();
@@ -106,7 +150,7 @@ namespace WileyWidget.WinForms.Services.AI
             }
 
             _httpClient = httpClientFactory?.CreateClient("WileyWidgetDefault") ?? new HttpClient();
-            _httpClient.BaseAddress = _endpoint;
+            _httpClient.BaseAddress = _baseEndpoint;
             if (!string.IsNullOrWhiteSpace(_apiKey))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
@@ -207,9 +251,9 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogDebug("ValidateApiKeyAsync -> POST {Url} (model={Model})", CompletionsEndpoint, model);
-                _logger?.LogDebug("GetSimpleResponse -> POST {Url} (model={Model})", CompletionsEndpoint, model);
-                var resp = await _httpClient.PostAsync(CompletionsEndpoint, content, ct).ConfigureAwait(false);
+                _logger?.LogDebug("ValidateApiKeyAsync -> POST {Url} (model={Model})", _endpoint, model);
+                _logger?.LogDebug("GetSimpleResponse -> POST {Url} (model={Model})", _endpoint, model);
+                var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
                     _logger?.LogWarning("Grok API returned non-success status: {Status}", resp.StatusCode);
@@ -275,7 +319,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                using var resp = await _httpClient.PostAsync(CompletionsEndpoint, content, ct).ConfigureAwait(false);
+                using var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
                 var respBody = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -353,6 +397,29 @@ namespace WileyWidget.WinForms.Services.AI
                 _logger?.LogWarning(ex, "RunAgentAsync failed; falling back to simple chat call");
                 return await GetSimpleResponse(userRequest);
             }
+        }
+
+        internal static (string? Value, string Source) TryGetEnvironmentScopedApiKey(Func<EnvironmentVariableTarget, string?>? getter = null)
+        {
+            getter ??= EnvironmentVariableGetterOverride ?? (target => Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable, target));
+
+            foreach (var (target, source) in ApiKeyEnvironmentTargets)
+            {
+                try
+                {
+                    var value = getter(target);
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        return (value, source);
+                    }
+                }
+                catch
+                {
+                    // Swallow exceptions coming from Environment.* when permissions are restricted
+                }
+            }
+
+            return (null, "none");
         }
     }
 }

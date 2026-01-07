@@ -13,6 +13,7 @@ using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
@@ -251,6 +252,9 @@ namespace WileyWidget.WinForms.Configuration
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
+
+            // Grok AI agent service (Singleton - reused across chat sessions)
+            services.AddSingleton<GrokAgentService>();
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)

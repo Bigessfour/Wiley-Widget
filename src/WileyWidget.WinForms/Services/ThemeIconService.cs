@@ -114,12 +114,16 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Gets an icon with the specified name, theme, and size.
         /// Returns an emergency fallback icon if the service is disposed.
+        /// DEFENSIVE: During shutdown, the DI container may dispose singletons before
+        /// UI cleanup completes, causing GetIcon to be called after disposal.
         /// </summary>
         public Image? GetIcon(string name, AppTheme theme, int size, bool disabled = false)
         {
+            // Guard against shutdown race conditions where UI code calls GetIcon after disposal
             if (_disposed)
             {
-                _logger.Warning("GetIcon called on disposed ThemeIconService - returning emergency fallback icon for {Name}", name);
+                // Don't log on disposed service - use Debug output only to avoid Serilog issues
+                System.Diagnostics.Debug.WriteLine($"[WARNING] GetIcon called on disposed ThemeIconService for '{name}' - returning emergency fallback");
                 return CreateEmergencyFallbackIcon(name ?? "unknown", size);
             }
 
@@ -289,12 +293,16 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Gets an icon asynchronously with the specified name, theme, and size.
         /// Returns an emergency fallback icon if the service is disposed.
+        /// DEFENSIVE: During shutdown, the DI container may dispose singletons before
+        /// UI cleanup completes, causing GetIconAsync to be called after disposal.
         /// </summary>
         public Task<Image?> GetIconAsync(string name, AppTheme theme, int size, bool disabled = false)
         {
+            // Guard against shutdown race conditions where UI code calls GetIconAsync after disposal
             if (_disposed)
             {
-                _logger.Warning("GetIconAsync called on disposed ThemeIconService - returning emergency fallback icon for {Name}", name);
+                // Don't log on disposed service - use Debug output only to avoid Serilog issues
+                System.Diagnostics.Debug.WriteLine($"[WARNING] GetIconAsync called on disposed ThemeIconService for '{name}' - returning emergency fallback");
                 return Task.FromResult<Image?>(CreateEmergencyFallbackIcon(name ?? "unknown", size));
             }
 

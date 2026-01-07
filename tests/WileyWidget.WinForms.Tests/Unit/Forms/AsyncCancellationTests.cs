@@ -58,6 +58,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             try
             {
                 cts.Cancel();
+                cts.IsCancellationRequested.Should().BeTrue("cancellation was requested before initialization begins");
 
                 // Act & Assert
                 await Assert.ThrowsAsync<OperationCanceledException>(() => vm.InitializeAsync(cts.Token));
