@@ -39,7 +39,8 @@
        with .NET 9 best practices. See InitializeWinForms() method. -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
-      <!-- Long Path Support (Windows 10 1607+) -->
+      <!-- High-DPI awareness for modern Windows versions -->
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
       <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
     </windowsSettings>
   </application>

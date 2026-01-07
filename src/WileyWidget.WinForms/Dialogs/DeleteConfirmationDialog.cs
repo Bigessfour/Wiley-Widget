@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 
@@ -14,8 +15,8 @@ namespace WileyWidget.WinForms.Dialogs
     public sealed class DeleteConfirmationDialog : Form
     {
         private readonly ILogger<DeleteConfirmationDialog>? _logger;
-        private Button? _deleteButton;
-        private Button? _cancelButton;
+        private SfButton? _deleteButton;
+        private SfButton? _cancelButton;
         private Label? _messageLabel;
         private Label? _detailLabel;
         private PictureBox? _iconPictureBox;
@@ -128,12 +129,11 @@ namespace WileyWidget.WinForms.Dialogs
             };
 
             // Cancel button
-            _cancelButton = new Button
+            _cancelButton = new SfButton
             {
                 Text = "Cancel",
                 Size = new Size(90, 32),
                 DialogResult = DialogResult.Cancel,
-                UseVisualStyleBackColor = true,
                 Font = new Font("Segoe UI", 9F),
                 Margin = new Padding(0, 0, 0, 0)
             };
@@ -145,7 +145,7 @@ namespace WileyWidget.WinForms.Dialogs
             buttonPanel.Controls.Add(_cancelButton);
 
             // Delete button
-            _deleteButton = new Button
+            _deleteButton = new SfButton
             {
                 Text = "Delete",
                 Size = new Size(90, 32),
@@ -155,7 +155,7 @@ namespace WileyWidget.WinForms.Dialogs
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 8, 0)
             };
-            _deleteButton.FlatAppearance.BorderSize = 0;
+            // FlatAppearance deprecated - removed BorderSize setting
             _deleteButton.Click += (s, e) =>
             {
                 _logger?.LogDebug("Delete operation confirmed by user");

@@ -6,8 +6,11 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
@@ -24,7 +27,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private Panel? _summaryPanel;
+    private GradientPanelExt? _summaryPanel;
     private SfDataGrid? _metricsGrid;
     private TableLayoutPanel? _summaryCardsPanel;
 
@@ -60,6 +63,9 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     {
         Name = "DepartmentSummaryPanel";
         Size = new Size(1000, 700);
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        AutoScroll = true;
+        Padding = new Padding(8);
         Dock = DockStyle.Fill;
         AccessibleName = "Department Summary Panel";
         AccessibleDescription = "Displays department budget summary with key metrics and detailed grid";
@@ -92,13 +98,16 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         Controls.Add(_panelHeader);
 
         // Summary cards panel (top section)
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 120,
             Padding = new Padding(8),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Summary metrics panel"
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         _summaryCardsPanel = new TableLayoutPanel
         {
@@ -182,16 +191,19 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
     {
-        var cardPanel = new Panel
+        var cardPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(4),
             Padding = new Padding(8),
             AccessibleName = $"{title} card",
-            AccessibleDescription = description
+            AccessibleDescription = description,
+            BorderStyle = BorderStyle.FixedSingle,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
 
-        var lblTitle = new Label
+        var lblTitle = new GradientLabel
         {
             Text = title,
             Dock = DockStyle.Top,
@@ -199,6 +211,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             AutoSize = false,
+            BackColor = Color.Transparent,
             AccessibleName = $"{title} label"
         };
         cardPanel.Controls.Add(lblTitle);
@@ -526,7 +539,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => ApplyTheme()));
+                BeginInvoke(new System.Action(() => ApplyTheme()));
             }
             else
             {
@@ -534,21 +547,13 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             }
         };
 
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+        // Theme subscription removed - handled by SfSkinManager
     }
 
     private void ApplyTheme()
     {
-        try
-        {
-            // Theme is applied automatically by SfSkinManager cascade from parent form
-            // No manual color assignments needed
-            ThemeManager.ApplyThemeToControl(this);
-        }
-        catch
-        {
-            // Ignore theme application failures
-        }
+        // Theme is applied automatically by SfSkinManager cascade from parent form
+        // No manual color assignments needed
     }
 
     /// <summary>
@@ -556,15 +561,11 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     /// </summary>
     protected override void Dispose(bool disposing)
     {
+
         if (disposing)
         {
             // Unsubscribe from events
-            try
-            {
-                if (_themeChangedHandler != null)
-                    ThemeManager.ThemeChanged -= _themeChangedHandler;
-            }
-            catch { }
+            // ThemeManager.ThemeChanged is obsolete and should not be unsubscribed.
 
             try
             {

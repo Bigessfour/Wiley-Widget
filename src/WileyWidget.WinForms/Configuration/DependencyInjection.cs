@@ -180,6 +180,10 @@ namespace WileyWidget.WinForms.Configuration
             // Dashboard Service (Transient - short-lived data aggregation)
             services.AddTransient<IDashboardService, DashboardService>();
 
+            // Data Prefetch Service (Transient - runs once after startup)
+            // NOTE: Must not be registered as Singleton because it depends on IDashboardService (transient/scoped)
+            services.AddTransient<WileyWidget.Abstractions.IAsyncInitializable, DataPrefetchService>();
+
             // Budget Category Service (Scoped - works with DbContext)
             services.AddScoped<IBudgetCategoryService, BudgetCategoryService>();
 
@@ -189,7 +193,10 @@ namespace WileyWidget.WinForms.Configuration
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, XAIService>();
             services.AddSingleton<IAILoggingService, AILoggingService>();
-            services.AddSingleton<IConversationRepository, StubConversationRepository>();
+            services.AddScoped<IConversationRepository, EfConversationRepository>();
+
+            // Telemetry Logging Service (Scoped - writes to database)
+            services.AddScoped<global::WileyWidget.Services.Abstractions.ITelemetryLogService, TelemetryLogService>();
 
             // Audit Service (Singleton - writes to repository through scopes)
             services.AddSingleton<IAuditService, AuditService>();
@@ -246,26 +253,27 @@ namespace WileyWidget.WinForms.Configuration
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
             // =====================================================================
-            // VIEWMODELS (Transient - New instance per form/view)
-            // Per Microsoft: ViewModels are typically Transient as they represent
-            // view-specific state and shouldn't be shared
+            // VIEWMODELS (Scoped - One instance per panel scope)
+            // ScopedPanelBase<T> requires ViewModels to be scoped for proper lifecycle management
             // =====================================================================
 
-            services.AddTransient<ChartViewModel>();
-            services.AddTransient<SettingsViewModel>();
-            services.AddTransient<AccountsViewModel>();
-            services.AddTransient<DashboardViewModel>();
-            services.AddTransient<AnalyticsViewModel>();
-            services.AddTransient<BudgetOverviewViewModel>();
-            services.AddTransient<BudgetViewModel>();
-            services.AddTransient<CustomersViewModel>();
-            services.AddTransient<MainViewModel>();
-            services.AddTransient<ReportsViewModel>();
-            services.AddTransient<DepartmentSummaryViewModel>();
-            services.AddTransient<RevenueTrendsViewModel>();
-            services.AddTransient<AuditLogViewModel>();
-            services.AddTransient<RecommendedMonthlyChargeViewModel>();
-            services.AddTransient<QuickBooksViewModel>();
+            services.AddScoped<ChartViewModel>();
+            services.AddScoped<SettingsViewModel>();
+            services.AddScoped<UtilityBillViewModel>();
+            services.AddScoped<AccountsViewModel>();
+            services.AddScoped<DashboardViewModel>();
+            services.AddScoped<AnalyticsViewModel>();
+            services.AddScoped<BudgetOverviewViewModel>();
+            services.AddScoped<BudgetViewModel>();
+            services.AddScoped<CustomersViewModel>();
+            services.AddScoped<MainViewModel>();
+            services.AddScoped<ReportsViewModel>();
+            services.AddScoped<DepartmentSummaryViewModel>();
+            services.AddScoped<RevenueTrendsViewModel>();
+            services.AddScoped<AuditLogViewModel>();
+            services.AddScoped<RecommendedMonthlyChargeViewModel>();
+            services.AddScoped<QuickBooksViewModel>();
+            services.AddScoped<ChatPanelViewModel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
@@ -291,4 +299,5 @@ namespace WileyWidget.WinForms.Configuration
             // - AIChatControl: Requires IAIAssistantService implementation (not yet available)
         }
     }
+
 }

@@ -2,13 +2,12 @@ using NUnit.Framework;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
 
-namespace WileyWidget.Tests
+### namespace WileyWidget.Tests
+
 {
-/// <summary>
 /// Verification tests for the complete AI Services integration with AIChatControl.
 ///
-/// INTEGRATION SUMMARY:
-/// ====================
+/// ## INTEGRATION SUMMARY
 /// This test suite verifies the following integration:
 ///
 /// 1. Tool Execution Path (AIAssistantService):
@@ -44,7 +43,7 @@ namespace WileyWidget.Tests
 /// │ │ Display: "💭 Insights:\n[AI response]"
 /// │ │
 /// │ └─ NO → Show help message with available tools
-/// │ Display: "ℹ️ No tool detected.\n• read <file>\n..."
+// │ Display: "ℹ️ No tool detected.\n• read <filename>\n..."
 ///
 /// CONFIGURATION:
 /// ===============

@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.McpServer.Helpers;
 using WileyWidget.WinForms.Forms;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
 
 namespace WileyWidget.McpServer.Tools;
 
@@ -16,6 +17,8 @@ namespace WileyWidget.McpServer.Tools;
 [McpServerToolType]
 public static class InspectDockingManagerTool
 {
+    private static object issues;
+
     [McpServerTool]
     [Description("Inspects and validates Syncfusion DockingManager configuration on a form. " +
                  "Returns comprehensive details about docking properties, docked controls, " +
@@ -148,6 +151,88 @@ public static class InspectDockingManagerTool
         return result;
     }
 
+    private static List<string> ValidateConfiguration(DockingManager dm, Form form, DockingManagerInspectionResult result)
+    {
+        var issues = new List<string>();
+
+        // Validate HostControl is set and matches the provided form
+        if (dm.HostControl == null)
+        {
+            issues.Add("❌ CRITICAL: HostControl is null - DockingManager requires a host form");
+        }
+        else if (dm.HostControl != form)
+        {
+            issues.Add($"⚠️  WARNING: HostControl mismatch - expected {form.Name}, got {dm.HostControl.Name}");
+        }
+
+        // Validate docked controls exist and visibility
+        if (result.DockedControlCount == 0)
+        {
+            issues.Add("⚠️  WARNING: No docked controls found - DockingManager is initialized but unused");
+        }
+        else
+        {
+            var visibleCount = result.DockedControls.Count(c => c.IsVisible);
+            if (visibleCount == 0)
+            {
+                issues.Add("⚠️  WARNING: All docked controls are hidden - users won't see any panels");
+            }
+        }
+
+        // Per-control validations
+        foreach (var ctrl in result.DockedControls)
+        {
+            if (string.IsNullOrWhiteSpace(ctrl.DockLabel) || ctrl.DockLabel == "(no label)")
+            {
+                issues.Add($"⚠️  WARNING: Control '{ctrl.Name}' has empty/missing dock label - users won't see panel title (use SetDockLabel)");
+            }
+
+            if (!ctrl.EnableDocking)
+            {
+                issues.Add($"❌ ERROR: Control '{ctrl.Name}' found in docked list but EnableDocking=false - inconsistent state");
+            }
+
+            if (ctrl.FloatOnly)
+            {
+                issues.Add($"ℹ️  INFO: Control '{ctrl.Name}' is FloatOnly=true - cannot be re-docked if floated");
+            }
+
+            if (!ctrl.IsVisible)
+            {
+                issues.Add($"ℹ️  INFO: Control '{ctrl.Name}' is docked but hidden (Visible=false) - intentional?");
+            }
+        }
+
+        // Global DockingManager checks (policies / best practices)
+        if (dm.EnableDocumentMode)
+        {
+            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false - use TabbedMDI instead)");
+        }
+
+        if (!dm.PersistState)
+        {
+            issues.Add("⚠️  BEST PRACTICE (RECOMMENDED): PersistState=false - strongly recommend enabling to preserve user's layout preferences across sessions");
+        }
+
+        if (!dm.ShowCaption)
+        {
+            issues.Add("⚠️  BEST PRACTICE: ShowCaption=false - users cannot see panel titles");
+        }
+
+        // Accessibility checks for fonts
+        if (string.IsNullOrEmpty(result.AutoHideTabFont) || result.AutoHideTabFont == "(null)")
+        {
+            issues.Add("⚠️  ACCESSIBILITY: AutoHideTabFont not set - may use default system font");
+        }
+
+        if (string.IsNullOrEmpty(result.DockTabFont) || result.DockTabFont == "(null)")
+        {
+            issues.Add("⚠️  ACCESSIBILITY: DockTabFont not set - may use default system font");
+        }
+
+        return issues;
+    }
+
     private static List<Control> GetDockedControls(DockingManager dm, Form form)
     {
         var dockedControls = new List<Control>();
@@ -188,109 +273,34 @@ public static class InspectDockingManagerTool
         var info = new DockedControlInfo
         {
             Name = control.Name ?? "(unnamed)",
-            Type = control.GetType().Name
+            Type = control.GetType().FullName ?? "(unknown)",
+            DockLabel = SafeGet(() => dm.GetDockLabel(control), "(no label)"),
+            DockStyle = SafeGet(() => dm.GetDockStyle(control).ToString(), "(unknown)"),
+            DockVisibility = SafeGet(() => dm.GetDockVisibility(control).ToString(), "(unknown)"),
+            AutoHideMode = SafeGet(() => dm.GetAutoHideMode(control), false),
+            FloatOnly = SafeGet(() => dm.GetFloatOnly(control), false),
+            EnableDocking = SafeGet(() => dm.GetEnableDocking(control), false),
+            IsVisible = SafeGet(() => control.Visible, false),
+            Size = control.Size.ToString(),
+            CloseButtonVisible = SafeGet(() => dm.GetCloseButtonVisibility(control), false),
+            AutoHideButtonVisible = SafeGet(() => dm.GetAutoHideButtonVisibility(control), false),
+            MenuButtonVisible = SafeGet(() => dm.GetMenuButtonVisibility(control), false),
+            Error = null
         };
+        return info;
+    }
 
+    // Helper to safely get a value or return a default if exception occurs
+    private static T SafeGet<T>(Func<T> getter, T defaultValue)
+    {
         try
         {
-            info.DockLabel = dm.GetDockLabel(control) ?? "(no label)";
-            info.DockStyle = dm.GetDockStyle(control).ToString();
-            info.DockVisibility = dm.GetDockVisibility(control).ToString();
-            info.AutoHideMode = dm.GetAutoHideOnLoad(control); // GetAutoHideOnLoad instead of IsAutoHidden
-            info.FloatOnly = dm.GetFloatOnly(control);
-            info.EnableDocking = dm.GetEnableDocking(control);
-            info.IsVisible = control.Visible;
-            info.Size = $"{control.Width}x{control.Height}";
-
-                // Per-control caption button visibility (may not be available in older Syncfusion versions)
-                try { info.CloseButtonVisible = dm.GetCloseButtonVisibility(control); } catch { }
-                try { info.AutoHideButtonVisible = dm.GetAutoHideButtonVisibility(control); } catch { }
-                try { info.MenuButtonVisible = dm.GetMenuButtonVisibility(control); } catch { }
-        var issues = new List<string>();
-
-        // Validate HostControl is set
-        if (dm.HostControl == null)
-        {
-            issues.Add("❌ CRITICAL: HostControl is null - DockingManager requires a host form");
+            return getter();
         }
-        else if (dm.HostControl != form)
+        catch
         {
-            issues.Add($"⚠️  WARNING: HostControl mismatch - expected {form.Name}, got {dm.HostControl.Name}");
+            return defaultValue;
         }
-
-        // Validate docked controls exist
-        if (result.DockedControlCount == 0)
-        {
-            issues.Add("⚠️  WARNING: No docked controls found - DockingManager is initialized but unused");
-        }
-        else
-        {
-            // Check if at least one control is visible
-            var visibleCount = result.DockedControls.Count(c => c.IsVisible);
-            if (visibleCount == 0)
-            {
-                issues.Add("⚠️  WARNING: All docked controls are hidden - users won't see any panels");
-            }
-        }
-
-        // Validate docked controls have labels and check for issues
-        foreach (var ctrl in result.DockedControls)
-        {
-            // Empty or missing dock labels
-            if (string.IsNullOrWhiteSpace(ctrl.DockLabel) || ctrl.DockLabel == "(no label)")
-            {
-                issues.Add($"⚠️  WARNING: Control '{ctrl.Name}' has empty/missing dock label - users won't see panel title (use SetDockLabel)");
-            }
-
-            // EnableDocking mismatch
-            if (!ctrl.EnableDocking)
-            {
-                issues.Add($"❌ ERROR: Control '{ctrl.Name}' found in docked list but EnableDocking=false - inconsistent state");
-            }
-
-            // FloatOnly warning if multiple controls have it (unusual pattern)
-            if (ctrl.FloatOnly)
-            {
-                issues.Add($"ℹ️  INFO: Control '{ctrl.Name}' is FloatOnly=true - cannot be re-docked if floated");
-            }
-
-            // Hidden controls (potential issue)
-            if (!ctrl.IsVisible)
-            {
-                issues.Add($"ℹ️  INFO: Control '{ctrl.Name}' is docked but hidden (Visible=false) - intentional?");
-            }
-        }
-
-        // Validate EnableDocumentMode (WileyWidget standard: should be false)
-        if (dm.EnableDocumentMode)
-        {
-            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false - use TabbedMDI instead)");
-        }
-
-        // Validate PersistState is enabled (best practice - strongly recommended)
-        if (!dm.PersistState)
-        {
-            issues.Add("⚠️  BEST PRACTICE (RECOMMENDED): PersistState=false - strongly recommend enabling to preserve user's layout preferences across sessions");
-        }
-
-        // Validate ShowCaption (best practice)
-        if (!dm.ShowCaption)
-        {
-            issues.Add("⚠️  BEST PRACTICE: ShowCaption=false - users cannot see panel titles");
-        }
-
-        // Validate fonts are set (accessibility)
-        if (string.IsNullOrEmpty(result.AutoHideTabFont) || result.AutoHideTabFont == "(null)")
-        {
-            issues.Add("⚠️  ACCESSIBILITY: AutoHideTabFont not set - may use default system font");
-        }
-
-        if (string.IsNullOrEmpty(result.DockTabFont) || result.DockTabFont == "(null)")
-        {
-            issues.Add("⚠️  ACCESSIBILITY: DockTabFont not set - may use default system font");
-        }
-
-        return issues;
     }
 
     private static int CalculateBestPracticesScore(DockingManagerInspectionResult result)

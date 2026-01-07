@@ -14,6 +14,8 @@ using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.ListView.Enums;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -61,6 +63,7 @@ namespace WileyWidget.WinForms.Controls
     public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
+        private Services.IThemeService? _themeService;
 
         /// <summary>
         /// A simple DataContext property for ViewModel access.
@@ -73,17 +76,17 @@ namespace WileyWidget.WinForms.Controls
         private NoDataOverlay? _noDataOverlay;
         private SfComboBox? comboFund;
         private SfComboBox? comboAccountType;
-        private Button? btnRefresh;
-        private Button? btnAdd;
-        private Button? btnEdit;
-        private Button? btnDelete;
+        private SfButton? btnRefresh;
+        private SfButton? btnAdd;
+        private SfButton? btnEdit;
+        private SfButton? btnDelete;
         private SfButton? btnExportExcel;
         private SfButton? btnExportPdf;
         private EventHandler<AppTheme>? _btnExportExcelThemeChangedHandler;
         private EventHandler<AppTheme>? _btnExportPdfThemeChangedHandler;
-        private Panel? topPanel;
+        private GradientPanelExt? topPanel;
         // Summary UI (bottom): displays total balance and active account count
-        private Panel? summaryPanel;
+        private GradientPanelExt? summaryPanel;
         private Label? lblTotalBalance;
         private Label? lblAccountCount;
         // Theme and viewmodel event handlers (stored so we can detach on Dispose)
@@ -141,6 +144,15 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Debug("AccountsPanel: OnViewModelResolved starting");
 
+                // Resolve theme service from DI (optional - gracefully handles absence)
+                try
+                {
+                    _themeService = ServiceProvider != null
+                        ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(ServiceProvider)
+                        : null;
+                }
+                catch { /* Theme service unavailable - continue with defaults */ }
+
                 // Keep a DataContext reference
                 DataContext = viewModel;
 
@@ -175,7 +187,7 @@ namespace WileyWidget.WinForms.Controls
 
                 // Subscribe to theme changes
                 _panelThemeChangedHandler = OnThemeChanged;
-                ThemeManager.ThemeChanged += _panelThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _panelThemeChangedHandler;
 
                 Serilog.Log.Information("AccountsPanel initialized with {Count} accounts", viewModel?.Accounts?.Count ?? 0);
                 Serilog.Log.Debug("AccountsPanel: OnViewModelResolved finished");
@@ -200,7 +212,10 @@ namespace WileyWidget.WinForms.Controls
             Name = "AccountsPanel";
             // Set AccessibleName for UI automation (E2E tests search by this)
             AccessibleName = AccountsPanelResources.PanelTitle; // "Municipal Accounts"
-            Size = new Size(1200, 800);
+            Size = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f));
+            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+            AutoScroll = true;
+            Padding = new Padding(8);
             // Prefer DPI scaling for modern displays
             try
             {
@@ -341,13 +356,15 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Keep existing filter panel below the header
-            topPanel = new Panel
+            topPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Top,
                 Height = 44, // consistent header height across panels
-                Padding = new Padding(8)
-                // BackColor is set by ThemeManager.ApplyTheme()
+                Padding = new Padding(8),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
             // Fund label + combo
             var fundLabel = new Label
@@ -406,7 +423,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(comboAccountType, "Filter accounts by type (Asset, Liability, Revenue, Expense)"); } catch { }
 
             // Refresh button
-            btnRefresh = new Button
+            btnRefresh = new SfButton
             {
                 Name = "btnRefresh",
                 Width = 100,
@@ -455,7 +472,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnRefreshThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnRefreshThemeChangedHandler;
             }
             catch { }
             btnRefresh.Click += async (s, e) =>
@@ -481,7 +498,7 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Add button - styled by ThemeManager.StyleButton based on Name containing "Add"
-            btnAdd = new Button
+            btnAdd = new SfButton
             {
                 Text = "Add",
                 Name = "btnAdd",
@@ -527,14 +544,13 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnAddThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnAddThemeChangedHandler;
             }
             catch { }
-            btnAdd.FlatAppearance.BorderSize = 0;
             btnAdd.Click += BtnAdd_Click;
 
             // Edit button
-            btnEdit = new Button
+            btnEdit = new SfButton
             {
                 Text = "Edit",
                 Name = "btnEdit",
@@ -578,13 +594,13 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnEditThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnEditThemeChangedHandler;
             }
             catch { }
             btnEdit.Click += BtnEdit_Click;
 
             // Delete button
-            btnDelete = new Button
+            btnDelete = new SfButton
             {
                 Text = "Delete",
                 Name = "btnDelete",
@@ -628,7 +644,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnDeleteThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnDeleteThemeChangedHandler;
             }
             catch { }
             btnDelete.Click += BtnDelete_Click;
@@ -676,7 +692,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnExportExcelThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnExportExcelThemeChangedHandler;
             }
             catch { }
             btnExportExcel.Click += async (s, e) =>
@@ -714,7 +730,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = ThemeManager.CurrentTheme;
+                // Use default theme for icon selection
                 btnExportPdf.Image = iconService?.GetIcon("pdf", AppTheme.Office2019Colorful, 14);
                 btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
                 btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -741,7 +757,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     catch { }
                 };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnExportPdfThemeChangedHandler;
+                if (_themeService != null) _themeService.ThemeChanged += _btnExportPdfThemeChangedHandler;
             }
             catch { }
             btnExportPdf.Click += async (s, e) =>
@@ -768,7 +784,7 @@ namespace WileyWidget.WinForms.Controls
             var separator = new Label { Text = "  |  ", AutoSize = true, Margin = new Padding(6, 14, 6, 6), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
 
             // View Charts navigation button
-            var btnViewCharts = new Button
+            var btnViewCharts = new SfButton
             {
                 Text = "Charts",
                 Name = "btnViewCharts",
@@ -796,7 +812,7 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Dashboard navigation button
-            var btnDashboard = new Button
+            var btnDashboard = new SfButton
             {
                 Text = "Home",
                 Name = "btnDashboard",
@@ -833,13 +849,13 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
-            var btnLoad = new Button { Text = "Load Accounts", Name = "Toolbar_Load", AccessibleName = "Load Accounts", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+            var btnLoad = new SfButton { Text = "Load Accounts", Name = "Toolbar_Load", AccessibleName = "Load Accounts", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
             btnLoad.Click += async (s, e) => { try { if (ViewModel?.LoadAccountsCommand != null) await ViewModel.LoadAccountsCommand.ExecuteAsync(null); } catch { } };
 
-            var btnApplyFilters = new Button { Text = "Apply Filters", Name = "Toolbar_ApplyFilters", AccessibleName = "Apply Filters", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+            var btnApplyFilters = new SfButton { Text = "Apply Filters", Name = "Toolbar_ApplyFilters", AccessibleName = "Apply Filters", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
             btnApplyFilters.Click += (s, e) => { try { /* Trigger filter apply - UI binds to combo selections; if a command exists, invoke it */ } catch { } };
 
-            var chkAllowEdit = new CheckBox { Text = "Allow Editing", Name = "Toolbar_AllowEditing", AccessibleName = "Allow Editing", AutoSize = true, Appearance = System.Windows.Forms.Appearance.Button, Margin = new Padding(6, 6, 6, 6) };
+            var chkAllowEdit = new CheckBoxAdv { Text = "Allow Editing", Name = "Toolbar_AllowEditing", AccessibleName = "Allow Editing", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
             chkAllowEdit.CheckedChanged += (s, e) => { try { if (gridAccounts != null) gridAccounts.AllowEditing = chkAllowEdit.Checked; } catch { } };
 
             flow.Controls.Add(fundLabel);
@@ -1118,13 +1134,15 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_noDataOverlay);
 
             // Summary panel at bottom - use theme colors
-            summaryPanel = new Panel
+            summaryPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Bottom,
                 Height = 40,
-                Padding = new Padding(10)
-                // BackColor is set by ThemeManager.ApplyTheme()
+                Padding = new Padding(10),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
 
             lblTotalBalance = new Label
             {
@@ -1600,13 +1618,13 @@ namespace WileyWidget.WinForms.Controls
             if (disposing)
             {
                 // Unsubscribe event handlers
-                try { if (_panelThemeChangedHandler != null) ThemeManager.ThemeChanged -= _panelThemeChangedHandler; } catch { }
-                try { if (_btnRefreshThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
-                try { if (_btnAddThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnAddThemeChangedHandler; } catch { }
-                try { if (_btnEditThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnEditThemeChangedHandler; } catch { }
-                try { if (_btnDeleteThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnDeleteThemeChangedHandler; } catch { }
-                try { if (_btnExportExcelThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportExcelThemeChangedHandler; } catch { }
-                try { if (_btnExportPdfThemeChangedHandler != null) ThemeManager.ThemeChanged -= _btnExportPdfThemeChangedHandler; } catch { }
+                try { if (_panelThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _panelThemeChangedHandler; } catch { }
+                try { if (_btnRefreshThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
+                try { if (_btnAddThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnAddThemeChangedHandler; } catch { }
+                try { if (_btnEditThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnEditThemeChangedHandler; } catch { }
+                try { if (_btnDeleteThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnDeleteThemeChangedHandler; } catch { }
+                try { if (_btnExportExcelThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnExportExcelThemeChangedHandler; } catch { }
+                try { if (_btnExportPdfThemeChangedHandler != null && _themeService != null) _themeService.ThemeChanged -= _btnExportPdfThemeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && ViewModel != null) ((System.ComponentModel.INotifyPropertyChanged)ViewModel).PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
                 try { if (_accountsCollectionChangedHandler != null && ViewModel?.Accounts != null) ViewModel.Accounts.CollectionChanged -= _accountsCollectionChangedHandler; } catch { }
                 try { if (_comboFundValidatingHandler != null && comboFund != null) comboFund.Validating -= _comboFundValidatingHandler; } catch { }

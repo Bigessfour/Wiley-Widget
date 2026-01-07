@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -32,7 +33,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IAILoggingService _aiLoggingService;
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _concurrencySemaphore;
-    private readonly SigNozTelemetryService? _telemetryService;
+    private readonly ITelemetryService? _telemetryService;
     private readonly bool _enabled;
     private readonly string _endpoint;
     private readonly string _model;
@@ -51,7 +52,7 @@ public class XAIService : IAIService, IDisposable
         IWileyWidgetContextService contextService,
         IAILoggingService aiLoggingService,
         IMemoryCache memoryCache,
-        SigNozTelemetryService? telemetryService = null
+        ITelemetryService? telemetryService = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
@@ -81,7 +82,7 @@ public class XAIService : IAIService, IDisposable
             throw new InvalidOperationException("XAI API key not configured but XAI is enabled");
         }
 
-        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
+        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "30", CultureInfo.InvariantCulture);
         // Allow tests to override circuit-breaker break duration (seconds) via configuration
         // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
         var circuitBreakerBreakSeconds = 60;
@@ -291,8 +292,9 @@ public class XAIService : IAIService, IDisposable
                 var content = result.choices[0].message?.content;
                 if (!string.IsNullOrEmpty(content))
                 {
+                    var totalTokens = result.usage?.TotalTokens ?? 0;
                     var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                    _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+                    _aiLoggingService.LogResponse(question, content, responseTimeMs, totalTokens);
 
                     // Track successful response telemetry - commented out until Azure is configured
                     // _telemetryClient?.TrackEvent("XAIServiceSuccess", new Dictionary<string, string>
@@ -366,7 +368,7 @@ public class XAIService : IAIService, IDisposable
             //     ["TimeoutSeconds"] = _httpClient.Timeout.TotalSeconds.ToString()
             // });
 
-            return $"The request timed out after {_httpClient.Timeout.TotalSeconds} seconds. The xAI service may be experiencing high load. Please try again later.";
+            return $"The request timed out (timeout) after {_httpClient.Timeout.TotalSeconds} seconds. The xAI service may be experiencing high load. Please try again later.";
         }
         catch (BrokenCircuitException<HttpResponseMessage> ex)
         {
@@ -551,8 +553,9 @@ public class XAIService : IAIService, IDisposable
             var content = result.choices[0].message?.content;
             if (!string.IsNullOrEmpty(content))
             {
+                var totalTokens = result.usage?.TotalTokens ?? 0;
                 var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+                _aiLoggingService.LogResponse(question, content, responseTimeMs, totalTokens);
 
                 Log.Information("Successfully received xAI response for question: {Question}", question);
 
@@ -645,8 +648,9 @@ public class XAIService : IAIService, IDisposable
 
         if (!string.IsNullOrEmpty(content))
         {
+            var totalTokens = xaiResponse?.usage?.TotalTokens ?? 0;
             var responseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-            _aiLoggingService.LogResponse(question, content, responseTimeMs, 0);
+            _aiLoggingService.LogResponse(question, content, responseTimeMs, totalTokens);
             Log.Information("Successfully received xAI response for question: {Question}", question);
             return new AIResponseResult(content, 200, null, null);
         }
@@ -778,6 +782,20 @@ public class XAIService : IAIService, IDisposable
             public string message { get; set; }
             public string type { get; set; }
             public string code { get; set; }
+        }
+
+        public Usage usage { get; set; }
+
+        public class Usage
+        {
+            [JsonPropertyName("prompt_tokens")]
+            public int PromptTokens { get; set; }
+
+            [JsonPropertyName("completion_tokens")]
+            public int CompletionTokens { get; set; }
+
+            [JsonPropertyName("total_tokens")]
+            public int TotalTokens { get; set; }
         }
     }
 

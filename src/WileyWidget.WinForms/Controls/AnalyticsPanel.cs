@@ -2,15 +2,17 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.Services.Extensions;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.ListView;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -26,31 +28,33 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private SfDataGrid? _metricsGrid;
     private SfDataGrid? _variancesGrid;
     private ChartControl? _trendsChart;
+    private ChartControlRegionEventWiring? _trendsChartRegionEventWiring;
     private ChartControl? _forecastChart;
-    private Button? _performAnalysisButton;
-    private Button? _runScenarioButton;
-    private Button? _generateForecastButton;
-    private Button? _refreshButton;
-    private Button? _navigateToBudgetButton;
-    private Button? _navigateToAccountsButton;
-    private Button? _navigateToDashboardButton;
-    private TextBox? _rateIncreaseTextBox;
-    private TextBox? _expenseIncreaseTextBox;
-    private TextBox? _revenueTargetTextBox;
-    private TextBox? _projectionYearsTextBox;
-    private TextBox? _metricsSearchTextBox;
-    private TextBox? _variancesSearchTextBox;
-    private ListBox? _insightsListBox;
-    private ListBox? _recommendationsListBox;
+    private ChartControlRegionEventWiring? _forecastChartRegionEventWiring;
+    private SfButton? _performAnalysisButton;
+    private SfButton? _runScenarioButton;
+    private SfButton? _generateForecastButton;
+    private SfButton? _refreshButton;
+    private SfButton? _navigateToBudgetButton;
+    private SfButton? _navigateToAccountsButton;
+    private SfButton? _navigateToDashboardButton;
+    private TextBoxExt? _rateIncreaseTextBox;
+    private TextBoxExt? _expenseIncreaseTextBox;
+    private TextBoxExt? _revenueTargetTextBox;
+    private TextBoxExt? _projectionYearsTextBox;
+    private TextBoxExt? _metricsSearchTextBox;
+    private TextBoxExt? _variancesSearchTextBox;
+    private SfListView? _insightsListBox;
+    private SfListView? _recommendationsListBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
     private Label? _averageVarianceLabel;
     private Label? _recommendationExplanationLabel;
-    private Panel? _scenarioPanel;
-    private Panel? _resultsPanel;
-    private Panel? _chartsPanel;
-    private Panel? _buttonPanel;
+    private GradientPanelExt? _scenarioPanel;
+    private GradientPanelExt? _resultsPanel;
+    private GradientPanelExt? _chartsPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -95,8 +99,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeControls()
     {
-        // Apply Syncfusion theme using SkinManager
-        SfSkinManager.SetTheme(this, "Office2019Colorful");
+        // Theme is applied automatically by SfSkinManager cascade from the parent form.
+        // Avoid per-control SetTheme to prevent inconsistent/double theming.
 
         // Set up form properties
         Text = "Budget Analytics";
@@ -164,15 +168,24 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeTopPanel()
     {
-        var topPanel = new Panel { Dock = DockStyle.Fill };
+        var topPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(topPanel, ThemeColors.DefaultTheme);
 
         // Button panel
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 50,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
         var buttonTable = new TableLayoutPanel
         {
@@ -184,7 +197,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         for (int i = 0; i < 7; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.28f));
 
-        _performAnalysisButton = new Button
+        _performAnalysisButton = new SfButton
         {
             Text = "&Perform Analysis",
             TabIndex = 1,
@@ -193,7 +206,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _performAnalysisButton.Click += async (s, e) => await ViewModel!.PerformAnalysisCommand.ExecuteAsync(null);
 
-        _runScenarioButton = new Button
+        _runScenarioButton = new SfButton
         {
             Text = "&Run Scenario",
             TabIndex = 2,
@@ -202,7 +215,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _runScenarioButton.Click += async (s, e) => await ViewModel!.RunScenarioCommand.ExecuteAsync(null);
 
-        _generateForecastButton = new Button
+        _generateForecastButton = new SfButton
         {
             Text = "&Generate Forecast",
             TabIndex = 3,
@@ -211,7 +224,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _generateForecastButton.Click += async (s, e) => await ViewModel!.GenerateForecastCommand.ExecuteAsync(null);
 
-        _refreshButton = new Button
+        _refreshButton = new SfButton
         {
             Text = "&Refresh",
             TabIndex = 4,
@@ -220,7 +233,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _refreshButton.Click += async (s, e) => await ViewModel!.RefreshCommand.ExecuteAsync(null);
 
-        _navigateToBudgetButton = new Button
+        _navigateToBudgetButton = new SfButton
         {
             Text = "Go to &Budget",
             TabIndex = 5,
@@ -229,7 +242,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _navigateToBudgetButton.Click += (s, e) => NavigateToPanel("BudgetPanel");
 
-        _navigateToAccountsButton = new Button
+        _navigateToAccountsButton = new SfButton
         {
             Text = "Go to &Accounts",
             TabIndex = 6,
@@ -238,7 +251,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         _navigateToAccountsButton.Click += (s, e) => NavigateToPanel("AccountsPanel");
 
-        _navigateToDashboardButton = new Button
+        _navigateToDashboardButton = new SfButton
         {
             Text = "Go to &Dashboard",
             TabIndex = 7,
@@ -259,17 +272,23 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         topPanel.Controls.Add(_buttonPanel);
 
         // Scenario input panel
-        _scenarioPanel = new Panel
+        _scenarioPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_scenarioPanel, "Office2019Colorful");
 
-        var scenarioGroup = new GroupBox
+        var scenarioGroup = new GradientPanelExt
         {
             Text = "Scenario Parameters",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(scenarioGroup, "Office2019Colorful");
 
         var scenarioTable = new TableLayoutPanel
         {
@@ -291,7 +310,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _rateIncreaseTextBox = new TextBox
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _rateIncreaseTextBox = new TextBoxExt
         {
             Text = "5.0",
             Dock = DockStyle.Fill,
@@ -299,6 +319,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Rate Increase Percentage",
             AccessibleDescription = "Percentage increase for rate scenario"
         };
+#pragma warning restore RS0030
         _rateIncreaseTextBox.TextChanged += RateIncreaseTextBox_TextChanged;
 
         // Row 2: Expense Increase
@@ -309,7 +330,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _expenseIncreaseTextBox = new TextBox
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _expenseIncreaseTextBox = new TextBoxExt
         {
             Text = "3.0",
             Dock = DockStyle.Fill,
@@ -317,6 +339,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Expense Increase Percentage",
             AccessibleDescription = "Percentage increase for expenses in scenario"
         };
+#pragma warning restore RS0030
         _expenseIncreaseTextBox.TextChanged += ExpenseIncreaseTextBox_TextChanged;
 
         // Row 3: Revenue Target
@@ -327,7 +350,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _revenueTargetTextBox = new TextBox
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _revenueTargetTextBox = new TextBoxExt
         {
             Text = "10.0",
             Dock = DockStyle.Fill,
@@ -335,6 +359,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Revenue Target Percentage",
             AccessibleDescription = "Target revenue increase percentage"
         };
+#pragma warning restore RS0030
         _revenueTargetTextBox.TextChanged += RevenueTargetTextBox_TextChanged;
 
         // Row 4: Projection Years
@@ -345,7 +370,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _projectionYearsTextBox = new TextBox
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _projectionYearsTextBox = new TextBoxExt
         {
             Text = "3",
             Dock = DockStyle.Fill,
@@ -353,6 +379,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Projection Years",
             AccessibleDescription = "Number of years for projections"
         };
+#pragma warning restore RS0030
         _projectionYearsTextBox.TextChanged += ProjectionYearsTextBox_TextChanged;
 
         scenarioTable.Controls.Add(rateIncreaseLabel, 0, 0);
@@ -376,14 +403,23 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeBottomPanel()
     {
-        var bottomPanel = new Panel { Dock = DockStyle.Fill };
-
-        // Results panel with grids and insights
-        _resultsPanel = new Panel
+        var bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(bottomPanel, ThemeColors.DefaultTheme);
+
+        // Results panel with grids and insights
+        _resultsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_resultsPanel, ThemeColors.DefaultTheme);
 
         var resultsSplit = new SplitContainer
         {
@@ -393,30 +429,44 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
 
         // Top results - Grids
-        var gridsPanel = new Panel { Dock = DockStyle.Fill };
+        var gridsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(gridsPanel, ThemeColors.DefaultTheme);
 
         var gridsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 150
+            SplitterDistance = 850
         };
 
         // Metrics grid
-        var metricsPanel = new Panel
+        var metricsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(5)
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(metricsPanel, ThemeColors.DefaultTheme);
 
         // Metrics search
-        var metricsSearchPanel = new Panel
+        var metricsSearchPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
-            Height = 30
+            Height = 30,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(metricsSearchPanel, ThemeColors.DefaultTheme);
         var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
-        _metricsSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 9 };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9 };
+#pragma warning restore RS0030
         _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
         metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
         metricsSearchPanel.Controls.Add(metricsSearchLabel);
@@ -442,20 +492,28 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         gridsSplit.Panel1.Controls.Add(metricsPanel);
 
         // Variances grid
-        var variancesPanel = new Panel
+        var variancesPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(5)
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(variancesPanel, "Office2019Colorful");
 
         // Variances search
-        var variancesSearchPanel = new Panel
+        var variancesSearchPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
-            Height = 30
+            Height = 30,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(variancesSearchPanel, "Office2019Colorful");
         var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
-        _variancesSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 11 };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+        _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
+#pragma warning restore RS0030
         _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
         variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
         variancesSearchPanel.Controls.Add(variancesSearchLabel);
@@ -486,7 +544,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         resultsSplit.Panel1.Controls.Add(gridsSplit);
 
         // Bottom results - Insights and recommendations
-        var insightsPanel = new Panel { Dock = DockStyle.Fill };
+        var insightsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(insightsPanel, ThemeColors.DefaultTheme);
 
         var insightsSplit = new SplitContainer
         {
@@ -496,13 +560,16 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
 
         // Insights list
-        var insightsGroup = new GroupBox
+        var insightsGroup = new GradientPanelExt
         {
             Text = "Key Insights",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(insightsGroup, ThemeColors.DefaultTheme);
 
-        _insightsListBox = new ListBox
+        _insightsListBox = new SfListView
         {
             Dock = DockStyle.Fill,
             TabIndex = 13,
@@ -514,13 +581,16 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         insightsSplit.Panel1.Controls.Add(insightsGroup);
 
         // Recommendations list
-        var recommendationsGroup = new GroupBox
+        var recommendationsGroup = new GradientPanelExt
         {
             Text = "Recommendations",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(recommendationsGroup, "Office2019Colorful");
 
-        _recommendationsListBox = new ListBox
+        _recommendationsListBox = new SfListView
         {
             Dock = DockStyle.Fill,
             TabIndex = 14,
@@ -536,12 +606,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         bottomPanel.Controls.Add(_resultsPanel);
 
         // Summary panel
-        var summaryPanel = new Panel
+        var summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 60,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
 
         var summaryTable = new TableLayoutPanel
         {
@@ -569,12 +642,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         bottomPanel.Controls.Add(summaryPanel);
 
         // Charts panel
-        _chartsPanel = new Panel
+        _chartsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 300,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_chartsPanel, "Office2019Colorful");
 
         var chartsSplit = new SplitContainer
         {
@@ -584,7 +660,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
 
         // Trends chart
-        var trendsPanel = new Panel { Dock = DockStyle.Fill };
+        var trendsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(trendsPanel, "Office2019Colorful");
 
         _trendsChart = new ChartControl
         {
@@ -592,6 +674,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TabIndex = 15,
             AccessibleName = "Trends Chart"
         };
+        _trendsChartRegionEventWiring = new ChartControlRegionEventWiring(_trendsChart);
+
+        ChartControlDefaults.Apply(_trendsChart!);
 
         _trendsChart.Title.Text = "Monthly Budget Trends";
         _trendsChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
@@ -601,7 +686,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         chartsSplit.Panel1.Controls.Add(trendsPanel);
 
         // Forecast chart
-        var forecastPanel = new Panel { Dock = DockStyle.Fill };
+        var forecastPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(forecastPanel, "Office2019Colorful");
 
         _forecastChart = new ChartControl
         {
@@ -609,6 +700,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TabIndex = 16,
             AccessibleName = "Forecast Chart"
         };
+        _forecastChartRegionEventWiring = new ChartControlRegionEventWiring(_forecastChart);
+
+        ChartControlDefaults.Apply(_forecastChart!);
 
         _forecastChart.Title.Text = "Reserve Forecast";
         _forecastChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
@@ -731,11 +825,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         switch (e.PropertyName)
         {
             case nameof(ViewModel.FilteredMetrics):
-                if (_metricsGrid != null) _metricsGrid.DataSource = ViewModel.FilteredMetrics;
+                _metricsGrid?.DataSource = ViewModel.FilteredMetrics;
                 break;
 
             case nameof(ViewModel.FilteredTopVariances):
-                if (_variancesGrid != null) _variancesGrid.DataSource = ViewModel.FilteredTopVariances;
+                _variancesGrid?.DataSource = ViewModel.FilteredTopVariances;
                 break;
 
             case nameof(ViewModel.TrendData):
@@ -745,18 +839,14 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             case nameof(ViewModel.Insights):
                 if (_insightsListBox != null)
                 {
-                    _insightsListBox.Items.Clear();
-                    foreach (var insight in ViewModel.Insights)
-                        _insightsListBox.Items.Add(insight);
+                _insightsListBox.DataSource = ViewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
                 }
                 break;
 
             case nameof(ViewModel.Recommendations):
                 if (_recommendationsListBox != null)
                 {
-                    _recommendationsListBox.Items.Clear();
-                    foreach (var rec in ViewModel.Recommendations)
-                        _recommendationsListBox.Items.Add(rec);
+                _recommendationsListBox.DataSource = ViewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
                 }
                 break;
 
@@ -765,12 +855,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
                 break;
 
             case nameof(ViewModel.IsLoading):
-                if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Metrics.Any();
+                _loadingOverlay?.Visible = ViewModel.IsLoading;
+                _noDataOverlay?.Visible = !ViewModel.IsLoading && ViewModel.Metrics.IsEmpty;
                 break;
 
             case nameof(ViewModel.StatusText):
-                if (_statusLabel != null) _statusLabel.Text = ViewModel.StatusText;
+                _statusLabel?.Text = ViewModel.StatusText;
                 break;
 
             case nameof(ViewModel.TotalBudgetedAmount):
@@ -810,9 +900,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             var budgetedSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
             var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
 
-            budgetedSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(54, 162, 235)); // Blue
-            actualSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(255, 99, 132)); // Red
-
             foreach (var trend in ViewModel.TrendData)
             {
                 budgetedSeries.Points.Add(trend.Month, (double)trend.Budgeted);
@@ -842,7 +929,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _forecastChart.Series.Clear();
 
             var forecastSeries = new ChartSeries("Predicted Reserves", ChartSeriesType.Line);
-            forecastSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(75, 192, 192)); // Green
 
             foreach (var point in ViewModel.ForecastData)
             {
@@ -978,6 +1064,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             // Use SafeDispose for Syncfusion controls
             _metricsGrid.SafeDispose();
             _variancesGrid.SafeDispose();
+
+            try { _trendsChartRegionEventWiring?.Dispose(); } catch { }
+            _trendsChartRegionEventWiring = null;
+            try { _forecastChartRegionEventWiring?.Dispose(); } catch { }
+            _forecastChartRegionEventWiring = null;
+
             _trendsChart.SafeDispose();
             _forecastChart.SafeDispose();
             _mainSplitContainer.SafeDispose();
@@ -1005,6 +1097,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         this.Name = "AnalyticsPanel";
         this.AccessibleName = "Budget Analytics"; // For UI automation
         this.Size = new Size(1400, 900);
+        this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        this.AutoScroll = true;
+        this.Padding = new Padding(8);
     }
 
     #endregion

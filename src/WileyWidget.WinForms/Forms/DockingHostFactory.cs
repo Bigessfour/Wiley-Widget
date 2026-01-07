@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -11,6 +12,7 @@ using System.IO;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Theming;
 
@@ -35,8 +37,8 @@ public static class DockingHostFactory
     /// <remarks>No central panel - pure docking panel architecture per Option A design</remarks>
     public static (
         DockingManager dockingManager,
-        Panel leftDockPanel,
-        Panel rightDockPanel,
+        GradientPanelExt leftDockPanel,
+        GradientPanelExt rightDockPanel,
         Syncfusion.WinForms.DataGrid.SfDataGrid? activityGrid,
         System.Windows.Forms.Timer? activityRefreshTimer
     ) CreateDockingHost(
@@ -135,20 +137,6 @@ public static class DockingHostFactory
 
         logger?.LogInformation("CreateDockingManager: DockingManager created successfully - HostControl assigned to MainForm with handle {Handle}", mainForm.Handle);
 
-        // CRITICAL: Apply SfSkinManager theme to DockingManager
-        // This ensures theme cascade to all docked panels and controls
-        // Theme name comes from SfSkinManager.ApplicationVisualTheme (set globally in Program.InitializeTheme)
-        var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-        try
-        {
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dockingManager, currentTheme);
-            logger?.LogInformation("DockingManager theme applied via SfSkinManager: {Theme}", currentTheme);
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Failed to apply SfSkinManager theme to DockingManager - using default theme");
-        }
-
         // Configure fonts for docking UI elements (tabs, auto-hide tabs)
         // Theme-aware fonts ensure consistency with Office2019 theme
         dockingManager.DockTabFont = new Font(SegoeUiFontName, 9F, FontStyle.Regular);
@@ -165,10 +153,11 @@ public static class DockingHostFactory
         }
         catch { /* Name setting is optional */ }
 
-        logger?.LogInformation("DockingManager initialized with Office2019 theme integration (EnableDocumentMode=false)");
+        var appliedTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        logger?.LogInformation("DockingManager initialized with theme integration (EnableDocumentMode=false)");
         logger?.LogDebug(
             "DockingManager config: Theme={Theme}, ShowCaption={ShowCaption}, EnableAutoAdjustCaption={AutoAdjust}",
-            currentTheme,
+            appliedTheme,
             dockingManager.ShowCaption,
             dockingManager.EnableAutoAdjustCaption);
 
@@ -179,7 +168,7 @@ public static class DockingHostFactory
     /// Create left dock panel with dashboard cards.
     /// CRITICAL: Follows Syncfusion official pattern - dock panel BEFORE adding child controls.
     /// </summary>
-    private static Panel CreateLeftDockPanel(
+    private static GradientPanelExt CreateLeftDockPanel(
         DockingManager dockingManager,
         MainForm mainForm,
         IPanelNavigationService? panelNavigator,
@@ -191,12 +180,13 @@ public static class DockingHostFactory
         var safeLogger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
         // STEP 1: Create empty panel
-        var leftPanel = new Panel
+        var leftPanel = new GradientPanelExt
         {
             Name = "LeftDockPanel",
             AccessibleName = "LeftDockPanel",
             AutoScroll = true,
             BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Padding = new Padding(8, 8, 8, 8),
             Visible = true // Explicitly set visible
         };
@@ -205,8 +195,9 @@ public static class DockingHostFactory
         Console.WriteLine($"[DIAGNOSTIC] CreateLeftDockPanel: Created {leftPanel.Name}, Visible={leftPanel.Visible}");
 
         // STEP 2-4: Dock panel BEFORE adding content (Syncfusion official pattern)
-        // This ensures DockingManager's internal control collections are populated before child controls are added
-        ConfigurePanelDocking(dockingManager, leftPanel, mainForm, DockingStyle.Left, 280, "Dashboard", safeLogger);
+        // Use dynamic size calculation so chart/grid panels have adequate initial width on larger displays
+        var leftSize = CalculatePreferredDockSize(mainForm, DockingStyle.Left);
+        ConfigurePanelDocking(dockingManager, leftPanel, mainForm, DockingStyle.Left, leftSize, "Dashboard", safeLogger);
 
         // STEP 5: Add child controls AFTER docking
         // Note: panelNavigator may be null here - dashboard cards will be inert until
@@ -228,19 +219,20 @@ public static class DockingHostFactory
     /// Create right dock panel with activity grid.
     /// CRITICAL: Follows Syncfusion official pattern - dock panel BEFORE adding child controls.
     /// </summary>
-    private static (Panel panel, Syncfusion.WinForms.DataGrid.SfDataGrid? grid, System.Windows.Forms.Timer? timer) CreateRightDockPanel(
+    private static (GradientPanelExt panel, Syncfusion.WinForms.DataGrid.SfDataGrid? grid, System.Windows.Forms.Timer? timer) CreateRightDockPanel(
         DockingManager dockingManager,
         MainForm mainForm,
         IServiceProvider serviceProvider,
         ILogger? logger)
     {
         // STEP 1: Create empty panel
-        var rightPanel = new Panel
+        var rightPanel = new GradientPanelExt
         {
             Name = "RightDockPanel",
             AccessibleName = "RightDockPanel",
             Padding = new Padding(8, 8, 8, 8),
             BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Visible = true // Explicitly set visible
         };
 
@@ -248,8 +240,9 @@ public static class DockingHostFactory
         Console.WriteLine($"[DIAGNOSTIC] CreateRightDockPanel: Created {rightPanel.Name}, Visible={rightPanel.Visible}");
 
         // STEP 2-4: Dock panel BEFORE adding content (Syncfusion official pattern)
-        // This ensures DockingManager's internal control collections are populated before child controls are added
-        ConfigurePanelDocking(dockingManager, rightPanel, mainForm, DockingStyle.Right, 280, "Activity", logger);
+        // Use dynamic size calculation so chart/grid panels have adequate initial width on larger displays
+        var rightSize = CalculatePreferredDockSize(mainForm, DockingStyle.Right);
+        ConfigurePanelDocking(dockingManager, rightPanel, mainForm, DockingStyle.Right, rightSize, "Activity", logger);
 
         // STEP 5: Add child controls AFTER docking
         logger?.LogDebug("[DOCKING] Step 5: Adding activity grid to {PanelName}", rightPanel.Name);
@@ -283,6 +276,13 @@ public static class DockingHostFactory
 
         // STEP 2: DockControl FIRST (per Syncfusion official pattern)
         // This adds the panel to DockingManager's internal control collections
+        // Defensive: If the requested size is not reasonable, compute a preferred size based on host dimensions.
+        if (size <= 0 || size < 200)
+        {
+            size = CalculatePreferredDockSize(mainForm, style);
+            logger?.LogDebug("Adjusted docking size to preferred value: {AdjustedSize}", size);
+        }
+
         dockingManager.DockControl(panel, mainForm, style, size);
         logger?.LogInformation("[DOCKING] Step 2: DockControl({PanelName}, {Style}, {Size}) completed",
             panel.Name, style, size);
@@ -334,19 +334,47 @@ public static class DockingHostFactory
         }
     }
 
+    /// <summary>
+    /// Compute a preferred docking size for left/right/top/bottom panels based on the host container dimensions.
+    /// This avoids too-small hardcoded defaults that can squash charts and grids on larger displays.
+    /// </summary>
+    private static int CalculatePreferredDockSize(Control container, DockingStyle style)
+    {
+        if (container == null) return 360;
+        try
+        {
+            if (style == DockingStyle.Left || style == DockingStyle.Right)
+            {
+                var w = container.Width > 0 ? container.Width / 3 : 360; // prefer roughly one-third of available width
+                return Math.Max(360, Math.Min(w, 1000)); // clamp to a sensible range
+            }
+
+            if (style == DockingStyle.Top || style == DockingStyle.Bottom)
+            {
+                var h = container.Height > 0 ? container.Height / 3 : 200; // prefer roughly one-third of available height
+                return Math.Max(200, h);
+            }
+        }
+        catch { /* fall through to defaults */ }
+
+        // Fallback default
+        return Math.Max(400, Math.Min(container.Width, container.Height) / 2);
+    }
 
 
     /// <summary>
     /// Create activity grid panel with recent activity tracking.
     /// </summary>
-    private static (Panel panel, Syncfusion.WinForms.DataGrid.SfDataGrid grid, System.Windows.Forms.Timer timer) CreateActivityGridPanel(
+    private static (GradientPanelExt panel, Syncfusion.WinForms.DataGrid.SfDataGrid grid, System.Windows.Forms.Timer timer) CreateActivityGridPanel(
         IServiceProvider serviceProvider,
         ILogger? logger)
     {
-        var activityPanel = new Panel
+        var activityPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            Padding = new Padding(4)
         };
 
         var activityHeader = new Label

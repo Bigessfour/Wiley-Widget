@@ -3,6 +3,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
@@ -20,10 +21,11 @@ namespace WileyWidget.Services.Tests.ServiceTests;
 /// </summary>
 public sealed class BudgetRepositoryTests : IDisposable
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache _cache;
     private readonly ITelemetryService _telemetryService;
     private readonly DbContextOptions<AppDbContext> _options;
+    private readonly ServiceProvider _serviceProvider;
 
     public BudgetRepositoryTests()
     {
@@ -32,29 +34,14 @@ public sealed class BudgetRepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique name per test
             .Options;
 
-        _contextFactory = new TestDbContextFactory(_options);
+        // Build service provider with DbContext
+        var services = new ServiceCollection();
+        services.AddScoped(_ => new AppDbContext(_options));
+        _serviceProvider = services.BuildServiceProvider();
+        _scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
         _cache = new MemoryCache(new MemoryCacheOptions());
         _telemetryService = Mock.Of<ITelemetryService>();
-    }
-
-    private class TestDbContextFactory : IDbContextFactory<AppDbContext>
-    {
-        private readonly DbContextOptions<AppDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<AppDbContext> options)
-        {
-            _options = options;
-        }
-
-        public AppDbContext CreateDbContext()
-        {
-            return new AppDbContext(_options);
-        }
-
-        public Task<AppDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new AppDbContext(_options));
-        }
     }
 
     public void Dispose()
@@ -69,14 +56,24 @@ public sealed class BudgetRepositoryTests : IDisposable
         {
             // Dispose managed resources
             _cache?.Dispose();
+            _serviceProvider?.Dispose();
         }
         // Dispose unmanaged resources if any
+    }
+
+    /// <summary>
+    /// Helper to create a test AppDbContext using the service provider
+    /// </summary>
+    private AppDbContext CreateContext()
+    {
+        var scope = _scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<AppDbContext>();
     }
 
     #region Constructor Tests
 
     [Fact]
-    public void Constructor_WithNullContextFactory_ThrowsArgumentNullException()
+    public void Constructor_WithNullScopeFactory_ThrowsArgumentNullException()
     {
         // Arrange & Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
@@ -85,7 +82,7 @@ public sealed class BudgetRepositoryTests : IDisposable
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("contextFactory");
+            .WithParameterName("scopeFactory");
     }
 
     [Fact]
@@ -93,7 +90,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     {
         // Arrange & Act
 #pragma warning disable CA1806 // Constructor creates object that is never used - intentional for exception testing
-        Action act = () => new BudgetRepository(_contextFactory, null!, _telemetryService);
+        Action act = () => new BudgetRepository(_scopeFactory, null!, _telemetryService);
 #pragma warning restore CA1806
 
         // Assert
@@ -109,7 +106,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByFiscalYearAsync_WithValidYear_ReturnsBudgetEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
 
         // Act
@@ -125,7 +122,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByFiscalYearAsync_UsesCacheOnSecondCall_DoesNotQueryDatabase()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
 
         // Act - First call populates cache
@@ -133,7 +130,7 @@ public sealed class BudgetRepositoryTests : IDisposable
 
         // Modify database after first call
         // Create a new context instance for this operation
-        await using (var context = await _contextFactory.CreateDbContextAsync())
+        await using (var context = CreateContext())
         {
             var newEntry = CreateTestBudgetEntry(fiscalYear: 2026);
             context.BudgetEntries.Add(newEntry);
@@ -151,7 +148,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByIdAsync_WithValidId_ReturnsBudgetEntry()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
 
         // Act
@@ -167,7 +164,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByIdAsync_WithInvalidId_ReturnsNull()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
 
         // Act
         var result = await repository.GetByIdAsync(999999);
@@ -180,7 +177,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByDateRangeAsync_WithValidRange_ReturnsBudgetEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
         var startDate = new DateTime(2025, 7, 1);
         var endDate = new DateTime(2026, 6, 30);
@@ -201,7 +198,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByFundAsync_WithValidFund_ReturnsBudgetEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
 
         // Act
@@ -217,7 +214,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByDepartmentAsync_WithValidDepartment_ReturnsBudgetEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
 
         // Act
@@ -233,7 +230,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetByFundAndFiscalYearAsync_WithValidParameters_ReturnsBudgetEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
 
         // Act
@@ -249,7 +246,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetSewerBudgetEntriesAsync_WithValidYear_ReturnsSewerFundEntries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedSewerFundData();
 
         // Act
@@ -265,7 +262,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetPagedAsync_WithSorting_ReturnsCorrectlySortedAndPagedResults()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedMultipleTestEntries();
 
         // Act
@@ -291,14 +288,14 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task AddAsync_WithValidBudgetEntry_AddsToDatabase()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var newEntry = CreateTestBudgetEntry();
 
         // Act
         await repository.AddAsync(newEntry);
 
         // Assert
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         var saved = await context.BudgetEntries.FirstOrDefaultAsync(be => be.AccountNumber == newEntry.AccountNumber);
         saved.Should().NotBeNull();
         saved!.BudgetedAmount.Should().Be(newEntry.BudgetedAmount);
@@ -308,7 +305,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task AddAsync_WithNullBudgetEntry_ThrowsArgumentNullException()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
 
         // Act
         Func<Task> act = async () => await repository.AddAsync(null!);
@@ -322,7 +319,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task UpdateAsync_WithValidBudgetEntry_UpdatesDatabase()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
         testEntry.BudgetedAmount = 999999.99m;
 
@@ -330,7 +327,7 @@ public sealed class BudgetRepositoryTests : IDisposable
         await repository.UpdateAsync(testEntry);
 
         // Assert
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         var updated = await context.BudgetEntries.FirstOrDefaultAsync(be => be.Id == testEntry.Id);
         updated.Should().NotBeNull();
         updated!.BudgetedAmount.Should().Be(999999.99m);
@@ -340,14 +337,14 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task DeleteAsync_WithValidId_RemovesBudgetEntry()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         var testEntry = await SeedTestData();
 
         // Act
         await repository.DeleteAsync(testEntry.Id);
 
         // Assert
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         var deleted = await context.BudgetEntries.FirstOrDefaultAsync(be => be.Id == testEntry.Id);
         deleted.Should().BeNull();
     }
@@ -360,7 +357,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetBudgetSummaryAsync_WithValidDateRange_ReturnsVarianceAnalysis()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
         var startDate = DateTime.UtcNow.AddDays(-30);
         var endDate = DateTime.UtcNow;
@@ -378,7 +375,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetDepartmentBreakdownAsync_WithValidDateRange_ReturnsDepartmentSummaries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
         var startDate = DateTime.UtcNow.AddDays(-30);
         var endDate = DateTime.UtcNow;
@@ -396,7 +393,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetFundAllocationsAsync_WithValidDateRange_ReturnsFundSummaries()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
         var startDate = DateTime.UtcNow.AddDays(-30);
         var endDate = DateTime.UtcNow;
@@ -414,7 +411,7 @@ public sealed class BudgetRepositoryTests : IDisposable
     public async Task GetYearEndSummaryAsync_WithValidYear_ReturnsAnnualSummary()
     {
         // Arrange
-        var repository = new BudgetRepository(_contextFactory, _cache, _telemetryService);
+        var repository = new BudgetRepository(_scopeFactory, _cache, _telemetryService);
         await SeedTestData();
 
         // Act
@@ -431,7 +428,7 @@ public sealed class BudgetRepositoryTests : IDisposable
 
     private async Task<BudgetEntry> SeedTestData()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         context.Database.EnsureCreated(); // Ensure InMemory database is created
         var entry = CreateTestBudgetEntry();
         context.BudgetEntries.Add(entry);
@@ -441,7 +438,7 @@ public sealed class BudgetRepositoryTests : IDisposable
 
     private async Task SeedSewerFundData()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         context.Database.EnsureCreated(); // Ensure InMemory database is created
         var entry = CreateTestBudgetEntry(fundId: 2, fiscalYear: 2026);
         context.BudgetEntries.Add(entry);
@@ -450,7 +447,7 @@ public sealed class BudgetRepositoryTests : IDisposable
 
     private async Task SeedMultipleTestEntries()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         context.Database.EnsureCreated(); // Ensure InMemory database is created
         for (int i = 0; i < 10; i++)
         {

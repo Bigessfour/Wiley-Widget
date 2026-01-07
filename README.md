@@ -15,6 +15,13 @@
 
 Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for grids, charts, and reporting.
 
+### Syncfusion packages (WinForms)
+
+- Charting uses classic WinForms `ChartControl` via NuGet `Syncfusion.Chart.Windows` (pinned to `32.1.19`).
+- WinForms does not ship an `SfChart` control/package; `SfChart` packages are for XAML stacks (e.g., WPF/UWP).
+
+See: https://help.syncfusion.com/windowsforms/chart/overview and https://www.nuget.org/packages/Syncfusion.Chart.Windows/32.1.19
+
 ---
 
 ## 📑 Table of Contents
@@ -527,11 +534,12 @@ WileyWidget implements a **secure, encrypted secret management system** using Wi
 
 #### **🔒 DPAPI Encryption**
 
-- **Windows DPAPI**: Uses `ProtectedData.Protect/Unprotect` with `DataProtectionScope.CurrentUser`
-- **User-Specific**: Secrets encrypted for the current Windows user only
+- **Windows DPAPI**: Uses `ProtectedData.Protect/Unprotect` with `DataProtectionScope.LocalMachine`
+- **Machine-Scoped**: Secrets decryptable by any user on the same machine (subject to filesystem ACLs)
 - **Machine-Bound**: Cannot be decrypted on different computers
 - **256-bit Entropy**: Additional cryptographic entropy per secret
 - **Secure Storage**: Encrypted files in `%APPDATA%\WileyWidget\Secrets\`
+- **Auto-Migration**: Legacy user-scoped secrets are re-encrypted to machine scope on first read
 
 #### **🗂️ Storage Location**
 
@@ -600,8 +608,8 @@ XAI_BASE_URL                → XAI-BaseUrl
 #### **🛡️ Security Guarantees**
 
 - **Zero Plaintext**: Secrets never stored in plaintext files
-- **User Isolation**: Different Windows users cannot access each other's secrets
-- **Machine Lock**: Encrypted secrets cannot be used on different computers
+- **Machine Scope**: Secrets stay on the same machine; DPAPI ties them to the host
+- **Migration Safety**: Existing user-scoped blobs are auto-migrated to machine scope when read
 - **Memory Safety**: Sensitive data cleared immediately after use
 - **Audit Trail**: All secret operations logged securely
 
@@ -649,7 +657,7 @@ private byte[] LoadOrCreateEntropy()
         return ProtectedData.Unprotect(
             encryptedEntropy,
             null,
-            DataProtectionScope.CurrentUser
+            DataProtectionScope.LocalMachine
         );
     }
 
@@ -658,7 +666,7 @@ private byte[] LoadOrCreateEntropy()
     RandomNumberGenerator.Fill(entropy);
     File.WriteAllBytes(
         entropyFile,
-        ProtectedData.Protect(entropy, null, DataProtectionScope.CurrentUser)
+        ProtectedData.Protect(entropy, null, DataProtectionScope.LocalMachine)
     );
     return entropy;
 }
@@ -668,7 +676,7 @@ private byte[] LoadOrCreateEntropy()
 
 - **DPAPI Encryption**: Entropy file itself is encrypted with Windows DPAPI
 - **Machine-Bound**: Entropy cannot be copied to different machines
-- **User-Specific**: Each Windows user gets their own protected entropy
+- **Host-Scoped**: Secrets re-encrypt to machine scope on first read if they were user-scoped
 - **Tamper Detection**: Modified entropy files fail integrity checks
 
 ##### **3. Configurable Environment Variable Migration**

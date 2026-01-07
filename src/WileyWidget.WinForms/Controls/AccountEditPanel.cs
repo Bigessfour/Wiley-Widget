@@ -3,16 +3,21 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Windows.Forms;
-using WileyWidget.Models;
-using WileyWidget.WinForms.Models;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.Extensions;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.Models;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Models;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.ViewModels;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using Action = System.Action;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -31,18 +36,18 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public DialogResult SaveDialogResult { get; private set; } = DialogResult.None;
 
-        private TextBox txtAccountNumber = null!;
-        private TextBox txtName = null!;
-        private TextBox txtDescription = null!;
+        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtAccountNumber = null!;
+        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtName = null!;
+        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtDescription = null!;
         private SfComboBox cmbDepartment = null!;
         private SfComboBox cmbFund = null!;
         private SfComboBox cmbType = null!;
         private SfNumericTextBox numBalance = null!;
         private SfNumericTextBox numBudget = null!;
-        private CheckBox chkActive = null!;
-        private Button btnSave = null!;
-        private Button btnCancel = null!;
-        private EventHandler<AppTheme>? _themeChangedHandler;
+        private Syncfusion.Windows.Forms.Tools.CheckBoxAdv chkActive = null!;
+        private SfButton btnSave = null!;
+        private SfButton btnCancel = null!;
+        // private EventHandler<AppTheme>? _themeChangedHandler; // Removed unused theme handler
 
         private readonly AccountsViewModel _viewModel;
         private readonly MunicipalAccountEditModel _editModel;
@@ -79,10 +84,7 @@ namespace WileyWidget.WinForms.Controls
             SetupUI(existingAccount);
             SetupValidation();
 
-            // Apply centralized theming and subscribe to theme changes
-            _themeChangedHandler = OnThemeChanged;
-            ThemeManager.ThemeChanged += _themeChangedHandler;
-            ThemeManager.ApplyThemeToControl(this);
+            // Theme is applied by SfSkinManager cascade from parent form
 
             // Load data asynchronously on load event
             this.Load += AccountEditPanel_Load;
@@ -162,12 +164,13 @@ namespace WileyWidget.WinForms.Controls
             };
             Controls.Add(lblAccountNumber);
 
-            txtAccountNumber = new TextBox
+            txtAccountNumber = new Syncfusion.Windows.Forms.Tools.TextBoxExt
             {
                 Name = "txtAccountNumber",
                 Location = new Point(padding + labelWidth + 10, y),
                 Width = controlWidth,
                 MaxLength = 20,
+                BorderStyle = BorderStyle.FixedSingle,
                 AccessibleName = "Account Number",
                 AccessibleDescription = "Enter the unique account number",
                 TabIndex = 1,
@@ -187,12 +190,13 @@ namespace WileyWidget.WinForms.Controls
             };
             Controls.Add(lblName);
 
-            txtName = new TextBox
+            txtName = new Syncfusion.Windows.Forms.Tools.TextBoxExt
             {
                 Name = "txtName",
                 Location = new Point(padding + labelWidth + 10, y),
                 Width = controlWidth,
                 MaxLength = 100,
+                BorderStyle = BorderStyle.FixedSingle,
                 AccessibleName = "Account Name",
                 AccessibleDescription = "Enter the descriptive name for this account",
                 TabIndex = 2
@@ -211,7 +215,7 @@ namespace WileyWidget.WinForms.Controls
             };
             Controls.Add(lblDescription);
 
-            txtDescription = new TextBox
+            txtDescription = new Syncfusion.Windows.Forms.Tools.TextBoxExt
             {
                 Name = "txtDescription",
                 Location = new Point(padding + labelWidth + 10, y),
@@ -220,6 +224,7 @@ namespace WileyWidget.WinForms.Controls
                 MaxLength = 500,
                 Multiline = true,
                 ScrollBars = ScrollBars.Vertical,
+                BorderStyle = BorderStyle.FixedSingle,
                 AccessibleName = "Description",
                 AccessibleDescription = "Enter optional description",
                 TabIndex = 3
@@ -355,7 +360,7 @@ namespace WileyWidget.WinForms.Controls
             y += rowHeight;
 
             // Active checkbox
-            chkActive = new CheckBox
+            chkActive = new Syncfusion.Windows.Forms.Tools.CheckBoxAdv
             {
                 Name = "chkActive",
                 Text = "Active",
@@ -371,20 +376,23 @@ namespace WileyWidget.WinForms.Controls
             y += rowHeight + 10;
 
             // Button panel at bottom
-            var buttonPanel = new Panel
+            var buttonPanel = new GradientPanelExt
             {
                 Location = new Point(padding, y),
                 Width = labelWidth + controlWidth + 10,
                 Height = 40,
-                Dock = DockStyle.None
+                Dock = DockStyle.None,
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                AccessibleName = "Account action buttons"
             };
+            SfSkinManager.SetVisualStyle(buttonPanel, ThemeColors.DefaultTheme);
 
-            btnSave = new Button
+            btnSave = new SfButton
             {
                 Name = "btnSave",
                 Text = _isNew ? "&Create" : "&Save",
-                Width = 100,
-                Height = 32,
+                AutoSize = true,
                 Location = new Point(labelWidth + controlWidth - 210, 4),
                 AccessibleName = _isNew ? "Create Account" : "Save Account",
                 AccessibleDescription = "Save the account changes",
@@ -393,12 +401,11 @@ namespace WileyWidget.WinForms.Controls
             btnSave.Click += BtnSave_Click;
             buttonPanel.Controls.Add(btnSave);
 
-            btnCancel = new Button
+            btnCancel = new SfButton
             {
                 Name = "btnCancel",
                 Text = "&Cancel",
-                Width = 100,
-                Height = 32,
+                AutoSize = true,
                 Location = new Point(labelWidth + controlWidth - 100, 4),
                 DialogResult = DialogResult.Cancel,
                 AccessibleName = "Cancel",
@@ -476,7 +483,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                ThemeManager.ApplyThemeToControl(this);
+                // Theme is applied by SfSkinManager cascade
             }
             catch { }
         }
@@ -675,7 +682,6 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
-                try { if (_themeChangedHandler != null) ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { this.Load -= AccountEditPanel_Load; } catch { }
                 _errorBinding?.Dispose();
                 _errorProvider?.Dispose();

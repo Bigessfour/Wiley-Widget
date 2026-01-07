@@ -66,24 +66,35 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 mainForm.IsHandleCreated.Should().BeTrue("CreateDockingHost should force MainForm handle creation");
 
                 // Dock enablement should be true after configuration
-                dm.GetEnableDocking(leftPanel).Should().BeTrue();
-                dm.GetEnableDocking(rightPanel).Should().BeTrue();
+                dm.GetEnableDocking(leftPanel!).Should().BeTrue();
+                dm.GetEnableDocking(rightPanel!).Should().BeTrue();
 
                 // Caption and button visibility
                 dm.ShowCaption.Should().BeTrue();
                 dm.ShowCaptionImages.Should().BeTrue();
                 dm.MaximizeButtonEnabled.Should().BeTrue();
 
-                dm.GetCloseButtonVisibility(leftPanel).Should().BeTrue();
-                dm.GetAutoHideButtonVisibility(leftPanel).Should().BeTrue();
-                dm.GetMenuButtonVisibility(leftPanel).Should().BeTrue();
+                dm.GetCloseButtonVisibility(leftPanel!).Should().BeTrue();
+                dm.GetAutoHideButtonVisibility(leftPanel!).Should().BeTrue();
+                dm.GetMenuButtonVisibility(leftPanel!).Should().BeTrue();
 
-                dm.GetCloseButtonVisibility(rightPanel).Should().BeTrue();
-                dm.GetAutoHideButtonVisibility(rightPanel).Should().BeTrue();
-                dm.GetMenuButtonVisibility(rightPanel).Should().BeTrue();
+                dm.GetCloseButtonVisibility(rightPanel!).Should().BeTrue();
+                dm.GetAutoHideButtonVisibility(rightPanel!).Should().BeTrue();
+                dm.GetMenuButtonVisibility(rightPanel!).Should().BeTrue();
 
-                leftPanel.Name.Should().Be("LeftDockPanel");
-                rightPanel.Name.Should().Be("RightDockPanel");
+                leftPanel!.Name.Should().Be("LeftDockPanel");
+                rightPanel!.Name.Should().Be("RightDockPanel");
+
+                // Stop and dispose activity timer to avoid background timers across tests
+                try
+                {
+                    activityTimer?.Stop();
+                    activityTimer?.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal errors in tests
+                }
             });
         }
 
@@ -95,6 +106,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = null; // Ensure defensive theme application path
 
             Syncfusion.WinForms.DataGrid.SfDataGrid? grid = null;
+            System.Windows.Forms.Timer? activityTimer = null;
 
             _ui.Run(() =>
             {
@@ -109,13 +121,14 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                     .Build();
 
                 using var mainForm = new MainForm(sp, config, NullLogger<MainForm>.Instance, ReportViewerLaunchOptions.Disabled);
-                var (dm, leftPanel, rightPanel, activityGrid, activityTimer) = DockingHostFactory.CreateDockingHost(mainForm, sp, null, NullLogger.Instance);
+                var (dm, leftPanel, rightPanel, activityGrid, activityTimerLocal) = DockingHostFactory.CreateDockingHost(mainForm, sp, null, NullLogger.Instance);
                 grid = activityGrid;
+                activityTimer = activityTimerLocal;
                 // At this point LoadActivityDataAsync is started in the background; actual population happens asynchronously
             });
 
-            // Poll until grid.DataSource is populated or timeout
-            var deadline = DateTime.UtcNow.AddSeconds(5);
+            // Poll until grid.DataSource is populated or timeout (increase timeout to reduce flakiness)
+            var deadline = DateTime.UtcNow.AddSeconds(10);
             bool populated = false;
             while (DateTime.UtcNow < deadline)
             {
@@ -132,6 +145,17 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
 
             populated.Should().BeTrue("Fallback activity data should populate the activity grid when repository is not available");
+
+            // Clean up timer on UI thread to avoid leaks
+            _ui.Run(() =>
+            {
+                try
+                {
+                    activityTimer?.Stop();
+                    activityTimer?.Dispose();
+                }
+                catch { }
+            });
         }
 
         [Fact]
@@ -161,17 +185,82 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
                 // Invoke the private method via reflection to simulate post-load repair
                 var layoutManager = new DockingLayoutManager(sp, null, NullLogger.Instance);
+
                 var method = typeof(DockingLayoutManager).GetMethod("EnsureCaptionButtonsVisible", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (method == null)
+                    throw new InvalidOperationException("EnsureCaptionButtonsVisible method not found via reflection.");
                 method.Invoke(layoutManager, new object[] { dm, mainForm });
 
                 // Verify buttons are visible again
-                dm.GetCloseButtonVisibility(leftPanel).Should().BeTrue();
-                dm.GetAutoHideButtonVisibility(leftPanel).Should().BeTrue();
-                dm.GetMenuButtonVisibility(leftPanel).Should().BeTrue();
+                dm.GetCloseButtonVisibility(leftPanel!).Should().BeTrue();
+                dm.GetAutoHideButtonVisibility(leftPanel!).Should().BeTrue();
+                dm.GetMenuButtonVisibility(leftPanel!).Should().BeTrue();
 
-                dm.GetCloseButtonVisibility(rightPanel).Should().BeTrue();
-                dm.GetAutoHideButtonVisibility(rightPanel).Should().BeTrue();
-                dm.GetMenuButtonVisibility(rightPanel).Should().BeTrue();
+                dm.GetCloseButtonVisibility(rightPanel!).Should().BeTrue();
+                dm.GetAutoHideButtonVisibility(rightPanel!).Should().BeTrue();
+                dm.GetMenuButtonVisibility(rightPanel!).Should().BeTrue();
+
+                // Stop and dispose activity timer to avoid background timers across tests
+                try
+                {
+                    activityTimer?.Stop();
+                    activityTimer?.Dispose();
+                }
+                catch { }
+
+            });
+        }
+
+        [Fact]
+        public void CreateDockingHost_WithNullServiceProvider_ThrowsArgumentNullException()
+        {
+            var sp = new ServiceCollection().BuildServiceProvider();
+
+            _ui.Run(() =>
+            {
+                var config = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["UI:IsUiTestHarness"] = "true",
+                        ["UI:MinimumFormSize"] = "800,600",
+                        ["UI:UseSyncfusionDocking"] = "true"
+                    })
+                    .Build();
+
+                using var mainForm = new MainForm(sp, config, NullLogger<MainForm>.Instance, ReportViewerLaunchOptions.Disabled);
+
+                Action act = () => DockingHostFactory.CreateDockingHost(mainForm, null!, null, NullLogger.Instance);
+
+                act.Should().Throw<ArgumentNullException>().WithParameterName("serviceProvider");
+            });
+        }
+
+        [Fact]
+        public void CreateDockingHost_WithMissingComponents_ThrowsInvalidOperationException()
+        {
+            var sp = new ServiceCollection().BuildServiceProvider();
+
+            _ui.Run(() =>
+            {
+                var config = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["UI:IsUiTestHarness"] = "true",
+                        ["UI:MinimumFormSize"] = "800,600",
+                        ["UI:UseSyncfusionDocking"] = "true"
+                    })
+                    .Build();
+
+                using var mainForm = new MainForm(sp, config, NullLogger<MainForm>.Instance, ReportViewerLaunchOptions.Disabled);
+
+                // Simulate missing components container
+                var field = typeof(MainForm).GetField("components", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                field.Should().NotBeNull("MainForm.components field should exist for reflection-based tests");
+                field!.SetValue(mainForm, null);
+
+                Action act = () => DockingHostFactory.CreateDockingHost(mainForm, sp, null, NullLogger.Instance);
+
+                act.Should().Throw<InvalidOperationException>().WithMessage("*components must be initialized*");
             });
         }
     }

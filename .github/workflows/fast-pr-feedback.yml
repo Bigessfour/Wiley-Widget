@@ -53,6 +53,12 @@ jobs:
           dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --verbosity minimal --logger "trx;LogFileName=fast-unit-tests.trx"
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
+      - name: WinForms chart defaults regression test (filtered)
+        shell: pwsh
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter "Category=Chart" --verbosity minimal --logger "trx;LogFileName=fast-winforms-chart.trx" --results-directory ./TestResults/FastWinFormsChart
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Upload quick-test results
         if: always()
         uses: actions/upload-artifact@v4

@@ -3,8 +3,13 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -22,17 +27,18 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     private SfDataGrid? _departmentsGrid;
     private SfDataGrid? _benchmarksGrid;
     private ChartControl? _chartControl;
-    private Button? _refreshButton;
-    private Button? _saveButton;
-    private Button? _queryGrokButton;
+    private ChartControlRegionEventWiring? _chartRegionEventWiring;
+    private SfButton? _refreshButton;
+    private SfButton? _saveButton;
+    private SfButton? _queryGrokButton;
     private Label? _totalRevenueLabel;
     private Label? _totalExpensesLabel;
     private Label? _suggestedRevenueLabel;
     private Label? _overallStatusLabel;
-    private TextBox? _explanationTextBox;
-    private Panel? _summaryPanel;
-    private Panel? _chartPanel;
-    private Panel? _buttonPanel;
+    private TextBoxExt? _explanationTextBox;
+    private GradientPanelExt? _summaryPanel;
+    private GradientPanelExt? _chartPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private SplitContainer? _leftSplitContainer;
     private StatusStrip? _statusStrip;
@@ -90,20 +96,22 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Button Panel - Top Action Buttons
         // ============================================================================
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 60,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
-        _refreshButton = new Button
+        _refreshButton = new SfButton
         {
             Text = "&Refresh Data",
             Location = new Point(10, 15),
             Size = new Size(130, 35),
             TabIndex = 1,
-            UseVisualStyleBackColor = true,
             AccessibleName = "Refresh Data",
             AccessibleDescription = "Refresh department expense data from QuickBooks"
         };
@@ -111,13 +119,12 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         var refreshTooltip = new ToolTip();
         refreshTooltip.SetToolTip(_refreshButton, "Load latest expense data from QuickBooks (Alt+R)");
 
-        _queryGrokButton = new Button
+        _queryGrokButton = new SfButton
         {
             Text = "Query &AI",
             Location = new Point(150, 15),
             Size = new Size(130, 35),
             TabIndex = 2,
-            UseVisualStyleBackColor = true,
             AccessibleName = "Query AI",
             AccessibleDescription = "Get AI-driven rate recommendations from Grok"
         };
@@ -125,13 +132,12 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         var grokTooltip = new ToolTip();
         grokTooltip.SetToolTip(_queryGrokButton, "Query Grok AI for recommended adjustment factors (Alt+A)");
 
-        _saveButton = new Button
+        _saveButton = new SfButton
         {
             Text = "&Save Changes",
             Location = new Point(290, 15),
             Size = new Size(130, 35),
             TabIndex = 3,
-            UseVisualStyleBackColor = true,
             AccessibleName = "Save Changes",
             AccessibleDescription = "Save current charge modifications to database"
         };
@@ -145,12 +151,15 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Summary Panel - Revenue, Expenses, Status Display
         // ============================================================================
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 180,
-            Padding = new Padding(15)
+            Padding = new Padding(15),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var summaryTitleLabel = new Label
         {
@@ -209,7 +218,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             AccessibleDescription = "Overall profitability status: Losing Money, Breaking Even, or Profitable"
         };
 
-        _explanationTextBox = new TextBox
+        _explanationTextBox = new TextBoxExt
         {
             Multiline = true,
             ReadOnly = true,
@@ -257,11 +266,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Departments Grid (Top Left)
         // ============================================================================
-        var deptGridPanel = new Panel
+        var deptGridPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(5)
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(deptGridPanel, "Office2019Colorful");
 
         var deptGridLabel = new Label
         {
@@ -369,11 +381,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Benchmarks Grid (Bottom Left)
         // ============================================================================
-        var benchmarkPanel = new Panel
+        var benchmarkPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(5)
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(benchmarkPanel, "Office2019Colorful");
 
         var benchmarkLabel = new Label
         {
@@ -463,11 +478,13 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Chart Panel (Right Side)
         // ============================================================================
-        _chartPanel = new Panel
+        _chartPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_chartPanel, "Office2019Colorful");
 
         _chartControl = new ChartControl
         {
@@ -475,6 +492,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             TabIndex = 11,
             AccessibleName = "Department Expense Chart"
         };
+        _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
+
+        ChartControlDefaults.Apply(_chartControl);
 
         // Configure chart appearance
         _chartControl.Title.Text = "Expenses vs Current vs Suggested Charges";
@@ -546,7 +566,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _viewModel.Benchmarks.CollectionChanged += (s, e) =>
         {
             if (_benchmarksGrid != null && InvokeRequired)
-                Invoke(new Action(() => _benchmarksGrid.Refresh()));
+                Invoke(new System.Action(() => _benchmarksGrid.Refresh()));
             else
                 _benchmarksGrid?.Refresh();
         };
@@ -554,11 +574,21 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _logger.LogDebug("ViewModel bound to RecommendedMonthlyChargePanel");
     }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private TextBoxExt Get_explanationTextBox1()
+    {
+        return _explanationTextBox!;
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e, TextBoxExt _explanationTextBox1)
     {
         if (InvokeRequired)
         {
-            Invoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            Invoke(new System.Action(() => ViewModel_PropertyChanged(sender, e, Get_explanationTextBox1())));
             return;
         }
 
@@ -634,8 +664,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                 break;
 
             case nameof(_viewModel.RecommendationExplanation):
-                if (_explanationTextBox != null)
-                    _explanationTextBox.Text = _viewModel.RecommendationExplanation ?? "Click 'Query AI' to get AI-powered rate recommendations.";
+                if (_explanationTextBox1 != null)
+                    _explanationTextBox1.Text = _viewModel.RecommendationExplanation ?? "Click 'Query AI' to get AI-powered rate recommendations.";
                 break;
 
             case nameof(_viewModel.StatusText):
@@ -675,11 +705,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             var currentRevenueSeries = new ChartSeries("Current Charge", ChartSeriesType.Column);
             var suggestedRevenueSeries = new ChartSeries("Suggested Charge", ChartSeriesType.Column);
 
-            // Configure series appearance
-            expenseSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(220, 53, 69)); // Red
-            currentRevenueSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(0, 123, 255)); // Blue
-            suggestedRevenueSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(40, 167, 69)); // Green
-
             // Add data points for each department
             foreach (var department in _viewModel.Departments.OrderBy(d => d.Department))
             {
@@ -711,7 +736,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 
             // Enable tooltips
             _chartControl.ShowToolTips = true;
-            _chartControl.Tooltip.BackgroundColor = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(240, 240, 240));
+            // Tooltip uses theme defaults
 
             // Refresh chart to apply changes
             _chartControl.Refresh();
@@ -872,6 +897,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             // Dispose Syncfusion controls
             _departmentsGrid?.Dispose();
             _benchmarksGrid?.Dispose();
+            try { _chartRegionEventWiring?.Dispose(); } catch { }
+            _chartRegionEventWiring = null;
             _chartControl?.Dispose();
 
             // Dispose containers

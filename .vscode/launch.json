@@ -6,27 +6,27 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build WileyWidget.WinForms",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.dll",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
       "console": "integratedTerminal",
       "env": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "_NT_SYMBOL_PATH": "",
+        "_NT_ALT_SYMBOL_PATH": ""
       },
       "sourceFileMap": {
         "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
       },
       "symbolOptions": {
         "searchPaths": [
-          "${workspaceFolder}/**",
-          "https://symbols.nuget.org/download/symbols",
-          "https://msdl.microsoft.com/download/symbols",
-          "C:\\SyncfusionSymbols**",
+          "${workspaceFolder}",
+          "${workspaceFolder}/.symbols",
           "${env:USERPROFILE}\\.nuget\\packages"
         ],
-        "searchMicrosoftSymbolServer": true,
-        "searchNuGetOrgSymbolServer": true,
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
         "cachePath": "${workspaceFolder}/.vsdbg"
       },
       "sourceLinkOptions": {
@@ -34,11 +34,11 @@
           "enabled": true
         }
       },
-      "justMyCode": false,
+      "justMyCode": true,
       "requireExactSource": false,
       "enableStepFiltering": false,
       "logging": {
-        "module": true,
+        "moduleLoad": false,
         "engineLogging": false
       }
     },

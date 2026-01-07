@@ -23,6 +23,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     private readonly IQuickBooksService _quickBooksService;
     private System.Threading.Timer? _connectionPollingTimer;
     private bool _disposed;
+    private CancellationTokenSource? _cancellationTokenSource;
 
     #region Observable Properties
 
@@ -732,8 +733,31 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// </summary>
     private void StartConnectionPolling()
     {
+        _cancellationTokenSource = new CancellationTokenSource();
         _connectionPollingTimer = new System.Threading.Timer(
-            async _ => await CheckConnectionAsync(),
+            async _ =>
+            {
+                // CRITICAL: Check disposal state before executing callback to prevent disposed scope access
+                if (_disposed || _cancellationTokenSource?.IsCancellationRequested == true)
+                {
+                    _logger.LogDebug("Connection polling callback skipped (disposed or cancelled)");
+                    return;
+                }
+
+                try
+                {
+                    await CheckConnectionAsync();
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    _logger.LogWarning(ex, "Connection polling caught ObjectDisposedException - stopping timer");
+                    StopConnectionPolling();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Connection polling callback failed");
+                }
+            },
             null,
             TimeSpan.FromSeconds(30),
             TimeSpan.FromSeconds(30));
@@ -746,8 +770,11 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// </summary>
     private void StopConnectionPolling()
     {
+        _cancellationTokenSource?.Cancel();
         _connectionPollingTimer?.Dispose();
         _connectionPollingTimer = null;
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
         _logger.LogDebug("Connection polling stopped");
     }
 

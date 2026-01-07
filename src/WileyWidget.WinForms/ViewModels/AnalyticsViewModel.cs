@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
+using System; // Added for ArgumentNullException, DateTime, etc.
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -192,11 +193,22 @@ namespace WileyWidget.WinForms.ViewModels
             RunScenarioCommand = new AsyncRelayCommand(RunRateScenarioAsync);
             GenerateForecastCommand = new AsyncRelayCommand(GenerateReserveForecastAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshAllDataAsync);
-
-            // Auto-load data on initialization
-            _ = Task.Run(async () => await RefreshCommand.ExecuteAsync(null));
         }
 
+        /// <summary>
+        /// Explicit async initialization for AnalyticsViewModel. Call after construction.
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            try
+            {
+                await RefreshCommand.ExecuteAsync(null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during AnalyticsViewModel.InitializeAsync");
+            }
+        }
         /// <summary>
         /// Performs exploratory data analysis on budget data asynchronously.
         /// Analyzes fiscal year data to identify category breakdowns, top variances, trends, and insights.

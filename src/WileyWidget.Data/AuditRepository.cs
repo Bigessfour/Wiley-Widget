@@ -100,6 +100,8 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task AddAuditEntryAsync(AuditEntry auditEntry)
     {
+        if (auditEntry == null) throw new ArgumentNullException(nameof(auditEntry));
+
         await using var context = await _contextFactory.CreateDbContextAsync();
         context.AuditEntries.Add(auditEntry);
         await context.SaveChangesAsync();
@@ -117,6 +119,10 @@ public class AuditRepository : IAuditRepository
         DateTime? endDate = null,
         string? entityType = null)
     {
+        // Validate paging parameters
+        if (pageNumber < 1) throw new ArgumentOutOfRangeException(nameof(pageNumber));
+        if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
+
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var query = context.AuditEntries.AsQueryable();

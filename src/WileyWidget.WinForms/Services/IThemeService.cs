@@ -42,10 +42,6 @@ namespace WileyWidget.WinForms.Services
                 _currentTheme = theme;
                 _logger.Information("Theme changed from {OldTheme} to {NewTheme}", oldTheme, theme);
                 ThemeChanged?.Invoke(this, theme);
-
-                // Bridge: Forward theme change to ThemeManager for backward compatibility
-                // TODO: Remove this bridge once all panels use ThemeService directly
-                WileyWidget.WinForms.Theming.ThemeManager.SetTheme(theme);
             }
             else
             {

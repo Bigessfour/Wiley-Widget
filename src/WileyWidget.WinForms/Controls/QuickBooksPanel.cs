@@ -11,6 +11,8 @@ using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -35,7 +37,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SplitContainer? _mainSplitContainer;
 
     // Connection Panel
-    private Panel? _connectionPanel;
+    private GradientPanelExt? _connectionPanel;
     private Label? _connectionStatusLabel;
     private Label? _companyNameLabel;
     private Label? _lastSyncLabel;
@@ -44,7 +46,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SfButton? _testConnectionButton;
 
     // Operations Panel
-    private Panel? _operationsPanel;
+    private GradientPanelExt? _operationsPanel;
     private SfButton? _syncDataButton;
     private SfButton? _importAccountsButton;
     private SfButton? _refreshHistoryButton;
@@ -54,10 +56,10 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     // Sync History Grid
     private SfDataGrid? _syncHistoryGrid;
-    private TextBox? _filterTextBox;
+    private TextBoxExt? _filterTextBox;
 
     // Summary Panel
-    private Panel? _summaryPanel;
+    private GradientPanelExt? _summaryPanel;
     private Label? _totalSyncsLabel;
     private Label? _successfulSyncsLabel;
     private Label? _failedSyncsLabel;
@@ -127,6 +129,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        AutoScroll = true;
+        Padding = new Padding(8);
         // DockingManager will handle docking; do not set Dock here.
 
         // Panel header
@@ -154,6 +159,10 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Create summary panel
         CreateSummaryPanel();
+        if (_summaryPanel == null) {
+            _summaryPanel = new GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(10,10,10,5), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
+            SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        }
         _mainLayout.Controls.Add(_summaryPanel!, 0, 0);
 
         // Create main split container
@@ -192,12 +201,15 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void CreateSummaryPanel()
     {
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             // BackColor removed - let SkinManager handle theming
-            Padding = new Padding(10, 10, 10, 5)
+            Padding = new Padding(10, 10, 10, 5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var flowPanel = new FlowLayoutPanel
         {
@@ -230,13 +242,15 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private Label CreateMetricCard(string title, string value)
     {
-        var cardPanel = new Panel
+        var cardPanel = new GradientPanelExt
         {
             Size = new Size(200, 60),
             // BackColor removed - let SkinManager handle theming
             BorderStyle = BorderStyle.FixedSingle,
-            Margin = new Padding(5)
+            Margin = new Padding(5),
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
 
         var titleLabel = new Label
         {
@@ -290,9 +304,15 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Creates the top panel with connection status and operations.
     /// </summary>
-    private Panel CreateTopPanel()
+    private GradientPanelExt CreateTopPanel()
     {
-        var topPanel = new Panel { Dock = DockStyle.Fill };
+        var topPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
         var splitTop = new SplitContainer
         {
@@ -314,22 +334,32 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private void CreateConnectionAndOperationsPanel()
     {
         // Connection Panel
-        _connectionPanel = new Panel
+        _connectionPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            // BackColor removed - let SkinManager handle theming
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_connectionPanel, "Office2019Colorful");
+
+        var connectionPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)
-            // BackColor removed - let SkinManager handle theming
         };
 
-        var connectionGroupBox = new GroupBox
+        var connectionLabel = new Label
         {
             Text = "Connection Status",
-            Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            Padding = new Padding(10)
+            Location = new Point(5, 5),
+            Size = new Size(200, 22),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
         };
+        connectionPanel.Controls.Add(connectionLabel);
 
-        int yPos = 30;
+        int yPos = 35;
 
         _connectionStatusLabel = new Label
         {
@@ -338,7 +368,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Size = new Size(400, 22),
             Font = new Font("Segoe UI", 10f, FontStyle.Regular)
         };
-        connectionGroupBox.Controls.Add(_connectionStatusLabel);
+        connectionPanel.Controls.Add(_connectionStatusLabel);
         yPos += 28;
 
         _companyNameLabel = new Label
@@ -349,7 +379,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Font = new Font("Segoe UI", 9f, FontStyle.Regular)
             // ForeColor removed - let SkinManager handle theming
         };
-        connectionGroupBox.Controls.Add(_companyNameLabel);
+        connectionPanel.Controls.Add(_companyNameLabel);
         yPos += 25;
 
         _lastSyncLabel = new Label
@@ -360,7 +390,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Font = new Font("Segoe UI", 9f, FontStyle.Regular)
             // ForeColor removed - let SkinManager handle theming
         };
-        connectionGroupBox.Controls.Add(_lastSyncLabel);
+        connectionPanel.Controls.Add(_lastSyncLabel);
         yPos += 35;
 
         // Connection buttons
@@ -375,7 +405,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Establishes connection to QuickBooks Online"
         };
         _connectButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ConnectCommand);
-        connectionGroupBox.Controls.Add(_connectButton);
+        connectionPanel.Controls.Add(_connectButton);
         xPos += 110;
 
         _disconnectButton = new SfButton
@@ -387,7 +417,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Terminates current QuickBooks Online connection"
         };
         _disconnectButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.DisconnectCommand);
-        connectionGroupBox.Controls.Add(_disconnectButton);
+        connectionPanel.Controls.Add(_disconnectButton);
         xPos += 120;
 
         _testConnectionButton = new SfButton
@@ -399,27 +429,37 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Verifies QuickBooks Online connection status"
         };
         _testConnectionButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.TestConnectionCommand);
-        connectionGroupBox.Controls.Add(_testConnectionButton);
+        connectionPanel.Controls.Add(_testConnectionButton);
 
-        _connectionPanel.Controls.Add(connectionGroupBox);
+        _connectionPanel.Controls.Add(connectionPanel);
 
         // Operations Panel
-        _operationsPanel = new Panel
+        _operationsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            // BackColor removed - let SkinManager handle theming
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_operationsPanel, "Office2019Colorful");
+
+        var operationsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)
-            // BackColor removed - let SkinManager handle theming
         };
 
-        var operationsGroupBox = new GroupBox
+        var operationsLabel = new Label
         {
             Text = "QuickBooks Operations",
-            Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            Padding = new Padding(10)
+            Location = new Point(5, 5),
+            Size = new Size(200, 22),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
         };
+        operationsPanel.Controls.Add(operationsLabel);
 
-        yPos = 30;
+        yPos = 35;
 
         _syncDataButton = new SfButton
         {
@@ -432,7 +472,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online"
         };
         _syncDataButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.SyncDataCommand);
-        operationsGroupBox.Controls.Add(_syncDataButton);
+        operationsPanel.Controls.Add(_syncDataButton);
         yPos += 50;
 
         _importAccountsButton = new SfButton
@@ -445,7 +485,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online"
         };
         _importAccountsButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
-        operationsGroupBox.Controls.Add(_importAccountsButton);
+        operationsPanel.Controls.Add(_importAccountsButton);
         yPos += 55;
 
         // Sync progress bar
@@ -456,24 +496,33 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Visible = false,
             ProgressStyle = Syncfusion.Windows.Forms.Tools.ProgressBarStyles.WaitingGradient
         };
-        operationsGroupBox.Controls.Add(_syncProgressBar);
+        operationsPanel.Controls.Add(_syncProgressBar);
 
-        _operationsPanel.Controls.Add(operationsGroupBox);
+        _operationsPanel.Controls.Add(operationsPanel);
     }
 
     /// <summary>
     /// Creates the sync history panel with grid and filter.
     /// </summary>
-    private Panel CreateHistoryPanel()
+    private GradientPanelExt CreateHistoryPanel()
     {
-        var historyPanel = new Panel { Dock = DockStyle.Fill };
+        var historyPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(historyPanel, "Office2019Colorful");
 
-        var headerPanel = new Panel
+        var headerPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 45,
-            Padding = new Padding(0, 5, 0, 5)
+            Padding = new Padding(0, 5, 0, 5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(headerPanel, "Office2019Colorful");
 
         var titleLabel = new Label
         {
@@ -494,11 +543,11 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         headerPanel.Controls.Add(filterLabel);
         xPos += 50;
 
-        _filterTextBox = new TextBox
+        _filterTextBox = new TextBoxExt
         {
             Location = new Point(xPos, 11),
-            Size = new Size(200, 25),
-            PlaceholderText = "Search operations..."
+            Size = new Size(200, 25)
+            // NullText removed: property does not exist on TextBoxExt
         };
         _filterTextBox.TextChanged += (s, e) =>
         {
@@ -562,7 +611,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AllowSorting = true,
             AllowFiltering = false,
             SelectionMode = GridSelectionMode.Single,
-            NavigationMode = NavigationMode.Row,
+            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
             RowHeight = 32,
             HeaderRowHeight = 38
         };
@@ -879,12 +928,8 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
                 // Selection styling
 
-                // Grid line and border styling
-                _syncHistoryGrid.Style.BorderColor = Color.FromArgb(217, 217, 217);
-
                 // Cell styling
                 _syncHistoryGrid.Style.CellStyle.Font.Size = 9f;
-                _syncHistoryGrid.Style.CellStyle.Borders.All = new GridBorder(GridBorderStyle.Solid, Color.FromArgb(230, 230, 230));
 
                 // Add alternate row coloring and status color coding via QueryCellStyle
                 _syncHistoryGrid.QueryCellStyle += SyncHistoryGrid_QueryCellStyle;

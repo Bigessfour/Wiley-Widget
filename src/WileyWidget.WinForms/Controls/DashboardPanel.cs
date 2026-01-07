@@ -7,6 +7,9 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Gauge;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using System.ComponentModel;
 using System.Globalization;
 using WileyWidget.WinForms.Extensions;
@@ -38,7 +41,7 @@ namespace WileyWidget.WinForms.Controls
         private readonly DashboardViewModel _vm;
 
         // controls
-        private Panel _topPanel = null!;
+        private Syncfusion.Windows.Forms.Tools.GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
@@ -46,23 +49,26 @@ namespace WileyWidget.WinForms.Controls
         private ToolStripButton _btnRefresh = null!;
         private Label _lblLastRefreshed = null!;
 
-        private SfListView _kpiList = null!;
+        private SfListView? _kpiList = null;
         private ChartControl _mainChart = null!;
+        private ChartControlRegionEventWiring? _mainChartRegionEventWiring;
         private SfDataGrid _detailsGrid = null!;
         private StatusStrip _statusStrip = null!;
         private ErrorProvider? _errorProvider;
         private ToolStripStatusLabel _statusLabel = null!;
 
-        private EventHandler<AppTheme>? _themeChangedHandler;
-        private EventHandler<AppTheme>? _btnRefreshThemeChangedHandler;
+
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         // Named event handlers for PanelHeader (stored for proper unsubscription)
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
         // per-tile sparkline references
         private ChartControl? _sparkBudget;
+        private ChartControlRegionEventWiring? _sparkBudgetRegionEventWiring;
         private ChartControl? _sparkExpenditure;
+        private ChartControlRegionEventWiring? _sparkExpenditureRegionEventWiring;
         private ChartControl? _sparkRemaining;
+        private ChartControlRegionEventWiring? _sparkRemainingRegionEventWiring;
         private Label? _tileBudgetValueLabel;
         private Label? _tileExpenditureValueLabel;
         private Label? _tileRemainingValueLabel;
@@ -72,8 +78,14 @@ namespace WileyWidget.WinForms.Controls
         private RadialGauge? _expenseGauge;
         private RadialGauge? _varianceGauge;
 
+        // Theme change handlers
+        private EventHandler<AppTheme>? _themeChangedHandler;
+
         // Logger for diagnostic output (nullable - gracefully handles absence)
         private readonly Microsoft.Extensions.Logging.ILogger<DashboardPanel>? _logger;
+
+        // Theme service for theme-aware operations (nullable - gracefully handles absence)
+        private readonly Services.IThemeService? _themeService;
 
         // Shared tooltip for all interactive controls (prevents memory leaks from multiple ToolTip instances)
         private ToolTip? _sharedTooltip;
@@ -159,6 +171,15 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { /* Logger unavailable - continue without logging */ }
 
+            // Resolve theme service from DI (optional - gracefully handles absence)
+            try
+            {
+                _themeService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(Program.Services)
+                    : null;
+            }
+            catch { /* Theme service unavailable - continue with defaults */ }
+
             // Initialize shared tooltip for all interactive controls
             _sharedTooltip = new ToolTip
             {
@@ -241,7 +262,14 @@ namespace WileyWidget.WinForms.Controls
                 if (dh != null && txtProp != null) txtProp.SetValue(dh, DashboardPanelResources.PanelTitle);
             }
             catch { }
-            _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
+            _topPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Padding = new Padding(8),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
@@ -260,39 +288,12 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                 _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
 
-                _btnRefreshThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change to avoid stale closure
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
-                        }
-                        else
-                        {
-                            var parent = _btnRefresh.GetCurrentParent();
-                            if (parent != null && parent.InvokeRequired)
-                            {
-                                parent.BeginInvoke(new System.Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
-                            }
-                            else
-                            {
-                                _btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
-                            }
-                        }
-                    }
-                    catch { }
-                };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnRefreshThemeChangedHandler;
+
             }
             catch { }
 
@@ -305,7 +306,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 dashboardLabel.Image = iconService?.GetIcon("home", theme, 16);
                 dashboardLabel.ImageAlign = ContentAlignment.MiddleLeft;
                 dashboardLabel.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -319,7 +320,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -334,7 +335,7 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
+            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -361,7 +362,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 btnAccounts.Image = iconService?.GetIcon("wallet", theme, 16);
                 btnAccounts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnAccounts.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -385,7 +386,7 @@ namespace WileyWidget.WinForms.Controls
                 var iconService = Program.Services != null
                     ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
                     : null;
-                var theme = WileyWidget.WinForms.Theming.ThemeManager.CurrentTheme;
+                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 btnCharts.Image = iconService?.GetIcon("chart", theme, 16);
                 btnCharts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -465,15 +466,20 @@ namespace WileyWidget.WinForms.Controls
             mainSplit.SetColumnSpan(gaugePanel, 2);
 
             // Left column: chart area - configured per Syncfusion demo patterns
-            var chartPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
+            var chartPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(4),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(chartPanel, "Office2019Colorful");
             _mainChart = new ChartControl { Dock = DockStyle.Fill, AccessibleName = "Budget chart", AccessibleDescription = "Displays budget vs expenditure" };
+            _mainChartRegionEventWiring = new ChartControlRegionEventWiring(_mainChart);
 
             // Theme applied automatically by SfSkinManager cascade from parent form
-            // Chart appearance per demos (ChartAppearance.cs patterns) - theme applied by SfSkinManager cascade
-            _mainChart.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            _mainChart.ElementsSpacing = 5;
-            _mainChart.BorderAppearance.SkinStyle = Syncfusion.Windows.Forms.Chart.ChartBorderSkinStyle.None;
-            _mainChart.ShowToolTips = true;
+            // Baseline chart defaults centralized for consistency (keep domain-specific settings below)
+            ChartControlDefaults.Apply(_mainChart);
             _mainChart.ChartArea.PrimaryXAxis.HidePartialLabels = true; // Per demos: hide partial labels
 
             // Axis configuration per demos (ChartAppearance.cs patterns)
@@ -551,30 +557,58 @@ namespace WileyWidget.WinForms.Controls
             rightPanel.Controls.Add(_detailsGrid, 0, 0);
 
             // small summary area
-            var summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8) };
-            // Replace the small summary labels with three tile panels that include a sparkline next to each
+            var summaryPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(8),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
+            // Replace the small summary labels with three tile widgets that include a sparkline next to each
             var summaryTiles = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
             summaryTiles.WrapContents = false;
 
             // Helper to create a tile
             Func<string, string, decimal, ChartControl> createTile = (title, tooltip, value) =>
             {
-                var tile = new Panel { Width = 260, Height = 72, Padding = new Padding(8), Margin = new Padding(6) };
+                var tile = new GradientPanelExt
+                {
+                    Width = 260,
+                    Height = 72,
+                    Padding = new Padding(8),
+                    Margin = new Padding(6),
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(tile, "Office2019Colorful");
 
                 var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
                 var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
 
                 var spark = new ChartControl { Width = 220, Height = 28, Dock = DockStyle.Bottom, AccessibleName = title + " sparkline" };
-                spark.ShowLegend = false; spark.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; spark.ElementsSpacing = 2; spark.PrimaryYAxis.HidePartialLabels = true; spark.PrimaryXAxis.HidePartialLabels = true; spark.ShowToolTips = false;
+                ChartControlRegionEventWiring? sparkWiring = null;
+                try { sparkWiring = new ChartControlRegionEventWiring(spark); } catch { }
+                spark.ShowLegend = false;
+                ChartControlDefaults.Apply(spark, new ChartControlDefaults.Options
+                {
+                    SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality,
+                    ElementsSpacing = 2,
+                    ShowToolTips = false,
+                    EnableZooming = false,
+                    EnableAxisScrollBar = false
+                });
+                spark.PrimaryYAxis.HidePartialLabels = true;
+                spark.PrimaryXAxis.HidePartialLabels = true;
 
                 tile.Controls.Add(spark);
                 tile.Controls.Add(valLbl);
                 tile.Controls.Add(lbl);
 
                 // Capture references to the value labels for later updates
-                if (title.StartsWith("Total Budget", StringComparison.Ordinal)) _tileBudgetValueLabel = valLbl;
-                else if (title.StartsWith("Expenditure", StringComparison.Ordinal)) _tileExpenditureValueLabel = valLbl;
-                else if (title.StartsWith("Remaining", StringComparison.Ordinal)) _tileRemainingValueLabel = valLbl;
+                if (title.StartsWith("Total Budget", StringComparison.Ordinal)) { _tileBudgetValueLabel = valLbl; _sparkBudgetRegionEventWiring = sparkWiring; }
+                else if (title.StartsWith("Expenditure", StringComparison.Ordinal)) { _tileExpenditureValueLabel = valLbl; _sparkExpenditureRegionEventWiring = sparkWiring; }
+                else if (title.StartsWith("Remaining", StringComparison.Ordinal)) { _tileRemainingValueLabel = valLbl; _sparkRemainingRegionEventWiring = sparkWiring; }
 
                 summaryTiles.Controls.Add(tile);
 
@@ -630,7 +664,6 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch { }
             };
-            ThemeManager.ThemeChanged += _themeChangedHandler;
         }
 
         /// <summary>
@@ -643,10 +676,18 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         /// <param name="title">Gauge title (e.g., "Budget Utilization")</param>
         /// <param name="iconName">Icon name (currently unused, reserved for future)</param>
-        /// <returns>Panel containing gauge with label</returns>
-        private Panel CreateGaugePanel(string title, string iconName)
+        /// <returns>GradientPanelExt containing gauge with label</returns>
+        private GradientPanelExt CreateGaugePanel(string title, string iconName)
         {
-            var container = new Panel { Width = 280, Height = 120, Margin = new Padding(4) };
+            var container = new GradientPanelExt
+            {
+                Width = 280,
+                Height = 120,
+                Margin = new Padding(4),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            SfSkinManager.SetVisualStyle(container, "Office2019Colorful");
             var gauge = new RadialGauge
             {
                 Width = 110,
@@ -678,35 +719,58 @@ namespace WileyWidget.WinForms.Controls
             gauge.Ranges.Clear();
             gauge.Ranges.Add(new Syncfusion.Windows.Forms.Gauge.Range
             {
-                StartValue = 0, EndValue = 60, Color = Color.FromArgb(76, 175, 80),
-                Height = 8, InRange = true, RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
+                StartValue = 0,
+                EndValue = 60,
+                Color = Color.Green,
+                Height = 8,
+                InRange = true,
+                RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
             });
             gauge.Ranges.Add(new Syncfusion.Windows.Forms.Gauge.Range
             {
-                StartValue = 60, EndValue = 90, Color = Color.FromArgb(255, 193, 7),
-                Height = 8, InRange = true, RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
+                StartValue = 60,
+                EndValue = 90,
+                Color = Color.Orange,
+                Height = 8,
+                InRange = true,
+                RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
             });
             gauge.Ranges.Add(new Syncfusion.Windows.Forms.Gauge.Range
             {
-                StartValue = 90, EndValue = 100, Color = Color.FromArgb(244, 67, 54),
-                Height = 8, InRange = true, RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
+                StartValue = 90,
+                EndValue = 100,
+                Color = Color.Red,
+                Height = 8,
+                InRange = true,
+                RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
             });
 
             gauge.NeedleColor = Color.DarkSlateGray;
             gauge.Cursor = Cursors.Hand;
 
             // Label panel
-            var lblPanel = new Panel { Dock = DockStyle.Fill };
+            var lblPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            SfSkinManager.SetVisualStyle(lblPanel, "Office2019Colorful");
             var titleLabel = new Label
             {
-                Text = title, Dock = DockStyle.Top, Height = 24,
+                Text = title,
+                Dock = DockStyle.Top,
+                Height = 24,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
             var valueLabel = new Label
             {
-                Name = $"{title}ValueLabel", Text = "0%", Dock = DockStyle.Top,
-                Height = 32, Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                Name = $"{title}ValueLabel",
+                Text = "0%",
+                Dock = DockStyle.Top,
+                Height = 32,
+                Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -725,14 +789,18 @@ namespace WileyWidget.WinForms.Controls
             return container;
         }
 
-        private Panel CreateGaugePanel()
+        private GradientPanelExt CreateGaugePanel()
         {
-            var panel = new Panel
+            var panel = new GradientPanelExt
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(8),
-                MinimumSize = new Size(800, 100)  // Minimum size for 4 gauges side-by-side
+                MinimumSize = new Size(800, 100),  // Minimum size for 4 gauges side-by-side
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+
             var flowLayout = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -744,7 +812,15 @@ namespace WileyWidget.WinForms.Controls
             // Helper to create a gauge with label
             RadialGauge CreateGauge(string title, string description, Color rangeGreen, Color rangeYellow, Color rangeRed)
             {
-                var container = new Panel { Width = 280, Height = 120, Margin = new Padding(4) };
+                var container = new GradientPanelExt
+                {
+                    Width = 280,
+                    Height = 120,
+                    Margin = new Padding(4),
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(container, "Office2019Colorful");
                 var gauge = new RadialGauge
                 {
                     Width = 110,
@@ -828,7 +904,13 @@ namespace WileyWidget.WinForms.Controls
                 };
 
                 // Label panel
-                var lblPanel = new Panel { Dock = DockStyle.Fill };
+                var lblPanelInner = new GradientPanelExt
+                {
+                    Dock = DockStyle.Fill,
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(lblPanelInner, "Office2019Colorful");
                 var titleLabel = new Label
                 {
                     Text = title,
@@ -855,11 +937,11 @@ namespace WileyWidget.WinForms.Controls
                     ForeColor = Color.Gray
                 };
 
-                lblPanel.Controls.Add(descLabel);
-                lblPanel.Controls.Add(valueLabel);
-                lblPanel.Controls.Add(titleLabel);
+                lblPanelInner.Controls.Add(descLabel);
+                lblPanelInner.Controls.Add(valueLabel);
+                lblPanelInner.Controls.Add(titleLabel);
 
-                container.Controls.Add(lblPanel);
+                container.Controls.Add(lblPanelInner);
                 container.Controls.Add(gauge);
                 flowLayout.Controls.Add(container);
 
@@ -873,30 +955,30 @@ namespace WileyWidget.WinForms.Controls
             _budgetUtilizationGauge = CreateGauge(
                 "Budget Utilization",
                 "Actual spending vs budgeted",
-                Color.FromArgb(76, 175, 80),    // Green
-                Color.FromArgb(255, 193, 7),    // Amber
-                Color.FromArgb(244, 67, 54));   // Red
+                Color.Green,
+                Color.Orange,
+                Color.Red);
 
             _revenueGauge = CreateGauge(
                 "Revenue Collection",
                 "Revenue collected vs target",
-                Color.FromArgb(33, 150, 243),   // Blue
-                Color.FromArgb(3, 169, 244),    // Light Blue
-                Color.FromArgb(0, 188, 212));   // Cyan
+                Color.Green,
+                Color.Orange,
+                Color.Red);
 
             _expenseGauge = CreateGauge(
                 "Expense Rate",
                 "Expenses vs allocation",
-                Color.FromArgb(139, 195, 74),   // Light Green
-                Color.FromArgb(205, 220, 57),   // Lime
-                Color.FromArgb(255, 235, 59));  // Yellow
+                Color.Green,
+                Color.Orange,
+                Color.Red);
 
             _varianceGauge = CreateGauge(
                 "Variance",
                 "Budget variance indicator",
-                Color.FromArgb(156, 39, 176),   // Purple
-                Color.FromArgb(103, 58, 183),   // Deep Purple
-                Color.FromArgb(63, 81, 181));   // Indigo
+                Color.Green,
+                Color.Orange,
+                Color.Red);
 
             panel.Controls.Add(flowLayout);
             return panel;
@@ -925,13 +1007,27 @@ namespace WileyWidget.WinForms.Controls
                 return;
             }
 
+            // Listen for property changes (subscribe once).
+            if (_vm is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
+            {
+                _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+                npc.PropertyChanged += _viewModelPropertyChangedHandler;
+            }
+
             try
             {
-                // bind KPI list
-                if (_vm.Metrics != null)
+                // Controls may not be fully initialized yet (or may be disposed).
+                if (IsDisposed || _mainChart == null || _detailsGrid == null || _lblLastRefreshed == null)
                 {
-                    _kpiList.DataSource = _vm.Metrics;
-                    _kpiList.ItemHeight = 84;
+                    return;
+                }
+
+                // KPI list is optional (legacy UI). Only bind if it exists.
+                var kpiList = _kpiList;
+                if (_vm.Metrics != null && kpiList != null && !kpiList.IsDisposed)
+                {
+                    kpiList.DataSource = _vm.Metrics;
+                    kpiList.ItemHeight = 84;
                 }
 
                 var metricsList = _vm.Metrics;
@@ -943,6 +1039,7 @@ namespace WileyWidget.WinForms.Controls
                     var ser = new ChartSeries("Budget vs Actual", ChartSeriesType.Column);
                     foreach (var m in metricsList)
                     {
+                        if (m == null) continue;
                         ser.Points.Add(m.Name, m.Value);
                     }
                     _mainChart.Series.Add(ser);
@@ -953,6 +1050,7 @@ namespace WileyWidget.WinForms.Controls
                         var revenueSeries = new ChartSeries("Monthly Revenue Trend", ChartSeriesType.Line);
                         foreach (var month in _vm.MonthlyRevenueData)
                         {
+                            if (month == null) continue;
                             revenueSeries.Points.Add(month.Month, (double)month.Amount);
                         }
                         revenueSeries.Style.DisplayText = false;
@@ -974,6 +1072,7 @@ namespace WileyWidget.WinForms.Controls
                                 var recentMonths = _vm.MonthlyRevenueData.TakeLast(6).ToList();
                                 foreach (var month in recentMonths)
                                 {
+                                    if (month == null) continue;
                                     s.Points.Add(month.Month, (double)month.Amount);
                                 }
                                 s.Style.DisplayText = false;
@@ -1024,30 +1123,16 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch { }
 
-                // Show no-data overlay when not loading and there are no metrics
+                // Show no-data overlay when not loading and there are no metrics.
+                // Keep this synchronous and avoid repeated PropertyChanged subscriptions.
                 try
                 {
-                    void UpdateNoData()
+                    if (_noDataOverlay != null)
                     {
-                        if (_noDataOverlay == null) return;
                         bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
                         _noDataOverlay.Visible = show;
                         if (show) _noDataOverlay.BringToFront();
                     }
-
-                    _vm.PropertyChanged += (s, e) =>
-                    {
-                        if (e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading) || e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.Metrics))
-                        {
-                            try
-                            {
-                                if (this.InvokeRequired) BeginInvoke(new System.Action(UpdateNoData)); else UpdateNoData();
-                            }
-                            catch { }
-                        }
-                    };
-
-                    UpdateNoData();
                 }
                 catch { }
 
@@ -1139,7 +1224,7 @@ namespace WileyWidget.WinForms.Controls
                                 {
                                     var snapshot = en.Cast<object?>().ToList();
 
-                                    Action assignSnapshot = () =>
+                                    System.Action assignSnapshot = () =>
                                     {
                                         try { detailsGrid.SuspendLayout(); } catch { }
                                         detailsGrid.DataSource = snapshot;
@@ -1158,7 +1243,7 @@ namespace WileyWidget.WinForms.Controls
                                 catch
                                 {
                                     // Fallback: assign the original value if Cast/ToList fails for some reason
-                                    Action assignVal = () =>
+                                    System.Action assignVal = () =>
                                     {
                                         try { detailsGrid.SuspendLayout(); } catch { }
                                         detailsGrid.DataSource = val;
@@ -1177,7 +1262,7 @@ namespace WileyWidget.WinForms.Controls
                             }
                             else
                             {
-                                Action assignVal = () => detailsGrid.DataSource = val;
+                                System.Action assignVal = () => detailsGrid.DataSource = val;
                                 if (detailsGrid.InvokeRequired)
                                 {
                                     try { detailsGrid.Invoke(assignVal); } catch { }
@@ -1197,16 +1282,13 @@ namespace WileyWidget.WinForms.Controls
                 }
 
                 // Last refreshed
-                _lblLastRefreshed.Text = $"Last: {_vm.LastRefreshed:yyyy-MM-dd HH:mm:ss}";
+                if (_lblLastRefreshed != null && !_lblLastRefreshed.IsDisposed)
+                {
+                    _lblLastRefreshed.Text = $"Last: {_vm.LastRefreshed:yyyy-MM-dd HH:mm:ss}";
+                }
             }
             catch { }
 
-            // Listen for property changes
-            if (_vm is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
-            {
-                _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-                npc.PropertyChanged += _viewModelPropertyChangedHandler;
-            }
         }
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1229,13 +1311,33 @@ namespace WileyWidget.WinForms.Controls
 
                 if (e.PropertyName == nameof(_vm.IsLoading))
                 {
-                    try { if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading; } catch { }
+                    try
+                    {
+                        if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading;
+
+                        if (_noDataOverlay != null)
+                        {
+                            bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
+                            _noDataOverlay.Visible = show;
+                            if (show) _noDataOverlay.BringToFront();
+                        }
+                    }
+                    catch { }
                 }
 
                 if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastRefreshed))
                 {
                     TryApplyViewModelBindings();
-                    try { if (_noDataOverlay != null) _noDataOverlay.Visible = (_vm.Metrics == null || !_vm.Metrics.Any()); } catch { }
+                    try
+                    {
+                        if (_noDataOverlay != null)
+                        {
+                            bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
+                            _noDataOverlay.Visible = show;
+                            if (show) _noDataOverlay.BringToFront();
+                        }
+                    }
+                    catch { }
                 }
 
                 // Update gauge values with smooth animation when gauge properties change
@@ -1246,7 +1348,7 @@ namespace WileyWidget.WinForms.Controls
                         if (_budgetUtilizationGauge != null && !_budgetUtilizationGauge.IsDisposed)
                         {
                             _budgetUtilizationGauge.Value = _vm.TotalBudgetGauge;
-                            var valueLabel = _budgetUtilizationGauge.Parent?.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
+                            var valueLabel = _budgetUtilizationGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.TotalBudgetGauge:F1}%";
                         }
                     }
@@ -1259,7 +1361,7 @@ namespace WileyWidget.WinForms.Controls
                         if (_revenueGauge != null && !_revenueGauge.IsDisposed)
                         {
                             _revenueGauge.Value = _vm.RevenueGauge;
-                            var valueLabel = _revenueGauge.Parent?.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
+                            var valueLabel = _revenueGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.RevenueGauge:F1}%";
                         }
                     }
@@ -1272,7 +1374,7 @@ namespace WileyWidget.WinForms.Controls
                         if (_expenseGauge != null && !_expenseGauge.IsDisposed)
                         {
                             _expenseGauge.Value = _vm.ExpensesGauge;
-                            var valueLabel = _expenseGauge.Parent?.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
+                            var valueLabel = _expenseGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.ExpensesGauge:F1}%";
                         }
                     }
@@ -1285,7 +1387,7 @@ namespace WileyWidget.WinForms.Controls
                         if (_varianceGauge != null && !_varianceGauge.IsDisposed)
                         {
                             _varianceGauge.Value = _vm.NetPositionGauge;
-                            var valueLabel = _varianceGauge.Parent?.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
+                            var valueLabel = _varianceGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.NetPositionGauge:F1}%";
                         }
                     }
@@ -1387,8 +1489,7 @@ namespace WileyWidget.WinForms.Controls
             if (disposing)
             {
                 // Unsubscribe from theme events
-                try { ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
-                try { WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged -= _btnRefreshThemeChangedHandler; } catch { }
+                try { if (_themeService != null) _themeService.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
 
                 // Unsubscribe from PanelHeader events using stored named handlers (no reflection needed)
@@ -1409,8 +1510,8 @@ namespace WileyWidget.WinForms.Controls
                 // Per Syncfusion docs: Always call Dispose() on SfDataGrid/SfListView to clear internal
                 // event handlers and prevent memory leaks. SafeClearDataSource() extension handles
                 // null-checking and DataSource = null assignment.
-                try { _kpiList.SafeClearDataSource(); } catch { }
-                try { _kpiList.SafeDispose(); } catch { }
+                try { if (_kpiList != null) _kpiList.SafeClearDataSource(); } catch { }
+                try { if (_kpiList != null) _kpiList.SafeDispose(); } catch { }
                 try { _detailsGrid.SafeClearDataSource(); } catch { }
                 try { _detailsGrid.SafeDispose(); } catch { }
 
@@ -1420,6 +1521,8 @@ namespace WileyWidget.WinForms.Controls
 
                 // Dispose UI controls
                 try { _kpiList?.Dispose(); } catch { }
+                try { _mainChartRegionEventWiring?.Dispose(); } catch { }
+                _mainChartRegionEventWiring = null;
                 try { _mainChart?.Dispose(); } catch { }
                 try { _detailsGrid?.Dispose(); } catch { }
                 try { _statusStrip?.Dispose(); } catch { }
@@ -1437,6 +1540,12 @@ namespace WileyWidget.WinForms.Controls
                 try { _noDataOverlay?.Dispose(); } catch { }
 
                 // Dispose per-tile sparks
+                try { _sparkBudgetRegionEventWiring?.Dispose(); } catch { }
+                _sparkBudgetRegionEventWiring = null;
+                try { _sparkExpenditureRegionEventWiring?.Dispose(); } catch { }
+                _sparkExpenditureRegionEventWiring = null;
+                try { _sparkRemainingRegionEventWiring?.Dispose(); } catch { }
+                _sparkRemainingRegionEventWiring = null;
                 try { _sparkBudget?.Dispose(); } catch { }
                 try { _sparkExpenditure?.Dispose(); } catch { }
                 try { _sparkRemaining?.Dispose(); } catch { }

@@ -26,14 +26,6 @@
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
   "github.copilot.chat.mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-      "roots": ["${workspaceFolder}"],
-      "env": {
-        "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
-      }
-    },
     "microsoft-learn": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
@@ -96,7 +88,7 @@
     "source.organizeImports": "explicit",
     "source.fixAll.powershell": "explicit"
   },
-  "editor.minimap.enabled": false,
+  "editor.minimap.enabled": true,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",
   "editor.quickSuggestions": {

@@ -189,4 +189,22 @@ public class ServiceRegistrationTests
         optionalService.Should().BeNull(
             "GetService should return null for unregistered optional services");
     }
+
+    [Fact]
+    public void ConfigureServices_BuildsHostServiceProvider_WithoutLifetimeMismatch()
+    {
+        // Act & Assert
+        Action act = () =>
+        {
+            var provider = WileyWidget.WinForms.Configuration.DependencyInjection.ConfigureServices();
+            provider.Should().NotBeNull();
+
+            // Resolve IAsyncInitializable from a created scope to avoid resolving scoped services from the root provider
+            using var scope = provider.CreateScope();
+            var asyncInit = scope.ServiceProvider.GetService<WileyWidget.Abstractions.IAsyncInitializable>();
+            asyncInit.Should().NotBeNull("IAsyncInitializable should be registered and resolvable within a scope");
+        };
+
+        act.Should().NotThrow("Building the host service provider should not throw due to lifetime mismatches");
+    }
 }

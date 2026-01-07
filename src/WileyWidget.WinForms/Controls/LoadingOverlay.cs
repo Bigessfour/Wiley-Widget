@@ -1,9 +1,13 @@
 using System;
+using Syncfusion.WinForms.Controls;
 using System.Drawing;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -11,10 +15,10 @@ namespace WileyWidget.WinForms.Controls
     /// A lightweight semi-transparent loading overlay with a marquee progress indicator and optional message.
     /// Designed to be docked Fill inside panels and toggled visible when panels are loading.
     /// </summary>
-    public class LoadingOverlay : Panel
+    public class LoadingOverlay : Syncfusion.Windows.Forms.Tools.GradientPanelExt
     {
         private Label? _messageLabel;
-        private ProgressBar? _progress;
+        private ProgressBarAdv? _progress;
         private Control? _spinnerHost;
 
         public LoadingOverlay()
@@ -36,6 +40,10 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            // Configure gradient panel - let SkinManager handle background via theme cascade
+            this.BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, Color.Empty, Color.Empty);
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
+
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
             // BackColor inherited from theme cascade
@@ -43,11 +51,14 @@ namespace WileyWidget.WinForms.Controls
             TabStop = false;
 
             // Center container
-            var container = new Panel
+            var container = new WileyWidget.WinForms.Controls.GradientPanelExt
             {
                 AutoSize = true,
-                Padding = new Padding(12)
+                Padding = new Padding(12),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(container, ThemeColors.DefaultTheme);
 
             // Prefer using Syncfusion waiting control when available (reflection to avoid hard dependency)
             object? syncControl = null;
@@ -76,12 +87,13 @@ namespace WileyWidget.WinForms.Controls
             }
             else
             {
-                _progress = new ProgressBar
+                _progress = new Syncfusion.Windows.Forms.Tools.ProgressBarAdv
                 {
-                    Style = ProgressBarStyle.Marquee,
-                    MarqueeAnimationSpeed = 30,
+                    ProgressStyle = Syncfusion.Windows.Forms.Tools.ProgressBarStyles.WaitingGradient,
+                    WaitingGradientWidth = 20,
                     Width = 180,
                     Height = 18,
+                    Dock = DockStyle.Bottom,
                     Anchor = AnchorStyles.None
                 };
                 _spinnerHost = _progress;
@@ -161,4 +173,5 @@ namespace WileyWidget.WinForms.Controls
             }
         }
     }
+
 }

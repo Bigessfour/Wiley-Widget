@@ -107,6 +107,12 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
+            if (_parentControl.InvokeRequired)
+            {
+                _parentControl.Invoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                return;
+            }
+
             try
             {
                 // Reuse existing panel if already created
@@ -122,7 +128,6 @@ namespace WileyWidget.WinForms.Services
                 Console.WriteLine($"[PanelNavigationService] Creating panel: {panelName} ({typeof(TPanel).Name})");
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
                 panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
-                panel.Dock = DockStyle.Fill;
 
                 // If panel supports parameter initialization, pass the parameters
                 if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
@@ -130,11 +135,11 @@ namespace WileyWidget.WinForms.Services
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
 
-                _dockingManager.SetDockLabel(panel, panelName);
-                _dockingManager.SetAllowFloating(panel, allowFloating);
-
                 // Enable docking features for the panel (required for headers and buttons to appear)
                 _dockingManager.SetEnableDocking(panel, true);
+
+                _dockingManager.SetDockLabel(panel, panelName);
+                _dockingManager.SetAllowFloating(panel, allowFloating);
 
                 // Ensure caption buttons are visible for docked panels
                 _dockingManager.SetCloseButtonVisibility(panel, true);
@@ -143,8 +148,17 @@ namespace WileyWidget.WinForms.Services
 
                 // Dock the panel
                 // Determine a sensible initial size rather than using magic numbers.
-                int dockSize = CalculateDockSize(preferredStyle, _parentControl);
-                _dockingManager.DockControl(panel, _parentControl, preferredStyle, dockSize);
+                var effectiveStyle = preferredStyle;
+                if (effectiveStyle == DockingStyle.Fill)
+                {
+                    _logger.LogWarning(
+                        "DockingStyle.Fill is not supported when docking to the DockingManager host. Falling back to DockingStyle.Right for panel: {PanelName}",
+                        panelName);
+                    effectiveStyle = DockingStyle.Right;
+                }
+
+                int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
+                _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
 
                 _dockingManager.SetDockVisibility(panel, true);
                 _dockingManager.ActivateControl(panel);
@@ -245,6 +259,12 @@ namespace WileyWidget.WinForms.Services
         {
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            if (_parentControl.InvokeRequired)
+            {
+                _parentControl.Invoke(new System.Action(() => HidePanel(panelName)));
+                return false;
+            }
 
             if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
             {

@@ -95,7 +95,7 @@ public static class NavigationHelper
         System.Threading.Thread.Sleep((int)PostClickDelay.TotalMilliseconds);
 
         // Step 2: Verify panel activation with robust detection
-        var panelLoaded = await WaitForPanelActivationAsync(mainWindow, expectedFormIdentifier, TimeSpan.FromSeconds(10));
+        var panelLoaded = await WaitForPanelActivationAsync(mainWindow, expectedFormIdentifier, TimeSpan.FromSeconds(10)).ConfigureAwait(false);
         if (!panelLoaded)
         {
             Console.WriteLine($"[NavigationHelper] WARNING: Panel '{expectedFormIdentifier}' failed to activate after {PostClickDelay.TotalSeconds}s");
@@ -186,7 +186,7 @@ public static class NavigationHelper
         string expectedFormIdentifier,
         TimeSpan? timeout = null)
     {
-        return OpenViewAsync(automation, mainWindow, navAutomationId, expectedFormIdentifier, timeout).GetAwaiter().GetResult();
+        return OpenViewAsync(automation, mainWindow, navAutomationId, expectedFormIdentifier, timeout).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -366,7 +366,7 @@ public static class NavigationHelper
                     if (panel.Patterns.Dock.IsSupported)
                     {
                         Console.WriteLine($"[NavigationHelper] Panel '{identifier}' activated with DockPattern support");
-                        return await Task.FromResult(true);
+                        return true;
                     }
 
                     // Fallback: Check if panel has visible children (content loaded)
@@ -374,7 +374,7 @@ public static class NavigationHelper
                     if (hasChildren)
                     {
                         Console.WriteLine($"[NavigationHelper] Panel '{identifier}' activated with visible children");
-                        return await Task.FromResult(true);
+                        return true;
                     }
                 }
             }
@@ -383,7 +383,7 @@ public static class NavigationHelper
                 Console.WriteLine($"[NavigationHelper] Panel activation check exception: {ex.Message}");
             }
 
-            await Task.Delay(500);
+            await Task.Delay(500).ConfigureAwait(false);
         }
 
         return false;

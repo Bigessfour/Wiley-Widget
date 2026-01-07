@@ -2185,6 +2185,42 @@ namespace WileyWidget.Data.Migrations
                     b.ToTable("TelemetryLogs");
                 });
 
+            modelBuilder.Entity("WileyWidget.Services.Abstractions.ConversationHistory", b =>
+                {
+                    b.Property<string>("ConversationId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MessageCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MessagesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("ConversationHistories", (string)null);
+                });
+
             modelBuilder.Entity("WileyWidget.Models.Transaction", b =>
                 {
                     b.Property<int>("Id")

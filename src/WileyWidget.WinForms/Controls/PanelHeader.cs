@@ -3,6 +3,7 @@ using System.Drawing;
 using System.ComponentModel;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Theming;
+using Syncfusion.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -14,9 +15,10 @@ namespace WileyWidget.WinForms.Controls
     public partial class PanelHeader : UserControl
     {
         private Label _titleLabel = null!;
-        private Button _btnRefresh = null!;
-        private CheckBox _btnPin = null!;
-        private Button _btnClose = null!;
+        private SfButton _btnRefresh = null!;
+        private SfButton _btnPin = null!;
+        private SfButton _btnClose = null!;
+        private bool _isPinned; // Track toggle state for pin button
 
         /// <summary>Raised when the user clicks Refresh.</summary>
         public event EventHandler? RefreshClicked;
@@ -46,16 +48,20 @@ namespace WileyWidget.WinForms.Controls
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool IsPinned
         {
-            get => _btnPin.Checked;
-            set => _btnPin.Checked = value;
+            get => _isPinned;
+            set
+            {
+                _isPinned = value;
+                UpdatePinButtonAppearance();
+            }
         }
 
         public PanelHeader()
         {
             InitializeComponent();
+            UpdatePinButtonAppearance();
 
-            // Apply theme on construction so the header looks correct early
-            try { ThemeManager.ApplyThemeToControl(this); } catch { }
+            // Theme is applied by SfSkinManager cascade from parent form
         }
 
         protected override void Dispose(bool disposing)
@@ -86,7 +92,7 @@ namespace WileyWidget.WinForms.Controls
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Margin = new Padding(0),
-                AccessibleName = "Panel title"
+                AccessibleName = "Header title"
             };
 
             // Right-aligned container for actions
@@ -101,34 +107,32 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Refresh
-            _btnRefresh = new Button
+            _btnRefresh = new SfButton
             {
                 Text = "Refresh",
                 AutoSize = true,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Refresh panel"
+                AccessibleName = "Refresh"
             };
             _btnRefresh.Click += (s, e) => RefreshClicked?.Invoke(this, EventArgs.Empty);
 
             // Pin
-            _btnPin = new CheckBox
+            _btnPin = new SfButton
             {
                 Text = "Pin",
                 AutoSize = true,
-                Appearance = Appearance.Button,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Pin panel"
+                AccessibleName = "Pin"
             };
-            _btnPin.CheckedChanged += (s, e) => PinToggled?.Invoke(this, EventArgs.Empty);
+            _btnPin.Click += PinButton_Click;
 
             // Close
-            _btnClose = new Button
+            _btnClose = new SfButton
             {
                 Text = "Close",
                 AutoSize = true,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Close panel"
+                AccessibleName = "Close"
             };
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
 
@@ -140,8 +144,34 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_titleLabel);
 
             // Accessibility
-            AccessibleName = "Panel header";
-            AccessibleDescription = "Contains the title and actions for the panel";
+            AccessibleName = "Header";
+            AccessibleDescription = "Contains the title and actions for the header";
+        }
+
+        private void PinButton_Click(object? sender, EventArgs e)
+        {
+            IsPinned = !IsPinned;
+            PinToggled?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UpdatePinButtonAppearance()
+        {
+            // Update button appearance based on pinned state
+            // SfButton doesn't have built-in toggle styling, so we can use theme colors or custom styling
+            try
+            {
+                if (_isPinned)
+                {
+                    _btnPin.BackColor = SystemColors.Highlight;
+                    _btnPin.ForeColor = SystemColors.HighlightText;
+                }
+                else
+                {
+                    _btnPin.BackColor = SystemColors.Control;
+                    _btnPin.ForeColor = SystemColors.ControlText;
+                }
+            }
+            catch { /* best effort */ }
         }
 
         /// <summary>

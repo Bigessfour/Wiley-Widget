@@ -10,6 +10,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
+using WileyWidget.WinForms.Controls;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
@@ -40,13 +43,13 @@ public class DockingLayoutManager : IDisposable
     private System.Windows.Forms.Timer? _dockingLayoutSaveTimer;
 
     // Dynamic panels tracking
-    private Dictionary<string, Panel>? _dynamicDockPanels = new();
+    private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();
 
     // Owned resources - fonts, panels, and diagnostics
     private Font? _dockAutoHideTabFont;
     private Font? _dockTabFont;
-    private Panel? _leftDockPanel;
-    private Panel? _rightDockPanel;
+    private GradientPanelExt? _leftDockPanel;
+    private GradientPanelExt? _rightDockPanel;
     // REMOVED: _centralDocumentPanel - Option A pure docking architecture
 
     public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger)
@@ -60,7 +63,7 @@ public class DockingLayoutManager : IDisposable
     /// Transfer ownership of managed docking panels and fonts to this manager
     /// </summary>
     /// <remarks>Option A architecture - no central panel, pure left/right docking</remarks>
-    public void SetManagedResources(Panel? leftPanel, Panel? rightPanel, Font? dockAutoHideTabFont, Font? dockTabFont)
+    public void SetManagedResources(GradientPanelExt? leftPanel, GradientPanelExt? rightPanel, Font? dockAutoHideTabFont, Font? dockTabFont)
     {
         _leftDockPanel = leftPanel;
         _rightDockPanel = rightPanel;
@@ -152,11 +155,18 @@ public class DockingLayoutManager : IDisposable
             _logger?.LogDebug("LoadDockingLayout START - ThreadId={ThreadId}, layoutPath={Path}",
                 System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath);
 
-            if (!File.Exists(layoutPath))
+            // Support either the XML layout path or the binary '.bin' layout path.
+            var binaryLayoutPath = Path.ChangeExtension(layoutPath, ".bin");
+
+            if (!File.Exists(layoutPath) && !File.Exists(binaryLayoutPath))
             {
-                _logger?.LogInformation("Docking layout file not found - using default layout ({Path})", layoutPath);
+                _logger?.LogInformation("Docking layout file not found (neither {Path} nor {BinaryPath}) - using default layout", layoutPath, binaryLayoutPath);
                 return;
             }
+
+            // Prefer binary layout if available
+            if (File.Exists(binaryLayoutPath)) layoutPath = binaryLayoutPath;
+
 
             // Load dynamic panel metadata first
             var panelInfos = LoadDynamicPanelMetadata(layoutPath);
@@ -225,15 +235,24 @@ public class DockingLayoutManager : IDisposable
                 return;
             }
 
-            // Count docked controls by checking for panels that are docked
+            // Count docked controls by scanning the full host control tree for panels that are managed by DockingManager
+            // NOTE: Some docked panels are placed inside DockHost_* containers and may not be direct children of the form
             int dockedControlCount = 0;
-            foreach (Control ctrl in hostForm.Controls)
+            IEnumerable<Control> EnumerateControls(Control parent)
             {
-                if (ctrl is Panel panel && ctrl.Visible)
+                foreach (Control c in parent.Controls)
+                {
+                    yield return c;
+                    foreach (var inner in EnumerateControls(c)) yield return inner;
+                }
+            }
+
+            foreach (var ctrl in EnumerateControls(hostForm))
+            {
+                if (ctrl is Panel panel)
                 {
                     try
                     {
-                        // Check if this panel is managed by DockingManager
                         var isDocked = dockingManager.GetEnableDocking(panel);
                         if (isDocked)
                         {
@@ -264,12 +283,130 @@ public class DockingLayoutManager : IDisposable
                 serializer = new AppStateSerializer(SerializeMode.BinaryFile, tempPath);
 
                 // Save dock state using Syncfusion API directly (no reflection needed)
-                dockingManager.SaveDockState(serializer);
+                // Some Syncfusion versions require PersistState to be enabled for SaveDockState to emit file output.
+                var originalPersistState = dockingManager.PersistState;
+                try
+                {
+                    dockingManager.PersistState = true;
+                    dockingManager.SaveDockState(serializer);
+                    // CRITICAL: Call PersistNow() to actually write the serializer to disk
+                    serializer.PersistNow();
 
-                // CRITICAL: Call PersistNow() to actually write the serializer to disk
-                serializer.PersistNow();
+                    // Some implementations may flush files asynchronously; wait briefly for output to appear
+                    var swWriter = System.Diagnostics.Stopwatch.StartNew();
+                    while (!File.Exists(tempPath) && !File.Exists(binaryLayoutPath) && swWriter.ElapsedMilliseconds < 500)
+                    {
+                        System.Threading.Thread.Sleep(25);
+                    }
+                }
+                finally
+                {
+                    // Restore original setting
+                    dockingManager.PersistState = originalPersistState;
+                }
 
-                _logger?.LogDebug("Saved and persisted dock state to temp file {TempPath}", tempPath);
+                _logger?.LogDebug("Saved and persisted dock state (temp: {TempPath}, intended final: {BinaryPath})", tempPath, binaryLayoutPath);
+
+                // Verify serializer produced output. AppStateSerializer may write either the temp file or write directly
+                // to the final path depending on underlying implementation. Handle both cases safely.
+                var tempExists = File.Exists(tempPath);
+                var finalExistsBeforeReplace = File.Exists(binaryLayoutPath);
+
+                if (tempExists)
+                {
+                    // Atomic file replacement
+                    ReplaceDockingLayoutFile(tempPath, binaryLayoutPath);
+                }
+                else if (!finalExistsBeforeReplace)
+                {
+                    // Nothing was written - attempt a safe fallback by writing directly to the final path
+                    _logger?.LogWarning("No serializer output detected at temp or final paths. Attempting fallback write to final binary path: {FinalPath}", binaryLayoutPath);
+
+                    // First attempt: fallback to BinaryFile direct write
+                    try
+                    {
+                        var fallbackSerializer = new AppStateSerializer(SerializeMode.BinaryFile, binaryLayoutPath);
+                        var originalPersistState2 = dockingManager.PersistState;
+                        try
+                        {
+                            dockingManager.PersistState = true;
+                            dockingManager.SaveDockState(fallbackSerializer);
+                            fallbackSerializer.PersistNow();
+                        }
+                        finally
+                        {
+                            dockingManager.PersistState = originalPersistState2;
+                        }
+
+                        // As above, wait briefly for final file to appear
+                        var swFallback = System.Diagnostics.Stopwatch.StartNew();
+                        while (!File.Exists(binaryLayoutPath) && swFallback.ElapsedMilliseconds < 500)
+                        {
+                            System.Threading.Thread.Sleep(25);
+                        }
+
+                        _logger?.LogDebug("Fallback serializer attempted writing directly to {FinalPath}", binaryLayoutPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Fallback serializer failed to write final binary layout {FinalPath}", binaryLayoutPath);
+                    }
+
+                    // If still not written, attempt memory-stream fallback using BinaryFmtStream
+                    if (!File.Exists(binaryLayoutPath))
+                    {
+                        _logger?.LogWarning("Fallback binary file not created by BinaryFile serializer. Attempting memory-stream fallback (SerializeMode.BinaryFmtStream) to write bytes to {FinalPath}", binaryLayoutPath);
+                        try
+                        {
+                            using var ms = new System.IO.MemoryStream();
+                            var memSerializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
+                            var originalPersistState3 = dockingManager.PersistState;
+                            try
+                            {
+                                dockingManager.PersistState = true;
+                                dockingManager.SaveDockState(memSerializer);
+                                memSerializer.PersistNow();
+                            }
+                            finally
+                            {
+                                dockingManager.PersistState = originalPersistState3;
+                            }
+
+                            // Ensure stream has data and write it atomically to temp then replace
+                            if (ms.Length > 0)
+                            {
+                                ms.Position = 0;
+                                var bytes = ms.ToArray();
+                                File.WriteAllBytes(tempPath, bytes);
+                                ReplaceDockingLayoutFile(tempPath, binaryLayoutPath);
+
+                                var swMem = System.Diagnostics.Stopwatch.StartNew();
+                                while (!File.Exists(binaryLayoutPath) && swMem.ElapsedMilliseconds < 500)
+                                {
+                                    System.Threading.Thread.Sleep(25);
+                                }
+
+                                _logger?.LogDebug("Memory-stream fallback wrote {ByteCount} bytes to {FinalPath}", bytes.Length, binaryLayoutPath);
+                            }
+                            else
+                            {
+                                _logger?.LogWarning("Memory-stream fallback produced 0 bytes for docking layout - aborting");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Memory-stream fallback failed to serialize dock state to {FinalPath}", binaryLayoutPath);
+                        }
+                    }
+                }
+
+                // Final verification: ensure the binary layout file exists before proceeding
+                if (!File.Exists(binaryLayoutPath))
+                {
+                    _logger?.LogError("Docking layout final file not found after save attempt: {FinalPath}", binaryLayoutPath);
+                    return;
+                }
+
             }
             catch (Exception ex)
             {
@@ -277,11 +414,25 @@ public class DockingLayoutManager : IDisposable
                 return;
             }
 
-            // Save dynamic panels metadata (still use XML for metadata)
-            SaveDynamicPanels(layoutPath);
-
-            // Atomic file replacement
-            ReplaceDockingLayoutFile(tempPath, binaryLayoutPath);
+            // Save dynamic panels metadata (JSON)
+            // Always write panels metadata file (empty array when no dynamic panels) to avoid missing artifacts in consumers/tests
+            if (_dynamicDockPanels == null || !_dynamicDockPanels.Any())
+            {
+                try
+                {
+                    var panelsPath = layoutPath + ".panels.json";
+                    File.WriteAllText(panelsPath, "[]");
+                    _logger?.LogDebug("Wrote empty panels metadata file to {Path}", panelsPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to write empty panels metadata file");
+                }
+            }
+            else
+            {
+                SaveDynamicPanels(layoutPath);
+            }
 
             _logger?.LogInformation("Docking layout saved to {Path} (binary format)", binaryLayoutPath);
         }
@@ -397,20 +548,16 @@ public class DockingLayoutManager : IDisposable
         {
             serializer = new AppStateSerializer(SerializeMode.BinaryFile, layoutPath);
 
-            // Load dock state using Syncfusion API directly (no reflection needed)
-            // Run on thread pool to avoid blocking UI
-            bool success = await Task.Run(() =>
+            bool success;
+            try
             {
-                try
-                {
-                    return dockingManager.LoadDockState(serializer);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Exception during LoadDockState - falling back to default docking");
-                    return false;
-                }
-            });
+                success = dockingManager.LoadDockState(serializer);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Exception during LoadDockState - falling back to default docking");
+                success = false;
+            }
 
             if (success)
             {
@@ -613,17 +760,32 @@ public class DockingLayoutManager : IDisposable
 
         try
         {
+            // Prefer rebuilding known panels through PanelNavigationService so real controls are used
+            if (_panelNavigator != null && panelInfo.Name.Contains("Chat", StringComparison.OrdinalIgnoreCase))
+            {
+                var label = panelInfo.DockLabel ?? panelInfo.Name;
+                _panelNavigator.ShowPanel<ChatPanel>(label, DockingStyle.Right, allowFloating: true);
+                _logger?.LogInformation("Recreated chat panel via PanelNavigationService: {PanelName}", label);
+                return;
+            }
+
             // STEP 1: Create empty panel
-            var panel = new Panel { Name = panelInfo.Name };
+            var panel = new GradientPanelExt
+            {
+                Name = panelInfo.Name,
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
             // STEP 2-4: Dock panel FIRST (Syncfusion official pattern)
             // Set up docking if DockingManager is available
             if (dockingManager != null)
             {
-                // Dock the panel BEFORE adding content (position will be restored by LoadDockState)
-                dockingManager.DockControl(panel, parentForm, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
                 dockingManager.SetEnableDocking(panel, true);
                 dockingManager.SetDockLabel(panel, panelInfo.DockLabel ?? panelInfo.Name);
+                dockingManager.SetAllowFloating(panel, true);
+                dockingManager.DockControl(panel, parentForm, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
                 if (panelInfo.IsAutoHide)
                 {
                     dockingManager.SetAutoHideMode(panel, true);
@@ -734,9 +896,26 @@ public class DockingLayoutManager : IDisposable
         try
         {
             var dockStyle = DockingStyle.Right;
-            if (!string.IsNullOrEmpty(dockStyleStr) && Enum.TryParse<DockingStyle>(dockStyleStr, out var parsedStyle))
+
+            // `dockStyleStr` is persisted from WinForms `Control.Dock` (DockStyle), not Syncfusion DockingStyle.
+            // Map it to a safe DockingStyle to avoid passing `DockingStyle.Fill` into `DockControl`.
+            if (!string.IsNullOrWhiteSpace(dockStyleStr))
             {
-                dockStyle = parsedStyle;
+                if (Enum.TryParse<DockStyle>(dockStyleStr, out var winFormsDockStyle))
+                {
+                    dockStyle = winFormsDockStyle switch
+                    {
+                        DockStyle.Left => DockingStyle.Left,
+                        DockStyle.Right => DockingStyle.Right,
+                        DockStyle.Top => DockingStyle.Top,
+                        DockStyle.Bottom => DockingStyle.Bottom,
+                        _ => DockingStyle.Right
+                    };
+                }
+                else if (Enum.TryParse<DockingStyle>(dockStyleStr, out var parsedDockingStyle) && parsedDockingStyle != DockingStyle.Fill)
+                {
+                    dockStyle = parsedDockingStyle;
+                }
             }
 
             var panelType = Type.GetType(typeName);

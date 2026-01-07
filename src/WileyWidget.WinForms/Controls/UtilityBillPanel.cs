@@ -16,6 +16,10 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.Models;
+using Syncfusion.WinForms.ListView;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.Services;
 
 namespace WileyWidget.WinForms.Controls;
@@ -32,23 +36,23 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private SfDataGrid? _billsGrid;
     private SfDataGrid? _customersGrid;
-    private Button? _createBillButton;
-    private Button? _saveBillButton;
-    private Button? _deleteBillButton;
-    private Button? _markPaidButton;
-    private Button? _generateReportButton;
-    private Button? _refreshButton;
-    private Button? _exportExcelButton;
-    private TextBox? _searchTextBox;
-    private ComboBox? _statusFilterComboBox;
-    private CheckBox? _overdueOnlyCheckBox;
+    private SfButton? _createBillButton;
+    private SfButton? _saveBillButton;
+    private SfButton? _deleteBillButton;
+    private SfButton? _markPaidButton;
+    private SfButton? _generateReportButton;
+    private SfButton? _refreshButton;
+    private SfButton? _exportExcelButton;
+    private TextBoxExt? _searchTextBox;
+    private SfComboBox? _statusFilterComboBox;
+    private CheckBoxAdv? _overdueOnlyCheckBox;
     private Label? _totalOutstandingLabel;
     private Label? _overdueCountLabel;
     private Label? _totalRevenueLabel;
     private Label? _billsThisMonthLabel;
-    private Panel? _summaryPanel;
-    private Panel? _gridPanel;
-    private Panel? _buttonPanel;
+    private GradientPanelExt? _summaryPanel;
+    private GradientPanelExt? _gridPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -57,7 +61,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private NoDataOverlay? _noDataOverlay;
     private ToolTip? _toolTip;
 
-    private EventHandler<AppTheme>? _themeChangedHandler;
+
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
     private NotifyCollectionChangedEventHandler? _customersCollectionChangedHandler;
@@ -85,7 +89,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             InitializeControls();
             BindViewModel();
-            ApplyTheme(ThemeManager.CurrentTheme);
 
             Logger.LogDebug("UtilityBillPanel initialized successfully");
         }
@@ -104,7 +107,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Text = "Utility Bills";
         Size = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1400f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(900f));
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1000f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        Padding = new Padding(0);
+        AutoScroll = true;
+        Padding = new Padding(8);
 
         // Initialize tooltip
         _toolTip = new ToolTip
@@ -177,7 +181,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeTopPanel()
     {
-        var topPanel = new Panel { Dock = DockStyle.Fill };
+        var topPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
         // Summary panel with KPIs
         InitializeSummaryPanel();
@@ -196,12 +206,15 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeSummaryPanel()
     {
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(80f),
-            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f))
+            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var summaryTable = new TableLayoutPanel
         {
@@ -242,12 +255,15 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeButtonPanel()
     {
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f),
-            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f))
+            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
         var buttonFlow = new FlowLayoutPanel
         {
@@ -299,25 +315,27 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _buttonPanel.Controls.Add(buttonFlow);
     }
 
-    private Button CreateButton(string text, Size size, int tabIndex)
+    private SfButton CreateButton(string text, Size size, int tabIndex)
     {
-        return new Button
+        return new SfButton
         {
             Text = text,
             Size = size,
             TabIndex = tabIndex,
-            UseVisualStyleBackColor = true,
             Margin = new Padding(0, 0, (int)DpiAware.LogicalToDeviceUnits(5f), 0)
         };
     }
 
     private void InitializeBillsGrid()
     {
-        _gridPanel = new Panel
+        _gridPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f))
+            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_gridPanel, "Office2019Colorful");
 
         _billsGrid = new SfDataGrid
         {
@@ -332,7 +350,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             ShowGroupDropArea = true,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             SelectionMode = GridSelectionMode.Single,
-            NavigationMode = NavigationMode.Row,
+            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
             ShowRowHeader = true,
             HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f),
             RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f),
@@ -419,15 +437,24 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeBottomPanel()
     {
-        var bottomPanel = new Panel { Dock = DockStyle.Fill };
+        var bottomPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(bottomPanel, "Office2019Colorful");
 
         // Filter panel
-        var filterPanel = new Panel
+        var filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = (int)DpiAware.LogicalToDeviceUnits(45f),
-            Padding = new Padding((int)DpiAware.LogicalToDeviceUnits(10f))
+            Padding = new Padding((int)DpiAware.LogicalToDeviceUnits(10f)),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(filterPanel, "Office2019Colorful");
 
         var filterTable = new TableLayoutPanel
         {
@@ -441,7 +468,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15f));
 
-        _searchTextBox = new TextBox
+        _searchTextBox = new TextBoxExt
         {
             Dock = DockStyle.Fill,
             PlaceholderText = "Search bills or customers...",
@@ -452,21 +479,22 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _toolTip!.SetToolTip(_searchTextBox, "Search by bill number, customer name, or account number");
 
-        _statusFilterComboBox = new ComboBox
+        _statusFilterComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
-            DropDownStyle = ComboBoxStyle.DropDownList,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
             TabIndex = 10,
             AccessibleName = "Status Filter",
             AccessibleDescription = "Filter bills by payment status"
         };
-        _statusFilterComboBox.Items.Add("(All Statuses)");
-        _statusFilterComboBox.Items.AddRange(Enum.GetNames(typeof(BillStatus)));
+        var statusItems = Enum.GetNames(typeof(BillStatus)).ToList();
+        statusItems.Insert(0, "(All Statuses)");
+        _statusFilterComboBox.DataSource = statusItems;
         _statusFilterComboBox.SelectedIndex = 0;
         _statusFilterComboBox.SelectedIndexChanged += StatusFilterComboBox_SelectedIndexChanged;
         _toolTip.SetToolTip(_statusFilterComboBox, "Filter bills by status");
 
-        _overdueOnlyCheckBox = new CheckBox
+        _overdueOnlyCheckBox = new CheckBoxAdv
         {
             Text = "Overdue Only",
             Dock = DockStyle.Fill,
@@ -474,7 +502,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Show Overdue Only",
             AccessibleDescription = "Show only overdue bills"
         };
-        _overdueOnlyCheckBox.CheckedChanged += OverdueOnlyCheckBox_CheckedChanged;
+        _overdueOnlyCheckBox.CheckStateChanged += OverdueOnlyCheckBox_CheckedChanged;
         _toolTip.SetToolTip(_overdueOnlyCheckBox, "Show only bills that are past their due date");
 
         filterTable.Controls.Add(_searchTextBox, 0, 0);
@@ -493,11 +521,14 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeCustomersGrid()
     {
-        var customersPanel = new Panel
+        var customersPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f))
+            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(customersPanel, "Office2019Colorful");
 
         _customersGrid = new SfDataGrid
         {
@@ -509,7 +540,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AllowFiltering = true,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             SelectionMode = GridSelectionMode.Single,
-            NavigationMode = NavigationMode.Row,
+            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
             ShowRowHeader = false,
             HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f),
             RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f),
@@ -908,15 +939,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 UpdateButtonIcons(iconService, theme);
             }
 
-            // Subscribe to theme changes
-            _themeChangedHandler = (s, t) =>
-            {
-                if (iconService != null)
-                {
-                    UpdateButtonIcons(iconService, t);
-                }
-            };
-            ThemeManager.ThemeChanged += _themeChangedHandler;
+            // ThemeManager subscription removed per project rules (SfSkinManager cascade only)
         }
         catch (Exception ex)
         {
@@ -982,9 +1005,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             try
             {
                 // Unsubscribe events
-                if (_themeChangedHandler != null)
-                    ThemeManager.ThemeChanged -= _themeChangedHandler;
-
                 if (ViewModel != null && _viewModelPropertyChangedHandler != null)
                     ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
 

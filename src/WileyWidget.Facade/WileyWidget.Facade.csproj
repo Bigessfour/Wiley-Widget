@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <AssemblyName>WileyWidget</AssemblyName>
     <RootNamespace>WileyWidget</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14.0</LangVersion>
     <UseWPF>false</UseWPF>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\WileyWidget.UI\WileyWidget.UI.csproj" />
-  </ItemGroup>
 </Project>

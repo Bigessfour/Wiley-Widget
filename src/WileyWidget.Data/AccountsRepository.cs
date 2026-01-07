@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
@@ -19,14 +20,14 @@ public class AccountsRepository : IAccountsRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AccountsRepository");
 
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AccountsRepository> _logger;
 
     public AccountsRepository(
-        IDbContextFactory<AppDbContext> contextFactory,
+        IServiceScopeFactory scopeFactory,
         ILogger<AccountsRepository> logger)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -39,7 +40,9 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving all municipal accounts");
 
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var result = await context.Set<MunicipalAccount>()
                 .AsNoTracking()
                 .OrderBy(a => a.AccountNumber_Value)
@@ -71,7 +74,9 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving accounts for fund type: {FundType}", fundType);
 
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var result = await context.Set<MunicipalAccount>()
                 .AsNoTracking()
                 .Where(a => a.Fund == fundType)
@@ -98,7 +103,9 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving accounts for account type: {AccountType}", accountType);
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .Where(a => a.Type == accountType)
@@ -114,7 +121,9 @@ public class AccountsRepository : IAccountsRepository
         _logger.LogDebug("Retrieving accounts for fund type: {FundType} and account type: {AccountType}",
             fundType, accountType);
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .Where(a => a.Fund == fundType && a.Type == accountType)
@@ -128,7 +137,9 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving account with ID: {AccountId}", accountId);
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
@@ -148,7 +159,9 @@ public class AccountsRepository : IAccountsRepository
 
         var normalizedSearch = searchTerm.ToLowerInvariant();
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .Where(a =>

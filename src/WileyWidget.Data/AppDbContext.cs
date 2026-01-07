@@ -48,6 +48,7 @@ namespace WileyWidget.Data
         public DbSet<DepartmentCurrentCharge> DepartmentCurrentCharges { get; set; } = null!;
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
         public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
+        public DbSet<global::WileyWidget.Services.Abstractions.ConversationHistory> ConversationHistories { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -192,6 +193,29 @@ namespace WileyWidget.Data
                 entity.Property(e => e.Category).HasMaxLength(100);
                 entity.Property(e => e.Icon).HasMaxLength(100);
                 entity.Property(e => e.Timestamp).HasColumnType("datetime2");
+            });
+
+            // AI chat conversation persistence
+            modelBuilder.Entity<global::WileyWidget.Services.Abstractions.ConversationHistory>(entity =>
+            {
+                entity.ToTable("ConversationHistories");
+                entity.HasKey(e => e.ConversationId);
+
+                entity.Property(e => e.ConversationId)
+                    .HasMaxLength(128)
+                    .IsRequired();
+
+                entity.Property(e => e.Title)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(e => e.MessagesJson)
+                    .IsRequired();
+
+                entity.HasIndex(e => e.UpdatedAt);
+
+                // Legacy/unused property - ConversationId is the canonical key
+                entity.Ignore(e => e.Id);
             });
 
             // New: Vendor configuration

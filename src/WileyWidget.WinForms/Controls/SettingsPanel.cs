@@ -4,10 +4,15 @@ using System.Collections.Generic;
 using System.Drawing;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -37,22 +42,22 @@ namespace WileyWidget.WinForms.Controls
         private readonly IThemeService _themeService;
 
         // Controls
-        private Panel? _mainPanel;
-        private GroupBox? _themeGroup;
+        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _mainPanel;
+        private GradientPanelExt? _themeGroup;
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
         private Syncfusion.WinForms.ListView.SfComboBox? _fontCombo;
-        private GroupBox? _aboutGroup;
+        private GradientPanelExt? _aboutGroup;
         private Label? _lblVersion;
         private Label? _lblDbStatus;
         private Syncfusion.WinForms.Controls.SfButton? _btnClose;
         private Syncfusion.WinForms.Controls.SfButton? _btnBrowseExportPath;
-        private TextBox? _txtAppTitle;
-        private TextBox? _txtExportPath;
+        private TextBoxExt? _txtAppTitle;
+        private TextBoxExt? _txtExportPath;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numAutoSaveInterval;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbLogLevel;
-        private TextBox? _txtDateFormat;
-        private TextBox? _txtCurrencyFormat;
-        private CheckBox? _chkUseDemoData;
+        private TextBoxExt? _txtDateFormat;
+        private TextBoxExt? _txtCurrencyFormat;
+        private CheckBoxAdv? _chkUseDemoData;
         private ToolTip? _demoDataToolTip;
         private ErrorProvider? _error_provider;
         // ToolTips and binding source hold IDisposable instances - keep them as fields so we dispose them
@@ -65,15 +70,15 @@ namespace WileyWidget.WinForms.Controls
         private BindingSource? _settingsBinding;
         private EventHandler<AppTheme>? _panelThemeChangedHandler;
         private EventHandler<AppTheme>? _btnCloseThemeChangedHandler;
-        private CheckBox? _chkOpenEditFormsDocked;
+        private CheckBoxAdv? _chkOpenEditFormsDocked;
         private ErrorProviderBinding? _errorBinding;
         private EventHandler? _browseExportPathHandler;
 
         // AI / XAI controls
-        private GroupBox? _aiGroup;
-        private CheckBox? _chkEnableAi;
-        private TextBox? _txtXaiApiEndpoint;
-        private TextBox? _txtXaiApiKey;
+        private GradientPanelExt? _aiGroup;
+        private CheckBoxAdv? _chkEnableAi;
+        private TextBoxExt? _txtXaiApiEndpoint;
+        private TextBoxExt? _txtXaiApiKey;
         private Syncfusion.WinForms.Controls.SfButton? _btnShowApiKey;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbXaiModel;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numXaiTimeout;
@@ -196,6 +201,9 @@ namespace WileyWidget.WinForms.Controls
             Name = "SettingsPanel";
             AccessibleName = SettingsPanelResources.PanelTitle; // "Settings"
             Size = new Size(500, 400);
+            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+            AutoScroll = true;
+            Padding = new Padding(8);
             // DockingManager will handle docking; do not set Dock here.
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
         }
@@ -205,13 +213,16 @@ namespace WileyWidget.WinForms.Controls
             var padding = 20;
             var y = padding;
 
-            _mainPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(padding) };
+            _mainPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(padding), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
+            SfSkinManager.SetVisualStyle(_mainPanel, "Office2019Colorful");
 
             try { _error_provider = new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink }; } catch { }
 
             // App title
             var lblAppTitle = new Label { Text = SettingsPanelResources.AppTitleLabel, AutoSize = true, Location = new Point(padding, y + 4), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtAppTitle = new TextBox { Name = "txtAppTitle", Location = new Point(padding + 120, y), Width = 300, MaxLength = 100, Font = new Font("Segoe UI", 10F), AccessibleName = "Application Title", AccessibleDescription = "Set the friendly application title" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtAppTitle = new TextBoxExt { Name = "txtAppTitle", Location = new Point(padding + 120, y), Width = 300, MaxLength = 100, Font = new Font("Segoe UI", 10F), AccessibleName = "Application Title", AccessibleDescription = "Set the friendly application title" };
+#pragma warning restore RS0030
             _txtToolTip = new ToolTip();
             _txtToolTip.SetToolTip(_txtAppTitle, "Enter a custom title for the application window");
             // Validation is now handled via ErrorProviderBinding to ViewModel
@@ -220,16 +231,18 @@ namespace WileyWidget.WinForms.Controls
             y += 40;
 
             // Appearance group
-            _themeGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, Location = new Point(padding, y), Size = new Size(440, 140), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _themeGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 140) };
+            var themeLabel = new Label { Text = SettingsPanelResources.AppearanceGroup, AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _themeGroup.Controls.Add(themeLabel);
 
-            _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 30), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
+            _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 50), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try { _themeCombo.DataSource = ViewModel?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
             try { _themeCombo.SelectedItem = _themeService.Preference; } catch { }
             _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.SetTheme(sel); } catch { } };
 
             // Font selection combo
-            var lblFont = new Label { Text = "Application Font:", AutoSize = true, Location = new Point(20, 65), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _fontCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "fontCombo", Location = new Point(20, 85), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 10, AccessibleName = "Font selection", AccessibleDescription = "Select application font" };
+            var lblFont = new Label { Text = "Application Font:", AutoSize = true, Location = new Point(20, 85), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
+            _fontCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "fontCombo", Location = new Point(20, 105), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 10, AccessibleName = "Font selection", AccessibleDescription = "Select application font" };
             _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             _fontCombo.DataSource = GetAvailableFonts();
             _fontCombo.SelectedItem = FontService.Instance.CurrentFont;
@@ -242,22 +255,26 @@ namespace WileyWidget.WinForms.Controls
             y += 160;
 
             // Behavior settings
-            _chkOpenEditFormsDocked = new CheckBox { Text = "Open edit forms docked (as floating tool windows)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.OpenEditFormsDocked ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Open edit forms docked", AccessibleDescription = "Open account edit forms as dockable floating windows" };
+            _chkOpenEditFormsDocked = new CheckBoxAdv { Text = "Open edit forms docked (as floating tool windows)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.OpenEditFormsDocked ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Open edit forms docked", AccessibleDescription = "Open account edit forms as dockable floating windows" };
             _dockedToolTip = new ToolTip(); _dockedToolTip.SetToolTip(_chkOpenEditFormsDocked, "Open account edit forms as dockable floating windows instead of modal dialogs"); _chkOpenEditFormsDocked.CheckedChanged += (s, e) => { if (ViewModel != null) ViewModel.OpenEditFormsDocked = _chkOpenEditFormsDocked.Checked; };
             _mainPanel.Controls.Add(_chkOpenEditFormsDocked);
             y += 30;
 
             // Demo mode toggle
-            _chkUseDemoData = new CheckBox { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Orange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
+            _chkUseDemoData = new CheckBoxAdv { Text = "Use demo/sample data (for demonstrations)", AutoSize = true, Location = new Point(padding, y), Checked = ViewModel?.UseDemoData ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Orange, AccessibleName = "Use demo data", AccessibleDescription = "When enabled, views display sample data instead of database data" };  // Semantic warning color (allowed exception)
             _demoDataToolTip = new ToolTip(); _demoDataToolTip.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data. Useful for demonstrations or when database is unavailable.");
             _chkUseDemoData.CheckedChanged += (s, e) => { if (ViewModel != null) ViewModel.UseDemoData = _chkUseDemoData.Checked; };
             _mainPanel.Controls.Add(_chkUseDemoData);
             y += 35;
 
             // Data Export group
-            var exportGroup = new GroupBox { Text = "Data Export", Location = new Point(padding, y), Size = new Size(440, 70), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            var exportGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 70) };
+            var exportLabel = new Label { Text = "Data Export", AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            exportGroup.Controls.Add(exportLabel);
             var lblExportPath = new Label { Text = "Export Path:", AutoSize = true, Location = new Point(20, 30) };
-            _txtExportPath = new TextBox { Name = "txtExportPath", Location = new Point(100, 27), Width = 250, AccessibleName = "Export path", AccessibleDescription = "Directory for data exports" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtExportPath = new TextBoxExt { Name = "txtExportPath", Location = new Point(100, 27), Width = 250, AccessibleName = "Export path", AccessibleDescription = "Directory for data exports" };
+#pragma warning restore RS0030
             _exportPathToolTip = new ToolTip(); _exportPathToolTip.SetToolTip(_txtExportPath, "Directory where exported data files will be saved");
             _btnBrowseExportPath = new Syncfusion.WinForms.Controls.SfButton { Name = "btnBrowseExportPath", Text = "...", Size = new Size(40, 24), Location = new Point(360, 26), AccessibleName = "Browse for export path", AccessibleDescription = "Open folder browser to select export directory" };
             _browseExportPathHandler = (s, e) => OnBrowseExportPath();
@@ -268,7 +285,9 @@ namespace WileyWidget.WinForms.Controls
             y += 85;
 
             // Auto-save and Logging group
-            var behaviorGroup = new GroupBox { Text = "Behavior & Logging", Location = new Point(padding, y), Size = new Size(440, 110), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            var behaviorGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 110) };
+            var behaviorLabel = new Label { Text = "Behavior & Logging", AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            behaviorGroup.Controls.Add(behaviorLabel);
             var lblAutoSave = new Label { Text = "Auto-save interval (min):", AutoSize = true, Location = new Point(20, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numAutoSaveInterval", Location = new Point(170, 27), Size = new Size(80, 24), MinValue = 1, MaxValue = 60, Value = ViewModel?.AutoSaveIntervalMinutes ?? 5, AccessibleName = "Auto-save interval", AccessibleDescription = "Interval in minutes for auto-saving" };
             _autoSaveToolTip = new ToolTip(); _autoSaveToolTip.SetToolTip(_numAutoSaveInterval, "How often data is auto-saved (1-60 minutes)");
@@ -285,13 +304,24 @@ namespace WileyWidget.WinForms.Controls
             y += 125;
 
             // AI / xAI settings group
-            _aiGroup = new GroupBox { Text = "AI / xAI Settings", Location = new Point(padding, y), Size = new Size(440, 240), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _aiGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 240) };
+            var aiLabel = new Label { Text = "AI / xAI Settings", AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _aiGroup.Controls.Add(aiLabel);
 
-            _chkEnableAi = new CheckBox { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
-            _chkEnableAi.CheckedChanged += (s, e) => { try { if (ViewModel != null) ViewModel.EnableAi = _chkEnableAi.Checked; } catch { } };
+            _chkEnableAi = new CheckBoxAdv { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
+            _chkEnableAi.CheckedChanged += (s, e) => {
+                try {
+                    if (ViewModel is not null)
+                    {
+                        ViewModel.EnableAi = _chkEnableAi.Checked;
+                    }
+                } catch { }
+            };
 
             var lblEndpoint = new Label { Text = "API Endpoint:", AutoSize = true, Location = new Point(20, 56), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtXaiApiEndpoint = new TextBox { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = ViewModel?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtXaiApiEndpoint = new TextBoxExt { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = ViewModel?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
+#pragma warning restore RS0030
             _txtXaiApiEndpoint.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiEndpoint = _txtXaiApiEndpoint.Text; } catch { } };
 
             var lblModel = new Label { Text = "Model:", AutoSize = true, Location = new Point(20, 84), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
@@ -300,9 +330,10 @@ namespace WileyWidget.WinForms.Controls
             _cmbXaiModel.SelectedIndexChanged += (s, e) => { try { if (_cmbXaiModel.SelectedItem is string str && ViewModel != null) ViewModel.XaiModel = str; } catch { } };
 
             var lblApiKey = new Label { Text = "API Key:", AutoSize = true, Location = new Point(20, 112), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtXaiApiKey = new TextBox { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = ViewModel?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtXaiApiKey = new TextBoxExt { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = ViewModel?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
+#pragma warning restore RS0030
             _txtXaiApiKey.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiKey = _txtXaiApiKey.Text; } catch { } };
-
             _btnShowApiKey = new Syncfusion.WinForms.Controls.SfButton { Name = "btnShowApiKey", Text = "Show", Size = new Size(50, 24), Location = new Point(350, 106), AccessibleName = "Show API Key", AccessibleDescription = "Toggle display of API key" };
             _btnShowApiKey.Click += (s, e) => { try { if (_txtXaiApiKey != null) { _txtXaiApiKey.UseSystemPasswordChar = !_txtXaiApiKey.UseSystemPasswordChar; _btnShowApiKey.Text = _txtXaiApiKey.UseSystemPasswordChar ? "Show" : "Hide"; } } catch { } };
 
@@ -391,21 +422,29 @@ namespace WileyWidget.WinForms.Controls
             y += 220;
 
             // Format settings group
-            var formatGroup = new GroupBox { Text = "Display Formats", Location = new Point(padding, y), Size = new Size(440, 80), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            var formatGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 80) };
+            var formatLabel = new Label { Text = "Display Formats", AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            formatGroup.Controls.Add(formatLabel);
             var lblDateFormat = new Label { Text = "Date Format:", AutoSize = true, Location = new Point(20, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtDateFormat = new TextBox { Name = "txtDateFormat", Location = new Point(110, 27), Width = 120, Font = new Font("Segoe UI", 10F), Text = ViewModel?.DateFormat ?? "yyyy-MM-dd", AccessibleName = "Date format", AccessibleDescription = "Format string for displaying dates" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtDateFormat = new TextBoxExt { Name = "txtDateFormat", Location = new Point(110, 27), Width = 120, Font = new Font("Segoe UI", 10F), Text = ViewModel?.DateFormat ?? "yyyy-MM-dd", AccessibleName = "Date format", AccessibleDescription = "Format string for displaying dates" };
+#pragma warning restore RS0030
             _txtDateFormat.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.DateFormat = _txtDateFormat.Text; } catch { } };
             formatGroup.Controls.Add(lblDateFormat); formatGroup.Controls.Add(_txtDateFormat);
 
             var lblCurrencyFormat = new Label { Text = "Currency Format:", AutoSize = true, Location = new Point(250, 30), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _txtCurrencyFormat = new TextBox { Name = "txtCurrencyFormat", Location = new Point(360, 27), Width = 60, Font = new Font("Segoe UI", 10F), Text = ViewModel?.CurrencyFormat ?? "C2", AccessibleName = "Currency format", AccessibleDescription = "Format string for displaying currency values" };
+#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
+            _txtCurrencyFormat = new TextBoxExt { Name = "txtCurrencyFormat", Location = new Point(360, 27), Width = 60, Font = new Font("Segoe UI", 10F), Text = ViewModel?.CurrencyFormat ?? "C2", AccessibleName = "Currency format", AccessibleDescription = "Format string for displaying currency values" };
+#pragma warning restore RS0030
             _txtCurrencyFormat.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.CurrencyFormat = _txtCurrencyFormat.Text; } catch { } };
             formatGroup.Controls.Add(lblCurrencyFormat); formatGroup.Controls.Add(_txtCurrencyFormat);
             _mainPanel.Controls.Add(formatGroup);
             y += 95;
 
             // About
-            _aboutGroup = new GroupBox { Text = SettingsPanelResources.AboutGroup, Location = new Point(padding, y), Size = new Size(440, 120), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _aboutGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 120) };
+            var aboutLabel = new Label { Text = SettingsPanelResources.AboutGroup, AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            _aboutGroup.Controls.Add(aboutLabel);
             _lblVersion = new Label { Text = $"Wiley Widget v1.0.0\n.NET {Environment.Version}\nRuntime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}", Location = new Point(20, 30), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _lblDbStatus = new Label { Text = "Database: Connected", Location = new Point(20, 85), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _aboutGroup.Controls.Add(_lblVersion); _aboutGroup.Controls.Add(_lblDbStatus); _mainPanel.Controls.Add(_aboutGroup); y += 140;
@@ -499,10 +538,13 @@ namespace WileyWidget.WinForms.Controls
             var parentForm = FindForm();
             if (parentForm != null)
             {
-                ThemeManager.ApplyTheme(parentForm);
+                // Apply theme to the parent form using the theme service
+                // _themeService.ApplyTheme(parentForm); // Method not found in IThemeService
+                // Use SetVisualStyle for Syncfusion WinForms controls
+                try { ThemeColors.ApplyTheme(parentForm, _themeService.CurrentTheme.ToString()); } catch { }
             }
             // Group box colors handled by SkinManager theme cascade
-            // Syncfusion per-form skinning is handled by ThemeManager.ApplyTheme(parentForm) above
+            // Syncfusion per-form skinning is handled by SfSkinManager above
         }
 
         private async Task LoadViewDataAsync()

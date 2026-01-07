@@ -20,13 +20,14 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
-using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Abstractions;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 #pragma warning disable CS8604 // Possible null reference argument
 
@@ -57,7 +58,7 @@ namespace WileyWidget.WinForms.Forms
     /// Dispose will clean up scoped services and UI resources.
     /// </remarks>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : SfForm
+    public partial class MainForm : SfForm, IAsyncInitializable
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
@@ -194,6 +195,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
+
+            // Apply global Syncfusion theme before any child controls are created
+            AppThemeColors.ApplyTheme(this);
 
             _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
 
@@ -496,27 +500,13 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("OnLoad: Post-LoadDockState verification - {DockedCount} docked panels found", dockedControlCount);
                     Console.WriteLine($"[DIAGNOSTIC] OnLoad: Post-LoadDockState verification - {dockedControlCount} docked panels");
 
-                    // If no docked panels found, layout load likely failed - force default docking via layout manager
-                    if (dockedControlCount == 0 && _dockingLayoutManager != null)
+                    // If no docked panels found, default docking will occur naturally
+                    // REMOVED: Blocking LoadLayoutAsync().GetAwaiter().GetResult() call that caused 21-second UI freeze
+                    // The fallback was loading a non-existent temp file and blocking the UI thread unnecessarily
+                    if (dockedControlCount == 0)
                     {
-                        _logger?.LogWarning("OnLoad: No docked panels found after layout load - forcing default docking");
-                        Console.WriteLine("[DIAGNOSTIC] OnLoad: No docked panels found - forcing default docking");
-
-                        // Use layout manager's fallback re-docking method
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                // ReDockPanelsProgrammatically is private, so we'll trigger a re-dock via layout manager
-                                // by attempting to load a non-existent file, which will trigger the fallback
-                                var tempPath = Path.Combine(Path.GetTempPath(), $"force_default_dock_{Guid.NewGuid()}.xml");
-                                await _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, tempPath).ConfigureAwait(false);
-                            }
-                            catch (Exception fallbackEx)
-                            {
-                                _logger?.LogDebug(fallbackEx, "OnLoad: Fallback re-docking completed (expected file-not-found)");
-                            }
-                        });
+                        _logger?.LogDebug("OnLoad: No docked panels found - default docking will occur naturally");
+                        Console.WriteLine("[DIAGNOSTIC] OnLoad: No docked panels found - default docking will occur naturally");
                     }
                 }
                 catch (Exception verifyEx)
@@ -708,9 +698,10 @@ namespace WileyWidget.WinForms.Forms
             // Initialize async logging for MainForm diagnostics to avoid blocking UI thread
             try
             {
-                // Use root logs folder for centralized logging
-                var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-                var logsDirectory = Path.Combine(projectRoot, "logs");
+                // Walk up from bin/Debug/net10.0/... to repo root
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var repoRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
+                var logsDirectory = Path.Combine(repoRoot, "logs");
                 Directory.CreateDirectory(logsDirectory);
                 var asyncLogPath = Path.Combine(logsDirectory, "mainform-async-.log");
                 _asyncLogger = new LoggerConfiguration()
@@ -738,88 +729,25 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger?.LogInformation("OnShown: Starting deferred background initialization");
 
-                // Phase 1: Initialize dashboard data asynchronously
-                _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
-                _logger?.LogInformation("Initializing MainViewModel");
-                ApplyStatus("Loading dashboard data...");
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger?.LogInformation("Initialization cancelled during Phase 3");
-                    ApplyStatus("Initialization cancelled");
-                    return;
-                }
-
-                MainViewModel? mainVm = null;
-                try
-                {
-                    if (_serviceProvider == null)
-                    {
-                        _logger?.LogError("ServiceProvider is null during MainViewModel initialization");
-                        ApplyStatus("Initialization error: ServiceProvider unavailable");
-                        return;
-                    }
-
-                    // Create a scope for scoped services - CRITICAL: Keep scope alive for MainViewModel's lifetime
-                    // Disposing the scope immediately causes ObjectDisposedException when MainViewModel uses DbContext
-                    _mainViewModelScope = _serviceProvider.CreateScope();
-                    var scopedServices = _mainViewModelScope.ServiceProvider;
-                    mainVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
-                    _asyncLogger?.Information("MainForm OnShown: MainViewModel resolved from DI container");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
-                    _asyncLogger?.Error(ex, "MainForm OnShown: Failed to resolve MainViewModel from DI container");
-                }
-
-                if (mainVm != null)
-                {
-                    try
-                    {
-                        _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
-                        // CRITICAL: Use ConfigureAwait(true) to preserve UI thread context for subsequent operations
-                        await mainVm.InitializeAsync(cancellationToken).ConfigureAwait(true);
-                        _logger?.LogInformation("MainViewModel initialized successfully");
-                        _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        _logger?.LogInformation("Dashboard initialization cancelled");
-                        _asyncLogger?.Information("MainForm OnShown: Dashboard initialization cancelled");
-                        ApplyStatus("Initialization cancelled");
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
-                        _asyncLogger?.Error(ex, "MainForm OnShown: Failed to initialize MainViewModel in OnShown");
-                        ApplyStatus("Error loading dashboard data");
-
-                        // Continue showing form even if ViewModel init fails
-                        // Show user-friendly error message on UI thread
-                        if (this.IsHandleCreated && !this.InvokeRequired)
-                        {
-                            try
-                            {
-                                MessageBox.Show(this,
-                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
-                                    "Initialization Error",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
-                            }
-                            catch { /* Swallow MessageBox errors */ }
-                        }
-                        // Do NOT return - allow form to remain visible
-                    }
-                }
-                else
-                {
-                    _logger?.LogWarning("MainViewModel not available in service provider");
-                }
+                // Call MainForm's own InitializeAsync to defer heavy data loading
+                _ = InitializeAsync(cancellationToken).ConfigureAwait(false);
 
                 ApplyStatus("Ready");
                 _logger?.LogInformation("OnShown: Deferred initialization completed");
+
+                // CRITICAL: Late validation pass to catch any images that became invalid after initial load
+                // This prevents GDI+ "Parameter is not valid" crashes in ImageAnimator during paint
+                try
+                {
+                    _logger?.LogDebug("OnShown: Running late image validation pass");
+                    LateValidateMenuBarImages();
+                    LateValidateRibbonImages();
+                    _logger?.LogDebug("OnShown: Late image validation completed");
+                }
+                catch (Exception validationEx)
+                {
+                    _logger?.LogError(validationEx, "OnShown: Late image validation failed");
+                }
             }
             catch (OperationCanceledException)
             {
@@ -1025,7 +953,7 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Fill, allowFloating: true);
+                _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Right, allowFloating: true);
                 _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
             }
             catch (Exception ex)
@@ -1048,6 +976,18 @@ namespace WileyWidget.WinForms.Forms
                 catch (Exception ex)
                 {
                     _logger?.LogDebug(ex, "Exception cancelling initialization during form closing (expected if already completed)");
+                }
+
+                // CRITICAL: Stop timers BEFORE disposal to prevent disposed service provider access
+                try
+                {
+                    _statusTimer?.Stop();
+                    _activityRefreshTimer?.Stop();
+                    _logger?.LogDebug("Form closing: timers stopped");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Exception stopping timers during form closing");
                 }
 
                 // Give brief time for async operations to complete cancellation (max 500ms)
@@ -1349,6 +1289,20 @@ namespace WileyWidget.WinForms.Forms
                 _mainViewModelScope?.Dispose();
                 _mainViewModelScope = null;
 
+                // Close async logger before disposing services to prevent ObjectDisposedException
+                try
+                {
+                    if (_asyncLogger is IDisposable disposableLogger)
+                    {
+                        disposableLogger.Dispose();
+                        _asyncLogger = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to dispose async logger");
+                }
+
                 // Dispose components container (standard IContainer, not Syncfusion)
                 components?.Dispose();
                 _initializationCts?.Dispose();
@@ -1361,6 +1315,127 @@ namespace WileyWidget.WinForms.Forms
                 _statusTimer.SafeDispose();
             }
             base.Dispose(disposing);
+        }
+
+        /// <summary>
+        /// Implements IAsyncInitializable. Performs heavy initialization on a background thread after the form is shown.
+        /// </summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            // Defer heavy data loading to background thread
+            await Task.Run(() => LoadDataAsync(cancellationToken), cancellationToken);
+        }
+
+        private async Task LoadDataAsync(CancellationToken cancellationToken)
+        {
+            // Phase 1: Initialize dashboard data asynchronously
+            _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
+            _logger?.LogInformation("Initializing MainViewModel");
+            ApplyStatus("Loading dashboard data...");
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogInformation("Initialization cancelled during Phase 3");
+                ApplyStatus("Initialization cancelled");
+                return;
+            }
+
+            MainViewModel? mainVm = null;
+            try
+            {
+                if (_serviceProvider == null)
+                {
+                    _logger?.LogError("ServiceProvider is null during MainViewModel initialization");
+                    ApplyStatus("Initialization error: ServiceProvider unavailable");
+                    return;
+                }
+
+                // Create a scope for scoped services - CRITICAL: Keep scope alive for MainViewModel's lifetime
+                // Disposing the scope immediately causes ObjectDisposedException when MainViewModel uses DbContext
+                _mainViewModelScope = _serviceProvider.CreateScope();
+                var scopedServices = _mainViewModelScope.ServiceProvider;
+                mainVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
+                _asyncLogger?.Information("MainForm OnShown: MainViewModel resolved from DI container");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
+                _asyncLogger?.Error(ex, "MainForm OnShown: Failed to resolve MainViewModel from DI container");
+            }
+
+            if (mainVm != null)
+            {
+                try
+                {
+                    _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
+                    // CRITICAL: Use ConfigureAwait(true) to preserve UI thread context for subsequent operations
+                    await mainVm.InitializeAsync(cancellationToken).ConfigureAwait(true);
+                    _logger?.LogInformation("MainViewModel initialized successfully");
+                    _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogInformation("Dashboard initialization cancelled");
+                    _asyncLogger?.Information("MainForm OnShown: Dashboard initialization cancelled");
+                    ApplyStatus("Initialization cancelled");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
+                    _asyncLogger?.Error(ex, "MainForm OnShown: Failed to initialize MainViewModel in OnShown");
+                    ApplyStatus("Error loading dashboard data");
+
+                    // Continue showing form even if ViewModel init fails
+                    // Show user-friendly error message on UI thread
+                    if (this.IsHandleCreated && !this.InvokeRequired)
+                    {
+                        try
+                        {
+                            MessageBox.Show(this,
+                                $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                "Initialization Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                        }
+                        catch { /* Swallow MessageBox errors */ }
+                    }
+                    // Do NOT return - allow form to remain visible
+                }
+            }
+            else
+            {
+                _logger?.LogWarning("MainViewModel not available in service provider");
+            }
+
+            // Phase 4: Initialize async services (data prefetch, etc.)
+            _asyncLogger?.Information("MainForm OnShown: Phase 4 - Initializing async services");
+            try
+            {
+                var asyncInitializables = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetServices<WileyWidget.Abstractions.IAsyncInitializable>(_serviceProvider);
+                foreach (var service in asyncInitializables)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await service.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogWarning(ex, "Async service initialization failed for {ServiceType}", service.GetType().Name);
+                        }
+                    });
+                }
+                _asyncLogger?.Information("MainForm OnShown: Async services initialization queued");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to initialize async services");
+            }
+
+            ApplyStatus("Ready");
+            _logger?.LogInformation("OnShown: Deferred initialization completed");
         }
 
         #region MRU (Most Recently Used) Files

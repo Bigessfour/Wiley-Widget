@@ -1,7 +1,7 @@
 using Serilog;
 using System;
-using System.Threading;
 using System.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
 using Action = System.Action;
 
 namespace WileyWidget.WinForms.Forms
@@ -21,21 +21,18 @@ namespace WileyWidget.WinForms.Forms
     }
 
     /// <summary>
-    /// Lightweight splash screen for startup progress.
-    /// Runs in its own STA thread so startup work can proceed without blocking splash UI.
+    /// Lightweight splash screen for startup progress running on the primary UI thread.
     /// </summary>
     internal sealed class SplashForm : IDisposable
     {
-        private bool _disposed;
         private readonly object _disposeLock = new();
         private readonly bool _isHeadless;
-        private readonly ManualResetEventSlim _uiReady = new(false);
-        private readonly CancellationTokenSource _cts = new();
-        private Thread? _uiThread;
+        private bool _disposed;
+        private bool _closed;
 
         private Form? _form;
         private Label? _messageLabel;
-        private ProgressBar? _progressBar;
+        private ProgressBarAdv? _progressBar;
 
         public event EventHandler<SplashProgressChangedEventArgs>? ProgressChanged;
 
@@ -52,43 +49,68 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
-            _uiThread = new Thread(SplashThreadMain)
-            {
-                IsBackground = true,
-                Name = "WileyWidget.Splash"
-            };
-            _uiThread.SetApartmentState(ApartmentState.STA);
-            _uiThread.Start();
-
-            // Wait for splash UI to be ready so early progress reports can be displayed.
-            // Increased timeout to ensure splash appears before first progress report.
-            _uiReady.Wait(TimeSpan.FromSeconds(2));
-            Log.Information("[SPLASH] UI thread initialized (ready signal set)");
+            InitializeForm();
         }
 
-        public void InvokeOnUiThread(Action action)
+        private void InitializeForm()
         {
-            if (action == null) return;
-
-            if (_isHeadless)
+            _form = new Form
             {
-                try { action(); }
-                catch (Exception ex) { Log.Debug(ex, "[SPLASH] Headless action failed (non-critical)"); }
-                return;
-            }
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                ShowInTaskbar = false,
+                Width = 520,
+                Height = 160,
+                Text = "Wiley Widget - Loading...",
+                ControlBox = false
+            };
+
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                RowCount = 2,
+                ColumnCount = 1
+            };
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
+
+            _messageLabel = new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                Text = "Initializing...",
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+            };
+
+            _progressBar = new ProgressBarAdv
+            {
+                Dock = DockStyle.Fill,
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                ProgressStyle = ProgressBarStyles.Tube
+            };
+
+            layout.Controls.Add(_messageLabel, 0, 0);
+            layout.Controls.Add(_progressBar, 0, 1);
+            _form.Controls.Add(layout);
+
+            _form.Shown += (_, _) => Log.Information("[SPLASH] Splash form shown (Size={Width}x{Height})", _form.Width, _form.Height);
+            _form.FormClosed += (_, _) => _closed = true;
+        }
+
+        public void ShowSplash()
+        {
+            if (_isHeadless || _disposed) return;
 
             var form = _form;
             if (form == null || form.IsDisposed) return;
 
-            try
-            {
-                if (form.InvokeRequired) form.BeginInvoke((Action)action);
-                else action();
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "[SPLASH] InvokeOnUiThread failed (form may be closing)");
-            }
+            form.Show();
+            form.BringToFront();
+            form.Refresh();
+            Application.DoEvents();
         }
 
         /// <summary>
@@ -99,27 +121,8 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="isIndeterminate">If true, shows marquee-style indeterminate progress</param>
         public void Report(double progress, string message, bool isIndeterminate = false)
         {
-            if (_isHeadless || _form == null || _cts.IsCancellationRequested) return;
+            if (_disposed) return;
 
-            try
-            {
-                if (_form.InvokeRequired)
-                {
-                    _form.BeginInvoke(new Action(() => ReportInternal(progress, message, isIndeterminate)));
-                }
-                else
-                {
-                    ReportInternal(progress, message, isIndeterminate);
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                // Swallow - form already disposed
-            }
-        }
-
-        private void ReportInternal(double progress, string message, bool isIndeterminate)
-        {
             try
             {
                 ProgressChanged?.Invoke(this, new SplashProgressChangedEventArgs(progress, message, isIndeterminate));
@@ -127,59 +130,59 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 Log.Warning(ex, "[SPLASH] ProgressChanged event invocation failed");
+                throw;
             }
 
             if (_isHeadless)
             {
-                try
-                {
-                    if (isIndeterminate)
-                        Log.Debug("{Message} (indeterminate)", message);
-                    else
-                        Log.Debug("{Message} ({Percent}%)", message, (int)(progress * 100));
-                }
-                catch (Exception ex)
-                {
-                    Log.Debug(ex, "[SPLASH] Headless logging failed");
-                }
+                if (isIndeterminate)
+                    Log.Debug("{Message} (indeterminate)", message);
+                else
+                    Log.Debug("{Message} ({Percent}%)", message, (int)(progress * 100));
                 return;
             }
 
-            if (_cts.IsCancellationRequested) return;
+            UpdateUi(progress, message ?? string.Empty, isIndeterminate);
+        }
 
+        private void UpdateUi(double progress, string message, bool isIndeterminate)
+        {
             var form = _form;
-            if (form == null || form.IsDisposed) return;
+            if (form == null || form.IsDisposed || _closed) return;
 
-            try
+            void Apply()
             {
                 if (_messageLabel != null && !_messageLabel.IsDisposed)
-                    _messageLabel.Text = message ?? string.Empty;
+                {
+                    _messageLabel.Text = message;
+                }
 
                 if (_progressBar != null && !_progressBar.IsDisposed)
                 {
                     if (isIndeterminate)
                     {
-                        _progressBar.Style = ProgressBarStyle.Marquee;
-                        _progressBar.MarqueeAnimationSpeed = 30;
+                        _progressBar.ProgressStyle = ProgressBarStyles.WaitingGradient;
                     }
                     else
                     {
-                        _progressBar.Style = ProgressBarStyle.Continuous;
+                        _progressBar.ProgressStyle = ProgressBarStyles.Tube;
                         var percent = Math.Max(0, Math.Min(100, (int)Math.Round(progress * 100.0)));
                         _progressBar.Value = percent;
                     }
                 }
             }
-            catch (ObjectDisposedException)
-            {
-                // Control disposed during update - expected during shutdown
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "[SPLASH] Failed to update controls during Report");
-            }
-        }
 
+            if (form.InvokeRequired)
+            {
+                form.Invoke((Action)(() => Apply()));
+            }
+            else
+            {
+                Apply();
+            }
+
+            Application.DoEvents();
+        }
 
         /// <summary>
         /// Updates the splash UI with an indeterminate progress message (marquee style).
@@ -199,85 +202,28 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="finalMessage">Final message to display before closing</param>
         public void Complete(string finalMessage)
         {
-            _cts.Cancel(); // Stop further updates
-            // ...rest of completion logic (fade/hide form)...
+            if (_disposed) return;
+
+            Report(1.0, finalMessage ?? "Ready", isIndeterminate: false);
+            CloseSplash();
         }
 
-
-        private void SplashThreadMain()
+        public void CloseSplash()
         {
-            try
+            if (_isHeadless) return;
+
+            lock (_disposeLock)
             {
-                Log.Debug("[SPLASH] Splash thread started");
+                if (_disposed || _closed) return;
+                _closed = true;
 
-                _form = new Form
+                var form = _form;
+                if (form != null && !form.IsDisposed)
                 {
-                    StartPosition = FormStartPosition.CenterScreen,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    ShowInTaskbar = false,
-                    Width = 520,
-                    Height = 160,
-                    Text = "Wiley Widget - Loading...",
-                    ControlBox = false
-                };
-
-                var layout = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Fill,
-                    Padding = new Padding(12),
-                    RowCount = 2,
-                    ColumnCount = 1
-                };
-                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
-                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
-
-                _messageLabel = new Label
-                {
-                    Dock = DockStyle.Fill,
-                    AutoSize = false,
-                    Text = "Initializing...",
-                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-                };
-
-                _progressBar = new ProgressBar
-                {
-                    Dock = DockStyle.Fill,
-                    Minimum = 0,
-                    Maximum = 100,
-                    Value = 0,
-                    Style = ProgressBarStyle.Continuous
-                };
-
-                layout.Controls.Add(_messageLabel, 0, 0);
-                layout.Controls.Add(_progressBar, 0, 1);
-                _form.Controls.Add(layout);
-
-                _form.Shown += (_, _) =>
-                {
-                    try { _uiReady.Set(); }
-                    catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to set _uiReady event"); }
-                    Log.Information("[SPLASH] Splash form shown (Size={Width}x{Height})", _form.Width, _form.Height);
-                };
-
-                _form.FormClosed += (_, _) =>
-                {
-                    try { _cts.Cancel(); }
-                    catch (Exception ex)
-                    {
-                        Log.Debug(ex, "[SPLASH] Failed to cancel CTS on form close");
-                    }
-                    try { Application.ExitThread(); }
-                    catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to exit thread on form close"); }
-                    Log.Information("[SPLASH] Splash form closed");
-                };
-
-                Application.Run(_form);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "[SPLASH] Splash UI thread failed");
-                try { _uiReady.Set(); }
-                catch (Exception setEx) { Log.Debug(setEx, "[SPLASH] Failed to set _uiReady after thread failure"); }
+                    form.Hide();
+                    form.Close();
+                    form.Dispose();
+                }
             }
         }
 
@@ -287,45 +233,10 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (_disposed) return;
                 _disposed = true;
-
-                _cts.Cancel();
-                _cts.Dispose();
-
-                if (_form != null && !_form.IsDisposed)
-                {
-                    try
-                    {
-                        if (_form.IsHandleCreated)
-                        {
-                            if (_form.InvokeRequired)
-                            {
-                                Log.Debug("[SPLASH] Disposing form via BeginInvoke (UI thread)");
-                                _form.BeginInvoke(new Action(() =>
-                                {
-                                    if (!_form.IsDisposed)
-                                    {
-                                        _form.Dispose();
-                                        Log.Debug("[SPLASH] Form disposed via BeginInvoke");
-                                    }
-                                }));
-                            }
-                            else
-                            {
-                                Log.Debug("[SPLASH] Disposing form directly (safe path)");
-                                _form.Dispose();
-                            }
-                        }
-                        else
-                        {
-                            Log.Debug("[SPLASH] Form handle not created, skipping dispose");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log and swallow: disposing during CreateHandle or already disposed
-                        Log.Warning(ex, "[SPLASH] Suppressed Dispose() exception");
-                    }
-                }
+                CloseSplash();
+                _messageLabel = null;
+                _progressBar = null;
+                _form = null;
             }
         }
     }

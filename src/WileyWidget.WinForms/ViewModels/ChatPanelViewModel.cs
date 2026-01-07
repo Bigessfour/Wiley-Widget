@@ -3,12 +3,16 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Services.AI;
+using WileyWidget.WinForms.Helpers;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -21,6 +25,7 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 {
     #region Dependencies
 
+    private readonly GrokAgentService _grokService;
     private readonly IAIService _aiService;
     private readonly IConversationRepository _conversationRepository;
     private readonly IAIContextExtractionService? _contextExtractionService;
@@ -144,6 +149,10 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     private const int MaxConversationsToLoad = 50;
     private const int MaxMessagesInConversation = 500;
 
+    // Streaming timeouts for chat completions
+    private static readonly TimeSpan StreamingPerChunkTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan StreamingTotalTimeout = TimeSpan.FromSeconds(60);
+
     #endregion
 
     #region Constructor
@@ -151,12 +160,14 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Initializes the ChatPanel ViewModel with required services.
     /// </summary>
-    /// <param name="aiService">AI service for message processing (required)</param>
+    /// <param name="grokService">Grok agent service for streaming AI responses (required)</param>
+    /// <param name="aiService">Fallback AI service for message processing (required)</param>
     /// <param name="conversationRepository">Repository for conversation persistence (required)</param>
     /// <param name="logger">Logger instance (required)</param>
     /// <param name="contextExtractionService">Optional context extraction service</param>
     /// <param name="activityLogRepository">Optional activity logging repository</param>
     public ChatPanelViewModel(
+        GrokAgentService grokService,
         IAIService aiService,
         IConversationRepository conversationRepository,
         ILogger<ChatPanelViewModel> logger,
@@ -164,12 +175,13 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
         IActivityLogRepository? activityLogRepository = null)
         : base(logger)
     {
+        _grokService = grokService ?? throw new ArgumentNullException(nameof(grokService));
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _conversationRepository = conversationRepository ?? throw new ArgumentNullException(nameof(conversationRepository));
         _contextExtractionService = contextExtractionService;
         _activityLogRepository = activityLogRepository;
 
-        Logger.LogInformation("ChatPanelViewModel initialized with context extraction: {HasContext}, activity logging: {HasLogging}",
+        Logger.LogInformation("ChatPanelViewModel initialized with Grok streaming, context extraction: {HasContext}, activity logging: {HasLogging}",
             _contextExtractionService != null, _activityLogRepository != null);
 
         // Initialize with sample data for design-time preview
@@ -207,7 +219,7 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Determines if the send message command can execute.
     /// </summary>
-    private bool CanSendMessage() => !string.IsNullOrWhiteSpace(InputText) && !IsLoading;
+    public bool CanSendMessage() => !string.IsNullOrWhiteSpace(InputText) && !IsLoading;
 
     /// <summary>
     /// Command to load and refresh recent conversations from the repository.
@@ -583,14 +595,16 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     #region Private Helper Methods
 
     /// <summary>
-    /// Process a user message: send to AI, add responses, extract context, log activity, auto-save.
+    /// Process a user message: send to AI with streaming, add responses progressively, extract context, log activity, auto-save.
     /// </summary>
     private async Task ProcessMessageAsync(string userMessage)
     {
         var startTime = DateTime.UtcNow;
         IsLoading = true;
-        StatusText = "Processing message...";
+        StatusText = "Thinking...";
         ErrorMessage = null;
+
+        ChatMessage? aiPlaceholder = null;
 
         try
         {
@@ -607,28 +621,219 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
             Logger.LogInformation("Processing user message: {Message}", userMessage);
 
-            // Get AI response
-            var response = await _aiService.SendMessageAsync(userMessage, Messages.ToList());
+            // Create placeholder AI message for streaming
+            aiPlaceholder = ChatMessage.CreateAIMessage(string.Empty);
+            Messages.Add(aiPlaceholder);
+            MessageCount = Messages.Count;
 
-            if (!string.IsNullOrEmpty(response))
+            // Build ChatHistory from recent messages (last 10 for context window management)
+            var chatHistory = BuildChatHistory(10);
+            chatHistory.AddUserMessage(userMessage);
+
+            Logger.LogDebug("Requesting chat completion from Grok service");
+
+            // Stream response from Grok using Semantic Kernel
+            IChatCompletionService? chatService = null;
+            try
             {
-                // Add AI response
-                var aiMsg = ChatMessage.CreateAIMessage(response);
-                Messages.Add(aiMsg);
-                MessageCount = Messages.Count;
+                // Check API key and model/endpoint presence at chat time
+                if (_grokService.HasApiKey)
+                {
+                    Logger.LogInformation("[XAI] API key is available to chat method (length={Length}).", _grokService.ApiKeyLength);
+                }
+                else
+                {
+                    Logger.LogWarning("[XAI] API key is NOT available to chat method. Chat will fail.");
+                }
 
-                Logger.LogInformation("AI response received ({Length} chars)", response.Length);
+                Logger.LogInformation("[XAI] Grok config: model={Model}, endpoint={Endpoint}", _grokService.Model, _grokService.Endpoint);
+
+                // Quick validation ping (one-shot) if we haven't validated recently
+                if (!_grokService.IsApiKeyValidated && _grokService.HasApiKey)
+                {
+                    try
+                    {
+                        using var ctsValidate = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        var (valid, validationMsg) = await _grokService.ValidateApiKeyAsync(ctsValidate.Token);
+                        if (valid)
+                        {
+                            Logger.LogInformation("[XAI] API key validation succeeded (model={Model})", _grokService.Model);
+                        }
+                        else
+                        {
+                            Logger.LogWarning("[XAI] API key validation failed (model={Model}): {Msg}", _grokService.Model, validationMsg);
+
+                            // Try the exact model used in the curl activation test as a fallback
+                            if (!string.Equals(_grokService.Model, "grok-4-latest", StringComparison.OrdinalIgnoreCase))
+                            {
+                                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                                var (fbValid, fbMsg) = await _grokService.ValidateApiKeyAsync(ctsFallback.Token, modelOverride: "grok-4-latest");
+                                if (fbValid)
+                                {
+                                    Logger.LogInformation("[XAI] API key validation succeeded with fallback model 'grok-4-latest'");
+                                }
+                                else
+                                {
+                                    Logger.LogWarning("[XAI] API key validation fallback also failed: {Msg}", fbMsg);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "[XAI] API key validation attempt failed unexpectedly");
+                    }
+                }
+
+                // If validation failed, attempt quick HTTP fallback to provide an immediate response
+                if (_grokService.HasApiKey && !_grokService.IsApiKeyValidated)
+                {
+                    Logger.LogWarning("[XAI] API key validation failed; attempting HTTP fallback for this prompt");
+                    try
+                    {
+                        using var ctsFallbackResp = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                        var fallbackResp = await _grokService.GetSimpleResponse(userMessage, systemPrompt: "You are a test assistant.", modelOverride: null, ct: ctsFallbackResp.Token);
+                        aiPlaceholder.Message = fallbackResp;
+                        Logger.LogInformation("HTTP fallback provided a response (length={Length})", fallbackResp?.Length ?? 0);
+
+                        // Finalize UI and bookkeeping for fallback response
+                        OnPropertyChanged(nameof(Messages));
+                        await ExtractContextEntitiesAsync(userMessage, fallbackResp);
+                        await LogChatActivityAsync(userMessage, startTime);
+                        await AutoSaveConversationAsync();
+                        LastUpdated = DateTime.UtcNow;
+                        StatusText = "Ready";
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "HTTP fallback attempt failed; proceeding to streaming attempt");
+                    }
+                }
+
+                chatService = _grokService.Kernel.GetRequiredService<IChatCompletionService>();
+                Logger.LogInformation("Successfully obtained IChatCompletionService from kernel");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to get IChatCompletionService from kernel - API key may not be configured");
+                throw new InvalidOperationException("Chat service not available. Please ensure XAI_API_KEY is configured in user secrets.", ex);
+            }
+
+            var responseBuilder = new StringBuilder();
+            var chunkCount = 0;
+
+            Logger.LogDebug("Starting streaming chat completion with {MessageCount} history messages", chatHistory.Count);
+
+            var timedOut = false;
+            var enumerator = chatService.GetStreamingChatMessageContentsAsync(chatHistory).GetAsyncEnumerator();
+            var streamStart = DateTime.UtcNow;
+
+            try
+            {
+                while (true)
+                {
+                    var moveTask = enumerator.MoveNextAsync().AsTask();
+                    var completedTask = await Task.WhenAny(moveTask, Task.Delay(StreamingPerChunkTimeout));
+
+                    if (completedTask != moveTask)
+                    {
+                        // Per-chunk timeout
+                        Logger.LogWarning("Waiting for next chunk timed out after {PerChunkTimeout}s", StreamingPerChunkTimeout.TotalSeconds);
+
+                        if (DateTime.UtcNow - streamStart > StreamingTotalTimeout)
+                        {
+                            Logger.LogWarning("Total streaming timeout exceeded after {TotalTimeout}s - aborting stream", StreamingTotalTimeout.TotalSeconds);
+                            timedOut = true;
+                            break;
+                        }
+
+                        // Continue waiting for next chunk
+                        continue;
+                    }
+
+                    if (!moveTask.Result)
+                    {
+                        // Enumeration completed
+                        break;
+                    }
+
+                    var chunk = enumerator.Current;
+                    if (chunk?.Content != null)
+                    {
+                        responseBuilder.Append(chunk.Content);
+                        aiPlaceholder.Message = responseBuilder.ToString();
+                        aiPlaceholder.Timestamp = DateTime.UtcNow;
+                        chunkCount++;
+
+                        if (chunkCount == 1)
+                        {
+                            Logger.LogInformation("Received first chunk from Grok: '{Chunk}'", chunk.Content.Substring(0, Math.Min(50, chunk.Content.Length)));
+                        }
+                        else if (chunkCount % 10 == 0)
+                        {
+                            Logger.LogDebug("Streaming progress: {ChunkCount} chunks, {TotalLength} chars", chunkCount, responseBuilder.Length);
+                        }
+
+                        // Trigger UI update every 5 chunks or on first chunk for responsiveness
+                        if (chunkCount == 1 || chunkCount % 5 == 0)
+                        {
+                            OnPropertyChanged(nameof(Messages));
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogDebug("Received chunk with null content at position {ChunkCount}", chunkCount);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Streaming chat completion failed after {ChunkCount} chunks", chunkCount);
+            }
+            finally
+            {
+                try { await enumerator.DisposeAsync(); } catch (Exception ex) { Logger.LogWarning(ex, "Error disposing streaming enumerator"); }
+            }
+
+            if (timedOut || chunkCount == 0)
+            {
+                Logger.LogWarning("No streaming content received or stream timed out; attempting HTTP fallback");
+                try
+                {
+                    var fallback = await _grokService.GetSimpleResponse(userMessage);
+                    aiPlaceholder.Message = fallback;
+                    Logger.LogInformation("Fallback HTTP response used (length {Length})", fallback?.Length ?? 0);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "HTTP fallback also failed");
+                    throw;
+                }
             }
             else
             {
-                Logger.LogWarning("AI service returned empty response");
-                var errorMsg = ChatMessage.CreateAIMessage("Sorry, I couldn't generate a response. Please try again.");
-                Messages.Add(errorMsg);
-                MessageCount = Messages.Count;
+                Logger.LogInformation("Streaming completed successfully - received {ChunkCount} chunks, {TotalLength} chars", chunkCount, responseBuilder.Length);
+            }
+
+            // Final UI update
+            OnPropertyChanged(nameof(Messages));
+
+            var fullResponse = responseBuilder.ToString();
+
+            if (string.IsNullOrEmpty(fullResponse))
+            {
+                Logger.LogWarning("Grok returned empty response (chunks received: {ChunkCount})", chunkCount);
+                aiPlaceholder.Message = "No response from AI. Please check that your XAI_API_KEY is configured correctly.";
+                OnPropertyChanged(nameof(Messages));
+            }
+            else
+            {
+                Logger.LogInformation("Grok response completed ({Length} chars, {ChunkCount} chunks)", fullResponse.Length, chunkCount);
             }
 
             // Extract context entities (background task)
-            await ExtractContextEntitiesAsync(userMessage, response);
+            await ExtractContextEntitiesAsync(userMessage, fullResponse);
 
             // Log activity
             await LogChatActivityAsync(userMessage, startTime);
@@ -644,11 +849,17 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error processing message");
-            ErrorMessage = $"Error: {ex.Message}";
+            var friendlyError = ConversationalAIHelper.FormatFriendlyError(ex);
+            ErrorMessage = friendlyError;
             StatusText = "Error";
 
-            // Add error message to chat
-            var errorMsg = ChatMessage.CreateAIMessage($"⚠️ Error processing message: {ex.Message}");
+            // Replace placeholder with error message
+            if (aiPlaceholder != null && Messages.Contains(aiPlaceholder))
+            {
+                Messages.Remove(aiPlaceholder);
+            }
+
+            var errorMsg = ChatMessage.CreateAIMessage($"❌ {friendlyError}");
             Messages.Add(errorMsg);
             MessageCount = Messages.Count;
 
@@ -837,6 +1048,36 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
         {
             FilteredConversations.Add(conv);
         }
+    }
+
+    /// <summary>
+    /// Build Semantic Kernel ChatHistory from recent messages for context-aware AI responses.
+    /// </summary>
+    /// <param name="maxMessages">Maximum number of messages to include for context window</param>
+    /// <returns>ChatHistory with system prompt and recent conversation messages</returns>
+    private ChatHistory BuildChatHistory(int maxMessages = 10)
+    {
+        var chatHistory = new ChatHistory();
+
+        // Add system prompt from GrokAgentService default
+        var systemPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
+        chatHistory.AddSystemMessage(systemPrompt);
+
+        // Add recent messages for context (excluding system messages and context markers)
+        var recentMessages = Messages
+            .Where(m => !string.IsNullOrEmpty(m.Message) && !m.Message.StartsWith("📋 Context:", StringComparison.Ordinal))
+            .TakeLast(maxMessages)
+            .ToList();
+
+        foreach (var msg in recentMessages)
+        {
+            if (msg.IsUser)
+                chatHistory.AddUserMessage(msg.Message);
+            else
+                chatHistory.AddAssistantMessage(msg.Message);
+        }
+
+        return chatHistory;
     }
 
     /// <summary>

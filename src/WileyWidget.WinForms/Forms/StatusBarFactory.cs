@@ -1,11 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -142,20 +140,6 @@ public static class StatusBarFactory
         // Wire back-references to MainForm (internal fields)
         // These enable ApplyStatus/ShowProgress methods to manipulate panels
         form.SetStatusBarPanels(statusBar, statusLabel, statusTextPanel, statePanel, progressPanel, progressBar, clockPanel);
-
-        // CRITICAL: SfSkinManager is SOLE PROPRIETOR of all theme and color decisions (per approved workflow)
-        // Explicit theme application (defensive coding - ensures theme applied even if cascade fails)
-        // NO manual color assignments (BackColor, ForeColor) - theme cascade handles all panels
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-        try
-        {
-            SfSkinManager.SetVisualStyle(statusBar, currentTheme);
-            logger?.LogDebug("[STATUSBAR_FACTORY] Theme explicitly applied via SfSkinManager: {Theme}", currentTheme);
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "[STATUSBAR_FACTORY] Failed to apply explicit theme to StatusBar - relying on cascade from parent");
-        }
 
         return statusBar;
     }

@@ -11,6 +11,10 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Services;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.ListView;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -24,31 +28,31 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     // UI Controls
     private SfDataGrid? _budgetGrid;
-    private Button? _loadBudgetsButton;
-    private Button? _addEntryButton;
-    private Button? _editEntryButton;
-    private Button? _deleteEntryButton;
-    private Button? _importCsvButton;
-    private Button? _exportCsvButton;
-    private Button? _exportPdfButton;
-    private Button? _exportExcelButton;
-    private TextBox? _searchTextBox;
-    private ComboBox? _fiscalYearComboBox;
-    private ComboBox? _departmentComboBox;
-    private ComboBox? _fundTypeComboBox;
-    private TextBox? _varianceThresholdTextBox;
-    private CheckBox? _overBudgetCheckBox;
-    private CheckBox? _underBudgetCheckBox;
+    private SfButton? _loadBudgetsButton;
+    private SfButton? _addEntryButton;
+    private SfButton? _editEntryButton;
+    private SfButton? _deleteEntryButton;
+    private SfButton? _importCsvButton;
+    private SfButton? _exportCsvButton;
+    private SfButton? _exportPdfButton;
+    private SfButton? _exportExcelButton;
+    private TextBoxExt? _searchTextBox;
+    private SfComboBox? _fiscalYearComboBox;
+    private SfComboBox? _departmentComboBox;
+    private SfComboBox? _fundTypeComboBox;
+    private TextBoxExt? _varianceThresholdTextBox;
+    private CheckBoxAdv? _overBudgetCheckBox;
+    private CheckBoxAdv? _underBudgetCheckBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
     private Label? _percentUsedLabel;
     private Label? _entriesOverBudgetLabel;
     private Label? _entriesUnderBudgetLabel;
-    private Panel? _summaryPanel;
-    private Panel? _gridPanel;
-    private Panel? _filterPanel;
-    private Panel? _buttonPanel;
+    private GradientPanelExt? _summaryPanel;
+    private GradientPanelExt? _gridPanel;
+    private GradientPanelExt? _filterPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -57,14 +61,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private NoDataOverlay? _noDataOverlay;
 
     // Navigation buttons
-    private Button? _navigateAccountsButton;
-    private Button? _navigateChartsButton;
-    private Button? _navigateAnalyticsButton;
+    private SfButton? _navigateAccountsButton;
+    private SfButton? _navigateChartsButton;
+    private SfButton? _navigateAnalyticsButton;
 
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler<AppTheme>? _themeChangedHandler;
+    private readonly Services.IThemeService? _themeService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPanel"/> class.
@@ -76,6 +81,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         ILogger<ScopedPanelBase<BudgetViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        // Resolve theme service from DI (optional)
+        try
+        {
+            _themeService = Program.Services != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(Program.Services)
+                : null;
+        }
+        catch { }
+
         InitializeComponent();
     }
 
@@ -89,7 +103,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         InitializeControls();
         BindViewModel();
         ApplySyncfusionTheme();
-        ApplyTheme(ThemeManager.CurrentTheme);
+        ApplyTheme(_themeService?.CurrentTheme ?? AppTheme.Office2019Colorful);
 
         Logger.LogInformation("BudgetPanel initialized with ViewModel");
     }
@@ -152,7 +166,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Subscribe to theme changes
         _themeChangedHandler = (s, t) => ApplyTheme(t);
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+        if (_themeService != null)
+            _themeService.ThemeChanged += _themeChangedHandler;
 
         // Set tab order
         SetTabOrder();
@@ -160,15 +175,24 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void InitializeTopPanel()
     {
-        var topPanel = new Panel { Dock = DockStyle.Fill };
+        var topPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
         // Summary panel
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 80,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var summaryTable = new TableLayoutPanel
         {
@@ -239,17 +263,23 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         topPanel.Controls.Add(_summaryPanel);
 
         // Filter panel
-        _filterPanel = new Panel
+        _filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_filterPanel, ThemeColors.DefaultTheme);
 
-        var filterGroup = new GroupBox
+        var filterGroup = new GradientPanelExt
         {
             Text = "Filters",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(filterGroup, ThemeColors.DefaultTheme);
 
         var filterTable = new TableLayoutPanel
         {
@@ -269,7 +299,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _searchTextBox = new TextBox
+        _searchTextBox = new TextBoxExt
         {
             Dock = DockStyle.Fill,
             TabIndex = 1,
@@ -285,19 +315,22 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fiscalYearComboBox = new ComboBox
+        _fiscalYearComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 2,
             AccessibleName = "Fiscal Year Filter",
-            AccessibleDescription = "Filter budget entries by fiscal year"
+            AccessibleDescription = "Filter budget entries by fiscal year",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
 
         // Populate fiscal years
+        var years = new List<int>();
         for (int year = DateTime.Now.Year - 5; year <= DateTime.Now.Year + 5; year++)
         {
-            _fiscalYearComboBox.Items.Add(year);
+            years.Add(year);
         }
+        _fiscalYearComboBox.DataSource = years;
         _fiscalYearComboBox.SelectedItem = DateTime.Now.Year;
         _fiscalYearComboBox.SelectedIndexChanged += FiscalYearComboBox_SelectedIndexChanged;
 
@@ -309,14 +342,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _departmentComboBox = new ComboBox
+        _departmentComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 3,
             AccessibleName = "Department Filter",
-            AccessibleDescription = "Filter budget entries by department"
+            AccessibleDescription = "Filter budget entries by department",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
-        _departmentComboBox.Items.Add("All Departments");
+        _departmentComboBox.DataSource = new List<string> { "All Departments" };
         _departmentComboBox.SelectedIndex = 0;
         _departmentComboBox.SelectedIndexChanged += DepartmentComboBox_SelectedIndexChanged;
 
@@ -327,15 +361,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fundTypeComboBox = new ComboBox
+        _fundTypeComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 4,
             AccessibleName = "Fund Type Filter",
-            AccessibleDescription = "Filter budget entries by fund type"
+            AccessibleDescription = "Filter budget entries by fund type",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
-        _fundTypeComboBox.Items.AddRange(Enum.GetNames(typeof(FundType)));
-        _fundTypeComboBox.Items.Insert(0, "All Fund Types");
+        var fundTypes = Enum.GetNames(typeof(FundType)).ToList();
+        fundTypes.Insert(0, "All Fund Types");
+        _fundTypeComboBox.DataSource = fundTypes;
         _fundTypeComboBox.SelectedIndex = 0;
         _fundTypeComboBox.SelectedIndexChanged += FundTypeComboBox_SelectedIndexChanged;
 
@@ -347,7 +383,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _varianceThresholdTextBox = new TextBox
+        _varianceThresholdTextBox = new TextBoxExt
         {
             Text = "1000",
             Dock = DockStyle.Fill,
@@ -357,7 +393,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _varianceThresholdTextBox.TextChanged += VarianceThresholdTextBox_TextChanged;
 
-        _overBudgetCheckBox = new CheckBox
+        _overBudgetCheckBox = new CheckBoxAdv
         {
             Text = "Over Budget Only",
             Dock = DockStyle.Fill,
@@ -365,9 +401,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Show Over Budget Only",
             AccessibleDescription = "Show only entries that are over budget"
         };
-        _overBudgetCheckBox.CheckedChanged += OverBudgetCheckBox_CheckedChanged;
+        _overBudgetCheckBox.CheckStateChanged += OverBudgetCheckBox_CheckedChanged;
 
-        _underBudgetCheckBox = new CheckBox
+        _underBudgetCheckBox = new CheckBoxAdv
         {
             Text = "Under Budget Only",
             Dock = DockStyle.Fill,
@@ -375,7 +411,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Show Under Budget Only",
             AccessibleDescription = "Show only entries that are under budget"
         };
-        _underBudgetCheckBox.CheckedChanged += UnderBudgetCheckBox_CheckedChanged;
+        _underBudgetCheckBox.CheckStateChanged += UnderBudgetCheckBox_CheckedChanged;
 
         filterTable.Controls.Add(searchLabel, 0, 0);
         filterTable.Controls.Add(_searchTextBox, 1, 0);
@@ -399,14 +435,23 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void InitializeBottomPanel()
     {
-        var bottomPanel = new Panel { Dock = DockStyle.Fill };
-
-        // Budget grid
-        _gridPanel = new Panel
+        var bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(bottomPanel, ThemeColors.DefaultTheme);
+
+        // Budget grid
+        _gridPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_gridPanel, ThemeColors.DefaultTheme);
 
         _budgetGrid = new SfDataGrid
         {
@@ -499,12 +544,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         bottomPanel.Controls.Add(_gridPanel);
 
         // Button panel
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 50,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
         var buttonTable = new TableLayoutPanel
         {
@@ -516,7 +564,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         for (int i = 0; i < 8; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
 
-        _loadBudgetsButton = new Button
+        _loadBudgetsButton = new SfButton
         {
             Text = "&Load Budgets",
             TabIndex = 9,
@@ -529,7 +577,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
         };
 
-        _addEntryButton = new Button
+        _addEntryButton = new SfButton
         {
             Text = "&Add Entry",
             TabIndex = 10,
@@ -538,7 +586,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _addEntryButton.Click += AddEntryButton_Click;
 
-        _editEntryButton = new Button
+        _editEntryButton = new SfButton
         {
             Text = "&Edit Entry",
             TabIndex = 11,
@@ -547,7 +595,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _editEntryButton.Click += EditEntryButton_Click;
 
-        _deleteEntryButton = new Button
+        _deleteEntryButton = new SfButton
         {
             Text = "&Delete Entry",
             TabIndex = 12,
@@ -556,7 +604,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _deleteEntryButton.Click += async (s, e) => await DeleteEntryAsync();
 
-        _importCsvButton = new Button
+        _importCsvButton = new SfButton
         {
             Text = "&Import CSV",
             TabIndex = 13,
@@ -565,7 +613,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _importCsvButton.Click += ImportCsvButton_Click;
 
-        _exportCsvButton = new Button
+        _exportCsvButton = new SfButton
         {
             Text = "Export &CSV",
             TabIndex = 14,
@@ -574,7 +622,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _exportCsvButton.Click += ExportCsvButton_Click;
 
-        _exportPdfButton = new Button
+        _exportPdfButton = new SfButton
         {
             Text = "Export &PDF",
             TabIndex = 15,
@@ -583,7 +631,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _exportPdfButton.Click += ExportPdfButton_Click;
 
-        _exportExcelButton = new Button
+        _exportExcelButton = new SfButton
         {
             Text = "Export &Excel",
             TabIndex = 16,
@@ -604,18 +652,24 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _buttonPanel!.Controls.Add(buttonTable);
 
         // Navigation panel
-        var navigationPanel = new Panel
+        var navigationPanel = new GradientPanelExt
         {
             Dock = DockStyle.Right,
             Width = 300,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(navigationPanel, "Office2019Colorful");
 
-        var navGroup = new GroupBox
+        var navGroup = new GradientPanelExt
         {
             Text = "Navigate To",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(navGroup, "Office2019Colorful");
 
         var navTable = new TableLayoutPanel
         {
@@ -624,7 +678,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             RowCount = 3
         };
 
-        _navigateAccountsButton = new Button
+        _navigateAccountsButton = new SfButton
         {
             Text = "View &Accounts",
             Dock = DockStyle.Fill,
@@ -634,7 +688,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _navigateAccountsButton.Click += (s, e) => NavigateToPanel<AccountsPanel>("Accounts");
 
-        _navigateChartsButton = new Button
+        _navigateChartsButton = new SfButton
         {
             Text = "View &Charts",
             Dock = DockStyle.Fill,
@@ -644,7 +698,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _navigateChartsButton.Click += (s, e) => NavigateToPanel<ChartPanel>("Charts");
 
-        _navigateAnalyticsButton = new Button
+        _navigateAnalyticsButton = new SfButton
         {
             Text = "View Analytics",
             Dock = DockStyle.Fill,
@@ -700,14 +754,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Selection styling
 
-            // Grid line and border styling
-            _budgetGrid.Style.BorderColor = Color.FromArgb(217, 217, 217);
-
             // Cell styling
             _budgetGrid.Style.CellStyle.Font.Size = 9f;
-            _budgetGrid.Style.CellStyle.Borders.All = new GridBorder(
-                GridBorderStyle.Solid,
-                Color.FromArgb(230, 230, 230));
 
             // Add alternate row coloring via QueryCellStyle event
             _budgetGrid.QueryCellStyle += BudgetGrid_QueryCellStyle;
@@ -736,11 +784,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 {
                     if (variance < 0)
                     {
-                        e.Style.TextColor = Color.FromArgb(192, 0, 0); // Dark red for over-budget
+                        e.Style.TextColor = Color.Red; // Semantic over-budget
                     }
                     else if (variance > 0)
                     {
-                        e.Style.TextColor = Color.FromArgb(0, 128, 0); // Green for under-budget
+                        e.Style.TextColor = Color.Green; // Semantic under-budget
                     }
                 }
             }
@@ -754,7 +802,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         try
         {
-            ThemeManager.ApplyThemeToControl(this);
             UpdateButtonIcons(theme);
         }
         catch (Exception ex)
@@ -928,40 +975,40 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Account Number
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
-            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill };
+            var txtAccountNumber = new TextBoxExt { Dock = DockStyle.Fill };
             tableLayout.Controls.Add(txtAccountNumber, 1, 0);
 
             // Description
             tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
-            var txtDescription = new TextBox { Dock = DockStyle.Fill };
+            var txtDescription = new TextBoxExt { Dock = DockStyle.Fill };
             tableLayout.Controls.Add(txtDescription, 1, 1);
 
             // Budgeted Amount
             tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
-            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
+            var txtBudgeted = new TextBoxExt { Dock = DockStyle.Fill, Text = "0.00" };
             tableLayout.Controls.Add(txtBudgeted, 1, 2);
 
             // Actual Amount
             tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
-            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
+            var txtActual = new TextBoxExt { Dock = DockStyle.Fill, Text = "0.00" };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
             // Department ID
             tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = "1" };
+            var txtDepartmentId = new TextBoxExt { Dock = DockStyle.Fill, Text = "1" };
             tableLayout.Controls.Add(txtDepartmentId, 1, 4);
 
             // Fund Type
             tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
-            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            var cmbFundType = new ComboBoxAdv { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedIndex = 0;
             tableLayout.Controls.Add(cmbFundType, 1, 5);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);
@@ -1046,34 +1093,34 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Pre-populate fields
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
-            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.AccountNumber };
+            var txtAccountNumber = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.AccountNumber };
             tableLayout.Controls.Add(txtAccountNumber, 1, 0);
 
             tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
-            var txtDescription = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.Description };
+            var txtDescription = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.Description };
             tableLayout.Controls.Add(txtDescription, 1, 1);
 
             tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
-            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.BudgetedAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            var txtBudgeted = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.BudgetedAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtBudgeted, 1, 2);
 
             tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
-            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            var txtActual = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
             tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
+            var txtDepartmentId = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtDepartmentId, 1, 4);
 
             tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
-            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            var cmbFundType = new ComboBoxAdv { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedItem = selectedEntry.FundType.ToString();
             tableLayout.Controls.Add(cmbFundType, 1, 5);
 
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);
@@ -1393,9 +1440,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
             }
 
-            if (_themeChangedHandler != null)
+            if (_themeChangedHandler != null && _themeService != null)
             {
-                try { ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
+                try { _themeService.ThemeChanged -= _themeChangedHandler; } catch { }
             }
 
             if (ViewModel != null)
@@ -1438,6 +1485,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         this.components = new System.ComponentModel.Container();
         this.Name = "BudgetPanel";
         this.Size = new Size(1400, 900);
+        this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        this.AutoScroll = true;
+        this.Padding = new Padding(8);
     }
 
     #endregion

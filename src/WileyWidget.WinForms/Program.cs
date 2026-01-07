@@ -22,7 +22,6 @@ using System.Net.Http;
 using Action = System.Action;
 using System.IO;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Security.Permissions;
 using System.Windows.Forms;
@@ -34,6 +33,8 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Services.AI;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms
 {
@@ -43,12 +44,54 @@ namespace WileyWidget.WinForms
         private static IServiceScope? _applicationScope; // Application-lifetime scope
         private static IStartupTimelineService? _timelineService;
 
-        private static int _firstChanceFormatExceptionCount;
-        private static int _firstChanceArgumentExceptionCount;
+        private const string FallbackConnectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
 
         private sealed record SyncfusionLicenseDiagnostics(string Source, bool IsDevelopment, int Length, string Hash);
 
         private static SyncfusionLicenseDiagnostics? _syncfusionLicenseDiagnostics;
+
+        private static void ConfigureBootstrapLogger()
+        {
+            try
+            {
+                var basePath = AppContext.BaseDirectory ?? Environment.CurrentDirectory;
+                var logsPath = Path.Combine(basePath, "logs");
+                Directory.CreateDirectory(logsPath);
+                var logFileTemplate = Path.Combine(logsPath, "app-.log");
+
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .Enrich.FromLogContext()
+                    .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.File(logFileTemplate,
+                        formatProvider: CultureInfo.InvariantCulture,
+                        rollingInterval: RollingInterval.Day,
+                        retainedFileCountLimit: 30,
+                        fileSizeLimitBytes: 10 * 1024 * 1024,
+                        rollOnFileSizeLimit: true,
+                        shared: true)
+                    .CreateLogger();
+
+                Log.Debug("Bootstrap logger initialized (path: {LogsPath}, template: {Template})", logsPath, logFileTemplate);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Log.Logger = new LoggerConfiguration()
+                        .MinimumLevel.Debug()
+                        .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                        .CreateLogger();
+
+                    Log.Warning(ex, "Bootstrap logger fallback initialized");
+                }
+                catch
+                {
+                    // Swallow: if logging cannot be configured at all, keep default silent logger.
+                }
+            }
+        }
 
         private static void EnsureTimelineService()
         {
@@ -60,6 +103,7 @@ namespace WileyWidget.WinForms
 
         private static void RegisterSyncfusionLicense()
         {
+            var licenseStopwatch = Stopwatch.StartNew();
             var envName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
                           ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
                           ?? "Production";
@@ -177,15 +221,23 @@ namespace WileyWidget.WinForms
                         ex);
                 }
             }
+
+            licenseStopwatch.Stop();
+            if (licenseStopwatch.ElapsedMilliseconds > 750)
+            {
+                Log.Information("RegisterSyncfusionLicense completed in {Elapsed}ms (monitor for I/O growth)", licenseStopwatch.ElapsedMilliseconds);
+            }
+            else
+            {
+                Log.Debug("RegisterSyncfusionLicense completed in {Elapsed}ms", licenseStopwatch.ElapsedMilliseconds);
+            }
         }
 
         [STAThread]
         static void Main(string[] args)
         {
+            ConfigureBootstrapLogger();
             SetInvariantCulture();
-
-            // Capture diagnostic exceptions as early as possible (before loading .env files).
-            AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
 
             // Load environment variables early (optional). Guard against malformed .env lines which can throw FormatException.
             TryLoadDotNetEnv();
@@ -247,31 +299,29 @@ namespace WileyWidget.WinForms
                     Log.Warning("Syncfusion license key was not resolved in Main.");
                 }
 
-                using (_timelineService?.BeginPhaseScope("Theme Initialization"))
-                {
-                    InitializeTheme();
-                    Log.Information("Startup milestone: Theme Initialization complete");
-                }
-
                 using (_timelineService?.BeginPhaseScope("WinForms Initialization"))
                 {
                     InitializeWinForms();
                     Log.Information("Startup milestone: WinForms Initialization complete");
                 }
 
+                using (_timelineService?.BeginPhaseScope("Theme Initialization"))
+                {
+                    InitializeTheme();
+                    Log.Information("Startup milestone: Theme Initialization complete");
+                }
+
                 splash = new SplashForm();
+                splash.ShowSplash();
+
                 void SplashReport(double progress, string message, bool isIndeterminate = false)
                 {
-                    var s = splash;
-                    if (s == null) return;
-                    s.InvokeOnUiThread(() => s.Report(progress, message, isIndeterminate));
+                    splash?.Report(progress, message, isIndeterminate);
                 }
 
                 void SplashComplete(string message)
                 {
-                    var s = splash;
-                    if (s == null) return;
-                    s.InvokeOnUiThread(() => s.Complete(message));
+                    splash?.Complete(message);
                 }
 
                 SplashReport(0.02, "Initializing application...", isIndeterminate: true);
@@ -355,12 +405,20 @@ namespace WileyWidget.WinForms
                 // Create MainForm early - this is the most visible milestone
                 SplashReport(0.60, "Initializing main window...", isIndeterminate: true);
                 MainForm mainForm;
-                using (_timelineService?.BeginPhaseScope("MainForm Creation"))
+                try
                 {
-                    mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
-                    Log.Debug("MainForm instance created");
+                    using (_timelineService?.BeginPhaseScope("MainForm Creation"))
+                    {
+                        mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
+                        Log.Debug("MainForm instance created");
+                    }
+                    Log.Information("Startup milestone: MainForm Creation complete");
                 }
-                Log.Information("Startup milestone: MainForm Creation complete");
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Failed to create MainForm - likely Syncfusion license or control instantiation issue");
+                    throw;
+                }
                 SplashReport(0.70, "Main window created");
 
                 using (_timelineService?.BeginPhaseScope("Chrome Initialization"))
@@ -372,38 +430,11 @@ namespace WileyWidget.WinForms
                 Log.Debug("Exception handlers wired");
                 Log.Information("Startup milestone: Chrome Initialization complete");
 
-                using (_timelineService?.BeginPhaseScope("Data Prefetch"))
-                {
-                    var prefetchTask = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            SplashReport(0.85, "Prefetching dashboard data...", isIndeterminate: true);
-
-                            using (var prefetchScope = host.Services.CreateScope())
-                            {
-                                // Resolve dashboard service as required for prefetch; allow inner try/catch to handle missing registration
-                                var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IDashboardService>(prefetchScope.ServiceProvider);
-                                _ = await dashboardService.GetDashboardDataAsync(CancellationToken.None).ConfigureAwait(false);
-                                Log.Debug("Dashboard data prefetched successfully");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "Data prefetch failed (non-critical)");
-                        }
-                    });
-
-                    prefetchTask.GetAwaiter().GetResult();
-                }
-                Log.Information("Startup milestone: Data Prefetch complete");
-
                 SplashReport(0.90, "Finalizing startup...");
                 SplashReport(0.95, "Launching application...");
                 using (_timelineService?.BeginPhaseScope("Splash Screen Hide"))
                 {
                     SplashComplete("Ready");
-                    splash.Dispose();
                     Log.Information("Splash screen hidden");
                 }
                 Log.Information("Startup milestone: Ready");
@@ -418,7 +449,15 @@ namespace WileyWidget.WinForms
                 Log.Debug("[DIAGNOSTIC] ScheduleAutoCloseIfRequested() completed");
 
                 Log.Debug("[DIAGNOSTIC] About to enter UI message loop");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP - mainForm != null: {mainForm != null}, mainForm.IsDisposed: {mainForm?.IsDisposed}");
+                Log.Debug("""
+[DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
+Timestamp: {Timestamp}
+MainFormPresent: {Present}
+IsDisposed: {Disposed}
+""",
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+                    mainForm != null,
+                    mainForm?.IsDisposed);
                 Log.Debug("Entering UI message loop");
                 using (_timelineService?.BeginPhaseScope("UI Message Loop"))
                 {
@@ -447,18 +486,6 @@ namespace WileyWidget.WinForms
                     nreEx.TargetSite?.ToString() ?? "(unknown)",
                     nreEx.HResult);
 
-                Console.WriteLine("\n═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine("║  CRITICAL: NullReferenceException During Startup");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine($"Type:       {nreEx.GetType().FullName}");
-                Console.WriteLine($"Message:    {nreEx.Message}");
-                Console.WriteLine($"Source:     {nreEx.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {nreEx.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{nreEx.HResult:X8}");
-                Console.WriteLine("\nStack Trace:");
-                Console.WriteLine(nreEx.StackTrace ?? "(no stack trace available)");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════\n");
-
                 HandleStartupFailure(nreEx);
                 throw;
             }
@@ -480,27 +507,12 @@ namespace WileyWidget.WinForms
                     ex.HResult,
                     ex.InnerException?.ToString() ?? "(none)");
 
-                Console.WriteLine("\n═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine("║  CRITICAL: Unhandled Exception During Startup");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine($"Type:       {ex.GetType().FullName}");
-                Console.WriteLine($"Message:    {ex.Message}");
-                Console.WriteLine($"Source:     {ex.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {ex.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{ex.HResult:X8}");
-                Console.WriteLine("\nStack Trace:");
-                Console.WriteLine(ex.StackTrace ?? "(no stack trace available)");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine("\nInner Exception:");
-                    Console.WriteLine($"  Type:    {ex.InnerException.GetType().FullName}");
-                    Console.WriteLine($"  Message: {ex.InnerException.Message}");
-                    Console.WriteLine($"  Stack:   {ex.InnerException.StackTrace ?? "(no stack trace)"}");
-                }
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════\n");
-
                 HandleStartupFailure(ex);
                 throw;
+            }
+            finally
+            {
+                splash?.Dispose();
             }
         }
 
@@ -518,121 +530,6 @@ namespace WileyWidget.WinForms
             catch (Exception ex)
             {
                 Log.Warning(ex, "Failed to set invariant culture; continuing with system defaults");
-            }
-        }
-
-        /// <summary>
-        /// FirstChanceException handler for comprehensive exception diagnostics.
-        /// Captures ALL exceptions thrown in the AppDomain BEFORE they are caught.
-        /// Provides detailed logging for NullReferenceExceptions with full stack traces.
-        /// </summary>
-        private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
-        {
-            // Suppress known Syncfusion TreeViewAdv theme enum bug (Office2019Colorful not in internal enum, but cascades safely)
-            if (e.Exception is ArgumentException argExCheck &&
-                argExCheck.Message.Contains("Requested value 'Office2019Colorful' was not found.", StringComparison.Ordinal) &&
-                argExCheck.StackTrace?.Contains("TreeViewAdv", StringComparison.Ordinal) == true)
-            {
-                return; // Harmless first-chance exception per Syncfusion docs: TreeViewAdv predates Office2019 themes
-            }
-
-            if (e.Exception is NullReferenceException nre)
-            {
-                // Log NullReferenceExceptions with full diagnostic details
-                var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: NullReferenceException ═══");
-                Console.WriteLine($"Message:    {nre.Message}");
-                Console.WriteLine($"Source:     {nre.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {nre.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{nre.HResult:X8}");
-                Console.WriteLine("Stack Trace:");
-                Console.WriteLine(nre.StackTrace ?? "(no stack trace available)");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
-
-                // Also log via Serilog if available
-                try
-                {
-                    Log.Warning(nre, "[FIRST CHANCE] NullReferenceException detected at {TargetSite}",
-                        nre.TargetSite?.ToString() ?? "(unknown)");
-                }
-                catch
-                {
-                    // Serilog might not be initialized yet - ignore
-                }
-            }
-            else if (e.Exception is ArgumentException argEx)
-            {
-                // REMOVED: Exception suppression for DockingManager ArgumentOutOfRangeException
-                // Root cause fixed in DockingHostFactory.CreateDockingManager by ensuring
-                // MainForm handle is created before HostControl assignment and components
-                // container is properly initialized. If these exceptions still occur, they
-                // should be investigated rather than suppressed.
-
-                if (Interlocked.Increment(ref _firstChanceArgumentExceptionCount) <= 3)
-                {
-                    var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                    var exceptionStackTrace = new StackTrace(argEx, true).ToString();
-                    var envStackTrace = Environment.StackTrace;
-                    Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: ArgumentException ═══");
-                    Console.WriteLine($"Message:    {argEx.Message}");
-                    Console.WriteLine($"ParamName:  {argEx.ParamName ?? "(none)"}");
-                    Console.WriteLine($"Source:     {argEx.Source ?? "(unknown)"}");
-                    Console.WriteLine($"TargetSite: {argEx.TargetSite?.ToString() ?? "(unknown)"}");
-                    Console.WriteLine("Stack Trace (exception):");
-                    Console.WriteLine(string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd());
-                    Console.WriteLine("Stack Trace (environment):");
-                    Console.WriteLine(string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
-                    Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
-
-                    try
-                    {
-                        Log.Warning(argEx, "[FIRST CHANCE] ArgumentException detected at {TargetSite} (param: {Param})\nStackTrace:\n{StackTrace}\nEnvironmentStack:\n{EnvStack}",
-                            argEx.TargetSite?.ToString() ?? "(unknown)",
-                            argEx.ParamName ?? "(none)",
-                            string.IsNullOrWhiteSpace(exceptionStackTrace) ? "(no stack trace available)" : exceptionStackTrace.TrimEnd(),
-                            string.IsNullOrWhiteSpace(envStackTrace) ? "(no environment stack available)" : envStackTrace.TrimEnd());
-                    }
-                    catch
-                    {
-                        // Serilog might not be initialized yet - ignore
-                    }
-                }
-            }
-            else if (e.Exception is InvalidOperationException ioe &&
-                     (ioe.Source?.Contains("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal) == true))
-            {
-                // Log DI-related exceptions for additional diagnostics
-                var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: DI Exception ═══");
-                Console.WriteLine($"Message: {ioe.Message}");
-                Console.WriteLine($"Stack:   {ioe.StackTrace ?? "(no stack)"}");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
-            }
-            else if (e.Exception is FormatException fe)
-            {
-                // FormatException is frequently thrown+handled by framework code.
-                // Keep this intentionally low-noise: emit only the first few instances.
-                if (Interlocked.Increment(ref _firstChanceFormatExceptionCount) <= 5)
-                {
-                    var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                    Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: FormatException ═══");
-                    Console.WriteLine($"Message:    {fe.Message}");
-                    Console.WriteLine($"Source:     {fe.Source ?? "(unknown)"}");
-                    Console.WriteLine($"TargetSite: {fe.TargetSite?.ToString() ?? "(unknown)"}");
-                    Console.WriteLine("Stack Trace:");
-                    Console.WriteLine(fe.StackTrace ?? "(no stack trace available)");
-                    Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
-
-                    try
-                    {
-                        Log.Warning(fe, "[FIRST CHANCE] FormatException detected at {TargetSite}",
-                            fe.TargetSite?.ToString() ?? "(unknown)");
-                    }
-                    catch
-                    {
-                        // Serilog might not be initialized yet - ignore
-                    }
-                }
             }
         }
 
@@ -709,15 +606,12 @@ namespace WileyWidget.WinForms
 
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"[THEME FATAL] InnerException: {ex.InnerException.Message}");
-                    Console.WriteLine($"[THEME FATAL] InnerException StackTrace: {ex.InnerException.StackTrace}");
+                    Log.Error(ex.InnerException, "[THEME FATAL] InnerException during theme initialization");
                 }
 
-                Log.Error(ex, "Theme initialization failed; continuing with default Windows theme");
-
-                // GRACEFUL FALLBACK: Continue without theme to prevent startup failure
-                // Forms will use default Windows styling
-                Console.WriteLine("[THEME] Continuing startup with default Windows theme (no Syncfusion theming)");
+                Log.Error(ex, """
+[THEME] Theme initialization failed; continuing with default Windows theme (no Syncfusion theming)
+""");
             }
         }
 
@@ -739,11 +633,13 @@ namespace WileyWidget.WinForms
                 return;
             }
 
+            var envStopwatch = Stopwatch.StartNew();
+
             // Load optional secrets file first (repo-root relative), then traverse for a .env.
             // Treat parsing errors (FormatException) as non-fatal so startup can continue.
             try
             {
-                var secretsPath = Path.Combine(Directory.GetCurrentDirectory(), "secrets", "my.secrets");
+                var secretsPath = ResolveSecretsPath();
                 if (File.Exists(secretsPath))
                 {
                     DotNetEnv.Env.Load(secretsPath);
@@ -766,6 +662,27 @@ namespace WileyWidget.WinForms
                 // This is early startup - logging infrastructure may not be ready
                 try { Log.Warning(ex, "Failed to load .env via DotNetEnv"); } catch { /* Intentionally empty */ }
             }
+
+            envStopwatch.Stop();
+            if (envStopwatch.ElapsedMilliseconds > 500)
+            {
+                Log.Information("DotNetEnv load completed in {Elapsed}ms (consider async if this grows)", envStopwatch.ElapsedMilliseconds);
+            }
+            else
+            {
+                Log.Debug("DotNetEnv load completed in {Elapsed}ms", envStopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        private static string ResolveSecretsPath()
+        {
+            var overridePath = Environment.GetEnvironmentVariable("WW_SECRETS_PATH");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                return overridePath;
+            }
+
+            return Path.Combine(Directory.GetCurrentDirectory(), "secrets", "my.secrets");
         }
 
         private static string ShortHash(string secret)
@@ -908,7 +825,8 @@ namespace WileyWidget.WinForms
                 if (!string.IsNullOrWhiteSpace(xaiApiKeyEnv))
                 {
                     overrides["XAI:ApiKey"] = xaiApiKeyEnv;
-                    Log.Debug("[CONFIG] Overriding XAI:ApiKey from environment variable (length: {Length})", xaiApiKeyEnv.Length);
+                    overrides["Grok:ApiKey"] = xaiApiKeyEnv;  // Also set Grok:ApiKey for GrokAgentService
+                    Log.Debug("[CONFIG] Overriding XAI:ApiKey and Grok:ApiKey from environment variable (length: {Length})", xaiApiKeyEnv.Length);
                 }
                 else
                 {
@@ -951,7 +869,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[WARNING] Error expanding environment variable placeholders: {ex.Message}");
+                Log.Warning(ex, "Error expanding environment variable placeholders");
             }
 
             try
@@ -959,17 +877,16 @@ namespace WileyWidget.WinForms
                 var existingConn = builder.Configuration.GetConnectionString("DefaultConnection");
                 if (string.IsNullOrWhiteSpace(existingConn))
                 {
-                    var defaultConn = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
                     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["ConnectionStrings:DefaultConnection"] = defaultConn
+                        ["ConnectionStrings:DefaultConnection"] = FallbackConnectionString
                     });
-                    Log.Warning("DefaultConnection not found; using in-memory fallback");
+                    Log.Warning("DefaultConnection not found; using development fallback connection string");
                 }
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error ensuring default connection in configuration: {ex}");
+                Log.Warning(ex, "Error ensuring default connection in configuration");
             }
         }
 
@@ -977,8 +894,18 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                // Make Serilog self-logging forward internal errors to stderr so we can diagnose sink failures
-                Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine($"[SERILOG] {msg}"));
+                // Make Serilog self-logging forward internal errors to the configured logger
+                Serilog.Debugging.SelfLog.Enable(msg =>
+                {
+                    try
+                    {
+                        Log.Warning("[SERILOG] {Message}", msg);
+                    }
+                    catch
+                    {
+                        // If logging is unavailable, swallow to avoid recursion.
+                    }
+                });
 
                 // CRITICAL: ALL LOGS go to project root src/logs directory
                 var projectRoot = Directory.GetCurrentDirectory();
@@ -1021,8 +948,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"CRITICAL: Failed to configure logging: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+                Log.Fatal(ex, "CRITICAL: Failed to configure logging");
 
                 // Fallback to console-only logging
                 Log.Logger = new LoggerConfiguration()
@@ -1031,8 +957,7 @@ namespace WileyWidget.WinForms
                     .MinimumLevel.Information()
                     .CreateLogger();
 
-
-                Console.Error.WriteLine("Logging fallback to console-only mode");
+                Log.Warning("Logging fallback to console-only mode");
             }
         }
 
@@ -1136,7 +1061,7 @@ namespace WileyWidget.WinForms
             {
                 if (descriptor.ServiceType == typeof(IConfiguration))
                 {
-                    Console.WriteLine("[DI] Skipping IConfiguration from CreateServiceCollection - using host builder's configuration");
+                    Log.Information("[DI] Skipping IConfiguration from CreateServiceCollection - using host builder's configuration");
                     continue; // Skip - use host builder's configuration
                 }
 
@@ -1147,7 +1072,16 @@ namespace WileyWidget.WinForms
         private static void ConfigureUiServices(HostApplicationBuilder builder)
         {
             // UI configuration is now handled via UIConfiguration.FromConfiguration in DependencyInjection.cs
-            // No additional UI services needed here in Phase 1
+            // Register GrokAgentService (Semantic Kernel Grok integration)
+            try
+            {
+                builder.Services.AddSingleton<GrokAgentService>();
+                Log.Debug("Registered GrokAgentService as Singleton");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register GrokAgentService");
+            }
         }
 
         /// <summary>
@@ -1343,7 +1277,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception fatalLogEx)
                 {
-                    Console.Error.WriteLine($"Log.Fatal failed for UI thread exception: {fatalLogEx} - original exception: {e.Exception}");
+                    Log.Error(fatalLogEx, "Log.Fatal failed for UI thread exception");
                 }
 
                 try
@@ -1352,7 +1286,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception reportEx)
                 {
-                    Console.Error.WriteLine($"Failed to report UI thread exception to ErrorReportingService: {reportEx}");
+                    Log.Warning(reportEx, "Failed to report UI thread exception to ErrorReportingService");
                 }
 
                 try
@@ -1375,7 +1309,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception fatalLogEx)
                 {
-                    Console.Error.WriteLine($"Log.Fatal failed for AppDomain exception: {fatalLogEx} - original exception: {ex}");
+                    Log.Error(fatalLogEx, "Log.Fatal failed for AppDomain exception");
                 }
 
                 try
@@ -1384,7 +1318,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception reportEx)
                 {
-                    Console.Error.WriteLine($"Failed to report AppDomain exception to ErrorReportingService: {reportEx}");
+                    Log.Warning(reportEx, "Failed to report AppDomain exception to ErrorReportingService");
                 }
             };
         }
@@ -1477,14 +1411,14 @@ namespace WileyWidget.WinForms
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"Auto-close timer failed: {ex}");
+                        Log.Warning(ex, "Auto-close timer failed");
                     }
                 };
                 timer.Start();
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Failed to schedule auto-close: {ex}");
+                Log.Warning(ex, "Failed to schedule auto-close");
             }
         }
 
@@ -1496,7 +1430,11 @@ namespace WileyWidget.WinForms
                     mainForm?.GetType().Name ?? "(null)",
                     mainForm?.IsDisposed,
                     mainForm?.Visible);
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)");
+                Log.Debug("""
+[DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
+Timestamp: {Timestamp}
+""",
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
 
                 // CRITICAL: Explicitly ensure form is visible and properly positioned
                 // OnLoad may have completed but form visibility needs explicit enforcement
@@ -1528,7 +1466,19 @@ namespace WileyWidget.WinForms
 
                     Log.Debug("mainForm visibility enforced: Visible={Visible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
                         mainForm.Visible, mainForm.WindowState, mainForm.ShowInTaskbar);
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] Form state: Visible={mainForm.Visible}, WindowState={mainForm.WindowState}, Size={mainForm.Size}, Location={mainForm.Location}");
+                    Log.Debug("""
+[DIAGNOSTIC] Form state before message loop
+Timestamp: {Timestamp}
+Visible:   {Visible}
+WindowState: {WindowState}
+Size:      {Size}
+Location:  {Location}
+""",
+                        DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+                        mainForm.Visible,
+                        mainForm.WindowState,
+                        mainForm.Size,
+                        mainForm.Location);
                 }
                 catch (Exception visEx)
                 {
@@ -1536,13 +1486,17 @@ namespace WileyWidget.WinForms
                     throw;
                 }
 
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] RunUiLoop: About to enter message loop");
+                Log.Debug("""
+[DIAGNOSTIC] RunUiLoop: About to enter message loop
+Timestamp: {Timestamp}
+""",
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
                 Application.Run(mainForm);
             }
             catch (Exception ex)
             {
-                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Console.Error.WriteLine($"Failed to log Application.Run fatal during shutdown: {logEx}"); }
-                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Console.Error.WriteLine($"Failed to report Application.Run abort to ErrorReportingService: {reportEx}"); }
+                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Log.Error(logEx, "Failed to log Application.Run fatal during shutdown"); }
+                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Log.Warning(reportEx, "Failed to report Application.Run abort to ErrorReportingService"); }
                 throw new InvalidOperationException("UI message loop aborted", ex);
             }
             finally
@@ -1550,6 +1504,18 @@ namespace WileyWidget.WinForms
                 // CRITICAL: Dispose application-lifetime scope here (after UI loop exits)
                 _applicationScope?.Dispose();
                 Log.Information("Application exited normally.");
+
+                // DEFENSIVE: Allow 500ms for inflight log operations to complete before closing sinks
+                // This prevents ObjectDisposedException from delayed dispose handlers still trying to log
+                try
+                {
+                    System.Threading.Thread.Sleep(500);
+                }
+                catch
+                {
+                    // Timing not critical, continue with flush
+                }
+
                 Log.CloseAndFlush();
             }
         }
@@ -1636,7 +1602,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception logEx)
             {
-                Console.Error.WriteLine($"Failed to log startup fatal error: {logEx}");
+                Log.Error(logEx, "Failed to log startup fatal error");
             }
             finally
             {
@@ -1653,7 +1619,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception reportEx)
             {
-                Console.Error.WriteLine($"Failed to report startup failure to ErrorReportingService: {reportEx}");
+                Log.Warning(reportEx, "Failed to report startup failure to ErrorReportingService");
             }
 
             // Show user-friendly error dialog for startup failures
@@ -1670,15 +1636,12 @@ namespace WileyWidget.WinForms
                 }
                 else
                 {
-                    // Fallback to console output if no message loop
-                    Console.Error.WriteLine("Startup Error: " + ex.Message);
+                    Log.Fatal(ex, "Startup Error without message loop");
                 }
             }
             catch (Exception uiEx)
             {
-                // Last resort - write to console
-                Console.Error.WriteLine($"Critical startup error: {ex.Message}");
-                Console.Error.WriteLine($"UI error display failed: {uiEx.Message}");
+                Log.Fatal(uiEx, "UI error display failed during startup error reporting");
             }
         }
 
@@ -1702,7 +1665,13 @@ namespace WileyWidget.WinForms
 
                 // Note: The validator itself logs detailed category-by-category progress
                 // including the formatted banner output, so we don't duplicate logging here
-                var result = validationService.ValidateAll(services);
+                // Use a scoped provider for validation to allow resolving scoped services
+                DiValidationResult result;
+                using (var validationScope = services.CreateScope())
+                {
+                    var scopedServices = validationScope.ServiceProvider;
+                    result = validationService.ValidateAll(scopedServices);
+                }
 
                 var endTime = DateTime.Now;
                 var totalDuration = endTime - startTime;
@@ -1717,16 +1686,9 @@ namespace WileyWidget.WinForms
                     Log.Fatal("║ Duration:       {Duration,4:F0}ms                                    ║", totalDuration.TotalMilliseconds);
                     Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
 
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╔════════════════════════════════════════════════════════════════╗");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ║   ✗ DI VALIDATION FAILED - STARTUP CANNOT PROCEED             ║");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╠════════════════════════════════════════════════════════════════╣");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ║ Total Errors:   {result.Errors.Count,4}                                          ║");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╚════════════════════════════════════════════════════════════════╝");
-
                     foreach (var error in result.Errors)
                     {
                         Log.Fatal("  ✗ {Error}", error);
-                        Console.WriteLine($"[{endTime:HH:mm:ss.fff}]   ✗ {error}");
                     }
 
                     throw new InvalidOperationException(
@@ -1756,8 +1718,6 @@ namespace WileyWidget.WinForms
                 Log.Fatal("║ Exception Type: {Type,-44} ║", ex.GetType().Name);
                 Log.Fatal("║ Exception Msg:  {Message,-44} ║", ex.Message.Length > 44 ? ex.Message.Substring(0, 41) + "..." : ex.Message);
                 Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
-
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✗ CRITICAL: DI validation failed: {ex.Message}");
                 throw;
             }
         }
@@ -1766,22 +1726,67 @@ namespace WileyWidget.WinForms
         {
             var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(services);
 
+            var environment = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IHostEnvironment>(services);
+            var isDevelopment = environment?.IsDevelopment() ?? false;
+            var isProduction = environment?.IsProduction() ?? !isDevelopment;
+
+            static void FailFast(string message)
+            {
+                Log.Fatal(message);
+
+                try
+                {
+                    if (Environment.UserInteractive && !Application.MessageLoop)
+                    {
+                        MessageBox.Show(message, "Startup configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch
+                {
+                    // Ignore UI notification failures; the exception path will still stop startup.
+                }
+
+                throw new InvalidOperationException(message);
+            }
+
             // Check database connection string
             var connectionString = config.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrEmpty(connectionString))
+            var usingFallbackConnection = string.Equals(connectionString, FallbackConnectionString, StringComparison.OrdinalIgnoreCase);
+
+            if (string.IsNullOrWhiteSpace(connectionString) || (isProduction && usingFallbackConnection))
             {
-                Log.Warning("No database connection string found in configuration. Ensure secrets/my.secrets or .env contains a valid 'ConnectionStrings:DefaultConnection'.");
+                var message = usingFallbackConnection
+                    ? "DefaultConnection is using the development fallback connection string. Configure a production SQL Server connection string before launching."
+                    : "DefaultConnection is not configured. Set ConnectionStrings:DefaultConnection to a valid SQL Server connection string.";
+
+                if (isDevelopment)
+                {
+                    Log.Warning(message);
+                }
+                else
+                {
+                    FailFast(message);
+                }
             }
             else
             {
-                Log.Debug("Database connection string configured (length: {Length})", connectionString.Length);
+                Log.Debug("Database connection string configured (length: {Length})", connectionString!.Length);
             }
 
             // Check Syncfusion license key
             var syncfusionKey = config["Syncfusion:LicenseKey"];
-            if (string.IsNullOrEmpty(syncfusionKey))
+            if (string.IsNullOrWhiteSpace(syncfusionKey))
             {
-                Log.Warning("No Syncfusion license key found. UI controls may display evaluation nag screens or fail to initialize properly.");
+                var message = "Syncfusion license key is missing. Set Syncfusion:LicenseKey or SYNCFUSION_LICENSE_KEY.";
+
+                if (isDevelopment)
+                {
+                    Log.Warning(message);
+                }
+                else
+                {
+                    FailFast(message);
+                }
             }
             else
             {
@@ -1790,9 +1795,18 @@ namespace WileyWidget.WinForms
 
             // Check xAI API key
             var xaiKey = config["XAI:ApiKey"];
-            if (string.IsNullOrEmpty(xaiKey))
+            if (string.IsNullOrWhiteSpace(xaiKey))
             {
-                Log.Warning("No xAI API key found. AI recommendation services will use stub implementations.");
+                var message = "xAI API key is missing. Set XAI:ApiKey or XAI_API_KEY.";
+
+                if (isDevelopment)
+                {
+                    Log.Warning(message);
+                }
+                else
+                {
+                    FailFast(message);
+                }
             }
             else
             {

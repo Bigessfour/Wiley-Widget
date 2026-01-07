@@ -1,10 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
+using Syncfusion.Drawing;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.Windows.Forms;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.ListView;
+using Syncfusion.WinForms.ListView.Enums;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
@@ -36,24 +42,24 @@ public partial class CustomersPanel : UserControl
 
     // Toolbar controls
     private TableLayoutPanel? _mainLayout;
-    private Panel? _toolbarPanel;
-    private TextBox? _searchTextBox;
-    private Button? _searchButton;
-    private Button? _clearFiltersButton;
-    private Button? _addCustomerButton;
-    private Button? _editCustomerButton;
-    private Button? _deleteCustomerButton;
-    private Button? _refreshButton;
-    private Button? _syncQuickBooksButton;
-    private Button? _exportButton;
+    private GradientPanelExt? _toolbarPanel;
+    private TextBoxExt? _searchTextBox;
+    private SfButton? _searchButton;
+    private SfButton? _clearFiltersButton;
+    private SfButton? _addCustomerButton;
+    private SfButton? _editCustomerButton;
+    private SfButton? _deleteCustomerButton;
+    private SfButton? _refreshButton;
+    private SfButton? _syncQuickBooksButton;
+    private SfButton? _exportButton;
 
     // Filter controls
-    private ComboBox? _filterTypeComboBox;
-    private ComboBox? _filterLocationComboBox;
-    private CheckBox? _showActiveOnlyCheckBox;
+    private SfComboBox? _filterTypeComboBox;
+    private SfComboBox? _filterLocationComboBox;
+    private CheckBoxAdv? _showActiveOnlyCheckBox;
 
     // Summary panel
-    private Panel? _summaryPanel;
+    private GradientPanelExt? _summaryPanel;
     private Label? _totalCustomersLabel;
     private Label? _activeCustomersLabel;
     private Label? _balanceSummaryLabel;
@@ -95,12 +101,8 @@ public partial class CustomersPanel : UserControl
 
                 // Selection styling
 
-                // Grid line and border styling
-                _customersGrid.Style.BorderColor = Color.FromArgb(217, 217, 217);
-
                 // Cell styling
                 _customersGrid.Style.CellStyle.Font.Size = 9f;
-                _customersGrid.Style.CellStyle.Borders.All = new GridBorder(GridBorderStyle.Solid, Color.FromArgb(230, 230, 230));
 
                 // Add alternate row coloring via QueryCellStyle event
                 _customersGrid.QueryCellStyle += (s, e) =>
@@ -202,12 +204,14 @@ public partial class CustomersPanel : UserControl
     /// </summary>
     private void CreateToolbar()
     {
-        _toolbarPanel = new Panel
+        _toolbarPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10, 10, 10, 5)
-            // BackColor removed - let SkinManager handle theming
+            Padding = new Padding(10, 10, 10, 5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
 
         int xPos = 10;
         const int yPos = 10;
@@ -226,11 +230,12 @@ public partial class CustomersPanel : UserControl
         xPos += searchLabel.Width + spacing;
 
         // Search textbox
-        _searchTextBox = new TextBox
+        _searchTextBox = new TextBoxExt
         {
             Location = new Point(xPos, yPos + 5),
             Size = new Size(220, 25),
-            PlaceholderText = "Name, account #, or address..."
+            PlaceholderText = "Name, account #, or address...",
+            BorderStyle = BorderStyle.FixedSingle
         };
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
@@ -238,24 +243,24 @@ public partial class CustomersPanel : UserControl
         xPos += _searchTextBox.Width + spacing;
 
         // Search button
-        _searchButton = new Button
+        _searchButton = new SfButton
         {
             Text = "🔍 &Search",
             Location = new Point(xPos, yPos + 3),
             Size = new Size(85, buttonHeight),
-            FlatStyle = FlatStyle.System
+            AutoSize = true
         };
         _searchButton.Click += async (s, e) => await SearchCustomersAsync();
         _toolbarPanel.Controls.Add(_searchButton);
         xPos += _searchButton.Width + spacing;
 
         // Clear filters button
-        _clearFiltersButton = new Button
+        _clearFiltersButton = new SfButton
         {
             Text = "Clear",
             Location = new Point(xPos, yPos + 3),
             Size = new Size(65, buttonHeight),
-            FlatStyle = FlatStyle.System
+            AutoSize = true
         };
         _clearFiltersButton.Click += (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
         _toolbarPanel.Controls.Add(_clearFiltersButton);
@@ -281,16 +286,14 @@ public partial class CustomersPanel : UserControl
         _toolbarPanel.Controls.Add(typeLabel);
         xPos += typeLabel.Width + spacing;
 
-        _filterTypeComboBox = new ComboBox
+        _filterTypeComboBox = new SfComboBox
         {
             Location = new Point(xPos, yPos + 5),
             Size = new Size(120, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = DropDownStyle.DropDownList,
+            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+            DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" }
         };
-        _filterTypeComboBox.Items.Add("All Types");
-        _filterTypeComboBox.Items.Add("Residential");
-        _filterTypeComboBox.Items.Add("Commercial");
-        _filterTypeComboBox.Items.Add("Industrial");
         _filterTypeComboBox.SelectedIndex = 0;
         _filterTypeComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
         _toolbarPanel.Controls.Add(_filterTypeComboBox);
@@ -306,22 +309,21 @@ public partial class CustomersPanel : UserControl
         _toolbarPanel.Controls.Add(locationLabel);
         xPos += locationLabel.Width + spacing;
 
-        _filterLocationComboBox = new ComboBox
+        _filterLocationComboBox = new SfComboBox
         {
             Location = new Point(xPos, yPos + 5),
             Size = new Size(140, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = DropDownStyle.DropDownList,
+            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+            DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" }
         };
-        _filterLocationComboBox.Items.Add("All Locations");
-        _filterLocationComboBox.Items.Add("Inside City Limits");
-        _filterLocationComboBox.Items.Add("Outside City Limits");
         _filterLocationComboBox.SelectedIndex = 0;
         _filterLocationComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
         _toolbarPanel.Controls.Add(_filterLocationComboBox);
         xPos += _filterLocationComboBox.Width + spacing + 10;
 
         // Show Active Only checkbox
-        _showActiveOnlyCheckBox = new CheckBox
+        _showActiveOnlyCheckBox = new CheckBoxAdv
         {
             Text = "Active Only",
             Location = new Point(xPos, yPos + 7),
@@ -338,12 +340,12 @@ public partial class CustomersPanel : UserControl
         const int yPos2 = yPos + buttonHeight + 8;
 
         // Add Customer button
-        _addCustomerButton = new Button
+        _addCustomerButton = new SfButton
         {
             Text = "➕ &Add Customer",
             Location = new Point(xPos, yPos2),
             Size = new Size(125, buttonHeight),
-            FlatStyle = FlatStyle.System,
+            AutoSize = true,
             // BackColor and ForeColor removed - let SkinManager handle theming
             Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold)
         };
@@ -352,12 +354,12 @@ public partial class CustomersPanel : UserControl
         xPos += _addCustomerButton.Width + spacing;
 
         // Edit Customer button
-        _editCustomerButton = new Button
+        _editCustomerButton = new SfButton
         {
             Text = "✏️ &Edit",
             Location = new Point(xPos, yPos2),
             Size = new Size(80, buttonHeight),
-            FlatStyle = FlatStyle.System,
+            AutoSize = true,
             Enabled = false
         };
         _editCustomerButton.Click += (s, e) => EditSelectedCustomer();
@@ -365,12 +367,12 @@ public partial class CustomersPanel : UserControl
         xPos += _editCustomerButton.Width + spacing;
 
         // Delete Customer button
-        _deleteCustomerButton = new Button
+        _deleteCustomerButton = new SfButton
         {
             Text = "🗑️ &Delete",
             Location = new Point(xPos, yPos2),
             Size = new Size(80, buttonHeight),
-            FlatStyle = FlatStyle.System,
+            AutoSize = true,
             Enabled = false
         };
         _deleteCustomerButton.Click += async (s, e) => await DeleteSelectedCustomerAsync();
@@ -378,36 +380,36 @@ public partial class CustomersPanel : UserControl
         xPos += _deleteCustomerButton.Width + spacing + 10;
 
         // Refresh button
-        _refreshButton = new Button
+        _refreshButton = new SfButton
         {
             Text = "🔄 &Refresh",
             Location = new Point(xPos, yPos2),
             Size = new Size(90, buttonHeight),
-            FlatStyle = FlatStyle.System
+            AutoSize = true
         };
         _refreshButton.Click += async (s, e) => await RefreshCustomersAsync();
         _toolbarPanel.Controls.Add(_refreshButton);
         xPos += _refreshButton.Width + spacing;
 
         // Sync QuickBooks button
-        _syncQuickBooksButton = new Button
+        _syncQuickBooksButton = new SfButton
         {
             Text = "📊 Sync QB",
             Location = new Point(xPos, yPos2),
             Size = new Size(100, buttonHeight),
-            FlatStyle = FlatStyle.System
+            AutoSize = true
         };
         _syncQuickBooksButton.Click += async (s, e) => await SyncWithQuickBooksAsync();
         _toolbarPanel.Controls.Add(_syncQuickBooksButton);
         xPos += _syncQuickBooksButton.Width + spacing;
 
         // Export button
-        _exportButton = new Button
+        _exportButton = new SfButton
         {
             Text = "💾 E&xport",
             Location = new Point(xPos, yPos2),
             Size = new Size(85, buttonHeight),
-            FlatStyle = FlatStyle.System
+            AutoSize = true
         };
         _exportButton.Click += async (s, e) => await ExportCustomersAsync();
         _toolbarPanel.Controls.Add(_exportButton);
@@ -418,12 +420,14 @@ public partial class CustomersPanel : UserControl
     /// </summary>
     private void CreateSummaryPanel()
     {
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10, 5, 10, 5)
-            // BackColor removed - let SkinManager handle theming
+            Padding = new Padding(10, 5, 10, 5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var summaryLayout = new FlowLayoutPanel
         {
@@ -449,22 +453,29 @@ public partial class CustomersPanel : UserControl
     }
 
     /// <summary>
-    /// Creates a styled summary label.
+    /// Creates a styled summary label inside a GradientPanelExt.
     /// </summary>
     private Label CreateSummaryLabel(string text)
     {
-        return new Label
+        var cardPanel = new GradientPanelExt
+        {
+            Size = new Size(180, 40),
+            BorderStyle = BorderStyle.FixedSingle,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            Margin = new Padding(5)
+        };
+        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
+
+        var label = new Label
         {
             Text = text,
-            AutoSize = false,
-            Size = new Size(180, 40),
+            Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            // BackColor removed - let SkinManager handle theming
-            // ForeColor removed - let SkinManager handle theming
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
-            Margin = new Padding(5, 5, 5, 5),
-            BorderStyle = BorderStyle.FixedSingle
+            Font = new Font(Font.FontFamily, 10, FontStyle.Bold)
         };
+        cardPanel.Controls.Add(label);
+
+        return label;
     }
 
     /// <summary>
@@ -481,7 +492,7 @@ public partial class CustomersPanel : UserControl
             AllowSorting = true,
             AllowResizingColumns = true,
             SelectionMode = GridSelectionMode.Single,
-            NavigationMode = NavigationMode.Row,
+            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
             ShowRowHeader = true,
             RowHeight = 32,
             // AutoSizeColumnsMode for better column management

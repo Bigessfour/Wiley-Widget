@@ -17,7 +17,10 @@ namespace WileyWidget.WinForms.Services
         private readonly ILogger _logger;
         private readonly ConcurrentDictionary<string, Image?> _iconCache;
         private readonly object _disposeLock = new();
+        private readonly object _cacheLock = new();
         private bool _disposed;
+
+        public bool IsDisposed => _disposed;
 
         // Known icon names for validation
         private static readonly HashSet<string> KnownIconNames = new(StringComparer.OrdinalIgnoreCase)
@@ -43,7 +46,7 @@ namespace WileyWidget.WinForms.Services
             // Business
             "dashboard", "chart", "report", "reports", "user", "profile", "chat", "ai", "assistant",
             "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget", "wallet",
-            
+
             // Media and actions
             "play", "pause", "stop", "print", "printer"
         };
@@ -57,15 +60,67 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
-        /// Gets an icon with the specified name, theme, and size.
-        /// Returns null if the icon cannot be found or generated.
+        /// Creates an emergency fallback icon when the service is disposed or icons cannot be loaded.
+        /// Returns a simple text-based bitmap with the first letter of the icon name.
         /// </summary>
-        public Image? GetIcon(string name, AppTheme theme, int size)
+        private static Image CreateEmergencyFallbackIcon(string name, int size)
+        {
+            try
+            {
+                var bmp = new Bitmap(size, size);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.Transparent);
+
+
+                    // Use a fallback color since ThemeColors is unavailable
+                    Color bgColor = Color.LightGray;
+
+                    using (var brush = new SolidBrush(bgColor))
+                    {
+                        g.FillEllipse(brush, 2, 2, size - 4, size - 4);
+                    }
+
+                    // Draw first letter or "?" if name is empty
+                    var text = !string.IsNullOrWhiteSpace(name) ? name[0].ToString().ToUpperInvariant() : "?";
+                    using var font = new Font("Segoe UI", size * 0.5f, FontStyle.Bold, GraphicsUnit.Pixel);
+                    // Use black as the fallback text color since ThemeColors is unavailable
+                    Color themedTextColor = Color.Black;
+                    using var textBrush = new SolidBrush(themedTextColor);
+
+                    var stringFormat = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    };
+
+                    var rect = new RectangleF(0, 0, size, size);
+                    g.DrawString(text, font, textBrush, rect, stringFormat);
+                }
+                return bmp;
+            }
+            catch
+            {
+                // Last resort - return a simple colored bitmap
+                var bmp = new Bitmap(size, size);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.LightGray);
+                }
+                return bmp;
+            }
+        }
+
+        /// <summary>
+        /// Gets an icon with the specified name, theme, and size.
+        /// Returns an emergency fallback icon if the service is disposed.
+        /// </summary>
+        public Image? GetIcon(string name, AppTheme theme, int size, bool disabled = false)
         {
             if (_disposed)
             {
-                _logger.Warning("GetIcon called on disposed ThemeIconService");
-                return null;
+                _logger.Warning("GetIcon called on disposed ThemeIconService - returning emergency fallback icon for {Name}", name);
+                return CreateEmergencyFallbackIcon(name ?? "unknown", size);
             }
 
             if (string.IsNullOrWhiteSpace(name))
@@ -82,45 +137,210 @@ namespace WileyWidget.WinForms.Services
 
             var cacheKey = GetCacheKey(name, theme, size);
 
-            // Try to get from cache first
+            Image? icon = null;
+
+            // Try to get from cache first with thread-safe locking
             if (_iconCache.TryGetValue(cacheKey, out var cachedIcon))
             {
-                _logger.Verbose("Icon {IconName} found in cache for theme {Theme}", name, theme);
-                return cachedIcon;
-            }
-
-            _logger.Debug("Generating icon {IconName} for theme {Theme} with size {Size}", name, theme, size);
-
-            // Generate icon based on theme
-            Image? icon = theme switch
-            {
-                AppTheme.Office2019Colorful => GetOffice2019ColorfulIcon(name, size),
-                AppTheme.Office2019Dark => GetOffice2019DarkIcon(name, size),
-                AppTheme.Office2019Black => GetOffice2019DarkIcon(name, size),
-                AppTheme.Office2019DarkGray => GetOffice2019DarkIcon(name, size),
-                AppTheme.Office2019White => GetOffice2019ColorfulIcon(name, size),
-                AppTheme.Dark => GetDarkThemeIcon(name, size),
-                AppTheme.Light => GetLightThemeIcon(name, size),
-                AppTheme.HighContrastBlack => GetHighContrastIcon(name, size),
-                _ => GetFallbackIcon(name, size)
-            };
-
-            if (icon == null)
-            {
-                _logger.Warning("Icon {IconName} could not be generated for theme {Theme}", name, theme);
-
-                // Check if this is a known icon name
-                if (!KnownIconNames.Contains(name))
+                if (cachedIcon == null)
                 {
-                    _logger.Information("Unknown icon name '{IconName}' requested. Known names: {KnownNames}",
-                        name, string.Join(", ", KnownIconNames.OrderBy(n => n).Take(10)) + "...");
+                    _logger.Verbose("Icon {IconName} found in cache as null for theme {Theme}", name, theme);
+                    return null;
+                }
+
+                lock (_cacheLock)
+                {
+                    try
+                    {
+                        // Validate cached image before attempting to clone
+                        // This prevents "Parameter is not valid" exceptions in ImageAnimator
+                        _ = cachedIcon.Width;
+                        _ = cachedIcon.Height;
+                        _ = cachedIcon.PixelFormat;
+
+                        // Create a new Bitmap to ensure validity
+                        var newBitmap = new Bitmap(cachedIcon.Width, cachedIcon.Height);
+                        using (var g = Graphics.FromImage(newBitmap))
+                        {
+                            g.DrawImage(cachedIcon, 0, 0);
+                        }
+
+                        // Validate the new bitmap
+                        if (newBitmap.Width <= 0 || newBitmap.Height <= 0)
+                        {
+                            _logger.Warning("Invalid cached image for {IconName}", name);
+                            newBitmap.Dispose();
+                            // Remove corrupt entry from cache
+                            _iconCache.TryRemove(cacheKey, out _);
+                            return null;
+                        }
+
+                        _logger.Verbose("Icon {IconName} retrieved and validated from cache for theme {Theme}", name, theme);
+                        icon = newBitmap;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning(ex, "Error validating cached image for {IconName} - removing from cache", name);
+                        // Remove corrupt entry to force regeneration next time
+                        _iconCache.TryRemove(cacheKey, out _);
+                        return null;
+                    }
+                }
+            }
+            else
+            {
+                _logger.Debug("Generating icon {IconName} for theme {Theme} with size {Size}", name, theme, size);
+
+                // Generate icon based on theme
+                icon = theme switch
+                {
+                    AppTheme.Office2019Colorful => GetOffice2019ColorfulIcon(name, size),
+                    AppTheme.Office2019Dark => GetOffice2019DarkIcon(name, size),
+                    AppTheme.Office2019Black => GetOffice2019DarkIcon(name, size),
+                    AppTheme.Office2019DarkGray => GetOffice2019DarkIcon(name, size),
+                    AppTheme.Office2019White => GetOffice2019ColorfulIcon(name, size),
+                    AppTheme.Dark => GetDarkThemeIcon(name, size),
+                    AppTheme.Light => GetLightThemeIcon(name, size),
+                    AppTheme.HighContrastBlack => GetHighContrastIcon(name, size),
+                    _ => GetFallbackIcon(name, size)
+                };
+
+                if (icon == null)
+                {
+                    _logger.Warning("Icon {IconName} could not be generated for theme {Theme}", name, theme);
+
+                    // Check if this is a known icon name
+                    if (!KnownIconNames.Contains(name))
+                    {
+                        _logger.Debug("Unknown icon name '{IconName}' requested. Known names: {KnownNames}",
+                            name, string.Join(", ", KnownIconNames.OrderBy(n => n).Take(10)) + "...");
+                    }
+                }
+                else
+                {
+                    // DEFENSIVE: Convert any animated images to static bitmaps before caching
+                    // This prevents ImageAnimator exceptions when images are used in Syncfusion controls
+                    if (ImageAnimator.CanAnimate(icon))
+                    {
+                        var staticBitmap = ConvertToStaticBitmap(icon);
+                        if (staticBitmap != null)
+                        {
+                            icon.Dispose(); // Dispose the animated image
+                            icon = staticBitmap;
+                            _logger.Debug("Converted animated image to static bitmap for {IconName}", name);
+                        }
+                    }
+
+                    // Validate the generated image
+                    try
+                    {
+                        if (icon.Width <= 0 || icon.Height <= 0)
+                        {
+                            _logger.Warning("Invalid image generated for {IconName}", name);
+                            icon.Dispose();
+                            icon = null;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning(ex, "Error validating image for {IconName}", name);
+                        icon.Dispose();
+                        icon = null;
+                    }
                 }
             }
 
             // Cache the result (even if null to avoid repeated failed attempts)
-            _iconCache.TryAdd(cacheKey, icon);
+            // CRITICAL: Cache the ORIGINAL/GENERATED icon, but always return a CLONE to prevent shared disposal
+            if (icon != null)
+            {
+                // Add to cache if this was a newly generated icon (not from cache)
+                if (!_iconCache.ContainsKey(cacheKey))
+                {
+                    _iconCache.TryAdd(cacheKey, icon);
+                }
 
-            return icon;
+                // Always return a CLONE to prevent shared disposal issues
+                var clonedIcon = CloneImage(icon);
+
+                if (disabled)
+                {
+                    if (clonedIcon != null)
+                    {
+                        var disabledIcon = ApplyDisabledEffect(clonedIcon);
+                        clonedIcon.Dispose(); // Dispose the non-disabled clone
+                        return disabledIcon;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+
+                return clonedIcon;
+            }
+            else
+            {
+                _iconCache.TryAdd(cacheKey, null);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets an icon asynchronously with the specified name, theme, and size.
+        /// Returns an emergency fallback icon if the service is disposed.
+        /// </summary>
+        public Task<Image?> GetIconAsync(string name, AppTheme theme, int size, bool disabled = false)
+        {
+            if (_disposed)
+            {
+                _logger.Warning("GetIconAsync called on disposed ThemeIconService - returning emergency fallback icon for {Name}", name);
+                return Task.FromResult<Image?>(CreateEmergencyFallbackIcon(name ?? "unknown", size));
+            }
+
+            return Task.FromResult(GetIcon(name, theme, size, disabled));
+        }
+
+        /// <summary>
+        /// Applies a disabled effect to an icon (grayscale with reduced opacity).
+        /// </summary>
+        private Image? ApplyDisabledEffect(Image source)
+        {
+            if (source == null) return null;
+
+            try
+            {
+                var disabledBitmap = new Bitmap(source.Width, source.Height);
+                using (var g = Graphics.FromImage(disabledBitmap))
+                {
+                    // Create color matrix for grayscale + 50% opacity
+                    var colorMatrix = new ColorMatrix
+                    {
+                        Matrix00 = 0.299f, // Red to grayscale
+                        Matrix01 = 0.299f,
+                        Matrix02 = 0.299f,
+                        Matrix10 = 0.587f, // Green
+                        Matrix11 = 0.587f,
+                        Matrix12 = 0.587f,
+                        Matrix20 = 0.114f, // Blue
+                        Matrix21 = 0.114f,
+                        Matrix22 = 0.114f,
+                        Matrix33 = 0.5f    // 50% opacity
+                    };
+
+                    var attributes = new ImageAttributes();
+                    attributes.SetColorMatrix(colorMatrix);
+
+                    g.DrawImage(source, new Rectangle(0, 0, source.Width, source.Height), 0, 0, source.Width, source.Height, GraphicsUnit.Pixel, attributes);
+                }
+
+                return disabledBitmap;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to apply disabled effect to icon");
+                return source; // Return original if effect fails
+            }
         }
 
         /// <summary>
@@ -327,6 +547,7 @@ namespace WileyWidget.WinForms.Services
                 return null;
             }
 
+            Image? result = null;
             try
             {
                 var bitmap = new Bitmap(sourceImage.Width, sourceImage.Height);
@@ -352,13 +573,18 @@ namespace WileyWidget.WinForms.Services
                         GraphicsUnit.Pixel, attributes);
                 }
 
-                sourceImage.Dispose();
-                return bitmap;
+                result = bitmap;
             }
             catch
             {
-                return sourceImage;
+                // result remains null
             }
+            finally
+            {
+                sourceImage.Dispose();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -371,6 +597,7 @@ namespace WileyWidget.WinForms.Services
                 return null;
             }
 
+            Image? result = null;
             try
             {
                 var bitmap = new Bitmap(sourceImage.Width, sourceImage.Height);
@@ -396,12 +623,95 @@ namespace WileyWidget.WinForms.Services
                         GraphicsUnit.Pixel, attributes);
                 }
 
-                sourceImage.Dispose();
-                return bitmap;
+                result = bitmap;
             }
             catch
             {
-                return sourceImage;
+                // result remains null
+            }
+            finally
+            {
+                sourceImage.Dispose();
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Converts an animated image to a static bitmap by drawing the first frame.
+        /// </summary>
+        private static Image? ConvertToStaticBitmap(Image animatedImage)
+        {
+            if (animatedImage == null || !ImageAnimator.CanAnimate(animatedImage))
+            {
+                return animatedImage;
+            }
+
+            try
+            {
+                // Create a new bitmap with the same dimensions
+                var staticBitmap = new Bitmap(animatedImage.Width, animatedImage.Height);
+
+                // Draw the animated image onto the static bitmap (this captures the current/first frame)
+                using (var g = Graphics.FromImage(staticBitmap))
+                {
+                    g.DrawImage(animatedImage, 0, 0, animatedImage.Width, animatedImage.Height);
+                }
+
+                return staticBitmap;
+            }
+            catch (Exception ex)
+            {
+                // If conversion fails, dispose the animated image and return null to prevent ImageAnimator exceptions
+                System.Diagnostics.Debug.WriteLine($"Failed to convert animated image to static bitmap: {ex.Message}");
+                try
+                {
+                    animatedImage.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal errors
+                }
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Clones an image to create a completely independent copy.
+        /// This prevents shared disposal issues when images are used across multiple controls.
+        /// </summary>
+        private static Image? CloneImage(Image? sourceImage)
+        {
+            if (sourceImage == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Validate source before cloning
+                _ = sourceImage.Width;
+                _ = sourceImage.Height;
+                _ = sourceImage.PixelFormat;
+
+                // Create a new bitmap with the same dimensions
+                var clonedBitmap = new Bitmap(sourceImage.Width, sourceImage.Height, sourceImage.PixelFormat);
+
+                // Copy the image data
+                using (var g = Graphics.FromImage(clonedBitmap))
+                {
+                    g.CompositingMode = CompositingMode.SourceCopy;
+                    g.CompositingQuality = CompositingQuality.HighQuality;
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(sourceImage, 0, 0, sourceImage.Width, sourceImage.Height);
+                }
+
+                return clonedBitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to clone image: {ex.Message}");
+                return null;
             }
         }
 

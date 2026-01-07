@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
@@ -26,11 +28,29 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private Panel? _summaryPanel;
+    private GradientPanelExt? _summaryPanel;
     private ChartControl? _chartControl;
+    private ChartControlRegionEventWiring? _chartRegionEventWiring;
     private SfDataGrid? _metricsGrid;
     private SplitContainer? _mainSplit;
     private TableLayoutPanel? _summaryCardsPanel;
+
+    // Chart binding state (Syncfusion-recommended: bind model + batched updates)
+    private ChartSeries? _monthlyRevenueSeries;
+    private CategoryAxisDataBindModel? _monthlyRevenueBindModel;
+
+    private sealed class RevenueChartPoint
+    {
+        public RevenueChartPoint(DateTime month, double revenue)
+        {
+            Month = month;
+            Revenue = revenue;
+        }
+
+        public DateTime Month { get; }
+
+        public double Revenue { get; }
+    }
 
     // Summary metric labels
     private Label? _lblTotalRevenueValue;
@@ -42,7 +62,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     // Event handlers for cleanup
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _monthlyDataCollectionChangedHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
+
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
 
@@ -63,6 +83,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     {
         Name = "RevenueTrendsPanel";
         Size = new Size(1000, 700);
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        AutoScroll = true;
+        Padding = new Padding(8);
         Dock = DockStyle.Fill;
         AccessibleName = "Revenue Trends Panel";
         AccessibleDescription = "Displays monthly revenue trends with line chart and detailed breakdown";
@@ -95,13 +118,14 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         Controls.Add(_panelHeader);
 
         // Summary cards panel (top section)
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 100,
             Padding = new Padding(8),
             AccessibleName = "Summary metrics panel"
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         _summaryCardsPanel = new TableLayoutPanel
         {
@@ -146,6 +170,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             AccessibleName = "Revenue trends line chart",
             AccessibleDescription = "Line chart showing revenue trends over time"
         };
+        _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
         ConfigureChart();
         _mainSplit.Panel1.Controls.Add(_chartControl);
 
@@ -207,7 +232,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
     {
-        var cardPanel = new Panel
+        var cardPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(4),
@@ -215,6 +240,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             AccessibleName = $"{title} card",
             AccessibleDescription = description
         };
+        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
 
         var lblTitle = new Label
         {
@@ -252,11 +278,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         if (_chartControl == null) return;
 
         // Rely on global SfSkinManager theme per project punchlist rules - NO per-control theme overrides
-        _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        _chartControl.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
-
         // Chart area configuration - no manual colors, rely on theme
-        _chartControl.ElementsSpacing = 5;
+        ChartControlDefaults.Apply(_chartControl);
 
         // Configure X-axis for date values per Syncfusion datetime axis documentation
         _chartControl.PrimaryXAxis.ValueType = ChartValueType.DateTime;
@@ -294,8 +317,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
         catch { }
 
-        // Enable tooltips and legend per Syncfusion best practices
-        _chartControl.ShowToolTips = true;
+        // Enable legend per Syncfusion best practices
         _chartControl.ShowLegend = true;
         _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
         _chartControl.LegendPosition = ChartDock.Bottom;
@@ -303,17 +325,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _chartControl.Legend.Font = new Font("Segoe UI", 9F);
         // Legend colors inherited from global theme
 
-        // Enable zooming and scrolling for better data exploration
-        try
-        {
-            var chartType = _chartControl.GetType();
-            var propZoom = chartType.GetProperty("EnableZooming");
-            if (propZoom != null && propZoom.CanWrite)
-            {
-                propZoom.SetValue(_chartControl, true);
-            }
-        }
-        catch { }
     }
 
     /// <summary>
@@ -509,7 +520,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             if (_lblGrowthRateValue != null)
             {
                 _lblGrowthRateValue.Text = ViewModel.GrowthRate.ToString("F1", CultureInfo.CurrentCulture) + "%";
-                // Semantic status color: green for positive growth, red for negative
+                // Semantic status color: green for positive growth, red for negative (allowed by project rules)
                 _lblGrowthRateValue.ForeColor = ViewModel.GrowthRate >= 0 ? Color.Green : Color.Red;
             }
 
@@ -523,8 +534,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     }
 
     /// <summary>
-    /// Updates chart with line series data per Syncfusion ChartControl API.
-    /// Configures line series with proper styling and data points.
+    /// Updates chart using Syncfusion-recommended data binding model.
+    /// Avoids per-point chart updates by binding a data source and batching redraw.
     /// </summary>
     private void UpdateChartData()
     {
@@ -532,32 +543,50 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         try
         {
-            _chartControl.Series.Clear();
-
-            if (!ViewModel.MonthlyData.Any())
-                return;
-
-            // Create line series per Syncfusion best practices
-            var lineSeries = new ChartSeries("Monthly Revenue", ChartSeriesType.Line);
-
-            // Configure series style - rely on theme colors, no manual color assignments
-            lineSeries.Style.Border.Width = 2;
-
-            // Enable markers per Syncfusion line chart documentation
-            lineSeries.Style.Symbol.Shape = ChartSymbolShape.Circle;
-            lineSeries.Style.Symbol.Size = new Size(8, 8);
-            // Symbol colors inherited from theme
-
-            // Add data points with DateTime X values
-            foreach (var data in ViewModel.MonthlyData)
+            _chartControl.BeginUpdate();
+            try
             {
-                lineSeries.Points.Add(data.Month, (double)data.Revenue);
+                _chartControl.Series.Clear();
+                _monthlyRevenueSeries = null;
+                _monthlyRevenueBindModel = null;
+
+                if (!ViewModel.MonthlyData.Any())
+                    return;
+
+                var dataSource = new BindingList<RevenueChartPoint>(
+                    ViewModel.MonthlyData
+                        .Select(d => new RevenueChartPoint(d.Month, (double)d.Revenue))
+                        .ToList());
+
+                var bindModel = new CategoryAxisDataBindModel(dataSource)
+                {
+                    CategoryName = nameof(RevenueChartPoint.Month),
+                    YNames = new[] { nameof(RevenueChartPoint.Revenue) }
+                };
+
+                var lineSeries = new ChartSeries("Monthly Revenue", ChartSeriesType.Line)
+                {
+                    CategoryModel = bindModel
+                };
+
+                // Configure series style - rely on theme colors, no manual color assignments
+                lineSeries.Style.Border.Width = 2;
+
+                // Markers are OK for monthly granularity; colors inherit from theme
+                lineSeries.Style.Symbol.Shape = ChartSymbolShape.Circle;
+                lineSeries.Style.Symbol.Size = new Size(8, 8);
+
+                // Configure tooltip format
+                lineSeries.PointsToolTipFormat = "{1:C0}";
+
+                _chartControl.Series.Add(lineSeries);
+                _monthlyRevenueSeries = lineSeries;
+                _monthlyRevenueBindModel = bindModel;
             }
-
-            // Configure tooltip format
-            lineSeries.PointsToolTipFormat = "{1:C0}";
-
-            _chartControl.Series.Add(lineSeries);
+            finally
+            {
+                _chartControl.EndUpdate();
+            }
         }
         catch (Exception ex)
         {
@@ -640,21 +669,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private void SubscribeToThemeChanges()
     {
-        _themeChangedHandler = (s, theme) =>
-        {
-            if (IsDisposed) return;
+        // Theme subscription removed - handled by SfSkinManager
 
-            if (InvokeRequired)
-            {
-                BeginInvoke(new System.Action(() => ApplyTheme()));
-            }
-            else
-            {
-                ApplyTheme();
-            }
-        };
-
-        ThemeManager.ThemeChanged += _themeChangedHandler;
     }
 
     private void ApplyTheme()
@@ -662,8 +678,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         try
         {
             // Theme is applied automatically by SfSkinManager cascade from parent form
-            // No manual color assignments needed per project theme compliance rules
-            ThemeManager.ApplyThemeToControl(this);
+            // No manual application needed
         }
         catch
         {
@@ -681,8 +696,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             // Unsubscribe from events
             try
             {
-                if (_themeChangedHandler != null)
-                    ThemeManager.ThemeChanged -= _themeChangedHandler;
+                // Theme subscription removed - handled by SfSkinManager
             }
             catch { }
 
@@ -713,6 +727,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             catch { }
 
             // Dispose controls using SafeDispose pattern
+            try { _chartRegionEventWiring?.Dispose(); } catch { }
+            _chartRegionEventWiring = null;
             try { _chartControl?.Dispose(); } catch { }
             try { _metricsGrid?.SafeClearDataSource(); } catch { }
             try { _metricsGrid?.SafeDispose(); } catch { }

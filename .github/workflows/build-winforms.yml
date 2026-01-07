@@ -179,6 +179,12 @@ jobs:
         shell: pwsh
         run: dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --no-restore --verbosity minimal
 
+      - name: Test - WinForms ChartControl defaults (filtered)
+        shell: powershell
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter "Category=Chart" --configuration Release --logger trx --results-directory ./TestResults/WinFormsChart
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Publish Application
         shell: pwsh
         run: dotnet publish src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore

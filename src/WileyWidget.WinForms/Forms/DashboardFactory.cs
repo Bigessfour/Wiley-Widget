@@ -4,10 +4,15 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Controls.Styles;
+using Syncfusion.Drawing;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
@@ -41,7 +46,8 @@ public static class DashboardFactory
                 ColumnCount = 1,
                 RowCount = 5,
                 Padding = new Padding(12, 12, 12, 12),
-                CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None,
+                BackColor = Color.Transparent
             };
 
             for (int i = 0; i < 5; i++)
@@ -155,11 +161,11 @@ public static class DashboardFactory
                         {
                             if (!dashboardPanel.IsDisposed)
                             {
-                                if (accountsDesc != null) accountsDesc.Text = "Unavailable";
-                                if (chartsDesc != null) chartsDesc.Text = "Unavailable";
-                                if (settingsDesc != null) settingsDesc.Text = "Unavailable";
-                                if (reportsDesc != null) reportsDesc.Text = "Unavailable";
-                                if (budgetStatusDesc != null) budgetStatusDesc.Text = "Unavailable";
+                                accountsDesc?.Text = "Unavailable";
+                                chartsDesc?.Text = "Unavailable";
+                                settingsDesc?.Text = "Unavailable";
+                                reportsDesc?.Text = "Unavailable";
+                                budgetStatusDesc?.Text = "Unavailable";
                             }
                         }
                         catch (System.Exception inner)
@@ -194,14 +200,15 @@ public static class DashboardFactory
     /// <param name="title">Card title</param>
     /// <param name="description">Card description</param>
     /// <returns>Tuple of (Panel, DescriptionLabel)</returns>
-    private static (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description)
+    private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description)
     {
-        Panel panel = new Panel
+        GradientPanelExt panel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(12, 8, 12, 8),
             Margin = new Padding(4, 4, 4, 8),
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
 
         // Accessibility: give controls deterministic names for UI automation

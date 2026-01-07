@@ -15,7 +15,7 @@ namespace WileyWidget.Services;
 
 /// <summary>
 /// Encrypted local secret vault service using Windows DPAPI.
-/// Provides secure storage of secrets encrypted with user-specific keys.
+/// Provides secure storage of secrets encrypted with machine-specific keys.
 /// </summary>
 public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDisposable
 {
@@ -23,6 +23,8 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     private readonly string _vaultDirectory;
     private readonly string _entropyFile;
+    private const DataProtectionScope SecretProtectionScope = DataProtectionScope.LocalMachine;
+
     private byte[]? _entropy;
     private bool _disposed;
 
@@ -166,31 +168,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             File.WriteAllText(_entropyFile, newEncryptedEntropyBase64);
             File.SetAttributes(_entropyFile, FileAttributes.Hidden);
 
-            // Restrict entropy file to current user
-            try
-            {
-                var fi = new FileInfo(_entropyFile);
-                var sec = fi.GetAccessControl();
-                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                var user = identity?.User;
-                if (user != null)
-                {
-                    var rules = sec.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-                    foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
-                    {
-                        sec.RemoveAccessRule(r);
-                    }
-                    sec.SetOwner(user);
-                    sec.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
-                        System.Security.AccessControl.FileSystemRights.FullControl,
-                        System.Security.AccessControl.AccessControlType.Allow));
-                    fi.SetAccessControl(sec);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to restrict entropy file ACL - continuing with default permissions");
-            }
+            // Rely on default filesystem ACLs for entropy; machine-scope DPAPI already protects contents
 
             _logger.LogInformation("Generated new encryption entropy for secret vault");
             return newEntropy;
@@ -219,10 +197,38 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             var encryptedBase64 = await File.ReadAllTextAsync(filePath);
             var encryptedBytes = Convert.FromBase64String(encryptedBase64);
 
-            var decryptedBytes = ProtectedData.Unprotect(
-                encryptedBytes,
-                _entropy,
-                DataProtectionScope.CurrentUser);
+            byte[] decryptedBytes;
+            try
+            {
+                decryptedBytes = ProtectedData.Unprotect(
+                    encryptedBytes,
+                    _entropy,
+                    SecretProtectionScope);
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogWarning(ex, "Failed to decrypt secret '{SecretName}' with machine scope; trying legacy user scope for migration", secretName);
+
+                decryptedBytes = ProtectedData.Unprotect(
+                    encryptedBytes,
+                    _entropy,
+                    DataProtectionScope.CurrentUser);
+
+                try
+                {
+                    var migratedEncrypted = ProtectedData.Protect(
+                        decryptedBytes,
+                        _entropy,
+                        SecretProtectionScope);
+
+                    await File.WriteAllTextAsync(filePath, Convert.ToBase64String(migratedEncrypted)).ConfigureAwait(false);
+                    _logger.LogInformation("Migrated secret '{SecretName}' to machine-scope encryption", secretName);
+                }
+                catch (Exception migrateEx)
+                {
+                    _logger.LogWarning(migrateEx, "Failed to migrate secret '{SecretName}' to machine-scope encryption", secretName);
+                }
+            }
 
             var secret = Encoding.UTF8.GetString(decryptedBytes);
             _logger.LogDebug("Retrieved secret '{SecretName}' from encrypted vault", secretName);
@@ -230,7 +236,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
         catch (CryptographicException ex)
         {
-            _logger.LogError(ex, "Failed to decrypt secret '{SecretName}' - may be corrupted or from different user/machine", secretName);
+            _logger.LogError(ex, "Failed to decrypt secret '{SecretName}' - may be corrupted or from different machine/scope", secretName);
             return null;
         }
         catch (Exception ex)
@@ -247,12 +253,14 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
     /// <summary>
     /// Synchronous variant used by configuration code paths where async is not possible.
     /// Uses blocking file I/O and semaphore waits to maintain thread-safety.
+    /// NOTE: Avoid calling from UI thread - use GetSecretAsync instead for async contexts.
     /// </summary>
     public string? GetSecret(string secretName)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
 
+        // Synchronous wait is intentional for sync API - callers expect blocking behavior
         _semaphore.Wait();
         try
         {
@@ -265,10 +273,38 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             var encryptedBase64 = File.ReadAllText(filePath);
             var encryptedBytes = Convert.FromBase64String(encryptedBase64);
 
-            var decryptedBytes = ProtectedData.Unprotect(
-                encryptedBytes,
-                _entropy,
-                DataProtectionScope.CurrentUser);
+            byte[] decryptedBytes;
+            try
+            {
+                decryptedBytes = ProtectedData.Unprotect(
+                    encryptedBytes,
+                    _entropy,
+                    SecretProtectionScope);
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogWarning(ex, "Failed to decrypt secret '{SecretName}' with machine scope (sync); trying legacy user scope for migration", secretName);
+
+                decryptedBytes = ProtectedData.Unprotect(
+                    encryptedBytes,
+                    _entropy,
+                    DataProtectionScope.CurrentUser);
+
+                try
+                {
+                    var migratedEncrypted = ProtectedData.Protect(
+                        decryptedBytes,
+                        _entropy,
+                        SecretProtectionScope);
+
+                    File.WriteAllText(filePath, Convert.ToBase64String(migratedEncrypted));
+                    _logger.LogInformation("Migrated secret '{SecretName}' to machine-scope encryption (sync)", secretName);
+                }
+                catch (Exception migrateEx)
+                {
+                    _logger.LogWarning(migrateEx, "Failed to migrate secret '{SecretName}' to machine-scope encryption (sync)", secretName);
+                }
+            }
 
             var secret = Encoding.UTF8.GetString(decryptedBytes);
             _logger.LogDebug("Retrieved secret '{SecretName}' from encrypted vault (sync)", secretName);
@@ -276,7 +312,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
         catch (CryptographicException ex)
         {
-            _logger.LogError(ex, "Failed to decrypt secret '{SecretName}' - may be corrupted or from different user/machine", secretName);
+            _logger.LogError(ex, "Failed to decrypt secret '{SecretName}' - may be corrupted or from different machine/scope", secretName);
             return null;
         }
         catch (Exception ex)
@@ -296,6 +332,8 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         if (string.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
         if (value == null) throw new ArgumentNullException(nameof(value));
 
+        // Synchronous wait is intentional for sync API - callers expect blocking behavior
+        // For async contexts, use SetSecretAsync instead
         _semaphore.Wait();
         try
         {
@@ -304,7 +342,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             var encryptedBytes = ProtectedData.Protect(
                 secretBytes,
                 _entropy,
-                DataProtectionScope.CurrentUser);
+                SecretProtectionScope);
             var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
             File.WriteAllText(filePath, encryptedBase64);
             _logger.LogDebug("Stored secret '{SecretName}' in encrypted vault (sync)", key);
@@ -335,7 +373,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 var encryptedBytes = ProtectedData.Protect(
                     plainBytes,
                     _entropy,
-                    DataProtectionScope.CurrentUser);
+                    SecretProtectionScope);
 
                 var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
                 var filePath = GetSecretFilePath(secretName);
@@ -373,30 +411,6 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                     await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
                 }
 
-                try
-                {
-                    var fileInfo = new FileInfo(tmp);
-                    var security = fileInfo.GetAccessControl();
-                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                    var user = identity?.User;
-                    if (user != null)
-                    {
-                        var rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
-                        {
-                            security.RemoveAccessRule(r);
-                        }
-                        security.SetOwner(user);
-                        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
-                            System.Security.AccessControl.FileSystemRights.FullControl,
-                            System.Security.AccessControl.AccessControlType.Allow));
-                        fileInfo.SetAccessControl(security);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file");
-                }
 
                 // Atomic write operation with proper error handling
                 try
@@ -718,7 +732,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 var encryptedBytes = ProtectedData.Protect(
                     plainBytes,
                     _entropy,
-                    DataProtectionScope.CurrentUser);
+                    SecretProtectionScope);
 
                 var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
                 var filePath = GetSecretFilePath(secretName);
@@ -738,31 +752,6 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
                 {
                     _logger.LogWarning(createTmpEx, "Failed to create tmp file '{TmpFile}' in RotateSecretAsync using FileStream - falling back to WriteAllTextAsync", tmp);
                     await File.WriteAllTextAsync(tmp, encryptedBase64).ConfigureAwait(false);
-                }
-                // try set ACL
-                try
-                {
-                    var fileInfo = new FileInfo(tmp);
-                    var security = fileInfo.GetAccessControl();
-                    var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                    var user = identity?.User;
-                    if (user != null)
-                    {
-                        var rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-                        foreach (System.Security.AccessControl.FileSystemAccessRule r in rules)
-                        {
-                            security.RemoveAccessRule(r);
-                        }
-                        security.SetOwner(user);
-                        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(user,
-                            System.Security.AccessControl.FileSystemRights.FullControl,
-                            System.Security.AccessControl.AccessControlType.Allow));
-                        fileInfo.SetAccessControl(security);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to set file ACL on secret tmp file during rotation");
                 }
 
                 // Use Replace only if destination exists, otherwise Move

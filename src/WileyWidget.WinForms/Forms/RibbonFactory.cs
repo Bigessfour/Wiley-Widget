@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -41,7 +42,8 @@ public static class RibbonFactory
     /// <exception cref="ArgumentNullException">Thrown when form parameter is null</exception>
     public static (RibbonControlAdv Ribbon, ToolStripTabItem HomeTab) CreateRibbon(
         MainForm form,
-        ILogger? logger)
+        ILogger? logger,
+        IThemeIconService? iconService = null)
     {
         if (form == null)
         {
@@ -55,13 +57,23 @@ public static class RibbonFactory
             AccessibleDescription = "Main application ribbon with navigation and tools",
             Dock = (DockStyleEx)DockStyle.Top,
             MinimumSize = new System.Drawing.Size(800, 120),
-            // Menu button configuration (optional - enables application menu)
+            // Menu button configuration - enables Backstage view
             MenuButtonText = "File",
             MenuButtonWidth = 54,
-            MenuButtonVisible = false, // Set to true if implementing File menu
+            MenuButtonVisible = true, // Required for Backstage access
             // Launcher button style for panel launchers
             LauncherStyle = Syncfusion.Windows.Forms.Tools.LauncherStyle.Office2007
         };
+
+        // Initialize Backstage (File menu) per Syncfusion API
+        // BackStageView requires IContainer for component model support
+        var components = new System.ComponentModel.Container();
+        var backStageView = new Syncfusion.Windows.Forms.BackStageView(components);
+        var backStage = new Syncfusion.Windows.Forms.BackStage();
+        backStageView.BackStage = backStage;
+        backStageView.HostForm = form;
+        form.Disposed += (_, _) => components.Dispose();
+        ribbon.BackStageView = backStageView;
 
         // Performance optimization: reduce redraws during layout changes
         ribbon.SuspendLayout();
@@ -69,20 +81,12 @@ public static class RibbonFactory
         // CRITICAL: SfSkinManager is SOLE PROPRIETOR of all theme and color decisions (per approved workflow)
         // Explicit theme application (defensive coding - ensures theme applied even if cascade fails)
         // NO manual color assignments (BackColor, ForeColor) - theme cascade handles all child controls
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-        try
-        {
-            SfSkinManager.SetVisualStyle(ribbon, currentTheme);
-            // Match OfficeColorScheme to theme for consistent color tables
-            ribbon.OfficeColorScheme = currentTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase)
-                ? Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed
-                : Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed;
-            logger?.LogDebug("[RIBBON_FACTORY] Theme explicitly applied via SfSkinManager: {Theme}", currentTheme);
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "[RIBBON_FACTORY] Failed to apply explicit theme to Ribbon - relying on cascade from parent");
-        }
+        var currentThemeString = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        var currentTheme = MapTheme(currentThemeString);
+        // Theme will cascade from MainForm via SfSkinManager.SetVisualStyle applied at form level
+        ribbon.OfficeColorScheme = currentThemeString.Contains("Dark", StringComparison.OrdinalIgnoreCase)
+            ? Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed
+            : Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed;
 
         var homeTab = new ToolStripTabItem
         {
@@ -116,24 +120,77 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var dashboardBtn = CreateNavButton("Nav_Dashboard", MainFormResources.Dashboard, false,
+        var dashboardBtn = CreateNavButton("Nav_Dashboard", MainFormResources.Dashboard, iconService, "dashboard", currentTheme,
             () => form.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true));
 
-        var accountsBtn = CreateNavButton("Nav_Accounts", MainFormResources.Accounts, false,
+        var accountsBtn = CreateNavButton("Nav_Accounts", MainFormResources.Accounts, iconService, "accounts", currentTheme,
             () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true));
 
-        var budgetBtn = CreateNavButton("Nav_Budget", "Budget", false,
+        var budgetBtn = CreateNavButton("Nav_Budget", "Budget", iconService, "budget", currentTheme,
             () => form.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true));
 
-        var chartsBtn = CreateNavButton("Nav_Charts", MainFormResources.Charts, false,
+        var chartsBtn = CreateNavButton("Nav_Charts", MainFormResources.Charts, iconService, "chart", currentTheme,
             () => form.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true));
+
+        var customersBtn = CreateNavButton("Nav_Customers", "Customers", iconService, "customers", currentTheme,
+            () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true));
+
+        var panelsDropDown = new ToolStripDropDownButton
+        {
+            Name = "Nav_Panels",
+            AccessibleName = "Panels",
+            AccessibleDescription = "Open any application panel",
+            Text = "Panels",
+            AutoSize = true,
+            ToolTipText = "Open any panel"
+        };
+
+        // Populate panels dropdown from PanelRegistry (only those with ShowInRibbonPanelsMenu = true)
+        var panelsToShow = PanelRegistry.Panels.Where(p => p.ShowInRibbonPanelsMenu).OrderBy(p => p.DisplayName);
+        foreach (var p in panelsToShow)
+        {
+            var safeName = $"Panel_{string.Concat(p.DisplayName.Where(c => !char.IsWhiteSpace(c) && c != '&'))}".Replace(' ', '_');
+            var item = new ToolStripMenuItem(p.DisplayName)
+            {
+                Name = safeName,
+                ToolTipText = $"Open {p.DisplayName}",
+                AccessibleName = $"Open {p.DisplayName}"
+            };
+
+            item.Click += (s, e) =>
+            {
+                try
+                {
+                    // Use reflection to invoke generic ShowPanel<TPanel> on MainForm
+                    var showMethod = form.GetType().GetMethod("ShowPanel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                    if (showMethod == null)
+                    {
+                        Serilog.Log.Error("RibbonFactory: ShowPanel method not found via reflection for Panels menu navigation");
+                        return;
+                    }
+
+                    var generic = showMethod.MakeGenericMethod(p.PanelType);
+                    generic.Invoke(form, new object[] { p.DisplayName, p.DefaultDock, true });
+                    Serilog.Log.Information("[RIBBON_PANELS] Invoked ShowPanel<{PanelType}> for {Panel}", p.PanelType.Name, p.DisplayName);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Error(ex, "[RIBBON_PANELS] Failed to open panel {Panel}", p.DisplayName);
+                    MessageBox.Show($"Failed to open panel {p.DisplayName}: {ex.Message}", "Panel Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+
+            panelsDropDown.DropDownItems.Add(item);
+        }
 
         navPanel.Items.AddRange(new ToolStripItem[]
         {
             dashboardBtn,
             accountsBtn,
             budgetBtn,
-            chartsBtn
+            chartsBtn,
+            customersBtn,
+            panelsDropDown
         });
 
         // ===== ADVANCED PANEL =====
@@ -146,13 +203,13 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var analyticsBtn = CreateNavButton("Nav_Analytics", "Analytics", false,
+        var analyticsBtn = CreateNavButton("Nav_Analytics", "Analytics", iconService, "analytics", currentTheme,
             () => form.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true));
 
-        var auditLogBtn = CreateNavButton("Nav_AuditLog", "Audit Log", false,
+        var auditLogBtn = CreateNavButton("Nav_AuditLog", "Audit Log", iconService, "audit", currentTheme,
             () => form.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true));
 
-        var reportsBtn = CreateNavButton("Nav_Reports", MainFormResources.Reports, false,
+        var reportsBtn = CreateNavButton("Nav_Reports", MainFormResources.Reports, iconService, "reports", currentTheme,
             () =>
             {
                 try
@@ -182,10 +239,10 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var aiChatBtn = CreateNavButton("Nav_AIChat", "AI Chat", false,
+        var aiChatBtn = CreateNavButton("Nav_AIChat", "AI Chat", iconService, "ai", currentTheme,
             () => form.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true));
 
-        var quickBooksBtn = CreateNavButton("Nav_QuickBooks", "💳 QuickBooks", false,
+        var quickBooksBtn = CreateNavButton("Nav_QuickBooks", "💳 QuickBooks", iconService, "quickbooks", currentTheme,
             () => form.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true));
 
         integrationPanel.Items.AddRange(new ToolStripItem[]
@@ -204,7 +261,7 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var settingsBtn = CreateNavButton("Nav_Settings", MainFormResources.Settings, false,
+        var settingsBtn = CreateNavButton("Nav_Settings", MainFormResources.Settings, iconService, "settings", currentTheme,
             () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true));
 
         // Search box
@@ -335,12 +392,35 @@ public static class RibbonFactory
         // Resume layout updates after all items added
         ribbon.ResumeLayout(performLayout: true);
 
+        // Initialize Backstage items after ribbon is configured
+        InitializeBackstage(ribbon, backStage, form, logger, components);
+
         // QuickAccessToolbar (QAT)
         InitializeQuickAccessToolbar(ribbon, logger, dashboardBtn, accountsBtn, reportsBtn, settingsBtn);
 
-        logger?.LogDebug("Ribbon initialized via factory with ToolStripPanelItem containers, {PanelCount} panels, accessibility enabled", 5);
+        logger?.LogDebug("Ribbon initialized via factory with ToolStripPanelItem containers, {PanelCount} panels, Backstage enabled, accessibility enabled", 5);
 
         return (ribbon, homeTab);
+    }
+
+    /// <summary>
+    /// Maps a theme string to a normalized AppTheme enum value.
+    /// </summary>
+    private static AppTheme MapTheme(string themeString)
+    {
+        // Normalize recognized theme identifiers; fall back to the application's default theme.
+        return themeString switch
+        {
+            "Office2019Colorful" => AppTheme.Office2019Colorful,
+            "Office2019Dark" => AppTheme.Office2019Dark,
+            "Office2019Black" => AppTheme.Office2019Black,
+            "Office2019DarkGray" => AppTheme.Office2019DarkGray,
+            "Office2019White" => AppTheme.Office2019Colorful,
+            "Dark" => AppTheme.Dark,
+            "Light" => AppTheme.Light,
+            "HighContrastBlack" => AppTheme.HighContrastBlack,
+            _ => AppTheme.Office2019Colorful
+        };
     }
 
     /// <summary>
@@ -352,21 +432,42 @@ public static class RibbonFactory
     /// </remarks>
     /// <param name="name">Unique button name (e.g., "Nav_Dashboard")</param>
     /// <param name="text">Display text shown on the button</param>
-    /// <param name="enabled">Initial enabled state (typically false until panels are ready)</param>
+    /// <param name="iconService">Optional icon service for button icons</param>
+    /// <param name="iconName">Optional icon name to retrieve from icon service</param>
+    /// <param name="theme">Current app theme for icon generation</param>
     /// <param name="onClick">Action to execute when button is clicked (typically ShowPanel call)</param>
     /// <returns>Configured ToolStripButton ready to add to a ToolStripPanelItem</returns>
-    private static ToolStripButton CreateNavButton(string name, string text, bool enabled, System.Action onClick)
+    private static ToolStripButton CreateNavButton(string name, string text, IThemeIconService? iconService, string? iconName, AppTheme theme, System.Action onClick)
     {
         var btn = new ToolStripButton(text)
         {
             Name = name,
             AccessibleName = name.Replace("Nav_", string.Empty, StringComparison.Ordinal).Replace("_", " ", StringComparison.Ordinal),
             AccessibleDescription = $"Navigate to {text} panel",
-            Enabled = enabled,
+            Enabled = true,
             AutoSize = true,
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
-            ToolTipText = $"Open {text} panel"
+            ToolTipText = $"Open {text} panel",
+            ImageScaling = ToolStripItemImageScaling.None
         };
+
+        // Set icon with disposal check to prevent "Parameter is not valid" errors
+        if (!string.IsNullOrEmpty(iconName) && iconService != null && !iconService.IsDisposed)
+        {
+            try
+            {
+                btn.Image = iconService.GetIcon(iconName, theme, 16);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "[RIBBON_FACTORY] Failed to get icon for '{IconName}'", iconName);
+                btn.Image = null;
+            }
+        }
+        else
+        {
+            btn.Image = null;
+        }
         // Wire click handler with comprehensive error handling and logging
         btn.Click += (s, e) =>
         {
@@ -384,7 +485,7 @@ public static class RibbonFactory
             }
         };
 
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [RIBBON_FACTORY] Created navigation button '{name}' ('{text}'), Enabled={enabled}");
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [RIBBON_FACTORY] Created navigation button '{name}' ('{text}'), Enabled=true");
         return btn;
     }
 
@@ -429,6 +530,237 @@ public static class RibbonFactory
         };
 
         return btn;
+    }
+
+    /// <summary>
+    /// Initializes the Backstage view with tabs and buttons per Syncfusion API.
+    /// </summary>
+    /// <remarks>
+    /// <para>Backstage provides File menu functionality - Info, Options, Save, Export, Print, Close.</para>
+    /// <para>Uses BackStageTab for tabbed content and BackStageButton for actions.</para>
+    /// <para>Per Syncfusion API: Add items via BackStageView.BackStageItems collection.</para>
+    /// </remarks>
+    /// <param name="ribbon">RibbonControlAdv instance containing the Backstage</param>
+    /// <param name="backStage">BackStageView instance to configure</param>
+    /// <param name="form">MainForm for navigation and actions</param>
+    /// <param name="logger">Optional logger for diagnostics</param>
+    /// <param name="components">Component container for proper disposal</param>
+    private static void InitializeBackstage(
+        RibbonControlAdv ribbon,
+        Syncfusion.Windows.Forms.BackStage backStage,
+        MainForm form,
+        ILogger? logger,
+        System.ComponentModel.IContainer components)
+    {
+        if (backStage == null)
+        {
+            logger?.LogWarning("[RIBBON_FACTORY] Cannot initialize Backstage: BackStage is null");
+            return;
+        }
+
+
+        try
+        {
+
+            // ===== INFO TAB (Application info, recent files) =====
+            var infoTab = new Syncfusion.Windows.Forms.BackStageTab
+            {
+                Text = "Info",
+                AccessibleName = "Backstage Info",
+                AccessibleDescription = "Application information"
+            };
+            components.Add(infoTab);
+
+            // Add info content panel
+            var infoPanel = new System.Windows.Forms.Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new System.Windows.Forms.Padding(20)
+            };
+
+            var infoLabel = new System.Windows.Forms.Label
+            {
+                Text = "Wiley Widget\n\nVersion: 1.0.0\nBudget Management System\n\n© 2025 Wiley Widget Inc.",
+                AutoSize = true,
+                Font = new System.Drawing.Font("Segoe UI", 10F),
+                Location = new System.Drawing.Point(20, 20)
+            };
+            infoPanel.Controls.Add(infoLabel);
+            infoTab.Controls.Add(infoPanel);
+
+            // ===== OPTIONS TAB (Settings) =====
+            var optionsTab = new Syncfusion.Windows.Forms.BackStageTab
+            {
+                Text = "Options",
+                AccessibleName = "Backstage Options",
+                AccessibleDescription = "Application options"
+            };
+            components.Add(optionsTab);
+
+            var optionsPanel = new System.Windows.Forms.Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new System.Windows.Forms.Padding(20)
+            };
+
+            var optionsLabel = new System.Windows.Forms.Label
+            {
+                Text = "Application Settings",
+                AutoSize = true,
+                Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
+                Location = new System.Drawing.Point(20, 20)
+            };
+            optionsPanel.Controls.Add(optionsLabel);
+
+            var openSettingsBtn = new System.Windows.Forms.Button
+            {
+                Text = "Open Settings Panel",
+                Size = new System.Drawing.Size(200, 32),
+                Location = new System.Drawing.Point(20, 60),
+                FlatStyle = FlatStyle.System
+            };
+            openSettingsBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                    logger?.LogInformation("[BACKSTAGE] Opened Settings panel from Options tab");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[BACKSTAGE] Failed to open Settings panel");
+                    MessageBox.Show($"Failed to open Settings: {ex.Message}", "Settings Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+            optionsPanel.Controls.Add(openSettingsBtn);
+            optionsTab.Controls.Add(optionsPanel);
+
+            // ===== EXPORT TAB (Data export options) =====
+            var exportTab = new Syncfusion.Windows.Forms.BackStageTab
+            {
+                Text = "Export",
+                AccessibleName = "Backstage Export",
+                AccessibleDescription = "Data export options"
+            };
+            components.Add(exportTab);
+
+            var exportPanel = new System.Windows.Forms.Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new System.Windows.Forms.Padding(20)
+            };
+
+            var exportLabel = new System.Windows.Forms.Label
+            {
+                Text = "Export Data",
+                AutoSize = true,
+                Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
+                Location = new System.Drawing.Point(20, 20)
+            };
+            exportPanel.Controls.Add(exportLabel);
+
+            var exportExcelBtn = new System.Windows.Forms.Button
+            {
+                Text = "Export Active Grid to Excel",
+                Size = new System.Drawing.Size(200, 32),
+                Location = new System.Drawing.Point(20, 60),
+                FlatStyle = FlatStyle.System
+            };
+            exportExcelBtn.Click += async (s, e) =>
+            {
+                try
+                {
+                    await form.ExportActiveGridToExcelInternal();
+                    logger?.LogInformation("[BACKSTAGE] Exported active grid to Excel");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[BACKSTAGE] Excel export failed");
+                    MessageBox.Show($"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+            exportPanel.Controls.Add(exportExcelBtn);
+            exportTab.Controls.Add(exportPanel);
+
+            // ===== BUTTONS (Save, Print, Close) =====
+            var saveButton = new Syncfusion.Windows.Forms.BackStageButton
+            {
+                Text = "Save",
+                AccessibleName = "Backstage Save",
+                AccessibleDescription = "Save current data"
+            };
+            saveButton.Click += (s, e) =>
+            {
+                try
+                {
+                    logger?.LogInformation("[BACKSTAGE] Save clicked - placeholder for save logic");
+                    MessageBox.Show("Save functionality placeholder", "Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[BACKSTAGE] Save action failed");
+                }
+            };
+
+            var printButton = new Syncfusion.Windows.Forms.BackStageButton
+            {
+                Text = "Print",
+                AccessibleName = "Backstage Print",
+                AccessibleDescription = "Print current data"
+            };
+            printButton.Click += (s, e) =>
+            {
+                try
+                {
+                    logger?.LogInformation("[BACKSTAGE] Print clicked - placeholder for print logic");
+                    MessageBox.Show("Print functionality placeholder", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[BACKSTAGE] Print action failed");
+                }
+            };
+
+            var closeButton = new Syncfusion.Windows.Forms.BackStageButton
+            {
+                Text = "Close",
+                AccessibleName = "Backstage Close",
+                AccessibleDescription = "Close the application"
+            };
+            closeButton.Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom;
+            closeButton.Click += (s, e) =>
+            {
+                try
+                {
+                    form.Close();
+                    logger?.LogInformation("[BACKSTAGE] Application closed via Backstage");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[BACKSTAGE] Close action failed");
+                }
+            };
+
+            components.Add(saveButton);
+            components.Add(printButton);
+            components.Add(closeButton);
+
+            // Add items to BackStage via Controls collection (per Syncfusion sample)
+            backStage.Controls.Add(infoTab);
+            backStage.Controls.Add(optionsTab);
+            backStage.Controls.Add(exportTab);
+            backStage.Controls.Add(saveButton);
+            backStage.Controls.Add(printButton);
+            backStage.Controls.Add(closeButton);
+
+
+
+            logger?.LogDebug("[RIBBON_FACTORY] Backstage initialized with {TabCount} tabs, {ButtonCount} buttons", 3, 3);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "[RIBBON_FACTORY] Failed to initialize Backstage");
+        }
     }
 
     /// <summary>

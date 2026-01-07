@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,7 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Controls.Styles;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
 using System.ComponentModel;
@@ -28,7 +31,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
     // UI Controls
     private PanelHeader? _panelHeader;
-    private Panel? _reportViewerContainer;
+    private GradientPanelExt? _reportViewerContainer;
     private Report? _fastReport;
     // private FastReport.ReportViewer? _previewControl; // Removed - not available in Open Source
     private StatusStrip? _statusStrip;
@@ -37,19 +40,19 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private NoDataOverlay? _noDataOverlay;
 
     // Toolbar controls
-    private Panel? _toolbarPanel;
+    private GradientPanelExt? _toolbarPanel;
     private SfComboBox? _reportSelector;
-    private Button? _loadReportButton;
-    private Button? _exportPdfButton;
-    private Button? _exportExcelButton;
-    private Button? _printButton;
-    private Button? _parametersButton;
+    private SfButton? _loadReportButton;
+    private SfButton? _exportPdfButton;
+    private SfButton? _exportExcelButton;
+    private SfButton? _printButton;
+    private SfButton? _parametersButton;
 
     // Parameters panel
-    private Panel? _parametersPanel;
+    private GradientPanelExt? _parametersPanel;
     private SfDataGrid? _parametersGrid;
-    private Button? _applyParametersButton;
-    private Button? _closeParametersButton;
+    private SfButton? _applyParametersButton;
+    private SfButton? _closeParametersButton;
 
     // Layout containers
     private SplitContainer? _mainSplitContainer;
@@ -58,7 +61,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
+
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ReportsPanel"/> class.
@@ -82,7 +85,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         base.OnViewModelResolved(viewModel);
         InitializeControls();
         BindViewModel();
-        ApplyTheme(ThemeManager.CurrentTheme);
         Logger.LogDebug("ReportsPanel initialized with ViewModel");
     }
 
@@ -143,6 +145,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Name = "ReportsPanel";
         AccessibleName = "Reports Panel";
         Size = new Size(1400, 900);
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        AutoScroll = true;
+        Padding = new Padding(8);
         // DockingManager will handle docking; do not set Dock here.
         // BackColor will be set by ApplyTheme
 
@@ -169,12 +174,14 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         };
 
         // Parameters panel (top, initially collapsed)
-        _parametersPanel = new Panel
+        _parametersPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            // BackColor will be set by ApplyTheme
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_parametersPanel, "Office2019Colorful");
 
         var parametersLabel = new Label
         {
@@ -225,7 +232,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersPanel.Controls.Add(_parametersGrid);
 
         // Parameters panel buttons
-        _applyParametersButton = new Button
+        _applyParametersButton = new SfButton
         {
             Text = "&Apply",
             Name = "applyParametersButton",
@@ -237,7 +244,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _applyParametersButton.Click += async (s, e) => await ApplyParametersAsync();
         _parametersPanel.Controls.Add(_applyParametersButton);
 
-        _closeParametersButton = new Button
+        _closeParametersButton = new SfButton
         {
             Text = "&Close",
             Name = "closeParametersButton",
@@ -260,13 +267,15 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         };
 
         // Top panel: Toolbar
-        _toolbarPanel = new Panel
+        _toolbarPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Height = 60,
-            Padding = new Padding(10)
-            // BackColor will be set by ApplyTheme
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
 
         // Report selector label
         var reportLabel = new Label
@@ -292,7 +301,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _toolbarPanel.Controls.Add(_reportSelector);
 
         // Load/Generate button
-        _loadReportButton = new Button
+        _loadReportButton = new SfButton
         {
             Text = "&Generate",
             Name = "loadReportButton",
@@ -305,7 +314,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _toolbarPanel.Controls.Add(_loadReportButton);
 
         // Parameters button
-        _parametersButton = new Button
+        _parametersButton = new SfButton
         {
             Text = "&Parameters",
             Name = "parametersButton",
@@ -318,7 +327,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _toolbarPanel.Controls.Add(_parametersButton);
 
         // Export buttons
-        _exportPdfButton = new Button
+        _exportPdfButton = new SfButton
         {
             Text = "Export &PDF",
             Name = "exportPdfButton",
@@ -330,7 +339,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _exportPdfButton.Click += async (s, e) => await ExportToPdfAsync();
         _toolbarPanel.Controls.Add(_exportPdfButton);
 
-        _exportExcelButton = new Button
+        _exportExcelButton = new SfButton
         {
             Text = "Export &Excel",
             Name = "exportExcelButton",
@@ -343,7 +352,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _toolbarPanel.Controls.Add(_exportExcelButton);
 
         // Print button
-        _printButton = new Button
+        _printButton = new SfButton
         {
             Text = "P&rint",
             Name = "printButton",
@@ -358,20 +367,24 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _mainSplitContainer.Panel1.Controls.Add(_toolbarPanel);
 
         // Bottom panel: FastReport viewer container
-        var viewerPanel = new Panel
+        var viewerPanel = new GradientPanelExt
         {
-            Dock = DockStyle.Fill
-            // BackColor will be set by ApplyTheme
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(viewerPanel, ThemeColors.DefaultTheme);
 
         // Initialize FastReport viewer container
-        _reportViewerContainer = new Panel
+        _reportViewerContainer = new GradientPanelExt
         {
             Name = "reportViewerContainer",
             AccessibleName = "Report Preview Container",
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_reportViewerContainer, ThemeColors.DefaultTheme);
 
         // Initialize FastReport
         _fastReport = new Report();
@@ -427,9 +440,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Load available reports
         LoadAvailableReports();
 
-        // Subscribe to theme changes
-        _themeChangedHandler = (s, theme) => ApplyTheme(theme);
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+        // Theme changes are handled by SfSkinManager cascade
 
         ResumeLayout(false);
         PerformLayout();
@@ -529,50 +540,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         try
         {
             // Apply theme to the panel itself
-            ThemeManager.ApplyThemeToControl(this);
-
-            // Apply theme to report selector (standard ComboBox)
-            if (_reportSelector != null)
-            {
-                // Use ThemeManager for standard WinForms controls
-                ThemeManager.ApplyThemeToControl(_reportSelector);
-            }
-
-            // Apply theme to Syncfusion SfDataGrid using proper ThemeName property
-            // Per Syncfusion API: Use ThemeName property, not manual color application
+            // ThemeManager removed. Theme is handled by SfSkinManager cascade.
             if (_parametersGrid != null)
             {
-                // Map AppTheme to Syncfusion theme names
-                string syncfusionThemeName = theme switch
-                {
-                    AppTheme.Dark => "Office2019Black",
-                    AppTheme.Office2019Dark => "Office2019DarkGray",
-                    AppTheme.Office2019Black => "Office2019Black",
-                    AppTheme.HighContrastBlack => "HighContrastBlack",
-                    _ => "Office2019Colorful" // Default light theme
-                };
-
-                // Apply theme using Syncfusion's ThemeName property
-                // This is the proper Syncfusion API approach - no hardcoded colors
-                _parametersGrid.ThemeName = syncfusionThemeName;
-
-                // Optional: Set CanOverrideStyle to false if you want pure theme without customization
-                // If set to true, you can override specific styles while keeping theme base
+                _parametersGrid.ThemeName = "Office2019Colorful";
                 _parametersGrid.CanOverrideStyle = true;
-
-                // Only apply minimal customization if needed (e.g., bold headers)
-                // Most styling should come from ThemeName
                 if (_parametersGrid.Style?.HeaderStyle?.Font != null)
                 {
                     _parametersGrid.Style.HeaderStyle.Font.Bold = true;
                 }
-
-                Logger.LogDebug("Applied Syncfusion theme {ThemeName} to SfDataGrid", syncfusionThemeName);
             }
-
-            // Update button icons if theme icon service is available
             UpdateButtonIcons(theme);
-
             Logger.LogDebug("Applied {Theme} theme to ReportsPanel", theme);
         }
         catch (Exception ex)
@@ -1022,11 +1000,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                     ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
                 }
 
-                // Unsubscribe from theme changes
-                if (_themeChangedHandler != null)
-                {
-                    try { ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
-                }
+                // Theme subscription removed - handled by SfSkinManager
 
                 // Unsubscribe panel header events
                 if (_panelHeader != null)

@@ -10,7 +10,7 @@ namespace WileyWidget.WinForms.Themes
     /// <summary>
     /// Provides access to Syncfusion theme colors and brush resources.
     /// Acts as a thin wrapper around SfSkinManager theme system.
-    /// CRITICAL: SfSkinManager is the SOLE PROPRIETOR of all theme and color decisions.
+    /// CRITICAL: SkinManager is the SOLE PROPRIETOR of all theme and color decisions.
     /// This class provides orchestration methods AND theme-aware color accessors.
     /// Per Syncfusion documentation: SetVisualStyle on a form automatically cascades to all child controls.
     /// DO NOT manually set BackColor, ForeColor - use theme accessors only when styling elements like charts.
@@ -19,7 +19,7 @@ namespace WileyWidget.WinForms.Themes
     internal static class ThemeColors
     {
         // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful for modern professional look)
-        // Per Syncfusion documentation, use SfSkinManager (not SkinManager) for global theming
+        // Per Syncfusion documentation, use SkinManager (not SkinManager) for global theming
         public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>

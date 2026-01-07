@@ -6,15 +6,15 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0" />
-    <!-- ==================== .NET 9 STABLE VERSIONS ==================== -->
+    <!-- ==================== .NET 10 STABLE VERSIONS ==================== -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
+    <!-- ==================== .NET 10 STABLE VERSIONS ==================== -->
     <!-- Core .NET Extensions (stable .NET 9 versions) -->
     <PackageVersion Include="Microsoft.Extensions.Primitives" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
@@ -74,6 +74,7 @@
     <!-- PdfSharpCore removed - replaced with Syncfusion.Pdf for consistency -->
     <!-- BoldReports.WinForms removed - doesn't exist on nuget.org. Use BoldReports.WPF only. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="System.Management" Version="10.0.0" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.0" />
@@ -84,8 +85,10 @@
     <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Test packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.14.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.2.0-preview.1" />
+    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.16.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.16.0" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.3.0" />
@@ -119,8 +122,11 @@
     <!-- FastReport Open Source packages -->
     <PackageVersion Include="FastReport.OpenSource" Version="2024.2.0" />
     <PackageVersion Include="FastReport.OpenSource.WinForms" Version="2024.2.0" />
-    <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
+    <!-- Force Microsoft.CodeAnalysis.Common to 4.14.0 to resolve version conflict -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
+    <!-- Roslyn components used by local analyzers -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
     <!-- Data handling packages -->
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />

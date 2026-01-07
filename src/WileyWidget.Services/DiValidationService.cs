@@ -184,22 +184,41 @@ namespace WileyWidget.Services
             {
                 try
                 {
-                    using var scope = serviceProvider.CreateScope();
-                    _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
-                    var service = scope.ServiceProvider.GetService(serviceType);
+                    // CRITICAL FIX: Create isolated scope for validation to prevent
+                    // poisoning EF Core's ServiceProviderCache with disposed providers
+                    using (var scope = serviceProvider.CreateScope())
+                    {
+                        var isolatedProvider = scope.ServiceProvider;
+                        _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
+                        var service = isolatedProvider.GetService(serviceType);
 
-                    if (service == null)
-                    {
-                        var error = $"{serviceType.Name} is NOT registered in DI";
-                        result.Errors.Add(error);
-                        _logger.LogError("\u2717 {Error}", error);
-                    }
-                    else
-                    {
-                        var success = $"{serviceType.Name} registered successfully";
-                        result.SuccessMessages.Add(success);
-                        _logger.LogInformation("\u2713 {Success}", success);
-                    }
+                        if (service == null)
+                        {
+                            var error = $"{serviceType.Name} is NOT registered in DI";
+                            result.Errors.Add(error);
+                            _logger.LogError("\u2717 {Error}", error);
+                        }
+                        else
+                        {
+                            var success = $"{serviceType.Name} registered successfully";
+                            result.SuccessMessages.Add(success);
+                            _logger.LogInformation("\u2713 {Success}", success);
+
+                            // CRITICAL: Dispose transient/scoped instances immediately after validation
+                            // to prevent holding references that interfere with EF Core's provider cache
+                            if (service is IDisposable disposable)
+                            {
+                                try
+                                {
+                                    disposable.Dispose();
+                                }
+                                catch (Exception disposeEx)
+                                {
+                                    _logger.LogDebug(disposeEx, "Non-critical disposal exception for {ServiceType}", serviceType.Name);
+                                }
+                            }
+                        }
+                    } // Scope disposed here, isolating from app's provider
                 }
                 catch (Exception ex)
                 {
@@ -226,27 +245,42 @@ namespace WileyWidget.Services
 
             try
             {
-                // For scoped services, create a temporary scope
-                using var scope = _serviceProvider.CreateScope();
-                var scopedProvider = scope.ServiceProvider;
-
-                // Try GetService first (returns null if not registered)
-                var instance = scopedProvider.GetService(serviceType);
-
-                if (instance != null)
+                // CRITICAL FIX: Create isolated scope for validation
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    return true;
-                }
+                    var isolatedProvider = scope.ServiceProvider;
 
-                // Service returned null - not registered
-                error = new DiValidationError
-                {
-                    ServiceType = serviceType.FullName ?? serviceType.Name,
-                    ErrorMessage = "Service not registered in DI container",
-                    SuggestedFix = GenerateSuggestedFix(serviceType)
-                };
+                    // Try GetService first (returns null if not registered)
+                    var instance = isolatedProvider.GetService(serviceType);
 
-                return false;
+                    if (instance != null)
+                    {
+                        // CRITICAL: Dispose immediately after validation to prevent
+                        // holding references that poison EF Core's ServiceProviderCache
+                        if (instance is IDisposable disposable)
+                        {
+                            try
+                            {
+                                disposable.Dispose();
+                            }
+                            catch
+                            {
+                                // Ignore disposal errors during validation
+                            }
+                        }
+                        return true;
+                    }
+
+                    // Service returned null - not registered
+                    error = new DiValidationError
+                    {
+                        ServiceType = serviceType.FullName ?? serviceType.Name,
+                        ErrorMessage = "Service not registered in DI container",
+                        SuggestedFix = GenerateSuggestedFix(serviceType)
+                    };
+
+                    return false;
+                } // Scope disposed here, fully isolated
             }
             catch (InvalidOperationException ex)
             {

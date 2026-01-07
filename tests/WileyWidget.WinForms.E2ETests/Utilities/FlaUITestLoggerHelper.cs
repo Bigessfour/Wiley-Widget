@@ -13,11 +13,20 @@ namespace WileyWidget.WinForms.E2ETests.Utilities;
 /// </summary>
 public static class FlaUITestLoggerHelper
 {
-    private static readonly string TestLogsPath = Path.Combine(
-        Directory.GetCurrentDirectory(),
-        "TestResults",
-        "FlaUI-Logs"
-    );
+    private static readonly string TestLogsPath = GetRepoRootLogsPath();
+
+    /// <summary>
+    /// Gets the repo root logs folder path.
+    /// Walks up from test bin/Debug/net10.0/... to repo root.
+    /// </summary>
+    private static string GetRepoRootLogsPath()
+    {
+        var baseDir = Directory.GetCurrentDirectory();
+        var repoRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", ".."));
+        var logsPath = Path.Combine(repoRoot, "logs");
+        Directory.CreateDirectory(logsPath);
+        return logsPath;
+    }
 
     /// <summary>
     /// Creates a Serilog logger configured for FlaUI UI automation tests.

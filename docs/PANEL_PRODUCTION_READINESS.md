@@ -1305,7 +1305,7 @@ Generated: 2026-01-01 12:30:45 UTC
 
 **Days 10-11 (16 hours): Architecture and FastReport Integration**
 
-- [ ] Convert to ScopedPanelBase<ReportsViewModel> (3 hours)
+- [ ] Convert to `ScopedPanelBase<ReportsViewModel>` (3 hours)
 - [ ] Add FastReport.OpenSource NuGet package (1 hour)
 - [ ] Implement FastReport preview control integration (8 hours)
 - [ ] Add SafeDispose patterns for all controls (2 hours)

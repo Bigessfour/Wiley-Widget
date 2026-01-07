@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Syncfusion.Drawing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
@@ -22,10 +23,12 @@ using System.Xml.Serialization;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
 #pragma warning disable CS8604 // Possible null reference argument
 
@@ -102,8 +105,17 @@ public partial class MainForm
             // Initialize Ribbon
             if (!_uiConfig.IsUiTestHarness)
             {
-                InitializeRibbon();
-                Console.WriteLine("[DIAGNOSTIC] Ribbon initialized");
+                try
+                {
+                    InitializeRibbon();
+                    Console.WriteLine("[DIAGNOSTIC] Ribbon initialized");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to initialize Ribbon");
+                    Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeRibbon failed: {ex.Message}");
+                    _ribbon = null;
+                }
             }
 
             // Initialize Status Bar
@@ -156,7 +168,8 @@ public partial class MainForm
     {
         try
         {
-            var (ribbon, homeTab) = RibbonFactory.CreateRibbon(this, _logger);
+            var iconService = ServiceProvider.GetService(typeof(IThemeIconService)) as IThemeIconService;
+            var (ribbon, homeTab) = RibbonFactory.CreateRibbon(this, _logger, iconService);
             _ribbon = ribbon;
             _homeTab = homeTab;
             Controls.Add(_ribbon);
@@ -170,6 +183,13 @@ public partial class MainForm
                     Console.WriteLine($"[DIAGNOSTIC] Ribbon tab: {((ToolStripTabItem)tab).Text}");
                 }
             }
+
+            // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
+            // Syncfusion WinForms ToolStrip controls do not support animated images
+            if (_ribbon != null)
+            {
+                ValidateAndConvertRibbonImages(_ribbon);
+            }
         }
         catch (Exception ex)
         {
@@ -180,9 +200,461 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Initialize Syncfusion StatusBarAdv for status information.
-    /// Delegates to StatusBarFactory for centralized creation logic.
+    /// Validates all images in the ribbon and converts any animated images to static bitmaps.
+    /// This prevents ImageAnimator exceptions when Syncfusion ToolStrip controls try to paint animated images.
     /// </summary>
+    private void ValidateAndConvertRibbonImages(RibbonControlAdv ribbon)
+    {
+        try
+        {
+            int convertedCount = 0;
+
+            // Iterate through all ribbon tabs
+            foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+            {
+                if (tab.Panel != null)
+                {
+                    // Iterate through all toolstrips in the tab panel
+                    foreach (Control control in tab.Panel.Controls)
+                    {
+                        if (control is ToolStripEx toolStrip)
+                        {
+                            // Check each item in the toolstrip
+                            foreach (ToolStripItem item in toolStrip.Items)
+                            {
+                                if (item.Image != null)
+                                {
+                                    // Check if image is animated or invalid/disposed
+                                    bool needsConversion = false;
+                                    try
+                                    {
+                                        needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Image is invalid/corrupted - needs conversion/removal
+                                        _logger?.LogWarning(ex, "Image validation failed for ribbon item {ItemName} - treating as invalid", item.Name);
+                                        needsConversion = true;
+                                    }
+
+                                    if (needsConversion)
+                                    {
+                                        // Convert animated/invalid image to static bitmap or remove it
+                                        var staticBitmap = ConvertToStaticBitmap(item.Image);
+                                        if (staticBitmap != null)
+                                        {
+                                            item.Image = staticBitmap;
+                                            convertedCount++;
+                                            _logger?.LogDebug("Converted/validated image for ribbon item: {ItemName}", item.Name);
+                                        }
+                                        else
+                                        {
+                                            // If conversion failed, remove the invalid image
+                                            item.Image = null;
+                                            _logger?.LogWarning("Removed invalid image from ribbon item: {ItemName}", item.Name);
+                                        }
+                                    }
+                                }
+
+                                // Check nested items in ToolStripPanelItem containers
+                                if (item is ToolStripPanelItem panelItem)
+                                {
+                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
+                                    {
+                                        if (panelSubItem.Image != null)
+                                        {
+                                            // Check if image is animated or invalid/disposed
+                                            bool needsConversion = false;
+                                            try
+                                            {
+                                                needsConversion = ImageAnimator.CanAnimate(panelSubItem.Image) || !IsImageValid(panelSubItem.Image);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                // Image is invalid/corrupted - needs conversion/removal
+                                                _logger?.LogWarning(ex, "Image validation failed for panel item {ItemName} - treating as invalid", panelSubItem.Name);
+                                                needsConversion = true;
+                                            }
+
+                                            if (needsConversion)
+                                            {
+                                                var staticBitmap = ConvertToStaticBitmap(panelSubItem.Image);
+                                                if (staticBitmap != null)
+                                                {
+                                                    panelSubItem.Image = staticBitmap;
+                                                    convertedCount++;
+                                                    _logger?.LogDebug("Converted/validated image for panel item: {ItemName}", panelSubItem.Name);
+                                                }
+                                                else
+                                                {
+                                                    // If conversion failed, remove the invalid image
+                                                    panelSubItem.Image = null;
+                                                    _logger?.LogWarning("Removed invalid image from panel item: {ItemName}", panelSubItem.Name);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (convertedCount > 0)
+            {
+                _logger?.LogInformation("Converted {Count} animated images to static bitmaps in ribbon to prevent ImageAnimator exceptions", convertedCount);
+                Console.WriteLine($"[DIAGNOSTIC] Converted {convertedCount} animated images to static bitmaps in ribbon");
+            }
+            else
+            {
+                _logger?.LogDebug("No animated images found in ribbon - all images are static");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to validate and convert ribbon images");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertRibbonImages failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Validates all images in the menu bar and converts any invalid images to prevent ImageAnimator exceptions.
+    /// This prevents ImageAnimator exceptions when ToolStrip controls try to paint invalid images.
+    /// </summary>
+    private void ValidateAndConvertMenuBarImages(MenuStrip menuStrip)
+    {
+        try
+        {
+            int convertedCount = 0;
+
+            // Iterate through all menu items in the menu strip
+            foreach (ToolStripItem menuItem in menuStrip.Items)
+            {
+                if (menuItem is ToolStripMenuItem toolStripMenuItem)
+                {
+                    // Check the main menu item
+                    if (menuItem.Image != null)
+                    {
+                        bool needsConversion = false;
+                        try
+                        {
+                            needsConversion = ImageAnimator.CanAnimate(menuItem.Image) || !IsImageValid(menuItem.Image);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Image is invalid/corrupted - needs conversion/removal
+                            _logger?.LogWarning(ex, "Image validation failed for menu item {ItemName} - treating as invalid", menuItem.Name);
+                            needsConversion = true;
+                        }
+
+                        if (needsConversion)
+                        {
+                            var staticBitmap = ConvertToStaticBitmap(menuItem.Image);
+                            if (staticBitmap != null)
+                            {
+                                menuItem.Image = staticBitmap;
+                                convertedCount++;
+                                _logger?.LogDebug("Converted/validated image for menu item: {ItemName}", menuItem.Name);
+                            }
+                            else
+                            {
+                                // If conversion failed, remove the invalid image
+                                menuItem.Image = null;
+                                _logger?.LogWarning("Removed invalid image from menu item: {ItemName}", menuItem.Name);
+                            }
+                        }
+                    }
+
+                    // Recursively check all dropdown items
+                    ValidateMenuItemImages(toolStripMenuItem.DropDownItems, ref convertedCount);
+                }
+            }
+
+            if (convertedCount > 0)
+            {
+                _logger?.LogInformation("Converted/validated {Count} images in menu bar to prevent ImageAnimator exceptions", convertedCount);
+                Console.WriteLine($"[DIAGNOSTIC] Converted/validated {convertedCount} images in menu bar");
+            }
+            else
+            {
+                _logger?.LogDebug("No invalid images found in menu bar - all images are valid");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to validate and convert menu bar images");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertMenuBarImages failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Recursively validates images in menu item dropdown collections.
+    /// </summary>
+    private void ValidateMenuItemImages(ToolStripItemCollection items, ref int convertedCount)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (item.Image != null)
+            {
+                bool needsConversion = false;
+                try
+                {
+                    needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
+                }
+                catch (Exception ex)
+                {
+                    // Image is invalid/corrupted - needs conversion/removal
+                    _logger?.LogWarning(ex, "Image validation failed for dropdown item {ItemName} - treating as invalid", item.Name);
+                    needsConversion = true;
+                }
+
+                if (needsConversion)
+                {
+                    var staticBitmap = ConvertToStaticBitmap(item.Image);
+                    if (staticBitmap != null)
+                    {
+                        item.Image = staticBitmap;
+                        convertedCount++;
+                        _logger?.LogDebug("Converted/validated image for dropdown item: {ItemName}", item.Name);
+                    }
+                    else
+                    {
+                        // If conversion failed, remove the invalid image
+                        item.Image = null;
+                        _logger?.LogWarning("Removed invalid image from dropdown item: {ItemName}", item.Name);
+                    }
+                }
+            }
+
+            // Recursively check nested dropdown items
+            if (item is ToolStripMenuItem subMenuItem)
+            {
+                ValidateMenuItemImages(subMenuItem.DropDownItems, ref convertedCount);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if an image is valid and not disposed.
+    /// </summary>
+    private static bool IsImageValid(Image image)
+    {
+        if (image == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Try to access image properties to check if it's valid
+            _ = image.Width;
+            _ = image.Height;
+            _ = image.PixelFormat;
+
+            // CRITICAL: Safely check if image can be animated without crashing
+            // This can throw "Parameter is not valid" if image is disposed/corrupted
+            try
+            {
+                _ = ImageAnimator.CanAnimate(image);
+            }
+            catch (ArgumentException)
+            {
+                // Image is corrupted and will crash ImageAnimator
+                return false;
+            }
+
+            return true;
+        }
+        catch
+        {
+            // Image is disposed or corrupted
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Converts an animated image to a static bitmap by drawing the first frame.
+    /// </summary>
+    private static Image? ConvertToStaticBitmap(Image animatedImage)
+    {
+        if (animatedImage == null || !ImageAnimator.CanAnimate(animatedImage))
+        {
+            return animatedImage;
+        }
+
+        try
+        {
+            // Create a new bitmap with the same dimensions
+            var staticBitmap = new Bitmap(animatedImage.Width, animatedImage.Height);
+
+            // Draw the animated image onto the static bitmap (this captures the current/first frame)
+            using (var g = Graphics.FromImage(staticBitmap))
+            {
+                g.DrawImage(animatedImage, 0, 0, animatedImage.Width, animatedImage.Height);
+            }
+
+            return staticBitmap;
+        }
+        catch (Exception ex)
+        {
+            // If conversion fails, dispose the animated image and return null to prevent ImageAnimator exceptions
+            System.Diagnostics.Debug.WriteLine($"Failed to convert animated image to static bitmap: {ex.Message}");
+            try
+            {
+                animatedImage.Dispose();
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Performs a late validation pass on all menu bar images after the form is fully loaded.
+    /// This catches any images that may have been disposed or corrupted after initial validation.
+    /// </summary>
+    private void LateValidateMenuBarImages()
+    {
+        if (_menuStrip == null)
+        {
+            return;
+        }
+
+        try
+        {
+            int invalidCount = 0;
+            int totalChecked = 0;
+
+            foreach (ToolStripItem topLevelItem in _menuStrip.Items)
+            {
+                if (topLevelItem is ToolStripMenuItem topLevelMenu)
+                {
+                    // Check top-level menu item image
+                    if (topLevelMenu.Image != null)
+                    {
+                        totalChecked++;
+                        if (!IsImageValid(topLevelMenu.Image))
+                        {
+                            _logger?.LogWarning("Late validation: Removing invalid image from top-level menu item: {ItemName}", topLevelMenu.Name);
+                            topLevelMenu.Image = null;
+                            invalidCount++;
+                        }
+                    }
+
+                    // Check all sub-menu items
+                    foreach (ToolStripItem subItem in topLevelMenu.DropDownItems)
+                    {
+                        if (subItem.Image != null)
+                        {
+                            totalChecked++;
+                            if (!IsImageValid(subItem.Image))
+                            {
+                                _logger?.LogWarning("Late validation: Removing invalid image from menu item: {ItemName}", subItem.Name);
+                                subItem.Image = null;
+                                invalidCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (invalidCount > 0)
+            {
+                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from menu bar (checked {TotalCount} images)", invalidCount, totalChecked);
+                _menuStrip.Refresh(); // Force repaint with valid images only
+            }
+            else
+            {
+                _logger?.LogDebug("Late validation: All {TotalCount} menu bar images are valid", totalChecked);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Late validation: Failed to validate menu bar images");
+        }
+    }
+
+    /// <summary>
+    /// Performs a late validation pass on all ribbon images after the form is fully loaded.
+    /// This catches any images that may have been disposed or corrupted after initial validation.
+    /// </summary>
+    private void LateValidateRibbonImages()
+    {
+        if (_ribbon == null)
+        {
+            return;
+        }
+
+        try
+        {
+            int invalidCount = 0;
+            int totalChecked = 0;
+
+            foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
+            {
+                if (tab.Panel != null)
+                {
+                    foreach (Control control in tab.Panel.Controls)
+                    {
+                        if (control is ToolStripEx toolStrip)
+                        {
+                            foreach (ToolStripItem item in toolStrip.Items)
+                            {
+                                if (item.Image != null)
+                                {
+                                    totalChecked++;
+                                    if (!IsImageValid(item.Image))
+                                    {
+                                        _logger?.LogWarning("Late validation: Removing invalid image from ribbon item: {ItemName}", item.Name);
+                                        item.Image = null;
+                                        invalidCount++;
+                                    }
+                                }
+
+                                // Check nested items in panels
+                                if (item is ToolStripPanelItem panelItem)
+                                {
+                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
+                                    {
+                                        if (panelSubItem.Image != null)
+                                        {
+                                            totalChecked++;
+                                            if (!IsImageValid(panelSubItem.Image))
+                                            {
+                                                _logger?.LogWarning("Late validation: Removing invalid image from ribbon panel item: {ItemName}", panelSubItem.Name);
+                                                panelSubItem.Image = null;
+                                                invalidCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (invalidCount > 0)
+            {
+                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from ribbon (checked {TotalCount} images)", invalidCount, totalChecked);
+                _ribbon.Refresh(); // Force repaint with valid images only
+            }
+            else
+            {
+                _logger?.LogDebug("Late validation: All {TotalCount} ribbon images are valid", totalChecked);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Late validation: Failed to validate ribbon images");
+        }
+    }
+
+    /// <summary>
+    /// Initialize Syncfusion StatusBarAdv for status information.
     private void InitializeStatusBar()
     {
         try
@@ -451,10 +923,10 @@ public partial class MainForm
             {
                 Name = "Menu_File_Exit",
                 ShortcutKeys = Keys.Alt | Keys.F4,
-                ToolTipText = "Exit the application (Alt+F4)",
-                Image = CreateIconFromText("\uE8BB", 16), // Exit icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Exit the application (Alt+F4)"
             };
+            exitMenuItem.Image = CreateIconFromText("\uE8BB", 16); // Exit icon (Segoe MDL2)
+            exitMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             fileMenu.DropDownItems.Add(recentFilesMenu);
             fileMenu.DropDownItems.Add(clearRecentMenuItem);
@@ -485,10 +957,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Dashboard",
                 ShortcutKeys = Keys.Control | Keys.D,
-                ToolTipText = "Open Dashboard view (Ctrl+D)",
-                Image = CreateIconFromText("\uE10F", 16), // Dashboard icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Dashboard view (Ctrl+D)"
             };
+            dashboardMenuItem.Image = CreateIconFromText("\uE10F", 16); // Dashboard icon (Segoe MDL2)
+            dashboardMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) =>
@@ -507,10 +979,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Accounts",
                 ShortcutKeys = Keys.Control | Keys.A,
-                ToolTipText = "Open Accounts view (Ctrl+A)",
-                Image = CreateIconFromText("\uE8F4", 16), // AccountActivity icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Accounts view (Ctrl+A)"
             };
+            accountsMenuItem.Image = CreateIconFromText("\uE8F4", 16); // AccountActivity icon (Segoe MDL2)
+            accountsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Budget Overview
             var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) =>
@@ -529,10 +1001,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Budget",
                 ShortcutKeys = Keys.Control | Keys.B,
-                ToolTipText = "Open Budget Overview (Ctrl+B)",
-                Image = CreateIconFromText("\uE7C8", 16), // Money icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Budget Overview (Ctrl+B)"
             };
+            budgetMenuItem.Image = CreateIconFromText("\uE7C8", 16); // Money icon (Segoe MDL2)
+            budgetMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Charts
             var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) =>
@@ -551,10 +1023,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Charts",
                 ShortcutKeys = Keys.Control | Keys.H,
-                ToolTipText = "Open Charts view (Ctrl+H)",
-                Image = CreateIconFromText("\uE9D2", 16), // BarChart icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Charts view (Ctrl+H)"
             };
+            chartsMenuItem.Image = CreateIconFromText("\uE9D2", 16); // BarChart icon (Segoe MDL2)
+            chartsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Reports
             var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) =>
@@ -573,10 +1045,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Reports",
                 ShortcutKeys = Keys.Control | Keys.R,
-                ToolTipText = "Open Reports view (Ctrl+R)",
-                Image = CreateIconFromText("\uE8A5", 16), // Document icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Reports view (Ctrl+R)"
             };
+            reportsMenuItem.Image = CreateIconFromText("\uE8A5", 16); // Document icon (Segoe MDL2)
+            reportsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > AI Chat
             var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) =>
@@ -635,10 +1107,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Customers",
                 ShortcutKeys = Keys.Control | Keys.U,
-                ToolTipText = "Open Customers view (Ctrl+U)",
-                Image = CreateIconFromText("\uE716", 16), // Contact icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Customers view (Ctrl+U)"
             };
+            customersMenuItem.Image = CreateIconFromText("\uE716", 16); // Contact icon (Segoe MDL2)
+            customersMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // Add separator for visual grouping
             var viewSeparator = new ToolStripSeparator
@@ -655,10 +1127,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Refresh",
                 ShortcutKeys = Keys.F5,
-                ToolTipText = "Refresh active view (F5)",
-                Image = CreateIconFromText("\uE72C", 16), // Refresh icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Refresh active view (F5)"
             };
+            refreshMenuItem.Image = CreateIconFromText("\uE72C", 16); // Refresh icon (Segoe MDL2)
+            refreshMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             viewMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
@@ -699,9 +1171,9 @@ public partial class MainForm
                 Name = "Menu_Tools_Settings",
                 ShortcutKeys = Keys.Control | Keys.Oemcomma,
                 ToolTipText = "Open Settings (Ctrl+,)",
-                Image = CreateIconFromText("\uE713", 16), // Settings icon (Segoe MDL2)
                 ImageScaling = ToolStripItemImageScaling.None
             };
+            settingsMenuItem.Image = CreateIconFromText("\uE713", 16); // Settings icon (Segoe MDL2)
 
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
@@ -731,10 +1203,10 @@ public partial class MainForm
             {
                 Name = "Menu_Help_Documentation",
                 ShortcutKeys = Keys.F1,
-                ToolTipText = "Open online documentation (F1)",
-                Image = CreateIconFromText("\uE897", 16), // Help icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open online documentation (F1)"
             };
+            documentationMenuItem.Image = CreateIconFromText("\uE897", 16); // Help icon (Segoe MDL2)
+            documentationMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             var helpSeparator = new ToolStripSeparator
             {
@@ -755,10 +1227,10 @@ public partial class MainForm
             })
             {
                 Name = "Menu_Help_About",
-                ToolTipText = "About this application",
-                Image = CreateIconFromText("\uE946", 16), // Info icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "About this application"
             };
+            aboutMenuItem.Image = CreateIconFromText("\uE946", 16); // Info icon (Segoe MDL2)
+            aboutMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             helpMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
@@ -786,6 +1258,10 @@ public partial class MainForm
             this.MainMenuStrip = _menuStrip;
             Controls.Add(_menuStrip);
 
+            // DEFENSIVE: Validate and convert any invalid images in the menu bar
+            // This prevents ImageAnimator exceptions when ToolStrip controls try to paint invalid images
+            ValidateAndConvertMenuBarImages(_menuStrip);
+
             _logger?.LogInformation("Menu bar initialized with icons and theming");
         }
         catch (Exception ex)
@@ -800,29 +1276,37 @@ public partial class MainForm
     /// </summary>
     /// <param name="iconText">Unicode character from Segoe MDL2 Assets font</param>
     /// <param name="size">Icon size in pixels</param>
-    /// <returns>Bitmap containing the rendered icon</returns>
-    private Bitmap CreateIconFromText(string iconText, int size)
+    /// <returns>Bitmap containing the rendered icon, or null if creation fails</returns>
+    private Bitmap? CreateIconFromText(string iconText, int size)
     {
-        var bitmap = new Bitmap(size, size);
-        using (var graphics = Graphics.FromImage(bitmap))
+        try
         {
-            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-
-            using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
-            using (var brush = new SolidBrush(Color.DodgerBlue))
+            var bitmap = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(bitmap))
             {
-                var stringFormat = new StringFormat
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+
+                using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+                using (var brush = new SolidBrush(Color.DodgerBlue))
                 {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
+                    var stringFormat = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    };
 
-                graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), stringFormat);
+                    graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), stringFormat);
+                }
             }
-        }
 
-        return bitmap;
+            return bitmap;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to create icon from text '{IconText}' with size {Size}", iconText, size);
+            return null;
+        }
     }
 
     /// <summary>
@@ -936,9 +1420,6 @@ public partial class MainForm
             {
                 try
                 {
-                    // Use centralized ThemeManager (which uses SfSkinManager internally)
-                    WileyWidget.WinForms.Theming.ThemeManager.ApplyThemeToControl(form);
-
                     // Also explicitly set visual style on the form to avoid renderer race conditions
                     try
                     {
@@ -1144,6 +1625,9 @@ public partial class MainForm
             Console.WriteLine($"[DIAGNOSTIC] DockingManager created: HostControl={_dockingManager?.HostControl?.Name}");
             Console.WriteLine($"[DIAGNOSTIC] LeftPanel: {leftPanel?.Name}, RightPanel: {rightPanel?.Name} (no central panel - pure docking)");
 
+            // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
+            EnsurePanelNavigatorInitialized();
+
             // Create and attach layout manager for state management
             _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
 
@@ -1156,17 +1640,12 @@ public partial class MainForm
 
             HideStandardPanelsForDocking();
 
-            // CRITICAL FIX: Load layout SYNCHRONOUSLY to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
+            // CRITICAL FIX: Load layout on the UI thread to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
             // The exception occurs when paint events fire before DockingManager's internal control collections are populated
             // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
             try
             {
-                // Use Task.Run().GetAwaiter().GetResult() to synchronously wait without blocking UI thread context
-                // This ensures layout load completes before any paint events can occur
-                Task.Run(async () =>
-                {
-                    await _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).ConfigureAwait(false);
-                }).GetAwaiter().GetResult();
+                _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
                 _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
                 Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
             }
@@ -1179,7 +1658,7 @@ public partial class MainForm
 
             _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
 
-            // CRITICAL: Apply SfSkinManager theme AFTER DockingManager is fully initialized and panels are docked
+            // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
             // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
             try
             {
@@ -1190,11 +1669,8 @@ public partial class MainForm
             }
             catch (Exception themeEx)
             {
-                _logger?.LogWarning(themeEx, "Failed to apply SfSkinManager theme to MainForm after DockingManager setup");
+                _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
             }
-
-            // Subscribe to theme changes for runtime theme updates
-            ThemeManager.ThemeChanged += OnThemeChanged;
 
             dockingStopwatch.Stop();
             _logger?.LogInformation(
@@ -1478,14 +1954,17 @@ public partial class MainForm
             return false;
         }
 
-        Panel? panel = null;
+        GradientPanelExt? panel = null;
         try
         {
-            panel = new Panel
+            panel = new GradientPanelExt
             {
                 Name = panelName,
-                Padding = new Padding(5)
+                Padding = new Padding(5),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
             // Add content to panel
             content.Dock = DockStyle.Fill;
@@ -1551,7 +2030,7 @@ public partial class MainForm
     /// </summary>
     /// <param name="panelName">Name of the panel to retrieve.</param>
     /// <returns>Always returns null (legacy API).</returns>
-    public Panel? GetDynamicDockPanel(string panelName)
+    public Control? GetDynamicDockPanel(string panelName)
     {
         if (string.IsNullOrWhiteSpace(panelName))
             return null;
@@ -1580,15 +2059,9 @@ public partial class MainForm
     {
         _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - delegating to DockingLayoutManager");
 
-        // Unsubscribe from theme changes to prevent memory leaks
-        try
-        {
-            ThemeManager.ThemeChanged -= OnThemeChanged;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to unsubscribe from ThemeChanged event");
-        }
+        // Theme subscription removed - SfSkinManager handles theme cascade automatically
+
+        // Unsubscribe from other events
 
         // Delegate all docking-related disposal to the layout manager
         if (_dockingLayoutManager != null)

@@ -46,7 +46,7 @@ public sealed class DpiAwareImageService : IDisposable
     public DpiAwareImageService(ILogger<DpiAwareImageService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         // Initialize ImageListAdv with base size (96 DPI / 100% scaling)
         _imageList = new ImageListAdv
         {
@@ -82,46 +82,46 @@ public sealed class DpiAwareImageService : IDisposable
                 ["export"] = SystemIcons.Shield,
                 ["import"] = SystemIcons.Information,
                 ["print"] = SystemIcons.Question,
-                
+
                 // Navigation
                 ["home"] = SystemIcons.Application,
                 ["back"] = SystemIcons.Hand,
                 ["forward"] = SystemIcons.Asterisk,
                 ["refresh"] = SystemIcons.Exclamation,
-                
+
                 // Data operations
                 ["add"] = SystemIcons.Information,
                 ["edit"] = SystemIcons.Question,
                 ["delete"] = SystemIcons.Error,
                 ["search"] = SystemIcons.Question,
                 ["filter"] = SystemIcons.Shield,
-                
+
                 // Dashboard
                 ["dashboard"] = SystemIcons.Application,
                 ["chart"] = SystemIcons.Information,
                 ["gauge"] = SystemIcons.Shield,
                 ["kpi"] = SystemIcons.Asterisk,
-                
+
                 // Reports
                 ["report"] = SystemIcons.Application,
                 ["pdf"] = SystemIcons.Shield,
                 ["excel"] = SystemIcons.Information,
-                
+
                 // Settings
                 ["settings"] = SystemIcons.Shield,
                 ["config"] = SystemIcons.Information,
                 ["theme"] = SystemIcons.Asterisk,
-                
+
                 // Status
                 ["success"] = SystemIcons.Information,
                 ["warning"] = SystemIcons.Warning,
                 ["error"] = SystemIcons.Error,
                 ["info"] = SystemIcons.Information,
-                
+
                 // QuickBooks
                 ["quickbooks"] = SystemIcons.Application,
                 ["sync"] = SystemIcons.Shield,
-                
+
                 // Utilities
                 ["calculator"] = SystemIcons.Application,
                 ["calendar"] = SystemIcons.Information,
@@ -135,7 +135,7 @@ public sealed class DpiAwareImageService : IDisposable
                 // Add base DPI96 image (16x16) to Images collection
                 var icon96 = GetIconBitmap(fallbackIcon, 16);
                 _imageList.Images.Add(iconName, icon96);
-                
+
                 // Create DPIAwareImage instance and configure for different DPI levels
                 var dpiAwareImage = new DPIAwareImage
                 {
@@ -145,7 +145,7 @@ public sealed class DpiAwareImageService : IDisposable
                     DPI192Image = GetIconBitmap(fallbackIcon, 32)   // 200%
                 };
                 _imageList.DPIImages.Add(dpiAwareImage);
-                
+
                 // Map name to index for lookup
                 _iconNameToIndex[iconName] = index;
                 index++;
