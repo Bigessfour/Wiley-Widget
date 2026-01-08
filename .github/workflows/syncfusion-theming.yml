@@ -45,9 +45,13 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Restore NuGet packages
+      - name: Restore NuGet packages for solution
         shell: powershell
         run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Restore NuGet packages for MCP Server
+        shell: powershell
+        run: dotnet restore tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --verbosity minimal
 
       - name: Build MCP Server
         shell: powershell
