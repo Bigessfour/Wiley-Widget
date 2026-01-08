@@ -32,7 +32,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Controls
             {
                 // Arrange
                 SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                
+
                 // Simply verify that ChartPanel can be instantiated without crashing
                 // Full DI-based initialization is tested in integration tests
                 try

@@ -462,10 +462,10 @@ namespace WileyWidget.WinForms
                 Log.Debug("[DIAGNOSTIC] About to enter UI message loop");
                 Log.Debug("""
 [DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
-Timestamp: {Timestamp}
-MainFormPresent: {Present}
-IsDisposed: {Disposed}
-""",
+Timestamp: { Timestamp}
+MainFormPresent: { Present}
+IsDisposed: { Disposed}
+                """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
                     mainForm != null,
                     mainForm?.IsDisposed);
@@ -621,7 +621,7 @@ IsDisposed: {Disposed}
                 }
 
                 Log.Error(ex, """
-[THEME] Theme initialization failed; continuing with default Windows theme (no Syncfusion theming)
+[THEME] Theme initialization failed; continuing with default Windows theme(no Syncfusion theming)
 """);
             }
         }
@@ -1535,8 +1535,8 @@ IsDisposed: {Disposed}
                     mainForm?.Visible);
                 Log.Debug("""
 [DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
-Timestamp: {Timestamp}
-""",
+Timestamp: { Timestamp}
+                """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
 
                 // CRITICAL: Explicitly ensure form is visible and properly positioned
@@ -1571,12 +1571,12 @@ Timestamp: {Timestamp}
                         mainForm.Visible, mainForm.WindowState, mainForm.ShowInTaskbar);
                     Log.Debug("""
 [DIAGNOSTIC] Form state before message loop
-Timestamp: {Timestamp}
-Visible:   {Visible}
-WindowState: {WindowState}
-Size:      {Size}
-Location:  {Location}
-""",
+Timestamp: { Timestamp}
+Visible: { Visible}
+WindowState: { WindowState}
+Size: { Size}
+Location: { Location}
+                    """,
                         DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
                         mainForm.Visible,
                         mainForm.WindowState,
@@ -1591,8 +1591,8 @@ Location:  {Location}
 
                 Log.Debug("""
 [DIAGNOSTIC] RunUiLoop: About to enter message loop
-Timestamp: {Timestamp}
-""",
+Timestamp: { Timestamp}
+                """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
                 Application.Run(mainForm);
             }

@@ -26,29 +26,96 @@ namespace WileyWidget.WinForms.Services
         private static readonly HashSet<string> KnownIconNames = new(StringComparer.OrdinalIgnoreCase)
         {
             // File operations
-            "save", "open", "load", "export", "import", "folder", "file", "document", "excel", "pdf",
+            "save",
+            "open",
+            "load",
+            "export",
+            "import",
+            "folder",
+            "file",
+            "document",
+            "excel",
+            "pdf",
 
             // Edit operations
-            "add", "new", "plus", "delete", "remove", "minus", "edit", "pencil", "copy", "paste", "cut",
+            "add",
+            "new",
+            "plus",
+            "delete",
+            "remove",
+            "minus",
+            "edit",
+            "pencil",
+            "copy",
+            "paste",
+            "cut",
 
             // Navigation
-            "home", "back", "forward", "up", "down", "left", "right", "refresh", "reload", "load",
+            "home",
+            "back",
+            "forward",
+            "up",
+            "down",
+            "left",
+            "right",
+            "refresh",
+            "reload",
+            "load",
 
             // UI controls
-            "close", "exit", "minimize", "maximize", "restore", "settings", "options", "menu", "hamburger", "dismiss",
+            "close",
+            "exit",
+            "minimize",
+            "maximize",
+            "restore",
+            "settings",
+            "options",
+            "menu",
+            "hamburger",
+            "dismiss",
 
             // Information
-            "help", "info", "warning", "error", "question", "notification", "bell",
+            "help",
+            "info",
+            "warning",
+            "error",
+            "question",
+            "notification",
+            "bell",
 
             // Search and filter
-            "search", "filter", "clear", "reset",
+            "search",
+            "filter",
+            "clear",
+            "reset",
 
             // Business
-            "dashboard", "chart", "report", "reports", "user", "profile", "chat", "ai", "assistant",
-            "quickbooks", "accounting", "accounts", "finance", "customer", "customers", "invoice", "payment", "budget", "wallet",
+            "dashboard",
+            "chart",
+            "report",
+            "reports",
+            "user",
+            "profile",
+            "chat",
+            "ai",
+            "assistant",
+            "quickbooks",
+            "accounting",
+            "accounts",
+            "finance",
+            "customer",
+            "customers",
+            "invoice",
+            "payment",
+            "budget",
+            "wallet",
 
             // Media and actions
-            "play", "pause", "stop", "print", "printer"
+            "play",
+            "pause",
+            "stop",
+            "print",
+            "printer"
         };
 
         public ThemeIconService(ILogger logger)

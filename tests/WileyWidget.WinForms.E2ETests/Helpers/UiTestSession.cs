@@ -120,73 +120,73 @@ namespace WileyWidget.WinForms.E2ETests.Helpers
     {
         private const string LicenseKey = "Ngo9BigBOggjHTQxAR8/V1NMaF5cXmZCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXZceXRQR2VfUER0W0o=";
 
-        internal static UiTestSessionOptions UiHarness(string exePath)
+    internal static UiTestSessionOptions UiHarness(string exePath)
+    {
+        return new UiTestSessionOptions(exePath, UseInMemory: true, IsUiTestHarness: true);
+    }
+
+    internal void ApplyEnvironment()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", UseInMemory ? "true" : "false");
+        Environment.SetEnvironmentVariable("UI__IsUiTestHarness", IsUiTestHarness ? "true" : "false");
+        Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", LicenseKey);
+    }
+
+    internal string ResolveExecutablePath()
+    {
+        if (!string.IsNullOrWhiteSpace(ExecutablePath) && File.Exists(ExecutablePath))
         {
-            return new UiTestSessionOptions(exePath, UseInMemory: true, IsUiTestHarness: true);
+            return ExecutablePath;
         }
 
-        internal void ApplyEnvironment()
+        var envPath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE");
+        if (!string.IsNullOrWhiteSpace(envPath))
         {
-            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-            Environment.SetEnvironmentVariable("WILEYWIDGET_USE_INMEMORY", UseInMemory ? "true" : "false");
-            Environment.SetEnvironmentVariable("UI__IsUiTestHarness", IsUiTestHarness ? "true" : "false");
-            Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", LicenseKey);
+            return envPath;
         }
 
-        internal string ResolveExecutablePath()
+        // Check multiple possible build configurations and directories
+        var possibleBaseDirs = new[]
         {
-            if (!string.IsNullOrWhiteSpace(ExecutablePath) && File.Exists(ExecutablePath))
-            {
-                return ExecutablePath;
-            }
-
-            var envPath = Environment.GetEnvironmentVariable("WILEYWIDGET_EXE");
-            if (!string.IsNullOrWhiteSpace(envPath))
-            {
-                return envPath;
-            }
-
-            // Check multiple possible build configurations and directories
-            var possibleBaseDirs = new[]
-            {
                 Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", "Debug")),
                 Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", "Release")),
                 Path.GetFullPath(Path.Combine(AppContext.BaseDirectory ?? ".", "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin"))
             };
 
-            foreach (var baseDir in possibleBaseDirs)
+        foreach (var baseDir in possibleBaseDirs)
+        {
+            if (!Directory.Exists(baseDir))
             {
-                if (!Directory.Exists(baseDir))
-                {
-                    continue;
-                }
-
-                // Try standard net9.0-windows path (for older builds)
-                var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
-                if (File.Exists(standard))
-                {
-                    return standard;
-                }
-
-                // Try versioned directories (net9.0-windows10.0.26100.0, etc.)
-                var versioned = Directory.GetDirectories(baseDir, "net9.0-windows*")
-                    .Select(dir => Path.Combine(dir, "WileyWidget.WinForms.exe"))
-                    .FirstOrDefault(File.Exists);
-
-                if (!string.IsNullOrEmpty(versioned))
-                {
-                    return versioned;
-                }
-
-                // Try any subdirectory with the exe
-                var exeFiles = Directory.GetFiles(baseDir, "WileyWidget.WinForms.exe", SearchOption.AllDirectories);
-                if (exeFiles.Length > 0)
-                {
-                    return exeFiles[0];
-                }
+                continue;
             }
 
-            throw new FileNotFoundException($"Executable not found. Set WILEYWIDGET_EXE to a published executable or build WileyWidget.WinForms.");
+            // Try standard net9.0-windows path (for older builds)
+            var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
+            if (File.Exists(standard))
+            {
+                return standard;
+            }
+
+            // Try versioned directories (net9.0-windows10.0.26100.0, etc.)
+            var versioned = Directory.GetDirectories(baseDir, "net9.0-windows*")
+                .Select(dir => Path.Combine(dir, "WileyWidget.WinForms.exe"))
+                .FirstOrDefault(File.Exists);
+
+            if (!string.IsNullOrEmpty(versioned))
+            {
+                return versioned;
+            }
+
+            // Try any subdirectory with the exe
+            var exeFiles = Directory.GetFiles(baseDir, "WileyWidget.WinForms.exe", SearchOption.AllDirectories);
+            if (exeFiles.Length > 0)
+            {
+                return exeFiles[0];
+            }
         }
+
+        throw new FileNotFoundException($"Executable not found. Set WILEYWIDGET_EXE to a published executable or build WileyWidget.WinForms.");
     }
+}
 }

@@ -271,18 +271,18 @@ public class RoutedResult<T>
     /// </summary>
     public required T Value { get; init; }
 
-    /// <summary>
-    /// Whether primary service was used (true) or fallback (false)
-    /// </summary>
-    public bool UsedPrimary { get; init; }
+/// <summary>
+/// Whether primary service was used (true) or fallback (false)
+/// </summary>
+public bool UsedPrimary { get; init; }
 
-    /// <summary>
-    /// Health status at time of routing
-    /// </summary>
-    public required AIHealthStatus HealthStatus { get; init; }
+/// <summary>
+/// Health status at time of routing
+/// </summary>
+public required AIHealthStatus HealthStatus { get; init; }
 
-    /// <summary>
-    /// Error message if primary service failed
-    /// </summary>
-    public string? Error { get; init; }
+/// <summary>
+/// Error message if primary service failed
+/// </summary>
+public string? Error { get; init; }
 }

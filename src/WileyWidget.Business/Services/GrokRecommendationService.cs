@@ -357,22 +357,22 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         return $$"""
 You are a senior municipal finance analyst specializing in utility rate design.
 
-Given monthly departmental expenses: {{expenseList}}
-Target profit margin: {{margin}}%
+Given monthly departmental expenses: { { expenseList} }
+        Target profit margin: { { margin} }%
 
-Provide rate adjustment factors (multipliers) that achieve full cost recovery plus the target margin, considering typical municipal patterns (e.g., higher infrastructure costs for Electric/Water, efficiency in Trash, bundled overhead in Apartments).
+           Provide rate adjustment factors(multipliers) that achieve full cost recovery plus the target margin, considering typical municipal patterns(e.g., higher infrastructure costs for Electric / Water, efficiency in Trash, bundled overhead in Apartments).
 
 Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown, no code blocks, no extra text:
 
 {
-  "factors": {
-    "Water": 1.15,
+            "factors": {
+                "Water": 1.15,
     "Sewer": 1.18,
     ...
   },
   "explanation": "Multi-paragraph professional explanation suitable for city council and public presentation. Reference specific departmental differences and overall rationale."
 }
-""";
+        """;
     }
 
     private static string ExtractJsonObject(string content)

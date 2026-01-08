@@ -167,7 +167,7 @@ namespace WileyWidget.WinForms.Services
                     try
                     {
                         _logger.LogDebug("Applying ChatPanel-specific docking configuration");
-                        
+
                         // Force visible and active
                         _dockingManager.SetDockVisibility(panel, true);
                         _dockingManager.ActivateControl(panel);  // Brings to front, expands if tabbed

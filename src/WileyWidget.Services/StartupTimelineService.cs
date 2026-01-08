@@ -376,12 +376,12 @@ public class StartupTimelineReport
             sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
             foreach (var error in Errors)
             {
-                    var lines = WrapText(error, 60);
-                    foreach (var line in lines)
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
-                   }
+                var lines = WrapText(error, 60);
+                foreach (var line in lines)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
                 }
+            }
         }
 
         // Warnings
@@ -396,7 +396,7 @@ public class StartupTimelineReport
                 foreach (var line in lines)
                 {
                     sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
-               }
+                }
             }
         }
 

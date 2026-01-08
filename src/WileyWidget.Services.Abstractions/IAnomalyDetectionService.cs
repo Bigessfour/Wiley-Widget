@@ -58,55 +58,55 @@ namespace WileyWidget.Services.Abstractions
         /// </summary>
         public required T Item { get; init; }
 
-        /// <summary>
-        /// Severity score (0.0 to 1.0, where 1.0 is most severe).
-        /// </summary>
-        public required double Severity { get; init; }
-
-        /// <summary>
-        /// AI-generated explanation of why this is an anomaly.
-        /// </summary>
-        public required string Explanation { get; init; }
-
-        /// <summary>
-        /// Expected value range for context.
-        /// </summary>
-        public string? ExpectedRange { get; init; }
-
-        /// <summary>
-        /// Actual value that triggered the anomaly.
-        /// </summary>
-        public required double ActualValue { get; init; }
-    }
+    /// <summary>
+    /// Severity score (0.0 to 1.0, where 1.0 is most severe).
+    /// </summary>
+    public required double Severity { get; init; }
 
     /// <summary>
-    /// Result of budget variance anomaly analysis.
+    /// AI-generated explanation of why this is an anomaly.
     /// </summary>
-    public class AnomalyAnalysis
-    {
-        /// <summary>
-        /// Whether an anomaly was detected.
-        /// </summary>
-        public required bool IsAnomaly { get; init; }
+    public required string Explanation { get; init; }
 
-        /// <summary>
-        /// Severity score (0.0 to 1.0).
-        /// </summary>
-        public required double Severity { get; init; }
+    /// <summary>
+    /// Expected value range for context.
+    /// </summary>
+    public string? ExpectedRange { get; init; }
 
-        /// <summary>
-        /// AI-generated explanation.
-        /// </summary>
-        public required string Explanation { get; init; }
+    /// <summary>
+    /// Actual value that triggered the anomaly.
+    /// </summary>
+    public required double ActualValue { get; init; }
+}
 
-        /// <summary>
-        /// Variance percentage.
-        /// </summary>
-        public required decimal VariancePercent { get; init; }
+/// <summary>
+/// Result of budget variance anomaly analysis.
+/// </summary>
+public class AnomalyAnalysis
+{
+    /// <summary>
+    /// Whether an anomaly was detected.
+    /// </summary>
+    public required bool IsAnomaly { get; init; }
 
-        /// <summary>
-        /// Recommended actions.
-        /// </summary>
-        public List<string> RecommendedActions { get; init; } = new();
-    }
+    /// <summary>
+    /// Severity score (0.0 to 1.0).
+    /// </summary>
+    public required double Severity { get; init; }
+
+    /// <summary>
+    /// AI-generated explanation.
+    /// </summary>
+    public required string Explanation { get; init; }
+
+    /// <summary>
+    /// Variance percentage.
+    /// </summary>
+    public required decimal VariancePercent { get; init; }
+
+    /// <summary>
+    /// Recommended actions.
+    /// </summary>
+    public List<string> RecommendedActions { get; init; } = new();
+}
 }
