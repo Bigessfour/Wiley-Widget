@@ -109,18 +109,24 @@ jobs:
 
       - name: Test - Unit Tests (with coverage)
         shell: powershell
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults/UnitTests
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Test - Dashboard Service Tests (filtered)
         shell: powershell
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           dotnet test tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj --filter "FullyQualifiedName~Dashboard" --configuration Release --logger trx --collect:"XPlat Code Coverage" --results-directory ./TestResults/Dashboard
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Test - Integration Tests (with coverage)
         shell: powershell
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           # Skip if QuickBooks secrets not available
           if (-not $env:QBO_CLIENT_ID -or -not $env:QBO_CLIENT_SECRET) {
@@ -167,10 +173,14 @@ jobs:
 
           $coverage = [double]$parsed
           Write-Host "Total line coverage: $coverage%"
+          # Make coverage check conditional: only fail on main branch
           if ($coverage -lt $env:COVERAGE_THRESHOLD) {
-            Write-Warning "Coverage $coverage% is below threshold of $env:COVERAGE_THRESHOLD% (NOTE: this is a warning in CI)
-            Consider increasing tests or adjust threshold if intentional."
-            # Optionally: fail the job by changing this to exit 1
+            if ('${{ github.ref }}' -eq 'refs/heads/main') {
+              Write-Error "Coverage $coverage% is below threshold of $env:COVERAGE_THRESHOLD% on main branch"
+              exit 1
+            } else {
+              Write-Warning "Coverage $coverage% is below threshold of $env:COVERAGE_THRESHOLD% (feature branch: warning only)"
+            }
           }
 
       # WinForms restore included in solution restore above

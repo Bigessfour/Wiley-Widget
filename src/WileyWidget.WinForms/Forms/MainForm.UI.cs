@@ -45,6 +45,8 @@ public partial class MainForm
     private DockingLayoutManager? _dockingLayoutManager;
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
     private System.Windows.Forms.Timer? _activityRefreshTimer;
+    private Panel? _loadingOverlay; // Full-screen loading overlay for async operations
+    private Label? _loadingLabel; // Loading message label
 
     // Phase 1 Simplification: Docking configuration now centralized in UIConfiguration
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
@@ -131,6 +133,10 @@ public partial class MainForm
             // Start status timer
             InitializeStatusTimer();
             Console.WriteLine("[DIAGNOSTIC] Status timer initialized");
+
+            // Initialize loading overlay (always last to cover everything)
+            InitializeLoadingOverlay();
+            Console.WriteLine("[DIAGNOSTIC] Loading overlay initialized");
         }
         catch (Exception ex)
         {
@@ -654,22 +660,29 @@ public partial class MainForm
 
     /// <summary>
     /// Initialize Syncfusion StatusBarAdv for status information.
+    /// Delegates to StatusBarFactory for centralized creation and configuration.
+    /// Wires panel references back to MainForm for status/progress management.
+    /// </summary>
     private void InitializeStatusBar()
     {
         try
         {
-            var statusBar = StatusBarFactory.CreateStatusBar(this);
-            Controls.Add(statusBar);
-            _logger?.LogInformation("Status bar initialized via factory");
-            _logger?.LogDebug("Status bar size after init: {Width}x{Height}", statusBar.Width, statusBar.Height);
-            Console.WriteLine($"[DIAGNOSTIC] Status bar created: Size={statusBar.Width}x{statusBar.Height}");
+            _statusBar = StatusBarFactory.CreateStatusBar(this, _logger);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize Status Bar");
             Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeStatusBar failed: {ex.Message}");
             _statusBar = null;
+            return;
         }
+
+        // _statusBar is guaranteed to be non-null here
+        Controls.Add(_statusBar);
+        _logger?.LogInformation("Status bar initialized via factory with {PanelCount} panels", _statusBar.Controls.Count);
+        _logger?.LogDebug("Status bar size after init: {Width}x{Height}, HasSizingGrip={HasGrip}",
+            _statusBar.Width, _statusBar.Height, _statusBar.SizingGrip);
+        Console.WriteLine($"[DIAGNOSTIC] Status bar created: Size={_statusBar.Width}x{_statusBar.Height}, Panels={_statusBar.Controls.Count}");
     }
 
     /// <summary>
@@ -679,6 +692,8 @@ public partial class MainForm
     /// Initialize the navigation <see cref="ToolStripEx"/> with named <see cref="ToolStripButton"/>
     /// controls used for quick navigation. Buttons are assigned deterministic <see cref="Control.Name"/>
     /// and <see cref="Control.AccessibleName"/> values for automation and testing.
+    /// All buttons include AccessibleDescription for screen reader support.
+    /// ToolStripEx automatically handles button sizing and alignment via layout.
     /// </summary>
     private void InitializeNavigationStrip()
     {
@@ -688,10 +703,19 @@ public partial class MainForm
             {
                 Name = "NavigationStrip",
                 Dock = DockStyle.Top,
-                GripStyle = ToolStripGripStyle.Hidden
+                GripStyle = ToolStripGripStyle.Hidden,
+                AccessibleName = "Navigation Strip",
+                AccessibleDescription = "Main navigation toolbar for switching between application panels",
+                AutoSize = true // ToolStripEx handles height automatically
             };
 
-            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard", Enabled = false };
+            var dashboardBtn = new ToolStripButton("Dashboard")
+            {
+                Name = "Nav_Dashboard",
+                AccessibleName = "Dashboard",
+                AccessibleDescription = "Navigate to Dashboard panel with summary metrics and activity",
+                Enabled = false
+            };
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -699,7 +723,13 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Dashboard clicked");
             };
 
-            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts", Enabled = false };
+            var accountsBtn = new ToolStripButton("Accounts")
+            {
+                Name = "Nav_Accounts",
+                AccessibleName = "Accounts",
+                AccessibleDescription = "Navigate to Municipal Accounts panel with account management",
+                Enabled = false
+            };
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -707,7 +737,13 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Accounts clicked");
             };
 
-            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget", Enabled = false };
+            var budgetBtn = new ToolStripButton("Budget")
+            {
+                Name = "Nav_Budget",
+                AccessibleName = "Budget",
+                AccessibleDescription = "Navigate to Budget Overview panel with budget allocation and tracking",
+                Enabled = false
+            };
             budgetBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -715,7 +751,13 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Budget clicked");
             };
 
-            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Nav_Charts", Enabled = false };
+            var chartsBtn = new ToolStripButton("Charts")
+            {
+                Name = "Nav_Charts",
+                AccessibleName = "Charts",
+                AccessibleDescription = "Navigate to Budget Analytics panel with charts and visualizations",
+                Enabled = false
+            };
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -723,7 +765,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Charts clicked");
             };
 
-            var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Nav_Analytics" };
+            var analyticsBtn = new ToolStripButton("&Analytics")
+            {
+                Name = "Nav_Analytics",
+                AccessibleName = "Analytics",
+                AccessibleDescription = "Navigate to Analytics and Insights panel with advanced analytics"
+            };
             analyticsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -731,7 +778,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Analytics clicked");
             };
 
-            var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Nav_AuditLog" };
+            var auditLogBtn = new ToolStripButton("&Audit Log")
+            {
+                Name = "Nav_AuditLog",
+                AccessibleName = "Audit Log",
+                AccessibleDescription = "Navigate to Audit Log panel with activity history and compliance tracking"
+            };
             auditLogBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -739,7 +791,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_AuditLog clicked");
             };
 
-            var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
+            var customersBtn = new ToolStripButton("Customers")
+            {
+                Name = "Nav_Customers",
+                AccessibleName = "Customers",
+                AccessibleDescription = "Navigate to Customers panel with customer/account information"
+            };
             customersBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -747,7 +804,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Customers clicked");
             };
 
-            var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
+            var reportsBtn = new ToolStripButton("Reports")
+            {
+                Name = "Nav_Reports",
+                AccessibleName = "Reports",
+                AccessibleDescription = "Navigate to Reports panel with generated reports and exports"
+            };
             reportsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -755,7 +817,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Reports clicked");
             };
 
-            var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
+            var aiChatBtn = new ToolStripButton("AI Chat")
+            {
+                Name = "Nav_AIChat",
+                AccessibleName = "AI Chat",
+                AccessibleDescription = "Navigate to AI Chat panel with intelligent assistant"
+            };
             aiChatBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -763,7 +830,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_AIChat clicked");
             };
 
-            var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
+            var quickBooksBtn = new ToolStripButton("QuickBooks")
+            {
+                Name = "Nav_QuickBooks",
+                AccessibleName = "QuickBooks",
+                AccessibleDescription = "Navigate to QuickBooks Integration panel for accounting operations"
+            };
             quickBooksBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -771,7 +843,12 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_QuickBooks clicked");
             };
 
-            var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
+            var settingsBtn = new ToolStripButton("Settings")
+            {
+                Name = "Nav_Settings",
+                AccessibleName = "Settings",
+                AccessibleDescription = "Navigate to Settings panel to configure application preferences"
+            };
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
@@ -783,20 +860,36 @@ public partial class MainForm
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
-                AccessibleName = "Theme_Toggle",
+                AccessibleName = "Theme Toggle",
+                AccessibleDescription = "Toggle between light and dark themes for current session",
                 AutoSize = true
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
             themeToggleBtn.Text = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
             // Grid test helpers (navigation strip)
-            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter") { Name = "Nav_ApplyGridFilter" };
+            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter")
+            {
+                Name = "Nav_ApplyGridFilter",
+                AccessibleName = "Apply Grid Filter",
+                AccessibleDescription = "Apply filter to active grid control"
+            };
             navGridApplyFilter.Click += (s, e) => ApplyTestFilterToActiveGrid();
 
-            var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter" };
+            var navGridClearFilter = new ToolStripButton("Clear Grid Filter")
+            {
+                Name = "Nav_ClearGridFilter",
+                AccessibleName = "Clear Grid Filter",
+                AccessibleDescription = "Clear all filters from active grid control"
+            };
             navGridClearFilter.Click += (s, e) => ClearActiveGridFilter();
 
-            var navGridExport = new ToolStripButton("Export Grid") { Name = "Nav_ExportGrid" };
+            var navGridExport = new ToolStripButton("Export Grid")
+            {
+                Name = "Nav_ExportGrid",
+                AccessibleName = "Export Grid",
+                AccessibleDescription = "Export active grid data to Excel spreadsheet"
+            };
             navGridExport.Click += async (s, e) => await ExportActiveGridToExcel();
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
@@ -823,9 +916,9 @@ public partial class MainForm
             });
 
             Controls.Add(_navigationStrip);
-            _logger?.LogInformation("Navigation strip initialized");
+            _logger?.LogInformation("Navigation strip initialized with {ButtonCount} buttons", _navigationStrip.Items.Count);
             _logger?.LogDebug("Navigation strip size after init: {Width}x{Height}", _navigationStrip.Width, _navigationStrip.Height);
-            Console.WriteLine($"[DIAGNOSTIC] Navigation strip created: Size={_navigationStrip.Width}x{_navigationStrip.Height}");
+            Console.WriteLine($"[DIAGNOSTIC] Navigation strip created: Size={_navigationStrip.Width}x{_navigationStrip.Height}, AutoSize={_navigationStrip.AutoSize}");
         }
         catch (Exception ex)
         {
@@ -865,6 +958,121 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Failed to initialize status timer");
+        }
+    }
+
+    /// <summary>
+    /// Initialize full-screen loading overlay for async operations.
+    /// Provides visual feedback during long-running tasks like initialization or data loading.
+    /// Overlay is positioned full-screen (DockStyle.Fill) and label is dynamically centered.
+    /// </summary>
+    private void InitializeLoadingOverlay()
+    {
+        try
+        {
+            _loadingOverlay = new Panel
+            {
+                Name = "LoadingOverlay",
+                Dock = DockStyle.Fill,
+                BackColor = GetLoadingOverlayColor(), // Semantic semi-transparent overlay color
+                Visible = false,
+                AccessibleName = "Loading Overlay",
+                AccessibleDescription = "Displays during long-running async operations"
+            };
+
+            _loadingLabel = new Label
+            {
+                Name = "LoadingLabel",
+                Text = MainFormResources.LoadingText,
+                ForeColor = GetLoadingLabelColor(), // Semantic white text color
+                Font = new Font(SegoeUiFontName, 12F, FontStyle.Bold),
+                AutoSize = true,
+                TextAlign = ContentAlignment.MiddleCenter,
+                AccessibleName = "Loading Message",
+                AccessibleDescription = "Current loading status message"
+            };
+
+            // Add label to overlay
+            _loadingOverlay.Controls.Add(_loadingLabel);
+
+            // Center label after it's added to container and size is known
+            // Use a deferred action to ensure label measurements are available
+            _loadingOverlay.Layout += (s, e) =>
+            {
+                if (_loadingLabel != null && !_loadingLabel.IsDisposed)
+                {
+                    // Center label both horizontally and vertically on first layout
+                    _loadingLabel.Location = new Point(
+                        Math.Max(0, (_loadingOverlay.Width - _loadingLabel.Width) / 2),
+                        Math.Max(0, (_loadingOverlay.Height - _loadingLabel.Height) / 2));
+                }
+            };
+
+            // Ensure form is added before label can be positioned correctly
+            Controls.Add(_loadingOverlay);
+            _loadingOverlay.BringToFront();
+
+            _logger?.LogDebug("Loading overlay initialized - centered label with dynamic repositioning on resize");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to initialize loading overlay");
+        }
+    }
+
+    /// <summary>
+    /// Show the loading overlay with optional message.
+    /// Thread-safe: can be called from any thread.
+    /// </summary>
+    /// <param name="message">Optional loading message to display.</param>
+    public void ShowLoadingOverlay(string? message = null)
+    {
+        if (_loadingOverlay == null) return;
+
+        try
+        {
+            if (InvokeRequired)
+            {
+                Invoke(() => ShowLoadingOverlay(message));
+                return;
+            }
+
+            if (_loadingLabel != null)
+            {
+                _loadingLabel.Text = message ?? MainFormResources.LoadingText;
+            }
+
+            _loadingOverlay.Visible = true;
+            _loadingOverlay.BringToFront();
+            Application.DoEvents(); // Allow UI to update
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to show loading overlay");
+        }
+    }
+
+    /// <summary>
+    /// Hide the loading overlay.
+    /// Thread-safe: can be called from any thread.
+    /// </summary>
+    public void HideLoadingOverlay()
+    {
+        if (_loadingOverlay == null) return;
+
+        try
+        {
+            if (InvokeRequired)
+            {
+                Invoke(HideLoadingOverlay);
+                return;
+            }
+
+            _loadingOverlay.Visible = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to hide loading overlay");
         }
     }
 
@@ -1272,17 +1480,28 @@ public partial class MainForm
 
     /// <summary>
     /// Create a Bitmap icon from Segoe MDL2 Assets text (Unicode character).
+    /// Icons use DodgerBlue as a semantic accent color for visual UI emphasis in menus/ribbons.
+    /// SEMANTIC COLOR JUSTIFICATION: DodgerBlue provides visual accent for icon emphasis in UI chrome,
+    /// independent of theme. All UI chrome (ribbons, menus) should have consistent accent color.
     /// </summary>
     /// <param name="iconText">Unicode character from Segoe MDL2 Assets font</param>
     /// <param name="size">Icon size in pixels</param>
     /// <returns>Bitmap containing the rendered icon, or null if creation fails</returns>
     private Bitmap? CreateIconFromText(string iconText, int size)
     {
+        if (string.IsNullOrWhiteSpace(iconText) || size <= 0)
+        {
+            _logger?.LogWarning("CreateIconFromText: Invalid parameters - iconText='{IconText}', size={Size}",
+                iconText ?? "(null)", size);
+            return null;
+        }
+
         try
         {
             var bitmap = new Bitmap(size, size);
             using (var graphics = Graphics.FromImage(bitmap))
             {
+                graphics.Clear(Color.Transparent);
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
 
@@ -1305,6 +1524,56 @@ public partial class MainForm
         {
             _logger?.LogWarning(ex, "Failed to create icon from text '{IconText}' with size {Size}", iconText, size);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the semantic overlay color for the loading overlay background.
+    /// Returns a semi-transparent dark overlay to dim the background during loading.
+    /// Uses system colors with theme awareness where available.
+    /// Modal overlay dimming is a semantic UI behavior pattern and exception to theme-only rule.
+    /// </summary>
+    /// <returns>Semi-transparent overlay color (128 alpha) for semantic modal dimming effect</returns>
+    private Color GetLoadingOverlayColor()
+    {
+        try
+        {
+            // SEMANTIC COLOR: Semi-transparent overlay for modal dimming effect
+            // Use system ControlDarkDark as base (theme-aware on modern Windows)
+            var overlayBaseColor = SystemColors.ControlDarkDark;
+            // Apply 50% opacity for modal dimming
+            return Color.FromArgb(128, overlayBaseColor.R, overlayBaseColor.G, overlayBaseColor.B);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get overlay color - using fallback");
+            // Fallback: semi-transparent black
+            return Color.FromArgb(128, 0, 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Gets the semantic text color for the loading label.
+    /// Returns high-contrast text color for accessibility on the modal overlay.
+    /// Uses system colors for theme-aware text rendering.
+    /// Text contrast is a semantic UI behavior pattern and exception to theme-only rule.
+    /// </summary>
+    /// <returns>High-contrast text color for semantic loading indicator visibility</returns>
+    private Color GetLoadingLabelColor()
+    {
+        try
+        {
+            // SEMANTIC COLOR: High-contrast text on modal overlay
+            // Use WindowText for theme-aware text color (respects light/dark mode on Windows)
+            var windowTextColor = SystemColors.WindowText;
+            // Ensure we have adequate contrast (invert to white if dark overlay is too dark)
+            return windowTextColor.GetBrightness() < 0.5f ? Color.White : Color.Black;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get text color - using fallback");
+            // Fallback: white for contrast against dark overlay
+            return Color.White;
         }
     }
 
