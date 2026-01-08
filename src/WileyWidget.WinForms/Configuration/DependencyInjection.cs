@@ -23,6 +23,7 @@ using Polly;
 using System.Net.Http;
 using System.Linq;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
+using Syncfusion.Blazor;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -107,6 +108,11 @@ namespace WileyWidget.WinForms.Configuration
 
             // Blazor WebView Services (Required for BlazorWebView controls)
             services.AddWindowsFormsBlazorWebView();
+
+            // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
+            // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in Syncfusion.Blazor.SmartComponents
+            // The package exists but the actual components/APIs are not released yet
+            services.AddSyncfusionBlazor();
 
             // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
             // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
@@ -202,6 +208,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
 
             services.AddSingleton<IAILoggingService, AILoggingService>();
+
+            // AI-Powered Search and Analysis Services
+            services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
+            services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddScoped<IConversationRepository, EfConversationRepository>();
 
             // JARVIS Personality Service (Singleton - stateless personality injection)

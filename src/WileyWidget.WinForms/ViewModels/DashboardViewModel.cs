@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// Comprehensive dashboard view model with real data from repositories
     /// </summary>
 
-    public partial class DashboardViewModel : ObservableObject, IDisposable
+    public partial class DashboardViewModel : ObservableObject, IDashboardViewModel, IDisposable
     {
         private readonly IBudgetRepository? _budgetRepository;
         private readonly IMunicipalAccountRepository? _accountRepository;
@@ -133,6 +133,13 @@ namespace WileyWidget.WinForms.ViewModels
         public decimal TotalExpenditure => TotalExpenses;
         public decimal RemainingBudget => TotalBudgeted - TotalActual;
         public DateTime LastRefreshed => LastUpdated;
+
+        // Alias for variance status color (semantic indicator)
+        [ObservableProperty]
+        private string varianceStatusColor = "Green";  // Green, Orange, Red
+
+        // Alias properties for DashboardPanel compatibility
+        public ObservableCollection<DepartmentSummary> DepartmentMetrics => DepartmentSummaries;
 
         #endregion
 

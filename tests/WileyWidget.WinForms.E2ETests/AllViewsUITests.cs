@@ -58,18 +58,25 @@ namespace WileyWidget.WinForms.E2ETests
                     continue;
                 }
 
-                // Try full TFM path (net9.0-windows10.0.26100.0)
-                var fullTfm = Path.Combine(baseDir, "net9.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
+                // Try full TFM path (net10.0-windows10.0.26100.0)
+                var fullTfm = Path.Combine(baseDir, "net10.0-windows10.0.26100.0", "WileyWidget.WinForms.exe");
                 if (File.Exists(fullTfm))
                 {
                     return fullTfm;
                 }
 
-                // Try standard net9.0-windows path
-                var standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
+                // Try standard net10.0-windows path
+                var standard = Path.Combine(baseDir, "net10.0-windows", "WileyWidget.WinForms.exe");
                 if (File.Exists(standard))
                 {
                     return standard;
+                }
+
+                // Try net9.0-windows (fallback for older builds)
+                var net9Standard = Path.Combine(baseDir, "net9.0-windows", "WileyWidget.WinForms.exe");
+                if (File.Exists(net9Standard))
+                {
+                    return net9Standard;
                 }
 
                 // Try framework-dependent path

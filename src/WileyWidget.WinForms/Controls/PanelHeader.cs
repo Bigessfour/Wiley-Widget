@@ -157,19 +157,13 @@ namespace WileyWidget.WinForms.Controls
         private void UpdatePinButtonAppearance()
         {
             // Update button appearance based on pinned state
-            // SfButton doesn't have built-in toggle styling, so we can use theme colors or custom styling
+            // SfButton styling is managed by SfSkinManager theme cascade from parent form
+            // Avoid manual BackColor/ForeColor assignments - theme system handles this
             try
             {
-                if (_isPinned)
-                {
-                    _btnPin.BackColor = SystemColors.Highlight;
-                    _btnPin.ForeColor = SystemColors.HighlightText;
-                }
-                else
-                {
-                    _btnPin.BackColor = SystemColors.Control;
-                    _btnPin.ForeColor = SystemColors.ControlText;
-                }
+                _btnPin.Text = _isPinned ? "Unpin" : "Pin";
+                _btnPin.AccessibleName = _isPinned ? "Unpin panel" : "Pin panel";
+                // Theme colors are inherited from SfSkinManager - no manual override
             }
             catch { /* best effort */ }
         }

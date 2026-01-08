@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.WinForms.ViewModels;
 using System; // Added for ArgumentNullException, DateTime, etc.
 
 namespace WileyWidget.WinForms.ViewModels
@@ -13,7 +12,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// ViewModel for analytics functionality providing exploratory analysis, scenario modeling, and forecasting.
     /// Supports budget variance analysis, rate scenario projections, and reserve forecasting with AI-driven insights.
     /// </summary>
-    public partial class AnalyticsViewModel : ObservableObject, IDisposable
+    public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
@@ -556,23 +555,17 @@ namespace WileyWidget.WinForms.ViewModels
     }
 
     /// <summary>
-    /// Analytics metric for display
+    /// Analytics metric data model for displaying metrics in the UI.
     /// </summary>
     public class AnalyticsMetric
     {
-        /// <summary>
-        /// Gets or sets the category name
-        /// </summary>
+        /// <summary>Gets or sets the category name</summary>
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets the metric value
-        /// </summary>
+        /// <summary>Gets or sets the metric value</summary>
         public decimal Value { get; set; }
 
-        /// <summary>
-        /// Gets or sets the unit of measurement
-        /// </summary>
+        /// <summary>Gets or sets the unit of measurement</summary>
         public string Unit { get; set; } = string.Empty;
     }
 }

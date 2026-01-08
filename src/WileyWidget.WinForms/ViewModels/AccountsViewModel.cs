@@ -17,7 +17,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for managing municipal accounts with filtering and CRUD operations.
 /// Designed to be minimal, testable, and to match the public API expected by tests.
 /// </summary>
-public partial class AccountsViewModel : ViewModelBase, IDisposable
+public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDisposable
 {
     private readonly ILogger<AccountsViewModel> _typedLogger;
     private readonly IAccountsRepository _accountsRepository;

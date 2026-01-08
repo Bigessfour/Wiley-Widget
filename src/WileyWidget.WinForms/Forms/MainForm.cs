@@ -39,7 +39,14 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     internal static class MainFormResources
     {
-        public const string FormTitle = "Wiley Widget — Running on WinForms + .NET 9";
+        /// <summary>Professional window title with product branding.</summary>
+        public const string FormTitle = "Wiley Widget - Municipal Budget Management System";
+        /// <summary>Application version for About dialog and diagnostic purposes.</summary>
+        public const string ApplicationVersion = "1.0.0";
+
+        /// <summary>Application description for About dialog.</summary>
+        public const string ApplicationDescription = "A comprehensive municipal budget management system built on .NET 9 and Windows Forms.";
+
         public const string Dashboard = "Dashboard";
         public const string Accounts = "Accounts";
         public const string Charts = "Charts";
@@ -65,7 +72,6 @@ namespace WileyWidget.WinForms.Forms
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
-        private JARVISChatHostForm? _jarvisForm;
 
         /// <summary>
         /// The root <see cref="IServiceProvider"/> for the application. Child forms and controls
@@ -292,30 +298,63 @@ namespace WileyWidget.WinForms.Forms
 
         private async Task ProcessDroppedFiles(string[] files)
         {
+            if (files == null || files.Length == 0)
+            {
+                _logger?.LogWarning("No files provided to ProcessDroppedFiles");
+                return;
+            }
+
             _asyncLogger?.Information("Processing {Count} dropped files", files.Length);
 
             foreach (var file in files)
             {
-                var ext = Path.GetExtension(file).ToLowerInvariant();
-                _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
-                _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
+                try
+                {
+                    // Validate file
+                    if (string.IsNullOrWhiteSpace(file))
+                    {
+                        _logger?.LogWarning("Empty file path in dropped files");
+                        continue;
+                    }
 
-                // Add to MRU
-                AddToMruList(file);
+                    if (!File.Exists(file))
+                    {
+                        ShowErrorDialog("File Not Found", $"The file '{Path.GetFileName(file)}' does not exist.");
+                        continue;
+                    }
 
-                // Handle based on file type
-                if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
-                {
-                    await ImportDataFileAsync(file);
+                    var fileInfo = new FileInfo(file);
+                    if (fileInfo.Length > 100 * 1024 * 1024) // 100MB limit
+                    {
+                        ShowErrorDialog("File Too Large", $"The file '{Path.GetFileName(file)}' is too large ({fileInfo.Length / 1024 / 1024}MB). Maximum size is 100MB.");
+                        continue;
+                    }
+
+                    var ext = Path.GetExtension(file).ToLowerInvariant();
+                    _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
+                    _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
+
+                    // Add to MRU
+                    AddToMruList(file);
+
+                    // Handle based on file type
+                    if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
+                    {
+                        await ImportDataFileAsync(file);
+                    }
+                    else if (ext == ".json" || ext == ".xml")
+                    {
+                        await ImportConfigurationDataAsync(file);
+                    }
+                    else
+                    {
+                        ShowErrorDialog("Unsupported File Type", $"Unsupported file type: {ext}\n\nSupported: CSV, XLSX, XLS, JSON, XML");
+                    }
                 }
-                else if (ext == ".json" || ext == ".xml")
+                catch (Exception ex)
                 {
-                    await ImportConfigurationDataAsync(file);
-                }
-                else
-                {
-                    MessageBox.Show($"Unsupported file type: {ext}\n\nSupported: CSV, XLSX, JSON, XML",
-                        "Unsupported File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _logger?.LogError(ex, "Failed to process dropped file: {File}", file);
+                    ShowErrorDialog("File Processing Error", $"Failed to process '{Path.GetFileName(file)}': {ex.Message}", ex);
                 }
             }
 
@@ -402,6 +441,9 @@ namespace WileyWidget.WinForms.Forms
 
             // Load MRU list from registry
             LoadMruFromRegistry();
+
+            // Restore window state (size, position, maximized/minimized) from previous session
+            RestoreWindowState();
 
             // CRITICAL: Initialize UI Chrome and Docking synchronously on UI thread BEFORE OnShown
             // Heavy initialization (Chrome, Docking) must complete before form is shown to prevent rendering issues
@@ -700,9 +742,6 @@ namespace WileyWidget.WinForms.Forms
                 }
             });
 
-            // Initialize JARVIS AI Assist panel after async services are initialized
-            InitializeJarvisPanel();
-
             _ = Task.Run(async () =>
             {
                 try
@@ -938,6 +977,8 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+
+
         private void TryLaunchReportViewerOnLoad()
         {
             if (_reportViewerLaunchOptions == null || !_reportViewerLaunchOptions.ShowReportViewer)
@@ -989,71 +1030,6 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        /// <summary>
-        /// Initializes and docks the JARVIS AI Assist panel.
-        /// Called after async services are initialized in OnShown.
-        /// </summary>
-        private void InitializeJarvisPanel()
-        {
-            try
-            {
-                if (_jarvisForm == null)
-                {
-                    _jarvisForm = new JARVISChatHostForm();
-                    _jarvisForm.TopLevel = false;
-                    _jarvisForm.FormBorderStyle = FormBorderStyle.None;
-                }
-
-                // Set dock properties
-                _jarvisForm.Text = "JARVIS AI Assist";
-                _jarvisForm.Visible = false;
-
-                // Dock control using DockingManager
-                if (_dockingManager != null)
-                {
-                    _dockingManager.DockControl(
-                        _jarvisForm,
-                        this,
-                        DockingStyle.Right,
-                        450  // Preferred width
-                    );
-                }
-
-                _logger?.LogInformation("JARVIS AI Assist panel initialized and docked");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to initialize JARVIS panel");
-            }
-        }
-
-        /// <summary>
-        /// Shows and activates the JARVIS Chat panel in the docking manager.
-        /// Called when user clicks the JARVIS Chat ribbon button.
-        /// </summary>
-        public void ShowJARVISPanel()
-        {
-            try
-            {
-                if (_jarvisForm == null)
-                {
-                    _logger?.LogWarning("ShowJARVISPanel: JARVIS form not initialized");
-                    return;
-                }
-
-                // Make visible and activate in docking manager
-                _jarvisForm.Visible = true;
-                _dockingManager?.ActivateControl(_jarvisForm);
-
-                _logger?.LogInformation("[JARVIS_PANEL] JARVIS Chat panel activated by user");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "[JARVIS_PANEL] Failed to show JARVIS panel");
-                MessageBox.Show($"Failed to show JARVIS Chat: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             try
@@ -1098,6 +1074,17 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try { _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath()); }
                     catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout during form closing"); }
+                }
+
+                // Save window state (size, position, maximized/minimized) for next session
+                try
+                {
+                    SaveWindowState();
+                    _logger?.LogDebug("Form closing: window state saved");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to save window state during form closing");
                 }
 
                 // Phase 1 Simplification: Dispose docking resources
@@ -1159,6 +1146,41 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Shows a user-friendly error dialog with retry option.
+        /// Thread-safe: can be called from any thread.
+        /// </summary>
+        /// <param name="title">Dialog title.</param>
+        /// <param name="message">Error message.</param>
+        /// <param name="exception">Optional exception for logging.</param>
+        /// <param name="showRetry">If true, shows retry button.</param>
+        /// <returns>DialogResult indicating user choice.</returns>
+        public DialogResult ShowErrorDialog(string title, string message, Exception? exception = null, bool showRetry = false)
+        {
+            if (exception != null)
+            {
+                _logger?.LogError(exception, "Error dialog shown: {Message}", message);
+            }
+
+            try
+            {
+                if (InvokeRequired)
+                {
+                    return (DialogResult)Invoke(() => ShowErrorDialog(title, message, exception, showRetry));
+                }
+
+                var buttons = showRetry ? MessageBoxButtons.RetryCancel : MessageBoxButtons.OK;
+                var icon = MessageBoxIcon.Error;
+
+                return MessageBox.Show(this, message, title, buttons, icon);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to show error dialog");
+                return DialogResult.Cancel;
+            }
         }
 
         /// <summary>
@@ -1914,6 +1936,100 @@ namespace WileyWidget.WinForms.Forms
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 ApplyStatus("Load failed");
+            }
+        }
+
+        #endregion
+
+        #region Window State Persistence
+
+        /// <summary>
+        /// Saves the current window state (size, position, and maximized/normal state) to registry.
+        /// Called from OnFormClosing to persist user's preferred window layout.
+        /// </summary>
+        private void SaveWindowState()
+        {
+            try
+            {
+                // Only save if window is visible and not minimized (prevents saving collapsed state)
+                if (this.Visible && this.WindowState != System.Windows.Forms.FormWindowState.Minimized)
+                {
+                    using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
+                        @"Software\Wiley Widget\WindowState", true);
+                    if (key != null)
+                    {
+                        key.SetValue("WindowState", this.WindowState.ToString(), Microsoft.Win32.RegistryValueKind.String);
+                        key.SetValue("Left", this.Left, Microsoft.Win32.RegistryValueKind.DWord);
+                        key.SetValue("Top", this.Top, Microsoft.Win32.RegistryValueKind.DWord);
+                        key.SetValue("Width", this.Width, Microsoft.Win32.RegistryValueKind.DWord);
+                        key.SetValue("Height", this.Height, Microsoft.Win32.RegistryValueKind.DWord);
+                        _logger?.LogDebug("Window state saved to registry: State={State}, Size={Width}x{Height}, Pos=({Left},{Top})",
+                            this.WindowState, this.Width, this.Height, this.Left, this.Top);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to save window state to registry");
+                // Silently fail - window state persistence is not critical
+            }
+        }
+
+        /// <summary>
+        /// Restores the window state (size, position, and maximized/normal state) from registry.
+        /// Called from OnLoad before the form is shown.
+        /// </summary>
+        private void RestoreWindowState()
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Wiley Widget\WindowState");
+                if (key != null)
+                {
+                    // Parse saved window state
+                    var stateStr = key.GetValue("WindowState") as string;
+                    if (Enum.TryParse<System.Windows.Forms.FormWindowState>(stateStr, out var savedState))
+                    {
+                        this.WindowState = savedState;
+                    }
+
+                    // Restore position and size (with validation to ensure form is visible)
+                    int left = (int?)key.GetValue("Left") ?? 100;
+                    int top = (int?)key.GetValue("Top") ?? 100;
+                    int width = (int?)key.GetValue("Width") ?? 1400;
+                    int height = (int?)key.GetValue("Height") ?? 900;
+
+                    // Validate that position is on-screen
+                    if (!_uiConfig.IsUiTestHarness && Screen.FromPoint(new Point(left + width / 2, top + height / 2)).WorkingArea.IsEmpty)
+                    {
+                        // Position is off-screen, use defaults
+                        left = 100;
+                        top = 100;
+                    }
+
+                    this.Left = left;
+                    this.Top = top;
+                    this.Width = Math.Max(width, this.MinimumSize.Width);
+                    this.Height = Math.Max(height, this.MinimumSize.Height);
+
+                    _logger?.LogDebug("Window state restored from registry: State={State}, Size={Width}x{Height}, Pos=({Left},{Top})",
+                        this.WindowState, this.Width, this.Height, this.Left, this.Top);
+                }
+                else
+                {
+                    // No saved state - use defaults
+                    this.StartPosition = FormStartPosition.CenterScreen;
+                    this.Width = 1400;
+                    this.Height = 900;
+                    _logger?.LogDebug("No saved window state found - using defaults");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to restore window state from registry - using defaults");
+                this.StartPosition = FormStartPosition.CenterScreen;
+                // Silently fail and use defaults
             }
         }
 

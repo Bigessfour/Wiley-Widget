@@ -46,7 +46,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// Binds to ProactiveInsightsService and provides commands for interaction.
     /// Uses MVVM Toolkit for automatic property change notification.
     /// </summary>
-    public partial class InsightFeedViewModel : ViewModelBase
+    public partial class InsightFeedViewModel : ViewModelBase, IInsightFeedViewModel
     {
         private readonly ProactiveInsightsService? _insightsService;
         private readonly ILogger<InsightFeedViewModel> _logger;
@@ -68,6 +68,14 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private int lowPriorityCount = 0;
+
+        /// <summary>
+        /// Initializes a new instance of the InsightFeedViewModel with default dependencies.
+        /// This parameterless constructor supports Moq proxy mocking in unit tests.
+        /// </summary>
+        public InsightFeedViewModel() : this(null, null)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the InsightFeedViewModel.

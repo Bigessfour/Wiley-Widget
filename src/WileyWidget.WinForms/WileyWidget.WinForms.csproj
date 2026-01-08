@@ -109,6 +109,7 @@
     <PackageReference Include="Syncfusion.Blazor.InteractiveChat" />
     <PackageReference Include="Syncfusion.Blazor.Core" />
     <PackageReference Include="Syncfusion.Blazor.Themes" />
+    <PackageReference Include="Syncfusion.Blazor.SmartComponents" />
   </ItemGroup>
 
   <ItemGroup>

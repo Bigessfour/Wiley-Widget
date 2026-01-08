@@ -22,7 +22,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// Provides filtering, analysis, and export capabilities for budget entries.
     /// Supports multi-year budgets, hierarchical entries, GASB compliance, and advanced analytics.
     /// </summary>
-    public partial class BudgetViewModel : ObservableObject, IDisposable
+    public partial class BudgetViewModel : ObservableObject, IBudgetViewModel, IDisposable
     {
         private readonly ILogger<BudgetViewModel> _logger;
         private readonly IBudgetRepository _budgetRepository;

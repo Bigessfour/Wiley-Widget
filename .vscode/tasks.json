@@ -565,7 +565,251 @@
 			},
 			"problemMatcher": []
 		},
-		// ... rest of upgrade-to-NET10 tasks continue unchanged ...
+		{
+			"label": "build: Abstractions",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Models",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Models/WileyWidget.Models.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Services.Abstractions",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Services.Abstractions/WileyWidget.Services.Abstractions.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Data",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Data/WileyWidget.Data.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Models", "build: Abstractions"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Services",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Services/WileyWidget.Services.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Data", "build: Services.Abstractions"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Business",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Business/WileyWidget.Business.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Services"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+
+		{
+			"label": "build: Webhooks",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Services"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: WinForms",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Business"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Abstractions.Tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.Abstractions.Tests/WileyWidget.Abstractions.Tests.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Abstractions"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: Services.Tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tests/WileyWidget.Services.Tests/WileyWidget.Services.Tests.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: Services"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: WinForms.Tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: WinForms"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: WinForms.E2ETests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: WinForms"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "build: MCP Server",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"group": "build",
+			"dependsOn": ["build: WinForms"],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"problemMatcher": "$msCompile"
+		},
 		{
 			"label": "test: viewmodels",
 			"type": "shell",

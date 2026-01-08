@@ -146,7 +146,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         Controls.Add(_loadingOverlay);
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No analytics data available" };
+        _noDataOverlay = new NoDataOverlay { Message = "No analytics data available\r\nPerform budget operations to generate insights" };
         Controls.Add(_noDataOverlay);
 
         Controls.Add(_mainSplitContainer);

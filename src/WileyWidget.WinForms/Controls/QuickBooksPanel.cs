@@ -186,7 +186,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _noDataOverlay = new NoDataOverlay
         {
-            Message = "No sync history available. Connect to QuickBooks and perform operations.",
+            Message = "No sync history yet\r\nConnect and sync data with QuickBooks to get started",
             Visible = false
         };
         Controls.Add(_noDataOverlay);

@@ -6,8 +6,16 @@
     <title>Wiley Widget</title>
     <base href="/" />
     <link rel="stylesheet" href="_framework/blazor.webview.css" />
+    <style>
+        html, body, #app, .blazor-container {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;  /* Or auto if you want internal scroll */
+        }
+    </style>
 </head>
-<body>
+<body style="height:100%; margin:0; overflow:hidden;">
     <div id="app">Loading...</div>
 
     <div id="blazor-error-ui">

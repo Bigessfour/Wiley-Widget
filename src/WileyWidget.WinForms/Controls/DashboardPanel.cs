@@ -638,7 +638,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard..." };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No data yet – import or add entries to get started." };
+            _noDataOverlay = new NoDataOverlay { Message = "Welcome! No data yet\r\nStart by adding accounts and budget entries" };
             Controls.Add(_noDataOverlay);
 
             // Bindings

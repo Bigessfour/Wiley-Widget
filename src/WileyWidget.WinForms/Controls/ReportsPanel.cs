@@ -432,7 +432,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // No data overlay
         _noDataOverlay = new NoDataOverlay
         {
-            Message = "No report loaded\r\nSelect a report and click Generate",
+            Message = "No report loaded yet\r\nSelect a report from the dropdown and click Generate to preview",
             Visible = false
         };
         Controls.Add(_noDataOverlay);

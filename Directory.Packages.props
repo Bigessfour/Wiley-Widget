@@ -89,6 +89,8 @@
     <PackageVersion Include="ModelContextProtocol" Version="0.2.0-preview.1" />
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.16.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.16.0" />
+    <PackageVersion Include="OpenAI" Version="2.1.0" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="10.0.0" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.3.0" />
@@ -142,5 +144,6 @@
     <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Blazor.SmartComponents" Version="32.1.19" />
   </ItemGroup>
 </Project>

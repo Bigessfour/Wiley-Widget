@@ -62,6 +62,35 @@ namespace WileyWidget.WinForms.Forms
         [ObservableProperty]
         private bool isPositiveVariance;
 
+        // Gauge properties for dashboard metric visualization (0-100 scale)
+        [ObservableProperty]
+        private decimal totalBudgetGauge;  // Budget utilization percentage (0-100%)
+
+        [ObservableProperty]
+        private decimal revenueGauge;      // Revenue collection percentage (0-100%)
+
+        [ObservableProperty]
+        private decimal expensesGauge;     // Expense ratio percentage (0-100%)
+
+        [ObservableProperty]
+        private decimal netPositionGauge;  // Budget variance indicator (0-100%)
+
+        // Explicit summary tile properties
+        [ObservableProperty]
+        private decimal totalExpenditure;  // Total actual spending (alias for TotalActual visualization)
+
+        [ObservableProperty]
+        private decimal remainingBudget;   // TotalBudget - TotalExpenditure
+
+        // Semantic status color for variance indicator
+        [ObservableProperty]
+        private string varianceStatusColor = "Green";  // Green, Orange, Red
+
+        // Collections for detailed visualizations
+        public ObservableCollection<DashboardMetric> Metrics { get; } = new();
+
+        public ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; } = new();
+
         // UI-friendly formatted strings (for direct binding, no converters needed)
         public string FormattedTotalBudget => TotalBudget.ToString("C", CultureInfo.CurrentCulture);
         public string FormattedTotalActual => TotalActual.ToString("C", CultureInfo.CurrentCulture);
@@ -96,6 +125,8 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger.LogInformation("RefreshDataAsync started");
                 ActivityItems.Clear();
+                Metrics.Clear();
+                MonthlyRevenueData.Clear();
                 TotalBudget = TotalActual = Variance = 0;
                 ActiveAccountCount = TotalDepartments = 0;
                 ErrorMessage = null;
@@ -156,8 +187,11 @@ namespace WileyWidget.WinForms.Forms
 
                 ProcessDashboard(dashboardItems);
 
+                // Load sample monthly revenue data for trends
+                PopulateMonthlyRevenueData();
+
                 LastUpdateTime = DateTime.Now.ToString("g", CultureInfo.CurrentCulture);
-                _logger.LogInformation("Dashboard loaded successfully — {Count} activity items", ActivityItems.Count);
+                _logger.LogInformation("Dashboard loaded successfully — {Count} activities, {Metrics} metrics", ActivityItems.Count, Metrics.Count);
             }
             catch (OperationCanceledException)
             {
@@ -204,6 +238,34 @@ namespace WileyWidget.WinForms.Forms
             };
         }
 
+        private void PopulateMonthlyRevenueData()
+        {
+            // Populate with last 12 months of sample data
+            // In production, this would come from a repository query
+            MonthlyRevenueData.Clear();
+
+            var now = DateTime.Now;
+            var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+            for (int i = 11; i >= 0; i--)
+            {
+                var month = now.AddMonths(-i);
+                var monthName = monthNames[month.Month - 1];
+                var baseAmount = 100000m + (i * 15000m);  // Increasing trend
+                var variance = (decimal)new Random().Next(-5000, 5000);
+
+                MonthlyRevenueData.Add(new MonthlyRevenue
+                {
+                    Month = monthName,
+                    Amount = baseAmount,
+                    Budget = baseAmount + 25000m,
+                    Variance = variance
+                });
+            }
+
+            _logger.LogDebug("PopulateMonthlyRevenueData: {Count} months loaded", MonthlyRevenueData.Count);
+        }
+
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("InitializeAsync called");
@@ -215,6 +277,7 @@ namespace WileyWidget.WinForms.Forms
             ArgumentNullException.ThrowIfNull(dashboardItems);
 
             ActivityItems.Clear();
+            Metrics.Clear();
 
             foreach (var item in dashboardItems)
             {
@@ -224,9 +287,23 @@ namespace WileyWidget.WinForms.Forms
                 {
                     case "budget" when decimal.TryParse(item.Value, out var budget):
                         TotalBudget = budget;
+                        Metrics.Add(new DashboardMetric
+                        {
+                            Name = item.Title,
+                            Value = budget,
+                            Category = item.Category ?? string.Empty,
+                            Amount = budget
+                        });
                         break;
                     case "actual" when decimal.TryParse(item.Value, out var actual):
                         TotalActual = actual;
+                        Metrics.Add(new DashboardMetric
+                        {
+                            Name = item.Title,
+                            Value = actual,
+                            Category = item.Category ?? string.Empty,
+                            Amount = actual
+                        });
                         break;
                     case "variance" when decimal.TryParse(item.Value, out var varianceVal):
                         Variance = varianceVal;
@@ -274,7 +351,7 @@ namespace WileyWidget.WinForms.Forms
             OnPropertyChanged(nameof(FormattedBudgetUtilization));
 
             LastUpdateTime = DateTime.Now.ToString("g", CultureInfo.CurrentCulture);
-            _logger.LogInformation("ProcessDashboard completed — {Items} activities", ActivityItems.Count);
+            _logger.LogInformation("ProcessDashboard completed — {Items} activities, {Metrics} metrics", ActivityItems.Count, Metrics.Count);
         }
 
         // Partial methods to update derived properties
@@ -289,6 +366,26 @@ namespace WileyWidget.WinForms.Forms
             VariancePercentage = TotalBudget > 0 ? Math.Abs(Variance / TotalBudget) * 100 : 0;
             BudgetUtilizationPercentage = TotalBudget > 0 ? (TotalActual / TotalBudget) * 100 : 0;
 
+            // Update explicit summary tile properties
+            TotalExpenditure = TotalActual;  // Alias for UI clarity
+            RemainingBudget = TotalBudget - TotalActual;
+
+            // Calculate gauge values (0-100 scale)
+            TotalBudgetGauge = BudgetUtilizationPercentage;  // Budget utilization
+            RevenueGauge = TotalBudget > 0 ? Math.Min((TotalActual / TotalBudget) * 100, 100) : 0;  // Revenue as % of budget
+            ExpensesGauge = TotalBudget > 0 ? Math.Min((TotalActual / TotalBudget) * 100, 100) : 0;  // Expense ratio
+            NetPositionGauge = TotalBudget > 0 ? Math.Min(Math.Max((Variance / TotalBudget) * 100 + 50, 0), 100) : 50;  // Variance centered at 50
+
+            // Update semantic status color based on variance
+            if (VariancePercentage >= 10)  // More than 10% under budget (good)
+                VarianceStatusColor = "Green";
+            else if (VariancePercentage >= 0)  // Under budget but less than 10%
+                VarianceStatusColor = "Green";
+            else if (VariancePercentage >= -5)  // Over budget by 5% or less
+                VarianceStatusColor = "Orange";
+            else  // Over budget by more than 5%
+                VarianceStatusColor = "Red";
+
             // Notify UI-bound formatted properties
             OnPropertyChanged(nameof(FormattedVariance));
             OnPropertyChanged(nameof(FormattedVariancePercentage));
@@ -302,5 +399,32 @@ namespace WileyWidget.WinForms.Forms
             _disposed = true;
             GC.SuppressFinalize(this);
         }
+    }
+
+    /// <summary>
+    /// Dashboard metric item for grid/list display.
+    /// Represents a single department or account metric.
+    /// </summary>
+    public class DashboardMetric
+    {
+        public string Name { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+        public string Category { get; set; } = "General";
+        public string DepartmentName { get; set; } = string.Empty;
+        public decimal BudgetedAmount { get; set; }
+        public decimal Amount { get; set; }  // Actual spending
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+    }
+
+    /// <summary>
+    /// Monthly revenue data for trend charts and sparklines.
+    /// Represents aggregated financial data for a month.
+    /// </summary>
+    public class MonthlyRevenue
+    {
+        public string Month { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public decimal Budget { get; set; }
+        public decimal Variance { get; set; }
     }
 }

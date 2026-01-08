@@ -274,6 +274,35 @@
           "Microsoft.Extensions.Options": "10.0.0"
         }
       },
+      "Microsoft.SemanticKernel": {
+        "type": "Direct",
+        "requested": "[1.16.0, )",
+        "resolved": "1.16.0",
+        "contentHash": "duAJL+nBuQmDr3OyBeefSH2WioNuAdAYbNAPoR+Lr2HnZU2qdLozGmLo9n4HKZ+1yVaz3Xy8pigkcJHaCA3Xyg==",
+        "dependencies": {
+          "Microsoft.SemanticKernel.Connectors.OpenAI": "1.16.0",
+          "Microsoft.SemanticKernel.Core": "1.16.0"
+        }
+      },
+      "Microsoft.SemanticKernel.Connectors.OpenAI": {
+        "type": "Direct",
+        "requested": "[1.16.0, )",
+        "resolved": "1.16.0",
+        "contentHash": "kpy97SeDKQEdpyQ8qzF9wmUhF+RLfg/p33clvdzy04XR8OrI5WWY2SPP3aTI2Pjwk7HFqxzuqS1mV4qBmc6OnA==",
+        "dependencies": {
+          "Azure.AI.OpenAI": "1.0.0-beta.17",
+          "Microsoft.SemanticKernel.Core": "1.16.0"
+        }
+      },
+      "OpenAI": {
+        "type": "Direct",
+        "requested": "[2.1.0, )",
+        "resolved": "2.1.0",
+        "contentHash": "zl72nyP4O94ZyEoCLoE8qoc5vp8kSJmRuqR+UdK+jNIjFJGWJYjsb4rAGpMWWRTbPYuk82E8myMJdVQurMLDnQ==",
+        "dependencies": {
+          "System.ClientModel": "1.2.1"
+        }
+      },
       "OpenTelemetry": {
         "type": "Direct",
         "requested": "[1.9.0, )",
@@ -434,6 +463,21 @@
         "resolved": "10.0.0",
         "contentHash": "LE3rDZoPzulou78Tsq+3ALhUs4vatQ03v2QWbYVIenVPneUH/+LTUmHyyl098OxIFLQI6sNkZs8YHbUnT/sm3A=="
       },
+      "System.Numerics.Tensors": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "PxZKFx8ACAt7gRnTSDgtZFA06cimls5XL1Olv63bWF8qKL5+EQdqq3K02etW4LNut4xDoREPe9z7QYATLMkBPA=="
+      },
+      "Azure.AI.OpenAI": {
+        "type": "Transitive",
+        "resolved": "1.0.0-beta.17",
+        "contentHash": "cYTqSHxST4+xyXWa+J0TFid8r5/pX/qLxQ22jynSHY2ACe93rnZ5GPiNtZ06c4pWvm1TPX5aJntED6im6xnzCA==",
+        "dependencies": {
+          "Azure.Core": "1.39.0",
+          "System.ClientModel": "1.0.0"
+        }
+      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.47.1",
@@ -504,6 +548,11 @@
         "type": "Transitive",
         "resolved": "9.0.4",
         "contentHash": "YgZYAWzyNuPVtPq6WNm0bqOWNjYaWgl5mBWTGZyNoXitYBUYSp6iUB9AwK0V1mo793qRJUXz2t6UZrWITZSvuQ=="
+      },
+      "Microsoft.Bcl.HashCode": {
+        "type": "Transitive",
+        "resolved": "1.1.1",
+        "contentHash": "MalY0Y/uM/LjXtHfX/26l2VtN4LDNZ2OE3aumNOHDLsT4fNYy2hiHXI4CXCqKpNUNm7iJ2brrc4J89UdaL56FA=="
       },
       "Microsoft.Bcl.TimeProvider": {
         "type": "Transitive",
@@ -925,6 +974,26 @@
         "type": "Transitive",
         "resolved": "1.1.0",
         "contentHash": "kz0PEW2lhqygehI/d6XsPCQzD7ff7gUJaVGPVETX611eadGsA3A877GdSlU0LRVMCTH/+P3o2iDTak+S08V2+A=="
+      },
+      "Microsoft.SemanticKernel.Abstractions": {
+        "type": "Transitive",
+        "resolved": "1.16.0",
+        "contentHash": "Ir+CPp4EEsMiT5GDd8fmTZsySFhXSea6Q8gj18rmQG0JcqDIKg22aNI4CnsuVDi4wHSK+KDd6GiBsH8oS70MdQ==",
+        "dependencies": {
+          "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
+          "Microsoft.Bcl.HashCode": "1.1.1",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.1"
+        }
+      },
+      "Microsoft.SemanticKernel.Core": {
+        "type": "Transitive",
+        "resolved": "1.16.0",
+        "contentHash": "vuk0k675R5Yqd3piSohHc4usR6/aM0My18m4evGn3HftT1efElPP0BzEoGBcInAjxhTuLW61PYlC7raaojmAVQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection": "8.0.0",
+          "Microsoft.SemanticKernel.Abstractions": "1.16.0"
+        }
       },
       "Microsoft.SqlServer.Server": {
         "type": "Transitive",

@@ -6,6 +6,7 @@ using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using System.Diagnostics.CodeAnalysis;
 
 namespace WileyWidget.Data
 {
@@ -16,6 +17,7 @@ namespace WileyWidget.Data
     /// </summary>
     public class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
+        [SuppressMessage("Microsoft.Globalization", "CA1303", Justification = "Design-time diagnostic messages use literal strings")]
         public AppDbContext CreateDbContext(string[] args)
         {
             // Mimic Program.cs environment loading
@@ -39,7 +41,7 @@ namespace WileyWidget.Data
             // This prevents accidental in-memory migrations
             if (AppDbStartupState.IsDegradedMode)
             {
-                Console.WriteLine("[DesignTime] WARNING: Degraded mode detected - migrations will target in-memory. Override via config if unintended."); // CA1303: Design-time code can use literal strings
+                Console.WriteLine("[DesignTime] WARNING: Degraded mode detected - migrations will target in-memory. Override via config if unintended.");
             }
 
             return runtimeFactory.CreateDbContext();

@@ -158,7 +158,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         Controls.Add(_loadingOverlay);
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No budget entries found" };
+        _noDataOverlay = new NoDataOverlay { Message = "No budget entries yet\r\nCreate a new budget to get started" };
         Controls.Add(_noDataOverlay);
 
         Controls.Add(_mainSplitContainer);

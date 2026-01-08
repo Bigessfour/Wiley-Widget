@@ -7,7 +7,8 @@
 @using WileyWidget.Models
 @using WileyWidget.Services.Abstractions
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Components.Web.Virtualization
+@* NOTE: Syncfusion.Blazor.SmartComponents is not yet available - Smart Components are in preview *@
+@* @using Syncfusion.Blazor.SmartComponents *@
 @implements IAsyncDisposable
 @inject IChatBridgeService ChatBridgeService
 @inject IJSRuntime JS
@@ -56,21 +57,24 @@
                 <div @ref="messagesEndRef" style="height: 1px;" role="presentation"></div>
             </div>
 
-            <!-- Input Section -->
+            <!-- Input Section with Smart TextArea -->
             <div style="border-top: 1px solid #ddd; padding: 12px 16px; background-color: white;" role="form" aria-label="Message input form">
-                <div style="display: flex; gap: 8px;">
-                    <label for="chat-input" class="sr-only">Type your message</label>
-                    <input
-                        id="chat-input"
-                        type="text"
-                        @bind="CurrentPrompt"
-                        @onkeyup="HandleKeyUp"
-                        placeholder="Type your message here..."
-                        style="flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Segoe UI', sans-serif; font-size: 14px;"
-                        disabled="@IsThinking"
-                        aria-label="Chat message input"
-                        aria-describedby="chat-hint"
-                        aria-required="true" />
+                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label for="chat-input" class="sr-only">Type your message</label>
+                        @* NOTE: SfSmartTextArea not available yet - using standard textarea *@
+                        <textarea
+                            id="chat-input"
+                            @bind="CurrentPrompt"
+                            @bind:event="oninput"
+                            placeholder="Type your message here..."
+                            disabled="@IsThinking"
+                            class="chat-smart-input"
+                            rows="2"
+                            @onkeyup="HandleKeyUp"
+                            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Segoe UI', sans-serif; font-size: 14px; resize: vertical;">
+                        </textarea>
+                    </div>
                     <button
                         @onclick="SubmitPrompt"
                         disabled="@(string.IsNullOrWhiteSpace(CurrentPrompt) || IsThinking)"
@@ -80,11 +84,41 @@
                         @(IsThinking ? "Sending..." : "Send")
                     </button>
                 </div>
-                <span id="chat-hint" class="sr-only">Press Enter to send message, or Shift+Enter for new line</span>
+                <span id="chat-hint" class="sr-only">Press Enter to send message, Tab for AI suggestions, or Shift+Enter for new line</span>
             </div>
 
             <!-- Screen Reader Only Styles -->
             <style>
+                /* Smart TextArea styling */
+                .chat-smart-input {
+                    width: 100%;
+                    padding: 10px 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    font-family: 'Segoe UI', sans-serif;
+                    font-size: 14px;
+                    min-height: 42px;
+                    resize: vertical;
+                }
+
+                .chat-smart-input:focus {
+                    outline: 2px solid #0078d4;
+                    outline-offset: 2px;
+                    border-color: #0078d4;
+                }
+
+                .chat-smart-input:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    background-color: #f5f5f5;
+                }
+
+                /* Smart TextArea suggestion styling */
+                .e-smarttextarea .e-suggestion {
+                    color: #999;
+                    font-style: italic;
+                }
+
                 .sr-only {
                     position: absolute;
                     width: 1px;
@@ -145,6 +179,31 @@
         public string Text { get; set; } = string.Empty;
         public string Role { get; set; } = "Assistant"; // "User" or "Assistant"
     }
+
+    // Municipal-specific phrases for Smart TextArea AI suggestions
+    private string[] municipalPhrases = new[]
+    {
+        "Show me the budget for FISCAL_YEAR",
+        "What is the variance for ACCOUNT_NAME",
+        "Generate a report for DEPARTMENT",
+        "Display all transactions for PERIOD",
+        "Compare revenue for YEAR vs YEAR",
+        "Show me accounts that are over budget",
+        "List all utility customers in AREA",
+        "What is the total expenditure for CATEGORY",
+        "Show me the monthly trend for ACCOUNT",
+        "Generate an Excel export for DATASET",
+        "Display budget summary by department",
+        "Show me all unpaid utility bills",
+        "What are the top 5 expenses for FUND",
+        "Calculate the year-to-date total for ACCOUNT",
+        "Show me budget vs actual comparison",
+        "List all municipal accounts for CLASSIFICATION",
+        "What is the current fiscal year status",
+        "Display revenue breakdown by source",
+        "Show me expense trends for the quarter",
+        "Generate a variance analysis report"
+    };
 
     private List<AIAssistItem> Messages { get; set; } = new();
     private bool IsThinking { get; set; }

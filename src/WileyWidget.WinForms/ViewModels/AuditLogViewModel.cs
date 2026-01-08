@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for the Audit Log panel, providing data binding and commands for audit entry management.
 /// Supports filtering, pagination, charting, and async data loading.
 /// </summary>
-public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
+public class AuditLogViewModel : INotifyPropertyChanged, IAuditLogViewModel, IDisposable
 {
     private readonly ILogger<AuditLogViewModel> _logger;
     private readonly IAuditService _auditService;

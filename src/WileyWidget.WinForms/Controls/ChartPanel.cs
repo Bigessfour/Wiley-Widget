@@ -138,14 +138,14 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             Name = "ChartPanel";
-            Size = new Size(900, 500);
+            Size = new Size(1000, 700);  // OPTIMIZED: Professional analytics panel size for high UX
             MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-            AutoScroll = true;
-            Padding = new Padding(8);
+            AutoScroll = false;  // Disable AutoScroll: SplitContainer + Dock.Fill handles layout
+            Padding = new Padding(0);  // Remove padding: Let DockStyle.Fill and internal layouts manage spacing
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
 
-            // Shared header + top toolbar (consistent header at 44px)
+            // Shared header + top toolbar (consistent header at 40px, toolbar buttons streamlined)
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
             try { _panelHeader.Title = ChartPanelResources.PanelTitle; } catch { }
             try
@@ -158,20 +158,20 @@ namespace WileyWidget.WinForms.Controls
             _topPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
             {
                 Dock = DockStyle.Top,
-                Height = 44,
-                Padding = new Padding(8),
+                Height = 40,  // OPTIMIZED: Reduced from 44 to 40 for more chart space
+                Padding = new Padding(4),  // OPTIMIZED: Reduced from 8 to 4 for tighter layout
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
 
             _comboDepartmentFilter = new Syncfusion.WinForms.ListView.SfComboBox
             {
-                Width = 220,
+                Width = 180,  // OPTIMIZED: Reduced from 220 to save space
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AllowDropDownResize = false, // Per demos: prevent dropdown resize
-                MaxDropDownItems = 10, // Per demos: limit dropdown height
-                AllowNull = true, // Per demos: allow null selection for "All"
-                Watermark = "Select Department", // Per demos: placeholder text
+                AllowDropDownResize = false,
+                MaxDropDownItems = 10,
+                AllowNull = true,
+                Watermark = "Department",  // OPTIMIZED: Shorter placeholder
                 AccessibleName = "Department filter",
                 AccessibleDescription = "Filter chart data by department"
             };
@@ -185,8 +185,8 @@ namespace WileyWidget.WinForms.Controls
             _btnRefresh = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = ChartPanelResources.RefreshText,
-                Width = 100,
-                Height = 28,
+                Width = 80,  // OPTIMIZED: Reduced from 100
+                Height = 26,  // OPTIMIZED: Reduced from 28
                 AccessibleName = "Refresh chart data",
                 AccessibleDescription = "Reload chart data from the database"
             };
@@ -247,8 +247,8 @@ namespace WileyWidget.WinForms.Controls
             var btnGoToDashboard = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = "Dashboard",
-                Width = 100,
-                Height = 28,
+                Width = 80,  // OPTIMIZED: Consolidated button sizing
+                Height = 26,
                 AccessibleName = "Go to Dashboard",
                 AccessibleDescription = "Navigate to the Dashboard panel"
             };
@@ -271,8 +271,8 @@ namespace WileyWidget.WinForms.Controls
             var btnGoToBudget = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = "Budget",
-                Width = 100,
-                Height = 28,
+                Width = 80,  // OPTIMIZED: Consolidated button sizing
+                Height = 26,
                 AccessibleName = "Go to Budget Panel",
                 AccessibleDescription = "Navigate to the Budget panel"
             };
@@ -295,8 +295,8 @@ namespace WileyWidget.WinForms.Controls
             var btnGoToAccounts = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = "Accounts",
-                Width = 100,
-                Height = 28,
+                Width = 80,  // OPTIMIZED: Consolidated button sizing
+                Height = 26,
                 AccessibleName = "Go to Accounts Panel",
                 AccessibleDescription = "Navigate to the Accounts panel"
             };
@@ -328,7 +328,7 @@ namespace WileyWidget.WinForms.Controls
             flow.Controls.Add(btnGoToBudget);
             flow.Controls.Add(btnGoToAccounts);
             // Export buttons
-            _btnExportPng = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PNG", Width = 100, Height = 28, AccessibleName = "Export chart as PNG" };
+            _btnExportPng = new Syncfusion.WinForms.Controls.SfButton { Text = "PNG", Width = 70, Height = 26, AccessibleName = "Export chart as PNG" };  // OPTIMIZED: Shorter text, smaller size
             var exportPngTip = new ToolTip();
             _toolTips.Add(exportPngTip);
             exportPngTip.SetToolTip(_btnExportPng, "Export the current chart view to a PNG image");
@@ -380,7 +380,7 @@ namespace WileyWidget.WinForms.Controls
             _btnExportPng.Click += ExportPng_Click;
             flow.Controls.Add(_btnExportPng);
 
-            _btnExportPdf = new Syncfusion.WinForms.Controls.SfButton { Text = "Export PDF", Width = 100, Height = 28, AccessibleName = "Export chart as PDF" };
+            _btnExportPdf = new Syncfusion.WinForms.Controls.SfButton { Text = "PDF", Width = 70, Height = 26, AccessibleName = "Export chart as PDF" };  // OPTIMIZED: Shorter text, smaller size
             var exportPdfTip = new ToolTip();
             _toolTips.Add(exportPdfTip);
             exportPdfTip.SetToolTip(_btnExportPdf, "Export the current chart view embedded in a PDF");
@@ -446,17 +446,17 @@ namespace WileyWidget.WinForms.Controls
             ChartControlDefaults.Apply(_chartControl, new ChartControlDefaults.Options { TransparentChartArea = true });
             _chartControl.ChartArea.PrimaryXAxis.HidePartialLabels = true;
 
-            // Configure axes per demo patterns (Categorical Axis demo)
+            // Configure axes per demo patterns with optimized label rotation for large displays
             _chartControl.PrimaryXAxis.ValueType = ChartValueType.Category;
             _chartControl.PrimaryXAxis.Title = ChartPanelResources.Axis_Department;
-            _chartControl.PrimaryXAxis.TitleFont = new Font("Segoe UI", 10F);
+            _chartControl.PrimaryXAxis.TitleFont = new Font("Segoe UI", 11F);  // OPTIMIZED: Increased from 10
             _chartControl.PrimaryXAxis.Font = new Font("Segoe UI", 10F);
             _chartControl.PrimaryXAxis.LabelRotate = true;
             _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
-            _chartControl.PrimaryXAxis.DrawGrid = false;
+            _chartControl.PrimaryXAxis.DrawGrid = false;  // Cleaner appearance
 
             _chartControl.PrimaryYAxis.Title = ChartPanelResources.Axis_Variance;
-            _chartControl.PrimaryYAxis.TitleFont = new Font("Segoe UI", 10F);
+            _chartControl.PrimaryYAxis.TitleFont = new Font("Segoe UI", 11F);  // OPTIMIZED: Increased from 10
             _chartControl.PrimaryYAxis.Font = new Font("Segoe UI", 10F);
             try
             {
@@ -489,15 +489,13 @@ namespace WileyWidget.WinForms.Controls
 
             InitializeChartUserCustomization();
 
-            // Configure legend per demo patterns (ChartLegend demo)
+            // Configure legend per demo patterns with optimized sizing for larger panels
             _chartControl.ShowLegend = true;
             _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
             _chartControl.LegendPosition = ChartDock.Bottom;
             _chartControl.LegendAlignment = ChartAlignment.Center;
             _chartControl.Legend.Font = new Font("Segoe UI", 10F);
-
-            // Column width mode per demos
-            _chartControl.Spacing = 5;
+            _chartControl.ElementsSpacing = 15;  // OPTIMIZED: Slightly reduced from default 20 for compact layout
 
             // Add a right-hand panel to host a small pie chart or placeholder for accessibility detection
             var piePanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
@@ -558,12 +556,12 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
-            // Add bottom summary panel
+            // Add bottom summary panel with optimized spacing
             _summaryPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
             {
                 Dock = DockStyle.Bottom,
-                Height = 60,
-                Padding = new Padding(8),
+                Height = 56,  // OPTIMIZED: Reduced from 60 to fit nicely with 4 metrics
+                Padding = new Padding(4),  // OPTIMIZED: Reduced from 8
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
@@ -595,7 +593,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading chart data..." };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No chart data available" };
+            _noDataOverlay = new NoDataOverlay { Message = "No data to visualize\r\nCreate accounts and budget entries to generate charts" };
             Controls.Add(_noDataOverlay);
 
             _errorProvider = new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
@@ -629,43 +627,43 @@ namespace WileyWidget.WinForms.Controls
             catch { }
         }
 
-        /// <summary>
-        /// Creates a formatted summary label for metrics display.
-        /// </summary>
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt CreateSummaryLabel(string caption, string value)
-        {
-            var panel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
+            /// <summary>
+            /// Creates a formatted summary label for metrics display with optimized sizing.
+            /// </summary>
+            private Syncfusion.Windows.Forms.Tools.GradientPanelExt CreateSummaryLabel(string caption, string value)
             {
-                Width = 200,
-                Height = 44,
-                Margin = new Padding(4),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+                var panel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
+                {
+                    Width = 160,  // OPTIMIZED: Reduced from 200 for 4-metric fit in 56px height
+                    Height = 48,  // OPTIMIZED: Reduced from 44 to fit better
+                    Margin = new Padding(2),  // OPTIMIZED: Reduced from 4
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
-            var lblCaption = new Label
-            {
-                Text = caption,
-                Dock = DockStyle.Top,
-                Height = 18,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
-            };
+                var lblCaption = new Label
+                {
+                    Text = caption,
+                    Dock = DockStyle.Top,
+                    Height = 16,  // OPTIMIZED: Reduced from 18
+                    Font = new Font("Segoe UI", 8F, FontStyle.Regular)  // OPTIMIZED: Reduced from 9
+                };
 
-            var lblValue = new Label
-            {
-                Text = value,
-                Dock = DockStyle.Bottom,
-                Height = 24,
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                Tag = caption // Store caption for later updates
-            };
+                var lblValue = new Label
+                {
+                    Text = value,
+                    Dock = DockStyle.Bottom,
+                    Height = 20,  // OPTIMIZED: Reduced from 24
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),  // OPTIMIZED: Reduced from 11
+                    Tag = caption // Store caption for later updates
+                };
 
-            panel.Controls.Add(lblValue);
-            panel.Controls.Add(lblCaption);
+                panel.Controls.Add(lblValue);
+                panel.Controls.Add(lblCaption);
 
-            return panel;
-        }
+                return panel;
+            }
 
         /// <summary>
         /// Navigates to the Dashboard panel via parent form's DockingManager.

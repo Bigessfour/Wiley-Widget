@@ -18,7 +18,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// Manages chat message history, tool parsing/execution, and optional conversational fallback.
 /// Follows MVVM pattern with CommunityToolkit.Mvvm for WinForms data binding.
 /// </summary>
-public partial class AIChatViewModel : ViewModelBase, IDisposable
+public partial class AIChatViewModel : ViewModelBase, IAIChatViewModel, IDisposable
 {
     #region Dependencies
 

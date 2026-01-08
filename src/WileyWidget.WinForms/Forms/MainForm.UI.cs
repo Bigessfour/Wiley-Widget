@@ -1529,45 +1529,43 @@ public partial class MainForm
 
     /// <summary>
     /// Gets the semantic overlay color for the loading overlay background.
-    /// Returns a semi-transparent dark overlay to dim the background during loading.
-    /// Uses system colors with theme awareness where available.
-    /// Modal overlay dimming is a semantic UI behavior pattern and exception to theme-only rule.
+    /// Returns a dark overlay color inherited from theme via SystemColors.
+    /// The semi-transparent effect is achieved through Control.Opacity property on the overlay panel,
+    /// not through manual color construction (which violates SfSkinManager theme-only rule).
     /// </summary>
-    /// <returns>Semi-transparent overlay color (128 alpha) for semantic modal dimming effect</returns>
+    /// <returns>Dark overlay color from system/theme (full opacity; panel's Opacity property handles transparency)</returns>
     private Color GetLoadingOverlayColor()
     {
         try
         {
-            // SEMANTIC COLOR: Semi-transparent overlay for modal dimming effect
-            // Use system ControlDarkDark as base (theme-aware on modern Windows)
-            var overlayBaseColor = SystemColors.ControlDarkDark;
-            // Apply 50% opacity for modal dimming
-            return Color.FromArgb(128, overlayBaseColor.R, overlayBaseColor.G, overlayBaseColor.B);
+            // SEMANTIC COLOR: Dark overlay for modal dimming effect
+            // Use theme-aware SystemColors.Control which respects application theme
+            // Transparency achieved via Control.Opacity property, not manual color construction
+            return SystemColors.Control;
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to get overlay color - using fallback");
-            // Fallback: semi-transparent black
-            return Color.FromArgb(128, 0, 0, 0);
+            // Fallback: black (no theme-aware alternative for exceptions)
+            return Color.Black;
         }
     }
 
     /// <summary>
     /// Gets the semantic text color for the loading label.
     /// Returns high-contrast text color for accessibility on the modal overlay.
-    /// Uses system colors for theme-aware text rendering.
-    /// Text contrast is a semantic UI behavior pattern and exception to theme-only rule.
+    /// Uses standard Color constants (not theme-aware) to ensure visibility regardless of theme.
     /// </summary>
-    /// <returns>High-contrast text color for semantic loading indicator visibility</returns>
+    /// <returns>High-contrast white text color for semantic loading indicator visibility</returns>
     private Color GetLoadingLabelColor()
     {
         try
         {
             // SEMANTIC COLOR: High-contrast text on modal overlay
-            // Use WindowText for theme-aware text color (respects light/dark mode on Windows)
-            var windowTextColor = SystemColors.WindowText;
-            // Ensure we have adequate contrast (invert to white if dark overlay is too dark)
-            return windowTextColor.GetBrightness() < 0.5f ? Color.White : Color.Black;
+            // Use standard Color.White for maximum contrast against dark overlay
+            // This is a semantic status color exception (text contrast requirement)
+            // All overlays use white text for accessibility
+            return Color.White;
         }
         catch (Exception ex)
         {

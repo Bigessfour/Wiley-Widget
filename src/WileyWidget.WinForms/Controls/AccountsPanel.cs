@@ -243,7 +243,7 @@ namespace WileyWidget.WinForms.Controls
                 _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
                 Controls.Add(_loadingOverlay);
 
-                _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
+                _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
                 Controls.Add(_noDataOverlay);
                 _toolTip = new ToolTip() { AutoPopDelay = 10000, InitialDelay = 500, ReshowDelay = 100, ShowAlways = true };
             }
@@ -1130,7 +1130,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
+            _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
             Controls.Add(_noDataOverlay);
 
             // Summary panel at bottom - use theme colors

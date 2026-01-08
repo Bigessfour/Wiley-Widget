@@ -482,16 +482,32 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         private object CreateChatRequestPayload(string model, object[] messages, bool stream = false, double temperature = 0.3, object? tools = null, string? toolChoice = null)
         {
-            var payload = new
+            // CRITICAL FIX: Only include tool_choice when tools are provided
+            // Grok API rejects requests with tool_choice but no tools array
+            if (tools != null)
             {
-                model,
-                messages,
-                stream,
-                temperature,
-                tools,
-                tool_choice = toolChoice ?? "auto"
-            };
-            return payload;
+                var payloadWithTools = new
+                {
+                    model,
+                    messages,
+                    stream,
+                    temperature,
+                    tools,
+                    tool_choice = toolChoice ?? "auto"
+                };
+                return payloadWithTools;
+            }
+            else
+            {
+                var payloadNoTools = new
+                {
+                    model,
+                    messages,
+                    stream,
+                    temperature
+                };
+                return payloadNoTools;
+            }
         }
 
         public async Task<string> GetSimpleResponse(string userMessage, string? systemPrompt = null, string? modelOverride = null, CancellationToken ct = default)

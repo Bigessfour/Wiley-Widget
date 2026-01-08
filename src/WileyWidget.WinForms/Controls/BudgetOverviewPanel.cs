@@ -301,7 +301,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading budget data..." };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No budget data available" };
+            _noDataOverlay = new NoDataOverlay { Message = "No budget data available\r\nAdd budget entries and accounts to see analysis" };
             Controls.Add(_noDataOverlay);
         }
 

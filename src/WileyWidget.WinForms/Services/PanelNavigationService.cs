@@ -160,8 +160,36 @@ namespace WileyWidget.WinForms.Services
                 int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
                 _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
 
-                _dockingManager.SetDockVisibility(panel, true);
-                _dockingManager.ActivateControl(panel);
+                // CRITICAL FIX: For ChatPanel, apply full docking configuration to ensure proper visibility
+                // and prevent auto-hide state that causes clipping issues
+                if (typeof(TPanel).Name == "ChatPanel")
+                {
+                    try
+                    {
+                        _logger.LogDebug("Applying ChatPanel-specific docking configuration");
+                        
+                        // Force visible and active
+                        _dockingManager.SetDockVisibility(panel, true);
+                        _dockingManager.ActivateControl(panel);  // Brings to front, expands if tabbed
+
+                        // Set size for ChatPanel using SetControlSize to maximize space
+                        // Use 450 width for right/left docking, 600 height for bottom/top
+                        int chatWidth = 450;
+                        int chatHeight = 600;
+                        _dockingManager.SetControlSize(panel, new Size(chatWidth, chatHeight));
+                        _logger.LogDebug("ChatPanel: Control size set to {Width}x{Height}", chatWidth, chatHeight);
+
+                        // Set minimum size to prevent collapsing below usable size (400 is ChatPanel minimum)
+                        _dockingManager.SetControlMinimumSize(panel, new Size(400, 400));
+                        _logger.LogDebug("ChatPanel: Minimum size set to 400x400");
+
+                        _logger.LogInformation("ChatPanel docking configuration applied successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "ChatPanel docking configuration failed - continuing with defaults");
+                    }
+                }
 
                 // Propagate accessibility and header/dock caption so UI automation can find panels reliably
                 try
@@ -206,7 +234,7 @@ namespace WileyWidget.WinForms.Services
                 }
                 catch { }
 
-                // Small pause to allow DockingManager to update UI (helps FlaUI detection)
+                // Small pause to allow DockingManager to settle after ChatPanel-specific configuration
                 try { System.Threading.Thread.Sleep(250); } catch { }
 
                 // Cache for reuse

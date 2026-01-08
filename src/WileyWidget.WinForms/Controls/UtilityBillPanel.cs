@@ -170,7 +170,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         // No data overlay
         _noDataOverlay = new NoDataOverlay
         {
-            Message = "No utility bills found. Create a new bill to get started.",
+            Message = "No utility bills yet\r\nCreate a new bill for a customer to get started",
             Visible = false
         };
         Controls.Add(_noDataOverlay);

@@ -51,13 +51,13 @@ public class JARVISPersonalityService : IJARVISPersonalityService
         ["deficit.*severe"] = "The deficit is rather catastrophic",
         ["high.*variance"] = "Your variance is operating at concerning levels",
         ["low.*surplus"] = "The surplus is disappointingly anemic",
-        
+
         // Positive situations
         ["surplus"] = "performing above expectations with elite precision",
         ["efficient.*budget"] = "your budgetary discipline is exemplary",
         ["under.*budget"] = "remarkably disciplined spending",
         ["positive.*variance"] = "the variance is quite favorable",
-        
+
         // Recommendations
         ["rate.*hike"] = "strategic rate adjustment",
         ["cost.*reduction"] = "aggressive efficiency initiatives",
@@ -123,7 +123,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
     {
     try
         {
-            _logger.LogDebug("Applying JARVIS budget personality for {FundName} (variance: {Variance}%)", 
+            _logger.LogDebug("Applying JARVIS budget personality for {FundName} (variance: {Variance}%)",
                 fundName ?? "general", variancePercent);
 
             var sb = new StringBuilder();
@@ -137,7 +137,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             // Fund-specific opening
             if (!string.IsNullOrWhiteSpace(fundName))
             {
-                sb.Append($"the {fundName} fund ");
+                sb.Append(CultureInfo.InvariantCulture, $"the {fundName} fund ");
             }
 
             // Performance assessment
@@ -146,13 +146,13 @@ public class JARVISPersonalityService : IJARVISPersonalityService
                 sb.Append("is running a ");
                 sb.Append(variancePercent > 0 ? "hemorrhagic" : "elite");
                 sb.Append(" variance of ");
-                sb.Append(Math.Abs(variancePercent).ToString("N1", CultureInfo.InvariantCulture));
+                sb.Append(CultureInfo.InvariantCulture, $"{Math.Abs(variancePercent):N1}");
                 sb.Append("%.");
             }
             else if (variancePercent > 5m)
             {
                 sb.Append("shows an elevated variance of ");
-                sb.Append(Math.Abs(variancePercent).ToString("N1", CultureInfo.InvariantCulture));
+                sb.Append(CultureInfo.InvariantCulture, $"{Math.Abs(variancePercent):N1}");
                 sb.Append("%. Within acceptable parameters, but worth monitoring.");
             }
             else
@@ -164,8 +164,8 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             sb.AppendLine();
             if (surplus > 0)
             {
-                sb.Append($"The surplus of ${surplus:N0} is performing admirably. ");
-                
+                sb.Append(CultureInfo.InvariantCulture, $"The surplus of ${surplus:N0} is performing admirably. ");
+
                 // Add JARVIS recommendation
                 if (surplus > 100000m)
                 {
@@ -182,7 +182,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             }
             else if (surplus < 0)
             {
-                sb.Append($"The deficit of ${Math.Abs(surplus):N0} is... suboptimal. ");
+                sb.Append(CultureInfo.InvariantCulture, $"The deficit of ${Math.Abs(surplus):N0} is... suboptimal. ");
                 sb.Append("Immediate intervention required: rate adjustment, cost reduction, or strategic reserve drawdown. MORE COWBELL on swift action?");
             }
             else
@@ -238,7 +238,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
                 sb.Append("Sir, your compliance status is CRITICAL. Intervention required immediately. ");
             }
 
-            sb.Append($"Score: {complianceScore}/100. ");
+            sb.Append(CultureInfo.InvariantCulture, $"Score: {complianceScore}/100. ");
 
             if (!isCompliant)
             {
@@ -422,7 +422,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
         if (metrics.TryGetValue("variance_percent", out var varObj) && decimal.TryParse(varObj?.ToString() ?? "", out var variance))
         {
-            sb.Append($"budget variance stands at {Math.Abs(variance):N1}% ");
+            sb.Append(CultureInfo.InvariantCulture, $"budget variance stands at {Math.Abs(variance):N1}% ");
             sb.Append(variance > 0 ? "over budget. " : variance < 0 ? "under budget. " : "at equilibrium. ");
 
             if (Math.Abs(variance) > 20m)

@@ -33,7 +33,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public new object? DataContext { get; private set; }
 
-        private readonly InsightFeedViewModel _vm;
+        private readonly IInsightFeedViewModel? _vm;
         private readonly ILogger<InsightFeedPanel>? _logger;
         private readonly Services.IThemeService? _themeService;
 
@@ -60,7 +60,7 @@ namespace WileyWidget.WinForms.Controls
         /// Creates a new instance with explicit ViewModel and services.
         /// </summary>
         public InsightFeedPanel(
-            InsightFeedViewModel? viewModel = null,
+            IInsightFeedViewModel? viewModel = null,
             Services.IThemeService? themeService = null,
             ILogger<InsightFeedPanel>? logger = null)
         {
@@ -68,7 +68,7 @@ namespace WileyWidget.WinForms.Controls
 
             _logger = logger ?? ResolveLogger();
             _themeService = themeService;
-            _vm = viewModel ?? ResolveInsightFeedViewModel();
+            _vm = viewModel ?? (IInsightFeedViewModel?)ResolveInsightFeedViewModel();
 
             DataContext = _vm;
 
@@ -341,7 +341,10 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 _logger?.LogInformation("User requested manual refresh of insights");
-                _vm?.RefreshInsightsCommand.Execute(null);
+                if (_vm is InsightFeedViewModel concreteVm)
+                {
+                    concreteVm.RefreshInsightsCommand.Execute(null);
+                }
             }
             catch (Exception ex)
             {
@@ -363,7 +366,10 @@ namespace WileyWidget.WinForms.Controls
                         "User selected insight: Category={Category}, Priority={Priority}",
                         card.Category,
                         card.Priority);
-                    _vm?.AskJarvisCommand.Execute(card);
+                    if (_vm is InsightFeedViewModel concreteVm)
+                    {
+                        concreteVm.AskJarvisCommand.Execute(card);
+                    }
                 }
             }
             catch (Exception ex)

@@ -260,7 +260,7 @@ public static class RibbonFactory
         {
             try
             {
-                form.ShowJARVISPanel();
+                form.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
                 logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat button clicked");
             }
             catch (Exception ex)
@@ -580,30 +580,35 @@ public static class RibbonFactory
         ILogger? logger,
         System.ComponentModel.IContainer components)
     {
-        if (backStage == null)
+        if (backStage == null || ribbon?.BackStageView == null)
         {
-            logger?.LogWarning("[RIBBON_FACTORY] Cannot initialize Backstage: BackStage is null");
+            logger?.LogWarning("[RIBBON_FACTORY] Cannot initialize Backstage: BackStage or BackStageView is null");
             return;
         }
 
-
         try
         {
+            // CRITICAL: Initialize BackStageView properties before adding items to prevent rendering errors
+            // BackStageView does not expose Padding or BackColor - these properties are inherited from parent form
+            // No manual property setting needed here
 
             // ===== INFO TAB (Application info, recent files) =====
             var infoTab = new Syncfusion.Windows.Forms.BackStageTab
             {
                 Text = "Info",
                 AccessibleName = "Backstage Info",
-                AccessibleDescription = "Application information"
+                AccessibleDescription = "Application information",
+                Dock = DockStyle.Fill
             };
             components.Add(infoTab);
 
-            // Add info content panel
+            // Add info content panel with proper styling
             var infoPanel = new System.Windows.Forms.Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20)
+                Padding = new System.Windows.Forms.Padding(20),
+                BackColor = System.Drawing.Color.Transparent,
+                AutoScroll = true
             };
 
             var infoLabel = new System.Windows.Forms.Label
@@ -611,7 +616,8 @@ public static class RibbonFactory
                 Text = "Wiley Widget\n\nVersion: 1.0.0\nBudget Management System\n\n© 2025 Wiley Widget Inc.",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 10F),
-                Location = new System.Drawing.Point(20, 20)
+                Location = new System.Drawing.Point(20, 20),
+                BackColor = System.Drawing.Color.Transparent
             };
             infoPanel.Controls.Add(infoLabel);
             infoTab.Controls.Add(infoPanel);
@@ -621,14 +627,17 @@ public static class RibbonFactory
             {
                 Text = "Options",
                 AccessibleName = "Backstage Options",
-                AccessibleDescription = "Application options"
+                AccessibleDescription = "Application options",
+                Dock = DockStyle.Fill
             };
             components.Add(optionsTab);
 
             var optionsPanel = new System.Windows.Forms.Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20)
+                Padding = new System.Windows.Forms.Padding(20),
+                BackColor = System.Drawing.Color.Transparent,
+                AutoScroll = true
             };
 
             var optionsLabel = new System.Windows.Forms.Label
@@ -636,7 +645,8 @@ public static class RibbonFactory
                 Text = "Application Settings",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
-                Location = new System.Drawing.Point(20, 20)
+                Location = new System.Drawing.Point(20, 20),
+                BackColor = System.Drawing.Color.Transparent
             };
             optionsPanel.Controls.Add(optionsLabel);
 
@@ -668,14 +678,17 @@ public static class RibbonFactory
             {
                 Text = "Export",
                 AccessibleName = "Backstage Export",
-                AccessibleDescription = "Data export options"
+                AccessibleDescription = "Data export options",
+                Dock = DockStyle.Fill
             };
             components.Add(exportTab);
 
             var exportPanel = new System.Windows.Forms.Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20)
+                Padding = new System.Windows.Forms.Padding(20),
+                BackColor = System.Drawing.Color.Transparent,
+                AutoScroll = true
             };
 
             var exportLabel = new System.Windows.Forms.Label
@@ -683,7 +696,8 @@ public static class RibbonFactory
                 Text = "Export Data",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
-                Location = new System.Drawing.Point(20, 20)
+                Location = new System.Drawing.Point(20, 20),
+                BackColor = System.Drawing.Color.Transparent
             };
             exportPanel.Controls.Add(exportLabel);
 
@@ -773,17 +787,19 @@ public static class RibbonFactory
             components.Add(printButton);
             components.Add(closeButton);
 
-            // Add items to BackStage via Controls collection (per Syncfusion sample)
-            backStage.Controls.Add(infoTab);
-            backStage.Controls.Add(optionsTab);
-            backStage.Controls.Add(exportTab);
+            // Add items to BackStage - IMPORTANT: Add buttons first (they are always visible),
+            // then tabs (content loaded on demand)
             backStage.Controls.Add(saveButton);
             backStage.Controls.Add(printButton);
             backStage.Controls.Add(closeButton);
+            backStage.Controls.Add(infoTab);
+            backStage.Controls.Add(optionsTab);
+            backStage.Controls.Add(exportTab);
 
 
 
             logger?.LogDebug("[RIBBON_FACTORY] Backstage initialized with {TabCount} tabs, {ButtonCount} buttons", 3, 3);
+            logger?.LogInformation("[BACKSTAGE] Backstage initialization completed successfully");
         }
         catch (Exception ex)
         {

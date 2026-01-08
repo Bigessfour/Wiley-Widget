@@ -9,9 +9,120 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.DataGrid;
 
 namespace WileyWidget.WinForms.Tests.Controls
 {
+    /// <summary>
+    /// Shared collection fixture for STA thread and Syncfusion initialization.
+    /// Ensures Syncfusion licensing and theming are initialized once per test session.
+    /// </summary>
+    [CollectionDefinition("Syncfusion UI Tests")]
+    public class SyncfusionTestCollection : ICollectionFixture<SyncfusionFixture>
+    {
+        // This class has no code, and never creates an instance of SyncfusionFixture.
+        // It's just used to define the collection.
+    }
+
+    /// <summary>
+    /// Fixture for Syncfusion UI test initialization.
+    /// Initializes SfSkinManager, loads Syncfusion assemblies, and sets default theme.
+    /// Registers Syncfusion license from environment (GitHub secrets or local).
+    /// </summary>
+    public class SyncfusionFixture : IDisposable
+    {
+        public SyncfusionFixture()
+        {
+            InitializeSyncfusion();
+        }
+
+        /// <summary>
+        /// Initializes Syncfusion components for testing.
+        /// This must be called once before any Syncfusion controls are created.
+        /// </summary>
+        private static void InitializeSyncfusion()
+        {
+            try
+            {
+                // Register Syncfusion license from environment variable (set from GitHub secrets)
+                // For local development: set SYNCFUSION_LICENSE environment variable
+                // For CI/CD: GitHub Actions sets this from secrets.SYNCFUSION_LICENSE
+                var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE");
+
+                if (!string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    try
+                    {
+                        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail - tests can continue in trial mode
+                        System.Diagnostics.Debug.WriteLine($"Syncfusion license registration failed: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    // Trial mode - valid for development and testing
+                    System.Diagnostics.Debug.WriteLine("Syncfusion running in trial mode (no license key provided)");
+                }
+
+                // Enable visual styles for Windows Forms
+                System.Windows.Forms.Application.EnableVisualStyles();
+
+                // Load Syncfusion themes
+                try
+                {
+                    // Theme initialization is best effort - tests can continue if it fails
+                    using (var tempForm = new System.Windows.Forms.Form())
+                    {
+                        // SfSkinManager.SetVisualStyle(tempForm, "Office2019Colorful");
+                    }
+                    System.Diagnostics.Debug.WriteLine("Syncfusion themes loaded successfully");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to load Syncfusion themes: {ex.Message}");
+                }
+
+                // Create a temporary form to apply default theme globally
+                try
+                {
+                    var tempForm = new System.Windows.Forms.Form();
+                    SfSkinManager.SetVisualStyle(tempForm, "Office2019Colorful");
+                    tempForm.Dispose();
+                    System.Diagnostics.Debug.WriteLine("Default Syncfusion theme set: Office2019Colorful");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to set default theme: {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Syncfusion initialization error: {ex}");
+                // Don't throw - allow tests to continue
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Clean up managed resources if needed
+            }
+            // Clean up unmanaged resources if needed
+        }
+    }
+
     /// <summary>
     /// Testable wrapper for InsightFeedPanel to expose internal state for verification.
     /// Allows unit tests to access and assert on private controls without reflection.
@@ -19,7 +130,7 @@ namespace WileyWidget.WinForms.Tests.Controls
     internal class TestableInsightFeedPanel : InsightFeedPanel
     {
         public TestableInsightFeedPanel(
-            InsightFeedViewModel? viewModel = null,
+            IInsightFeedViewModel? viewModel = null,
             IThemeService? themeService = null,
             ILogger<InsightFeedPanel>? logger = null)
             : base(viewModel, themeService, logger)
@@ -69,6 +180,7 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Construction and Initialization Tests for InsightFeedPanel.
     /// Tests: Constructor variations, UI setup, control creation, column configuration.
     /// </summary>
+    [Collection("Syncfusion UI Tests")]
     public sealed class InsightFeedPanelConstructionTests : IDisposable
     {
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
@@ -95,9 +207,9 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Constructor_WithExplicitDependencies_UsesProvidedInstances()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            mockViewModel.Object.StatusMessage = "Ready";
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
             var mockThemeService = new Mock<IThemeService>();
 
             // Act
@@ -112,9 +224,9 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void InitializeUI_CreatesAllRequiredControls()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            mockViewModel.Object.StatusMessage = "Ready";
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -129,8 +241,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void ConfigureGridColumns_CreatesExactlyFourColumns()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -145,8 +257,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void ConfigureGridColumns_CreatesCorrectColumnMappings()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -172,8 +284,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void ConfigureGridColumns_AllColumnsAllowSortingAndFiltering()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -192,8 +304,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void GridConfiguration_DisallowsEditingAndGrouping()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -226,8 +338,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Constructor_WithNullLogger_UsesFallbackAndContinues()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act - Should not throw with null logger
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, null);
@@ -240,8 +352,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Constructor_WithNullThemeService_ContinuesWithoutError()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act - Should not throw with null theme service
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -255,8 +367,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         {
             // Verify that InitializeUI includes try-catch with logging
             // This is verified through successful construction (no unhandled exception)
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -272,10 +384,10 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Constructor_MultipleInstances_IndependentState()
         {
             // Arrange
-            var vm1 = new Mock<InsightFeedViewModel>();
-            vm1.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            var vm2 = new Mock<InsightFeedViewModel>();
-            vm2.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var vm1 = new Mock<IInsightFeedViewModel>();
+            vm1.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            var vm2 = new Mock<IInsightFeedViewModel>();
+            vm2.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             var panel1 = new TestableInsightFeedPanel(vm1.Object, null, _mockLogger.Object);
@@ -291,8 +403,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void DataContext_ReferencesCorrectViewModel()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -322,6 +434,7 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Binding and Data Flow Tests for InsightFeedPanel.
     /// Tests: ViewModel binding, collection binding, property propagation.
     /// </summary>
+    [Collection("Syncfusion UI Tests")]
     public sealed class InsightFeedPanelBindingTests : IDisposable
     {
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
@@ -356,9 +469,9 @@ namespace WileyWidget.WinForms.Tests.Controls
                 }
             };
 
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = insights;
-            mockViewModel.Object.StatusMessage = "Ready";
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -373,10 +486,10 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_StatusMessage_UpdatesStatusLabel()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            mockViewModel.Object.StatusMessage = "Initial Status";
-            mockViewModel.Object.IsLoading = false;
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("Initial Status");
+            mockViewModel.Setup(vm => vm.IsLoading).Returns(false);
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
             var statusLabel = _panel.GetStatusLabel();
@@ -385,7 +498,7 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Object.StatusMessage = "Updated Status";
             mockViewModel.Raise(
                 vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(InsightFeedViewModel.StatusMessage)));
+                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
 
             System.Windows.Forms.Application.DoEvents();
 
@@ -398,10 +511,10 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_IsLoading_TogglesLoadingOverlay()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            mockViewModel.Object.StatusMessage = "Ready";
-            mockViewModel.Object.IsLoading = false;
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
+            mockViewModel.Setup(vm => vm.IsLoading).Returns(false);
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
             var overlay = _panel.GetLoadingOverlay();
@@ -410,7 +523,7 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Object.IsLoading = true;
             mockViewModel.Raise(
                 vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(InsightFeedViewModel.IsLoading)));
+                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.IsLoading)));
 
             System.Windows.Forms.Application.DoEvents();
 
@@ -423,17 +536,17 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_PriorityCounts_LoggedCorrectly()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
-            mockViewModel.Object.HighPriorityCount = 1;
-            mockViewModel.Object.MediumPriorityCount = 2;
-            mockViewModel.Object.LowPriorityCount = 3;
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            mockViewModel.Setup(vm => vm.HighPriorityCount).Returns(1);
+            mockViewModel.Setup(vm => vm.MediumPriorityCount).Returns(2);
+            mockViewModel.Setup(vm => vm.LowPriorityCount).Returns(3);
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
             mockViewModel.Raise(
                 vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(InsightFeedViewModel.HighPriorityCount)));
+                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.HighPriorityCount)));
 
             // Assert
             _mockLogger.Verify(
@@ -467,8 +580,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_WithNullPropertyName_DoesNotThrow()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -484,8 +597,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_WithUnknownPropertyName_IgnoresAndContinues()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -506,9 +619,9 @@ namespace WileyWidget.WinForms.Tests.Controls
         {
             // Arrange
             var insights = new ObservableCollection<InsightCardModel>();
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = insights;
-            mockViewModel.Object.StatusMessage = "No insights";
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
+            mockViewModel.Setup(vm => vm.StatusMessage).Returns("No insights");
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -535,8 +648,8 @@ namespace WileyWidget.WinForms.Tests.Controls
                 });
             }
 
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = insights;
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -551,8 +664,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PropertyChanged_RapidConsecutiveUpdates_HandleAllCorrectly()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -562,7 +675,7 @@ namespace WileyWidget.WinForms.Tests.Controls
                 mockViewModel.Object.StatusMessage = $"Status {i}";
                 mockViewModel.Raise(
                     vm => vm.PropertyChanged += null,
-                    new PropertyChangedEventArgs(nameof(InsightFeedViewModel.StatusMessage)));
+                    new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
             }
 
             System.Windows.Forms.Application.DoEvents();
@@ -594,6 +707,7 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Command Execution and User Interaction Tests.
     /// Tests: Button clicks, grid selection, command execution.
     /// </summary>
+    [Collection("Syncfusion UI Tests")]
     public class InsightFeedPanelCommandTests : IDisposable
     {
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
@@ -610,8 +724,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void RefreshButton_Click_LogsRefreshRequest()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -651,8 +765,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void ApplyTheme_AppliesSfSkinManagerStyling()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -672,8 +786,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void PanelInitialization_CompletesSuccessfully()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -726,8 +840,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         {
             // The ApplyTheme method includes try-catch, so it won't throw
             // This test verifies the pattern is in place
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             // Act
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
@@ -744,8 +858,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Dispose_CleansUpResourcesAndUnsubscribes()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
@@ -767,8 +881,8 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void MultipleDispose_DoesNotThrow()
         {
             // Arrange
-            var mockViewModel = new Mock<InsightFeedViewModel>();
-            mockViewModel.Object.InsightCards = new ObservableCollection<InsightCardModel>();
+            var mockViewModel = new Mock<IInsightFeedViewModel>();
+            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
             _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 

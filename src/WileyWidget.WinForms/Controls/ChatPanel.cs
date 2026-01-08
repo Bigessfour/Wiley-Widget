@@ -64,8 +64,8 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         AccessibleName = "AI Chat Panel";
         Size = new Size(600, 600);
         MinimumSize = new Size(400, 400);
-        AutoScroll = true;
-        Padding = new Padding(8);
+        AutoScroll = false;  // No need with Dock.Fill children; prevents odd scrolling/clipping
+        Padding = new Padding(0, 0, 0, 4);  // Reduce top/bottom if header overlaps; let container handle sides
         // DockingManager will handle docking; do not set Dock here.
 
         // Panel header
@@ -86,9 +86,9 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         _chatContainer = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
+            Padding = new Padding(4),  // Less padding to maximize Blazor space
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, System.Drawing.Color.Empty, System.Drawing.Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)  // Theme cascade from SfSkinManager handles all colors
         };
         SfSkinManager.SetVisualStyle(_chatContainer, "Office2019Colorful");
 
@@ -158,7 +158,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         {
             // Get ChatBridgeService from scoped provider
             _chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(ServiceProvider);
-            
+
             if (_chatBridge == null)
             {
                 Logger.LogWarning("IChatBridgeService not available in service provider");

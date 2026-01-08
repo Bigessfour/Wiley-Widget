@@ -222,7 +222,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // No-data overlay
         _noDataOverlay = new NoDataOverlay
         {
-            Message = "No revenue data available for the selected period",
+            Message = "No revenue data for this period\r\nAdd transactions to see trends over time",
             AccessibleName = "No data overlay"
         };
         Controls.Add(_noDataOverlay);

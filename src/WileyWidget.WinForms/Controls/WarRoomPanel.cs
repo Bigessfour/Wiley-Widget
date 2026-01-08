@@ -44,7 +44,7 @@ namespace WileyWidget.WinForms.Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private Label _lblStatus = null!;
-        
+
         // Input controls
         private TextBox _scenarioInput = null!;
         private Button _btnRunScenario = null!;
@@ -52,7 +52,7 @@ namespace WileyWidget.WinForms.Controls
 
         // Results panels
         private Panel _resultsPanel = null!;
-        
+
         // Top-left: Big headline
         private Label _lblRateIncreaseHeadline = null!;
         private Label _lblRateIncreaseValue = null!;
@@ -63,7 +63,7 @@ namespace WileyWidget.WinForms.Controls
         // Middle: Charts
         private ChartControl _revenueChart = null!;
         private ChartControl _departmentChart = null!;
-        
+
         // Bottom: Results grid
         private SfDataGrid _projectionsGrid = null!;
         private SfDataGrid _departmentImpactGrid = null!;
@@ -148,7 +148,7 @@ namespace WileyWidget.WinForms.Controls
                     Text = "Scenario Input",
                     Dock = DockStyle.Fill,
                     Padding = new Padding(8),
-                    ForeColor = Color.FromArgb(51, 51, 51),
+                    // ForeColor removed - let SkinManager handle theming
                     Name = "ScenarioInputGroup"
                 };
                 _topPanel.Controls.Add(inputGroupBox);
@@ -190,7 +190,7 @@ namespace WileyWidget.WinForms.Controls
                     AutoSize = true,
                     Margin = new Padding(4),
                     Font = new Font("Segoe UI", 9, FontStyle.Italic),
-                    ForeColor = Color.Gray,
+                    // ForeColor removed - let SkinManager handle theming
                     Name = "VoiceHint"
                 };
                 inputGroupBox.Controls.Add(_lblVoiceHint);
@@ -252,7 +252,7 @@ namespace WileyWidget.WinForms.Controls
                     Dock = DockStyle.Fill,
                     TextAlign = ContentAlignment.TopLeft,
                     Font = new Font("Segoe UI", 48, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(0, 120, 215), // Accent color
+                    // Accent color removed - let SkinManager handle theming
                     Name = "RateIncreaseValue"
                 };
                 headlineGroup.Controls.Add(_lblRateIncreaseValue);
@@ -616,12 +616,12 @@ namespace WileyWidget.WinForms.Controls
                     Name = "Revenue",
                     Type = ChartSeriesType.Line
                 };
-                
+
                 foreach (var proj in _vm.Projections)
                 {
                     revenueSeries.Points.Add(proj.Year, (double)proj.ProjectedRevenue);
                 }
-                
+
                 _revenueChart.Series.Add(revenueSeries);
 
                 // Expenses series
@@ -630,12 +630,12 @@ namespace WileyWidget.WinForms.Controls
                     Name = "Expenses",
                     Type = ChartSeriesType.Line
                 };
-                
+
                 foreach (var proj in _vm.Projections)
                 {
                     expenseSeries.Points.Add(proj.Year, (double)proj.ProjectedExpenses);
                 }
-                
+
                 _revenueChart.Series.Add(expenseSeries);
 
                 // Refresh chart
@@ -667,12 +667,12 @@ namespace WileyWidget.WinForms.Controls
                     Name = "Impact Amount",
                     Type = ChartSeriesType.Column
                 };
-                
+
                 foreach (var impact in _vm.DepartmentImpacts)
                 {
                     impactSeries.Points.Add(impact.DepartmentName, (double)impact.ImpactAmount);
                 }
-                
+
                 _departmentChart.Series.Add(impactSeries);
 
                 _departmentChart.Refresh();
