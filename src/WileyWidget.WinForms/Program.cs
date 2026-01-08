@@ -73,7 +73,7 @@ namespace WileyWidget.WinForms
                         shared: true)
                     .CreateLogger();
 
-                Log.Debug("Bootstrap logger initialized (path: {LogsPath}, template: {Template})", logsPath, logFileTemplate);
+                Log.Debug("✓ Bootstrap logger initialized - CENTRALIZED LOGS (path: {LogsPath})", logsPath);
             }
             catch (Exception ex)
             {
@@ -311,6 +311,13 @@ namespace WileyWidget.WinForms
                     Log.Information("Startup milestone: Theme Initialization complete");
                 }
 
+                // Detect WebView2 before showing main form (required for JARVIS Chat)
+                using (_timelineService?.BeginPhaseScope("WebView2 Detection"))
+                {
+                    DetectAndPromptWebView2();
+                    Log.Information("Startup milestone: WebView2 Detection complete");
+                }
+
                 splash = new SplashForm();
                 splash.ShowSplash();
 
@@ -339,7 +346,11 @@ namespace WileyWidget.WinForms
                 SplashReport(0.20, "DI container ready");
 
                 // Get required services early
+                var getOrchestratorStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                Log.Debug("DIAGNOSTIC: About to call GetRequiredService<IStartupOrchestrator>");
                 var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
+                getOrchestratorStopwatch.Stop();
+                Log.Information("DIAGNOSTIC: GetRequiredService<IStartupOrchestrator> completed in {Elapsed}ms", getOrchestratorStopwatch.ElapsedMilliseconds);
 
                 // CRITICAL: Create application-lifetime scope (do NOT use 'using' - must live until app exits)
                 // This scope provides scoped services (DbContext, repositories) for the entire UI lifetime
@@ -718,6 +729,87 @@ IsDisposed: {Disposed}
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to set default font");
+            }
+        }
+
+        /// <summary>
+        /// Detects WebView2 runtime availability and displays a prompt if missing.
+        /// Required for Blazor Hybrid JARVIS Chat component.
+        /// Runs synchronously during startup to allow graceful fallback.
+        /// </summary>
+        /// <remarks>
+        /// WebView2 runtime is bundled with Windows 11+, but may be missing on Windows 10.
+        /// If missing, user is prompted to download from Microsoft's official URL.
+        /// </remarks>
+        private static void DetectAndPromptWebView2()
+        {
+            try
+            {
+                Log.Debug("[WEBVIEW2] Checking WebView2 runtime availability...");
+
+                // Synchronous check - uses Win32 registry (fast)
+                var versionString = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+                if (!string.IsNullOrWhiteSpace(versionString))
+                {
+                    Log.Information("[WEBVIEW2] WebView2 runtime detected: version {Version}", versionString);
+                    return; // WebView2 available - proceed
+                }
+
+                Log.Warning("[WEBVIEW2] WebView2 runtime not found. User will see download prompt.");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[WEBVIEW2] Error detecting WebView2 runtime (Blazor features may be unavailable)");
+            }
+
+            // If we reach here, WebView2 is missing - show user-friendly prompt
+            PromptWebView2Download();
+        }
+
+        /// <summary>
+        /// Shows a message box prompting user to download and install WebView2 runtime.
+        /// </summary>
+        private static void PromptWebView2Download()
+        {
+            try
+            {
+                const string downloadUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+                var message = "WebView2 Runtime is required for JARVIS Chat and other advanced features.\n\n" +
+                    "Would you like to open the download page?\n\n" +
+                    "You can also manually download from:\n" +
+                    "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+
+                var result = MessageBox.Show(
+                    message,
+                    "WebView2 Runtime Required",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = downloadUrl,
+                            UseShellExecute = true
+                        });
+                        Log.Information("[WEBVIEW2] User initiated WebView2 download");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "[WEBVIEW2] Failed to open download URL");
+                        MessageBox.Show(
+                            $"Failed to open browser. Please visit the URL manually:",
+                            "Browser Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[WEBVIEW2] Unexpected error in WebView2 prompt");
             }
         }
 

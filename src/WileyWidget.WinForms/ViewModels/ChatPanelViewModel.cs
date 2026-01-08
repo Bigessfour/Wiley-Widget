@@ -31,6 +31,8 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     private readonly IAIContextExtractionService? _contextExtractionService;
     private readonly IActivityLogRepository? _activityLogRepository;
     private readonly SemaphoreSlim _operationLock = new(1, 1);
+    private readonly SemaphoreSlim _requestThrottle = new(1, 1);
+    private DateTimeOffset _lastRequestTime = DateTimeOffset.MinValue;
     private bool _disposed;
 
     #endregion
@@ -148,10 +150,22 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
     private const int MaxConversationsToLoad = 50;
     private const int MaxMessagesInConversation = 500;
+    private const int MaxConversationSizeBytes = 5 * 1024 * 1024; // 5 MB limit
+    private const int MaxAutoSaveRetries = 3;
 
     // Streaming timeouts for chat completions
     private static readonly TimeSpan StreamingPerChunkTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan StreamingTotalTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan MinRequestInterval = TimeSpan.FromSeconds(1);
+
+    // JARVIS System Prompt - Single Source of Truth
+    private const string JARVIS_SYSTEM_PROMPT = "You are JARVIS, a senior Syncfusion WinForms architect. " +
+        "Enforce SfSkinManager theming rules and repository conventions: " +
+        "prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, " +
+        "avoid manual BackColor/ForeColor assignments except for semantic status colors " +
+        "(Color.Red/Color.Green/Color.Orange), favor MVVM patterns and " +
+        "ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance " +
+        "and C# examples that follow the project's coding standards.";
 
     #endregion
 
@@ -590,9 +604,174 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Process a user prompt with streaming response callback.
+    /// Used for Blazor integration via ChatBridgeService.
+    /// </summary>
+    /// <param name="prompt">User's input prompt</param>
+    /// <param name="onChunkReceived">Callback invoked for each response chunk</param>
+    public async Task ProcessUserPromptAsync(string prompt, Func<string, Task>? onChunkReceived = null)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            return;
+
+        await _operationLock.WaitAsync();
+        try
+        {
+            await ProcessMessageWithStreamingAsync(prompt, onChunkReceived);
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
+    }
+
     #endregion
 
     #region Private Helper Methods
+
+    /// <summary>
+    /// Process a message with streaming support for Blazor integration.
+    /// </summary>
+    private async Task ProcessMessageWithStreamingAsync(string userMessage, Func<string, Task>? onChunkReceived = null)
+    {
+        // Rate limiting check
+        var elapsed = DateTimeOffset.UtcNow - _lastRequestTime;
+        if (elapsed < MinRequestInterval)
+        {
+            StatusText = "Please wait before sending another message";
+            Logger.LogDebug("Rate limit: Request throttled, {Elapsed}ms since last request", elapsed.TotalMilliseconds);
+            return;
+        }
+
+        await _requestThrottle.WaitAsync();
+        try
+        {
+            _lastRequestTime = DateTimeOffset.UtcNow;
+            await ProcessMessageWithStreamingInternalAsync(userMessage, onChunkReceived);
+        }
+        finally
+        {
+            _requestThrottle.Release();
+        }
+    }
+
+    private async Task ProcessMessageWithStreamingInternalAsync(string userMessage, Func<string, Task>? onChunkReceived = null)
+    {
+        var startTime = DateTime.UtcNow;
+        IsLoading = true;
+        StatusText = "Thinking...";
+        ErrorMessage = null;
+
+        ChatMessage? aiPlaceholder = null;
+
+        try
+        {
+            if (string.IsNullOrEmpty(CurrentConversationId))
+            {
+                CurrentConversationId = Guid.NewGuid().ToString();
+            }
+
+            // Add user message
+            var userMsg = ChatMessage.CreateUserMessage(userMessage);
+            Messages.Add(userMsg);
+            MessageCount = Messages.Count;
+
+            Logger.LogInformation("Processing user message with streaming: {Message}", userMessage);
+
+            // Create placeholder AI message
+            aiPlaceholder = ChatMessage.CreateAIMessage(string.Empty);
+            Messages.Add(aiPlaceholder);
+            MessageCount = Messages.Count;
+
+            // Build chat history
+            var chatHistory = BuildChatHistory(10);
+            chatHistory.AddUserMessage(userMessage);
+
+            var responseBuilder = new System.Text.StringBuilder();
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var fullResponse = await _grokService.GetStreamingResponseAsync(userMessage, systemPrompt: JARVIS_SYSTEM_PROMPT, ct: cts.Token);
+
+                if (!string.IsNullOrEmpty(fullResponse))
+                {
+                    // Stream chunks if callback provided
+                    if (onChunkReceived != null)
+                    {
+                        // Simulate streaming by splitting response into chunks
+                        const int chunkSize = 50;
+                        for (int i = 0; i < fullResponse.Length; i += chunkSize)
+                        {
+                            var chunk = fullResponse.Substring(i, Math.Min(chunkSize, fullResponse.Length - i));
+                            responseBuilder.Append(chunk);
+                            aiPlaceholder.Message = responseBuilder.ToString();
+                            await onChunkReceived(chunk);
+                            await Task.Delay(50); // Small delay for smoother streaming effect
+                        }
+                    }
+                    else
+                    {
+                        aiPlaceholder.Message = fullResponse;
+                        responseBuilder.Append(fullResponse);
+                    }
+
+                    Logger.LogInformation("Streaming response received: {Length} chars", fullResponse.Length);
+                }
+                else
+                {
+                    Logger.LogWarning("Streaming returned empty response");
+                    aiPlaceholder.Message = "⚠️ Empty response from server";
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("Streaming request timed out");
+                aiPlaceholder.Message = "❌ Request timed out (60s). Please try again.";
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Streaming request failed");
+                aiPlaceholder.Message = $"❌ Error: {ex.Message}";
+            }
+
+            OnPropertyChanged(nameof(Messages));
+
+            var fullResponseText = responseBuilder.ToString();
+
+            // Extract context, log activity, auto-save
+            await ExtractContextEntitiesAsync(userMessage, fullResponseText);
+            await LogChatActivityAsync(userMessage, startTime);
+            await AutoSaveConversationAsync();
+
+            LastUpdated = DateTime.UtcNow;
+            StatusText = "Ready";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing message with streaming");
+            var friendlyError = ConversationalAIHelper.FormatFriendlyError(ex);
+            ErrorMessage = friendlyError;
+            StatusText = "Error";
+
+            if (aiPlaceholder != null && Messages.Contains(aiPlaceholder))
+            {
+                Messages.Remove(aiPlaceholder);
+            }
+
+            var errorMsg = ChatMessage.CreateAIMessage($"❌ {friendlyError}");
+            Messages.Add(errorMsg);
+            MessageCount = Messages.Count;
+
+            await LogChatErrorAsync(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+            TrimMessagesIfNeeded();
+        }
+    }
 
     /// <summary>
     /// Process a user message: send to AI with streaming, add responses progressively, extract context, log activity, auto-save.
@@ -654,10 +833,10 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
 
                 // Use GetStreamingResponseAsync for HTTP-based streaming
                 var sysPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
-                
+
                 using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 var fullResponse = await _grokService.GetStreamingResponseAsync(userMessage, systemPrompt: sysPrompt, ct: ctsFallback.Token);
-                
+
                 if (!string.IsNullOrEmpty(fullResponse) && fullResponse.Length >= 5)
                 {
                     aiPlaceholder.Message = fullResponse;
@@ -831,39 +1010,58 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     /// </summary>
     private async Task AutoSaveConversationAsync()
     {
-        try
+        if (Messages.Count == 0)
+            return;
+
+        var conversationId = CurrentConversationId ?? Guid.NewGuid().ToString();
+        var messagesJson = JsonSerializer.Serialize(Messages.ToList());
+
+        // Validate conversation size
+        var sizeBytes = Encoding.UTF8.GetByteCount(messagesJson);
+        if (sizeBytes > MaxConversationSizeBytes)
         {
-            if (Messages.Count > 0)
+            Logger.LogWarning("Conversation {ConversationId} exceeds max size ({Size} bytes), truncating old messages", conversationId, sizeBytes);
+            TrimMessagesIfNeeded();
+            messagesJson = JsonSerializer.Serialize(Messages.ToList());
+        }
+
+        // Generate title from first user message if not set
+        if (ConversationTitle == "New Conversation" && Messages.Any(m => m.IsUser))
+        {
+            var firstUserMessage = Messages.First(m => m.IsUser).Message;
+            ConversationTitle = firstUserMessage.Length > 50 ? firstUserMessage[..50] + "..." : firstUserMessage;
+        }
+
+        var conversation = new ConversationHistory
+        {
+            ConversationId = conversationId,
+            Title = ConversationTitle,
+            MessagesJson = messagesJson,
+            MessageCount = Messages.Count,
+            CreatedAt = LastUpdated ?? DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        // Retry logic with exponential backoff
+        for (int attempt = 1; attempt <= MaxAutoSaveRetries; attempt++)
+        {
+            try
             {
-                var conversationId = CurrentConversationId ?? Guid.NewGuid().ToString();
-                var messagesJson = JsonSerializer.Serialize(Messages.ToList());
-
-                // Generate title from first user message if not set
-                if (ConversationTitle == "New Conversation" && Messages.Any(m => m.IsUser))
-                {
-                    var firstUserMessage = Messages.First(m => m.IsUser).Message;
-                    ConversationTitle = firstUserMessage.Length > 50 ? firstUserMessage[..50] + "..." : firstUserMessage;
-                }
-
-                var conversation = new ConversationHistory
-                {
-                    ConversationId = conversationId,
-                    Title = ConversationTitle,
-                    MessagesJson = messagesJson,
-                    MessageCount = Messages.Count,
-                    CreatedAt = LastUpdated ?? DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
                 await _conversationRepository.SaveConversationAsync(conversation);
                 CurrentConversationId = conversationId;
-
-                Logger.LogDebug("Auto-saved conversation: {ConversationId}", conversationId);
+                Logger.LogDebug("Auto-saved conversation: {ConversationId} (attempt {Attempt})", conversationId, attempt);
+                return;
             }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Auto-save failed");
+            catch (Exception ex) when (attempt < MaxAutoSaveRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                Logger.LogWarning(ex, "Auto-save attempt {Attempt} failed for {ConversationId}, retrying in {Delay}s", attempt, conversationId, delay.TotalSeconds);
+                await Task.Delay(delay);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Auto-save failed after {MaxRetries} attempts for {ConversationId}", MaxAutoSaveRetries, conversationId);
+            }
         }
     }
 
@@ -928,9 +1126,8 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     {
         var chatHistory = new ChatHistory();
 
-        // Add system prompt from GrokAgentService default
-        var systemPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
-        chatHistory.AddSystemMessage(systemPrompt);
+        // Add JARVIS system prompt
+        chatHistory.AddSystemMessage(JARVIS_SYSTEM_PROMPT);
 
         // Add recent messages for context (excluding system messages and context markers)
         var recentMessages = Messages
@@ -1068,6 +1265,7 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
         if (disposing)
         {
             _operationLock?.Dispose();
+            _requestThrottle?.Dispose();
             Logger.LogInformation("ChatPanelViewModel disposed");
         }
 

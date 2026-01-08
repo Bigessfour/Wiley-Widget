@@ -20,6 +20,7 @@ using WileyWidget.Services.Tests.TestHelpers;
 
 namespace WileyWidget.Services.Tests.ServiceTests
 {
+#pragma warning disable CA2000 // GrokRecommendationService test helper objects (handlers, clients) intentionally not disposed; acceptable for unit test scope
     public sealed class GrokRecommendationServiceTests : IDisposable
     {
         private readonly Mock<ILogger<GrokRecommendationService>> _logger = new();
@@ -705,4 +706,5 @@ namespace WileyWidget.Services.Tests.ServiceTests
             result.Should().StartWith("Based on your monthly expenses");
         }
     }
+#pragma warning restore CA2000
 }

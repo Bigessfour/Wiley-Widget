@@ -162,6 +162,27 @@
   },
 
   // ============================================================================
+  // Razor+ Configuration (Blazor WebView Support)
+  // ============================================================================
+  "[razor]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "austincummings.razor-plus"
+  },
+  "razorPlus.blazorWasm": true,
+  "razorPlus.enableCodeActions": true,
+  "razorPlus.enableCompletion": true,
+  "razorPlus.enableDiagnostics": true,
+  "razorPlus.enableHover": true,
+  "razorPlus.enableSemanticTokens": true,
+
+  // ============================================================================
+  // WebView2 Configuration (Blazor WebView Runtime)
+  // ============================================================================
+  // WebView2 is the underlying runtime for BlazorWebView in WinForms
+  // These settings optimize development experience
+  "webview2.debugLogging": false,
+
+  // ============================================================================
   // Testing Configuration
   // ============================================================================
   "testExplorer.useNativeTesting": true,

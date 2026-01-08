@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -165,9 +167,9 @@ public class AccountsRepository : IAccountsRepository
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .Where(a =>
-                a.Name.ToLower().Contains(normalizedSearch) ||
-                (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower().Contains(normalizedSearch)) ||
-                (a.FundDescription != null && a.FundDescription.ToLower().Contains(normalizedSearch)))
+                a.Name.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch) ||
+                (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)) ||
+                (a.FundDescription != null && a.FundDescription.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)))
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
     }

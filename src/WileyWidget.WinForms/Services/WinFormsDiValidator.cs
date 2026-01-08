@@ -15,7 +15,6 @@ using BusinessInterfaces = WileyWidget.Business.Interfaces;
 using ServiceAbstractions = WileyWidget.Services.Abstractions;
 using CoreServices = WileyWidget.Services;
 using WinFormsServices = WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Controls.ChatUI;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -240,9 +239,9 @@ namespace WileyWidget.WinForms.Services
                 typeof(AuditLogPanel),
                 typeof(CustomersPanel),
                 typeof(ReportsPanel),
-                typeof(ChatPanel),
                 typeof(QuickBooksPanel),
                 typeof(SettingsPanel)
+                // ChatPanel excluded - wrapper panel without ViewModel
             };
 
             foreach (var panelType in panelTypes)

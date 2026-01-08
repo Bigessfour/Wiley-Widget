@@ -22,6 +22,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using System.Net.Http;
 using System.Linq;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -103,6 +104,9 @@ namespace WileyWidget.WinForms.Configuration
 
             // Memory Cache (Singleton)
             services.AddMemoryCache();
+
+            // Blazor WebView Services (Required for BlazorWebView controls)
+            services.AddWindowsFormsBlazorWebView();
 
             // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
             // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
@@ -193,8 +197,15 @@ namespace WileyWidget.WinForms.Configuration
 
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, XAIService>();
+
+            // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
+            services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
+
             services.AddSingleton<IAILoggingService, AILoggingService>();
             services.AddScoped<IConversationRepository, EfConversationRepository>();
+
+            // JARVIS Personality Service (Singleton - stateless personality injection)
+            services.AddSingleton<IJARVISPersonalityService, JARVISPersonalityService>();
 
             // Telemetry Logging Service (Scoped - writes to database)
             services.AddScoped<global::WileyWidget.Services.Abstractions.ITelemetryLogService, TelemetryLogService>();
@@ -253,8 +264,20 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
+            // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
+            services.AddSingleton<IChatBridgeService, ChatBridgeService>();
+
             // Grok AI agent service (Singleton - reused across chat sessions)
-            services.AddSingleton<GrokAgentService>();
+            // Register a lightweight GrokAgentService for tests and DI validation. Heavy initialization is deferred to InitializeAsync().
+            if (!services.Any(sd => sd.ServiceType == typeof(GrokAgentService)))
+            {
+                services.AddSingleton<GrokAgentService>(sp => Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
+            }
+
+            // Proactive Insights Background Service (Hosted Service - runs continuously)
+            // Analyzes enterprise data using Grok and publishes insights to observable collection
+            services.AddSingleton<ProactiveInsightsService>();
+            services.AddHostedService<ProactiveInsightsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<ProactiveInsightsService>(sp));
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)
@@ -278,6 +301,14 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
             services.AddScoped<QuickBooksViewModel>();
             services.AddScoped<ChatPanelViewModel>();
+            services.AddScoped<InsightFeedViewModel>();
+
+            // =====================================================================
+            // CONTROLS / PANELS (Scoped - One instance per panel scope)
+            // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
+            // =====================================================================
+
+            services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

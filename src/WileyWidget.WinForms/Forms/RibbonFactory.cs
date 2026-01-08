@@ -6,7 +6,6 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Theming;
 
@@ -222,11 +221,19 @@ public static class RibbonFactory
                 }
             });
 
+        var insightsBtn = CreateNavButton("Nav_ProactiveInsights", "💡 Insights", iconService, "insights", currentTheme,
+            () => form.ShowPanel<ProactiveInsightsPanel>("Proactive AI Insights", DockingStyle.Right, allowFloating: true));
+
+        var warRoomBtn = CreateNavButton("Nav_WarRoom", "⚔ War Room", iconService, "warroom", currentTheme,
+            () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true));
+
         advancedPanel.Items.AddRange(new ToolStripItem[]
         {
             analyticsBtn,
             auditLogBtn,
-            reportsBtn
+            reportsBtn,
+            insightsBtn,
+            warRoomBtn
         });
 
         // ===== INTEGRATION PANEL =====
@@ -239,15 +246,36 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var aiChatBtn = CreateNavButton("Nav_AIChat", "AI Chat", iconService, "ai", currentTheme,
-            () => form.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true));
+        var jarvischatBtn = new ToolStripButton
+        {
+            Name = "Nav_JARVISChat",
+            AccessibleName = "JARVIS Chat",
+            AccessibleDescription = "Open premium Grok-powered AI assistant for strategic financial analysis",
+            Text = "🤖 JARVIS Chat",
+            AutoSize = true,
+            ToolTipText = "Open JARVIS - Premium Grok AI Assistant",
+            DisplayStyle = ToolStripItemDisplayStyle.ImageAndText
+        };
+        jarvischatBtn.Click += (s, e) =>
+        {
+            try
+            {
+                form.ShowJARVISPanel();
+                logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat button clicked");
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[RIBBON_JARVIS] Failed to open JARVIS Chat");
+                MessageBox.Show($"Failed to open JARVIS Chat: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        };
 
         var quickBooksBtn = CreateNavButton("Nav_QuickBooks", "💳 QuickBooks", iconService, "quickbooks", currentTheme,
             () => form.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true));
 
         integrationPanel.Items.AddRange(new ToolStripItem[]
         {
-            aiChatBtn,
+            jarvischatBtn,
             quickBooksBtn
         });
 

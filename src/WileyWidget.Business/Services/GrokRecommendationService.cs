@@ -23,7 +23,7 @@ namespace WileyWidget.Business.Services;
 /// Service for AI-driven rate recommendations using xAI Grok API.
 /// Implements xAI API integration with fallback to rule-based recommendations.
 /// </summary>
-public class GrokRecommendationService : IGrokRecommendationService, IHealthCheck
+public class GrokRecommendationService : IGrokRecommendationService, IHealthCheck, IDisposable
 {
     private readonly ILogger<GrokRecommendationService> _logger;
     private readonly IConfiguration _configuration;
@@ -80,7 +80,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         // Load xAI configuration
         _apiKey = _configuration["XAI:ApiKey"];
         _apiEndpoint = _configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/chat/completions";
-        _model = _configuration["XAI:Model"] ?? "grok-beta";
+        _model = _configuration["XAI:Model"] ?? "grok-4";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
                       _configuration.GetValue<bool>("XAI:Enabled", false);
 
@@ -239,67 +239,68 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         decimal targetProfitMargin,
         CancellationToken cancellationToken)
     {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-
-        var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
-
-        var requestBody = new
+        using (var client = _httpClientFactory.CreateClient())
         {
-            model = _model,
-            messages = new[]
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
+
+            var requestBody = new
             {
-                new { role = "system", content = "You are a financial analyst specializing in municipal utility rate optimization. Provide precise, data-driven recommendations based on industry standards and cost analysis." },
-                new { role = "user", content = prompt }
-            },
-            temperature = 0.3, // Lower temperature for more consistent results
-            max_tokens = 500
-        };
-
-        _logger.LogDebug("Sending request to Grok API: {Endpoint} with model {Model}", _apiEndpoint, _model);
-
-        var response = await _circuitBreaker.ExecuteAsync(() =>
-            client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken));
-
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-
-        // Extract the content from Grok's response structure in a robust way
-        if (result == null)
-            throw new InvalidOperationException("Grok API returned null response");
-
-        string? content = null;
-        try
-        {
-            var root = result.RootElement;
-            if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
-            {
-                var firstChoice = choicesEl[0];
-                if (firstChoice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
+                model = _model,
+                messages = new[]
                 {
-                    if (messageEl.TryGetProperty("content", out var contentEl))
+                    new { role = "system", content = "You are a financial analyst specializing in municipal utility rate optimization. Provide precise, data-driven recommendations based on industry standards and cost analysis." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.3, // Lower temperature for more consistent results
+                max_tokens = 500
+            };
+
+            _logger.LogDebug("Sending request to Grok API: {Endpoint} with model {Model}", _apiEndpoint, _model);
+
+            var response = await _circuitBreaker.ExecuteAsync(() =>
+                client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken));
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+
+            // Extract the content from Grok's response structure in a robust way
+            if (result == null)
+                throw new InvalidOperationException("Grok API returned null response");
+
+            string? content = null;
+            try
+            {
+                var root = result.RootElement;
+                if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
+                {
+                    var firstChoice = choicesEl[0];
+                    if (firstChoice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
                     {
-                        if (contentEl.ValueKind == JsonValueKind.String) content = contentEl.GetString();
-                        else content = contentEl.GetRawText();
+                        if (messageEl.TryGetProperty("content", out var contentEl))
+                        {
+                            if (contentEl.ValueKind == JsonValueKind.String) content = contentEl.GetString();
+                            else content = contentEl.GetRawText();
+                        }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse Grok API response content");
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+                throw new InvalidOperationException("Grok API returned empty or invalid content");
+
+            // Parse response (content is guaranteed non-null by check above)
+            var recommendationResult = ParseGrokResponse(content, departmentExpenses.Keys, targetProfitMargin);
+
+            _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
+            return recommendationResult;
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse Grok API response content");
-        }
-
-        if (string.IsNullOrWhiteSpace(content))
-            throw new InvalidOperationException("Grok API returned empty or invalid content");
-
-        // Parse response (content is guaranteed non-null by check above)
-        var safeContent = content ?? string.Empty;
-        var recommendationResult = ParseGrokResponse(safeContent, departmentExpenses.Keys, targetProfitMargin);
-
-        _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
-        return recommendationResult;
     }
 
     private Dictionary<string, decimal> CalculateRuleBasedRecommendations(
@@ -489,24 +490,26 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
         try
         {
             // Quick health check with a simple request
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            using (var client = _httpClientFactory.CreateClient())
+            {
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
-            var testRequest = new
-            {
-                model = _model,
-                messages = new[] { new { role = "user", content = "Hello" } },
-                max_tokens = 10
-            };
+                var testRequest = new
+                {
+                    model = _model,
+                    messages = new[] { new { role = "user", content = "Hello" } },
+                    max_tokens = 10
+                };
 
-            using var response = await client.PostAsJsonAsync(_apiEndpoint, testRequest, cancellationToken);
-            if (response.IsSuccessStatusCode)
-            {
-                return HealthCheckResult.Healthy("Grok API is responding");
-            }
-            else
-            {
-                return HealthCheckResult.Unhealthy($"Grok API returned {response.StatusCode}");
+                using var response = await client.PostAsJsonAsync(_apiEndpoint, testRequest, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    return HealthCheckResult.Healthy("Grok API is responding");
+                }
+                else
+                {
+                    return HealthCheckResult.Unhealthy($"Grok API returned {response.StatusCode}");
+                }
             }
         }
         catch (Exception ex)
@@ -572,6 +575,8 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
         decimal targetProfitMargin = 15.0m,
         CancellationToken cancellationToken = default)
     {
+        if (departmentExpenses == null)
+            throw new ArgumentNullException(nameof(departmentExpenses));
         try
         {
             _logger.LogInformation("Requesting explanation from Grok API");
@@ -649,80 +654,79 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
         decimal targetProfitMargin,
         CancellationToken cancellationToken)
     {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-
-        var expenseList = string.Join(", ", departmentExpenses.Select(e => $"{e.Key}: ${e.Value:N2}"));
-        var prompt = $@"Provide a clear, professional explanation for municipal utility rate adjustments.
-Monthly expenses are: {expenseList}.
-Target profit margin: {targetProfitMargin}%.
-Explain why these adjustments are necessary in 2-3 paragraphs suitable for public presentation.";
-
-        var requestBody = new
+        using (var client = _httpClientFactory.CreateClient())
         {
-            model = "grok-beta",
-            messages = new[]
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var expenseList = string.Join(", ", departmentExpenses.Select(e => $"{e.Key}: ${e.Value:N2}"));
+            var prompt = $@"Provide a clear, professional explanation for municipal utility rate adjustments.\nMonthly expenses are: {expenseList}.\nTarget profit margin: {targetProfitMargin}%.\nExplain why these adjustments are necessary in 2-3 paragraphs suitable for public presentation.";
+
+            var requestBody = new
             {
-                new { role = "system", content = "You are a municipal finance expert explaining utility rate adjustments to city officials and the public." },
-                new { role = "user", content = prompt }
-            },
-            temperature = 0.7,
-            max_tokens = 400
-        };
-
-        var response = await client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-
-        if (result == null)
-            throw new InvalidOperationException("Grok API returned null response");
-
-        string? explanation = null;
-        try
-        {
-            var root = result.RootElement;
-            if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
-            {
-                var choice = choicesEl[0];
-                if (choice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
+                model = "grok-4",
+                messages = new[]
                 {
-                    if (messageEl.TryGetProperty("content", out var contentEl))
+                    new { role = "system", content = "You are a municipal finance expert explaining utility rate adjustments to city officials and the public." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.7,
+                max_tokens = 400
+            };
+
+            var response = await client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+
+            if (result == null)
+                throw new InvalidOperationException("Grok API returned null response");
+
+            string? explanation = null;
+            try
+            {
+                var root = result.RootElement;
+                if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
+                {
+                    var choice = choicesEl[0];
+                    if (choice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
                     {
-                        if (contentEl.ValueKind == JsonValueKind.String)
+                        if (messageEl.TryGetProperty("content", out var contentEl))
                         {
-                            explanation = contentEl.GetString();
-                        }
-                        else if (contentEl.ValueKind == JsonValueKind.Object || contentEl.ValueKind == JsonValueKind.Array)
-                        {
-                            explanation = contentEl.GetRawText();
-                        }
-                        else if (contentEl.ValueKind == JsonValueKind.Null || contentEl.ValueKind == JsonValueKind.Undefined)
-                        {
-                            explanation = null;
-                        }
-                        else
-                        {
-                            explanation = contentEl.ToString();
+                            if (contentEl.ValueKind == JsonValueKind.String)
+                            {
+                                explanation = contentEl.GetString();
+                            }
+                            else if (contentEl.ValueKind == JsonValueKind.Object || contentEl.ValueKind == JsonValueKind.Array)
+                            {
+                                explanation = contentEl.GetRawText();
+                            }
+                            else if (contentEl.ValueKind == JsonValueKind.Null || contentEl.ValueKind == JsonValueKind.Undefined)
+                            {
+                                explanation = null;
+                            }
+                            else
+                            {
+                                explanation = contentEl.ToString();
+                            }
                         }
                     }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to extract explanation content from Grok response - using fallback");
-            explanation = null;
-        }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract explanation content from Grok response - using fallback");
+                explanation = null;
+            }
 
-        if (string.IsNullOrWhiteSpace(explanation))
-        {
-            _logger.LogWarning("Grok API returned empty or whitespace explanation content; using fallback explanation");
-            return GenerateRuleBasedExplanation(departmentExpenses, targetProfitMargin);
-        }
+            if (string.IsNullOrWhiteSpace(explanation))
+            {
+                _logger.LogWarning("Grok API returned empty or whitespace explanation content; using fallback explanation");
+                return GenerateRuleBasedExplanation(departmentExpenses, targetProfitMargin);
+            }
 
-        // Trim and normalize whitespace to avoid returning spurious blank strings
-        return (explanation ?? string.Empty).Trim();
+            // Trim and normalize whitespace
+            return explanation.Trim();
+        }
     }
 
     private string GenerateRuleBasedExplanation(Dictionary<string, decimal> departmentExpenses, decimal targetProfitMargin)
@@ -738,5 +742,28 @@ Trash service is often operating efficiently with lower adjustment needs.
 Apartments and bundled services reflect shared utility costs with recommended margins to cover overhead and maintenance reserves.
 
 These adjustments are calculated to maintain financial sustainability while ensuring fair and competitive rates for all customers.";
+    }
+
+    private bool _disposed = false;
+
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed resources here
+                _meter?.Dispose();
+            }
+            // Clean up unmanaged resources here if any
+            _disposed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

@@ -39,7 +39,7 @@ namespace WileyWidget.Data
             // This prevents accidental in-memory migrations
             if (AppDbStartupState.IsDegradedMode)
             {
-                Console.WriteLine("[DesignTime] WARNING: Degraded mode detected - migrations will target in-memory. Override via config if unintended.");
+                Console.WriteLine("[DesignTime] WARNING: Degraded mode detected - migrations will target in-memory. Override via config if unintended."); // CA1303: Design-time code can use literal strings
             }
 
             return runtimeFactory.CreateDbContext();

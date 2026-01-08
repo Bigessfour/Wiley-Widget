@@ -12,6 +12,7 @@ namespace WileyWidget.Data.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
             migrationBuilder.CreateTable(
                 name: "ConversationHistories",
                 columns: table => new
@@ -37,6 +38,7 @@ namespace WileyWidget.Data.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            ArgumentNullException.ThrowIfNull(migrationBuilder);
             migrationBuilder.DropTable(
                 name: "ConversationHistories");
         }

@@ -110,7 +110,6 @@ public static class EvalCSharpTool
                 "Syncfusion.Windows.Forms.Tools",
                 "Syncfusion.Drawing",
                 "WileyWidget.WinForms.Forms",
-                "WileyWidget.WinForms.Controls.ChatUI",
                 "WileyWidget.WinForms.Themes",
                 "WileyWidget.WinForms.ViewModels",
                 "WileyWidget.Models",

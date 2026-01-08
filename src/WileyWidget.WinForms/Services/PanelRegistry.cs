@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Syncfusion.Windows.Forms.Tools;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.ChatUI;
 
 
 namespace WileyWidget.WinForms.Services
@@ -29,13 +28,14 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(CustomersPanel), "Customers", DockingStyle.Right, false),
             new PanelEntry(typeof(DashboardPanel), "Dashboard", DockingStyle.Top, false),
             new PanelEntry(typeof(DepartmentSummaryPanel), "Department Summary", DockingStyle.Right),
+            new PanelEntry(typeof(ProactiveInsightsPanel), "Proactive AI Insights", DockingStyle.Right, false),
             new PanelEntry(typeof(QuickBooksPanel), "QuickBooks", DockingStyle.Right, false),
             new PanelEntry(typeof(RecommendedMonthlyChargePanel), "Recommended Monthly Charge", DockingStyle.Right),
             new PanelEntry(typeof(ReportsPanel), "Reports", DockingStyle.Right, false),
             new PanelEntry(typeof(RevenueTrendsPanel), "Revenue Trends", DockingStyle.Right),
             new PanelEntry(typeof(SettingsPanel), "Settings", DockingStyle.Right, false),
             new PanelEntry(typeof(UtilityBillPanel), "Utility Bills", DockingStyle.Right),
-            new PanelEntry(typeof(ChatPanel), "AI Chat", DockingStyle.Right, false)
+            new PanelEntry(typeof(WarRoomPanel), "War Room", DockingStyle.Right),
         };
     }
 }

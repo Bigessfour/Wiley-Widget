@@ -12,7 +12,6 @@ using System.Windows.Forms;
 using System.Xml;
 using WileyWidget.WinForms.Controls;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
-using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
@@ -761,13 +760,7 @@ public class DockingLayoutManager : IDisposable
         try
         {
             // Prefer rebuilding known panels through PanelNavigationService so real controls are used
-            if (_panelNavigator != null && panelInfo.Name.Contains("Chat", StringComparison.OrdinalIgnoreCase))
-            {
-                var label = panelInfo.DockLabel ?? panelInfo.Name;
-                _panelNavigator.ShowPanel<ChatPanel>(label, DockingStyle.Right, allowFloating: true);
-                _logger?.LogInformation("Recreated chat panel via PanelNavigationService: {PanelName}", label);
-                return;
-            }
+            // (ChatPanel removed - use ShowJARVISPanel() instead)
 
             // STEP 1: Create empty panel
             var panel = new GradientPanelExt
@@ -803,11 +796,7 @@ public class DockingLayoutManager : IDisposable
 
             // STEP 5: Add child content AFTER docking (Syncfusion official pattern)
             // Adding content after DockControl ensures DockingManager's internal control collections are ready
-            if (panelInfo.Name.Contains("Chat", StringComparison.OrdinalIgnoreCase))
-            {
-                panel.Controls.Add(new Label { Text = "AI Chat Panel", Dock = DockStyle.Top });
-            }
-            else if (panelInfo.Name.Contains("Log", StringComparison.OrdinalIgnoreCase))
+            if (panelInfo.Name.Contains("Log", StringComparison.OrdinalIgnoreCase))
             {
                 panel.Controls.Add(new Label { Text = "Log Panel", Dock = DockStyle.Top });
             }

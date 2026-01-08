@@ -23,7 +23,6 @@ using System.Xml.Serialization;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.ChatUI;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;

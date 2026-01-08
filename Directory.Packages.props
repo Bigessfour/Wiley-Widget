@@ -136,5 +136,11 @@
     <PackageVersion Include="Syncfusion.Core.WinForms" Version="32.1.19" />
     <!-- SixLabors.ImageSharp removed - unused orphaned dependency -->
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
+    <!-- Blazor WebView and Interactive Chat for Windows Forms -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3701.9" />
+    <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.1.19" />
   </ItemGroup>
 </Project>

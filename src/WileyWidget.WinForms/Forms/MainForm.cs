@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Abstractions;
@@ -64,6 +65,7 @@ namespace WileyWidget.WinForms.Forms
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
+        private JARVISChatHostForm? _jarvisForm;
 
         /// <summary>
         /// The root <see cref="IServiceProvider"/> for the application. Child forms and controls
@@ -676,6 +678,31 @@ namespace WileyWidget.WinForms.Forms
                 }
             });
 
+            // Initialize Grok service asynchronously (deferred initialization pattern)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_serviceProvider == null) return;
+                    var grokService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetService<WileyWidget.WinForms.Services.AI.GrokAgentService>(_serviceProvider);
+                    if (grokService is IAsyncInitializable asyncInitializable)
+                    {
+                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        cts.CancelAfter(TimeSpan.FromSeconds(30));
+                        await asyncInitializable.InitializeAsync(cts.Token).ConfigureAwait(false);
+                        _logger?.LogInformation("Grok service initialized asynchronously on background thread");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to initialize Grok service asynchronously (non-critical - chat will function via HTTP fallback)");
+                }
+            });
+
+            // Initialize JARVIS AI Assist panel after async services are initialized
+            InitializeJarvisPanel();
+
             _ = Task.Run(async () =>
             {
                 try
@@ -698,12 +725,12 @@ namespace WileyWidget.WinForms.Forms
             // Initialize async logging for MainForm diagnostics to avoid blocking UI thread
             try
             {
-                // Walk up from bin/Debug/net10.0/... to repo root
-                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                var repoRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
-                var logsDirectory = Path.Combine(repoRoot, "logs");
+                // CRITICAL: Use SAME centralized logs directory as main logger
+                // This ensures ALL application logs are in one location
+                var projectRoot = Directory.GetCurrentDirectory();
+                var logsDirectory = Path.Combine(projectRoot, "logs");
                 Directory.CreateDirectory(logsDirectory);
-                var asyncLogPath = Path.Combine(logsDirectory, "mainform-async-.log");
+                var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
                 _asyncLogger = new LoggerConfiguration()
                     .WriteTo.Async(a => a.File(asyncLogPath,
                         rollingInterval: RollingInterval.Day,
@@ -713,7 +740,7 @@ namespace WileyWidget.WinForms.Forms
                     .MinimumLevel.Debug()
                     .CreateLogger();
 
-                _asyncLogger.Information("Async logging initialized for MainForm diagnostics - path: {LogPath}", asyncLogPath);
+                _asyncLogger.Information("✓ Async diagnostics logger initialized - path: {LogPath}", asyncLogPath);
             }
             catch (Exception ex)
             {
@@ -959,6 +986,71 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed to show reports panel");
+            }
+        }
+
+        /// <summary>
+        /// Initializes and docks the JARVIS AI Assist panel.
+        /// Called after async services are initialized in OnShown.
+        /// </summary>
+        private void InitializeJarvisPanel()
+        {
+            try
+            {
+                if (_jarvisForm == null)
+                {
+                    _jarvisForm = new JARVISChatHostForm();
+                    _jarvisForm.TopLevel = false;
+                    _jarvisForm.FormBorderStyle = FormBorderStyle.None;
+                }
+
+                // Set dock properties
+                _jarvisForm.Text = "JARVIS AI Assist";
+                _jarvisForm.Visible = false;
+
+                // Dock control using DockingManager
+                if (_dockingManager != null)
+                {
+                    _dockingManager.DockControl(
+                        _jarvisForm,
+                        this,
+                        DockingStyle.Right,
+                        450  // Preferred width
+                    );
+                }
+
+                _logger?.LogInformation("JARVIS AI Assist panel initialized and docked");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to initialize JARVIS panel");
+            }
+        }
+
+        /// <summary>
+        /// Shows and activates the JARVIS Chat panel in the docking manager.
+        /// Called when user clicks the JARVIS Chat ribbon button.
+        /// </summary>
+        public void ShowJARVISPanel()
+        {
+            try
+            {
+                if (_jarvisForm == null)
+                {
+                    _logger?.LogWarning("ShowJARVISPanel: JARVIS form not initialized");
+                    return;
+                }
+
+                // Make visible and activate in docking manager
+                _jarvisForm.Visible = true;
+                _dockingManager?.ActivateControl(_jarvisForm);
+
+                _logger?.LogInformation("[JARVIS_PANEL] JARVIS Chat panel activated by user");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "[JARVIS_PANEL] Failed to show JARVIS panel");
+                MessageBox.Show($"Failed to show JARVIS Chat: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -18,7 +18,7 @@ namespace WileyWidget.Data
     /// <summary>
     /// Repository implementation for MunicipalAccount data operations
     /// </summary>
-    public class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
+    public sealed class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
         // Compiled queries to reduce first-query JIT/plan compilation overhead
         private static readonly Func<AppDbContext, List<MunicipalAccount>> CQ_GetAllOrdered =
@@ -448,7 +448,7 @@ namespace WileyWidget.Data
                 {
                     var newAccount = new MunicipalAccount
                     {
-                        AccountNumber = new AccountNumber(acctNum != string.Empty ? acctNum : $"QB-{qbAccount.Id}"),
+                        AccountNumber = new AccountNumber(!string.IsNullOrEmpty(acctNum) ? acctNum : $"QB-{qbAccount.Id}"),
                         Name = qbAccount.Name,
                         Type = MapQuickBooksAccountType(qbAccount.AccountType),
                         Fund = DetermineFundFromAccount(qbAccount),
@@ -769,7 +769,30 @@ namespace WileyWidget.Data
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        // Non-virtual Dispose(bool) because the type is sealed
+        private void Dispose(bool disposing)
+        {
             if (_disposed) return;
+
+            if (disposing)
+            {
+                // Dispose managed resources
+                try
+                {
+                    _cache.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error while disposing IMemoryCache");
+                }
+            }
+
+            // No unmanaged resources to release
+
             _disposed = true;
         }
     }

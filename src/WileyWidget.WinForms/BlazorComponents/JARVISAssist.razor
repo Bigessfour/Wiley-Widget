@@ -1,0 +1,317 @@
+@namespace WileyWidget.WinForms.BlazorComponents
+@using System
+@using System.Collections.Generic
+@using System.Collections.ObjectModel
+@using System.Threading.Tasks
+@using Microsoft.JSInterop
+@using WileyWidget.Models
+@using WileyWidget.Services.Abstractions
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@implements IAsyncDisposable
+@inject IChatBridgeService ChatBridgeService
+@inject IJSRuntime JS
+
+<ErrorBoundary>
+    <ChildContent>
+        <div style="height: 100vh; width: 100%; display: flex; flex-direction: column;" id="jarvis-chat-container" role="main" aria-label="JARVIS AI Chat Interface">
+            <!-- Chat Message List with Virtualization -->
+            <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; background-color: #f5f5f5;" role="log" aria-live="polite" aria-atomic="false" aria-label="Chat message history">
+                @if (Messages.Count == 0)
+                {
+                    <div style="text-align: center; color: #999; margin-top: 20px;" role="status" aria-label="Welcome message">
+                        <p>👋 Hey there! I'm JARVIS, your AI assistant. Ask me anything!</p>
+                    </div>
+                }
+                else
+                {
+                    <!-- Use Virtualize component for performance with large message lists -->
+                    <Virtualize Items="@Messages" Context="msg" OverscanCount="10">
+                        <div style="margin-bottom: 12px; display: flex; @(msg.Role == "User" ? "justify-content: flex-end;" : "justify-content: flex-start;")">
+                            <div style="max-width: 60%; padding: 12px 16px; border-radius: 18px; @GetMessageStyle(msg.Role)"
+                                 role="article"
+                                 aria-label="@(msg.Role == "User" ? "Your message" : "JARVIS response")">
+                                <div style="word-wrap: break-word; white-space: pre-wrap;">@msg.Text</div>
+                            </div>
+                        </div>
+                    </Virtualize>
+
+                    <!-- Shimmer/Thinking Indicator -->
+                    @if (IsThinking)
+                    {
+                        <div style="margin-bottom: 12px; display: flex; justify-content: flex-start;" role="status" aria-live="assertive" aria-label="JARVIS is processing your message">
+                            <div style="padding: 12px 16px; border-radius: 18px; background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; color: #666;">
+                                ✨ JARVIS is thinking...
+                            </div>
+                        </div>
+                        <style>
+                            @@keyframes shimmer {
+                                0% { background-position: 200% 0; }
+                                100% { background-position: -200% 0; }
+                            }
+                        </style>
+                    }
+                }
+                <!-- Intersection Observer Target for Smart Scrolling -->
+                <div @ref="messagesEndRef" style="height: 1px;" role="presentation"></div>
+            </div>
+
+            <!-- Input Section -->
+            <div style="border-top: 1px solid #ddd; padding: 12px 16px; background-color: white;" role="form" aria-label="Message input form">
+                <div style="display: flex; gap: 8px;">
+                    <label for="chat-input" class="sr-only">Type your message</label>
+                    <input
+                        id="chat-input"
+                        type="text"
+                        @bind="CurrentPrompt"
+                        @onkeyup="HandleKeyUp"
+                        placeholder="Type your message here..."
+                        style="flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Segoe UI', sans-serif; font-size: 14px;"
+                        disabled="@IsThinking"
+                        aria-label="Chat message input"
+                        aria-describedby="chat-hint"
+                        aria-required="true" />
+                    <button
+                        @onclick="SubmitPrompt"
+                        disabled="@(string.IsNullOrWhiteSpace(CurrentPrompt) || IsThinking)"
+                        style="padding: 10px 20px; background-color: #0078d4; color: white; border: none; border-radius: 8px; cursor: @(IsThinking ? "not-allowed" : "pointer"); opacity: @(IsThinking ? "0.6" : "1"); font-weight: 500;"
+                        aria-label="@(IsThinking ? "Processing message" : "Send message")"
+                        title="@(IsThinking ? "Please wait..." : "Send message (Enter)")">
+                        @(IsThinking ? "Sending..." : "Send")
+                    </button>
+                </div>
+                <span id="chat-hint" class="sr-only">Press Enter to send message, or Shift+Enter for new line</span>
+            </div>
+
+            <!-- Screen Reader Only Styles -->
+            <style>
+                .sr-only {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border-width: 0;
+                }
+
+                /* High contrast mode support */
+                @@media (prefers-contrast: high) {
+                    #chat-messages {
+                        border: 2px solid currentColor;
+                    }
+                    button:disabled {
+                        opacity: 0.5;
+                        border: 1px solid currentColor;
+                    }
+                }
+
+                /* Reduced motion support */
+                @@media (prefers-reduced-motion: reduce) {
+                    .shimmer {
+                        animation: none !important;
+                    }
+                }
+
+                /* Focus visible for keyboard navigation */
+                *:focus-visible {
+                    outline: 2px solid #0078d4;
+                    outline-offset: 2px;
+                }
+            </style>
+        </div>
+    </ChildContent>
+    <ErrorContent Context="ex">
+        <div style="padding: 20px; background-color: #fff5f5; border: 2px solid #ff6b6b; border-radius: 8px; margin: 20px;"
+             role="alert"
+             aria-live="assertive">
+            <h3 style="color: #c92a2a; margin-top: 0;">⚠️ Chat Error</h3>
+            <p style="color: #333; margin: 10px 0;">@ex.Message</p>
+            <button
+                @onclick="ResetChat"
+                style="padding: 8px 16px; background-color: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                aria-label="Reset chat and clear error">
+                Reset Chat
+            </button>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    private class AIAssistItem
+    {
+        public string Text { get; set; } = string.Empty;
+        public string Role { get; set; } = "Assistant"; // "User" or "Assistant"
+    }
+
+    private List<AIAssistItem> Messages { get; set; } = new();
+    private bool IsThinking { get; set; }
+    private string CurrentPrompt { get; set; } = string.Empty;
+    private string CurrentStreamingContent { get; set; } = string.Empty;
+    private ElementReference messagesEndRef;
+    private DotNetObjectReference<JARVISAssist>? dotNetRef;
+    private bool isScrolledToBottom = true;
+    private IJSObjectReference? scrollModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to chat bridge events
+        ChatBridgeService.ResponseChunkReceived += OnResponseChunk;
+        ChatBridgeService.PromptSubmitted += OnPromptSubmittedByBridge;
+
+        dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Initialize IntersectionObserver for optimized scroll detection
+                scrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/scroll-helper.js");
+                await scrollModule.InvokeVoidAsync("initializeScrollObserver", messagesEndRef, dotNetRef);
+            }
+            catch (Exception ex)
+            {
+                // Fallback if JS module fails - use simple scroll
+                Console.WriteLine($"Failed to initialize scroll observer: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SubmitPrompt()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentPrompt) || IsThinking)
+            return;
+
+        var prompt = CurrentPrompt.Trim();
+        CurrentPrompt = string.Empty;
+
+        // Add user message to display
+        Messages.Add(new AIAssistItem { Text = prompt, Role = "User" });
+
+        // Show thinking indicator with shimmer
+        IsThinking = true;
+        CurrentStreamingContent = string.Empty;
+        StateHasChanged();
+
+        // Auto-scroll to bottom when user sends message
+        await ScrollToBottomSmart();
+
+        // Submit prompt to backend via ChatBridgeService
+        await ChatBridgeService.SubmitPromptAsync(prompt);
+    }
+
+    private void OnPromptSubmittedByBridge(object? sender, ChatPromptSubmittedEventArgs e)
+    {
+        // Backend acknowledged prompt submission
+    }
+
+    private void OnResponseChunk(object? sender, ChatResponseChunkEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e?.Chunk))
+            return;
+
+        if (IsThinking)
+        {
+            // Clear thinking indicator on first response chunk
+            IsThinking = false;
+            CurrentStreamingContent = e.Chunk;
+        }
+        else
+        {
+            // Append chunk to current streaming content
+            CurrentStreamingContent += e.Chunk;
+        }
+
+        // Update or add streaming response
+        if (Messages.Count > 0 && Messages[Messages.Count - 1].Role == "Assistant")
+        {
+            Messages[Messages.Count - 1].Text = CurrentStreamingContent;
+        }
+        else
+        {
+            Messages.Add(new AIAssistItem { Text = CurrentStreamingContent, Role = "Assistant" });
+        }
+
+        StateHasChanged();
+
+        // Only auto-scroll if user is already at bottom (don't interrupt reading)
+        if (isScrolledToBottom)
+        {
+            _ = ScrollToBottomSmart();
+        }
+    }
+
+    private async Task ScrollToBottomSmart()
+    {
+        try
+        {
+            if (scrollModule != null)
+            {
+                // Use IntersectionObserver-based smooth scroll
+                await scrollModule.InvokeVoidAsync("scrollToBottom", "chat-messages");
+            }
+            else
+            {
+                // Fallback to simple scroll
+                await JS.InvokeVoidAsync("eval", "document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight");
+            }
+        }
+        catch
+        {
+            // Ignore scroll errors
+        }
+    }
+
+    [JSInvokable]
+    public void OnScrollPositionChanged(bool atBottom)
+    {
+        isScrolledToBottom = atBottom;
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SubmitPrompt();
+        }
+    }
+
+    private string GetMessageStyle(string role)
+    {
+        return role == "User"
+            ? "background-color: #0078d4; color: white;"
+            : "background-color: #e1e4e8; color: #333;";
+    }
+
+    private void ResetChat()
+    {
+        Messages.Clear();
+        IsThinking = false;
+        CurrentPrompt = string.Empty;
+        CurrentStreamingContent = string.Empty;
+        StateHasChanged();
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        try
+        {
+            ChatBridgeService.ResponseChunkReceived -= OnResponseChunk;
+            ChatBridgeService.PromptSubmitted -= OnPromptSubmittedByBridge;
+
+            if (scrollModule != null)
+            {
+                await scrollModule.DisposeAsync();
+            }
+
+            dotNetRef?.Dispose();
+        }
+        catch { /* Ignore disposal errors */ }
+        await Task.CompletedTask;
+    }
+}

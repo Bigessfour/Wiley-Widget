@@ -483,6 +483,53 @@
 			"group": "build"
 		},
 		{
+			"label": "WileyWidget: Incremental Build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.sln",
+				"--no-restore",
+				"--configuration",
+				"Debug",
+				"--verbosity",
+				"quiet",
+				"/m",
+				"/p:BuildInParallel=true",
+				"/p:UseSharedCompilation=true",
+				"/p:NodeReuse=true",
+				"/p:ContinuousIntegrationBuild=false",
+				"/p:RunAnalyzers=false",
+				"/p:RunAnalyzersDuringBuild=false",
+				"/p:EnableNETAnalyzers=false"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS8600|CS8601|CS8602|CS8603|CS8604|CS8618|CS8625|CS4014|CS1998|CS0029|CS0266|CS1503|CS1061|CS0103|CS0246|CS0234|CS0115|CS0534|CS0051|CS0052|CS0619):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"panel": "shared",
+				"clear": false,
+				"showReuseMessage": false
+			},
+			"group": "build"
+		},
+		{
 			"label": "kill-test-processes",
 			"type": "shell",
 			"command": "pwsh",

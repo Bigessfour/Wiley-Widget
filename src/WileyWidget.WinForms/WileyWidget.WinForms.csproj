@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,10 +9,22 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
-    <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600</NoWarn>
+    <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
     <!-- Enable High DPI support via app.manifest -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Enable Blazor Hybrid support -->
+    <BlazorWebAssemblyEnableSatelliteLoadingOnUndefinedBase>true</BlazorWebAssemblyEnableSatelliteLoadingOnUndefinedBase>
+    <BlazorEnableCompressedPublish>false</BlazorEnableCompressedPublish>
+    <!-- Disable implicit items for Razor SDK to avoid duplicates -->
+    <EnableDefaultRazorGenerateItems>false</EnableDefaultRazorGenerateItems>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <!-- Suppress MSB3277 WindowsBase binding redirect warning (WinForms on .NET 10 with WebView2) -->
   </PropertyGroup>
+
+  <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch" Value="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
@@ -91,9 +103,25 @@
     <!-- FastReport Open Source WinForms viewer -->
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    <!-- Blazor WebView for Windows Forms -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
+    <!-- Syncfusion Blazor Interactive Chat -->
+    <PackageReference Include="Syncfusion.Blazor.InteractiveChat" />
+    <PackageReference Include="Syncfusion.Blazor.Core" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Explicitly declare Razor components for compilation -->
+    <Compile Remove="BlazorComponents/**" />
+    <RazorComponent Include="BlazorComponents/**/*.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Blazor Web assets (wwwroot) -->
+    <Content Include="wwwroot\\**\\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

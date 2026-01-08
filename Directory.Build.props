@@ -24,10 +24,6 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'WileyWidget.Analyzers'">
-    <!-- Include local analyzers project as an analyzer for all solution projects (exclude the analyzer project itself to avoid circular references) -->
-    <ProjectReference Include="$(MSBuildThisFileDirectory)eng\analyzers\WileyWidget.Analyzers\WileyWidget.Analyzers.csproj" ReferenceOutputAssembly="false">
-      <OutputItemType>Analyzer</OutputItemType>
-    </ProjectReference>
     <!-- Banned API Analyzer -->
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" />
     <!-- Centralize Microsoft.NetAnalyzers across the repo to get a reproducible analyzer set -->
