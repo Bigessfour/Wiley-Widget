@@ -14,6 +14,7 @@ using System.Reflection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 using WileyWidget.Abstractions;
 using WileyWidget.Services.Abstractions;
 
@@ -228,12 +229,18 @@ namespace WileyWidget.WinForms.Services.AI
                         try
                         {
                             // Use the OpenAI-compatible connector to target xAI's Grok endpoint
-                            _logger?.LogInformation("[XAI] Configuring Grok chat completion: model={Model}, endpoint={Endpoint}, apiKeyLength={KeyLength}",
-                                _model, _endpoint, _apiKey.Length);
+                            // Add serviceId for better service identification and multi-model support
+                            var serviceId = $"grok-{_model}";
+                            _logger?.LogInformation("[XAI] Configuring Grok chat completion: model={Model}, endpoint={Endpoint}, serviceId={ServiceId}, apiKeyLength={KeyLength}",
+                                _model, _endpoint, serviceId, _apiKey.Length);
 #pragma warning disable SKEXP0010
-                            builder.AddOpenAIChatCompletion(modelId: _model, apiKey: _apiKey, endpoint: _endpoint!);
+                            builder.AddOpenAIChatCompletion(
+                                modelId: _model,
+                                apiKey: _apiKey,
+                                endpoint: _endpoint!,
+                                serviceId: serviceId);
 #pragma warning restore SKEXP0010
-                            _logger?.LogInformation("[XAI] Semantic Kernel configured with Grok chat completion successfully");
+                            _logger?.LogInformation("[XAI] Semantic Kernel configured with Grok chat completion successfully (serviceId: {ServiceId})", serviceId);
                         }
                         catch (Exception ex)
                         {
@@ -912,12 +919,12 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
-        /// Runs an agentic chat session with Grok using streaming via x.ai's OpenAI-compatible API.
+        /// Runs an agentic chat session with Grok using Semantic Kernel's native streaming and automatic function calling.
+        /// Uses ToolCallBehavior.AutoInvokeKernelFunctions (SK 1.16.0) to enable automatic plugin invocation per Microsoft Docs best practices.
         /// The default system prompt makes the agent act as a senior Syncfusion WinForms architect
         /// that enforces SfSkinManager theming rules, MVVM patterns, and project conventions.
         /// If no Grok API key is configured the method returns a clear diagnostic string.
         /// The optional onStreamingChunk callback enables UI to display streaming progress during execution.
-        /// Supports tool calling via the tools parameter per x.ai API specification.
         /// </summary>
         public async Task<string> RunAgentAsync(string userRequest, string systemPrompt = DefaultArchitectPrompt, Action<string>? onStreamingChunk = null)
         {
@@ -943,132 +950,88 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogInformation("[XAI] RunAgentAsync invoked - User request length: {Length}", userRequest.Length);
 
-                // Use OpenAI-compatible streaming with system prompt
-                // Per x.ai API spec: /v1/chat/completions with stream=true enables streaming responses
-                var model = _model ?? "grok-4";
-                var messagesArray = new[]
+                // Use Semantic Kernel's native streaming with FunctionChoiceBehavior.Auto() (Microsoft Docs recommended pattern)
+                var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+
+                // Configure execution settings with automatic function calling
+                var settings = new OpenAIPromptExecutionSettings
                 {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userRequest }
+                    ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                    Temperature = 0.3,
+                    MaxTokens = 4000
                 };
 
-                var payload = CreateChatRequestPayload(model, messagesArray, stream: true, temperature: 0.3);
-                var json = JsonSerializer.Serialize(payload);
-
-                using var request = new HttpRequestMessage(HttpMethod.Post, _endpoint)
+                // Only add penalties for non-reasoning models
+                if (!IsReasoningModel(_model))
                 {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                };
+                    if (_defaultPresencePenalty.HasValue)
+                    {
+                        settings.PresencePenalty = _defaultPresencePenalty.Value;
+                    }
+                    if (_defaultFrequencyPenalty.HasValue)
+                    {
+                        settings.FrequencyPenalty = _defaultFrequencyPenalty.Value;
+                    }
+                }
 
-                request.Headers.Accept.Clear();
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+                // Create chat history
+                var history = new ChatHistory();
+                history.AddSystemMessage(systemPrompt);
+                history.AddUserMessage(userRequest);
 
+                _logger?.LogDebug("[XAI] Invoking streaming chat with ToolCallBehavior.AutoInvokeKernelFunctions - Plugins: {Count}", _kernel.Plugins.Count);
+
+                // Use Semantic Kernel's native streaming (handles SSE and function calling automatically)
+                var responseBuilder = new StringBuilder();
+
+                await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+                    history,
+                    executionSettings: settings,
+                    kernel: _kernel).ConfigureAwait(false))
+                {
+                    if (!string.IsNullOrEmpty(chunk.Content))
+                    {
+                        responseBuilder.Append(chunk.Content);
+                        onStreamingChunk?.Invoke(chunk.Content);
+                    }
+
+                    // Log function calls for observability
+                    if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
+                    {
+                        _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
+                    }
+                }
+
+                var result = responseBuilder.ToString();
+
+                if (string.IsNullOrWhiteSpace(result))
+                {
+                    _logger?.LogWarning("[XAI] Empty response from streaming chat; attempting fallback");
+                    return await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
+                }
+
+                _logger?.LogInformation("[XAI] RunAgentAsync completed via Semantic Kernel streaming - Response length: {Length}", result.Length);
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogWarning("[XAI] RunAgentAsync was canceled");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[XAI] Semantic Kernel streaming failed; attempting fallback to simple HTTP chat");
                 try
                 {
-                    _logger?.LogDebug("[XAI] RunAgentAsync -> POST {Url} with streaming=true (model={Model})", _endpoint, model);
-                    var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-
-                    if (!resp.IsSuccessStatusCode)
-                    {
-                        _logger?.LogWarning("[XAI] Grok streaming API returned non-success status: {Status}", resp.StatusCode);
-                        var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
-                    }
-
-                    var contentType = resp.Content.Headers.ContentType?.MediaType;
-                    if (!string.Equals(contentType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var raw = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var parsed = TryExtractMessage(raw);
-                        return parsed ?? raw;
-                    }
-
-                    // Read streaming response chunks (SSE format per x.ai spec)
-                    var responseBuilder = new StringBuilder();
-                    var responseStream = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                    using var reader = new System.IO.StreamReader(responseStream);
-
-                    while (true)
-                    {
-                        var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                        if (line == null)
-                            break;
-
-                        // SSE format: "data: {json}"
-                        if (line.StartsWith("data: ", StringComparison.Ordinal))
-                        {
-                            var dataJson = line.Substring(6);
-
-                            if (dataJson == "[DONE]")
-                            {
-                                _logger?.LogDebug("[XAI] Stream ended with [DONE] marker");
-                                break;
-                            }
-
-                            try
-                            {
-                                using var doc = JsonDocument.Parse(dataJson);
-                                var choices = doc.RootElement.GetProperty("choices");
-                                if (choices.GetArrayLength() > 0)
-                                {
-                                    var delta = choices[0].GetProperty("delta");
-
-                                    // Check for tool calls per x.ai API specification
-                                    if (delta.TryGetProperty("tool_calls", out var toolCallsElem))
-                                    {
-                                        _logger?.LogInformation("[XAI] Tool calls detected in response");
-                                        responseBuilder.Append("```\nTool Calls:\n");
-                                        responseBuilder.Append(toolCallsElem.GetRawText());
-                                        responseBuilder.Append("\n```\n");
-                                    }
-
-                                    // Extract content delta for streaming text
-                                    if (delta.TryGetProperty("content", out var contentElem))
-                                    {
-                                        var contentText = contentElem.GetString();
-                                        if (!string.IsNullOrEmpty(contentText))
-                                        {
-                                            responseBuilder.Append(contentText);
-                                            onStreamingChunk?.Invoke(contentText);
-                                        }
-                                    }
-                                }
-                            }
-                            catch (JsonException ex)
-                            {
-                                _logger?.LogWarning(ex, "[XAI] Failed to parse SSE chunk: {Data}", dataJson);
-                            }
-                        }
-                    }
-
-                    var result = responseBuilder.ToString();
-                    if (string.IsNullOrWhiteSpace(result))
-                    {
-                        var raw = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var parsed = TryExtractMessage(raw);
-                        result = parsed ?? raw;
-                    }
-
-                    _logger?.LogInformation("[XAI] RunAgentAsync completed via streaming - Response length: {Length}", result.Length);
-                    return result;
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger?.LogWarning("[XAI] RunAgentAsync streaming was canceled");
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "[XAI] Streaming failed; attempting fallback to simple HTTP chat");
                     var fallback = await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
                     _logger?.LogInformation("[XAI] RunAgentAsync completed via fallback - Response length: {Length}", fallback?.Length ?? 0);
                     return fallback ?? $"Grok streaming failed: {ex.Message}";
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "[XAI] RunAgentAsync failed completely");
-                return $"Grok agent error: {ex.Message}";
+                catch (Exception fallbackEx)
+                {
+                    _logger?.LogError(fallbackEx, "[XAI] Both Semantic Kernel and fallback failed");
+                    return $"Grok agent error: {ex.Message}";
+                }
             }
         }
 
