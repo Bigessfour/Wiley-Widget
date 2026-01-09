@@ -29,10 +29,10 @@ jobs:
         id: diff
         run: |
           BASE_SHA=${{ github.event.pull_request.base.sha }}
-          HEAD_SHA=${{ github.event. pull_request.head.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
 
           DIFF=$(git diff $BASE_SHA..$HEAD_SHA -- \
-            'src/**/*. cs' 'tests/**/*.cs' \
+            'src/**/*.cs' 'tests/**/*.cs' \
             --unified=3 \
             --diff-filter=ACMTU 2>/dev/null | head -20000)
 
@@ -65,7 +65,7 @@ jobs:
         with:
           script: |
             github.rest.issues.createComment({
-              issue_number: context. issue.number,
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '⚠️ **Grok review skipped**: `XAI_API_KEY` secret not configured in repository settings.\n\nTo enable Grok reviews, add your xAI API key at: Settings → Secrets and variables → Actions → New repository secret'
@@ -76,7 +76,7 @@ jobs:
         id: prompt
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github. event.pull_request.body }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
 
           DIFF=$(cat /tmp/pr.diff)
@@ -88,7 +88,7 @@ jobs:
 
           # Full static prompt - tailored for Wiley-Widget (Syncfusion WinForms)
           PROMPT=$(cat << 'EOF'
-You are a senior code reviewer for the Wiley-Widget project: a . NET 10 Windows Forms municipal dashboard using Syncfusion controls (v30+), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.
+You are a senior code reviewer for the Wiley-Widget project: a .NET 10 Windows Forms municipal dashboard using Syncfusion controls (v30+), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.
 
 Review ONLY the changed code in the provided diff. Focus on:
 - Theme consistency: NO manual Color.FromArgb, BrushInfo, or per-control styling.  All colors/theme must come from SfSkinManager or IThemeService.
@@ -185,7 +185,7 @@ ${review}
         with: 
           script: |
             const errMsg = '${{ steps.grok.outputs.grok_error_msg || 'Unknown error during Grok review' }}';
-            await github.rest.issues. createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
