@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'pull_request'
-    
+
     steps:
-      - name:  Checkout PR
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Full history for proper diff
@@ -60,7 +60,7 @@ jobs:
             echo "✓ XAI_API_KEY found"
           fi
 
-      - name:  Notify if API key missing
+      - name: Notify if API key missing
         if: steps.check_key.outputs.has_key == 'false'
         uses: actions/github-script@v7
         with:
@@ -109,7 +109,7 @@ jobs:
 
           echo "prompt_prepared=true" >> $GITHUB_OUTPUT
 
-      - name:  Call Grok API
+      - name: Call Grok API
         if: steps.check_key.outputs.has_key == 'true'
         id: grok
         env:
@@ -156,7 +156,7 @@ jobs:
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.name,
+              repo: context.repo.repo,
               body: comment
             });
 
@@ -169,7 +169,7 @@ jobs:
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.name,
+              repo: context.repo.repo,
               body: `⚠️ **Grok Review Failed**
 
             **Error**: ${errMsg}
