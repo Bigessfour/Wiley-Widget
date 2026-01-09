@@ -46,14 +46,14 @@ namespace WileyWidget.Services.Abstractions
         /// </summary>
         public required T Item { get; init; }
 
-    /// <summary>
-    /// Similarity score between 0.0 and 1.0, where 1.0 is perfect match.
-    /// </summary>
-    public required double SimilarityScore { get; init; }
+        /// <summary>
+        /// Similarity score between 0.0 and 1.0, where 1.0 is perfect match.
+        /// </summary>
+        public required double SimilarityScore { get; init; }
 
-    /// <summary>
-    /// Explanation of why this item was matched (optional).
-    /// </summary>
-    public string? MatchReason { get; init; }
-}
+        /// <summary>
+        /// Explanation of why this item was matched (optional).
+        /// </summary>
+        public string? MatchReason { get; init; }
+    }
 }

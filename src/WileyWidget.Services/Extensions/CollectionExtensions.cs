@@ -18,9 +18,9 @@ public static class CollectionExtensions
         /// </summary>
         public bool IsEmpty => !source.Any();
 
-    /// <summary>
-    /// Filters the collection to exclude null values and applies the predicate.
-    /// </summary>
-    public IEnumerable<TSource> WhereNotNull(Func<TSource, bool> predicate) => source.Where(static x => x is not null).Where(predicate);
-}
+        /// <summary>
+        /// Filters the collection to exclude null values and applies the predicate.
+        /// </summary>
+        public IEnumerable<TSource> WhereNotNull(Func<TSource, bool> predicate) => source.Where(static x => x is not null).Where(predicate);
+    }
 }

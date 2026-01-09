@@ -61,5 +61,5 @@ namespace WileyWidget.WinForms.Theming
     public readonly record struct ThemePalette(Color Accent, Color Surface, Color TextPrimary)
     {
         public static ThemePalette CreateDefault() => new(Color.DodgerBlue, SystemColors.Control, Color.Black);
-}
+    }
 }
