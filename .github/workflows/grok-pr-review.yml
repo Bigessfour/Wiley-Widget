@@ -10,11 +10,11 @@ on:
 
 permissions:
   contents: read
-  pull-requests:  write
+  pull-requests: write
 
 jobs:
   grok-review:
-    name:  Grok-powered PR Review
+    name: Grok-powered PR Review
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'pull_request'
