@@ -7,15 +7,8 @@ on:
       - src/**/*.cs
       - tests/**/*.cs
       - .github/workflows/**
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  grok-review:
-    name: Grok-powered PR Review
-    runs-on: ubuntu-latest
+  push:
+    branches: [fix/mcp-workflow-restore]
     timeout-minutes: 15
     if: github.event_name == 'pull_request'
 
