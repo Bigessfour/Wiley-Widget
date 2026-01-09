@@ -96,9 +96,9 @@ jobs:
         id: grok
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          GROK_MODEL: grok-4-0709  # or try "grok-4-fast-reasoning" for speed
-          GROK_TEMPERATURE: '0.5'
-          GROK_MAX_TOKENS: '2048'
+          GROK_MODEL: grok-4-1-fast-reasoning-latest
+          GROK_TEMPERATURE: "0.5"
+          GROK_MAX_TOKENS: "2048"
         run: |
           # Read prompt
           PROMPT=$(cat /tmp/review_prompt.txt)
