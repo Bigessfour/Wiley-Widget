@@ -79,8 +79,8 @@ on:
             DIFF="$DIFF\n\n... (diff truncated due to size)"
           fi
 
-          # Full static prompt - tailored for Wiley-Widget (Syncfusion WinForms)
-          PROMPT=$(cat << 'EOF'
+          # Build prompt directly
+          cat > /tmp/system_prompt.txt <<'PROMPT_END'
 You are a senior code reviewer for the Wiley-Widget project: a .NET 10 Windows Forms municipal dashboard using Syncfusion controls (v30+), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.
 
 Review ONLY the changed code in the provided diff. Focus on:
@@ -93,31 +93,22 @@ Review ONLY the changed code in the provided diff. Focus on:
 - General: Clean, modern C# (.NET 10 features encouraged).
 
 Be concise but specific. Use markdown. Start with overall verdict (LGTM / Needs work), then bullet points.  End with approval status.
-EOF
-)
+PROMPT_END
 
-          # Escape for JSON
-          ESCAPED_PROMPT=$(echo "$PROMPT" | jq -Rs .)
-          ESCAPED_DIFF=$(echo "$DIFF" | jq -Rs .)
-          ESCAPED_TITLE=$(echo "$PR_TITLE" | jq -Rs .)
-
-          cat << EOF > /tmp/grok_request.json
-{
-  "model": "grok-beta",
-  "messages": [
-    {
-      "role": "system",
-      "content": $ESCAPED_PROMPT
-    },
-    {
-      "role":  "user",
-      "content":  "PR Title: $PR_TITLE\nAuthor:  @$PR_AUTHOR\n\nDiff:\n$ESCAPED_DIFF"
-    }
-  ],
-  "temperature":  0.5,
-  "max_tokens": 2048
-}
-EOF
+          # Build JSON request using jq
+          jq -n \
+            --arg model "grok-beta" \
+            --rawfile system /tmp/system_prompt.txt \
+            --arg user "PR Title: $PR_TITLE\nAuthor: @$PR_AUTHOR\n\nDiff:\n$DIFF" \
+            '{
+              model: $model,
+              messages: [
+                {role: "system", content: $system},
+                {role: "user", content: $user}
+              ],
+              temperature: 0.5,
+              max_tokens: 2048
+            }' > /tmp/grok_request.json
 
           echo "prompt_prepared=true" >> $GITHUB_OUTPUT
 
