@@ -19,13 +19,58 @@ public class Program
             // This ensures they're available for Roslyn script compilation
             PreLoadAssemblies();
 
-            // Allow a quick CLI helper to run the license check without starting the MCP server
-            if (args != null && args.Length > 0 && args[0] == "--run-license-check")
+            // Allow quick CLI helpers to run without starting the MCP server
+            if (args != null && args.Length > 0)
             {
-                var fmt = args.Length > 1 ? args[1] : "json";
-                var output = WileyWidget.McpServer.Tools.ValidateSyncfusionLicenseTool.ValidateSyncfusionLicense(fmt);
-                Console.WriteLine(output);
-                return 0;
+                if (args[0] == "--run-license-check")
+                {
+                    var fmt = args.Length > 1 ? args[1] : "json";
+                    var output = WileyWidget.McpServer.Tools.ValidateSyncfusionLicenseTool.ValidateSyncfusionLicense(fmt);
+                    Console.WriteLine(output);
+                    return 0;
+                }
+
+                if (args[0] == "--validate-form-theme")
+                {
+                    var target = args.Length > 1 ? args[1] : "all";
+                    var fmt = args.Length > 2 ? args[2] : "text";
+                    var anyFailures = false;
+
+                    if (string.Equals(target, "all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var types = WileyWidget.McpServer.Helpers.FormTypeCache.GetAllFormTypes();
+                        foreach (var t in types)
+                        {
+                            var result = WileyWidget.McpServer.Tools.ValidateFormThemeTool.ValidateFormTheme(t.FullName, "Office2019Colorful", fmt);
+                            Console.WriteLine(result);
+                            if (fmt.Equals("text", StringComparison.OrdinalIgnoreCase) && result.StartsWith("❌"))
+                            {
+                                anyFailures = true;
+                            }
+                            if (fmt.Equals("json", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var jsonLower = result.ToLowerInvariant();
+                                if (jsonLower.Contains("\"passed\": false"))
+                                    anyFailures = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var result = WileyWidget.McpServer.Tools.ValidateFormThemeTool.ValidateFormTheme(target, "Office2019Colorful", fmt);
+                        Console.WriteLine(result);
+                        if (fmt.Equals("text", StringComparison.OrdinalIgnoreCase) && result.StartsWith("❌"))
+                            anyFailures = true;
+                        if (fmt.Equals("json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var jsonLower = result.ToLowerInvariant();
+                            if (jsonLower.Contains("\"passed\": false"))
+                                anyFailures = true;
+                        }
+                    }
+
+                    return anyFailures ? 2 : 0;
+                }
             }
 
             // Create empty application builder (no console output noise for STDIO transport)

@@ -460,12 +460,13 @@ namespace WileyWidget.WinForms
                 Log.Debug("[DIAGNOSTIC] ScheduleAutoCloseIfRequested() completed");
 
                 Log.Debug("[DIAGNOSTIC] About to enter UI message loop");
-                Log.Debug("""
-[DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
-Timestamp: { Timestamp}
-MainFormPresent: { Present}
-IsDisposed: { Disposed}
-                """,
+                Log.Debug(
+                    """
+                    [DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
+                    Timestamp: { Timestamp}
+                    MainFormPresent: { Present}
+                    IsDisposed: { Disposed}
+                    """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
                     mainForm != null,
                     mainForm?.IsDisposed);
@@ -1534,8 +1535,8 @@ IsDisposed: { Disposed}
                     mainForm?.IsDisposed,
                     mainForm?.Visible);
                 Log.Debug("""
-[DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
-Timestamp: { Timestamp}
+                [DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
+                Timestamp: { Timestamp}
                 """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
 
@@ -1569,14 +1570,15 @@ Timestamp: { Timestamp}
 
                     Log.Debug("mainForm visibility enforced: Visible={Visible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
                         mainForm.Visible, mainForm.WindowState, mainForm.ShowInTaskbar);
-                    Log.Debug("""
-[DIAGNOSTIC] Form state before message loop
-Timestamp: { Timestamp}
-Visible: { Visible}
-WindowState: { WindowState}
-Size: { Size}
-Location: { Location}
-                    """,
+                    Log.Debug(
+                        """
+                        [DIAGNOSTIC] Form state before message loop
+                        Timestamp: { Timestamp}
+                        Visible: { Visible}
+                        WindowState: { WindowState}
+                        Size: { Size}
+                        Location: { Location}
+                        """,
                         DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
                         mainForm.Visible,
                         mainForm.WindowState,
@@ -1589,10 +1591,11 @@ Location: { Location}
                     throw;
                 }
 
-                Log.Debug("""
-[DIAGNOSTIC] RunUiLoop: About to enter message loop
-Timestamp: { Timestamp}
-                """,
+                Log.Debug(
+                    """
+                    [DIAGNOSTIC] RunUiLoop: About to enter message loop
+                    Timestamp: { Timestamp}
+                    """,
                     DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
                 Application.Run(mainForm);
             }

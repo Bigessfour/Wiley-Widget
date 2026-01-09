@@ -2,17 +2,17 @@ name: E2E Headless Testing (MCP Server)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   build-and-test:
     runs-on: windows-latest
     strategy:
       matrix:
-        configuration: [ Debug, Release ]
-    
+        configuration: [Debug, Release]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,12 +20,12 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       # Phase 1: Build solution
       - name: Build WileyWidget Solution
         run: dotnet build WileyWidget.sln --configuration ${{ matrix.configuration }} --verbosity minimal
-        
+
       # Phase 2: Run repository tests (fast baseline)
       - name: Run Repository Tests
         run: |
@@ -59,28 +59,12 @@ jobs:
       # Phase 5: Run MCP-based UI validation (headless, no display needed)
       - name: Run MCP Form Theme Validation
         run: |
-          # Run MCP server in background
-          Start-Job -ScriptBlock {
-            Set-Location "${{ github.workspace }}"
-            dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration ${{ matrix.configuration }} --no-build
-          } -Name "mcp-server"
-          
-          # Wait for server startup
-          Start-Sleep -Seconds 3
-          
-          # Run validation tests
-          Write-Host "MCP Server started, running form validation..."
-          
-          # Execute headless validation using MCP tools
-          # Note: This validates all forms for theme compliance without requiring a display
-          # Uses SfSkinManager enforcement and Syncfusion control inspection
-          
-          # Stop MCP server
-          Stop-Job -Name "mcp-server" -ErrorAction SilentlyContinue
-          
-          Write-Host "Form validation completed"
+          # Quick license sanity check
+          dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration ${{ matrix.configuration }} --no-build -- --run-license-check text
+
+          # Validate all forms headlessly for theme compliance
+          dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration ${{ matrix.configuration }} --no-build -- --validate-form-theme all text
         shell: pwsh
-        continue-on-error: true
         timeout-minutes: 10
 
       # Phase 6: Run Python E2E script (repository phase only for CI)
@@ -108,16 +92,16 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: '${{ runner.temp }}/test-results/**/*.trx'
+          files: "${{ runner.temp }}/test-results/**/*.trx"
           check_name: Test Results (${{ matrix.configuration }})
           comment_mode: always
 
       # Phase 9: Upload coverage reports
       - name: Upload Coverage Reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: always()
         with:
-          files: '${{ runner.temp }}/test-results/**/coverage.cobertura.xml'
+          files: "${{ runner.temp }}/test-results/**/coverage.cobertura.xml"
           flags: unittests
           name: codecov-${{ matrix.configuration }}
 
