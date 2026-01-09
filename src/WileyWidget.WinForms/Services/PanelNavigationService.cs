@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -74,6 +75,25 @@ namespace WileyWidget.WinForms.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
 
+        private static readonly Dictionary<Type, PanelSizing> PanelSizeOverrides = new()
+        {
+            { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
+            { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
+            { typeof(ChartPanel), new PanelSizing(new Size(560, 0), new Size(0, 460), new Size(480, 420)) },
+            { typeof(BudgetOverviewPanel), new PanelSizing(new Size(540, 0), new Size(0, 420), new Size(480, 360)) },
+            { typeof(AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
+            { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
+            { typeof(ReportsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
+            { typeof(QuickBooksPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(BudgetPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(DepartmentSummaryPanel), new PanelSizing(new Size(540, 0), new Size(0, 400), new Size(440, 360)) },
+            { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
+            { typeof(RevenueTrendsPanel), new PanelSizing(new Size(560, 0), new Size(0, 440), new Size(460, 380)) },
+            { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+        };
+
         public PanelNavigationService(
             DockingManager dockingManager,
             Control parentControl,
@@ -118,6 +138,7 @@ namespace WileyWidget.WinForms.Services
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
                 {
+                    ApplyCaptionSettings(existingPanel, panelName, allowFloating);
                     _dockingManager.SetDockVisibility(existingPanel, true);
                     _dockingManager.ActivateControl(existingPanel);
                     _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
@@ -129,22 +150,17 @@ namespace WileyWidget.WinForms.Services
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
                 panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
 
+                // Apply sensible defaults so charts/grids have usable space on first show
+                ApplyDefaultPanelSizing(panel, preferredStyle, typeof(TPanel));
+
                 // If panel supports parameter initialization, pass the parameters
                 if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
                 {
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
 
-                // Enable docking features for the panel (required for headers and buttons to appear)
-                _dockingManager.SetEnableDocking(panel, true);
-
-                _dockingManager.SetDockLabel(panel, panelName);
-                _dockingManager.SetAllowFloating(panel, allowFloating);
-
-                // Ensure caption buttons are visible for docked panels
-                _dockingManager.SetCloseButtonVisibility(panel, true);
-                _dockingManager.SetAutoHideButtonVisibility(panel, true);
-                _dockingManager.SetMenuButtonVisibility(panel, true);
+                // Enable docking features and caption buttons (required for headers and buttons to appear)
+                ApplyCaptionSettings(panel, panelName, allowFloating);
 
                 // Dock the panel
                 // Determine a sensible initial size rather than using magic numbers.
@@ -158,6 +174,17 @@ namespace WileyWidget.WinForms.Services
                 }
 
                 int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
+
+                // Respect desired default dimension when we have one
+                var (desiredSize, _) = GetDefaultPanelSizes(typeof(TPanel), effectiveStyle);
+                if (effectiveStyle is DockingStyle.Left or DockingStyle.Right && desiredSize.Width > 0)
+                {
+                    dockSize = desiredSize.Width;
+                }
+                else if (effectiveStyle is DockingStyle.Top or DockingStyle.Bottom && desiredSize.Height > 0)
+                {
+                    dockSize = desiredSize.Height;
+                }
                 _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
 
                 // CRITICAL FIX: For ChatPanel, apply full docking configuration to ensure proper visibility
@@ -254,6 +281,23 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
+        private void ApplyCaptionSettings(UserControl panel, string panelName, bool allowFloating)
+        {
+            if (panel == null)
+            {
+                return;
+            }
+
+            try { _dockingManager.EnableContextMenu = true; } catch { }
+
+            try { _dockingManager.SetEnableDocking(panel, true); } catch { }
+            try { _dockingManager.SetDockLabel(panel, panelName); } catch { }
+            try { _dockingManager.SetAllowFloating(panel, allowFloating); } catch { }
+            try { _dockingManager.SetCloseButtonVisibility(panel, true); } catch { }
+            try { _dockingManager.SetAutoHideButtonVisibility(panel, true); } catch { }
+            try { _dockingManager.SetMenuButtonVisibility(panel, true); } catch { }
+        }
+
         public void Dispose()
         {
             _cachedPanels.Clear();
@@ -277,6 +321,95 @@ namespace WileyWidget.WinForms.Services
                     return Math.Max(400, Math.Min(container.Width, container.Height) / 2);
             }
         }
+
+        private static void ApplyDefaultPanelSizing(UserControl panel, DockingStyle style, Type panelType)
+        {
+            var (desired, minimum) = GetDefaultPanelSizes(panelType, style);
+
+            if (minimum.Width > 0 || minimum.Height > 0)
+            {
+                var mergedMin = new Size(
+                    Math.Max(panel.MinimumSize.Width, minimum.Width),
+                    Math.Max(panel.MinimumSize.Height, minimum.Height));
+                panel.MinimumSize = mergedMin;
+            }
+
+            if (desired.Width > 0 || desired.Height > 0)
+            {
+                // Set control size so DockingManager honors the initial width/height.
+                try { panel.Size = new Size(Math.Max(desired.Width, panel.Width), Math.Max(desired.Height, panel.Height)); } catch { }
+
+                // If Syncfusion exposes DesiredDockSize, set it via reflection without hard dependency.
+                try
+                {
+                    var prop = panel.GetType().GetProperty("DesiredDockSize");
+                    prop?.SetValue(panel, desired);
+                }
+                catch { /* Safe fallback if property is missing */ }
+            }
+        }
+
+        private static (Size desiredSize, Size minimumSize) GetDefaultPanelSizes(Type panelType, DockingStyle style)
+        {
+            var sizing = DefaultPanelSizing;
+            if (PanelSizeOverrides.TryGetValue(panelType, out var overrideSizing))
+            {
+                sizing = MergeSizing(DefaultPanelSizing, overrideSizing);
+            }
+
+            var desired = style switch
+            {
+                DockingStyle.Left or DockingStyle.Right => sizing.Side,
+                DockingStyle.Top or DockingStyle.Bottom => sizing.TopBottom,
+                _ => Size.Empty
+            };
+
+            var minimum = sizing.Minimum;
+
+            // Enforce reasonable minima for orientation
+            if (style is DockingStyle.Top or DockingStyle.Bottom)
+            {
+                if (minimum.Width < 800) minimum.Width = 800;
+                if (minimum.Height < 300) minimum.Height = 300;
+            }
+            else if (style is DockingStyle.Left or DockingStyle.Right)
+            {
+                if (minimum.Height < 360) minimum.Height = 360;
+            }
+            else
+            {
+                // Floating/tabbed/fill: ensure a sensible default canvas
+                if (minimum.Width < 800) minimum.Width = 800;
+                if (minimum.Height < 600) minimum.Height = 600;
+            }
+
+            return (desired, minimum);
+        }
+
+        private static PanelSizing MergeSizing(PanelSizing defaults, PanelSizing overrides)
+        {
+            Size MergeSize(Size @default, Size @override)
+            {
+                return new Size(
+                    @override.Width > 0 ? @override.Width : @default.Width,
+                    @override.Height > 0 ? @override.Height : @default.Height);
+            }
+
+            var mergedSide = MergeSize(defaults.Side, overrides.Side);
+            var mergedTopBottom = MergeSize(defaults.TopBottom, overrides.TopBottom);
+            var mergedMinimum = new Size(
+                Math.Max(defaults.Minimum.Width, overrides.Minimum.Width),
+                Math.Max(defaults.Minimum.Height, overrides.Minimum.Height));
+
+            return new PanelSizing(mergedSide, mergedTopBottom, mergedMinimum);
+        }
+
+        private readonly record struct PanelSizing(Size Side, Size TopBottom, Size Minimum);
+
+        private static readonly PanelSizing DefaultPanelSizing = new PanelSizing(
+            new Size(540, 0),
+            new Size(0, 400),
+            new Size(420, 360));
 
         /// <summary>
         /// Hides a docked panel by name.

@@ -1896,6 +1896,14 @@ public partial class MainForm
 
             // Create and attach layout manager for state management
             _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
+            try
+            {
+                _dockingLayoutManager.InitializeDockingManager(_dockingManager);
+            }
+            catch (Exception initEx)
+            {
+                _logger?.LogDebug(initEx, "InitializeDockingManager failed - continuing with defaults");
+            }
 
             // Transfer ownership of panels and fonts to the layout manager
             var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
@@ -1906,36 +1914,86 @@ public partial class MainForm
 
             HideStandardPanelsForDocking();
 
-            // CRITICAL FIX: Load layout on the UI thread to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
-            // The exception occurs when paint events fire before DockingManager's internal control collections are populated
-            // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
+            // Reduce flicker during layout load + theme application (best-effort).
+            var dockingUpdatesLocked = false;
+            var dockingLayoutSuspended = false;
+
             try
             {
-                _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
-                _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
-                Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
+                try
+                {
+                    _dockingManager.LockHostFormUpdate();
+                    _dockingManager.LockDockPanelsUpdate();
+                    dockingUpdatesLocked = true;
+                }
+                catch (Exception lockEx)
+                {
+                    _logger?.LogDebug(lockEx, "Failed to lock DockingManager updates - continuing without lock");
+                }
+
+                try
+                {
+                    _dockingManager.SuspendLayout();
+                    dockingLayoutSuspended = true;
+                }
+                catch (Exception suspendEx)
+                {
+                    _logger?.LogDebug(suspendEx, "Failed to suspend DockingManager layout - continuing");
+                }
+
+                // CRITICAL FIX: Load layout on the UI thread to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
+                // The exception occurs when paint events fire before DockingManager's internal control collections are populated
+                // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
+                try
+                {
+                    _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
+                    _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
+                    Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
+                }
+                catch (Exception layoutEx)
+                {
+                    _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
+                    Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
+                    // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
+                }
+
+                _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
+
+                // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
+                // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
+                try
+                {
+                    var themeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                    SfSkinManager.SetVisualStyle(this, themeName);
+                    _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme}", themeName);
+                    Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName}");
+                }
+                catch (Exception themeEx)
+                {
+                    _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
+                }
             }
-            catch (Exception layoutEx)
+            finally
             {
-                _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
-                Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
-                // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
+                if (dockingLayoutSuspended)
+                {
+                    try { _dockingManager.ResumeLayout(true); } catch { }
+                }
+
+                if (dockingUpdatesLocked)
+                {
+                    try { _dockingManager.UnlockDockPanelsUpdate(); } catch { }
+                    try { _dockingManager.UnlockHostFormUpdate(); } catch { }
+                }
             }
 
-            _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
-
-            // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
-            // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
             try
             {
-                var themeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-                SfSkinManager.SetVisualStyle(this, themeName);
-                _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme}", themeName);
-                Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName}");
+                _dockingLayoutManager.EnsureCaptionButtonsVisible(_dockingManager, this);
             }
-            catch (Exception themeEx)
+            catch (Exception captionEx)
             {
-                _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
+                _logger?.LogDebug(captionEx, "EnsureCaptionButtonsVisible failed after docking init");
             }
 
             dockingStopwatch.Stop();

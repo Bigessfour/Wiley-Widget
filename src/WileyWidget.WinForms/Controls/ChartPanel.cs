@@ -440,6 +440,12 @@ namespace WileyWidget.WinForms.Controls
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
             // Theme applied automatically by SfSkinManager cascade from parent form
             _chartControl = new ChartControl { Name = "Chart_Cartesian", Dock = DockStyle.Fill, AccessibleName = "Budget Trend" };
+            try
+            {
+                var dbProp = typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                dbProp?.SetValue(_chartControl, true);
+            }
+            catch { }
             _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
             // Centralized defaults (appearance + zoom/scrollbar) with theme-friendly chart area

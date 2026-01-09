@@ -404,7 +404,7 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         _logger?.LogDebug("GetStreamingResponseAsync: failed to parse error JSON for diagnostics");
                     }
-                    return $"Grok API error {resp.StatusCode}: {body}";
+                    return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
                 }
 
                 // Read streaming response chunks (SSE format)
@@ -562,7 +562,7 @@ namespace WileyWidget.WinForms.Services.AI
                         _logger?.LogDebug("GetSimpleResponse: failed to parse error JSON for diagnostics");
                     }
 
-                    return $"Grok API returned HTTP {resp.StatusCode}: {body}";
+                    return $"Grok API returned HTTP {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
                 }
 
                 var respStr = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -807,6 +807,38 @@ namespace WileyWidget.WinForms.Services.AI
             return firstGrok;
         }
 
+        private static string? TryExtractMessage(string payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return null;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(payload);
+                if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0)
+                {
+                    var first = choices[0];
+                    if (first.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+                    {
+                        return content.GetString();
+                    }
+
+                    if (first.TryGetProperty("delta", out var delta) && delta.TryGetProperty("content", out var deltaContent) && deltaContent.ValueKind == JsonValueKind.String)
+                    {
+                        return deltaContent.GetString();
+                    }
+                }
+            }
+            catch
+            {
+                // Best-effort parsing only; ignore failures
+            }
+
+            return null;
+        }
+
         // Helper: Detect whether a model ID refers to a reasoning model (these may not accept penalties)
         private bool IsReasoningModel(string model)
         {
@@ -901,6 +933,12 @@ namespace WileyWidget.WinForms.Services.AI
                 return "User request cannot be empty";
             }
 
+            if (!_isInitialized || _kernel == null)
+            {
+                _logger?.LogInformation("[XAI] Kernel not initialized; falling back to simple chat");
+                return await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
+            }
+
             try
             {
                 _logger?.LogInformation("[XAI] RunAgentAsync invoked - User request length: {Length}", userRequest.Length);
@@ -934,7 +972,15 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         _logger?.LogWarning("[XAI] Grok streaming API returned non-success status: {Status}", resp.StatusCode);
                         var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        return $"Grok API error {resp.StatusCode}: {body}";
+                        return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
+                    }
+
+                    var contentType = resp.Content.Headers.ContentType?.MediaType;
+                    if (!string.Equals(contentType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var raw = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var parsed = TryExtractMessage(raw);
+                        return parsed ?? raw;
                     }
 
                     // Read streaming response chunks (SSE format per x.ai spec)
@@ -996,6 +1042,13 @@ namespace WileyWidget.WinForms.Services.AI
                     }
 
                     var result = responseBuilder.ToString();
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        var raw = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var parsed = TryExtractMessage(raw);
+                        result = parsed ?? raw;
+                    }
+
                     _logger?.LogInformation("[XAI] RunAgentAsync completed via streaming - Response length: {Length}", result.Length);
                     return result;
                 }

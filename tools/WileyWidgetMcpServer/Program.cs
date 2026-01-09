@@ -41,7 +41,14 @@ public class Program
                         var types = WileyWidget.McpServer.Helpers.FormTypeCache.GetAllFormTypes();
                         foreach (var t in types)
                         {
-                            var result = WileyWidget.McpServer.Tools.ValidateFormThemeTool.ValidateFormTheme(t.FullName, "Office2019Colorful", fmt);
+                            var formTypeName = t.FullName;
+                            if (string.IsNullOrWhiteSpace(formTypeName))
+                            {
+                                Console.Error.WriteLine($"Skipping form with no FullName: {t}");
+                                continue;
+                            }
+
+                            var result = WileyWidget.McpServer.Tools.ValidateFormThemeTool.ValidateFormTheme(formTypeName, "Office2019Colorful", fmt);
                             Console.WriteLine(result);
                             if (fmt.Equals("text", StringComparison.OrdinalIgnoreCase) && result.StartsWith("❌"))
                             {
@@ -57,6 +64,12 @@ public class Program
                     }
                     else
                     {
+                        if (string.IsNullOrWhiteSpace(target))
+                        {
+                            Console.Error.WriteLine("Target form type name cannot be null or empty.");
+                            return 1;
+                        }
+
                         var result = WileyWidget.McpServer.Tools.ValidateFormThemeTool.ValidateFormTheme(target, "Office2019Colorful", fmt);
                         Console.WriteLine(result);
                         if (fmt.Equals("text", StringComparison.OrdinalIgnoreCase) && result.StartsWith("❌"))
