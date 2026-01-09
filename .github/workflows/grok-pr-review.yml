@@ -4,9 +4,9 @@ on:
   pull_request:
     branches: [main, develop]
     paths:
-      - 'src/**/*.cs'
-      - 'tests/**/*.cs'
-      - '.github/workflows/**'
+      - src/**/*.cs
+      - tests/**/*.cs
+      - .github/workflows/**
 
 permissions:
   contents: read
@@ -63,55 +63,32 @@ jobs:
           # Truncate diff if too large
           if [ ${#DIFF} -gt 15000 ]; then
             DIFF=$(echo "$DIFF" | head -300)
-            DIFF="${DIFF}
-          ... (diff truncated due to size)"
+            DIFF="$DIFF... (diff truncated due to size)"
           fi
 
-          # Create review prompt
-          PROMPT="You are a senior code reviewer for a Syncfusion WinForms/C# project.
+# Write the static portion of the prompt via printf lines (avoids heredoc indentation issues)
+          printf "You are a senior code reviewer for a Syncfusion WinForms/C# project.\n\n" > /tmp/review_prompt.txt
+          printf "STRICT RULES TO ENFORCE:\n" >> /tmp/review_prompt.txt
+          printf "1. SfSkinManager Theming - SfSkinManager is the SINGLE SOURCE OF TRUTH for theming\n" >> /tmp/review_prompt.txt
+          printf "  - Allowed: SfSkinManager.SetVisualStyle() calls\n" >> /tmp/review_prompt.txt
+          printf "  - Allowed: SfSkinManager.LoadAssembly() for theme initialization\n" >> /tmp/review_prompt.txt
+          printf "  - Allowed: Semantic status colors (Color.Red, Color.Green, Color.Orange)\n" >> /tmp/review_prompt.txt
+          printf "  - FORBIDDEN: Manual BackColor/ForeColor assignments (except form-level docking setup)\n" >> /tmp/review_prompt.txt
+          printf "  - FORBIDDEN: Custom color properties/dictionaries\n" >> /tmp/review_prompt.txt
+          printf "  - FORBIDDEN: Competing theme managers\n\n" >> /tmp/review_prompt.txt
+          printf "2. C# Best Practices:\n" >> /tmp/review_prompt.txt
+          printf "  - No .Result or .Wait() on Task (must be async/await)\n" >> /tmp/review_prompt.txt
+          printf "  - Async/await patterns for I/O operations\n" >> /tmp/review_prompt.txt
+          printf "  - Modern C# idioms (var, records, required members where appropriate)\n" >> /tmp/review_prompt.txt
+          printf "  - Remove unused imports and variables\n" >> /tmp/review_prompt.txt
+          printf "  - XML doc comments for public members\n\n" >> /tmp/review_prompt.txt
+          printf "3. Test Coverage: Check if new code has corresponding tests\n\n" >> /tmp/review_prompt.txt
+          printf "4. Performance: Highlight potential memory leaks, N+1 queries, or blocking calls\n\n" >> /tmp/review_prompt.txt
+          printf "REVIEW FORMAT:\n- Start with a brief summary (1-2 sentences)\n- List 3-5 KEY findings (use ### for headers)\n- For each finding: describe issue, show code snippet, suggest fix\n- End with: Recommendation (Approve/Request Changes/Comment)\n" >> /tmp/review_prompt.txt
 
-STRICT RULES TO ENFORCE:
-1. **SfSkinManager Theming**: SfSkinManager is the SINGLE SOURCE OF TRUTH for theming
-   - ✅ Allowed: SfSkinManager.SetVisualStyle() calls
-   - ✅ Allowed: SfSkinManager.LoadAssembly() for theme initialization
-   - ✅ Allowed: Semantic status colors (Color.Red, Color.Green, Color.Orange)
-   - ❌ FORBIDDEN: Manual BackColor/ForeColor assignments (except form-level docking setup)
-   - ❌ FORBIDDEN: Custom color properties/dictionaries
-   - ❌ FORBIDDEN: Competing theme managers
+          # Append dynamic values safely
+          printf "\nPR TITLE: %s\nPR AUTHOR: %s\n\nPR DESCRIPTION:\n%s\n\nCHANGED CODE (unified diff):\n%s\n" "$PR_TITLE" "$PR_AUTHOR" "$PR_BODY" "$DIFF" >> /tmp/review_prompt.txt
 
-2. **C# Best Practices**:
-   - No .Result or .Wait() on Task (must be async/await)
-   - Async/await patterns for I/O operations
-   - Modern C# idioms (var, records, required members where appropriate)
-   - Remove unused imports and variables
-   - XML doc comments for public members
-
-3. **Test Coverage**: Check if new code has corresponding tests
-
-4. **Performance**: Highlight potential memory leaks, N+1 queries, or blocking calls
-
-REVIEW FORMAT:
-- Start with a brief summary (1-2 sentences)
-- List 3-5 KEY findings (use ### for headers)
-- For each finding: describe issue, show code snippet, suggest fix
-- End with: Recommendation (Approve/Request Changes/Comment)
-
-PR TITLE: $PR_TITLE
-PR AUTHOR: $PR_AUTHOR
-PR DESCRIPTION:
-\`\`\`
-$PR_BODY
-\`\`\`
-
-CHANGED CODE (unified diff):
-\`\`\`diff
-$DIFF
-\`\`\`
-
-Review this PR focusing on the strict rules above. Be direct and actionable."
-
-          # Save to file to avoid escaping issues
-          echo "$PROMPT" > /tmp/review_prompt.txt
           echo "prompt_file=/tmp/review_prompt.txt" >> $GITHUB_OUTPUT
 
       - name: Call Grok API for review
@@ -119,57 +96,72 @@ Review this PR focusing on the strict rules above. Be direct and actionable."
         id: grok
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GROK_MODEL: grok-4-0709  # or try "grok-4-fast-reasoning" for speed
+          GROK_TEMPERATURE: '0.5'
+          GROK_MAX_TOKENS: '2048'
         run: |
           # Read prompt
           PROMPT=$(cat /tmp/review_prompt.txt)
 
-          # Create JSON payload
-          cat > /tmp/grok_request.json << 'EOF'
-          {
-            "model": "grok-4",
+          # Create JSON payload by reading the prompt file (avoid shell-escaping issues). Use env overrides for model/temperature/max_tokens.
+          python3 - <<'PY'
+          import json, os
+          prompt = open('/tmp/review_prompt.txt', 'r', encoding='utf-8').read()
+          model = os.environ.get('GROK_MODEL', 'grok-4-0709')
+          temperature = float(os.environ.get('GROK_TEMPERATURE', '0.5'))
+          max_tokens = int(os.environ.get('GROK_MAX_TOKENS', '2048'))
+          payload = {
+            "model": model,
             "messages": [
-              {
-                "role": "system",
-                "content": "You are an expert code reviewer for a Syncfusion WinForms/C# project. Provide thorough, actionable feedback."
-              },
-              {
-                "role": "user",
-                "content": ""
-              }
+              {"role": "system", "content": "You are an expert code reviewer for a Syncfusion WinForms/C# project. Provide thorough, actionable feedback."},
+              {"role": "user", "content": prompt}
             ],
-            "stream": false,
-            "temperature": 0.3
+            "temperature": temperature,
+            "max_tokens": max_tokens
           }
-          EOF
-
-          # Escape the prompt for JSON and insert it
-          ESCAPED_PROMPT=$(printf '%s\n' "$PROMPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-          python3 << 'PYEOF'
-          import json
-          with open('/tmp/grok_request.json', 'r') as f:
-            payload = json.load(f)
-          payload['messages'][1]['content'] = json.loads('''ESCAPED_PROMPT''')
-          with open('/tmp/grok_request.json', 'w') as f:
+          with open('/tmp/grok_request.json', 'w', encoding='utf-8') as f:
             json.dump(payload, f)
-          PYEOF
+          PY
 
-          # Call Grok API
-          RESPONSE=$(curl -s -X POST https://api.x.ai/v1/chat/completions \
+          # Call Grok API and capture HTTP status
+          RESPONSE_WITH_STATUS=$(curl -s -w "\n%{http_code}" -X POST https://api.x.ai/v1/chat/completions \
             -H "Authorization: Bearer $XAI_API_KEY" \
             -H "Content-Type: application/json" \
             -d @/tmp/grok_request.json)
+          HTTP_STATUS=$(echo "$RESPONSE_WITH_STATUS" | tail -n1)
+          RESPONSE_BODY=$(echo "$RESPONSE_WITH_STATUS" | sed '$d')
+
+          # Expose the raw response for debugging (echo raw response and HTTP status)
+          RESPONSE="$RESPONSE_WITH_STATUS"
+          echo "API raw response:"
+          echo "$RESPONSE"
+          echo "HTTP_STATUS: $HTTP_STATUS"
+          echo "RESPONSE_BODY:"
+          echo "$RESPONSE_BODY"
+          echo "$RESPONSE_BODY" > /tmp/grok_review_raw.txt || true
+          echo "grok_review_raw=/tmp/grok_review_raw.txt" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "grok_error=true" >> $GITHUB_OUTPUT
+            echo "grok_error_msg=HTTP $HTTP_STATUS" >> $GITHUB_OUTPUT
+            echo "$RESPONSE_BODY" > /tmp/grok_review.txt || true
+            echo "grok_review_file=/tmp/grok_review.txt" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
           # Extract response text
-          REVIEW=$(echo "$RESPONSE" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("choices",[{}])[0].get("message",{}).get("content","Error: No response from Grok"))')
+          REVIEW=$(echo "$RESPONSE_BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("choices",[{}])[0].get("message",{}).get("content","Error: No response from Grok"))')
 
           # Save review to file (handles multiline output)
           echo "$REVIEW" > /tmp/grok_review.txt
 
-          # Check for API errors
-          if echo "$RESPONSE" | grep -q '"error"'; then
-            ERROR=$(echo "$RESPONSE" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("error",{}).get("message","Unknown error"))')
+          # Check for API errors in the body (even if HTTP 200)
+          if echo "$RESPONSE_BODY" | grep -q '"error"'; then
+            ERROR=$(echo "$RESPONSE_BODY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("error",{}).get("message","Unknown error"))')
             echo "grok_error=true" >> $GITHUB_OUTPUT
             echo "grok_error_msg=$ERROR" >> $GITHUB_OUTPUT
+            echo "$RESPONSE_BODY" > /tmp/grok_review.txt || true
+            echo "grok_review_file=/tmp/grok_review.txt" >> $GITHUB_OUTPUT
             exit 1
           fi
 
