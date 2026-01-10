@@ -29,19 +29,19 @@ jobs:
       - name: Get PR diff
         id: diff
         run: |
-          BASE_SHA=${{ github.event.pull_request.base.sha }}
-          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
 
-          DIFF=$(git diff $BASE_SHA..$HEAD_SHA -- \
+          git diff "$BASE_SHA..$HEAD_SHA" -- \
             'src/**/*.cs' 'tests/**/*.cs' \
             --unified=3 \
-            --diff-filter=ACMTU 2>/dev/null | head -20000)
+            --diff-filter=ACMTU 2>/dev/null | head -20000 > /tmp/pr.diff
 
-          echo "$DIFF" > /tmp/pr.diff
+          LINES_CHANGED=$(grep -c '^[+-]' /tmp/pr.diff 2>/dev/null || echo "0")
+          DIFF_SIZE=$(wc -c < /tmp/pr.diff)
 
-          LINES_CHANGED=$(echo "$DIFF" | grep -c '^[+-]' || echo 0)
-          echo "lines_changed=$LINES_CHANGED" >> $GITHUB_OUTPUT
-          echo "diff_size=$(wc -c < /tmp/pr.diff)" >> $GITHUB_OUTPUT
+          echo "lines_changed=${LINES_CHANGED}" >> "$GITHUB_OUTPUT"
+          echo "diff_size=${DIFF_SIZE}" >> "$GITHUB_OUTPUT"
 
       - name: Skip if no significant changes
         if: ${{ steps.diff.outputs.lines_changed < 10 }}
@@ -53,10 +53,10 @@ jobs:
         id: check_key
         run: |
           if [ -z "${{ secrets.XAI_API_KEY }}" ]; then
-            echo "has_key=false" >> $GITHUB_OUTPUT
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
             echo "⚠️ XAI_API_KEY not found in secrets"
           else
-            echo "has_key=true" >> $GITHUB_OUTPUT
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
             echo "✓ XAI_API_KEY found"
           fi
 
@@ -107,7 +107,7 @@ jobs:
               max_tokens: 2048
             }' > /tmp/grok_request.json
 
-          echo "prompt_prepared=true" >> $GITHUB_OUTPUT
+          echo "prompt_prepared=true" >> "$GITHUB_OUTPUT"
 
       - name: Call Grok API
         if: steps.check_key.outputs.has_key == 'true'
@@ -129,15 +129,15 @@ jobs:
 
           if [ "$HTTP_CODE" != "200" ]; then
             ERROR_MSG=$(echo "$BODY" | jq -r '.error.message // "Unknown API error"')
-            echo "grok_error=true" >> $GITHUB_OUTPUT
-            echo "grok_error_msg=$ERROR_MSG" >> $GITHUB_OUTPUT
+            echo "grok_error=true" >> "$GITHUB_OUTPUT"
+            echo "grok_error_msg=${ERROR_MSG}" >> "$GITHUB_OUTPUT"
             echo ":: error:: Grok API error: $ERROR_MSG"
             exit 1
           fi
 
           REVIEW=$(echo "$BODY" | jq -r '.choices[0].message.content // "No review content returned"')
           echo "$REVIEW" > /tmp/grok_review.txt
-          echo "grok_success=true" >> $GITHUB_OUTPUT
+          echo "grok_success=true" >> "$GITHUB_OUTPUT"
 
       - name: Post review as PR comment
         if: steps.grok.outputs.grok_success == 'true'
