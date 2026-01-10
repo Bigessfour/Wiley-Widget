@@ -121,7 +121,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
     /// </summary>
     public string ApplyBudgetPersonality(string aiResponse, decimal variancePercent, decimal surplus, string fundName = "")
     {
-    try
+        try
         {
             _logger.LogDebug("Applying JARVIS budget personality for {FundName} (variance: {Variance}%)",
                 fundName ?? "general", variancePercent);

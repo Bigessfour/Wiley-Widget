@@ -297,15 +297,15 @@ namespace WileyWidget.WinForms.Services
         {
             var lowerText = text.ToLower(CultureInfo.InvariantCulture);
 
-            if (lowerText.Contains("urgent", StringComparison.OrdinalIgnoreCase) || 
-                lowerText.Contains("critical", StringComparison.OrdinalIgnoreCase) || 
+            if (lowerText.Contains("urgent", StringComparison.OrdinalIgnoreCase) ||
+                lowerText.Contains("critical", StringComparison.OrdinalIgnoreCase) ||
                 lowerText.Contains("immediate", StringComparison.OrdinalIgnoreCase))
             {
                 return "High";
             }
 
-            if (lowerText.Contains("consider", StringComparison.OrdinalIgnoreCase) || 
-                lowerText.Contains("evaluate", StringComparison.OrdinalIgnoreCase) || 
+            if (lowerText.Contains("consider", StringComparison.OrdinalIgnoreCase) ||
+                lowerText.Contains("evaluate", StringComparison.OrdinalIgnoreCase) ||
                 lowerText.Contains("monitor", StringComparison.OrdinalIgnoreCase))
             {
                 return "Low";

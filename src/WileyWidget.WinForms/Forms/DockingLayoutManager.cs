@@ -83,8 +83,11 @@ public class DockingLayoutManager : IDisposable
         {
             // Set global docking manager properties for optimal behavior
             dockingManager.PersistState = false; // We handle persistence manually for better control
+            dockingManager.ShowCaption = true;
             dockingManager.MaximizeButtonEnabled = true;
             dockingManager.ShowCaptionImages = true;
+            try { dockingManager.EnableAutoAdjustCaption = true; } catch { }
+            try { dockingManager.EnableContextMenu = true; } catch { }
 
             // AnimationStep is a static property
             DockingManager.AnimationStep = 5; // Smooth animation
@@ -152,7 +155,7 @@ public class DockingLayoutManager : IDisposable
         try
         {
             _logger?.LogDebug("LoadDockingLayout START - ThreadId={ThreadId}, layoutPath={Path}",
-                System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath);
+                Thread.CurrentThread.ManagedThreadId, layoutPath);
 
             // Support either the XML layout path or the binary '.bin' layout path.
             var binaryLayoutPath = Path.ChangeExtension(layoutPath, ".bin");
@@ -292,10 +295,10 @@ public class DockingLayoutManager : IDisposable
                     serializer.PersistNow();
 
                     // Some implementations may flush files asynchronously; wait briefly for output to appear
-                    var swWriter = System.Diagnostics.Stopwatch.StartNew();
+                    var swWriter = Stopwatch.StartNew();
                     while (!File.Exists(tempPath) && !File.Exists(binaryLayoutPath) && swWriter.ElapsedMilliseconds < 500)
                     {
-                        System.Threading.Thread.Sleep(25);
+                        Thread.Sleep(25);
                     }
                 }
                 finally
@@ -338,10 +341,10 @@ public class DockingLayoutManager : IDisposable
                         }
 
                         // As above, wait briefly for final file to appear
-                        var swFallback = System.Diagnostics.Stopwatch.StartNew();
+                        var swFallback = Stopwatch.StartNew();
                         while (!File.Exists(binaryLayoutPath) && swFallback.ElapsedMilliseconds < 500)
                         {
-                            System.Threading.Thread.Sleep(25);
+                            Thread.Sleep(25);
                         }
 
                         _logger?.LogDebug("Fallback serializer attempted writing directly to {FinalPath}", binaryLayoutPath);
@@ -379,10 +382,10 @@ public class DockingLayoutManager : IDisposable
                                 File.WriteAllBytes(tempPath, bytes);
                                 ReplaceDockingLayoutFile(tempPath, binaryLayoutPath);
 
-                                var swMem = System.Diagnostics.Stopwatch.StartNew();
+                                var swMem = Stopwatch.StartNew();
                                 while (!File.Exists(binaryLayoutPath) && swMem.ElapsedMilliseconds < 500)
                                 {
-                                    System.Threading.Thread.Sleep(25);
+                                    Thread.Sleep(25);
                                 }
 
                                 _logger?.LogDebug("Memory-stream fallback wrote {ByteCount} bytes to {FinalPath}", bytes.Length, binaryLayoutPath);
@@ -679,7 +682,7 @@ public class DockingLayoutManager : IDisposable
     private void LogDockStateLoad(string layoutPath)
     {
         _logger?.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}",
-            System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath);
+            Thread.CurrentThread.ManagedThreadId, layoutPath);
     }
 
     private void HandleDockStateLoadError(string layoutPath, Exception ex, string message)
@@ -769,7 +772,7 @@ public class DockingLayoutManager : IDisposable
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+            Syncfusion.Windows.Forms.SkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
             // STEP 2-4: Dock panel FIRST (Syncfusion official pattern)
             // Set up docking if DockingManager is available
@@ -777,8 +780,9 @@ public class DockingLayoutManager : IDisposable
             {
                 dockingManager.SetEnableDocking(panel, true);
                 dockingManager.SetDockLabel(panel, panelInfo.DockLabel ?? panelInfo.Name);
+                // dockingManager.SetShowCaptionButtons(panel, true); // Removed: method does not exist
                 dockingManager.SetAllowFloating(panel, true);
-                dockingManager.DockControl(panel, parentForm, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
+                dockingManager.DockControl(panel, parentForm, DockingStyle.Left, 200);
                 if (panelInfo.IsAutoHide)
                 {
                     dockingManager.SetAutoHideMode(panel, true);
@@ -964,15 +968,18 @@ public class DockingLayoutManager : IDisposable
     /// Also enforces global DockingManager caption-related settings (maximize button, caption images).
     /// Follows Syncfusion best practices for caption management.
     /// </summary>
-    private void EnsureCaptionButtonsVisible(DockingManager dockingManager, Control parentForm)
+    public void EnsureCaptionButtonsVisible(DockingManager dockingManager, Control parentForm)
     {
         if (dockingManager == null || parentForm == null) return;
 
         try
         {
             // Set global DockingManager properties for consistent behavior
+            try { dockingManager.ShowCaption = true; } catch { }
             try { dockingManager.MaximizeButtonEnabled = true; } catch { }
             try { dockingManager.ShowCaptionImages = true; } catch { }
+            try { dockingManager.EnableAutoAdjustCaption = true; } catch { }
+            try { dockingManager.EnableContextMenu = true; } catch { }
 
             // Get all docked controls and ensure they have proper caption buttons
             var dockedControls = GetAllDockedControls(dockingManager, parentForm);
@@ -1102,7 +1109,7 @@ public class DockingLayoutManager : IDisposable
 
         try
         {
-            _logger?.LogDebug("OnSaveTimerTick - performing debounced save (ThreadId={ThreadId})", System.Threading.Thread.CurrentThread.ManagedThreadId);
+            _logger?.LogDebug("OnSaveTimerTick - performing debounced save (ThreadId={ThreadId})", Thread.CurrentThread.ManagedThreadId);
             SaveLayout(dockingManager, layoutPath);
             _lastSaveTime = DateTime.Now;
             _logger?.LogDebug("Debounced auto-save completed - Time={Time}", _lastSaveTime);

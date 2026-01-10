@@ -440,6 +440,12 @@ namespace WileyWidget.WinForms.Controls
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
             // Theme applied automatically by SfSkinManager cascade from parent form
             _chartControl = new ChartControl { Name = "Chart_Cartesian", Dock = DockStyle.Fill, AccessibleName = "Budget Trend" };
+            try
+            {
+                var dbProp = typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                dbProp?.SetValue(_chartControl, true);
+            }
+            catch { }
             _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
             // Centralized defaults (appearance + zoom/scrollbar) with theme-friendly chart area
@@ -627,43 +633,43 @@ namespace WileyWidget.WinForms.Controls
             catch { }
         }
 
-            /// <summary>
-            /// Creates a formatted summary label for metrics display with optimized sizing.
-            /// </summary>
-            private Syncfusion.Windows.Forms.Tools.GradientPanelExt CreateSummaryLabel(string caption, string value)
+        /// <summary>
+        /// Creates a formatted summary label for metrics display with optimized sizing.
+        /// </summary>
+        private Syncfusion.Windows.Forms.Tools.GradientPanelExt CreateSummaryLabel(string caption, string value)
+        {
+            var panel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
             {
-                var panel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
-                {
-                    Width = 160,  // OPTIMIZED: Reduced from 200 for 4-metric fit in 56px height
-                    Height = 48,  // OPTIMIZED: Reduced from 44 to fit better
-                    Margin = new Padding(2),  // OPTIMIZED: Reduced from 4
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-                };
-                SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+                Width = 160,  // OPTIMIZED: Reduced from 200 for 4-metric fit in 56px height
+                Height = 48,  // OPTIMIZED: Reduced from 44 to fit better
+                Margin = new Padding(2),  // OPTIMIZED: Reduced from 4
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
-                var lblCaption = new Label
-                {
-                    Text = caption,
-                    Dock = DockStyle.Top,
-                    Height = 16,  // OPTIMIZED: Reduced from 18
-                    Font = new Font("Segoe UI", 8F, FontStyle.Regular)  // OPTIMIZED: Reduced from 9
-                };
+            var lblCaption = new Label
+            {
+                Text = caption,
+                Dock = DockStyle.Top,
+                Height = 16,  // OPTIMIZED: Reduced from 18
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular)  // OPTIMIZED: Reduced from 9
+            };
 
-                var lblValue = new Label
-                {
-                    Text = value,
-                    Dock = DockStyle.Bottom,
-                    Height = 20,  // OPTIMIZED: Reduced from 24
-                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),  // OPTIMIZED: Reduced from 11
-                    Tag = caption // Store caption for later updates
-                };
+            var lblValue = new Label
+            {
+                Text = value,
+                Dock = DockStyle.Bottom,
+                Height = 20,  // OPTIMIZED: Reduced from 24
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),  // OPTIMIZED: Reduced from 11
+                Tag = caption // Store caption for later updates
+            };
 
-                panel.Controls.Add(lblValue);
-                panel.Controls.Add(lblCaption);
+            panel.Controls.Add(lblValue);
+            panel.Controls.Add(lblCaption);
 
-                return panel;
-            }
+            return panel;
+        }
 
         /// <summary>
         /// Navigates to the Dashboard panel via parent form's DockingManager.

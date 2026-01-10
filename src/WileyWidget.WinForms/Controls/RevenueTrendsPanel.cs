@@ -170,6 +170,12 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             AccessibleName = "Revenue trends line chart",
             AccessibleDescription = "Line chart showing revenue trends over time"
         };
+        try
+        {
+            var dbProp = typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            dbProp?.SetValue(_chartControl, true);
+        }
+        catch { }
         _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
         ConfigureChart();
         _mainSplit.Panel1.Controls.Add(_chartControl);

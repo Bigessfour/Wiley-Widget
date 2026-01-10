@@ -9,119 +9,15 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 
 namespace WileyWidget.WinForms.Tests.Controls
 {
-    /// <summary>
-    /// Shared collection fixture for STA thread and Syncfusion initialization.
-    /// Ensures Syncfusion licensing and theming are initialized once per test session.
-    /// </summary>
-    [CollectionDefinition("Syncfusion UI Tests")]
-    public class SyncfusionTestCollection : ICollectionFixture<SyncfusionFixture>
-    {
-        // This class has no code, and never creates an instance of SyncfusionFixture.
-        // It's just used to define the collection.
-    }
-
-    /// <summary>
-    /// Fixture for Syncfusion UI test initialization.
-    /// Initializes SfSkinManager, loads Syncfusion assemblies, and sets default theme.
-    /// Registers Syncfusion license from environment (GitHub secrets or local).
-    /// </summary>
-    public class SyncfusionFixture : IDisposable
-    {
-        public SyncfusionFixture()
-        {
-            InitializeSyncfusion();
-        }
-
-        /// <summary>
-        /// Initializes Syncfusion components for testing.
-        /// This must be called once before any Syncfusion controls are created.
-        /// </summary>
-        private static void InitializeSyncfusion()
-        {
-            try
-            {
-                // Register Syncfusion license from environment variable (set from GitHub secrets)
-                // For local development: set SYNCFUSION_LICENSE environment variable
-                // For CI/CD: GitHub Actions sets this from secrets.SYNCFUSION_LICENSE
-                var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE");
-
-                if (!string.IsNullOrWhiteSpace(licenseKey))
-                {
-                    try
-                    {
-                        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log but don't fail - tests can continue in trial mode
-                        System.Diagnostics.Debug.WriteLine($"Syncfusion license registration failed: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    // Trial mode - valid for development and testing
-                    System.Diagnostics.Debug.WriteLine("Syncfusion running in trial mode (no license key provided)");
-                }
-
-                // Enable visual styles for Windows Forms
-                System.Windows.Forms.Application.EnableVisualStyles();
-
-                // Load Syncfusion themes
-                try
-                {
-                    // Theme initialization is best effort - tests can continue if it fails
-                    using (var tempForm = new System.Windows.Forms.Form())
-                    {
-                        // SfSkinManager.SetVisualStyle(tempForm, "Office2019Colorful");
-                    }
-                    System.Diagnostics.Debug.WriteLine("Syncfusion themes loaded successfully");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to load Syncfusion themes: {ex.Message}");
-                }
-
-                // Create a temporary form to apply default theme globally
-                try
-                {
-                    var tempForm = new System.Windows.Forms.Form();
-                    SfSkinManager.SetVisualStyle(tempForm, "Office2019Colorful");
-                    tempForm.Dispose();
-                    System.Diagnostics.Debug.WriteLine("Default Syncfusion theme set: Office2019Colorful");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to set default theme: {ex.Message}");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Syncfusion initialization error: {ex}");
-                // Don't throw - allow tests to continue
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                // Clean up managed resources if needed
-            }
-            // Clean up unmanaged resources if needed
-        }
-    }
+    // Using global WinForms UI collection for UI-thread and Syncfusion initialization.
+    // See tests/WileyWidget.WinForms.Tests/Infrastructure/WinFormsUiCollection.cs
 
     /// <summary>
     /// Testable wrapper for InsightFeedPanel to expose internal state for verification.
@@ -180,14 +76,16 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Construction and Initialization Tests for InsightFeedPanel.
     /// Tests: Constructor variations, UI setup, control creation, column configuration.
     /// </summary>
-    [Collection("Syncfusion UI Tests")]
+    [Collection(WinFormsUiCollection.CollectionName)]
     public sealed class InsightFeedPanelConstructionTests : IDisposable
     {
+        private readonly WinFormsUiThreadFixture _ui;
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
         private TestableInsightFeedPanel? _panel;
 
-        public InsightFeedPanelConstructionTests()
+        public InsightFeedPanelConstructionTests(WinFormsUiThreadFixture ui)
         {
+            _ui = ui;
             _mockLogger = new Mock<ILogger<InsightFeedPanel>>();
         }
 
@@ -197,10 +95,13 @@ namespace WileyWidget.WinForms.Tests.Controls
         public void Constructor_Default_InitializesSuccessfully()
         {
             // Act & Assert - Should not throw
-            var panel = new TestableInsightFeedPanel();
-            Assert.NotNull(panel);
-            Assert.NotNull(panel.GetDataContext());
-            panel.Dispose();
+            _ui.Run(() =>
+            {
+                var panel = new TestableInsightFeedPanel();
+                Assert.NotNull(panel);
+                Assert.NotNull(panel.GetDataContext());
+                panel.Dispose();
+            });
         }
 
         [Fact]
@@ -212,12 +113,15 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
             var mockThemeService = new Mock<IThemeService>();
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, mockThemeService.Object, _mockLogger.Object);
+            // Act & Assert (run on UI thread)
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, mockThemeService.Object, _mockLogger.Object);
 
-            // Assert
-            Assert.NotNull(_panel);
-            Assert.Same(mockViewModel.Object, _panel.GetDataContext());
+                // Assert
+                Assert.NotNull(_panel);
+                Assert.Same(mockViewModel.Object, _panel.GetDataContext());
+            });
         }
 
         [Fact]
@@ -228,13 +132,16 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert
-            Assert.True(_panel.GetControlCount() >= 3, "Panel should have at least 3 child controls (top panel, overlay, grid)");
-            Assert.NotNull(_panel.GetDataGrid());
-            Assert.NotNull(_panel.GetLoadingOverlay());
+                // Assert
+                Assert.True(_panel.GetControlCount() >= 3, "Panel should have at least 3 child controls (top panel, overlay, grid)");
+                Assert.NotNull(_panel.GetDataGrid());
+                Assert.NotNull(_panel.GetLoadingOverlay());
+            });
         }
 
         [Fact]
@@ -244,13 +151,16 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            // Assert
-            Assert.NotNull(grid);
-            Assert.Equal(4, grid.Columns.Count);
+                // Assert
+                Assert.NotNull(grid);
+                Assert.Equal(4, grid.Columns.Count);
+            });
         }
 
         [Fact]
@@ -260,24 +170,27 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
-
-            // Assert
-            Assert.NotNull(grid);
-            var columnMappings = new[]
+            // Act & Assert
+            _ui.Run(() =>
             {
-                nameof(InsightCardModel.Priority),
-                nameof(InsightCardModel.Category),
-                nameof(InsightCardModel.Explanation),
-                nameof(InsightCardModel.Timestamp)
-            };
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            foreach (var mapping in columnMappings)
-            {
-                Assert.Contains(grid.Columns, c => c.MappingName == mapping);
-            }
+                // Assert
+                Assert.NotNull(grid);
+                var columnMappings = new[]
+                {
+                    nameof(InsightCardModel.Priority),
+                    nameof(InsightCardModel.Category),
+                    nameof(InsightCardModel.Explanation),
+                    nameof(InsightCardModel.Timestamp)
+                };
+
+                foreach (var mapping in columnMappings)
+                {
+                    Assert.Contains(grid.Columns, c => c.MappingName == mapping);
+                }
+            });
         }
 
         [Fact]
@@ -287,17 +200,20 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
-
-            // Assert
-            Assert.NotNull(grid);
-            foreach (var column in grid.Columns)
+            // Act & Assert
+            _ui.Run(() =>
             {
-                Assert.True(column.AllowSorting, $"Column {column.MappingName} should allow sorting");
-                Assert.True(column.AllowFiltering, $"Column {column.MappingName} should allow filtering");
-            }
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
+
+                // Assert
+                Assert.NotNull(grid);
+                foreach (var column in grid.Columns)
+                {
+                    Assert.True(column.AllowSorting, $"Column {column.MappingName} should allow sorting");
+                    Assert.True(column.AllowFiltering, $"Column {column.MappingName} should allow filtering");
+                }
+            });
         }
 
         [Fact]
@@ -307,15 +223,18 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            // Assert
-            Assert.NotNull(grid);
-            Assert.False(grid.AllowEditing, "Grid should not allow editing");
-            Assert.False(grid.AllowGrouping, "Grid should not allow grouping");
-            Assert.False(grid.ShowRowHeader, "Grid should not show row headers");
+                // Assert
+                Assert.NotNull(grid);
+                Assert.False(grid.AllowEditing, "Grid should not allow editing");
+                Assert.False(grid.AllowGrouping, "Grid should not allow grouping");
+                Assert.False(grid.ShowRowHeader, "Grid should not show row headers");
+            });
         }
 
         #endregion
@@ -325,13 +244,16 @@ namespace WileyWidget.WinForms.Tests.Controls
         [Fact]
         public void Constructor_WithNullViewModel_UsesFallbackAndContinues()
         {
-            // Act - Should not throw with null ViewModel
-            _panel = new TestableInsightFeedPanel(null, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(null, null, _mockLogger.Object);
 
-            // Assert
-            Assert.NotNull(_panel);
-            Assert.NotNull(_panel.GetDataContext());
-            Assert.IsType<InsightFeedViewModel>(_panel.GetDataContext());
+                // Assert
+                Assert.NotNull(_panel);
+                Assert.NotNull(_panel.GetDataContext());
+                Assert.IsType<InsightFeedViewModel>(_panel.GetDataContext());
+            });
         }
 
         [Fact]
@@ -341,11 +263,14 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act - Should not throw with null logger
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, null);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, null);
 
-            // Assert
-            Assert.NotNull(_panel);
+                // Assert
+                Assert.NotNull(_panel);
+            });
         }
 
         [Fact]
@@ -355,11 +280,15 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act - Should not throw with null theme service
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                // Should not throw with null theme service
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert
-            Assert.NotNull(_panel);
+                // Assert
+                Assert.NotNull(_panel);
+            });
         }
 
         [Fact]
@@ -370,10 +299,13 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert - Panel created successfully means error handling works
-            Assert.NotNull(_panel);
+                // Assert - Panel created successfully means error handling works
+                Assert.NotNull(_panel);
+            });
         }
 
         #endregion
@@ -389,14 +321,22 @@ namespace WileyWidget.WinForms.Tests.Controls
             var vm2 = new Mock<IInsightFeedViewModel>();
             vm2.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            var panel1 = new TestableInsightFeedPanel(vm1.Object, null, _mockLogger.Object);
-            var panel2 = new TestableInsightFeedPanel(vm2.Object, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                var panel1 = new TestableInsightFeedPanel(vm1.Object, null, _mockLogger.Object);
+                var panel2 = new TestableInsightFeedPanel(vm2.Object, null, _mockLogger.Object);
 
-            // Assert
-            Assert.NotSame(panel1.GetDataContext(), panel2.GetDataContext());
-            panel1.Dispose();
-            panel2.Dispose();
+                // Basic sanity asserts to ensure independent state
+                Assert.NotSame(panel1, panel2);
+                Assert.NotNull(panel1.GetDataGrid());
+                Assert.NotNull(panel2.GetDataGrid());
+
+                // Additional asserts and cleanup (run on UI thread)
+                Assert.NotSame(panel1.GetDataContext(), panel2.GetDataContext());
+                panel1.Dispose();
+                panel2.Dispose();
+            });
         }
 
         [Fact]
@@ -434,14 +374,16 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Binding and Data Flow Tests for InsightFeedPanel.
     /// Tests: ViewModel binding, collection binding, property propagation.
     /// </summary>
-    [Collection("Syncfusion UI Tests")]
+    [Collection(WinFormsUiCollection.CollectionName)]
     public sealed class InsightFeedPanelBindingTests : IDisposable
     {
+        private readonly WinFormsUiThreadFixture _ui;
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
         private TestableInsightFeedPanel? _panel;
 
-        public InsightFeedPanelBindingTests()
+        public InsightFeedPanelBindingTests(WinFormsUiThreadFixture ui)
         {
+            _ui = ui;
             _mockLogger = new Mock<ILogger<InsightFeedPanel>>();
         }
 
@@ -473,13 +415,16 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            // Assert
-            Assert.NotNull(grid);
-            Assert.Same(insights, grid.DataSource);
+                // Assert
+                Assert.NotNull(grid);
+                Assert.Same(insights, grid.DataSource);
+            });
         }
 
         [Fact]
@@ -491,20 +436,24 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("Initial Status");
             mockViewModel.Setup(vm => vm.IsLoading).Returns(false);
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var statusLabel = _panel.GetStatusLabel();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var statusLabel = _panel.GetStatusLabel();
 
-            // Act
-            mockViewModel.Object.StatusMessage = "Updated Status";
-            mockViewModel.Raise(
-                vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
+                // Act
+                mockViewModel.Object.StatusMessage = "Updated Status";
+                mockViewModel.Raise(
+                    vm => vm.PropertyChanged += null,
+                    new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
 
-            System.Windows.Forms.Application.DoEvents();
+                System.Windows.Forms.Application.DoEvents();
 
-            // Assert
-            Assert.NotNull(statusLabel);
-            Assert.Equal("Updated Status", statusLabel.Text);
+                // Assert
+                Assert.NotNull(statusLabel);
+                Assert.Equal("Updated Status", statusLabel.Text);
+            });
         }
 
         [Fact]
@@ -516,20 +465,24 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("Ready");
             mockViewModel.Setup(vm => vm.IsLoading).Returns(false);
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var overlay = _panel.GetLoadingOverlay();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var overlay = _panel.GetLoadingOverlay();
 
-            // Act
-            mockViewModel.Object.IsLoading = true;
-            mockViewModel.Raise(
-                vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.IsLoading)));
+                // Act
+                mockViewModel.Object.IsLoading = true;
+                mockViewModel.Raise(
+                    vm => vm.PropertyChanged += null,
+                    new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.IsLoading)));
 
-            System.Windows.Forms.Application.DoEvents();
+                System.Windows.Forms.Application.DoEvents();
 
-            // Assert
-            Assert.NotNull(overlay);
-            Assert.True(overlay.Visible, "Loading overlay should be visible when IsLoading is true");
+                // Assert
+                Assert.NotNull(overlay);
+                Assert.True(overlay.Visible, "Loading overlay should be visible when IsLoading is true");
+            });
         }
 
         [Fact]
@@ -542,21 +495,24 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.MediumPriorityCount).Returns(2);
             mockViewModel.Setup(vm => vm.LowPriorityCount).Returns(3);
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            mockViewModel.Raise(
-                vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.HighPriorityCount)));
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                mockViewModel.Raise(
+                    vm => vm.PropertyChanged += null,
+                    new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.HighPriorityCount)));
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Priority counts")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.AtLeastOnce);
+                // Assert
+                _mockLogger.Verify(
+                    x => x.Log(
+                        LogLevel.Debug,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Priority counts")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.AtLeastOnce);
+            });
         }
 
         #endregion
@@ -583,14 +539,17 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Act & Assert - Should not throw
-            mockViewModel.Raise(
-                vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs(null)); // Null property name
+                mockViewModel.Raise(
+                    vm => vm.PropertyChanged += null,
+                    new PropertyChangedEventArgs(null)); // Null property name
 
-            System.Windows.Forms.Application.DoEvents();
+                System.Windows.Forms.Application.DoEvents();
+            });
         }
 
         [Fact]
@@ -600,14 +559,18 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Act & Assert - Should not throw with unknown property
-            mockViewModel.Raise(
-                vm => vm.PropertyChanged += null,
-                new PropertyChangedEventArgs("UnknownProperty"));
+                // Act & Assert - Should not throw with unknown property
+                mockViewModel.Raise(
+                    vm => vm.PropertyChanged += null,
+                    new PropertyChangedEventArgs("UnknownProperty"));
 
-            System.Windows.Forms.Application.DoEvents();
+                System.Windows.Forms.Application.DoEvents();
+            });
         }
 
         #endregion
@@ -623,13 +586,16 @@ namespace WileyWidget.WinForms.Tests.Controls
             mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
             mockViewModel.Setup(vm => vm.StatusMessage).Returns("No insights");
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            // Assert
-            Assert.NotNull(grid);
-            Assert.Empty(grid.DataSource as ObservableCollection<InsightCardModel> ?? new());
+                // Assert
+                Assert.NotNull(grid);
+                Assert.Empty(grid.DataSource as ObservableCollection<InsightCardModel> ?? new());
+            });
         }
 
         [Fact]
@@ -651,13 +617,16 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(insights);
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-            var grid = _panel.GetDataGrid();
+            // Act & Assert
+            _ui.Run(() =>
+            {
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                var grid = _panel.GetDataGrid();
 
-            // Assert
-            Assert.NotNull(grid);
-            Assert.Equal(1000, (grid.DataSource as ObservableCollection<InsightCardModel>)?.Count ?? 0);
+                // Assert
+                Assert.NotNull(grid);
+                Assert.Equal(1000, (grid.DataSource as ObservableCollection<InsightCardModel>)?.Count ?? 0);
+            });
         }
 
         [Fact]
@@ -667,23 +636,27 @@ namespace WileyWidget.WinForms.Tests.Controls
             var mockViewModel = new Mock<IInsightFeedViewModel>();
             mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-
-            // Act - Fire multiple property changes rapidly
-            for (int i = 0; i < 10; i++)
+            // Act & Assert
+            _ui.Run(() =>
             {
-                mockViewModel.Object.StatusMessage = $"Status {i}";
-                mockViewModel.Raise(
-                    vm => vm.PropertyChanged += null,
-                    new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
-            }
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            System.Windows.Forms.Application.DoEvents();
+                // Act - Fire multiple property changes rapidly
+                for (int i = 0; i < 10; i++)
+                {
+                    mockViewModel.Object.StatusMessage = $"Status {i}";
+                    mockViewModel.Raise(
+                        vm => vm.PropertyChanged += null,
+                        new PropertyChangedEventArgs(nameof(IInsightFeedViewModel.StatusMessage)));
+                }
 
-            // Assert - Final status should be the last one
-            var statusLabel = _panel.GetStatusLabel();
-            Assert.NotNull(statusLabel);
-            Assert.Equal("Status 9", statusLabel.Text);
+                System.Windows.Forms.Application.DoEvents();
+
+                // Assert - Final status should be the last one
+                var statusLabel = _panel.GetStatusLabel();
+                Assert.NotNull(statusLabel);
+                Assert.Equal("Status 9", statusLabel.Text);
+            });
         }
 
         #endregion
@@ -707,14 +680,16 @@ namespace WileyWidget.WinForms.Tests.Controls
     /// Command Execution and User Interaction Tests.
     /// Tests: Button clicks, grid selection, command execution.
     /// </summary>
-    [Collection("Syncfusion UI Tests")]
+    [Collection(WinFormsUiCollection.CollectionName)]
     public class InsightFeedPanelCommandTests : IDisposable
     {
+        private readonly WinFormsUiThreadFixture _ui;
         private readonly Mock<ILogger<InsightFeedPanel>> _mockLogger;
         private TestableInsightFeedPanel? _panel;
 
-        public InsightFeedPanelCommandTests()
+        public InsightFeedPanelCommandTests(WinFormsUiThreadFixture ui)
         {
+            _ui = ui;
             _mockLogger = new Mock<ILogger<InsightFeedPanel>>();
         }
 
@@ -723,84 +698,93 @@ namespace WileyWidget.WinForms.Tests.Controls
         [Fact]
         public void RefreshButton_Click_LogsRefreshRequest()
         {
-            // Arrange
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
-
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
-
-            // Find and click refresh button
-            System.Windows.Forms.ToolStripButton? refreshBtn = null;
-            foreach (System.Windows.Forms.Control ctrl in _panel.Controls)
+            _ui.Run(() =>
             {
-                if (ctrl is System.Windows.Forms.ToolStrip toolStrip)
+                // Arrange
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+
+                // Find and click refresh button
+                System.Windows.Forms.ToolStripButton? refreshBtn = null;
+                foreach (System.Windows.Forms.Control ctrl in _panel.Controls)
                 {
-                    foreach (System.Windows.Forms.ToolStripItem item in toolStrip.Items)
+                    if (ctrl is System.Windows.Forms.ToolStrip toolStrip)
                     {
-                        if (item is System.Windows.Forms.ToolStripButton btn && btn.Name == "RefreshButton")
+                        foreach (System.Windows.Forms.ToolStripItem item in toolStrip.Items)
                         {
-                            refreshBtn = btn;
-                            break;
+                            if (item is System.Windows.Forms.ToolStripButton btn && btn.Name == "RefreshButton")
+                            {
+                                refreshBtn = btn;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            // Act
-            Assert.NotNull(refreshBtn);
-            refreshBtn.PerformClick();
+                // Act
+                Assert.NotNull(refreshBtn);
+                refreshBtn.PerformClick();
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("User requested manual refresh")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                // Assert
+                _mockLogger.Verify(
+                    x => x.Log(
+                        LogLevel.Information,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("User requested manual refresh")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            });
         }
 
         [Fact]
         public void ApplyTheme_AppliesSfSkinManagerStyling()
         {
-            // Arrange
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            _ui.Run(() =>
+            {
+                // Arrange
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                // Act
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Theme applied successfully")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                // Assert
+                _mockLogger.Verify(
+                    x => x.Log(
+                        LogLevel.Debug,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Theme applied successfully")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            });
         }
 
         [Fact]
         public void PanelInitialization_CompletesSuccessfully()
         {
-            // Arrange
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            _ui.Run(() =>
+            {
+                // Arrange
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                // Act
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("initialized successfully")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                // Assert
+                _mockLogger.Verify(
+                    x => x.Log(
+                        LogLevel.Information,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("initialized successfully")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            });
         }
 
         #endregion
@@ -810,44 +794,50 @@ namespace WileyWidget.WinForms.Tests.Controls
         [Fact]
         public void RefreshButton_WhenViewModelIsNull_DoesNotThrow()
         {
-            // Arrange
-            _panel = new TestableInsightFeedPanel(null, null, _mockLogger.Object);
-
-            // Find and click refresh button
-            System.Windows.Forms.ToolStripButton? refreshBtn = null;
-            foreach (System.Windows.Forms.Control ctrl in _panel.Controls)
+            _ui.Run(() =>
             {
-                if (ctrl is System.Windows.Forms.ToolStrip toolStrip)
+                // Arrange
+                _panel = new TestableInsightFeedPanel(null, null, _mockLogger.Object);
+
+                // Find and click refresh button
+                System.Windows.Forms.ToolStripButton? refreshBtn = null;
+                foreach (System.Windows.Forms.Control ctrl in _panel.Controls)
                 {
-                    foreach (System.Windows.Forms.ToolStripItem item in toolStrip.Items)
+                    if (ctrl is System.Windows.Forms.ToolStrip toolStrip)
                     {
-                        if (item is System.Windows.Forms.ToolStripButton btn && btn.Name == "RefreshButton")
+                        foreach (System.Windows.Forms.ToolStripItem item in toolStrip.Items)
                         {
-                            refreshBtn = btn;
-                            break;
+                            if (item is System.Windows.Forms.ToolStripButton btn && btn.Name == "RefreshButton")
+                            {
+                                refreshBtn = btn;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            // Act & Assert - Should not throw
-            Assert.NotNull(refreshBtn);
-            refreshBtn.PerformClick();
+                // Act & Assert - Should not throw
+                Assert.NotNull(refreshBtn);
+                refreshBtn.PerformClick();
+            });
         }
 
         [Fact]
         public void ApplyTheme_WhenFails_LogsErrorAndContinues()
         {
-            // The ApplyTheme method includes try-catch, so it won't throw
-            // This test verifies the pattern is in place
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            _ui.Run(() =>
+            {
+                // The ApplyTheme method includes try-catch, so it won't throw
+                // This test verifies the pattern is in place
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            // Act
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                // Act
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Assert - Panel was created (error was handled internally)
-            Assert.NotNull(_panel);
+                // Assert - Panel was created (error was handled internally)
+                Assert.NotNull(_panel);
+            });
         }
 
         #endregion
@@ -857,50 +847,59 @@ namespace WileyWidget.WinForms.Tests.Controls
         [Fact]
         public void Dispose_CleansUpResourcesAndUnsubscribes()
         {
-            // Arrange
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            _ui.Run(() =>
+            {
+                // Arrange
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Act
-            _panel.Dispose();
+                // Act
+                _panel.Dispose();
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("disposed successfully")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                // Assert
+                _mockLogger.Verify(
+                    x => x.Log(
+                        LogLevel.Debug,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("disposed successfully")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            });
         }
 
         [Fact]
         public void MultipleDispose_DoesNotThrow()
         {
-            // Arrange
-            var mockViewModel = new Mock<IInsightFeedViewModel>();
-            mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
+            _ui.Run(() =>
+            {
+                // Arrange
+                var mockViewModel = new Mock<IInsightFeedViewModel>();
+                mockViewModel.Setup(vm => vm.InsightCards).Returns(new ObservableCollection<InsightCardModel>());
 
-            _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
+                _panel = new TestableInsightFeedPanel(mockViewModel.Object, null, _mockLogger.Object);
 
-            // Act & Assert - Should not throw on multiple dispose
-            _panel.Dispose();
-            _panel.Dispose(); // Second dispose should be safe
+                // Act & Assert - Should not throw on multiple dispose
+                _panel.Dispose();
+                _panel.Dispose(); // Second dispose should be safe
+            });
         }
 
         [Fact]
         public void Panel_WithNullServices_StillFunctional()
         {
-            // Arrange & Act
-            _panel = new TestableInsightFeedPanel(null, null, null);
+            _ui.Run(() =>
+            {
+                // Arrange & Act
+                _panel = new TestableInsightFeedPanel(null, null, null);
 
-            // Assert
-            Assert.NotNull(_panel);
-            Assert.NotNull(_panel.GetDataGrid());
-            Assert.NotNull(_panel.GetLoadingOverlay());
+                // Assert
+                Assert.NotNull(_panel);
+                Assert.NotNull(_panel.GetDataGrid());
+                Assert.NotNull(_panel.GetLoadingOverlay());
+            });
         }
 
         #endregion

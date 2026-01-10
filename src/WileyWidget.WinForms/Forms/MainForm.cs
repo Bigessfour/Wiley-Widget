@@ -73,6 +73,33 @@ namespace WileyWidget.WinForms.Forms
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
 
+        private const int WS_EX_COMPOSITED = 0x02000000;
+
+        /// <summary>
+        /// Enables flicker reduction via WS_EX_COMPOSITED for heavy UI chrome (Ribbon + Docking).
+        /// </summary>
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+
+                try
+                {
+                    if (_uiConfig != null && !_uiConfig.IsUiTestHarness)
+                    {
+                        cp.ExStyle |= WS_EX_COMPOSITED;
+                    }
+                }
+                catch
+                {
+                    // Best-effort only; never block handle creation.
+                }
+
+                return cp;
+            }
+        }
+
         /// <summary>
         /// The root <see cref="IServiceProvider"/> for the application. Child forms and controls
         /// should use this provider to resolve services. Throws <see cref="InvalidOperationException"/>
@@ -206,6 +233,22 @@ namespace WileyWidget.WinForms.Forms
 
             // Apply global Syncfusion theme before any child controls are created
             AppThemeColors.ApplyTheme(this);
+
+            if (!_uiConfig.IsUiTestHarness)
+            {
+                // Reduce startup flicker for heavy Syncfusion UI (best-effort).
+                try
+                {
+                    SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+                    DoubleBuffered = true;
+                    UpdateStyles();
+                    _logger?.LogDebug("Enabled double-buffering / optimized painting on MainForm");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to enable double-buffering / optimized painting on MainForm");
+                }
+            }
 
             _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
 
@@ -598,6 +641,28 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger?.LogError(ex, "OnLoad failed during z-order configuration");
                 throw;
+            }
+
+            // Finalize form sizing and layout after chrome/docking init
+            try
+            {
+                if (!_uiConfig.IsUiTestHarness)
+                {
+                    // Ensure we meet configured defaults, then maximize for best use of space
+                    this.Size = new Size(
+                        Math.Max(this.Width, _uiConfig.DefaultFormSize.Width),
+                        Math.Max(this.Height, _uiConfig.DefaultFormSize.Height));
+
+                    this.StartPosition = FormStartPosition.CenterScreen;
+                    this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+                }
+
+                Refresh();
+                _ribbon?.PerformLayout();
+            }
+            catch (Exception sizingEx)
+            {
+                _logger?.LogDebug(sizingEx, "OnLoad: post-init sizing/layout failed");
             }
 
             // Panel navigation is created after docking is initialized (OnShown).
@@ -1417,16 +1482,16 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug(ex, "Failed to dispose async logger");
                 }
 
-                // Dispose components container (standard IContainer, not Syncfusion)
-                components?.Dispose();
-                _initializationCts?.Dispose();
-
-                // Safe dispose UI controls
+                // Safe dispose UI controls before tearing down shared containers
                 _menuStrip.SafeDispose();
                 _ribbon.SafeDispose();
                 _statusBar.SafeDispose();
                 _navigationStrip.SafeDispose();
                 _statusTimer.SafeDispose();
+
+                // Dispose components container (standard IContainer, not Syncfusion)
+                components?.Dispose();
+                _initializationCts?.Dispose();
             }
             base.Dispose(disposing);
         }

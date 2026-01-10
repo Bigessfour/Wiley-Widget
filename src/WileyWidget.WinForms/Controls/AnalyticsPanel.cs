@@ -839,14 +839,14 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             case nameof(ViewModel.Insights):
                 if (_insightsListBox != null)
                 {
-                _insightsListBox.DataSource = ViewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+                    _insightsListBox.DataSource = ViewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
                 }
                 break;
 
             case nameof(ViewModel.Recommendations):
                 if (_recommendationsListBox != null)
                 {
-                _recommendationsListBox.DataSource = ViewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+                    _recommendationsListBox.DataSource = ViewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
                 }
                 break;
 

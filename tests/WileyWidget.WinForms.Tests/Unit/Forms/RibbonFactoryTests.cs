@@ -52,7 +52,7 @@ public sealed class RibbonFactoryTests : IDisposable
             // Full ribbon creation test is covered by E2E UI tests.
             // For unit testing, we verify PanelRegistry is properly populated,
             // which is used by ribbon creation for the Panels dropdown menu.
-            
+
             // Verify PanelRegistry is properly populated as a lightweight verification
             var entries = PanelRegistry.Panels;
             entries.Should().NotBeEmpty("PanelRegistry should contain registered panels for ribbon creation");

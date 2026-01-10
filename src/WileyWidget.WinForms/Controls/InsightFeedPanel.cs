@@ -100,12 +100,12 @@ namespace WileyWidget.WinForms.Controls
                 };
                 Controls.Add(_topPanel);
 
-            // Panel header
-            _panelHeader = new PanelHeader
-            {
-                Dock = DockStyle.Fill,
-                Parent = _topPanel
-            };
+                // Panel header
+                _panelHeader = new PanelHeader
+                {
+                    Dock = DockStyle.Fill,
+                    Parent = _topPanel
+                };
 
                 // Toolbar
                 _toolStrip = new ToolStrip

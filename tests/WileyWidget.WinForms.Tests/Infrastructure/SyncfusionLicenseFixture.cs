@@ -95,7 +95,7 @@ public sealed class SyncfusionLicenseFixture : IDisposable
                 // Set the visual style to Office2019Colorful
                 // This loads the Office2019Theme assembly and initializes styles globally
                 SfSkinManager.SetVisualStyle(tempForm, "Office2019Colorful");
-                
+
                 tempForm.Dispose();
             }
 
@@ -103,24 +103,24 @@ public sealed class SyncfusionLicenseFixture : IDisposable
         }
         catch (Exception ex)
         {
-        Console.WriteLine($"[Syncfusion WARNING] Theme load failed: {ex.Message}");
-        return false;
+            Console.WriteLine($"[Syncfusion WARNING] Theme load failed: {ex.Message}");
+            return false;
         }
-        }
+    }
 
-        /// <summary>
-        /// Initializes Syncfusion and applies the default theme to a specific control.
-        /// Call this method in test setup when you need to ensure a control has proper styling.
-        /// Note: Theme application is handled automatically by Syncfusion.
-        /// </summary>
-        public static void ApplyDefaultTheme(Form form)
-        {
+    /// <summary>
+    /// Initializes Syncfusion and applies the default theme to a specific control.
+    /// Call this method in test setup when you need to ensure a control has proper styling.
+    /// Note: Theme application is handled automatically by Syncfusion.
+    /// </summary>
+    public static void ApplyDefaultTheme(Form form)
+    {
         if (form == null)
-                throw new ArgumentNullException(nameof(form));
+            throw new ArgumentNullException(nameof(form));
 
         // Theme application is handled automatically by Syncfusion framework
         // No explicit SfSkinManager calls needed
-        }
+    }
 
     public void Dispose()
     {
