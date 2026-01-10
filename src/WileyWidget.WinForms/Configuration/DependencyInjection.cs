@@ -16,10 +16,6 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
-using Microsoft.Extensions.Http;
-using Microsoft.Extensions.Http.Resilience;
-using Polly;
-using System.Net.Http;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -74,49 +70,20 @@ namespace WileyWidget.WinForms.Configuration
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
-            // Named HttpClient for Grok with resilience
-            services.AddHttpClient("GrokClient")
-                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
-                .AddResilienceHandler("GrokResilience", builder =>
-                {
-                    builder.AddRetry(new HttpRetryStrategyOptions
-                    {
-                        MaxRetryAttempts = 3,
-                        Delay = TimeSpan.FromMilliseconds(600),
-                        BackoffType = DelayBackoffType.Linear
-                    });
-                    builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
-                    {
-                        FailureRatio = 0.5,
-                        SamplingDuration = TimeSpan.FromMinutes(1),
-                        MinimumThroughput = 5,
-                        BreakDuration = TimeSpan.FromMinutes(2)
-                    });
-                    builder.AddTimeout(new HttpTimeoutStrategyOptions
-                    {
-                        Timeout = TimeSpan.FromSeconds(15)
-                    });
-                });
-
             // Memory Cache (Singleton)
             services.AddMemoryCache();
-
-            // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
-            // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
-            services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
-                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
             // For tests, register DbContext with in-memory database
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
             {
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseInMemoryDatabase("TestDb"));
             }
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+            if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
                 // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
                 services.AddSingleton(sp =>
@@ -263,8 +230,8 @@ namespace WileyWidget.WinForms.Configuration
             // Child Forms: Transient because they're created/disposed multiple times
             // =====================================================================
 
-            // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
-            services.AddScoped<MainForm>();
+            // Main Form (Singleton - Application's primary window)
+            services.AddSingleton<MainForm>();
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()
