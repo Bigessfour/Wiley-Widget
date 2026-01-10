@@ -66,13 +66,16 @@ public static class RibbonFactory
 
         // Initialize Backstage (File menu) per Syncfusion API
         // BackStageView requires IContainer for component model support
-        var components = new System.ComponentModel.Container();
+        var components = form.components ??= new System.ComponentModel.Container();
         var backStageView = new Syncfusion.Windows.Forms.BackStageView(components);
         var backStage = new Syncfusion.Windows.Forms.BackStage();
         backStageView.BackStage = backStage;
         backStageView.HostForm = form;
-        form.Disposed += (_, _) => components.Dispose();
         ribbon.BackStageView = backStageView;
+
+        // IMPORTANT: Initialize BackStage items BEFORE ribbon layout/paint can occur.
+        // This prevents BackStage paint from running with no active/selected tab.
+        InitializeBackstage(ribbon, backStageView, backStage, form, logger, components);
 
         // Performance optimization: reduce redraws during layout changes
         ribbon.SuspendLayout();
@@ -105,7 +108,8 @@ public static class RibbonFactory
             // Improve rendering quality
             RenderMode = ToolStripRenderMode.Professional,
             // Auto-size for ribbon layout
-            AutoSize = true
+            AutoSize = true,
+            Stretch = true
         };
 
         // ===== NAVIGATION PANEL =====
@@ -421,7 +425,8 @@ public static class RibbonFactory
         ribbon.ResumeLayout(performLayout: true);
 
         // Initialize Backstage items after ribbon is configured
-        InitializeBackstage(ribbon, backStage, form, logger, components);
+        // (MOVED EARLIER to avoid BackStage painting with empty items)
+        // InitializeBackstage(ribbon, backStageView, backStage, form, logger, components);
 
         // QuickAccessToolbar (QAT)
         InitializeQuickAccessToolbar(ribbon, logger, dashboardBtn, accountsBtn, reportsBtn, settingsBtn);
@@ -566,21 +571,30 @@ public static class RibbonFactory
     /// <remarks>
     /// <para>Backstage provides File menu functionality - Info, Options, Save, Export, Print, Close.</para>
     /// <para>Uses BackStageTab for tabbed content and BackStageButton for actions.</para>
-    /// <para>Per Syncfusion API: Add items via BackStageView.BackStageItems collection.</para>
+    /// <para>
+    /// Syncfusion.Tools.Windows v32.x WinForms API:
+    /// <list type="bullet">
+    /// <item><description>Add BackStageTab instances to <c>backStage.TabPages</c>.</description></item>
+    /// <item><description>Add BackStageButton instances to <c>backStage.BackstageControlCollection</c>.</description></item>
+    /// <item><description>Set <c>backStage.SelectedTab</c> to a valid tab to avoid paint/open NREs.</description></item>
+    /// </list>
+    /// </para>
     /// </remarks>
     /// <param name="ribbon">RibbonControlAdv instance containing the Backstage</param>
-    /// <param name="backStage">BackStageView instance to configure</param>
+    /// <param name="backStageView">BackStageView instance to configure</param>
+    /// <param name="backStage">BackStage instance to configure</param>
     /// <param name="form">MainForm for navigation and actions</param>
     /// <param name="logger">Optional logger for diagnostics</param>
     /// <param name="components">Component container for proper disposal</param>
     private static void InitializeBackstage(
         RibbonControlAdv ribbon,
+        Syncfusion.Windows.Forms.BackStageView backStageView,
         Syncfusion.Windows.Forms.BackStage backStage,
         MainForm form,
         ILogger? logger,
         System.ComponentModel.IContainer components)
     {
-        if (backStage == null || ribbon?.BackStageView == null)
+        if (backStageView == null || backStage == null)
         {
             logger?.LogWarning("[RIBBON_FACTORY] Cannot initialize Backstage: BackStage or BackStageView is null");
             return;
@@ -588,69 +602,75 @@ public static class RibbonFactory
 
         try
         {
-            // CRITICAL: Initialize BackStageView properties before adding items to prevent rendering errors
-            // BackStageView does not expose Padding or BackColor - these properties are inherited from parent form
-            // No manual property setting needed here
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
-            // ===== INFO TAB (Application info, recent files) =====
+            // Apply theme to BackStageView and BackStage (SkinManager only)
+            SfSkinManager.SetVisualStyle(backStageView, themeName);
+            SfSkinManager.SetVisualStyle(backStage, themeName);
+
+            TrySetThemeName(backStageView, themeName, logger);
+            TrySetThemeName(backStage, themeName, logger);
+
+            // ===== INFO TAB =====
             var infoTab = new Syncfusion.Windows.Forms.BackStageTab
             {
+                Name = "Backstage_Info",
                 Text = "Info",
                 AccessibleName = "Backstage Info",
                 AccessibleDescription = "Application information",
                 Dock = DockStyle.Fill
             };
+            SfSkinManager.SetVisualStyle(infoTab, themeName);
+            TrySetThemeName(infoTab, themeName, logger);
             components.Add(infoTab);
 
-            // Add info content panel with proper styling
-            var infoPanel = new System.Windows.Forms.Panel
+            var infoPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20),
-                BackColor = System.Drawing.Color.Transparent,
+                Padding = new Padding(20),
                 AutoScroll = true
             };
 
-            var infoLabel = new System.Windows.Forms.Label
+            var infoLabel = new Label
             {
                 Text = "Wiley Widget\n\nVersion: 1.0.0\nBudget Management System\n\n© 2025 Wiley Widget Inc.",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 10F),
-                Location = new System.Drawing.Point(20, 20),
-                BackColor = System.Drawing.Color.Transparent
+                Location = new System.Drawing.Point(20, 20)
             };
             infoPanel.Controls.Add(infoLabel);
             infoTab.Controls.Add(infoPanel);
 
-            // ===== OPTIONS TAB (Settings) =====
+            // ===== OPTIONS TAB =====
             var optionsTab = new Syncfusion.Windows.Forms.BackStageTab
             {
+                Name = "Backstage_Options",
                 Text = "Options",
                 AccessibleName = "Backstage Options",
                 AccessibleDescription = "Application options",
                 Dock = DockStyle.Fill
             };
+            SfSkinManager.SetVisualStyle(optionsTab, themeName);
+            TrySetThemeName(optionsTab, themeName, logger);
             components.Add(optionsTab);
 
-            var optionsPanel = new System.Windows.Forms.Panel
+            var optionsPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20),
-                BackColor = System.Drawing.Color.Transparent,
+                Padding = new Padding(20),
                 AutoScroll = true
             };
 
-            var optionsLabel = new System.Windows.Forms.Label
+            var optionsLabel = new Label
             {
                 Text = "Application Settings",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
-                Location = new System.Drawing.Point(20, 20),
-                BackColor = System.Drawing.Color.Transparent
+                Location = new System.Drawing.Point(20, 20)
             };
             optionsPanel.Controls.Add(optionsLabel);
 
-            var openSettingsBtn = new System.Windows.Forms.Button
+            var openSettingsBtn = new Button
             {
                 Text = "Open Settings Panel",
                 Size = new System.Drawing.Size(200, 32),
@@ -673,35 +693,36 @@ public static class RibbonFactory
             optionsPanel.Controls.Add(openSettingsBtn);
             optionsTab.Controls.Add(optionsPanel);
 
-            // ===== EXPORT TAB (Data export options) =====
+            // ===== EXPORT TAB =====
             var exportTab = new Syncfusion.Windows.Forms.BackStageTab
             {
+                Name = "Backstage_Export",
                 Text = "Export",
                 AccessibleName = "Backstage Export",
                 AccessibleDescription = "Data export options",
                 Dock = DockStyle.Fill
             };
+            SfSkinManager.SetVisualStyle(exportTab, themeName);
+            TrySetThemeName(exportTab, themeName, logger);
             components.Add(exportTab);
 
-            var exportPanel = new System.Windows.Forms.Panel
+            var exportPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new System.Windows.Forms.Padding(20),
-                BackColor = System.Drawing.Color.Transparent,
+                Padding = new Padding(20),
                 AutoScroll = true
             };
 
-            var exportLabel = new System.Windows.Forms.Label
+            var exportLabel = new Label
             {
                 Text = "Export Data",
                 AutoSize = true,
                 Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
-                Location = new System.Drawing.Point(20, 20),
-                BackColor = System.Drawing.Color.Transparent
+                Location = new System.Drawing.Point(20, 20)
             };
             exportPanel.Controls.Add(exportLabel);
 
-            var exportExcelBtn = new System.Windows.Forms.Button
+            var exportExcelBtn = new Button
             {
                 Text = "Export Active Grid to Excel",
                 Size = new System.Drawing.Size(200, 32),
@@ -724,88 +745,108 @@ public static class RibbonFactory
             exportPanel.Controls.Add(exportExcelBtn);
             exportTab.Controls.Add(exportPanel);
 
-            // ===== BUTTONS (Save, Print, Close) =====
+            // ===== BUTTONS =====
             var saveButton = new Syncfusion.Windows.Forms.BackStageButton
             {
+                Name = "Backstage_Save",
                 Text = "Save",
                 AccessibleName = "Backstage Save",
                 AccessibleDescription = "Save current data"
             };
+            SfSkinManager.SetVisualStyle(saveButton, themeName);
+            TrySetThemeName(saveButton, themeName, logger);
             saveButton.Click += (s, e) =>
             {
-                try
-                {
-                    logger?.LogInformation("[BACKSTAGE] Save clicked - placeholder for save logic");
-                    MessageBox.Show("Save functionality placeholder", "Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogError(ex, "[BACKSTAGE] Save action failed");
-                }
+                logger?.LogInformation("[BACKSTAGE] Save clicked - placeholder");
+                MessageBox.Show("Save functionality placeholder", "Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
             var printButton = new Syncfusion.Windows.Forms.BackStageButton
             {
+                Name = "Backstage_Print",
                 Text = "Print",
                 AccessibleName = "Backstage Print",
                 AccessibleDescription = "Print current data"
             };
+            SfSkinManager.SetVisualStyle(printButton, themeName);
+            TrySetThemeName(printButton, themeName, logger);
             printButton.Click += (s, e) =>
             {
-                try
-                {
-                    logger?.LogInformation("[BACKSTAGE] Print clicked - placeholder for print logic");
-                    MessageBox.Show("Print functionality placeholder", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogError(ex, "[BACKSTAGE] Print action failed");
-                }
+                logger?.LogInformation("[BACKSTAGE] Print clicked - placeholder");
+                MessageBox.Show("Print functionality placeholder", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
             var closeButton = new Syncfusion.Windows.Forms.BackStageButton
             {
+                Name = "Backstage_Close",
                 Text = "Close",
                 AccessibleName = "Backstage Close",
-                AccessibleDescription = "Close the application"
+                AccessibleDescription = "Close the application",
+                Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom
             };
-            closeButton.Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom;
-            closeButton.Click += (s, e) =>
-            {
-                try
-                {
-                    form.Close();
-                    logger?.LogInformation("[BACKSTAGE] Application closed via Backstage");
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogError(ex, "[BACKSTAGE] Close action failed");
-                }
-            };
+            SfSkinManager.SetVisualStyle(closeButton, themeName);
+            TrySetThemeName(closeButton, themeName, logger);
+            closeButton.Click += (s, e) => form.Close();
 
             components.Add(saveButton);
             components.Add(printButton);
             components.Add(closeButton);
 
-            // Add items to BackStage - IMPORTANT: Add buttons first (they are always visible),
-            // then tabs (content loaded on demand)
-            backStage.Controls.Add(saveButton);
-            backStage.Controls.Add(printButton);
-            backStage.Controls.Add(closeButton);
-            backStage.Controls.Add(infoTab);
-            backStage.Controls.Add(optionsTab);
-            backStage.Controls.Add(exportTab);
+            // Populate BackStage using supported WinForms API (avoids BackStageView item reflection).
+            // Always select a default tab to prevent renderer NRE during paint/open.
+            backStage.TabPages.Clear();
 
+            // Remove any existing BackStageButton controls to prevent duplicates on re-init.
+            var backstageControls = backStage.BackstageControlCollection;
+            if (backstageControls != null)
+            {
+                foreach (var existingButton in backstageControls
+                             .Cast<Control>()
+                             .OfType<Syncfusion.Windows.Forms.BackStageButton>()
+                             .ToList())
+                {
+                    backstageControls.Remove(existingButton);
+                }
+            }
 
+            backStage.TabPages.Add(infoTab);
+            backStage.TabPages.Add(optionsTab);
+            backStage.TabPages.Add(exportTab);
 
-            logger?.LogDebug("[RIBBON_FACTORY] Backstage initialized with {TabCount} tabs, {ButtonCount} buttons", 3, 3);
-            logger?.LogInformation("[BACKSTAGE] Backstage initialization completed successfully");
+            backstageControls?.Add(saveButton);
+            backstageControls?.Add(printButton);
+            backstageControls?.Add(closeButton);
+
+            if (backStage.TabPages.Count > 0)
+            {
+                backStage.SelectedTab = infoTab;
+            }
+
+            logger?.LogInformation("[BACKSTAGE] Backstage initialization completed successfully (direct API)");
         }
         catch (Exception ex)
         {
             logger?.LogError(ex, "[RIBBON_FACTORY] Failed to initialize Backstage");
+
+            // Failsafe: prevent BackStage paint/open from crashing the ribbon.
+            ribbon.MenuButtonVisible = false;
         }
     }
+
+    private static void TrySetThemeName(object target, string themeName, ILogger? logger)
+    {
+        try
+        {
+            var prop = target.GetType().GetProperty("ThemeName", BindingFlags.Public | BindingFlags.Instance);
+            if (prop?.CanWrite != true) return;
+            prop.SetValue(target, themeName);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set ThemeName on {Type}", target.GetType().FullName);
+        }
+    }
+
 
     /// <summary>
     /// Initializes the Quick Access Toolbar (QAT) with frequently used navigation buttons.

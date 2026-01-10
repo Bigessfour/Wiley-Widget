@@ -159,8 +159,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Create summary panel
         CreateSummaryPanel();
-        if (_summaryPanel == null) {
-            _summaryPanel = new GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(10,10,10,5), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
+        if (_summaryPanel == null)
+        {
+            _summaryPanel = new GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(10, 10, 10, 5), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
             SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
         }
         _mainLayout.Controls.Add(_summaryPanel!, 0, 0);

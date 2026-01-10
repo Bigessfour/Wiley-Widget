@@ -181,7 +181,7 @@ namespace WileyWidget.WinForms.Plugins
 
         [KernelFunction("read_file")]
         [Description("Read a file relative to the solution root (directory containing WileyWidget.sln).")]
-        public string ReadFile([Description("Relative file path under solution root") ] string path)
+        public string ReadFile([Description("Relative file path under solution root")] string path)
         {
             var fullPath = ResolveUnderSolutionRoot(path);
 
@@ -207,7 +207,7 @@ namespace WileyWidget.WinForms.Plugins
 
         [KernelFunction("list_files")]
         [Description("List files matching a wildcard pattern under the solution root (supports '*' and '?'; optional relative directory prefix like 'src/*.cs').")]
-        public string[] ListFiles([Description("Wildcard pattern (e.g., '*.cs' or 'src/*.cs')") ] string pattern)
+        public string[] ListFiles([Description("Wildcard pattern (e.g., '*.cs' or 'src/*.cs')")] string pattern)
         {
             if (string.IsNullOrWhiteSpace(pattern))
             {
@@ -251,7 +251,7 @@ namespace WileyWidget.WinForms.Plugins
 
         [KernelFunction("search_code")]
         [Description("Search for a text query across common source/config files under the solution root. Returns up to 200 matches as 'path:line: text'.")]
-        public string[] SearchCode([Description("Text to search for (case-insensitive)") ] string query)
+        public string[] SearchCode([Description("Text to search for (case-insensitive)")] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {

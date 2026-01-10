@@ -63,19 +63,60 @@ public static class DockingHostFactory
             // Initialize DockingManager
             var dockingManager = CreateDockingManager(mainForm, logger);
 
-            // Create panels (no central panel - pure docking architecture)
-            var leftPanel = CreateLeftDockPanel(dockingManager, mainForm, panelNavigator, logger);
-            var (rightPanel, activityGrid, activityTimer) = CreateRightDockPanel(dockingManager, mainForm, serviceProvider, logger);
+            var updatesLocked = false;
+            var layoutSuspended = false;
 
-            stopwatch.Stop();
-            logger?.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+            try
+            {
+                // Reduce flicker during docking initialization (best-effort).
+                try
+                {
+                    dockingManager.LockHostFormUpdate();
+                    dockingManager.LockDockPanelsUpdate();
+                    updatesLocked = true;
+                }
+                catch (Exception lockEx)
+                {
+                    logger?.LogDebug(lockEx, "DockingManager update lock not available - continuing without lock");
+                }
 
-            logger?.LogDebug(
-                "Docking host created with panels - Left={LeftName}, Right={RightName}",
-                leftPanel.Name,
-                rightPanel.Name);
+                try
+                {
+                    dockingManager.SuspendLayout();
+                    layoutSuspended = true;
+                }
+                catch (Exception suspendEx)
+                {
+                    logger?.LogDebug(suspendEx, "DockingManager.SuspendLayout failed - continuing");
+                }
 
-            return (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer);
+                // Create panels (no central panel - pure docking architecture)
+                var leftPanel = CreateLeftDockPanel(dockingManager, mainForm, panelNavigator, logger);
+                var (rightPanel, activityGrid, activityTimer) = CreateRightDockPanel(dockingManager, mainForm, serviceProvider, logger);
+
+                stopwatch.Stop();
+                logger?.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+
+                logger?.LogDebug(
+                    "Docking host created with panels - Left={LeftName}, Right={RightName}",
+                    leftPanel.Name,
+                    rightPanel.Name);
+
+                return (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer);
+            }
+            finally
+            {
+                if (layoutSuspended)
+                {
+                    try { dockingManager.ResumeLayout(true); } catch { }
+                }
+
+                if (updatesLocked)
+                {
+                    try { dockingManager.UnlockDockPanelsUpdate(); } catch { }
+                    try { dockingManager.UnlockHostFormUpdate(); } catch { }
+                }
+            }
         }
         catch (Exception ex)
         {

@@ -309,13 +309,16 @@ namespace WileyWidget.WinForms.Controls
             _aiGroup.Controls.Add(aiLabel);
 
             _chkEnableAi = new CheckBoxAdv { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
-            _chkEnableAi.CheckedChanged += (s, e) => {
-                try {
+            _chkEnableAi.CheckedChanged += (s, e) =>
+            {
+                try
+                {
                     if (ViewModel is not null)
                     {
                         ViewModel.EnableAi = _chkEnableAi.Checked;
                     }
-                } catch { }
+                }
+                catch { }
             };
 
             var lblEndpoint = new Label { Text = "API Endpoint:", AutoSize = true, Location = new Point(20, 56), Font = new Font("Segoe UI", 9, FontStyle.Regular) };

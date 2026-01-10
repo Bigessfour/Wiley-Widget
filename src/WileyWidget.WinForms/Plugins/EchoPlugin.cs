@@ -10,7 +10,7 @@ namespace WileyWidget.WinForms.Plugins
     {
         [KernelFunction("echo")]
         [Description("Echoes the provided message.")]
-        public string Echo([Description("Message to echo") ] string message)
+        public string Echo([Description("Message to echo")] string message)
         {
             return message;
         }

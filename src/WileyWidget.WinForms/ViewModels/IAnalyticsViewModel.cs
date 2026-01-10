@@ -5,7 +5,7 @@ using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
-// ...existing code...
+    // ...existing code...
     /// <summary>
     /// Interface for the Analytics ViewModel.
     /// Defines the contract for analytics functionality with exploratory analysis, scenario modeling, and forecasting.
