@@ -7,6 +7,7 @@ using Serilog;
 using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
@@ -43,6 +44,24 @@ namespace WileyWidget.WinForms
         public static IServiceProvider Services { get; private set; } = null!;
         private static IServiceScope? _applicationScope; // Application-lifetime scope
         private static IStartupTimelineService? _timelineService;
+
+        /// <summary>
+        /// Global task tracking for fire-and-forget Task.Run operations.
+        /// Ensures all background tasks complete before cache disposal during shutdown.
+        /// </summary>
+        private static readonly List<Task> _pendingBackgroundTasks = new();
+        private static readonly object _pendingTasksLock = new();
+
+        /// <summary>
+        /// Registers a fire-and-forget task for tracking during shutdown.
+        /// </summary>
+        public static void RegisterBackgroundTask(Task task)
+        {
+            lock (_pendingTasksLock)
+            {
+                _pendingBackgroundTasks.Add(task);
+            }
+        }
 
         private const string FallbackConnectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
 
@@ -565,60 +584,83 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                Log.Debug("Starting theme initialization");
+                Log.Information("[THEME] Starting theme initialization (Syncfusion 32.1.19, string-based API)");
 
-                // Null guard for timeline service
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                Log.Information("[THEME] Default theme name from ThemeColors: {ThemeName}", themeName);
+
+                // STEP 1: Load theme assembly - CRITICAL: must happen FIRST
+                // Records: Theme Initialization → LoadAssembly
                 if (_timelineService != null)
                 {
-                    _timelineService.RecordOperation("Load Office2019Theme assembly", "Theme Initialization");
+                    _timelineService.RecordOperation("[THEME API] SfSkinManager.LoadAssembly(Office2019Theme)", "Theme Initialization");
                 }
 
-                // CRITICAL: Load theme assembly FIRST before setting ApplicationVisualTheme
-                // Reference: Syncfusion WinForms Skins documentation
                 try
                 {
-                    SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                    Log.Debug("Office2019Theme assembly loaded successfully");
+                    var assembly = typeof(Office2019Theme).Assembly;
+                    Log.Information("[THEME] Loading Office2019Theme assembly from: {AssemblyName} (version {AssemblyVersion})",
+                        assembly.GetName().Name, assembly.GetName().Version);
+
+                    SfSkinManager.LoadAssembly(assembly);
+                    Log.Information("[THEME] ✓ Office2019Theme assembly loaded successfully");
                 }
                 catch (Exception loadEx)
                 {
-
-                    Log.Error(loadEx, "Failed to load Office2019Theme assembly");
-                    throw; // Rethrow to outer catch for comprehensive handling
+                    Log.Error(loadEx, "[THEME FATAL] SfSkinManager.LoadAssembly failed - theme assembly not registered");
+                    throw;
                 }
 
-                // Apply global theme - use default from ThemeColors (fallback to Office2019Colorful)
-                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                Log.Debug("Setting ApplicationVisualTheme to: {ThemeName}", themeName);
-
+                // STEP 2: Set global ApplicationVisualTheme - cascades to all controls
+                // Records: Theme Initialization → SetApplicationVisualTheme
                 if (_timelineService != null)
                 {
-                    _timelineService.RecordOperation($"Set ApplicationVisualTheme: {themeName}", "Theme Initialization");
+                    _timelineService.RecordOperation($"[THEME API] SfSkinManager.ApplicationVisualTheme = '{themeName}'", "Theme Initialization");
                 }
 
-                // CRITICAL: Set ApplicationVisualTheme AFTER assembly load and BEFORE any form creation
-                // This must be set after Application.EnableVisualStyles() for proper rendering
                 try
                 {
-                    SfSkinManager.ApplicationVisualTheme = themeName;  // Global application-wide theme
-                    Log.Debug("ApplicationVisualTheme set to: {ThemeName}", themeName);
+                    Log.Information("[THEME] Setting ApplicationVisualTheme to: {ThemeName} (global cascade)", themeName);
+                    SfSkinManager.ApplicationVisualTheme = themeName;
+                    Log.Information("[THEME] ✓ ApplicationVisualTheme set - will cascade to all Syncfusion controls");
                 }
                 catch (Exception setEx)
                 {
-
-                    Log.Error(setEx, "Failed to set ApplicationVisualTheme to {ThemeName}", themeName);
-                    throw; // Rethrow to outer catch for comprehensive handling
+                    Log.Error(setEx, "[THEME FATAL] Failed to set ApplicationVisualTheme to '{ThemeName}' - check Syncfusion package version and theme registration", themeName);
+                    throw;
                 }
 
-                Log.Debug("Theme initialization completed successfully");
+                // STEP 3: Explicit verification call (optional but recommended)
+                // Records: Theme Initialization → VerifyThemeRegistration
+                if (_timelineService != null)
+                {
+                    _timelineService.RecordOperation("[THEME API] Verify theme registration (ApplicationVisualTheme != null)", "Theme Initialization");
+                }
+
+                try
+                {
+                    var verifyTheme = SfSkinManager.ApplicationVisualTheme;
+                    if (verifyTheme == themeName)
+                    {
+                        Log.Information("[THEME] ✓ Theme registration verified: {VerifiedTheme}", verifyTheme);
+                    }
+                    else
+                    {
+                        Log.Warning("[THEME] Theme mismatch: Expected='{Expected}', Actual='{Actual}'", themeName, verifyTheme);
+                    }
+                }
+                catch (Exception verifyEx)
+                {
+                    Log.Warning(verifyEx, "[THEME] Theme registration verification failed - theme may not be properly loaded");
+                }
+
+                Log.Information("[THEME] ✓ Theme initialization completed successfully - awaiting form instantiation for cascade");
             }
             catch (Exception ex)
             {
-                // COMPREHENSIVE ERROR LOGGING
-
                 if (ex.InnerException != null)
                 {
-                    Log.Error(ex.InnerException, "[THEME FATAL] InnerException during theme initialization");
+                    Log.Error(ex.InnerException, "[THEME FATAL] InnerException: {InnerMessage}", ex.InnerException.Message);
                 }
 
                 Log.Error(ex, """
@@ -1495,7 +1537,7 @@ namespace WileyWidget.WinForms
                 {
                     try
                     {
-                        if (mainForm != null && !mainForm.IsDisposed)
+                        if (mainForm != null && !mainForm.IsDisposed && mainForm.IsHandleCreated)
                         {
                             mainForm.BeginInvoke(new System.Action(() =>
                             {
@@ -1607,17 +1649,68 @@ namespace WileyWidget.WinForms
             }
             finally
             {
-                // CRITICAL: Graceful shutdown sequence per Serilog best practices
-                // Reference: https://github.com/serilog/serilog/wiki/Disposing
-                //
-                // The issue: DI container disposal triggers finalizers and dispose handlers
-                // which may try to log. If we dispose the scope while Serilog has pending
-                // log operations, file sinks can be disposed before writes complete.
-                //
-                // Solution: Log the exit message BEFORE disposing the scope to prevent
-                // new log calls during scope disposal, then wait for async operations.
+                // CRITICAL: Graceful shutdown sequence with cache freezing
+                // Timeline:
+                // T+0ms:   Form closes, OnFormClosing fires
+                // T+500ms: Cancellation tokens cancelled, timers stopped
+                // T+800ms: MainForm.Dispose() called, cache freeze signal set
+                // T+1200ms: RunUiLoop finally block - wait for pending tasks (extended timeout)
+                // T+3200ms: Force cache disposal if tasks timeout
+                // T+4200ms: Serilog flush
 
-                // Step 1: Log exit before disposing scope (avoids logs during disposal)
+                // Step 1: Signal cache freeze to prevent new writes during shutdown
+                try
+                {
+                    if (Services?.GetService<IMemoryCache>() is IMemoryCache cache)
+                    {
+                        Log.Information("[SHUTDOWN] Freezing cache - blocking new writes");
+                        // If cache implements IFrozenCache, signal freeze
+                        if (cache is IFrozenCache frozenCache)
+                        {
+                            frozenCache.FreezeCacheWrites();
+                            Log.Information("[SHUTDOWN] \u2713 Cache freeze signal set");
+                        }
+                    }
+                }
+                catch (Exception freezeEx)
+                {
+                    Log.Warning(freezeEx, "[SHUTDOWN] Failed to freeze cache");
+                }
+
+                // Step 2: Wait for pending background tasks with extended timeout (2 seconds)
+                var pendingTaskWaitTimeout = TimeSpan.FromSeconds(2);
+                try
+                {
+                    lock (_pendingTasksLock)
+                    {
+                        var activeTasks = _pendingBackgroundTasks.Where(t => !t.IsCompleted).ToList();
+                        if (activeTasks.Count > 0)
+                        {
+                            Log.Information("[SHUTDOWN] Waiting for {TaskCount} pending background tasks ({TimeoutMs}ms timeout)...",
+                                activeTasks.Count, (int)pendingTaskWaitTimeout.TotalMilliseconds);
+
+                            // Wait for all tasks with timeout
+                            bool tasksCompleted = Task.WaitAll(activeTasks.ToArray(), pendingTaskWaitTimeout);
+
+                            if (tasksCompleted)
+                            {
+                                Log.Information("[SHUTDOWN] \u2713 All {TaskCount} background tasks completed", activeTasks.Count);
+                            }
+                            else
+                            {
+                                var stillRunning = activeTasks.Where(t => !t.IsCompleted).Count();
+                                Log.Warning("[SHUTDOWN] {StillRunningCount} background tasks did not complete within {TimeoutMs}ms - proceeding with shutdown",
+                                    stillRunning, (int)pendingTaskWaitTimeout.TotalMilliseconds);
+                            }
+                        }
+                    }
+                }
+                catch (Exception taskWaitEx)
+                {
+                    Log.Warning(taskWaitEx, "[SHUTDOWN] Error waiting for background tasks");
+                }
+
+                // Step 3: Log exit before disposing scope (avoids logs during disposal)
                 try
                 {
                     Log.Information("Application exiting - beginning graceful shutdown.");
@@ -1628,41 +1721,36 @@ namespace WileyWidget.WinForms
                     System.Diagnostics.Debug.WriteLine($"Failed to log exit message: {logEx.Message}");
                 }
 
-                // Step 2: Dispose application-lifetime scope (may trigger dispose handlers)
-                // These handlers should avoid logging or use try-catch internally
+                // Step 4: Dispose application-lifetime scope (triggers IDisposable chain)
+                // This will dispose the singleton IMemoryCache
                 try
                 {
+                    Log.Information("[SHUTDOWN] Disposing DI container and services");
                     _applicationScope?.Dispose();
+                    Log.Information("[SHUTDOWN] \u2713 DI container disposed");
                 }
                 catch (Exception disposeEx)
                 {
                     // Log any errors during scope disposal, but don't let them prevent shutdown
-                    try { Log.Error(disposeEx, "Error during DI container disposal"); } catch { /* Ignore */ }
+                    try { Log.Error(disposeEx, "[SHUTDOWN FATAL] Error during DI container disposal"); } catch { /* Ignore */ }
                 }
 
-                // Step 3: CRITICAL - Allow time for pending operations per Serilog documentation:
+                // Step 5: CRITICAL - Allow time for pending operations per Serilog documentation
+                // Extended from 1000ms to 2000ms to account for pending tasks that may have just completed
+                // These timings are for:
                 // - Pending log writes to complete (batching, disk I/O, async sinks)
                 // - File handles to flush and release
                 // - Background threads (RollingFileSink timer, async batching) to finish
-                // Increased from 500ms to 1000ms to ensure rolling file sink completes flush
-                // See: https://github.com/serilog/serilog-sinks-file/blob/main/src/Serilog.Sinks.File/Sinks/File/RollingFileSink.cs
                 try
                 {
-                    System.Threading.Thread.Sleep(1000);
+                    System.Threading.Thread.Sleep(2000);
                 }
                 catch
                 {
                     // Timing not critical, continue with flush
                 }
 
-                // Step 4: Graceful shutdown of Serilog per official documentation
-                // CloseAndFlush() performs (in order):
-                // 1. Waits for pending events in the async pipeline
-                // 2. Calls Close() on each sink (orderly shutdown signal)
-                // 3. Waits for all sinks to finish their final writes
-                // 4. Disposes all sinks
-                // 5. Stops background threads
-                // Reference: https://github.com/serilog/serilog/blob/main/src/Serilog/Log.cs
+                // Step 6: Graceful shutdown of Serilog per official documentation
                 try
                 {
                     Log.CloseAndFlush();
@@ -1671,8 +1759,6 @@ namespace WileyWidget.WinForms
                 {
                     // Even if flush fails, the sinks should still be disposed
                     System.Diagnostics.Debug.WriteLine($"[SHUTDOWN] Serilog.CloseAndFlush failed: {flushEx.Message}");
-                    // Note: We cannot dispose Log.Logger directly as ILogger is not IDisposable
-                    // CloseAndFlush handles all sink disposal internally
                 }
             }
         }

@@ -151,6 +151,7 @@ namespace WileyWidget.WinForms.Forms
 
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private readonly Services.IThemeIconService? _iconService;
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
         private RibbonControlAdv? _ribbon;
@@ -202,7 +203,8 @@ namespace WileyWidget.WinForms.Forms
                 GetDefaultServiceProvider(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(GetDefaultServiceProvider()) ?? new ConfigurationBuilder().Build(),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(GetDefaultServiceProvider()) ?? NullLogger<MainForm>.Instance,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(GetDefaultServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(GetDefaultServiceProvider()) ?? ReportViewerLaunchOptions.Disabled,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(GetDefaultServiceProvider()))
         {
         }
 
@@ -211,7 +213,7 @@ namespace WileyWidget.WinForms.Forms
             return Program.Services ?? WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: true).BuildServiceProvider();
         }
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, Services.IThemeIconService? iconService = null)
         {
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: ENTERED");
@@ -221,6 +223,7 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
             _panelNavigator = null;
+            _iconService = iconService;
 
             // CRITICAL FIX: Initialize components container in constructor
             // This ensures components is available when DockingManager is created
@@ -460,6 +463,27 @@ namespace WileyWidget.WinForms.Forms
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
             timelineService?.RecordFormLifecycleEvent("MainForm", "Load");
 
+            // STEP 4: Explicit per-form theme application (Syncfusion 32.1.19 API)
+            // After global ApplicationVisualTheme is set and form is loaded,
+            // explicitly apply theme to this form instance to ensure cascade to child controls
+            try
+            {
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                Log.Information("[THEME] MainForm.OnLoad: Applying explicit theme to main form instance - {ThemeName}", themeName);
+
+                timelineService?.RecordFormLifecycleEvent("MainForm", "OnLoad: Apply Theme");
+
+                // Apply theme to this form - cascades to all child Syncfusion controls
+                SfSkinManager.SetVisualStyle(this, themeName);
+
+                Log.Information("[THEME] ✓ MainForm theme applied - will cascade to all child controls (docking, ribbon, grids, charts)");
+                timelineService?.RecordFormLifecycleEvent("MainForm", "OnLoad: Theme Applied");
+            }
+            catch (Exception themeEx)
+            {
+                Log.Warning(themeEx, "[THEME] MainForm.OnLoad: Failed to apply explicit theme - cascade from global ApplicationVisualTheme will be used");
+            }
+
             // Designer short-circuit
             if (DesignMode)
             {
@@ -670,6 +694,14 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("MainForm startup completed successfully");
         }
 
+        /// <summary>
+        /// REMOVED: WndProc BackStage exception handling.
+        /// The root cause (BackStage initializing before ribbon.ResumeLayout) has been fixed.
+        /// BackStage now initializes AFTER ribbon layout completes, so renderer properties exist when paint occurs.
+        /// See RibbonFactory.CreateRibbon for proper initialization order.
+        /// </summary>
+        // Previous WndProc workaround removed - no longer needed after architectural fix
+
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             // Ctrl+F: Focus global search box
@@ -770,7 +802,7 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // Database health check + test data seeding (background)
-            _ = Task.Run(async () =>
+            var healthCheckTask = Task.Run(async () =>
             {
                 try
                 {
@@ -784,9 +816,10 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(ex, "Deferred startup health check failed (non-fatal)");
                 }
             });
+            Program.RegisterBackgroundTask(healthCheckTask);
 
             // Initialize Grok service asynchronously (deferred initialization pattern)
-            _ = Task.Run(async () =>
+            var grokTask = Task.Run(async () =>
             {
                 try
                 {
@@ -806,8 +839,9 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(ex, "Failed to initialize Grok service asynchronously (non-critical - chat will function via HTTP fallback)");
                 }
             });
+            Program.RegisterBackgroundTask(grokTask);
 
-            _ = Task.Run(async () =>
+            var seedTask = Task.Run(async () =>
             {
                 try
                 {
@@ -820,6 +854,7 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(seedEx, "Deferred test data seeding failed (non-critical)");
                 }
             });
+            Program.RegisterBackgroundTask(seedTask);
 
             // Track form shown event for startup timeline analysis
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -1262,7 +1297,10 @@ namespace WileyWidget.WinForms.Forms
 
                 if (InvokeRequired)
                 {
-                    BeginInvoke(() => ShowProgress(message, indeterminate));
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(() => ShowProgress(message, indeterminate));
+                    }
                     return;
                 }
 
@@ -1297,7 +1335,10 @@ namespace WileyWidget.WinForms.Forms
 
                 if (InvokeRequired)
                 {
-                    BeginInvoke(() => UpdateProgress(value, message));
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(() => UpdateProgress(value, message));
+                    }
                     return;
                 }
 
@@ -1326,7 +1367,10 @@ namespace WileyWidget.WinForms.Forms
 
                 if (InvokeRequired)
                 {
-                    BeginInvoke(HideProgress);
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(HideProgress);
+                    }
                     return;
                 }
 
@@ -1464,7 +1508,27 @@ namespace WileyWidget.WinForms.Forms
         {
             if (disposing)
             {
-                // Dispose the MainViewModel scope when the form is disposed
+                // Step 1: Signal cache freeze before disposing services
+                // This prevents new cache writes from occurring during shutdown
+                try
+                {
+                    if (_serviceProvider?.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>() is Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
+                    {
+                        _logger?.LogInformation("[CACHE] MainForm.Dispose: Freezing cache to prevent writes during shutdown");
+
+                        if (cache is WileyWidget.WinForms.Services.IFrozenCache frozenCache)
+                        {
+                            frozenCache.FreezeCacheWrites();
+                            _logger?.LogInformation("[CACHE] \u2713 Cache freeze signal set");
+                        }
+                    }
+                }
+                catch (Exception freezeEx)
+                {
+                    _logger?.LogWarning(freezeEx, "[CACHE] Failed to freeze cache during disposal");
+                }
+
+                // Step 2: Dispose the MainViewModel scope when the form is disposed
                 _mainViewModelScope?.Dispose();
                 _mainViewModelScope = null;
 
@@ -1489,8 +1553,9 @@ namespace WileyWidget.WinForms.Forms
                 _navigationStrip.SafeDispose();
                 _statusTimer.SafeDispose();
 
-                // Dispose components container (standard IContainer, not Syncfusion)
-                components?.Dispose();
+                // Safely dispose components container - may contain Syncfusion BackStageView/BackStage
+                // which can throw NullReferenceException during internal UnWireEvents cleanup
+                components.SafeDispose();
                 _initializationCts?.Dispose();
             }
             base.Dispose(disposing);
@@ -1594,7 +1659,7 @@ namespace WileyWidget.WinForms.Forms
                 var asyncInitializables = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetServices<WileyWidget.Abstractions.IAsyncInitializable>(_serviceProvider);
                 foreach (var service in asyncInitializables)
                 {
-                    _ = Task.Run(async () =>
+                    var serviceInitTask = Task.Run(async () =>
                     {
                         try
                         {
@@ -1605,6 +1670,7 @@ namespace WileyWidget.WinForms.Forms
                             _logger?.LogWarning(ex, "Async service initialization failed for {ServiceType}", service.GetType().Name);
                         }
                     });
+                    Program.RegisterBackgroundTask(serviceInitTask);
                 }
                 _asyncLogger?.Information("MainForm OnShown: Async services initialization queued");
             }
