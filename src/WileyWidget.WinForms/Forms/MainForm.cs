@@ -1512,7 +1512,7 @@ namespace WileyWidget.WinForms.Forms
                 // This prevents new cache writes from occurring during shutdown
                 try
                 {
-                    if (_serviceProvider?.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>() is Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
+                    if (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(_serviceProvider) is Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
                     {
                         _logger?.LogInformation("[CACHE] MainForm.Dispose: Freezing cache to prevent writes during shutdown");
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -1661,7 +1662,7 @@ namespace WileyWidget.WinForms
                 // Step 1: Signal cache freeze to prevent new writes during shutdown
                 try
                 {
-                    if (Services?.GetService<IMemoryCache>() is IMemoryCache cache)
+                    if (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IMemoryCache>(Services) is IMemoryCache cache)
                     {
                         Log.Information("[SHUTDOWN] Freezing cache - blocking new writes");
                         // If cache implements IFrozenCache, signal freeze
