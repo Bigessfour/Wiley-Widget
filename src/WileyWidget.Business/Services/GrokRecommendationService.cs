@@ -201,7 +201,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
             }
 
             // Cache the result (store with absolute expiration)
-            _cache.Set(cacheKey, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _cacheDuration });
+            _cache.Set(cacheKey, result, new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = _cacheDuration });
 
             // Maintain index of cache keys to support clearing
             try
@@ -616,7 +616,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
             // Cache the explanation (avoid storing empty/whitespace)
             if (!string.IsNullOrWhiteSpace(explanation))
             {
-                _cache.Set(explanationCacheKey, explanation, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _cacheDuration });
+                _cache.Set(explanationCacheKey, explanation, new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = _cacheDuration });
 
                 // Track explanation key in index
                 try

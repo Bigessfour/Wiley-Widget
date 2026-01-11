@@ -13,6 +13,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
@@ -312,6 +313,9 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Initial UI update
         UpdateUI();
 
+        // Defer sizing validation until layout is complete
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
         // Load data asynchronously
         _ = LoadDataSafeAsync();
     }
@@ -329,7 +333,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ShowError(ex)));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ShowError(ex)));
+                }
             }
             else
             {
@@ -354,7 +361,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            }
             return;
         }
 
@@ -401,7 +411,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(UpdateUI));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(UpdateUI));
+            }
             return;
         }
 
@@ -539,7 +552,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ApplyTheme()));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ApplyTheme()));
+                }
             }
             else
             {

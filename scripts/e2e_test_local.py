@@ -19,9 +19,9 @@ Phases:
     publish     Phase 5: Publish release
 """
 
+import json
 import subprocess
 import sys
-import json
 import time
 from pathlib import Path
 from typing import Tuple
@@ -82,19 +82,17 @@ def print_phase_header(title: str, phase_num: int):
     """Print a section header for a phase."""
     global current_phase
     current_phase = phase_num
-    
+
     elapsed = time.time() - start_time if start_time else 0
     elapsed_str = format_time(elapsed)
-    
+
     print()
     print_divider()
     print(f"  [{phase_num}/{total_phases}] {title}  [{elapsed_str}]")
     print_divider()
 
 
-def run_command(
-    cmd: list, description: str, check: bool = True
-) -> Tuple[bool, str]:
+def run_command(cmd: list, description: str, check: bool = True) -> Tuple[bool, str]:
     """
     Execute a shell command and return success status + output.
 
@@ -107,7 +105,7 @@ def run_command(
         Tuple of (success: bool, output: str)
     """
     global spinner_index
-    
+
     # Initial print
     spinner_char = SPINNER[spinner_index % len(SPINNER)]
     print(f"  {spinner_char} {description}...", end=" ", flush=True)
@@ -260,7 +258,7 @@ def phase_theme():
             DOTNET_CMD,
             "run",
             "--project",
-            "tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+            "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
             "--no-build",
             "--",
             "ValidateFormTheme",
@@ -288,7 +286,7 @@ def phase_grid():
             DOTNET_CMD,
             "run",
             "--project",
-            "tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+            \"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj\",
             "--no-build",
             "--",
             "InspectSfDataGrid",
@@ -318,7 +316,7 @@ def phase_batch():
         DOTNET_CMD,
         "run",
         "--project",
-        "tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+        "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
         "--no-build",
         "--",
         "BatchValidateForms",
@@ -441,7 +439,7 @@ else
             DOTNET_CMD,
             "run",
             "--project",
-            "tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+            "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
             "--no-build",
             "--",
             "RunHeadlessFormTest",
@@ -511,7 +509,7 @@ def phase_publish():
 def print_summary():
     """Print test results summary."""
     total_time = time.time() - start_time
-    
+
     print()
     print_divider()
     print("  Test Results Summary")
@@ -532,7 +530,9 @@ def print_summary():
         print(f"  {title:40} {status:12}")
 
     print_divider()
-    print(f"\nOverall: {passed}/{total} phases passed  [Total time: {format_time(total_time)}]\n")
+    print(
+        f"\nOverall: {passed}/{total} phases passed  [Total time: {format_time(total_time)}]\n"
+    )
 
     return all(r is not False for r in results.values())
 
@@ -540,7 +540,7 @@ def print_summary():
 def main():
     """Main entry point."""
     global start_time
-    
+
     # Parse arguments
     phase_arg = sys.argv[1].lower() if len(sys.argv) > 1 else "all"
 
@@ -602,6 +602,7 @@ def main():
     except Exception as e:
         print(f"\n[FAIL] Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

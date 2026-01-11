@@ -20,6 +20,7 @@
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": false,
+  "terminal.integrated.shellIntegration.enabled": true,
   "task.autoClose": true,
 
   // ============================================================================

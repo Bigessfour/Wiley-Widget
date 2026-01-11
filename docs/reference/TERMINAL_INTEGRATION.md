@@ -177,7 +177,7 @@ Based on the [official documentation](https://code.visualstudio.com/docs/termina
 - `TERM_PROGRAM` = "vscode"
 - Shell integration variables (auto-set by VS Code)
 
-### C #
+### C
 
 - `WW_REPO_ROOT` = "/app" (Docker) or workspace root
 - `WW_LOGS_DIR` = Logs directory path

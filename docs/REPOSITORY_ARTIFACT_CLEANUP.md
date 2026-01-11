@@ -9,12 +9,14 @@
 ## Problem Statement
 
 The repository currently tracks 428 files, including 300+ build artifacts that should be ignored:
+
 - `obj/` and `bin/` directories (build outputs)
 - Generated `*.AssemblyInfo.cs` files
 - Generated `*.g.cs` files
 - `tmp/` folder debris (e.g., `ReportViewerLaunchOptions.duplicate.cs`)
 
 This causes:
+
 - ❌ Slow git operations (clone, fetch, diff)
 - ❌ Polluted commit history with build artifacts
 - ❌ Inaccurate architecture detection in AI manifest
@@ -26,6 +28,7 @@ This causes:
 ## Solution Overview
 
 The fix consists of:
+
 1. ✅ Enhanced `.gitignore` patterns (already updated)
 2. ✅ Cleanup script to remove tracked artifacts
 3. ✅ Commit and push cleanup
@@ -46,6 +49,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/maintenance/cleanup-tracke
 ```
 
 **Expected Output:**
+
 ```
 Found 300+ tracked artifacts
 Sample of tracked artifacts to remove:
@@ -68,6 +72,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/maintenance/cleanup-tracke
 ```
 
 **What This Does:**
+
 - Removes artifacts from git tracking using `git rm --cached` (local files preserved)
 - Cleans debris from `tmp/` folder
 - Stages all removals for commit
@@ -86,6 +91,7 @@ git diff --cached --stat | head -20
 ```
 
 **Expected Status:**
+
 ```
 Changes to be committed:
   deleted:    src/WileyWidget.WinForms/obj/...
@@ -137,13 +143,13 @@ git push
 
 ### Metrics Improvement
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Total Tracked Files** | 428 | ~100-150 | 65% reduction |
-| **Build Artifacts** | 300+ | 0 | 100% removed |
-| **Repository Clone Time** | Slow | Fast | 3-5x faster |
-| **Git Operations** | Slow | Fast | 2-3x faster |
-| **Diff Clarity** | Polluted | Clean | No artifact noise |
+| Metric                     | Before           | After     | Improvement          |
+| -------------------------- | ---------------- | --------- | -------------------- |
+| **Total Tracked Files**    | 428              | ~100-150  | 65% reduction        |
+| **Build Artifacts**        | 300+             | 0         | 100% removed         |
+| **Repository Clone Time**  | Slow             | Fast      | 3-5x faster          |
+| **Git Operations**         | Slow             | Fast      | 2-3x faster          |
+| **Diff Clarity**           | Polluted         | Clean     | No artifact noise    |
 | **Architecture Detection** | Empty/inaccurate | Populated | AI manifest improved |
 
 ### File Structure (After Cleanup)
@@ -170,6 +176,7 @@ Wiley-Widget/
 ### Issue: Uncommitted Changes Block Cleanup
 
 **Solution 1 (Recommended)**: Commit or stash first
+
 ```powershell
 git stash
 pwsh -File scripts/maintenance/cleanup-tracked-artifacts.ps1
@@ -177,6 +184,7 @@ git stash pop
 ```
 
 **Solution 2**: Force bypass
+
 ```powershell
 pwsh -File scripts/maintenance/cleanup-tracked-artifacts.ps1 -Force
 ```
@@ -185,6 +193,7 @@ pwsh -File scripts/maintenance/cleanup-tracked-artifacts.ps1 -Force
 
 **Cause**: Files are locked by Visual Studio or build process
 **Solution**: Close Visual Studio and kill dotnet processes
+
 ```powershell
 # Kill processes
 pwsh -File scripts/maintenance/cleanup-dotnet-processes.ps1
@@ -197,6 +206,7 @@ pwsh -File scripts/maintenance/cleanup-tracked-artifacts.ps1
 
 **Cause**: Remote has different commits
 **Solution**: Force push with lease (safer than force)
+
 ```powershell
 git push --force-with-lease
 ```

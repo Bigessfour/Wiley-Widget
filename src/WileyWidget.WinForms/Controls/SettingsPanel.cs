@@ -40,6 +40,7 @@ namespace WileyWidget.WinForms.Controls
         public new object? DataContext { get; private set; }
 
         private readonly IThemeService _themeService;
+        private readonly Services.IThemeIconService? _iconService;
 
         // Controls
         private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _mainPanel;
@@ -96,13 +97,16 @@ namespace WileyWidget.WinForms.Controls
         /// <param name="scopeFactory">Factory for creating service scopes</param>
         /// <param name="logger">Logger for diagnostic logging</param>
         /// <param name="themeService">Theme service for applying themes</param>
+        /// <param name="iconService">Optional icon service for theme icons</param>
         public SettingsPanel(
             IServiceScopeFactory scopeFactory,
             ILogger<ScopedPanelBase<SettingsViewModel>> logger,
-            IThemeService themeService)
+            IThemeService themeService,
+            Services.IThemeIconService? iconService = null)
             : base(scopeFactory, logger)
         {
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+            _iconService = iconService;
             InitializeComponent();
         }
 
@@ -111,7 +115,7 @@ namespace WileyWidget.WinForms.Controls
         /// DO NOT USE in production - use DI constructor instead.
         /// </summary>
         [Obsolete("Use DI constructor with IServiceScopeFactory, ILogger, and IThemeService parameters", error: false)]
-        public SettingsPanel() : this(ResolveServiceScopeFactory(), ResolveLogger(), ResolveThemeService())
+        public SettingsPanel() : this(ResolveServiceScopeFactory(), ResolveLogger(), ResolveThemeService(), ResolveIconService())
         {
         }
 
@@ -172,6 +176,25 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve IThemeService from DI");
                 throw;
+            }
+        }
+
+        private static IThemeIconService? ResolveIconService()
+        {
+            if (Program.Services == null)
+            {
+                return null;
+            }
+            try
+            {
+                var service = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                Serilog.Log.Debug("SettingsPanel: IThemeIconService resolved from DI container");
+                return service;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve IThemeIconService from DI");
+                return null;
             }
         }
 
@@ -378,13 +401,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 try
                 {
-                    if (Program.Services == null)
-                    {
-                        MessageBox.Show(this, "Application services are not available; cannot clear cache.", "Clear cache", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    using var scope = Program.Services.CreateScope();
+                    using var scope = ScopeFactory.CreateScope();
                     var svc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Business.Interfaces.IGrokRecommendationService>(scope.ServiceProvider);
                     if (svc == null)
                     {
@@ -457,10 +474,13 @@ namespace WileyWidget.WinForms.Controls
             _closeToolTip = new ToolTip(); _closeToolTip.SetToolTip(_btnClose, "Close this settings panel (Esc)"); _btnClose.Click += BtnClose_Click;
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
-                _btnClose.Image = iconService?.GetIcon("dismiss", _themeService.CurrentTheme, 14);
-                _btnClose.ImageAlign = ContentAlignment.MiddleLeft; _btnClose.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnCloseThemeChangedHandler = (s, t) => { try { if (_btnClose.InvokeRequired) _btnClose.Invoke(() => _btnClose.Image = iconService?.GetIcon("dismiss", t, 14)); else _btnClose.Image = iconService?.GetIcon("dismiss", t, 14); } catch { } };
+                var iconService = _iconService ?? (ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider) : null);
+                if (iconService != null)
+                {
+                    _btnClose.Image = iconService.GetIcon("dismiss", _themeService.CurrentTheme, 14);
+                    _btnClose.ImageAlign = ContentAlignment.MiddleLeft; _btnClose.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnCloseThemeChangedHandler = (s, t) => { try { if (_btnClose.InvokeRequired) _btnClose.Invoke(() => _btnClose.Image = iconService.GetIcon("dismiss", t, 14)); else _btnClose.Image = iconService.GetIcon("dismiss", t, 14); } catch { } };
+                }
                 _themeService.ThemeChanged += _btnCloseThemeChangedHandler;
             }
             catch { }

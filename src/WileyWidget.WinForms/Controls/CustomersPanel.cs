@@ -14,6 +14,7 @@ using Syncfusion.WinForms.ListView.Enums;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -155,7 +156,7 @@ public partial class CustomersPanel : UserControl
             ColumnCount = 1
             // BackColor removed - let SkinManager handle theming
         };
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // Toolbar
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 130));  // Toolbar - increased for 2 button rows
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Summary
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Grid
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status bar
@@ -707,8 +708,18 @@ public partial class CustomersPanel : UserControl
     {
         if (_noDataOverlay != null)
         {
-            _noDataOverlay.Visible = !_viewModel.IsLoading &&
-                                      _viewModel.FilteredCustomers.Count == 0;
+            bool hasNoData = !_viewModel.IsLoading && _viewModel.FilteredCustomers.Count == 0;
+            _noDataOverlay.Visible = hasNoData;
+
+            if (hasNoData)
+            {
+                // Show action button when there's no data
+                _noDataOverlay.ShowActionButton("➕ Add Customer", async (s, e) => await AddCustomerAsync());
+            }
+            else
+            {
+                _noDataOverlay.HideActionButton();
+            }
         }
     }
 
@@ -1102,6 +1113,9 @@ public partial class CustomersPanel : UserControl
 
         if (!DesignMode)
         {
+            // Defer sizing validation until layout is complete
+            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
             _ = LoadCustomersAsync();
         }
     }

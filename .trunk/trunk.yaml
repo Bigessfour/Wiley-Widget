@@ -18,25 +18,25 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   disabled:
-    - markdownlint
     - bandit
     - dotnet-format
   enabled:
     - actionlint@1.7.10
-    - hadolint@2.14.0
-    - shellcheck@0.11.0
-    - shfmt@3.6.0
-    - svgo@4.0.0
     - black@25.12.0
     - checkov@3.2.497
     - git-diff-check
     - gitleaks@8.30.0
+    - hadolint@2.14.0
     - isort@7.0.0
+    - markdownlint@0.40.0
     - osv-scanner@2.3.1
     - oxipng@10.0.0
     - prettier@3.7.4
     - pyright@1.1.407
     - ruff@0.14.10
+    - shellcheck@0.11.0
+    - shfmt@3.6.0
+    - svgo@4.0.0
     - taplo@0.10.0
     - trufflehog@3.92.4
     - yamllint@1.37.1
@@ -56,12 +56,10 @@ actions:
   disabled:
     - trunk-announce
     - trunk-check-pre-push
-    - trunk-fmt-pre-commit
   enabled:
     - trunk-upgrade-available
 tools:
-  disabled:
-    - dotnet  # Use system-installed .NET instead
+  # disabled: []
   # enabled:
 merge:
   required_statuses:

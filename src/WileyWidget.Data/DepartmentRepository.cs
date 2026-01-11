@@ -58,7 +58,8 @@ public class DepartmentRepository : IDepartmentRepository
                     .OrderBy(d => d.Name)
                     .ToListAsync();
 
-                _cache.Set(cacheKey, departments, TimeSpan.FromMinutes(15));
+                var options = new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) };
+                _cache.Set(cacheKey, departments, options);
                 _logger.LogInformation("Cached {Count} departments for 15 minutes", departments?.Count() ?? 0);
             }
             else

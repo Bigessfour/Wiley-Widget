@@ -5,7 +5,10 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -86,7 +89,7 @@ namespace WileyWidget.WinForms.Services
             { typeof(ReportsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
-            { typeof(QuickBooksPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(QuickBooksPanel), new PanelSizing(new Size(620, 0), new Size(0, 400), new Size(540, 360)) },
             { typeof(BudgetPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(DepartmentSummaryPanel), new PanelSizing(new Size(540, 0), new Size(0, 400), new Size(440, 360)) },
             { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
@@ -140,7 +143,9 @@ namespace WileyWidget.WinForms.Services
                 {
                     ApplyCaptionSettings(existingPanel, panelName, allowFloating);
                     _dockingManager.SetDockVisibility(existingPanel, true);
+                    try { existingPanel.BringToFront(); } catch { }
                     _dockingManager.ActivateControl(existingPanel);
+                    ApplyPanelTheme(existingPanel);
                     _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
                     return;
                 }
@@ -187,6 +192,9 @@ namespace WileyWidget.WinForms.Services
                 }
                 _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
 
+                // Ensure theme cascade reaches the newly created panel and children
+                ApplyPanelTheme(panel);
+
                 // CRITICAL FIX: For ChatPanel, apply full docking configuration to ensure proper visibility
                 // and prevent auto-hide state that causes clipping issues
                 if (typeof(TPanel).Name == "ChatPanel")
@@ -197,6 +205,7 @@ namespace WileyWidget.WinForms.Services
 
                         // Force visible and active
                         _dockingManager.SetDockVisibility(panel, true);
+                        try { panel.BringToFront(); } catch { }
                         _dockingManager.ActivateControl(panel);  // Brings to front, expands if tabbed
 
                         // Set size for ChatPanel using SetControlSize to maximize space
@@ -278,6 +287,19 @@ namespace WileyWidget.WinForms.Services
                     "Navigation Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+        }
+
+        private static void ApplyPanelTheme(Control panel)
+        {
+            try
+            {
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SfSkinManager.SetVisualStyle(panel, ThemeColors.DefaultTheme);
+            }
+            catch
+            {
+                // Best-effort: if theming fails, continue without blocking panel display
             }
         }
 

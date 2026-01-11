@@ -15,6 +15,7 @@ using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Plugins;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
 using Microsoft.Extensions.Http;
@@ -104,7 +105,21 @@ namespace WileyWidget.WinForms.Configuration
                 });
 
             // Memory Cache (Singleton)
-            services.AddMemoryCache();
+            // Per Microsoft documentation (https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory):
+            // "Create a cache singleton for caching" - this prevents premature disposal during DI scope cleanup
+            // The framework's AddMemoryCache() was being disposed too early causing ObjectDisposedException in repositories
+            services.AddSingleton<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp =>
+            {
+                var options = new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions
+                {
+                    // SizeLimit = 1024: Prevent unbounded cache growth per Microsoft
+                    // https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory?view=aspnetcore-10.0#use-setsize-size-and-sizelimit-to-limit-cache-size
+                    // Quote: "If SizeLimit isn't set, the cache grows without bound. Apps must be architected to limit cache growth."
+                    // Units are arbitrary; 1024 allows ~200-300 typical entries (1-5 units each per MemoryCacheService.MapOptions)
+                    SizeLimit = 1024
+                };
+                return new Microsoft.Extensions.Caching.Memory.MemoryCache(options);
+            });
 
             // Blazor WebView Services (Required for BlazorWebView controls)
             services.AddWindowsFormsBlazorWebView();
@@ -251,6 +266,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
             services.AddScoped<IGrokRecommendationService, Business.Services.GrokRecommendationService>();
 
+            // What-If Scenario Engine (Scoped - generates comprehensive financial scenarios)
+            services.AddScoped<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
+
+            // =====================================================================
+            // SEMANTIC KERNEL PLUGINS (Scoped - Injected into Kernel via KernelPluginRegistrar)
+            // =====================================================================
+
+            // Rate Scenario Tools (Scoped - provides rate analysis and what-if scenario functions to Grok kernel)
+            // Depends on IWhatIfScenarioEngine and IChargeCalculatorService (both registered above)
+            services.AddScoped<RateScenarioTools>();
+
             // =====================================================================
             // UI SERVICES & THEME (Singleton - Application-wide state)
             // =====================================================================
@@ -288,6 +314,31 @@ namespace WileyWidget.WinForms.Configuration
             // Analyzes enterprise data using Grok and publishes insights to observable collection
             services.AddSingleton<ProactiveInsightsService>();
             services.AddHostedService<ProactiveInsightsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<ProactiveInsightsService>(sp));
+
+            // =====================================================================
+            // TIER 3+ ADVANCED UI SERVICES (Enterprise Features)
+            // =====================================================================
+
+            // Real-time Dashboard Service (Singleton - manages live data updates)
+            services.AddSingleton<RealtimeDashboardService>();
+
+            // User Preferences Service (Singleton - manages user settings persistence)
+            services.AddSingleton<UserPreferencesService>();
+
+            // Role-Based Access Control (Singleton - manages permissions and roles)
+            services.AddSingleton<RoleBasedAccessControl>();
+
+            // Enterprise Audit Logger (Scoped - logs all user actions for compliance)
+            services.AddScoped<EnterpriseAuditLogger>();
+
+            // Advanced Search Service (Singleton - cross-grid search capability)
+            services.AddSingleton<AdvancedSearchService>();
+
+            // Floating Panel Manager (Transient - created per use)
+            services.AddTransient<FloatingPanelManager>();
+
+            // Docking Keyboard Navigator (Transient - created per docking manager)
+            services.AddTransient<DockingKeyboardNavigator>();
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)

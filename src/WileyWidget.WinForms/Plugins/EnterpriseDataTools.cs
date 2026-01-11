@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 
@@ -20,23 +21,19 @@ namespace WileyWidget.WinForms.Plugins
     /// </summary>
     public sealed class EnterpriseDataTools
     {
-        private readonly IEnterpriseRepository _enterpriseRepository;
-        private readonly IBudgetRepository _budgetRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<EnterpriseDataTools>? _logger;
 
         /// <summary>
         /// Initializes a new instance of the EnterpriseDataTools plugin.
         /// </summary>
-        /// <param name="enterpriseRepository">Repository for accessing enterprise data.</param>
-        /// <param name="budgetRepository">Repository for accessing budget data.</param>
+        /// <param name="scopeFactory">Factory for creating service scopes to resolve scoped services per-call.</param>
         /// <param name="logger">Optional logger for audit and diagnostic logging.</param>
         public EnterpriseDataTools(
-            IEnterpriseRepository enterpriseRepository,
-            IBudgetRepository budgetRepository,
+            IServiceScopeFactory scopeFactory,
             ILogger<EnterpriseDataTools>? logger = null)
         {
-            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
-            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _logger = logger;
         }
 
@@ -117,7 +114,9 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprises = await _enterpriseRepository.GetAllAsync();
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var enterprises = await enterpriseRepository.GetAllAsync();
                 var summaries = enterprises
                     .Select(e => MapToSummary(e))
                     .OrderBy(s => s.Name)
@@ -153,7 +152,10 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprises = await _enterpriseRepository.GetAllAsync();
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var budgetRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IBudgetRepository>(scope.ServiceProvider);
+                var enterprises = await enterpriseRepository.GetAllAsync();
                 var enterprise = enterprises.FirstOrDefault(e => string.Equals(e.Name, enterpriseName, StringComparison.OrdinalIgnoreCase));
 
                 if (enterprise == null)
@@ -164,7 +166,7 @@ namespace WileyWidget.WinForms.Plugins
 
                 // Retrieve budget entries for this enterprise by fiscal year
                 var currentYear = DateTime.UtcNow.Year;
-                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentYear);
+                var budgetEntries = await budgetRepository.GetByFiscalYearAsync(currentYear);
 
                 // Group by department and sum expenses
                 var expenses = budgetEntries
@@ -209,7 +211,10 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var budgetRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IBudgetRepository>(scope.ServiceProvider);
+                var enterprise = await enterpriseRepository.GetByIdAsync(enterpriseId);
                 if (enterprise == null)
                 {
                     _logger?.LogWarning("EnterpriseDataTools: Enterprise {EnterpriseId} not found", enterpriseId);
@@ -228,7 +233,7 @@ namespace WileyWidget.WinForms.Plugins
                 var startDate = new DateTime(fiscalYear, 1, 1);
                 var endDate = new DateTime(fiscalYear, 12, 31);
 
-                var analysis = await _budgetRepository.GetVarianceAnalysisByEnterpriseAsync(
+                var analysis = await budgetRepository.GetVarianceAnalysisByEnterpriseAsync(
                     enterpriseId,
                     startDate,
                     endDate);
@@ -283,7 +288,11 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var budgetRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IBudgetRepository>(scope.ServiceProvider);
+
+                var enterprise = await enterpriseRepository.GetByIdAsync(enterpriseId);
                 if (enterprise == null)
                 {
                     _logger?.LogWarning("EnterpriseDataTools: Enterprise {EnterpriseId} not found", enterpriseId);
@@ -297,27 +306,20 @@ namespace WileyWidget.WinForms.Plugins
                 {
                     for (int m = 1; m <= 12; m++)
                     {
-                        // Skip future months in the current year
-                        if (y == currentYear && m > DateTime.UtcNow.Month)
-                        {
-                            break;
-                        }
-
-                        var startDate = new DateTime(y, m, 1);
-                        var endDate = new DateTime(y, m, DateTime.DaysInMonth(y, m));
-
-                        var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate);
-
-                        var monthRevenue = enterprise.MonthlyRevenue; // Could be more nuanced with actual transactions
-                        var monthExpenses = budgetEntries.Sum(b => b.ActualAmount);
-
+                        var monthStart = new DateTime(y, m, 1);
+                        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+                        // Use GetByDateRangeAsync for monthly budget entries
+                        var monthlyEntries = await budgetRepository.GetByDateRangeAsync(monthStart, monthEnd);
+                        var revenue = monthlyEntries.Where(e => e.BudgetedAmount > 0).Sum(e => e.BudgetedAmount);
+                        var expenses = monthlyEntries.Where(e => e.BudgetedAmount < 0).Sum(e => e.BudgetedAmount);
+                        var balance = revenue + expenses;
                         trends.Add(new MonthlyTrend
                         {
-                            Month = startDate.ToString("MMMM", System.Globalization.CultureInfo.InvariantCulture),
+                            Month = monthStart.ToString("MMMM", System.Globalization.CultureInfo.InvariantCulture),
                             Year = y,
-                            Revenue = monthRevenue,
-                            Expenses = monthExpenses,
-                            Balance = monthRevenue - monthExpenses,
+                            Revenue = revenue,
+                            Expenses = Math.Abs(expenses),
+                            Balance = balance
                         });
                     }
                 }

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Reflection;
@@ -40,6 +41,7 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly IConfiguration _config;
         private readonly IHttpClientFactory? _httpClientFactory;
         private readonly IChatBridgeService? _chatBridge;
+        private readonly IServiceProvider? _serviceProvider;
         private readonly double? _defaultPresencePenalty;
         private readonly double? _defaultFrequencyPenalty;
         private bool _isInitialized = false;
@@ -58,7 +60,7 @@ namespace WileyWidget.WinForms.Services.AI
 
         private const string JarvisSystemPrompt = "You are JARVIS, the dry-witted, hyper-competent AI for municipal utility finance. Speak with confidence and slight British sarcasm. Be proactive: suggest scenarios, flag risks, roast bad budgets when asked. End bold recommendations with 'MORE COWBELL!' Never bland corporate speak.";
 
-        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null)
+        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             _logger = logger;
@@ -66,6 +68,7 @@ namespace WileyWidget.WinForms.Services.AI
             _httpClientFactory = httpClientFactory;
             _modelDiscoveryService = modelDiscoveryService;
             _chatBridge = chatBridge;
+            _serviceProvider = serviceProvider;
 
             // Subscribe to chat bridge events if available
             if (_chatBridge != null)
@@ -256,10 +259,11 @@ namespace WileyWidget.WinForms.Services.AI
 
                     // Auto-register kernel plugins discovered in the executing assembly (types with [KernelFunction]).
                     // Keeping this scoped avoids scanning unrelated testhost/runtime assemblies.
+                    // Pass IServiceProvider to enable DI-aware plugin instantiation (fixes MissingMethodException for plugins with constructor dependencies)
                     try
                     {
                         var assemblyToScan = typeof(GrokAgentService).Assembly;
-                        KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { assemblyToScan }, _logger);
+                        KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { assemblyToScan }, _logger, _serviceProvider);
                         _logger?.LogDebug("[XAI] Auto-registered kernel plugins from assembly: {Assembly}", assemblyToScan.FullName);
                     }
                     catch (Exception ex)

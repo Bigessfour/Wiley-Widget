@@ -9,6 +9,7 @@ using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
 using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
@@ -248,9 +249,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = 700,
             BorderStyle = BorderStyle.FixedSingle
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
 
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
@@ -259,9 +260,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 350,
             BorderStyle = BorderStyle.None
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_leftSplitContainer, 350);
 
         // ============================================================================
         // Departments Grid (Top Left)

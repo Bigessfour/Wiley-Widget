@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services;
@@ -24,7 +25,7 @@ namespace WileyWidget.WinForms.Plugins
     {
         private readonly IChargeCalculatorService _chargeCalculatorService;
         private readonly IWhatIfScenarioEngine _whatIfScenarioEngine;
-        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<RateScenarioTools>? _logger;
 
         /// <summary>
@@ -32,17 +33,17 @@ namespace WileyWidget.WinForms.Plugins
         /// </summary>
         /// <param name="chargeCalculatorService">Service for calculating recommended service charges.</param>
         /// <param name="whatIfScenarioEngine">Engine for generating comprehensive what-if scenarios.</param>
-        /// <param name="enterpriseRepository">Repository for accessing enterprise data.</param>
+        /// <param name="scopeFactory">Factory for creating service scopes to resolve scoped services per-call.</param>
         /// <param name="logger">Optional logger for audit and diagnostic logging.</param>
         public RateScenarioTools(
             IChargeCalculatorService chargeCalculatorService,
             IWhatIfScenarioEngine whatIfScenarioEngine,
-            IEnterpriseRepository enterpriseRepository,
+            IServiceScopeFactory scopeFactory,
             ILogger<RateScenarioTools>? logger = null)
         {
             _chargeCalculatorService = chargeCalculatorService ?? throw new ArgumentNullException(nameof(chargeCalculatorService));
             _whatIfScenarioEngine = whatIfScenarioEngine ?? throw new ArgumentNullException(nameof(whatIfScenarioEngine));
-            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _logger = logger;
         }
 
@@ -385,7 +386,9 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprises = await _enterpriseRepository.GetAllAsync();
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var enterprises = await enterpriseRepository.GetAllAsync();
                 var baselineEnterprise = enterprises.FirstOrDefault();
 
                 if (baselineEnterprise == null)
@@ -494,7 +497,9 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var enterprise = await enterpriseRepository.GetByIdAsync(enterpriseId);
                 if (enterprise == null)
                 {
                     _logger?.LogWarning("RateScenarioTools: Enterprise {EnterpriseId} not found", enterpriseId);

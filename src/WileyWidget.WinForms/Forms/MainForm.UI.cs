@@ -1271,7 +1271,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());
@@ -1295,7 +1295,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());

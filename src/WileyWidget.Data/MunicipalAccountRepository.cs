@@ -17,8 +17,10 @@ namespace WileyWidget.Data
 {
     /// <summary>
     /// Repository implementation for MunicipalAccount data operations
+    /// Scoped repository that uses injected singleton IMemoryCache for performance.
+    /// Never disposes the cache singleton - follows pattern in UtilityCustomerRepository.
     /// </summary>
-    public sealed class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
+    public sealed class MunicipalAccountRepository : IMunicipalAccountRepository
     {
         // Compiled queries to reduce first-query JIT/plan compilation overhead
         private static readonly Func<AppDbContext, List<MunicipalAccount>> CQ_GetAllOrdered =
@@ -74,7 +76,6 @@ namespace WileyWidget.Data
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
         private readonly ILogger<MunicipalAccountRepository>? _logger;
-        private bool _disposed;
 
         // Primary constructor for DI with IDbContextFactory
         [ActivatorUtilitiesConstructor]
@@ -145,7 +146,19 @@ namespace WileyWidget.Data
 
             try
             {
-                _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(cacheExpirationMinutes));
+                var options = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(cacheExpirationMinutes));
+
+                // Required when SizeLimit is configured: assign logical size
+                // Use collection count if applicable, else 1
+                long size = accounts switch
+                {
+                    System.Collections.ICollection collection => collection.Count,
+                    _ => 1
+                };
+                options.SetSize(size);
+
+                _cache.Set(cacheKey, accounts, options);
             }
             catch (ObjectDisposedException)
             {
@@ -767,33 +780,12 @@ namespace WileyWidget.Data
             public List<string> Errors { get; set; } = new List<string>();
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        // Non-virtual Dispose(bool) because the type is sealed
-        private void Dispose(bool disposing)
-        {
-            if (_disposed) return;
-
-            if (disposing)
-            {
-                // Dispose managed resources
-                try
-                {
-                    _cache.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Error while disposing IMemoryCache");
-                }
-            }
-
-            // No unmanaged resources to release
-
-            _disposed = true;
-        }
+        // Deliberately NOT implementing IDisposable.
+        // IMemoryCache is a shared singleton managed by the DI container.
+        // Scoped repositories must NEVER dispose the cache singleton.
+        // If cache is disposed by DI container, this repo gracefully handles
+        // ObjectDisposedException through try-catch in cache operations (see GetAllAsync, etc).
+        // This pattern prevents "cache disposed" warnings across the application.
+        // See UtilityCustomerRepository for reference implementation.
     }
 }

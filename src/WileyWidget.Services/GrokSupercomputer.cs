@@ -257,6 +257,7 @@ public class GrokSupercomputer(
                 var ttlSeconds = Math.Max(5, _appOptions.Value.EnterpriseDataCacheSeconds);
                 var entryOptions = new MemoryCacheEntryOptions
                 {
+                    Size = 1,
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(ttlSeconds)
                 };
                 _cache.Set(cacheKey, reportData, entryOptions);
