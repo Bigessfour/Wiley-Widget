@@ -31,6 +31,13 @@
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
     },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    },
     "csharp-mcp": {
       "command": "InfinityFlow.CSharp.Eval",
       "args": [],
@@ -85,10 +92,17 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
+    "source.fixAll": true,
+    "source.organizeImports": true,
     "source.fixAll.powershell": "explicit"
   },
+
+  // Trunk extension recommended settings
+  "trunk.trunkPath": ".trunk/tools/trunk",
+  "trunk.addToolsToPath": true,
+  "trunk.trace.server": "messages",
+  "trunk.autoInit": true,
+  "trunk.numJobs": 2,
   "editor.minimap.enabled": true,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",
@@ -150,6 +164,7 @@
   "dotnet.server.searchSubdirectoriesForSolution": true,
   "dotnet.unitTests.runTestsInParallel": true,
   "dotnet.unitTests.showCodeLens": true,
+  "dotnet.startupProject": "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,
