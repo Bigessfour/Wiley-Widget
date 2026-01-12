@@ -13,6 +13,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
@@ -55,14 +56,19 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
 
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         Name = "DepartmentSummaryPanel";
-        Size = new Size(1000, 700);
+        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);
@@ -78,6 +84,8 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             // Fall back if DPI scaling not supported
         }
+        this.ResumeLayout(false);
+
     }
 
     private void SetupUI()
@@ -312,6 +320,9 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Initial UI update
         UpdateUI();
 
+        // Defer sizing validation until layout is complete
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
         // Load data asynchronously
         _ = LoadDataSafeAsync();
     }
@@ -329,7 +340,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ShowError(ex)));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ShowError(ex)));
+                }
             }
             else
             {
@@ -354,7 +368,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            }
             return;
         }
 
@@ -401,7 +418,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(UpdateUI));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(UpdateUI));
+            }
             return;
         }
 
@@ -539,7 +559,10 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ApplyTheme()));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ApplyTheme()));
+                }
             }
             else
             {

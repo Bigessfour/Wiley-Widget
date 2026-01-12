@@ -17,23 +17,29 @@ All logging now routes to a **single unified location**: `<PROJECT_ROOT>/logs/`
 ### Key Changes
 
 #### 1. Bootstrap Logger (Program.cs - ConfigureBootstrapLogger)
+
 **Before:**
+
 ```csharp
 var basePath = AppContext.BaseDirectory ?? Environment.CurrentDirectory;
 var logsPath = Path.Combine(basePath, "logs");  // ❌ Could be bin/Debug or other paths
 ```
 
 **After:**
+
 ```csharp
 var projectRoot = Directory.GetCurrentDirectory();  // Always project root
 var logsPath = Path.Combine(projectRoot, "logs");  // ✓ {PROJECT_ROOT}/logs
 ```
 
 #### 2. Main Logger Configuration (Program.cs - ConfigureLogging)
+
 The Serilog logger configured via `ReadFrom.Configuration()` now explicitly writes to the same centralized directory with proper path resolution.
 
 #### 3. MainForm Async Diagnostics Logger (MainForm.cs - OnShown)
+
 **Before:**
+
 ```csharp
 var baseDir = AppDomain.CurrentDomain.BaseDirectory;
 var repoRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));  // ❌ Complex path traversal
@@ -41,6 +47,7 @@ var logsDirectory = Path.Combine(repoRoot, "logs");
 ```
 
 **After:**
+
 ```csharp
 var projectRoot = Directory.GetCurrentDirectory();  // ✓ Direct to project root
 var logsDirectory = Path.Combine(projectRoot, "logs");  // ✓ {PROJECT_ROOT}/logs
@@ -60,11 +67,11 @@ WileyWidget/
 
 ### Logger Instances
 
-| Logger | File Pattern | Purpose | Configured In |
-|--------|--------------|---------|---------------|
-| **Bootstrap Logger** | `app-.log` | Startup & early messages | `Program.ConfigureBootstrapLogger()` |
-| **Main Logger** | `app-.log` | Application-wide logging | `Program.ConfigureLogging()` |
-| **MainForm Async** | `mainform-diagnostics-.log` | Form initialization diagnostics | `MainForm.OnShown()` |
+| Logger               | File Pattern                | Purpose                         | Configured In                        |
+| -------------------- | --------------------------- | ------------------------------- | ------------------------------------ |
+| **Bootstrap Logger** | `app-.log`                  | Startup & early messages        | `Program.ConfigureBootstrapLogger()` |
+| **Main Logger**      | `app-.log`                  | Application-wide logging        | `Program.ConfigureLogging()`         |
+| **MainForm Async**   | `mainform-diagnostics-.log` | Form initialization diagnostics | `MainForm.OnShown()`                 |
 
 All write to **`<PROJECT_ROOT>/logs/`**
 
@@ -91,12 +98,14 @@ dotnet run
 ### Verification
 
 1. **Run the application:**
+
    ```powershell
    cd src/WileyWidget.WinForms
    dotnet run
    ```
 
 2. **Check the logs directory:**
+
    ```powershell
    ls logs/
    # Should show:
@@ -115,6 +124,7 @@ dotnet run
 ### Breaking Changes (None)
 
 This consolidation is **backward compatible**:
+
 - All existing log reading code continues to work
 - The log directory structure remains the same
 - Only the internal logger instances are centralized
@@ -142,6 +152,7 @@ var logger = new LoggerConfiguration()
 **Q: I don't see any logs in `/logs` directory**
 
 A: Check that `Directory.GetCurrentDirectory()` returns the project root:
+
 ```powershell
 # In PowerShell, check what GetCurrentDirectory returns
 [System.Environment]::CurrentDirectory
@@ -155,6 +166,7 @@ dotnet run
 **Q: Still seeing logs in multiple locations?**
 
 A: Search for any other `LoggerConfiguration()` instances:
+
 ```powershell
 grep -r "LoggerConfiguration\|WriteTo.File\|logs/" src/ --include="*.cs" | grep -v "obj/"
 ```
@@ -164,6 +176,7 @@ Ensure all use the centralized path pattern above.
 **Q: Logs are empty or not appearing?**
 
 A: Verify the main logger is initialized:
+
 ```powershell
 # Look for the checkmark message
 Get-Content logs/app-20260107.log | Select-String "CENTRALIZED LOGGING"

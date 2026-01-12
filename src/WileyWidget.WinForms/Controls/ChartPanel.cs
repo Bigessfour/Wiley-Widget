@@ -12,6 +12,7 @@ using Syncfusion.Pdf.Graphics;
 using System.IO;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
@@ -40,6 +41,7 @@ namespace WileyWidget.WinForms.Controls
         private ChartViewModel? _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
         private readonly Services.IThemeService? _themeService;
+        private readonly Services.IThemeIconService? _iconService;
         private ChartControl? _chartControl;
         private ChartControlRegionEventWiring? _chartRegionEventWiring;
         private PanelHeader? _panelHeader;
@@ -81,33 +83,17 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Constructor for DI with scoped service factory.
         /// </summary>
-        public ChartPanel(IServiceScopeFactory serviceScopeFactory, ILogger<ChartPanel> logger)
+        public ChartPanel(IServiceScopeFactory serviceScopeFactory, ILogger<ChartPanel> logger, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Services.IThemeService? themeService = null, Services.IThemeIconService? iconService = null)
             : base(serviceScopeFactory, logger)
         {
-            try
-            {
-                _dispatcherHelper = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services)
-                    : null;
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogWarning(ex, "ChartPanel: Failed to resolve IDispatcherHelper");
-            }
-
-            // Resolve theme service from DI (optional - gracefully handles absence)
-            try
-            {
-                _themeService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(Program.Services)
-                    : null;
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogWarning(ex, "ChartPanel: Failed to resolve IThemeService");
-            }
+            _dispatcherHelper = dispatcherHelper;
+            _themeService = themeService;
+            _iconService = iconService;
 
             InitializeComponent();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
 
             // Apply current theme
             ApplyCurrentTheme();
@@ -132,11 +118,16 @@ namespace WileyWidget.WinForms.Controls
             // ChartViewModel always implements INotifyPropertyChanged
             ((INotifyPropertyChanged)_vm).PropertyChanged += _viewModelPropertyChangedHandler;
 
+            // Defer sizing validation until layout is complete
+            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
             Logger?.LogInformation("ChartPanel: ViewModel resolved and bound");
         }
 
         private void InitializeComponent()
         {
+            this.SuspendLayout();
+
             Name = "ChartPanel";
             Size = new Size(1000, 700);  // OPTIMIZED: Professional analytics panel size for high UX
             MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
@@ -197,9 +188,7 @@ namespace WileyWidget.WinForms.Controls
             // Add icon from theme icon service
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 14);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
@@ -210,10 +199,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_isDisposing || IsDisposed) return; // Check disposal state
 
-                        // Re-resolve icon service on theme change to avoid stale closure
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                         {
                             _ = _dispatcherHelper.InvokeAsync(() =>
@@ -257,9 +243,7 @@ namespace WileyWidget.WinForms.Controls
             dashToolTip.SetToolTip(btnGoToDashboard, "Open the Dashboard panel (Ctrl+Shift+D)");
             try
             {
-                var iconSvc = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconSvc = _iconService;
                 btnGoToDashboard.Image = iconSvc?.GetIcon("home", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 14);
                 btnGoToDashboard.ImageAlign = ContentAlignment.MiddleLeft;
                 btnGoToDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -281,9 +265,7 @@ namespace WileyWidget.WinForms.Controls
             budgetToolTip.SetToolTip(btnGoToBudget, "Open the Budget panel (Ctrl+B)");
             try
             {
-                var iconSvc = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconSvc = _iconService;
                 btnGoToBudget.Image = iconSvc?.GetIcon("budget", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 14);
                 btnGoToBudget.ImageAlign = ContentAlignment.MiddleLeft;
                 btnGoToBudget.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -305,9 +287,7 @@ namespace WileyWidget.WinForms.Controls
             accountsToolTip.SetToolTip(btnGoToAccounts, "Open the Accounts panel (Ctrl+A)");
             try
             {
-                var iconSvc = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconSvc = _iconService;
                 btnGoToAccounts.Image = iconSvc?.GetIcon("account", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 14);
                 btnGoToAccounts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnGoToAccounts.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -334,9 +314,7 @@ namespace WileyWidget.WinForms.Controls
             exportPngTip.SetToolTip(_btnExportPng, "Export the current chart view to a PNG image");
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 _btnExportPng.Image = iconService?.GetIcon("export", theme, 14);
                 _btnExportPng.ImageAlign = ContentAlignment.MiddleLeft;
@@ -347,10 +325,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_isDisposing || IsDisposed) return; // Check disposal state
 
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                         {
                             _ = _dispatcherHelper.InvokeAsync(() =>
@@ -386,9 +361,7 @@ namespace WileyWidget.WinForms.Controls
             exportPdfTip.SetToolTip(_btnExportPdf, "Export the current chart view embedded in a PDF");
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 _btnExportPdf.Image = iconService?.GetIcon("pdf", theme, 14);
                 _btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
@@ -399,10 +372,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_isDisposing || IsDisposed) return; // Check disposal state
 
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                         {
                             _ = _dispatcherHelper.InvokeAsync(() =>
@@ -531,6 +501,31 @@ namespace WileyWidget.WinForms.Controls
             // Defer setting SplitterDistance to the next UI pass to avoid invalid range issues during initialization
             try
             {
+                if (!this.IsHandleCreated)
+                {
+                    // If handle not created, subscribe to HandleCreated event
+                    EventHandler? handleCreatedHandler = null;
+                    handleCreatedHandler = (s, e) =>
+                    {
+                        this.HandleCreated -= handleCreatedHandler;
+                        if (!IsDisposed)
+                        {
+                            try
+                            {
+                                try { contentSplit.Panel2MinSize = ChartLayoutConstants.PiePanelMinWidth; } catch { }
+                                var panel2Min = contentSplit.Panel2MinSize;
+                                var desired = this.Width > 0 ? (int)(this.Width * 0.7) : 700;
+                                var max = Math.Max(200, this.Width - panel2Min);
+                                var sd = Math.Min(Math.Max(200, desired), max);
+                                contentSplit.SplitterDistance = sd;
+                            }
+                            catch { }
+                        }
+                    };
+                    this.HandleCreated += handleCreatedHandler;
+                    return;
+                }
+
                 this.BeginInvoke(new System.Action(() =>
                 {
                     try
@@ -631,6 +626,8 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { }
+            this.ResumeLayout(false);
+
         }
 
         /// <summary>
@@ -876,7 +873,10 @@ namespace WileyWidget.WinForms.Controls
                     }
                     else if (InvokeRequired)
                     {
-                        try { BeginInvoke(new System.Action(UpdateChartFromData)); } catch { }
+                        if (IsHandleCreated)
+                        {
+                            try { BeginInvoke(new System.Action(UpdateChartFromData)); } catch { }
+                        }
                     }
                     else
                     {
@@ -932,7 +932,10 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        try { BeginInvoke(new System.Action(() => OnViewModelPropertyChanged(sender, e))); } catch { }
+                        if (IsHandleCreated)
+                        {
+                            try { BeginInvoke(new System.Action(() => OnViewModelPropertyChanged(sender, e))); } catch { }
+                        }
                         return;
                     }
 
@@ -971,7 +974,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    }
                     return;
                 }
 

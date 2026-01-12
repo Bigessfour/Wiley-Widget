@@ -1,7 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -112,7 +115,7 @@ namespace WileyWidget.WinForms.ViewModels
         public IRelayCommand ClearFiltersCommand { get; }
 
         /// <summary>Gets the command to export customers to CSV.</summary>
-        public IAsyncRelayCommand ExportToCsvCommand { get; }
+        public IAsyncRelayCommand<string> ExportToCsvCommand { get; }
 
         #endregion
 
@@ -140,7 +143,7 @@ namespace WileyWidget.WinForms.ViewModels
             DeleteCustomerCommand = new AsyncRelayCommand<int>(DeleteCustomerAsync, CanDeleteCustomer);
             SyncWithQuickBooksCommand = new AsyncRelayCommand(SyncWithQuickBooksAsync);
             ClearFiltersCommand = new RelayCommand(ClearFilters);
-            ExportToCsvCommand = new AsyncRelayCommand(ExportToCsvAsync);
+            ExportToCsvCommand = new AsyncRelayCommand<string>(ExportToCsvAsync);
 
             // Wire up property change notifications for filtering
             PropertyChanged += OnPropertyChangedForFiltering;
@@ -718,21 +721,43 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Exports filtered customers to CSV format.
         /// </summary>
-        private async Task ExportToCsvAsync(CancellationToken cancellationToken = default)
+        private async Task ExportToCsvAsync(string? filePath)
         {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                _logger.LogWarning("ExportToCsvAsync called with null or empty filePath");
+                return;
+            }
+
             try
             {
                 IsLoading = true;
                 StatusText = "Exporting to CSV...";
 
-                _logger.LogInformation("Exporting {Count} customers to CSV", FilteredCustomers.Count);
+                _logger.LogInformation("Exporting {Count} customers to {File}", FilteredCustomers.Count, filePath);
 
-                // This would typically show a SaveFileDialog and write to file
-                // For now, just log the action
-                await Task.Delay(500, cancellationToken); // Simulate export
+                await using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
+
+                // Write CSV header
+                await writer.WriteLineAsync("Account Number,Display Name,Balance,Status,Last Payment Date");
+
+                // Write data rows
+                foreach (var customer in FilteredCustomers)
+                {
+                    var line = string.Join(",", new[]
+                    {
+                        $"\"{customer.AccountNumber}\"",
+                        $"\"{customer.DisplayName}\"",
+                        customer.CurrentBalance.ToString("F2", CultureInfo.InvariantCulture),
+                        $"\"{customer.StatusDescription}\"",
+                        customer.LastPaymentDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? ""
+                    });
+
+                    await writer.WriteLineAsync(line);
+                }
 
                 StatusText = $"Exported {FilteredCustomers.Count} customers to CSV";
-                _logger.LogInformation("Export completed");
+                _logger.LogInformation("Export completed to {File}", filePath);
             }
             catch (Exception ex)
             {

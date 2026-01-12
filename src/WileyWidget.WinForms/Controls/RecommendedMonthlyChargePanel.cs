@@ -9,6 +9,7 @@ using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
 using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
@@ -53,6 +54,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     {
         InitializeComponent();
 
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -68,6 +72,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     public RecommendedMonthlyChargePanel()
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         _viewModel = new RecommendedMonthlyChargeViewModel();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargePanel>.Instance;
 
@@ -248,9 +255,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = 700,
             BorderStyle = BorderStyle.FixedSingle
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
 
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
@@ -259,9 +266,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 350,
             BorderStyle = BorderStyle.None
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_leftSplitContainer, 350);
 
         // ============================================================================
         // Departments Grid (Top Left)
@@ -925,9 +932,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     /// </summary>
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         this.components = new System.ComponentModel.Container();
         this.Name = "RecommendedMonthlyChargePanel";
         this.Size = new Size(1400, 900);
+        try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
+        this.ResumeLayout(false);
+
     }
 
     #endregion

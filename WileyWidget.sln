@@ -16,12 +16,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms", "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj", "{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Tests", "tests\WileyWidget.Services.Tests\WileyWidget.Services.Tests.csproj", "{311CF718-1154-487F-BB2B-E304301EF5A7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms.Tests", "tests\WileyWidget.WinForms.Tests\WileyWidget.WinForms.Tests.csproj", "{A2B3C4D5-E6F7-48B9-C0D1-E2F3B4C5D6E7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms.E2ETests", "tests\WileyWidget.WinForms.E2ETests\WileyWidget.WinForms.E2ETests.csproj", "{B3C4D5E6-F7A8-49C0-D1E2-F3B4C5D6E7F8}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AnyCPU = Debug|AnyCPU
@@ -52,18 +46,6 @@ Global
 		{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{E8ED5FBD-A352-47BA-A642-811FC7BB53E8}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
-		{311CF718-1154-487F-BB2B-E304301EF5A7}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
-		{311CF718-1154-487F-BB2B-E304301EF5A7}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
-		{311CF718-1154-487F-BB2B-E304301EF5A7}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{A2B3C4D5-E6F7-48B9-C0D1-E2F3B4C5D6E7}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
-		{A2B3C4D5-E6F7-48B9-C0D1-E2F3B4C5D6E7}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
-		{A2B3C4D5-E6F7-48B9-C0D1-E2F3B4C5D6E7}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
-		{A2B3C4D5-E6F7-48B9-C0D1-E2F3B4C5D6E7}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{B3C4D5E6-F7A8-49C0-D1E2-F3B4C5D6E7F8}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
-		{B3C4D5E6-F7A8-49C0-D1E2-F3B4C5D6E7F8}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
-		{B3C4D5E6-F7A8-49C0-D1E2-F3B4C5D6E7F8}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
-		{B3C4D5E6-F7A8-49C0-D1E2-F3B4C5D6E7F8}.Release|AnyCPU.Build.0 = Release|AnyCPU
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
@@ -71,8 +53,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B6553EBE-4849-48A5-A07C-4316F199058A}

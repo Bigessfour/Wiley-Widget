@@ -1,5 +1,11 @@
+using System;
+using System.Reflection;
+using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -15,6 +21,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     private readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
     private IServiceScope? _scope;
     private TViewModel? _viewModel;
+    private object? _dataContext;
     private bool _disposed;
 
     /// <summary>
@@ -22,6 +29,12 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     /// Available after the panel handle is created.
     /// </summary>
     protected TViewModel? ViewModel => _viewModel;
+
+    /// <summary>
+    /// Lightweight DataContext for MVVM-style bindings.
+    /// Populated when the ViewModel is resolved; hidden properties in derived classes are updated via reflection.
+    /// </summary>
+    public new object? DataContext => _dataContext;
 
     /// <summary>
     /// Gets the ViewModel instance for testing purposes. Exposes the protected ViewModel property.
@@ -32,6 +45,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     /// Gets the logger instance for diagnostic logging.
     /// </summary>
     protected ILogger Logger => _logger;
+
+    /// <summary>
+    /// Protected access to the scope factory for derived classes that need to create additional scopes.
+    /// </summary>
+    protected IServiceScopeFactory ScopeFactory => _scopeFactory;
 
     /// <summary>
     /// Gets the scoped service provider for resolving additional dependencies.
@@ -80,6 +98,12 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             // Resolve ViewModel from scoped provider
             _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(_scope.ServiceProvider);
             _logger.LogDebug("Resolved {ViewModelType} from scoped provider", typeof(TViewModel).Name);
+
+            // Populate DataContext (base + derived new DataContext via reflection)
+            TrySetDataContext(_viewModel);
+
+            // Ensure theme cascade reaches dynamically created panel and children
+            ApplyThemeCascade();
 
             // Allow derived classes to perform additional initialization with the resolved ViewModel
             OnViewModelResolved(_viewModel);
@@ -136,11 +160,66 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
                 _scope?.Dispose();
                 _scope = null;
                 _viewModel = null;
+                _dataContext = null;
             }
 
             _disposed = true;
         }
 
         base.Dispose(disposing);
+    }
+
+    private void TrySetDataContext(TViewModel? viewModel)
+    {
+        _dataContext = viewModel;
+
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dataContextProperty = GetType().GetProperty("DataContext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (dataContextProperty?.CanWrite == true)
+            {
+                dataContextProperty.SetValue(this, viewModel);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to set DataContext for {PanelType}", GetType().Name);
+        }
+    }
+
+    private void ApplyThemeCascade()
+    {
+        try
+        {
+            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
+            ApplyThemeRecursively(this, ThemeColors.DefaultTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Theme cascade skipped for {PanelType}", GetType().Name);
+        }
+    }
+
+    private static void ApplyThemeRecursively(Control control, string themeName)
+    {
+        try
+        {
+            SfSkinManager.SetVisualStyle(control, themeName);
+        }
+        catch
+        {
+            // Best-effort only; some controls may not support theming directly.
+        }
+
+        foreach (Control child in control.Controls)
+        {
+            ApplyThemeRecursively(child, themeName);
+        }
     }
 }

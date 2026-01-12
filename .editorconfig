@@ -455,3 +455,7 @@ dotnet_style_prefer_conditional_expression_over_return = true:suggestion
 
 # Enforce no manual Color.FromArgb usage (WW0001 - added by WileyWidget.Analyzers)
 dotnet_diagnostic.WW0001.severity = warning
+# Enforce Size property on MemoryCacheEntryOptions (WW0002 - added by WileyWidget.Analyzers)
+# When MemoryCache is configured with SizeLimit, all MemoryCacheEntryOptions must explicitly set Size
+# Reference: https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory#use-setsize-size-and-sizelimit-to-limit-cache-size
+dotnet_diagnostic.WW0002.severity = warning

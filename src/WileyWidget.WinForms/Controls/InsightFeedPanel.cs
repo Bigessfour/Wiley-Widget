@@ -49,10 +49,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Creates a new instance of the InsightFeedPanel.
         /// </summary>
-        public InsightFeedPanel() : this(
-            ResolveInsightFeedViewModel(),
-            ResolveThemeService(),
-            ResolveLogger())
+        public InsightFeedPanel() : this(null, null, null)
         {
         }
 
@@ -66,9 +63,9 @@ namespace WileyWidget.WinForms.Controls
         {
             InitializeComponent();
 
-            _logger = logger ?? ResolveLogger();
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<InsightFeedPanel>.Instance;
             _themeService = themeService;
-            _vm = viewModel ?? (IInsightFeedViewModel?)ResolveInsightFeedViewModel();
+            _vm = viewModel ?? new InsightFeedViewModel();
 
             DataContext = _vm;
 
@@ -88,36 +85,55 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                // Provide breathing room and protect from collapsing
+                this.Padding = new Padding(8);
+                this.MinimumSize = new Size(320, 240);
+                this.AccessibleName = "Insight Feed Panel";
+                this.AccessibleDescription = "Displays proactive insights and the data grid";
+
                 // Top panel with header and toolbar
                 _topPanel = new GradientPanelExt
                 {
-                    Height = 60,
+                    // Removed fixed Height to allow growth; MinimumSize ensures header won't collapse below 60px
+                    MinimumSize = new Size(0, 60), // ensures header won't collapse below 60px
                     Dock = DockStyle.Top,
-                    Padding = new Padding(8),
+                    Padding = new Padding(12, 8, 12, 8),
                     Name = "InsightFeedTopPanel",
                     AccessibleName = "Insight Feed Top Panel",
+                    AccessibleDescription = "Header area for the insight feed",
                     AccessibleRole = AccessibleRole.Pane
                 };
                 Controls.Add(_topPanel);
 
-                // Panel header
-                _panelHeader = new PanelHeader
+                // Status and toolbar (both docked right) are added before the header (Fill) so toolbar appears at the rightmost edge
+                // Add status first so toolbar sits at the far right
+                // Status label - Theme colors applied via SfSkinManager
+                _lblStatus = new Label
                 {
-                    Dock = DockStyle.Fill,
-                    Parent = _topPanel
+                    Text = "Loading insights...",
+                    Dock = DockStyle.Right,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Margin = new Padding(8),
+                    AutoSize = true,
+                    MaximumSize = new Size(300, int.MaxValue),
+                    AutoEllipsis = true,
+                    Name = "StatusLabel",
+                    AccessibleName = "Status Label",
+                    AccessibleDescription = "Displays current status of the insights feed"
                 };
+                _topPanel.Controls.Add(_lblStatus);
 
-                // Toolbar
                 _toolStrip = new ToolStrip
                 {
                     Height = 32,
-                    Dock = DockStyle.Left,
-                    AutoSize = false,
+                    Dock = DockStyle.Right,
+                    AutoSize = true,
                     GripStyle = ToolStripGripStyle.Hidden,
                     Margin = new Padding(0),
                     Padding = new Padding(4, 2, 4, 2),
                     Name = "InsightFeedToolStrip",
                     AccessibleName = "Insight Feed Toolbar",
+                    AccessibleDescription = "Toolbar for insight feed actions",
                     AccessibleRole = AccessibleRole.ToolBar
                 };
                 _topPanel.Controls.Add(_toolStrip);
@@ -127,33 +143,19 @@ namespace WileyWidget.WinForms.Controls
                     ToolTipText = "Manually refresh insights",
                     Name = "RefreshButton",
                     AccessibleName = "Refresh Insights",
-                    AccessibleDescription = "Click to manually refresh the insights feed"
+                    AccessibleDescription = "Click to manually refresh the insights feed",
+                    Margin = new Padding(4, 0, 4, 0)
                 };
                 _toolStrip.Items.Add(_btnRefresh);
 
-                // Status label - Theme colors applied via SfSkinManager
-                _lblStatus = new Label
-                {
-                    Text = "Loading insights...",
-                    Dock = DockStyle.Right,
-                    TextAlign = ContentAlignment.MiddleRight,
-                    Margin = new Padding(8),
-                    AutoSize = false,
-                    Width = 300,
-                    Name = "StatusLabel",
-                    AccessibleName = "Status Label",
-                    AccessibleDescription = "Displays current status of the insights feed"
-                };
-                _topPanel.Controls.Add(_lblStatus);
-
-                // Loading overlay
-                _loadingOverlay = new LoadingOverlay
+                // Panel header - add last so DockStyle.Fill sizes correctly after other docked controls
+                _panelHeader = new PanelHeader
                 {
                     Dock = DockStyle.Fill,
-                    Name = "InsightLoadingOverlay",
-                    AccessibleName = "Loading Indicator"
+                    AccessibleName = "Insights Header",
+                    AccessibleDescription = "Title area for the insights feed"
                 };
-                Controls.Add(_loadingOverlay);
+                _topPanel.Controls.Add(_panelHeader);
 
                 // Insights grid - configured for Office2019Colorful theme with full Syncfusion support
                 _insightsGrid = new SfDataGrid
@@ -177,6 +179,15 @@ namespace WileyWidget.WinForms.Controls
                     AutoGenerateColumns = false
                 };
                 Controls.Add(_insightsGrid);
+
+                // Loading overlay (added last so it can overlay the grid when visible)
+                _loadingOverlay = new LoadingOverlay
+                {
+                    Dock = DockStyle.Fill,
+                    Name = "InsightLoadingOverlay",
+                    AccessibleName = "Loading Indicator"
+                };
+                Controls.Add(_loadingOverlay);
 
                 // Configure grid columns
                 ConfigureGridColumns();
@@ -401,6 +412,11 @@ namespace WileyWidget.WinForms.Controls
                 _logger?.LogDebug(
                     "Theme applied successfully to InsightFeedPanel using {Theme}",
                     AppThemeColors.DefaultTheme);
+
+                if (_loadingOverlay != null)
+                {
+                    SfSkinManager.SetVisualStyle(_loadingOverlay, AppThemeColors.DefaultTheme);
+                }
             }
             catch (Exception ex)
             {
@@ -409,85 +425,15 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        /// <summary>
-        /// Resolves the InsightFeedViewModel from DI or creates a fallback.
-        /// </summary>
-        private static InsightFeedViewModel ResolveInsightFeedViewModel()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Warning("InsightFeedPanel: Program.Services is null - using fallback ViewModel");
-                return new InsightFeedViewModel();
-            }
-
-            try
-            {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<InsightFeedViewModel>(Program.Services);
-
-                if (vm != null)
-                {
-                    Serilog.Log.Debug("InsightFeedPanel: ViewModel resolved from DI container");
-                    return vm;
-                }
-
-                Serilog.Log.Warning("InsightFeedPanel: ViewModel not registered - using fallback");
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "InsightFeedPanel: Failed to resolve ViewModel");
-            }
-
-            return new InsightFeedViewModel();
-        }
-
-        /// <summary>
-        /// Resolves the theme service from DI.
-        /// </summary>
-        private static Services.IThemeService? ResolveThemeService()
-        {
-            if (Program.Services == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<Services.IThemeService>(Program.Services);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Resolves the logger from DI.
-        /// </summary>
-        private static ILogger<InsightFeedPanel>? ResolveLogger()
-        {
-            if (Program.Services == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<ILogger<InsightFeedPanel>>(Program.Services);
-            }
-            catch
-            {
-                return null;
-            }
-        }
+        // Constructor-time resolution via Program.Services has been removed in favor of constructor injection.
+        // Provide explicit parameters to the constructor in DI scenarios (ViewModel, IThemeService, ILogger).
 
         /// <summary>
         /// Initializes the designer component. Auto-generated code.
         /// </summary>
         private void InitializeComponent()
         {
+            try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
             this.SuspendLayout();
             this.Name = "InsightFeedPanel";
             this.Size = new System.Drawing.Size(800, 600);

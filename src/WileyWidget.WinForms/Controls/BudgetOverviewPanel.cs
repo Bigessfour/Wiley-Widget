@@ -20,6 +20,7 @@ using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -49,6 +50,7 @@ namespace WileyWidget.WinForms.Controls
     {
         private readonly BudgetOverviewViewModel _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
+        private readonly Services.IThemeIconService? _iconService;
 
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
@@ -88,51 +90,23 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Parameterless constructor for DI/designer support.
         /// </summary>
-        public BudgetOverviewPanel() : this(ResolveBudgetOverviewViewModel(), ResolveDispatcherHelper())
+        public BudgetOverviewPanel() : this(new BudgetOverviewViewModel(), null)
         {
         }
 
-        private static BudgetOverviewViewModel ResolveBudgetOverviewViewModel()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Warning("BudgetOverviewPanel: Program.Services is null - using fallback ViewModel");
-                return new BudgetOverviewViewModel();
-            }
-            try
-            {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<BudgetOverviewViewModel>(Program.Services);
-                if (vm != null)
-                {
-                    Serilog.Log.Debug("BudgetOverviewPanel: BudgetOverviewViewModel resolved from DI container");
-                    return vm;
-                }
-                Serilog.Log.Warning("BudgetOverviewPanel: BudgetOverviewViewModel not registered - using fallback instance");
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "BudgetOverviewPanel: Failed to resolve BudgetOverviewViewModel from DI");
-            }
-            return new BudgetOverviewViewModel();
-        }
+        // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
 
-        private static WileyWidget.Services.Threading.IDispatcherHelper? ResolveDispatcherHelper()
-        {
-            if (Program.Services == null) return null;
-            try
-            {
-                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services);
-            }
-            catch { return null; }
-        }
-
-        public BudgetOverviewPanel(BudgetOverviewViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+        public BudgetOverviewPanel(BudgetOverviewViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Services.IThemeIconService? iconService = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+            _iconService = iconService;
             DataContext = vm;
 
             InitializeComponent();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
             SetupUI();
             BindViewModel();
             ApplyCurrentTheme();
@@ -142,10 +116,14 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            this.SuspendLayout();
+
             Name = "BudgetOverviewPanel";
-            Size = new Size(1000, 700);
+            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
+            this.ResumeLayout(false);
+
         }
 
         private void SetupUI()
@@ -161,58 +139,87 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
             Controls.Add(_panelHeader);
 
-            // Top toolbar
+            // Top toolbar using TableLayoutPanel for proper responsive layout
             _topPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Top,
-                Height = 44,
-                Padding = new Padding(8),
+                Height = 48,
+                Padding = new Padding(8, 4, 8, 4),
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
             SfSkinManager.SetVisualStyle(_topPanel, "Office2019Colorful");
-            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
 
-            // Fiscal year selector
-            var lblFiscalYear = new Label { Text = BudgetOverviewPanelResources.FiscalYearLabel, AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 6, 4, 0) };
-            flow.Controls.Add(lblFiscalYear);
+            var toolbar = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 6,
+                RowCount = 1,
+                AutoSize = false
+            };
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Label
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // ComboBox
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10));  // Spacer
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Refresh button
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10));  // Spacer
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Export button
+            toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            // Fiscal year selector label
+            var lblFiscalYear = new Label
+            {
+                Text = BudgetOverviewPanelResources.FiscalYearLabel,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 4, 0)
+            };
+            toolbar.Controls.Add(lblFiscalYear, 0, 0);
 
             _comboFiscalYear = new SfComboBox
             {
-                Width = 100,
+                Dock = DockStyle.Fill,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 AccessibleName = "Fiscal year selector",
-                AccessibleDescription = "Select the fiscal year to view budget data"
+                AccessibleDescription = "Select the fiscal year to view budget data",
+                Margin = new Padding(0, 2, 0, 2)
             };
             _comboFiscalYear.SelectedIndexChanged += ComboFiscalYear_SelectedIndexChanged;
-            flow.Controls.Add(_comboFiscalYear);
+            toolbar.Controls.Add(_comboFiscalYear, 1, 0);
+
+            // Spacer
+            toolbar.Controls.Add(new Label(), 2, 0);
 
             // Refresh button
             _btnRefresh = new SfButton
             {
                 Text = BudgetOverviewPanelResources.RefreshText,
-                AutoSize = true,
+                Dock = DockStyle.Fill,
                 AccessibleName = "Refresh budget data",
-                AccessibleDescription = "Reload budget overview data"
+                AccessibleDescription = "Reload budget overview data",
+                Margin = new Padding(0, 2, 0, 2)
             };
             SetupRefreshButtonIcon();
             _btnRefresh.Click += async (s, e) => await RefreshDataAsync();
-            flow.Controls.Add(_btnRefresh);
+            toolbar.Controls.Add(_btnRefresh, 3, 0);
+
+            // Spacer
+            toolbar.Controls.Add(new Label(), 4, 0);
 
             // Export CSV button
             _btnExportCsv = new SfButton
             {
                 Text = "&" + BudgetOverviewPanelResources.ExportCsvText,
-                AutoSize = true,
+                Dock = DockStyle.Fill,
                 AccessibleName = "Export to CSV",
-                AccessibleDescription = "Export budget data to CSV file (Alt+E)"
+                AccessibleDescription = "Export budget data to CSV file (Alt+E)",
+                Margin = new Padding(0, 2, 0, 2)
             };
             SetupExportButtonIcon();
             _btnExportCsv.Click += async (s, e) => await ExportToCsvAsync();
-            flow.Controls.Add(_btnExportCsv);
+            toolbar.Controls.Add(_btnExportCsv, 5, 0);
 
-            _topPanel.Controls.Add(flow);
+            _topPanel.Controls.Add(toolbar);
             Controls.Add(_topPanel);
 
             // Summary panel with KPI tiles
@@ -241,11 +248,10 @@ namespace WileyWidget.WinForms.Controls
             var mainSplit = new SplitContainer
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 300,
-                Panel1MinSize = 200,
-                Panel2MinSize = 150
+                Orientation = Orientation.Horizontal
             };
+            // Defer setting min sizes and splitter distance until control is sized
+            SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(mainSplit, 200, 150, 300);
 
             // Variance chart
             _varianceChart = new ChartControl
@@ -377,9 +383,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful; // ThemeManager removed, use default
                 if (_btnRefresh != null)
                 {
@@ -397,9 +401,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 // Use default theme for icon selection
                 if (_btnExportCsv != null)
                 {
@@ -459,7 +461,10 @@ namespace WileyWidget.WinForms.Controls
         {
             if (InvokeRequired)
             {
-                BeginInvoke((MethodInvoker)(() => BudgetMetrics_CollectionChanged(sender, e)));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke((MethodInvoker)(() => BudgetMetrics_CollectionChanged(sender, e)));
+                }
                 return;
             }
             UpdateUI();
@@ -478,7 +483,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+                    }
                     return;
                 }
 
@@ -696,7 +704,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
+                    if (IsHandleCreated)
+                    {
+                        BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
+                    }
                     return;
                 }
                 ApplyCurrentTheme();

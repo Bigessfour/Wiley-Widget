@@ -7,370 +7,499 @@
 @using WileyWidget.Models
 @using WileyWidget.Services.Abstractions
 @using Microsoft.AspNetCore.Components.Web
-@* NOTE: Syncfusion.Blazor.SmartComponents is not yet available - Smart Components are in preview *@
-@* @using Syncfusion.Blazor.SmartComponents *@
+@using Syncfusion.Blazor.Buttons
+@* Layouts and Grids packages not referenced - using InteractiveChat instead *@
+@* @using Syncfusion.Blazor.Layouts *@
+@using Syncfusion.Blazor.Popups
+@* @using Syncfusion.Blazor.Grids *@
 @implements IAsyncDisposable
 @inject IChatBridgeService ChatBridgeService
 @inject IJSRuntime JS
 
 <ErrorBoundary>
     <ChildContent>
-        <div style="height: 100vh; width: 100%; display: flex; flex-direction: column;" id="jarvis-chat-container" role="main" aria-label="JARVIS AI Chat Interface">
-            <!-- Chat Message List with Virtualization -->
-            <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; background-color: #f5f5f5;" role="log" aria-live="polite" aria-atomic="false" aria-label="Chat message history">
-                @if (Messages.Count == 0)
-                {
-                    <div style="text-align: center; color: #999; margin-top: 20px;" role="status" aria-label="Welcome message">
-                        <p>👋 Hey there! I'm JARVIS, your AI assistant. Ask me anything!</p>
-                    </div>
-                }
-                else
-                {
-                    <!-- Use Virtualize component for performance with large message lists -->
-                    <Virtualize Items="@Messages" Context="msg" OverscanCount="10">
-                        <div style="margin-bottom: 12px; display: flex; @(msg.Role == "User" ? "justify-content: flex-end;" : "justify-content: flex-start;")">
-                            <div style="max-width: 60%; padding: 12px 16px; border-radius: 18px; @GetMessageStyle(msg.Role)"
-                                 role="article"
-                                 aria-label="@(msg.Role == "User" ? "Your message" : "JARVIS response")">
-                                <div style="word-wrap: break-word; white-space: pre-wrap;">@msg.Text</div>
-                            </div>
-                        </div>
-                    </Virtualize>
+        <div class="jarvis-chat-container" style="height: 100%; width: 100%; display: flex; flex-direction: column; background: white;">
 
-                    <!-- Shimmer/Thinking Indicator -->
-                    @if (IsThinking)
-                    {
-                        <div style="margin-bottom: 12px; display: flex; justify-content: flex-start;" role="status" aria-live="assertive" aria-label="JARVIS is processing your message">
-                            <div style="padding: 12px 16px; border-radius: 18px; background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; color: #666;">
-                                ✨ JARVIS is thinking...
-                            </div>
-                        </div>
-                        <style>
-                            @@keyframes shimmer {
-                                0% { background-position: 200% 0; }
-                                100% { background-position: -200% 0; }
-                            }
-                        </style>
-                    }
-                }
-                <!-- Intersection Observer Target for Smart Scrolling -->
-                <div @ref="messagesEndRef" style="height: 1px;" role="presentation"></div>
-            </div>
-
-            <!-- Input Section with Smart TextArea -->
-            <div style="border-top: 1px solid #ddd; padding: 12px 16px; background-color: white;" role="form" aria-label="Message input form">
-                <div style="display: flex; gap: 8px; align-items: flex-end;">
-                    <div style="flex: 1;">
-                        <label for="chat-input" class="sr-only">Type your message</label>
-                        @* NOTE: SfSmartTextArea not available yet - using standard textarea *@
-                        <textarea
-                            id="chat-input"
-                            @bind="CurrentPrompt"
-                            @bind:event="oninput"
-                            placeholder="Type your message here..."
-                            disabled="@IsThinking"
-                            class="chat-smart-input"
-                            rows="2"
-                            @onkeyup="HandleKeyUp"
-                            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Segoe UI', sans-serif; font-size: 14px; resize: vertical;">
-                        </textarea>
-                    </div>
-                    <button
-                        @onclick="SubmitPrompt"
-                        disabled="@(string.IsNullOrWhiteSpace(CurrentPrompt) || IsThinking)"
-                        style="padding: 10px 20px; background-color: #0078d4; color: white; border: none; border-radius: 8px; cursor: @(IsThinking ? "not-allowed" : "pointer"); opacity: @(IsThinking ? "0.6" : "1"); font-weight: 500;"
-                        aria-label="@(IsThinking ? "Processing message" : "Send message")"
-                        title="@(IsThinking ? "Please wait..." : "Send message (Enter)")">
-                        @(IsThinking ? "Sending..." : "Send")
-                    </button>
+            <!-- Chat Header with Status -->
+            <div class="chat-header" style="padding: 16px; background: linear-gradient(135deg, #0078d4 0%, #1084d4 100%); color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 600;">🤖 JARVIS Assistant</h2>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">@(IsOnline ? "🟢 Online" : "🔴 Offline")</p>
                 </div>
-                <span id="chat-hint" class="sr-only">Press Enter to send message, Tab for AI suggestions, or Shift+Enter for new line</span>
+                <div style="display: flex; gap: 8px;">
+                    <button @onclick="ToggleSidebar" class="header-btn" title="Toggle history" aria-label="Toggle conversation history">📋</button>
+                    <button @onclick="ClearChat" class="header-btn" title="Clear messages" aria-label="Clear conversation">🗑️</button>
+                    <button @onclick="ExportChat" class="header-btn" title="Export chat" aria-label="Export conversation">⬇️</button>
+                </div>
             </div>
 
-            <!-- Screen Reader Only Styles -->
-            <style>
-                /* Smart TextArea styling */
-                .chat-smart-input {
-                    width: 100%;
-                    padding: 10px 12px;
-                    border: 1px solid #ddd;
-                    border-radius: 8px;
-                    font-family: 'Segoe UI', sans-serif;
-                    font-size: 14px;
-                    min-height: 42px;
-                    resize: vertical;
+            <!-- Main Content -->
+            <div style="display: flex; flex: 1; overflow: hidden; background: #f8f9fa;">
+
+                <!-- Sidebar: Conversation History -->
+                @if (ShowSidebar)
+                {
+                    <div class="chat-sidebar" style="width: 300px; border-right: 1px solid #ddd; background: white; display: flex; flex-direction: column; overflow: hidden;">
+                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <input type="text" @bind="SearchQuery" placeholder="Search..."
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;"
+                                   aria-label="Search conversations" />
+                        </div>
+                        <div style="flex: 1; overflow-y: auto;">
+                            @foreach (var conv in FilteredConversations)
+                            {
+                                <div class="conversation-item @(conv.Id == CurrentConversationId ? "active" : "")"
+                                     @onclick="() => SelectConversation(conv)"
+                                     style="padding: 12px; cursor: pointer; border-left: 3px solid @(conv.Id == CurrentConversationId ? "#0078d4" : "transparent"); background: @(conv.Id == CurrentConversationId ? "#f0f7ff" : "white"); transition: all 0.2s;">
+                                    <div style="font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@conv.Title</div>
+                                    <div style="font-size: 11px; color: #666; margin-top: 4px;">@conv.MessageCount messages</div>
+                                    <div style="font-size: 10px; color: #999; margin-top: 2px;">@conv.UpdatedAt.ToString("MMM dd, HH:mm")</div>
+                                </div>
+                            }
+                        </div>
+                        <div style="padding: 12px; border-top: 1px solid #eee;">
+                            <SfButton @onclick="StartNewConversation" CssClass="e-primary e-small" Content="+ New Chat" IconCss="e-icons e-plus"></SfButton>
+                        </div>
+                    </div>
                 }
 
-                .chat-smart-input:focus {
-                    outline: 2px solid #0078d4;
-                    outline-offset: 2px;
-                    border-color: #0078d4;
-                }
+                <!-- Messages Area -->
+                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div id="chat-messages" class="chat-messages"
+                         style="flex: 1; overflow-y: auto; padding: 20px; scroll-behavior: smooth;"
+                         role="log" aria-live="polite" aria-label="Chat message history">
 
-                .chat-smart-input:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    background-color: #f5f5f5;
-                }
+                        @if (Messages.Count == 0)
+                        {
+                            <div style="text-align: center; color: #999; margin-top: 60px;">
+                                <div style="font-size: 64px; margin-bottom: 16px;">🤖</div>
+                                <p style="font-size: 16px; font-weight: 500;">Welcome to JARVIS</p>
+                                <p style="font-size: 13px; color: #bbb; margin-top: 8px;">Ask about budgets, accounts, analytics, or any municipal data</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var msg in Messages)
+                            {
+                                <div class="message-wrapper" style="margin-bottom: 16px; display: flex; @(msg.Sender == "User" ? "justify-content: flex-end;" : "justify-content: flex-start;")">
+                                    <div class="message-bubble"
+                                         style="max-width: 65%; padding: 12px 16px; border-radius: 16px; @GetMessageStyle(msg.Sender); box-shadow: 0 1px 2px rgba(0,0,0,0.1); position: relative;">
 
-                /* Smart TextArea suggestion styling */
-                .e-smarttextarea .e-suggestion {
-                    color: #999;
-                    font-style: italic;
-                }
+                                        <!-- Message Content -->
+                                        <div style="word-wrap: break-word; white-space: pre-wrap; line-height: 1.4; font-size: 14px;">
+                                            @if (msg.Type == "Code")
+                                            {
+                                                <pre style="background: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 0; font-family: 'Consolas', monospace;"><code>@msg.Text</code></pre>
+                                            }
+                                            else if (msg.Type == "Markdown")
+                                            {
+                                                @((MarkupString)msg.Text)
+                                            }
+                                            else
+                                            {
+                                                @msg.Text
+                                            }
+                                        </div>
 
-                .sr-only {
-                    position: absolute;
-                    width: 1px;
-                    height: 1px;
-                    padding: 0;
-                    margin: -1px;
-                    overflow: hidden;
-                    clip: rect(0, 0, 0, 0);
-                    white-space: nowrap;
-                    border-width: 0;
-                }
+                                        <!-- Reactions -->
+                                        @if (msg.Reactions?.Count > 0 && msg.Sender != "User")
+                                        {
+                                            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
+                                                @foreach (var reaction in msg.Reactions)
+                                                {
+                                                    <div class="reaction-badge"
+                                                         @onclick="() => AddReaction(msg.Id, reaction.Emoji)"
+                                                         style="background: rgba(0,0,0,0.08); padding: 4px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; transition: all 0.2s;"
+                                                         title="@string.Join(", ", reaction.Users)">
+                                                        @reaction.Emoji @(reaction.Users.Count > 0 ? reaction.Users.Count : "")
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
 
-                /* High contrast mode support */
-                @@media (prefers-contrast: high) {
-                    #chat-messages {
-                        border: 2px solid currentColor;
-                    }
-                    button:disabled {
-                        opacity: 0.5;
-                        border: 1px solid currentColor;
-                    }
-                }
+                                        <!-- Timestamp & Status -->
+                                        <div style="font-size: 11px; opacity: 0.7; margin-top: 6px;">
+                                            @msg.Timestamp.ToString("HH:mm") @(msg.IsRead && msg.Sender != "User" ? "✓✓" : "")
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
 
-                /* Reduced motion support */
-                @@media (prefers-reduced-motion: reduce) {
-                    .shimmer {
-                        animation: none !important;
-                    }
-                }
+                        <!-- Typing Indicator -->
+                        @if (IsThinking)
+                        {
+                            <div style="display: flex; margin-bottom: 16px;">
+                                <div style="padding: 12px 16px; border-radius: 16px; background: #e1e4e8; display: flex; gap: 4px; align-items: center;">
+                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #0078d4; animation: bounce 1.4s infinite;"></span>
+                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #0078d4; animation: bounce 1.4s infinite 0.2s;"></span>
+                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #0078d4; animation: bounce 1.4s infinite 0.4s;"></span>
+                                </div>
+                            </div>
+                        }
 
-                /* Focus visible for keyboard navigation */
-                *:focus-visible {
-                    outline: 2px solid #0078d4;
-                    outline-offset: 2px;
-                }
-            </style>
+                        <div @ref="messagesEndRef"></div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div style="border-top: 1px solid #ddd; padding: 16px; background: white; box-shadow: 0 -2px 8px rgba(0,0,0,0.05);">
+                        <div style="display: flex; gap: 10px; align-items: flex-end;">
+                            <button @onclick="ToggleEmojiPicker" class="icon-button" title="Emoji" aria-label="Open emoji picker">😊</button>
+
+                            <div style="flex: 1; position: relative;">
+                                <textarea @bind="CurrentMessage"
+                                         @bind:event="oninput"
+                                         @onkeyup="HandleKeyUp"
+                                         placeholder="Ask JARVIS... (Enter to send, Shift+Enter for new line)"
+                                         disabled="@IsThinking"
+                                         style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Segoe UI', sans-serif; font-size: 13px; resize: vertical; min-height: 40px; transition: border-color 0.2s;"
+                                         aria-label="Message input"></textarea>
+
+                                @if (ShowSuggestions && Suggestions.Count > 0)
+                                {
+                                    <div class="suggestions-popup" style="position: absolute; bottom: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 150px; overflow-y: auto; z-index: 100; box-shadow: 0 -4px 12px rgba(0,0,0,0.15);">
+                                        @foreach (var suggestion in Suggestions.Take(5))
+                                        {
+                                            <div @onclick="() => SelectSuggestion(suggestion)"
+                                                 style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; transition: background 0.2s;"
+                                                 role="option">
+                                                💡 @suggestion
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <SfButton @onclick="SendMessage"
+                                     Disabled="@(string.IsNullOrWhiteSpace(CurrentMessage) || IsThinking)"
+                                     CssClass="e-primary e-small"
+                                     IconCss="e-icons e-send"
+                                     Content="Send">
+                            </SfButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emoji Picker Popup -->
+            @if (ShowEmojiPicker)
+            {
+                <div class="emoji-picker-popup"
+                     style="position: fixed; bottom: 100px; right: 20px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1000;">
+                    <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px;">
+                        @foreach (var emoji in Emojis)
+                        {
+                            <button @onclick="() => InsertEmoji(emoji)"
+                                   style="padding: 8px; font-size: 18px; border: none; cursor: pointer; border-radius: 4px; transition: background 0.2s; background: transparent;"
+                                   title="@emoji"
+                                   aria-label="Insert @emoji">@emoji</button>
+                        }
+                    </div>
+                </div>
+            }
         </div>
+
+        <style>
+            .jarvis-chat-container {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .chat-header { flex-shrink: 0; }
+            .chat-sidebar { flex-shrink: 0; transition: width 0.3s ease; }
+            .chat-messages { scroll-behavior: smooth; }
+
+            .conversation-item:hover {
+                background: #f5f5f5 !important;
+            }
+
+            .conversation-item.active {
+                background: #f0f7ff !important;
+                border-left-color: #0078d4 !important;
+            }
+
+            .message-bubble {
+                animation: slideIn 0.3s ease-out;
+            }
+
+            @@keyframes slideIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            @@keyframes bounce {
+                0%, 80%, 100% { opacity: 0.5; }
+                40% { opacity: 1; }
+            }
+
+            .header-btn {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                padding: 6px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: background 0.2s;
+            }
+
+            .header-btn:hover {
+                background: rgba(255,255,255,0.3);
+            }
+
+            .icon-button {
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 6px;
+                transition: transform 0.2s;
+                border-radius: 4px;
+            }
+
+            .icon-button:hover {
+                background: rgba(0,0,0,0.05);
+                transform: scale(1.1);
+            }
+
+            .reaction-badge:hover {
+                background: rgba(0,0,0,0.15) !important;
+            }
+
+            @@media (prefers-reduced-motion: reduce) {
+                .message-bubble { animation: none; }
+                @@keyframes bounce { to { opacity: 0.5; } }
+            }
+        </style>
     </ChildContent>
     <ErrorContent Context="ex">
-        <div style="padding: 20px; background-color: #fff5f5; border: 2px solid #ff6b6b; border-radius: 8px; margin: 20px;"
-             role="alert"
-             aria-live="assertive">
+        <div style="padding: 20px; background: #fff5f5; border: 2px solid #ff6b6b; border-radius: 8px; margin: 20px;" role="alert">
             <h3 style="color: #c92a2a; margin-top: 0;">⚠️ Chat Error</h3>
             <p style="color: #333; margin: 10px 0;">@ex.Message</p>
-            <button
-                @onclick="ResetChat"
-                style="padding: 8px 16px; background-color: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                aria-label="Reset chat and clear error">
-                Reset Chat
-            </button>
+            <SfButton @onclick="ResetChat" Content="Reset Chat"></SfButton>
         </div>
     </ErrorContent>
 </ErrorBoundary>
 
 @code {
-    private class AIAssistItem
+    // Models
+    private class ChatMsg
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Text { get; set; } = string.Empty;
-        public string Role { get; set; } = "Assistant"; // "User" or "Assistant"
+        public string Sender { get; set; } = "Assistant";
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public string Type { get; set; } = "Text"; // Text, Code, Markdown
+        public bool IsRead { get; set; }
+        public List<EmojiReaction> Reactions { get; set; } = new();
     }
 
-    // Municipal-specific phrases for Smart TextArea AI suggestions
-    private string[] municipalPhrases = new[]
+    private class EmojiReaction
     {
-        "Show me the budget for FISCAL_YEAR",
-        "What is the variance for ACCOUNT_NAME",
-        "Generate a report for DEPARTMENT",
-        "Display all transactions for PERIOD",
-        "Compare revenue for YEAR vs YEAR",
-        "Show me accounts that are over budget",
-        "List all utility customers in AREA",
-        "What is the total expenditure for CATEGORY",
-        "Show me the monthly trend for ACCOUNT",
-        "Generate an Excel export for DATASET",
-        "Display budget summary by department",
-        "Show me all unpaid utility bills",
-        "What are the top 5 expenses for FUND",
-        "Calculate the year-to-date total for ACCOUNT",
-        "Show me budget vs actual comparison",
-        "List all municipal accounts for CLASSIFICATION",
-        "What is the current fiscal year status",
-        "Display revenue breakdown by source",
-        "Show me expense trends for the quarter",
-        "Generate a variance analysis report"
+        public string Emoji { get; set; } = string.Empty;
+        public List<string> Users { get; set; } = new() { "You" };
+    }
+
+    private class ConvHistory
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Title { get; set; } = "New Conversation";
+        public int MessageCount { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // State
+    private List<ChatMsg> Messages = new();
+    private List<ConvHistory> Conversations = new();
+    private List<ConvHistory> FilteredConversations = new();
+    private string CurrentMessage = string.Empty;
+    private string SearchQuery = string.Empty;
+    private string CurrentConversationId = string.Empty;
+    private bool IsThinking = false;
+    private bool ShowSidebar = true;
+    private bool ShowEmojiPicker = false;
+    private bool ShowSuggestions = false;
+    private bool IsOnline = true;
+    private ElementReference messagesEndRef;
+    private List<string> Suggestions = new();
+
+    // Suggestions & Emoji
+    private string[] MunicipalPhrases = new[]
+    {
+        "Show budget variance",
+        "Generate quarterly report",
+        "List accounts over budget",
+        "Calculate YTD totals",
+        "Display revenue trends",
+        "Compare departments",
+        "Show unpaid bills",
+        "Calculate forecast"
     };
 
-    private List<AIAssistItem> Messages { get; set; } = new();
-    private bool IsThinking { get; set; }
-    private string CurrentPrompt { get; set; } = string.Empty;
-    private string CurrentStreamingContent { get; set; } = string.Empty;
-    private ElementReference messagesEndRef;
-    private DotNetObjectReference<JARVISAssist>? dotNetRef;
-    private bool isScrolledToBottom = true;
-    private IJSObjectReference? scrollModule;
+    private string[] Emojis = new[]
+    {
+        "👍", "❤️", "😂", "😮", "😢", "🎉", "🚀", "💡",
+        "✨", "🎯", "📊", "💰", "📈", "💼", "🔧", "✅"
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to chat bridge events
         ChatBridgeService.ResponseChunkReceived += OnResponseChunk;
-        ChatBridgeService.PromptSubmitted += OnPromptSubmittedByBridge;
+        ChatBridgeService.PromptSubmitted += OnPromptSubmitted;
 
-        dotNetRef = DotNetObjectReference.Create(this);
+        LoadSampleConversations();
+        Messages.Add(new ChatMsg { Text = "👋 Hey! I'm JARVIS. What can I help you with?", Sender = "Assistant", Type = "Text" });
+
+        await Task.CompletedTask;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task SendMessage()
     {
-        if (firstRender)
-        {
-            try
-            {
-                // Initialize IntersectionObserver for optimized scroll detection
-                scrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/scroll-helper.js");
-                await scrollModule.InvokeVoidAsync("initializeScrollObserver", messagesEndRef, dotNetRef);
-            }
-            catch (Exception ex)
-            {
-                // Fallback if JS module fails - use simple scroll
-                Console.WriteLine($"Failed to initialize scroll observer: {ex.Message}");
-            }
-        }
-    }
+        if (string.IsNullOrWhiteSpace(CurrentMessage) || IsThinking) return;
 
-    private async Task SubmitPrompt()
-    {
-        if (string.IsNullOrWhiteSpace(CurrentPrompt) || IsThinking)
-            return;
+        var msg = CurrentMessage.Trim();
+        CurrentMessage = string.Empty;
+        ShowSuggestions = false;
 
-        var prompt = CurrentPrompt.Trim();
-        CurrentPrompt = string.Empty;
-
-        // Add user message to display
-        Messages.Add(new AIAssistItem { Text = prompt, Role = "User" });
-
-        // Show thinking indicator with shimmer
+        Messages.Add(new ChatMsg { Text = msg, Sender = "User", Type = "Text" });
         IsThinking = true;
-        CurrentStreamingContent = string.Empty;
         StateHasChanged();
+        await ScrollToBottom();
 
-        // Auto-scroll to bottom when user sends message
-        await ScrollToBottomSmart();
-
-        // Submit prompt to backend via ChatBridgeService
-        await ChatBridgeService.SubmitPromptAsync(prompt);
+        await ChatBridgeService.SubmitPromptAsync(msg);
     }
 
-    private void OnPromptSubmittedByBridge(object? sender, ChatPromptSubmittedEventArgs e)
-    {
-        // Backend acknowledged prompt submission
-    }
+    private void OnPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e) { }
 
     private void OnResponseChunk(object? sender, ChatResponseChunkEventArgs e)
     {
-        if (string.IsNullOrEmpty(e?.Chunk))
-            return;
+        if (string.IsNullOrEmpty(e?.Chunk)) return;
 
         if (IsThinking)
         {
-            // Clear thinking indicator on first response chunk
             IsThinking = false;
-            CurrentStreamingContent = e.Chunk;
+            Messages.Add(new ChatMsg { Text = e.Chunk, Sender = "Assistant", Type = "Markdown" });
         }
-        else
+        else if (Messages.Count > 0 && Messages[^1].Sender == "Assistant")
         {
-            // Append chunk to current streaming content
-            CurrentStreamingContent += e.Chunk;
-        }
-
-        // Update or add streaming response
-        if (Messages.Count > 0 && Messages[Messages.Count - 1].Role == "Assistant")
-        {
-            Messages[Messages.Count - 1].Text = CurrentStreamingContent;
-        }
-        else
-        {
-            Messages.Add(new AIAssistItem { Text = CurrentStreamingContent, Role = "Assistant" });
+            Messages[^1].Text += e.Chunk;
         }
 
         StateHasChanged();
-
-        // Only auto-scroll if user is already at bottom (don't interrupt reading)
-        if (isScrolledToBottom)
-        {
-            _ = ScrollToBottomSmart();
-        }
+        _ = ScrollToBottom();
     }
 
-    private async Task ScrollToBottomSmart()
+    private async Task ScrollToBottom()
     {
         try
         {
-            if (scrollModule != null)
-            {
-                // Use IntersectionObserver-based smooth scroll
-                await scrollModule.InvokeVoidAsync("scrollToBottom", "chat-messages");
-            }
-            else
-            {
-                // Fallback to simple scroll
-                await JS.InvokeVoidAsync("eval", "document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight");
-            }
+            await JS.InvokeVoidAsync("eval", "document.getElementById('chat-messages')?.scrollTo(0, document.getElementById('chat-messages')?.scrollHeight)");
         }
-        catch
-        {
-            // Ignore scroll errors
-        }
-    }
-
-    [JSInvokable]
-    public void OnScrollPositionChanged(bool atBottom)
-    {
-        isScrolledToBottom = atBottom;
+        catch { }
     }
 
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !e.ShiftKey)
         {
-            await SubmitPrompt();
+            await SendMessage();
+        }
+
+        if (CurrentMessage.Length >= 2)
+        {
+            ShowSuggestions = true;
+            FilterSuggestions();
+        }
+        else
+        {
+            ShowSuggestions = false;
         }
     }
 
-    private string GetMessageStyle(string role)
+    private void FilterSuggestions()
     {
-        return role == "User"
-            ? "background-color: #0078d4; color: white;"
-            : "background-color: #e1e4e8; color: #333;";
+        Suggestions = MunicipalPhrases
+            .Where(p => p.Contains(CurrentMessage, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 
-    private void ResetChat()
+    private void SelectSuggestion(string suggestion)
     {
-        Messages.Clear();
-        IsThinking = false;
-        CurrentPrompt = string.Empty;
-        CurrentStreamingContent = string.Empty;
+        CurrentMessage = suggestion;
+        ShowSuggestions = false;
         StateHasChanged();
     }
 
+    private void ToggleEmojiPicker() => ShowEmojiPicker = !ShowEmojiPicker;
+
+    private void InsertEmoji(string emoji)
+    {
+        CurrentMessage += $" {emoji} ";
+        ShowEmojiPicker = false;
+    }
+
+    private void AddReaction(string msgId, string emoji)
+    {
+        var msg = Messages.FirstOrDefault(m => m.Id == msgId);
+        if (msg == null) return;
+
+        var reaction = msg.Reactions.FirstOrDefault(r => r.Emoji == emoji);
+        if (reaction == null)
+        {
+            msg.Reactions.Add(new EmojiReaction { Emoji = emoji, Users = new() { "You" } });
+        }
+        else if (!reaction.Users.Contains("You"))
+        {
+            reaction.Users.Add("You");
+        }
+
+        StateHasChanged();
+    }
+
+    private void ToggleSidebar() => ShowSidebar = !ShowSidebar;
+    private void ClearChat() => Messages.Clear();
+    private void ResetChat() { Messages.Clear(); IsThinking = false; CurrentMessage = string.Empty; }
+
+    private async Task ExportChat()
+    {
+        if (Messages.Count == 0) return;
+        // Implementation: Export as JSON/PDF
+        await Task.CompletedTask;
+    }
+
+    private void SelectConversation(ConvHistory conv)
+    {
+        CurrentConversationId = conv.Id;
+        // Load conversation messages
+        StateHasChanged();
+    }
+
+    private void StartNewConversation()
+    {
+        Messages.Clear();
+        CurrentConversationId = Guid.NewGuid().ToString();
+        StateHasChanged();
+    }
+
+    private void LoadSampleConversations()
+    {
+        Conversations = new()
+        {
+            new() { Title = "Budget Analysis", MessageCount = 12, UpdatedAt = DateTime.UtcNow.AddDays(-2) },
+            new() { Title = "Revenue Forecast", MessageCount = 8, UpdatedAt = DateTime.UtcNow.AddDays(-5) },
+            new() { Title = "Account Reconciliation", MessageCount = 15, UpdatedAt = DateTime.UtcNow.AddDays(-10) }
+        };
+        FilteredConversations = Conversations.ToList();
+    }
+
+    private string GetMessageStyle(string sender) =>
+        sender == "User"
+            ? "background: linear-gradient(135deg, #0078d4, #1084d4); color: white;"
+            : "background: #e1e4e8; color: #333;";
+
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
-        try
-        {
-            ChatBridgeService.ResponseChunkReceived -= OnResponseChunk;
-            ChatBridgeService.PromptSubmitted -= OnPromptSubmittedByBridge;
-
-            if (scrollModule != null)
-            {
-                await scrollModule.DisposeAsync();
-            }
-
-            dotNetRef?.Dispose();
-        }
-        catch { /* Ignore disposal errors */ }
+        ChatBridgeService.ResponseChunkReceived -= OnResponseChunk;
+        ChatBridgeService.PromptSubmitted -= OnPromptSubmitted;
         await Task.CompletedTask;
     }
 }

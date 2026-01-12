@@ -21,6 +21,7 @@ Your builds are slow because:
 ## Immediate Solutions
 
 ### Option 1: Fast Development Build (Recommended)
+
 Use the existing **"WileyWidget: Incremental Build"** task - it disables analyzers:
 
 ```
@@ -32,6 +33,7 @@ dotnet build WileyWidget.sln --no-restore --configuration Debug --verbosity quie
 **When to use:** 95% of development time
 
 ### Option 2: Project-Only Build (Ultra-Fast)
+
 Build only the main app without tests:
 
 ```powershell
@@ -43,6 +45,7 @@ dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --no-restore -
 **When to use:** Making UI/code changes
 
 ### Option 3: Analyzer Check (Validation Only)
+
 Run full build with analyzers on-demand (not blocking dev):
 
 ```powershell
@@ -72,6 +75,7 @@ dotnet build WileyWidget.sln --no-restore /p:RunAnalyzers=true /p:RunAnalyzersDu
 Create these VS Code tasks in `.vscode/tasks.json`:
 
 ### Fast Iterative Development
+
 ```json
 {
   "label": "build:fast",
@@ -81,8 +85,10 @@ Create these VS Code tasks in `.vscode/tasks.json`:
     "build",
     "${workspaceFolder}/WileyWidget.sln",
     "--no-restore",
-    "--configuration", "Debug",
-    "--verbosity", "quiet",
+    "--configuration",
+    "Debug",
+    "--verbosity",
+    "quiet",
     "/m",
     "/p:BuildInParallel=true",
     "/p:UseSharedCompilation=true",
@@ -99,6 +105,7 @@ Create these VS Code tasks in `.vscode/tasks.json`:
 ```
 
 ### Single Project Build
+
 ```json
 {
   "label": "build:project",
@@ -108,7 +115,8 @@ Create these VS Code tasks in `.vscode/tasks.json`:
     "build",
     "${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
     "--no-restore",
-    "--configuration", "Debug",
+    "--configuration",
+    "Debug",
     "/p:RunAnalyzers=false"
   ],
   "group": "build",
@@ -117,17 +125,13 @@ Create these VS Code tasks in `.vscode/tasks.json`:
 ```
 
 ### Full Build with Analyzers
+
 ```json
 {
   "label": "build:full",
   "type": "shell",
   "command": "dotnet",
-  "args": [
-    "build",
-    "${workspaceFolder}/WileyWidget.sln",
-    "--no-restore",
-    "/p:RunAnalyzers=true"
-  ],
+  "args": ["build", "${workspaceFolder}/WileyWidget.sln", "--no-restore", "/p:RunAnalyzers=true"],
   "group": "build",
   "problemMatcher": ["$msCompile", "$csharp"]
 }
@@ -137,22 +141,25 @@ Create these VS Code tasks in `.vscode/tasks.json`:
 
 After optimization:
 
-| Scenario | Before | After | Improvement |
-|----------|--------|-------|-------------|
-| Full rebuild (all projects) | 4-5 min | 45-90 sec | **4-6x faster** |
-| Incremental (1 file) | 2-3 min | 10-15 sec | **10-15x faster** |
-| Single project | 4-5 min | 20-30 sec | **8-12x faster** |
-| Analyzer-only check | N/A | 3-4 min | Manual pre-commit |
+| Scenario                    | Before  | After     | Improvement       |
+| --------------------------- | ------- | --------- | ----------------- |
+| Full rebuild (all projects) | 4-5 min | 45-90 sec | **4-6x faster**   |
+| Incremental (1 file)        | 2-3 min | 10-15 sec | **10-15x faster** |
+| Single project              | 4-5 min | 20-30 sec | **8-12x faster**  |
+| Analyzer-only check         | N/A     | 3-4 min   | Manual pre-commit |
 
 ## Additional Optimizations (Optional)
 
 ### 1. Clean Build Server Cache Between Sessions
+
 ```powershell
 dotnet build-server shutdown
 ```
 
 ### 2. Disable Redundant Analyzers
+
 Edit `.editorconfig` to disable expensive rules for certain projects:
+
 ```ini
 [src/**/*.cs]
 # Development: speed over style
@@ -161,10 +168,13 @@ dotnet_style_require_trailing_comma = silent
 ```
 
 ### 3. Use Multi-Processor Compilation
+
 Already enabled in tasks above (`/m` and `/maxcpucount`)
 
 ### 4. Exclude Tests from Default Build
+
 Edit `WileyWidget.sln` to exclude test projects from default:
+
 ```
 Project("{...}") = "WileyWidget.WinForms.Tests", "...", {...}
   GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -186,6 +196,7 @@ A: Before committing or pushing to CI. Many teams do this only in CI, not locall
 
 **Q: My increment build still takes 2+ minutes?**
 A: Check for:
+
 - Roslyn analyzer plugins consuming CPU
 - MSBuild extensions doing extra work
 - Run `dotnet build-server shutdown` to reset
@@ -194,6 +205,7 @@ A: Check for:
 ## Verification
 
 After optimization, test with:
+
 ```powershell
 # Measure full rebuild time
 Measure-Command { dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --no-restore /p:RunAnalyzers=false } | Select-Object TotalSeconds

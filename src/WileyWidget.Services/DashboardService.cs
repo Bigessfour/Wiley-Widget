@@ -143,9 +143,9 @@ namespace WileyWidget.Services
             _logger.LogInformation("DashboardService: Fetching data for FY {FiscalYear} ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})",
                 currentFiscalYear, fiscalYearStart, fiscalYearEnd);
 
+            // Get budget summary
             try
             {
-                // Get budget summary
                 _logger.LogDebug("DashboardService: Calling GetBudgetSummaryAsync for date range {Start} to {End}", fiscalYearStart, fiscalYearEnd);
                 var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
                 _logger.LogInformation("DashboardService: Budget summary retrieved (IsNull={IsNull})", budgetSummary == null);
@@ -197,8 +197,15 @@ namespace WileyWidget.Services
                 {
                     _logger.LogWarning("DashboardService: Budget summary is null - no budget data available for period");
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DashboardService: Error fetching budget summary - continuing with other data sources");
+            }
 
-                // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
+            // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
+            try
+            {
                 var accountList = await _accountRepository.GetAllAsync(cancellationToken);
                 var accountCount = accountList?.Count() ?? 0;
                 _logger.LogInformation("DashboardService: Retrieved {AccountCount} municipal accounts", accountCount);
@@ -210,8 +217,15 @@ namespace WileyWidget.Services
                     Description = "Total municipal accounts",
                     Category = "Accounts"
                 });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DashboardService: Error fetching account count - continuing with other data sources");
+            }
 
-                // Get recent budget entries
+            // Get budget entries and account statistics
+            try
+            {
                 var recentEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken);
                 _logger.LogInformation("DashboardService: Retrieved {EntryCount} budget entries for FY {FiscalYear}",
                     recentEntries?.Count() ?? 0, currentFiscalYear);
@@ -234,13 +248,12 @@ namespace WileyWidget.Services
                     Category = "Activity"
                 });
 
-                _logger.LogInformation("DashboardService: Successfully fetched {ItemCount} dashboard items (Revenue accts: {RevenueCount}, Expense accts: {ExpenseCount})",
-                    items.Count, revenueAccounts, expenseAccounts);
+                _logger.LogInformation("DashboardService: Successfully fetched dashboard items (Revenue accts: {RevenueCount}, Expense accts: {ExpenseCount})",
+                    revenueAccounts, expenseAccounts);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "DashboardService: Error fetching dashboard data from repositories");
-                throw;
+                _logger.LogError(ex, "DashboardService: Error fetching account statistics - continuing with available data");
             }
 
             return items;

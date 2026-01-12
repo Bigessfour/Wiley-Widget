@@ -16,6 +16,7 @@ using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Text.Json;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
@@ -527,7 +528,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
                     if (amount != 0m)
                     {
-                        results.Add(new ExpenseLine(amount));
+                        results.Add(new ExpenseLine(
+                            amount,
+                            purchase.TxnDate,
+                            purchase.PrivateNote,
+                            purchase.DepartmentRef?.name));
                     }
                 }
                 catch (Exception ex)
@@ -626,16 +631,123 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     {
         try
         {
-            // Note: QuickBooks Online API doesn't have a native Budget entity
-            // This returns our custom budget model by mapping from QuickBooks data
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync();
 
-            // Use the API client to fetch budgets
-            return await _apiClient.GetBudgetsAsync();
+            var realmId = _authService.GetRealmId();
+            if (string.IsNullOrWhiteSpace(realmId))
+                throw new InvalidOperationException("Realm ID not set. Cannot fetch budgets.");
+
+            var accessToken = _authService.GetAccessToken();
+
+            // Use TokenBucket rate limiter
+            using var lease = await _rateLimiter.AcquireAsync(1, CancellationToken.None).ConfigureAwait(false);
+            if (!lease.IsAcquired)
+                throw new InvalidOperationException("Rate limit exceeded");
+
+            // Intuit doesn't expose Budget via SDK - use REST Reports API
+            // GET /v3/company/{realmId}/reports/BudgetVsActuals
+            var baseUrl = _authService.GetEnvironment() == "sandbox"
+                ? "https://sandbox-quickbooks.api.intuit.com/"
+                : "https://quickbooks.api.intuit.com/";
+
+            var requestUrl = $"{baseUrl}v3/company/{realmId}/reports/BudgetVsActuals";
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            request.Headers.Accept.ParseAdd("application/json");
+
+            // Add query parameters for date range (current fiscal year) using invariant culture
+            var startDate = DateTime.Now.AddMonths(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var endDate = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            request.RequestUri = new Uri($"{requestUrl}?start_date={WebUtility.UrlEncode(startDate)}&end_date={WebUtility.UrlEncode(endDate)}");
+
+            using var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                _logger.LogError("Budget fetch failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                // Return empty list if report not found (many QBO orgs don't have budgets configured)
+                return new List<WileyWidget.Models.QuickBooksBudget>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            // Parse Budget vs Actuals report
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var budgets = new List<WileyWidget.Models.QuickBooksBudget>();
+
+            if (root.TryGetProperty("Rows", out var rowsElement) && rowsElement.ValueKind == JsonValueKind.Array)
+            {
+                var accountBudgets = new Dictionary<string, WileyWidget.Models.QuickBooksBudget>();
+
+                foreach (var row in rowsElement.EnumerateArray())
+                {
+                    try
+                    {
+                        if (row.TryGetProperty("Coldata", out var coldataElement) && coldataElement.ValueKind == JsonValueKind.Array)
+                        {
+                            var cols = coldataElement.EnumerateArray().ToList();
+                            if (cols.Count < 3) continue;
+
+                            // Report structure: [Account Name, Budget, Actuals]
+                            var accountName = cols[0].GetString() ?? "";
+                            var budgetText = cols[1].GetString() ?? "0";
+                            var actualsText = cols[2].GetString() ?? "0";
+
+                            if (string.IsNullOrEmpty(accountName)) continue;
+
+                            // Clean up currency formatting
+                            var cleanedBudgetText = budgetText
+                                .Replace("$", string.Empty, StringComparison.Ordinal)
+                                .Replace(",", string.Empty, StringComparison.Ordinal);
+
+                            var budgetAmount = decimal.TryParse(
+                                cleanedBudgetText,
+                                NumberStyles.Number,
+                                CultureInfo.InvariantCulture,
+                                out var ba) ? ba : 0m;
+
+                            // Group by account name
+                            if (!accountBudgets.TryGetValue(accountName, out var budget))
+                            {
+                                budget = new WileyWidget.Models.QuickBooksBudget
+                                {
+                                    QuickBooksId = Guid.NewGuid().ToString(), // Generate unique ID
+                                    Name = accountName,
+                                    FiscalYear = DateTime.Now.Year,
+                                    StartDate = DateTime.Now.AddMonths(-12),
+                                    EndDate = DateTime.Now,
+                                    BudgetType = "Annual",
+                                    IsActive = true,
+                                    LastSyncDate = DateTime.UtcNow
+                                };
+                                accountBudgets[accountName] = budget;
+                            }
+
+                            budget.TotalAmount += budgetAmount;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error parsing budget row");
+                        continue;
+                    }
+                }
+
+                budgets = accountBudgets.Values.ToList();
+            }
+
+            _logger.LogInformation("Fetched {Count} budgets from QBO Reports API", budgets.Count);
+            return budgets;
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO budgets fetch failed");
-            throw;
+            _logger.LogError(ex, "Failed to fetch budgets from QuickBooks");
+            return new List<WileyWidget.Models.QuickBooksBudget>();
         }
     }
 

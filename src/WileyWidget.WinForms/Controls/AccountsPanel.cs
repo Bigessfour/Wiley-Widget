@@ -8,6 +8,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -64,6 +65,8 @@ namespace WileyWidget.WinForms.Controls
     {
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
         private Services.IThemeService? _themeService;
+        private readonly Services.IThemeIconService? _iconService;
+        private readonly WileyWidget.Services.ErrorReportingService? _errorReportingService;
 
         /// <summary>
         /// A simple DataContext property for ViewModel access.
@@ -124,10 +127,14 @@ namespace WileyWidget.WinForms.Controls
         public AccountsPanel(
             IServiceScopeFactory scopeFactory,
             ILogger<ScopedPanelBase<AccountsViewModel>> logger,
-            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null,
+            Services.IThemeIconService? iconService = null,
+            WileyWidget.Services.ErrorReportingService? errorReportingService = null)
             : base(scopeFactory, logger)
         {
             _dispatcherHelper = dispatcherHelper;
+            _iconService = iconService;
+            _errorReportingService = errorReportingService;
             Serilog.Log.Debug("AccountsPanel: constructor completed (ViewModel will be resolved in OnViewModelResolved)");
         }
 
@@ -157,7 +164,6 @@ namespace WileyWidget.WinForms.Controls
                 DataContext = viewModel;
 
                 InitializeComponent();
-                SetupUI();
                 BindViewModel();
 
                 // Explicitly bind grid data source to the view model's Accounts collection.
@@ -185,6 +191,9 @@ namespace WileyWidget.WinForms.Controls
                 // Apply current theme
                 ApplyCurrentTheme();
 
+                // Defer sizing validation until layout is complete
+                this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
                 // Subscribe to theme changes
                 _panelThemeChangedHandler = OnThemeChanged;
                 if (_themeService != null) _themeService.ThemeChanged += _panelThemeChangedHandler;
@@ -207,48 +216,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
-        {
-            Name = "AccountsPanel";
-            // Set AccessibleName for UI automation (E2E tests search by this)
-            AccessibleName = AccountsPanelResources.PanelTitle; // "Municipal Accounts"
-            Size = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f));
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-            AutoScroll = true;
-            Padding = new Padding(8);
-            // Prefer DPI scaling for modern displays
-            try
-            {
-                this.AutoScaleMode = AutoScaleMode.Dpi;
-            }
-            catch { }
-            // DockingManager will handle docking; do not set Dock here.
-            Serilog.Log.Debug("AccountsPanel: InitializeComponent completed");
-
-            // Add load event handler for initial data loading
-            this.Load += AccountsPanel_Load;
-
-            // Initialize ErrorProvider for data validation
-            errorProvider = new ErrorProvider()
-            {
-                BlinkStyle = ErrorBlinkStyle.BlinkIfDifferentError,
-                Icon = SystemIcons.Warning
-            };
-
-            // Create a single ToolTip instance used across the panel (disposed in Dispose)
-            try
-            {
-                Controls.Add(gridAccounts);
-                // Add overlays (loading spinner and no-data friendly message)
-                _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
-                Controls.Add(_loadingOverlay);
-
-                _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
-                Controls.Add(_noDataOverlay);
-                _toolTip = new ToolTip() { AutoPopDelay = 10000, InitialDelay = 500, ReshowDelay = 100, ShowAlways = true };
-            }
-            catch { }
-        }
+        // InitializeComponent moved to AccountsPanel.Designer.cs for designer support
 
         /// <summary>
         /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
@@ -345,835 +313,819 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void SetupUI()
+        private void InitializeComponent()
         {
-            // Top filter panel - use theme colors instead of hardcoded values
-            // Shared consistent header (44px height, 8px padding)
-            _panelHeader = new PanelHeader
-            {
-                Dock = DockStyle.Top,
-                AccessibleName = "Accounts header"
-            };
+            // Initialize validation and tooltip components
+            errorProvider = new ErrorProvider();
+            _toolTip = new ToolTip();
 
-            // Keep existing filter panel below the header
-            topPanel = new GradientPanelExt
-            {
-                Dock = DockStyle.Top,
-                Height = 44, // consistent header height across panels
-                Padding = new Padding(8),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
-
-            // Fund label + combo
-            var fundLabel = new Label
-            {
-                Text = "Fund:",
-                AutoSize = true,
-                Margin = new Padding(6, 12, 6, 6),
-                Font = new Font("Segoe UI", 9, FontStyle.Regular)
-            };
-
-            comboFund = new SfComboBox
-            {
-                Name = "comboFund",
-                Width = 260,
-                DropDownStyle = DropDownStyle.DropDownList,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                Watermark = "Select a fund...",
-                Margin = new Padding(6),
-                AllowDropDownResize = false, // Per demos: prevent dropdown resize
-                MaxDropDownItems = 10, // Per demos: limit visible items
-                AllowNull = true, // Per demos: allow null selection
-                AccessibleName = "Fund",
-                AccessibleDescription = "Filter accounts by fund"
-            };
-            // Per demos: configure dropdown list style
-            comboFund.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 9F);
-            // Add tooltip for better UX
-            try { _toolTip?.SetToolTip(comboFund, "Filter accounts by municipal fund type (General, Enterprise, etc.)"); } catch { }
-
-            // Account Type label + combo
-            var acctTypeLabel = new Label
-            {
-                Text = "Account Type:",
-                AutoSize = true,
-                Margin = new Padding(12, 12, 6, 6),
-                Font = new Font("Segoe UI", 9, FontStyle.Regular)
-            };
-
-            comboAccountType = new SfComboBox
-            {
-                Name = "comboAccountType",
-                Width = 260,
-                DropDownStyle = DropDownStyle.DropDownList,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                Watermark = "Select account type...",
-                Margin = new Padding(6),
-                AllowDropDownResize = false, // Per demos: prevent dropdown resize
-                MaxDropDownItems = 10, // Per demos: limit visible items
-                AllowNull = true, // Per demos: allow null selection
-                AccessibleName = "Account Type",
-                AccessibleDescription = "Filter accounts by type"
-            };
-            // Per demos: configure dropdown list style
-            comboAccountType.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 9F);
-            // Add tooltip for better UX
-            try { _toolTip?.SetToolTip(comboAccountType, "Filter accounts by type (Asset, Liability, Revenue, Expense)"); } catch { }
-
-            // Refresh button
-            btnRefresh = new SfButton
-            {
-                Name = "btnRefresh",
-                Width = 100,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Refresh accounts list",
-                AccessibleDescription = "Reloads the accounts data from the database"
-            };
-            // Add tooltip for better UX
+            // Syncfusion best practice: Suspend layout during multi-control initialization
+            SuspendLayout();
             try
             {
-                _toolTip?.SetToolTip(btnRefresh, "Reload accounts from database with current filters");
-            }
-            catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                var theme = AppTheme.Office2019Colorful;
-                btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
-                btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
-                btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
+                // Set panel base properties with DPI awareness
+                this.Padding = new Padding(3); // Standard margin per Syncfusion guidelines
+                this.AutoScaleMode = AutoScaleMode.Dpi;
+                this.MinimumSize = new Size(
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f),
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
 
-                // Update on theme change with thread safety
-                _btnRefreshThemeChangedHandler = (s, t) =>
+                // Top filter panel - use theme colors instead of hardcoded values
+                // Shared consistent header (44px height, 8px padding)
+                _panelHeader = new PanelHeader
                 {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
-                        }
-                        else if (btnRefresh.InvokeRequired)
-                        {
-                            btnRefresh.Invoke(() => btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
-                        }
-                        else
-                        {
-                            btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
-                        }
-                    }
-                    catch { }
+                    Dock = DockStyle.Top,
+                    AccessibleName = "Accounts header"
                 };
-                if (_themeService != null) _themeService.ThemeChanged += _btnRefreshThemeChangedHandler;
-            }
-            catch { }
-            btnRefresh.Click += async (s, e) =>
-            {
+
+                // Keep existing filter panel below the header
+                topPanel = new GradientPanelExt
+                {
+                    Dock = DockStyle.Top,
+                    Height = 44, // consistent header height across panels
+                    Padding = new Padding(8),
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
+
+                // Fund label + combo
+                var fundLabel = new Label
+                {
+                    Text = "Fund:",
+                    AutoSize = true,
+                    Margin = new Padding(6, 12, 6, 6),
+                    Font = new Font("Segoe UI", 9, FontStyle.Regular)
+                };
+
+                comboFund = new SfComboBox
+                {
+                    Name = "comboFund",
+                    Width = 260,
+                    DropDownStyle = DropDownStyle.DropDownList,
+                    AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                    Watermark = "Select a fund...",
+                    Margin = new Padding(6),
+                    AllowDropDownResize = false, // Per demos: prevent dropdown resize
+                    MaxDropDownItems = 10, // Per demos: limit visible items
+                    AllowNull = true, // Per demos: allow null selection
+                    AccessibleName = "Fund",
+                    AccessibleDescription = "Filter accounts by fund"
+                };
+                // Per demos: configure dropdown list style
+                comboFund.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 9F);
+                // Add tooltip for better UX
+                try { _toolTip?.SetToolTip(comboFund, "Filter accounts by municipal fund type (General, Enterprise, etc.)"); } catch { }
+
+                // Account Type label + combo
+                var acctTypeLabel = new Label
+                {
+                    Text = "Account Type:",
+                    AutoSize = true,
+                    Margin = new Padding(12, 12, 6, 6),
+                    Font = new Font("Segoe UI", 9, FontStyle.Regular)
+                };
+
+                comboAccountType = new SfComboBox
+                {
+                    Name = "comboAccountType",
+                    Width = 260,
+                    DropDownStyle = DropDownStyle.DropDownList,
+                    AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                    Watermark = "Select account type...",
+                    Margin = new Padding(6),
+                    AllowDropDownResize = false, // Per demos: prevent dropdown resize
+                    MaxDropDownItems = 10, // Per demos: limit visible items
+                    AllowNull = true, // Per demos: allow null selection
+                    AccessibleName = "Account Type",
+                    AccessibleDescription = "Filter accounts by type"
+                };
+                // Per demos: configure dropdown list style
+                comboAccountType.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 9F);
+                // Add tooltip for better UX
+                try { _toolTip?.SetToolTip(comboAccountType, "Filter accounts by type (Asset, Liability, Revenue, Expense)"); } catch { }
+
+                // Refresh button
+                btnRefresh = new SfButton
+                {
+                    Name = "btnRefresh",
+                    Width = 100,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Refresh accounts list",
+                    AccessibleDescription = "Reloads the accounts data from the database"
+                };
+                // Add tooltip for better UX
                 try
                 {
-                    if (ViewModel?.FilterAccountsCommand != null)
-                    {
-                        await ViewModel.FilterAccountsCommand.ExecuteAsync(null);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        var reporting = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.ErrorReportingService>(Program.Services)
-                            : null;
-                        reporting?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
-                    }
-                    catch { }
-                }
-            };
-
-            // Add button - styled by ThemeManager.StyleButton based on Name containing "Add"
-            btnAdd = new SfButton
-            {
-                Text = "Add",
-                Name = "btnAdd",
-                Width = 80,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                // Button styling handled by SkinManager theme cascade
-                FlatStyle = FlatStyle.Flat,
-                AccessibleName = "Add new account",
-                AccessibleDescription = "Opens dialog to create a new municipal account"
-            };
-            // Add tooltip for better UX
-            try { _toolTip?.SetToolTip(btnAdd, "Create a new municipal account (Ctrl+N)"); } catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                var theme = AppTheme.Office2019Colorful;
-                btnAdd.Image = iconService?.GetIcon("add", theme, 14);
-                btnAdd.ImageAlign = ContentAlignment.MiddleLeft;
-                btnAdd.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnAddThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnAdd.Image = svc?.GetIcon("add", t, 14));
-                        }
-                        else if (btnAdd.InvokeRequired)
-                        {
-                            btnAdd.Invoke(() => btnAdd.Image = svc?.GetIcon("add", t, 14));
-                        }
-                        else
-                        {
-                            btnAdd.Image = svc?.GetIcon("add", t, 14);
-                        }
-                    }
-                    catch { }
-                };
-                if (_themeService != null) _themeService.ThemeChanged += _btnAddThemeChangedHandler;
-            }
-            catch { }
-            btnAdd.Click += BtnAdd_Click;
-
-            // Edit button
-            btnEdit = new SfButton
-            {
-                Text = "Edit",
-                Name = "btnEdit",
-                Width = 80,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Edit selected account",
-                AccessibleDescription = "Opens dialog to edit the currently selected account"
-            };
-            // Add tooltip for better UX
-            try { _toolTip?.SetToolTip(btnEdit, "Modify the selected account (Enter or Double-click)"); } catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                var theme = AppTheme.Office2019Colorful;
-                btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
-                btnEdit.ImageAlign = ContentAlignment.MiddleLeft;
-                btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnEditThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnEdit.Image = svc?.GetIcon("edit", t, 14));
-                        }
-                        else if (btnEdit.InvokeRequired)
-                        {
-                            btnEdit.Invoke(() => btnEdit.Image = svc?.GetIcon("edit", t, 14));
-                        }
-                        else
-                        {
-                            btnEdit.Image = svc?.GetIcon("edit", t, 14);
-                        }
-                    }
-                    catch { }
-                };
-                if (_themeService != null) _themeService.ThemeChanged += _btnEditThemeChangedHandler;
-            }
-            catch { }
-            btnEdit.Click += BtnEdit_Click;
-
-            // Delete button
-            btnDelete = new SfButton
-            {
-                Text = "Delete",
-                Name = "btnDelete",
-                Width = 80,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Delete selected account",
-                AccessibleDescription = "Deletes the currently selected account"
-            };
-            // Add tooltip for better UX
-            try { _toolTip?.SetToolTip(btnDelete, "Remove the selected account permanently (Delete)"); } catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                var theme = AppTheme.Office2019Colorful;
-                btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
-                btnDelete.ImageAlign = ContentAlignment.MiddleLeft;
-                btnDelete.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnDeleteThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnDelete.Image = svc?.GetIcon("delete", t, 14));
-                        }
-                        else if (btnDelete.InvokeRequired)
-                        {
-                            btnDelete.Invoke(() => btnDelete.Image = svc?.GetIcon("delete", t, 14));
-                        }
-                        else
-                        {
-                            btnDelete.Image = svc?.GetIcon("delete", t, 14);
-                        }
-                    }
-                    catch { }
-                };
-                if (_themeService != null) _themeService.ThemeChanged += _btnDeleteThemeChangedHandler;
-            }
-            catch { }
-            btnDelete.Click += BtnDelete_Click;
-
-            // Export buttons (Excel / PDF)
-            btnExportExcel = new SfButton
-            {
-                Text = "Export Excel",
-                Name = "btnExportExcel",
-                Width = 100,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Export grid to Excel",
-                AccessibleDescription = "Export the accounts grid to an Excel file"
-            };
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                var theme = AppTheme.Office2019Colorful;
-                btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
-                btnExportExcel.ImageAlign = ContentAlignment.MiddleLeft;
-                btnExportExcel.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnExportExcelThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnExportExcel.Image = svc?.GetIcon("excel", t, 14));
-                        }
-                        else if (btnExportExcel.InvokeRequired)
-                        {
-                            btnExportExcel.Invoke(() => btnExportExcel.Image = svc?.GetIcon("excel", t, 14));
-                        }
-                        else
-                        {
-                            btnExportExcel.Image = svc?.GetIcon("excel", t, 14);
-                        }
-                    }
-                    catch { }
-                };
-                if (_themeService != null) _themeService.ThemeChanged += _btnExportExcelThemeChangedHandler;
-            }
-            catch { }
-            btnExportExcel.Click += async (s, e) =>
-            {
-                try
-                {
-                    using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "accounts.xlsx" };
-                    if (sfd.ShowDialog() != DialogResult.OK) return;
-                    if (gridAccounts == null)
-                    {
-                        MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-                    await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(gridAccounts, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
-
-            btnExportPdf = new SfButton
-            {
-                Text = "Export PDF",
-                Name = "btnExportPdf",
-                Width = 100,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Export grid to PDF",
-                AccessibleDescription = "Export the accounts grid to a PDF file"
-            };
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                // Use default theme for icon selection
-                btnExportPdf.Image = iconService?.GetIcon("pdf", AppTheme.Office2019Colorful, 14);
-                btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
-                btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
-                _btnExportPdfThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
-                        }
-                        else if (btnExportPdf.InvokeRequired)
-                        {
-                            btnExportPdf.Invoke(() => btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
-                        }
-                        else
-                        {
-                            btnExportPdf.Image = svc?.GetIcon("pdf", t, 14);
-                        }
-                    }
-                    catch { }
-                };
-                if (_themeService != null) _themeService.ThemeChanged += _btnExportPdfThemeChangedHandler;
-            }
-            catch { }
-            btnExportPdf.Click += async (s, e) =>
-            {
-                try
-                {
-                    using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "accounts.pdf" };
-                    if (sfd.ShowDialog() != DialogResult.OK) return;
-                    if (gridAccounts == null)
-                    {
-                        MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-                    await WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(gridAccounts, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
-
-            // Navigation separator and buttons per Syncfusion demos pattern
-            var separator = new Label { Text = "  |  ", AutoSize = true, Margin = new Padding(6, 14, 6, 6), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-
-            // View Charts navigation button
-            var btnViewCharts = new SfButton
-            {
-                Text = "Charts",
-                Name = "btnViewCharts",
-                Width = 80,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "View Charts",
-                AccessibleDescription = "Navigate to budget visualization charts"
-            };
-            try { _toolTip?.SetToolTip(btnViewCharts, "Open Charts panel (Ctrl+Shift+C)"); } catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                btnViewCharts.Image = iconService?.GetIcon("chart", AppTheme.Office2019Colorful, 14);
-                btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
-                btnViewCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
-            btnViewCharts.Click += (s, e) =>
-            {
-                try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Charts"); } catch { }
-                NavigateToPanel<ChartPanel>("Charts");
-            };
-
-            // Dashboard navigation button
-            var btnDashboard = new SfButton
-            {
-                Text = "Home",
-                Name = "btnDashboard",
-                Width = 80,
-                Height = 32,
-                Margin = new Padding(6, 10, 6, 6),
-                AccessibleName = "Go to Dashboard",
-                AccessibleDescription = "Navigate to Dashboard overview"
-            };
-            try { _toolTip?.SetToolTip(btnDashboard, "Open Dashboard panel (Ctrl+Shift+D)"); } catch { }
-            try
-            {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
-                btnDashboard.Image = iconService?.GetIcon("home", AppTheme.Office2019Colorful, 14);
-                btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
-                btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
-            btnDashboard.Click += (s, e) =>
-            {
-                try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Dashboard"); } catch { }
-                NavigateToPanel<DashboardPanel>("Dashboard");
-            };
-
-            // Layout top panel using FlowLayoutPanel
-            var flow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                WrapContents = false,
-                FlowDirection = FlowDirection.LeftToRight
-            };
-
-            // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
-            var btnLoad = new SfButton { Text = "Load Accounts", Name = "Toolbar_Load", AccessibleName = "Load Accounts", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
-            btnLoad.Click += async (s, e) => { try { if (ViewModel?.LoadAccountsCommand != null) await ViewModel.LoadAccountsCommand.ExecuteAsync(null); } catch { } };
-
-            var btnApplyFilters = new SfButton { Text = "Apply Filters", Name = "Toolbar_ApplyFilters", AccessibleName = "Apply Filters", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
-            btnApplyFilters.Click += (s, e) => { try { /* Trigger filter apply - UI binds to combo selections; if a command exists, invoke it */ } catch { } };
-
-            var chkAllowEdit = new CheckBoxAdv { Text = "Allow Editing", Name = "Toolbar_AllowEditing", AccessibleName = "Allow Editing", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
-            chkAllowEdit.CheckedChanged += (s, e) => { try { if (gridAccounts != null) gridAccounts.AllowEditing = chkAllowEdit.Checked; } catch { } };
-
-            flow.Controls.Add(fundLabel);
-            flow.Controls.Add(comboFund);
-            flow.Controls.Add(acctTypeLabel);
-            flow.Controls.Add(comboAccountType);
-            flow.Controls.Add(btnLoad);
-            flow.Controls.Add(btnApplyFilters);
-            flow.Controls.Add(chkAllowEdit);
-            flow.Controls.Add(btnRefresh);
-            flow.Controls.Add(btnAdd);
-            flow.Controls.Add(btnEdit);
-            flow.Controls.Add(btnDelete);
-            flow.Controls.Add(btnExportExcel);
-            flow.Controls.Add(btnExportPdf);
-            flow.Controls.Add(separator);
-            flow.Controls.Add(btnViewCharts);
-            flow.Controls.Add(btnDashboard);
-
-            topPanel.Controls.Add(flow);
-
-            // Wire header actions to view model
-            try
-            {
-                _panelHeader.Title = AccountsPanelResources.PanelTitle;
-                // Propagate title to docking handler (if present) to ensure Syncfusion captions are set for automation
-                try
-                {
-                    var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
-                    var txtProp = dh?.GetType().GetProperty("Text");
-                    if (dh != null && txtProp != null) txtProp.SetValue(dh, AccountsPanelResources.PanelTitle);
+                    _toolTip?.SetToolTip(btnRefresh, "Reload accounts from database with current filters");
                 }
                 catch { }
-                _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
-                _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
-                _panelHeaderPinHandler = OnPanelHeaderPinToggled;
-                _panelHeader.PinToggled += _panelHeaderPinHandler;
-                _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
-                _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-            }
-            catch { }
-
-            Controls.Add(_panelHeader);
-            Controls.Add(topPanel);
-
-            // Data grid - configured per Syncfusion demo best practices (Themes, Filtering, Sorting demos)
-            gridAccounts = new SfDataGrid
-            {
-                Name = "dataGridAccounts",
-                Dock = DockStyle.Fill,
-                AutoGenerateColumns = false,
-                AllowEditing = false,
-                AllowGrouping = true,
-                AllowFiltering = true,
-                AllowSorting = true,
-                AllowResizingColumns = true,
-                AllowDraggingColumns = true,
-                ShowGroupDropArea = true,
-                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                SelectionMode = GridSelectionMode.Extended,
-                NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-                ShowRowHeader = true,
-                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(35.0f), // Per demos: DPI-aware height
-                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f), // Per demos: DPI-aware height
-                AllowTriStateSorting = true, // Per demos: enables tri-state sorting
-                ShowSortNumbers = true, // Per demos: shows sort order numbers
-                AutoExpandGroups = true, // Per demos: auto expand grouped rows
-                LiveDataUpdateMode = Syncfusion.Data.LiveDataUpdateMode.AllowDataShaping, // Per demos: real-time updates
-                AllowResizingHiddenColumns = false, // Per demos: prevent resizing hidden columns
-                AccessibleName = "Accounts data grid",
-                AccessibleDescription = "Grid displaying municipal accounts with filtering and sorting"
-            };
-            // Per-control SetVisualStyle removed: centralize theme via ThemeManager.ApplyThemeToControl(this)
-            try
-            {
-                var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");
-                if (atwProp != null && atwProp.PropertyType == typeof(bool))
-                {
-                    atwProp.SetValue(gridAccounts, false);
-                }
-            }
-            catch { }
-
-            // Configure grid style
-            gridAccounts.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI Semibold", 9F));
-            gridAccounts.Style.CellStyle.Font = new GridFontInfo(new Font("Segoe UI", 9F));
-
-            // Configure columns with proper formatting per Syncfusion demos
-            gridAccounts.Columns.Add(new GridTextColumn
-            {
-                MappingName = "AccountNumber",
-                HeaderText = AccountsPanelResources.AccountNumberHeader,
-                MinimumWidth = 100,
-                AllowFiltering = true,
-                AllowSorting = true
-            });
-            gridAccounts.Columns.Add(new GridTextColumn
-            {
-                MappingName = "AccountName",
-                HeaderText = AccountsPanelResources.AccountNameHeader,
-                MinimumWidth = 200,
-                AllowFiltering = true,
-                AllowSorting = true
-            });
-            gridAccounts.Columns.Add(new GridTextColumn
-            {
-                MappingName = "AccountType",
-                HeaderText = AccountsPanelResources.TypeHeader,
-                MinimumWidth = 100,
-                AllowFiltering = true,
-                AllowGrouping = true
-            });
-            gridAccounts.Columns.Add(new GridTextColumn
-            {
-                MappingName = "FundName",
-                HeaderText = AccountsPanelResources.FundHeader,
-                MinimumWidth = 120,
-                AllowFiltering = true,
-                AllowGrouping = true
-            });
-            gridAccounts.Columns.Add(new GridNumericColumn
-            {
-                MappingName = "CurrentBalance",
-                HeaderText = AccountsPanelResources.BalanceHeader,
-                Format = "C2",
-                // Older/newer Syncfusion versions may not include the FormatMode enum; attempt to set via reflection when available.
-                // We'll fall back to Format string if FormatMode isn't present.
-                MinimumWidth = 120,
-                // Use culture-aware NumberFormatInfo to avoid invariant culture issues with RegionInfo lookups
-                NumberFormatInfo = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat,
-                AllowFiltering = true,
-                AllowSorting = true
-            });
-
-            // If possible, set FormatMode on numeric column via reflection (some Syncfusion builds removed the enum at compile-time)
-            try
-            {
-                var curr = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "CurrentBalance");
-                if (curr != null)
-                {
-                    var fmProp = curr.GetType().GetProperty("FormatMode");
-                    if (fmProp != null)
-                    {
-                        var enumType = fmProp.PropertyType;
-                        var f = enumType.GetField("Currency") ?? enumType.GetFields().FirstOrDefault();
-                        if (f != null) fmProp.SetValue(curr, f.GetValue(null));
-                    }
-                }
-            }
-            catch { }
-
-            // Actions unbound column: provides contextual Edit/Delete actions per row
-            try
-            {
-                // GridUnBoundColumn may not exist in some Syncfusion builds; create via reflection when available.
                 try
                 {
-                    var gridAsm = typeof(SfDataGrid).Assembly;
-                    var ubType = gridAsm.GetType("Syncfusion.WinForms.DataGrid.GridUnBoundColumn");
-                    if (ubType != null)
-                    {
-                        var actionsCol = Activator.CreateInstance(ubType);
-                        if (actionsCol != null)
-                        {
-                            var setProp = ubType.GetProperty("MappingName");
-                            setProp?.SetValue(actionsCol, "Actions");
-                            var setHeader = ubType.GetProperty("HeaderText");
-                            setHeader?.SetValue(actionsCol, "Actions");
-                            var minW = ubType.GetProperty("MinimumWidth");
-                            minW?.SetValue(actionsCol, 120);
-                            var editProp = ubType.GetProperty("AllowEditing");
-                            editProp?.SetValue(actionsCol, false);
+                    var iconService = _iconService;
+                    var theme = AppTheme.Office2019Colorful;
+                    btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
+                    btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
 
-                            // Add via Columns collection (use reflection to avoid compile-time dependency)
-                            var cols = gridAccounts.Columns;
-                            var addMethod = cols.GetType().GetMethod("Add", new[] { ubType }) ?? cols.GetType().GetMethod("Add", new[] { typeof(object) });
-                            addMethod?.Invoke(cols, new[] { actionsCol });
+                    // Update on theme change with thread safety
+                    _btnRefreshThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
+                            }
+                            else if (btnRefresh.InvokeRequired)
+                            {
+                                btnRefresh.Invoke(() => btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
+                            }
+                            else
+                            {
+                                btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
+                            }
                         }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnRefreshThemeChangedHandler;
+                }
+                catch { }
+                btnRefresh.Click += async (s, e) =>
+                {
+                    try
+                    {
+                        if (ViewModel?.FilterAccountsCommand != null)
+                        {
+                            await ViewModel.FilterAccountsCommand.ExecuteAsync(null);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            _errorReportingService?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
+                        }
+                        catch { }
+                    }
+                };
+
+                // Add button - styled by ThemeManager.StyleButton based on Name containing "Add"
+                btnAdd = new SfButton
+                {
+                    Text = "Add",
+                    Name = "btnAdd",
+                    Width = 80,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    // Button styling handled by SkinManager theme cascade
+                    FlatStyle = FlatStyle.Flat,
+                    AccessibleName = "Add new account",
+                    AccessibleDescription = "Opens dialog to create a new municipal account"
+                };
+                // Add tooltip for better UX
+                try { _toolTip?.SetToolTip(btnAdd, "Create a new municipal account (Ctrl+N)"); } catch { }
+                try
+                {
+                    var iconService = _iconService;
+                    var theme = AppTheme.Office2019Colorful;
+                    btnAdd.Image = iconService?.GetIcon("add", theme, 14);
+                    btnAdd.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnAdd.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnAddThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnAdd.Image = svc?.GetIcon("add", t, 14));
+                            }
+                            else if (btnAdd.InvokeRequired)
+                            {
+                                btnAdd.Invoke(() => btnAdd.Image = svc?.GetIcon("add", t, 14));
+                            }
+                            else
+                            {
+                                btnAdd.Image = svc?.GetIcon("add", t, 14);
+                            }
+                        }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnAddThemeChangedHandler;
+                }
+                catch { }
+                btnAdd.Click += BtnAdd_Click;
+
+                // Edit button
+                btnEdit = new SfButton
+                {
+                    Text = "Edit",
+                    Name = "btnEdit",
+                    Width = 80,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Edit selected account",
+                    AccessibleDescription = "Opens dialog to edit the currently selected account"
+                };
+                // Add tooltip for better UX
+                try { _toolTip?.SetToolTip(btnEdit, "Modify the selected account (Enter or Double-click)"); } catch { }
+                try
+                {
+                    var iconService = _iconService;
+                    var theme = AppTheme.Office2019Colorful;
+                    btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
+                    btnEdit.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnEditThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnEdit.Image = svc?.GetIcon("edit", t, 14));
+                            }
+                            else if (btnEdit.InvokeRequired)
+                            {
+                                btnEdit.Invoke(() => btnEdit.Image = svc?.GetIcon("edit", t, 14));
+                            }
+                            else
+                            {
+                                btnEdit.Image = svc?.GetIcon("edit", t, 14);
+                            }
+                        }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnEditThemeChangedHandler;
+                }
+                catch { }
+                btnEdit.Click += BtnEdit_Click;
+
+                // Delete button
+                btnDelete = new SfButton
+                {
+                    Text = "Delete",
+                    Name = "btnDelete",
+                    Width = 80,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Delete selected account",
+                    AccessibleDescription = "Deletes the currently selected account"
+                };
+                // Add tooltip for better UX
+                try { _toolTip?.SetToolTip(btnDelete, "Remove the selected account permanently (Delete)"); } catch { }
+                try
+                {
+                    var iconService = _iconService;
+                    var theme = AppTheme.Office2019Colorful;
+                    btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
+                    btnDelete.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnDelete.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnDeleteThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnDelete.Image = svc?.GetIcon("delete", t, 14));
+                            }
+                            else if (btnDelete.InvokeRequired)
+                            {
+                                btnDelete.Invoke(() => btnDelete.Image = svc?.GetIcon("delete", t, 14));
+                            }
+                            else
+                            {
+                                btnDelete.Image = svc?.GetIcon("delete", t, 14);
+                            }
+                        }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnDeleteThemeChangedHandler;
+                }
+                catch { }
+                btnDelete.Click += BtnDelete_Click;
+
+                // Export buttons (Excel / PDF)
+                btnExportExcel = new SfButton
+                {
+                    Text = "Export Excel",
+                    Name = "btnExportExcel",
+                    Width = 100,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Export grid to Excel",
+                    AccessibleDescription = "Export the accounts grid to an Excel file"
+                };
+                try
+                {
+                    var iconService = _iconService;
+                    var theme = AppTheme.Office2019Colorful;
+                    btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
+                    btnExportExcel.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnExportExcel.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnExportExcelThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnExportExcel.Image = svc?.GetIcon("excel", t, 14));
+                            }
+                            else if (btnExportExcel.InvokeRequired)
+                            {
+                                btnExportExcel.Invoke(() => btnExportExcel.Image = svc?.GetIcon("excel", t, 14));
+                            }
+                            else
+                            {
+                                btnExportExcel.Image = svc?.GetIcon("excel", t, 14);
+                            }
+                        }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnExportExcelThemeChangedHandler;
+                }
+                catch { }
+                btnExportExcel.Click += async (s, e) =>
+                {
+                    try
+                    {
+                        using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "accounts.xlsx" };
+                        if (sfd.ShowDialog() != DialogResult.OK) return;
+                        if (gridAccounts == null)
+                        {
+                            MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(gridAccounts, sfd.FileName);
+                        MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                };
+
+                btnExportPdf = new SfButton
+                {
+                    Text = "Export PDF",
+                    Name = "btnExportPdf",
+                    Width = 100,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Export grid to PDF",
+                    AccessibleDescription = "Export the accounts grid to a PDF file"
+                };
+                try
+                {
+                    var iconService = _iconService;
+                    // Use default theme for icon selection
+                    btnExportPdf.Image = iconService?.GetIcon("pdf", AppTheme.Office2019Colorful, 14);
+                    btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnExportPdf.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    _btnExportPdfThemeChangedHandler = (s, t) =>
+                    {
+                        try
+                        {
+                            var svc = _iconService;
+                            if (_dispatcherHelper != null)
+                            {
+                                _ = _dispatcherHelper.InvokeAsync(() => btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
+                            }
+                            else if (btnExportPdf.InvokeRequired)
+                            {
+                                btnExportPdf.Invoke(() => btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
+                            }
+                            else
+                            {
+                                btnExportPdf.Image = svc?.GetIcon("pdf", t, 14);
+                            }
+                        }
+                        catch { }
+                    };
+                    if (_themeService != null) _themeService.ThemeChanged += _btnExportPdfThemeChangedHandler;
+                }
+                catch { }
+                btnExportPdf.Click += async (s, e) =>
+                {
+                    try
+                    {
+                        using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "accounts.pdf" };
+                        if (sfd.ShowDialog() != DialogResult.OK) return;
+                        if (gridAccounts == null)
+                        {
+                            MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        await WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(gridAccounts, sfd.FileName);
+                        MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                };
+
+                // Navigation separator and buttons per Syncfusion demos pattern
+                var separator = new Label { Text = "  |  ", AutoSize = true, Margin = new Padding(6, 14, 6, 6), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
+
+                // View Charts navigation button
+                var btnViewCharts = new SfButton
+                {
+                    Text = "Charts",
+                    Name = "btnViewCharts",
+                    Width = 80,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "View Charts",
+                    AccessibleDescription = "Navigate to budget visualization charts"
+                };
+                try { _toolTip?.SetToolTip(btnViewCharts, "Open Charts panel (Ctrl+Shift+C)"); } catch { }
+                try
+                {
+                    var iconService = _iconService;
+                    btnViewCharts.Image = iconService?.GetIcon("chart", AppTheme.Office2019Colorful, 14);
+                    btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnViewCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
+                }
+                catch { }
+                btnViewCharts.Click += (s, e) =>
+                {
+                    try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Charts"); } catch { }
+                    NavigateToPanel<ChartPanel>("Charts");
+                };
+
+                // Dashboard navigation button
+                var btnDashboard = new SfButton
+                {
+                    Text = "Home",
+                    Name = "btnDashboard",
+                    Width = 80,
+                    Height = 32,
+                    Margin = new Padding(6, 10, 6, 6),
+                    AccessibleName = "Go to Dashboard",
+                    AccessibleDescription = "Navigate to Dashboard overview"
+                };
+                try { _toolTip?.SetToolTip(btnDashboard, "Open Dashboard panel (Ctrl+Shift+D)"); } catch { }
+                try
+                {
+                    var iconService = _iconService;
+                    btnDashboard.Image = iconService?.GetIcon("home", AppTheme.Office2019Colorful, 14);
+                    btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
+                    btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
+                }
+                catch { }
+                btnDashboard.Click += (s, e) =>
+                {
+                    try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Dashboard"); } catch { }
+                    NavigateToPanel<DashboardPanel>("Dashboard");
+                };
+
+                // Layout top panel using FlowLayoutPanel
+                var flow = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    WrapContents = false,
+                    FlowDirection = FlowDirection.LeftToRight
+                };
+
+                // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
+                var btnLoad = new SfButton { Text = "Load Accounts", Name = "Toolbar_Load", AccessibleName = "Load Accounts", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+                btnLoad.Click += async (s, e) => { try { if (ViewModel?.LoadAccountsCommand != null) await ViewModel.LoadAccountsCommand.ExecuteAsync(null); } catch { } };
+
+                var btnApplyFilters = new SfButton { Text = "Apply Filters", Name = "Toolbar_ApplyFilters", AccessibleName = "Apply Filters", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+                btnApplyFilters.Click += (s, e) => { try { /* Trigger filter apply - UI binds to combo selections; if a command exists, invoke it */ } catch { } };
+
+                var chkAllowEdit = new CheckBoxAdv { Text = "Allow Editing", Name = "Toolbar_AllowEditing", AccessibleName = "Allow Editing", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+                chkAllowEdit.CheckedChanged += (s, e) => { try { if (gridAccounts != null) gridAccounts.AllowEditing = chkAllowEdit.Checked; } catch { } };
+
+                flow.Controls.Add(fundLabel);
+                flow.Controls.Add(comboFund);
+                flow.Controls.Add(acctTypeLabel);
+                flow.Controls.Add(comboAccountType);
+                flow.Controls.Add(btnLoad);
+                flow.Controls.Add(btnApplyFilters);
+                flow.Controls.Add(chkAllowEdit);
+                flow.Controls.Add(btnRefresh);
+                flow.Controls.Add(btnAdd);
+                flow.Controls.Add(btnEdit);
+                flow.Controls.Add(btnDelete);
+                flow.Controls.Add(btnExportExcel);
+                flow.Controls.Add(btnExportPdf);
+                flow.Controls.Add(separator);
+                flow.Controls.Add(btnViewCharts);
+                flow.Controls.Add(btnDashboard);
+
+                topPanel.Controls.Add(flow);
+
+                // Wire header actions to view model
+                try
+                {
+                    _panelHeader.Title = AccountsPanelResources.PanelTitle;
+                    // Propagate title to docking handler (if present) to ensure Syncfusion captions are set for automation
+                    try
+                    {
+                        var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+                        var txtProp = dh?.GetType().GetProperty("Text");
+                        if (dh != null && txtProp != null) txtProp.SetValue(dh, AccountsPanelResources.PanelTitle);
+                    }
+                    catch { }
+                    _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
+                    _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+                    _panelHeaderPinHandler = OnPanelHeaderPinToggled;
+                    _panelHeader.PinToggled += _panelHeaderPinHandler;
+                    _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
+                    _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+                }
+                catch { }
+
+                Controls.Add(_panelHeader);
+                Controls.Add(topPanel);
+
+                // Data grid - configured per Syncfusion demo best practices (Themes, Filtering, Sorting demos)
+                gridAccounts = new SfDataGrid
+                {
+                    Name = "dataGridAccounts",
+                    Dock = DockStyle.Fill,
+                    AutoGenerateColumns = false,
+                    AllowEditing = false,
+                    AllowGrouping = true,
+                    AllowFiltering = true,
+                    AllowSorting = true,
+                    AllowResizingColumns = true,
+                    AllowDraggingColumns = true,
+                    ShowGroupDropArea = true,
+                    AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
+                    SelectionMode = GridSelectionMode.Extended,
+                    NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
+                    ShowRowHeader = true,
+                    HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(35.0f), // Per demos: DPI-aware height
+                    RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f), // Per demos: DPI-aware height
+                    AllowTriStateSorting = true, // Per demos: enables tri-state sorting
+                    ShowSortNumbers = true, // Per demos: shows sort order numbers
+                    AutoExpandGroups = true, // Per demos: auto expand grouped rows
+                    LiveDataUpdateMode = Syncfusion.Data.LiveDataUpdateMode.AllowDataShaping, // Per demos: real-time updates
+                    AllowResizingHiddenColumns = false, // Per demos: prevent resizing hidden columns
+                    AccessibleName = "Accounts data grid",
+                    AccessibleDescription = "Grid displaying municipal accounts with filtering and sorting"
+                };
+                // Per-control SetVisualStyle removed: centralize theme via ThemeManager.ApplyThemeToControl(this)
+                try
+                {
+                    var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");
+                    if (atwProp != null && atwProp.PropertyType == typeof(bool))
+                    {
+                        atwProp.SetValue(gridAccounts, false);
                     }
                 }
                 catch { }
-            }
-            catch { }
 
-            // Tune filter UI for categorical columns to provide Excel-like checkbox filters
-            try
-            {
-                var typeColumn = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "AccountType");
-                if (typeColumn != null)
+                // Configure grid style
+                gridAccounts.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI Semibold", 9F));
+                gridAccounts.Style.CellStyle.Font = new GridFontInfo(new Font("Segoe UI", 9F));
+
+                // Configure columns with proper formatting per Syncfusion demos
+                gridAccounts.Columns.Add(new GridTextColumn
                 {
-                    try
-                    {
-                        var prop = typeColumn.GetType().GetProperty("FilterPopupMode");
-                        if (prop != null)
-                        {
-                            var enumType = prop.PropertyType;
-                            var field = enumType.GetField("CheckBoxFilter") ?? enumType.GetFields().FirstOrDefault();
-                            if (field != null) prop.SetValue(typeColumn, field.GetValue(null));
-                        }
-                    }
-                    catch { }
-                    typeColumn.ImmediateUpdateColumnFilter = true;
-                }
-
-                var fundColumn = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "FundName");
-                if (fundColumn != null)
+                    MappingName = "AccountNumber",
+                    HeaderText = AccountsPanelResources.AccountNumberHeader,
+                    MinimumWidth = 100,
+                    AllowFiltering = true,
+                    AllowSorting = true
+                });
+                gridAccounts.Columns.Add(new GridTextColumn
                 {
-                    try
-                    {
-                        var prop = fundColumn.GetType().GetProperty("FilterPopupMode");
-                        if (prop != null)
-                        {
-                            var enumType = prop.PropertyType;
-                            var field = enumType.GetField("CheckBoxFilter") ?? enumType.GetFields().FirstOrDefault();
-                            if (field != null) prop.SetValue(fundColumn, field.GetValue(null));
-                        }
-                    }
-                    catch { }
-                    fundColumn.ImmediateUpdateColumnFilter = true;
-                }
-            }
-            catch { }
-
-            // Enable the filter bar for Excel-style filtering
-            // ShowFilterBar may not exist on all SfDataGrid versions; set via reflection if available
-            try
-            {
-                var sfProp = gridAccounts.GetType().GetProperty("ShowFilterBar");
-                if (sfProp != null && sfProp.PropertyType == typeof(bool)) sfProp.SetValue(gridAccounts, true);
-            }
-            catch { }
-
-            // Add a summary row (bottom) to show totals for numeric columns
-            try
-            {
-                var tableSummary = new GridTableSummaryRow
+                    MappingName = "AccountName",
+                    HeaderText = AccountsPanelResources.AccountNameHeader,
+                    MinimumWidth = 200,
+                    AllowFiltering = true,
+                    AllowSorting = true
+                });
+                gridAccounts.Columns.Add(new GridTextColumn
                 {
-                    Name = "TableSummary",
-                    Position = Syncfusion.WinForms.DataGrid.Enums.VerticalPosition.Bottom,
-                    ShowSummaryInRow = false
-                };
-
-                var totalBalanceCol = new GridSummaryColumn
+                    MappingName = "AccountType",
+                    HeaderText = AccountsPanelResources.TypeHeader,
+                    MinimumWidth = 100,
+                    AllowFiltering = true,
+                    AllowGrouping = true
+                });
+                gridAccounts.Columns.Add(new GridTextColumn
                 {
-                    Name = "TotalBalance",
+                    MappingName = "FundName",
+                    HeaderText = AccountsPanelResources.FundHeader,
+                    MinimumWidth = 120,
+                    AllowFiltering = true,
+                    AllowGrouping = true
+                });
+                gridAccounts.Columns.Add(new GridNumericColumn
+                {
                     MappingName = "CurrentBalance",
-                    SummaryType = Syncfusion.Data.SummaryType.DoubleAggregate,
-                    Format = "{Sum:c}"
+                    HeaderText = AccountsPanelResources.BalanceHeader,
+                    Format = "C2",
+                    // Older/newer Syncfusion versions may not include the FormatMode enum; attempt to set via reflection when available.
+                    // We'll fall back to Format string if FormatMode isn't present.
+                    MinimumWidth = 120,
+                    // Use culture-aware NumberFormatInfo to avoid invariant culture issues with RegionInfo lookups
+                    NumberFormatInfo = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat,
+                    AllowFiltering = true,
+                    AllowSorting = true
+                });
+
+                // If possible, set FormatMode on numeric column via reflection (some Syncfusion builds removed the enum at compile-time)
+                try
+                {
+                    var curr = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "CurrentBalance");
+                    if (curr != null)
+                    {
+                        var fmProp = curr.GetType().GetProperty("FormatMode");
+                        if (fmProp != null)
+                        {
+                            var enumType = fmProp.PropertyType;
+                            var f = enumType.GetField("Currency") ?? enumType.GetFields().FirstOrDefault();
+                            if (f != null) fmProp.SetValue(curr, f.GetValue(null));
+                        }
+                    }
+                }
+                catch { }
+
+                // Actions unbound column: provides contextual Edit/Delete actions per row
+                try
+                {
+                    // GridUnBoundColumn may not exist in some Syncfusion builds; create via reflection when available.
+                    try
+                    {
+                        var gridAsm = typeof(SfDataGrid).Assembly;
+                        var ubType = gridAsm.GetType("Syncfusion.WinForms.DataGrid.GridUnBoundColumn");
+                        if (ubType != null)
+                        {
+                            var actionsCol = Activator.CreateInstance(ubType);
+                            if (actionsCol != null)
+                            {
+                                var setProp = ubType.GetProperty("MappingName");
+                                setProp?.SetValue(actionsCol, "Actions");
+                                var setHeader = ubType.GetProperty("HeaderText");
+                                setHeader?.SetValue(actionsCol, "Actions");
+                                var minW = ubType.GetProperty("MinimumWidth");
+                                minW?.SetValue(actionsCol, 120);
+                                var editProp = ubType.GetProperty("AllowEditing");
+                                editProp?.SetValue(actionsCol, false);
+
+                                // Add via Columns collection (use reflection to avoid compile-time dependency)
+                                var cols = gridAccounts.Columns;
+                                var addMethod = cols.GetType().GetMethod("Add", new[] { ubType }) ?? cols.GetType().GetMethod("Add", new[] { typeof(object) });
+                                addMethod?.Invoke(cols, new[] { actionsCol });
+                            }
+                        }
+                    }
+                    catch { }
+                }
+                catch { }
+
+                // Tune filter UI for categorical columns to provide Excel-like checkbox filters
+                try
+                {
+                    var typeColumn = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "AccountType");
+                    if (typeColumn != null)
+                    {
+                        try
+                        {
+                            var prop = typeColumn.GetType().GetProperty("FilterPopupMode");
+                            if (prop != null)
+                            {
+                                var enumType = prop.PropertyType;
+                                var field = enumType.GetField("CheckBoxFilter") ?? enumType.GetFields().FirstOrDefault();
+                                if (field != null) prop.SetValue(typeColumn, field.GetValue(null));
+                            }
+                        }
+                        catch { }
+                        typeColumn.ImmediateUpdateColumnFilter = true;
+                    }
+
+                    var fundColumn = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "FundName");
+                    if (fundColumn != null)
+                    {
+                        try
+                        {
+                            var prop = fundColumn.GetType().GetProperty("FilterPopupMode");
+                            if (prop != null)
+                            {
+                                var enumType = prop.PropertyType;
+                                var field = enumType.GetField("CheckBoxFilter") ?? enumType.GetFields().FirstOrDefault();
+                                if (field != null) prop.SetValue(fundColumn, field.GetValue(null));
+                            }
+                        }
+                        catch { }
+                        fundColumn.ImmediateUpdateColumnFilter = true;
+                    }
+                }
+                catch { }
+
+                // Enable the filter bar for Excel-style filtering
+                // ShowFilterBar may not exist on all SfDataGrid versions; set via reflection if available
+                try
+                {
+                    var sfProp = gridAccounts.GetType().GetProperty("ShowFilterBar");
+                    if (sfProp != null && sfProp.PropertyType == typeof(bool)) sfProp.SetValue(gridAccounts, true);
+                }
+                catch { }
+
+                // Add a summary row (bottom) to show totals for numeric columns
+                try
+                {
+                    var tableSummary = new GridTableSummaryRow
+                    {
+                        Name = "TableSummary",
+                        Position = Syncfusion.WinForms.DataGrid.Enums.VerticalPosition.Bottom,
+                        ShowSummaryInRow = false
+                    };
+
+                    var totalBalanceCol = new GridSummaryColumn
+                    {
+                        Name = "TotalBalance",
+                        MappingName = "CurrentBalance",
+                        SummaryType = Syncfusion.Data.SummaryType.DoubleAggregate,
+                        Format = "{Sum:c}"
+                    };
+
+                    tableSummary.SummaryColumns.Add(totalBalanceCol);
+                    gridAccounts.TableSummaryRows.Add(tableSummary);
+                }
+                catch { }
+
+                // Wire up grid selection to sync with ViewModel.SelectedAccount
+                gridAccounts.SelectionChanged += GridAccounts_SelectionChanged;
+
+                // Provide clickable actions column to show contextual Edit/Delete
+                gridAccounts.CellClick += GridAccounts_CellClick;
+
+                // Enable double-click to edit per Syncfusion demos
+                gridAccounts.CellDoubleClick += GridAccounts_CellDoubleClick;
+
+                // Enable tooltips on grid for better UX
+                gridAccounts.ShowToolTip = true;
+                gridAccounts.ToolTipOpening += GridAccounts_ToolTipOpening;
+
+                Controls.Add(gridAccounts);
+
+                // Add overlays (loading spinner and no-data friendly message)
+                _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
+                Controls.Add(_loadingOverlay);
+
+                _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
+                Controls.Add(_noDataOverlay);
+
+                // Summary panel at bottom - use theme colors
+                summaryPanel = new GradientPanelExt
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 40,
+                    Padding = new Padding(10),
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
+
+                lblTotalBalance = new Label
+                {
+                    Text = "Total Balance: $0.00",
+                    AutoSize = true,
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    Anchor = AnchorStyles.Left
                 };
 
-                tableSummary.SummaryColumns.Add(totalBalanceCol);
-                gridAccounts.TableSummaryRows.Add(tableSummary);
+                lblAccountCount = new Label
+                {
+                    Text = "Accounts: 0",
+                    AutoSize = true,
+                    Font = new Font("Segoe UI", 10, FontStyle.Regular),
+                    Anchor = AnchorStyles.Right
+                };
+
+                var summaryFlow = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    WrapContents = false,
+                    FlowDirection = FlowDirection.LeftToRight
+                };
+
+                summaryFlow.Controls.Add(lblTotalBalance);
+                summaryFlow.Controls.Add(new Label { Text = "    |    ", AutoSize = true });
+                summaryFlow.Controls.Add(lblAccountCount);
+
+                summaryPanel.Controls.Add(summaryFlow);
+                Controls.Add(summaryPanel);
             }
-            catch { }
-
-            // Wire up grid selection to sync with ViewModel.SelectedAccount
-            gridAccounts.SelectionChanged += GridAccounts_SelectionChanged;
-
-            // Provide clickable actions column to show contextual Edit/Delete
-            gridAccounts.CellClick += GridAccounts_CellClick;
-
-            // Enable double-click to edit per Syncfusion demos
-            gridAccounts.CellDoubleClick += GridAccounts_CellDoubleClick;
-
-            // Enable tooltips on grid for better UX
-            gridAccounts.ShowToolTip = true;
-            gridAccounts.ToolTipOpening += GridAccounts_ToolTipOpening;
-
-            Controls.Add(gridAccounts);
-
-            // Add overlays (loading spinner and no-data friendly message)
-            _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
-            Controls.Add(_loadingOverlay);
-
-            _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
-            Controls.Add(_noDataOverlay);
-
-            // Summary panel at bottom - use theme colors
-            summaryPanel = new GradientPanelExt
+            finally
             {
-                Dock = DockStyle.Bottom,
-                Height = 40,
-                Padding = new Padding(10),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
-
-            lblTotalBalance = new Label
-            {
-                Text = "Total Balance: $0.00",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Anchor = AnchorStyles.Left
-            };
-
-            lblAccountCount = new Label
-            {
-                Text = "Accounts: 0",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 10, FontStyle.Regular),
-                Anchor = AnchorStyles.Right
-            };
-
-            var summaryFlow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                WrapContents = false,
-                FlowDirection = FlowDirection.LeftToRight
-            };
-
-            summaryFlow.Controls.Add(lblTotalBalance);
-            summaryFlow.Controls.Add(new Label { Text = "    |    ", AutoSize = true });
-            summaryFlow.Controls.Add(lblAccountCount);
-
-            summaryPanel.Controls.Add(summaryFlow);
-            Controls.Add(summaryPanel);
+                // Syncfusion best practice: Resume layout and perform final layout pass
+                ResumeLayout(performLayout: true);
+            }
         }
 
         private void BindViewModel()
@@ -1243,7 +1195,10 @@ namespace WileyWidget.WinForms.Controls
                 // Fallback: if no dispatcher helper, check InvokeRequired for cross-thread safety
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    }
                     return;
                 }
 
@@ -1370,9 +1325,7 @@ namespace WileyWidget.WinForms.Controls
                 if (display == null) return;
 
                 var cm = new ContextMenuStrip();
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
 
                 var miEdit = new ToolStripMenuItem("Edit");
                 try { miEdit.Image = iconService?.GetIcon("edit", AppTheme.Office2019Colorful, 14); } catch { }
@@ -1451,7 +1404,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Open AccountEditPanel inside a modal form for adding
-                using var scope = Program.Services.CreateScope();
+                using var scope = ScopeFactory.CreateScope();
                 var provider = scope.ServiceProvider;
                 var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
                 using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new Size(520, 560) };
@@ -1487,7 +1440,7 @@ namespace WileyWidget.WinForms.Controls
                     return;
                 }
 
-                using var scope = Program.Services.CreateScope();
+                using var scope = ScopeFactory.CreateScope();
                 var provider = scope.ServiceProvider;
                 var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
                 // Populate any existing values if AccountEditPanel had a constructor for existing; for now, host and show
@@ -1703,7 +1656,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
+                    }
                     return;
                 }
 

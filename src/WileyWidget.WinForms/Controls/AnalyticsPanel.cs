@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ using WileyWidget.Services.Extensions;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.ListView;
+using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -74,7 +76,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
-        InitializeControls();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
     }
 
     /// <summary>
@@ -97,7 +101,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes all UI controls and sets up the layout.
     /// </summary>
-    private void InitializeControls()
+    private void InitializeComponent()
     {
         // Theme is applied automatically by SfSkinManager cascade from the parent form.
         // Avoid per-control SetTheme to prevent inconsistent/double theming.
@@ -121,9 +125,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterDistance = 300
+            Orientation = Orientation.Horizontal
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
 
         // Top panel - Controls and scenario input
         InitializeTopPanel();
@@ -424,9 +428,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         var resultsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 200
+            Orientation = Orientation.Vertical
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(resultsSplit, 200);
 
         // Top results - Grids
         var gridsPanel = new GradientPanelExt
@@ -440,9 +444,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         var gridsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterDistance = 850
+            Orientation = Orientation.Horizontal
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(gridsSplit, 850);
 
         // Metrics grid
         var metricsPanel = new GradientPanelExt
@@ -555,9 +559,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         var insightsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterDistance = 150
+            Orientation = Orientation.Horizontal
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(insightsSplit, 150);
 
         // Insights list
         var insightsGroup = new GradientPanelExt
@@ -655,9 +659,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         var chartsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 400
+            Orientation = Orientation.Vertical
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(chartsSplit, 400);
 
         // Trends chart
         var trendsPanel = new GradientPanelExt
@@ -817,10 +821,23 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
     /// <summary>
     /// Handles view model property changed event.
+    /// Per Microsoft WinForms documentation: All UI updates from cross-thread PropertyChanged
+    /// handlers must be marshaled to the UI thread using Control.InvokeRequired check.
+    /// Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls-to-windows-forms-controls
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (ViewModel == null) return;
+
+        // Per Microsoft documentation: Check if we're on a different thread and marshal if needed
+        // This prevents InvalidOperationException: "Cross-thread operation not valid"
+        if (InvokeRequired)
+        {
+            // Recursively call this handler on the UI thread (per Microsoft pattern)
+            // Use fully-qualified System.Action to avoid ambiguity with Syncfusion.Windows.Forms.Tools.Action
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            return;
+        }
 
         switch (e.PropertyName)
         {
@@ -1009,7 +1026,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Handles the load event.
     /// </summary>
-    protected override void OnLoad(EventArgs e)
+    protected override async void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
@@ -1035,8 +1052,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             if (_variancesSearchTextBox != null)
                 _variancesSearchTextBox.Text = ViewModel.VariancesSearchText;
 
-            // Auto-load data
-            _ = Task.Run(async () => await ViewModel.RefreshCommand.ExecuteAsync(null));
+            // Auto-load data using async/await (per Microsoft async pattern for WinForms)
+            // This allows PropertyChanged events to be marshaled on UI thread automatically
+            // Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls-to-windows-forms-controls
+            await ViewModel.RefreshCommand.ExecuteAsync(null);
+
+            // Defer sizing validation to prevent "controls cut off" - Analytics has complex grid/chart layouts
+            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
         }
         catch (Exception ex)
         {
@@ -1044,10 +1066,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
     }
 
-    /// <summary>
-    /// Required designer variable.
-    /// </summary>
-    private System.ComponentModel.IContainer? components = null;
+
 
     /// <summary>
     /// Clean up any resources being used.
@@ -1079,28 +1098,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _noDataOverlay.SafeDispose();
             _errorProvider.SafeDispose();
 
-            components?.Dispose();
+            // Note: No components container used in programmatic UI
+            // components?.Dispose();
         }
 
         base.Dispose(disposing);
     }
 
-    #region Windows Form Designer generated code
 
-    /// <summary>
-    /// Required method for Designer support - do not modify
-    /// the contents of this method with the code editor.
-    /// </summary>
-    private void InitializeComponent()
-    {
-        this.components = new System.ComponentModel.Container();
-        this.Name = "AnalyticsPanel";
-        this.AccessibleName = "Budget Analytics"; // For UI automation
-        this.Size = new Size(1400, 900);
-        this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        this.AutoScroll = true;
-        this.Padding = new Padding(8);
-    }
-
-    #endregion
 }

@@ -21,6 +21,7 @@ using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -82,14 +83,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
 
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         Name = "AuditLogPanel";
-        Size = new Size(1200, 800);
+        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);
@@ -105,6 +111,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             // Fall back if DPI scaling not supported
         }
+
+        // InitializeComponent moved to AuditLogPanel.Designer.cs for designer support
+        this.ResumeLayout(false);
+
     }
 
     private void SetupUI()
@@ -316,11 +326,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = (int)(Width * 0.65),
-            Panel1MinSize = 300,
-            Panel2MinSize = 300,
             AccessibleName = "Audit grid and chart split container"
         };
+        // Defer setting Panel1MinSize, Panel2MinSize, and SplitterDistance until control is sized
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplit, 300, 300, (int)(Width * 0.65));
 
         // Audit grid (left)
         _auditGrid = new SfDataGrid
@@ -634,7 +643,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ShowError(ex)));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ShowError(ex)));
+                }
             }
             else
             {
@@ -659,7 +671,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            }
             return;
         }
 
@@ -712,7 +727,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(UpdateUI));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(UpdateUI));
+            }
             return;
         }
 

@@ -42,9 +42,7 @@ public partial class MainForm
 {
     #region UI Fields
     private DockingManager? _dockingManager;
-    private DockingLayoutManager? _dockingLayoutManager;
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
-    private System.Windows.Forms.Timer? _activityRefreshTimer;
     private Panel? _loadingOverlay; // Full-screen loading overlay for async operations
     private Label? _loadingLabel; // Loading message label
 
@@ -1111,12 +1109,12 @@ public partial class MainForm
             };
 
             // File > Recent Files (MRU) - submenu
-            var recentFilesMenu = new ToolStripMenuItem("&Recent Files")
+            _recentFilesMenu = new ToolStripMenuItem("&Recent Files")
             {
                 Name = "Menu_File_RecentFiles",
                 ToolTipText = "Recently opened files"
             };
-            UpdateMruMenu(recentFilesMenu);
+            UpdateMruMenu(_recentFilesMenu);
 
             // File > Clear Recent Files
             var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => ClearMruList())
@@ -1135,7 +1133,7 @@ public partial class MainForm
             exitMenuItem.Image = CreateIconFromText("\uE8BB", 16); // Exit icon (Segoe MDL2)
             exitMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
-            fileMenu.DropDownItems.Add(recentFilesMenu);
+            fileMenu.DropDownItems.Add(_recentFilesMenu);
             fileMenu.DropDownItems.Add(clearRecentMenuItem);
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenuItem);
@@ -1271,7 +1269,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());
@@ -1295,7 +1293,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());

@@ -17,6 +17,8 @@ namespace WileyWidget.Data
 {
     /// <summary>
     /// Repository implementation for MunicipalAccount data operations
+    /// Scoped repository that uses injected singleton IMemoryCache for performance.
+    /// Never disposes the cache singleton - follows pattern in UtilityCustomerRepository.
     /// </summary>
     public sealed class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
@@ -74,7 +76,7 @@ namespace WileyWidget.Data
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
         private readonly ILogger<MunicipalAccountRepository>? _logger;
-        private bool _disposed;
+        private readonly bool _ownsCache;
 
         // Primary constructor for DI with IDbContextFactory
         [ActivatorUtilitiesConstructor]
@@ -83,6 +85,8 @@ namespace WileyWidget.Data
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger;
+            // We do not own the injected cache (do not dispose shared singleton)
+            _ownsCache = false;
         }
 
         // Convenience constructor for unit tests that supply DbContextOptions
@@ -93,6 +97,8 @@ namespace WileyWidget.Data
             // Use a simple test factory to create contexts from options
             _contextFactory = new TestDbContextFactory(options);
             _cache = new MemoryCache(new MemoryCacheOptions());
+            // In test mode we created the cache and therefore own it
+            _ownsCache = true;
         }
 
         private class TestDbContextFactory : IDbContextFactory<AppDbContext>
@@ -145,7 +151,19 @@ namespace WileyWidget.Data
 
             try
             {
-                _cache.Set(cacheKey, accounts, TimeSpan.FromMinutes(cacheExpirationMinutes));
+                var options = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(cacheExpirationMinutes));
+
+                // Required when SizeLimit is configured: assign logical size
+                // Use collection count if applicable, else 1
+                long size = accounts switch
+                {
+                    System.Collections.ICollection collection => collection.Count,
+                    _ => 1
+                };
+                options.SetSize(size);
+
+                _cache.Set(cacheKey, accounts, options);
             }
             catch (ObjectDisposedException)
             {
@@ -767,33 +785,21 @@ namespace WileyWidget.Data
             public List<string> Errors { get; set; } = new List<string>();
         }
 
+        // Repository implements IDisposable to allow disposing caches created by the test constructor.
+        // For DI-injected caches we do not dispose (we set _ownsCache = false in normal constructor).
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        // Non-virtual Dispose(bool) because the type is sealed
-        private void Dispose(bool disposing)
-        {
-            if (_disposed) return;
-
-            if (disposing)
+            if (_ownsCache)
             {
-                // Dispose managed resources
                 try
                 {
-                    _cache.Dispose();
+                    (_cache as IDisposable)?.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Error while disposing IMemoryCache");
+                    _logger?.LogWarning(ex, "MunicipalAccountRepository.Dispose: error disposing owned cache");
                 }
             }
-
-            // No unmanaged resources to release
-
-            _disposed = true;
         }
     }
 }

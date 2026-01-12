@@ -77,7 +77,8 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
             // Attempt to cache the result, with fallback on disposal
             try
             {
-                _cache.Set(cacheKey, customers, TimeSpan.FromMinutes(10));
+                var options = new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) };
+                _cache.Set(cacheKey, customers, options);
             }
             catch (ObjectDisposedException)
             {

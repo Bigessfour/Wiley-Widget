@@ -16,6 +16,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utils;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
@@ -83,6 +84,7 @@ namespace WileyWidget.WinForms.Controls
 
         // Logger for diagnostic output (nullable - gracefully handles absence)
         private readonly Microsoft.Extensions.Logging.ILogger<DashboardPanel>? _logger;
+        private readonly Services.IThemeIconService? _iconService;
 
         // Theme service for theme-aware operations (nullable - gracefully handles absence)
         private readonly Services.IThemeService? _themeService;
@@ -91,95 +93,25 @@ namespace WileyWidget.WinForms.Controls
         private ToolTip? _sharedTooltip;
 
         // DI-friendly default constructor for container/hosting convenience.
-        // Use GetService instead of GetRequiredService so designer/legacy activations don't throw
-        // when the ViewModel isn't registered in the global Program.Services. Fall back to a
-        // simple local DashboardViewModel instance (its constructor tolerates null optional deps).
-        // Guards against null Program.Services for safety.
-        public DashboardPanel() : this(
-            ResolveDashboardViewModel(),
-            ResolveDispatcherHelper())
+        // Use the DI-friendly constructor at runtime; the parameterless overload is for designer/test fallback.
+        public DashboardPanel() : this(new DashboardViewModel(), null)
         {
         }
 
-        private static WileyWidget.Services.Threading.IDispatcherHelper? ResolveDispatcherHelper()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Warning("DashboardPanel: Program.Services is null - IDispatcherHelper unavailable");
-                return null;
-            }
-
-            try
-            {
-                var helper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services);
-                if (helper == null)
-                {
-                    Serilog.Log.Warning("DashboardPanel: IDispatcherHelper not registered in DI container");
-                }
-                return helper;
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "DashboardPanel: Failed to resolve IDispatcherHelper");
-                return null;
-            }
-        }
-
-        private static DashboardViewModel ResolveDashboardViewModel()
-        {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Warning("DashboardPanel: Program.Services is null - using fallback DashboardViewModel");
-                return new DashboardViewModel();
-            }
-
-            try
-            {
-                var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DashboardViewModel>(Program.Services);
-                if (vm != null)
-                {
-                    Serilog.Log.Debug("DashboardPanel: DashboardViewModel resolved from DI container");
-                    return vm;
-                }
-
-                Serilog.Log.Warning("DashboardPanel: DashboardViewModel not registered - using fallback instance");
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "DashboardPanel: Failed to resolve DashboardViewModel from DI - using fallback");
-            }
-
-            // Fallback to default constructor - DashboardViewModel handles null dependencies gracefully
-            return new DashboardViewModel();
-        }
+        // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
 
         private IAsyncRelayCommand? _refreshCommand;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null, Services.IThemeService? themeService = null, Services.IThemeIconService? iconService = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             DataContext = vm;
 
-            // Resolve logger from DI (optional - gracefully handles absence)
-            try
-            {
-                _logger = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Logging.ILogger<DashboardPanel>>(Program.Services)
-                    : null;
-            }
-            catch { /* Logger unavailable - continue without logging */ }
-
-            // Resolve theme service from DI (optional - gracefully handles absence)
-            try
-            {
-                _themeService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(Program.Services)
-                    : null;
-            }
-            catch { /* Theme service unavailable - continue with defaults */ }
-
+            _logger = logger;
+            _themeService = themeService;
+            _iconService = iconService;
             // Initialize shared tooltip for all interactive controls
             _sharedTooltip = new ToolTip
             {
@@ -190,7 +122,14 @@ namespace WileyWidget.WinForms.Controls
             };
 
             InitializeComponent();
-            SetupUI();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+
+            // Defer sizing validations until control is properly laid out to prevent "controls cut off" issues
+            // Dashboard has complex nested layouts (TableLayoutPanel, SplitContainer, gauges, chart, grid)
+            DeferSizingValidation();
+
             // Theme is applied automatically by SfSkinManager cascade from parent Form.
             // Per Syncfusion documentation: SetVisualStyle on parent form applies to ALL child controls.
             // No need to call ApplyCurrentTheme() here - it's redundant and can cause double-theming issues.
@@ -240,16 +179,9 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
-        {
-            Name = "DashboardPanel";
-            AccessibleName = DashboardPanelResources.PanelTitle; // "Dashboard"
-            Size = new Size(1200, 800);
-            // DockingManager will handle docking; do not set Dock here.
-            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
-        }
+        // InitializeComponent moved to DashboardPanel.Designer.cs for designer support
 
-        private void SetupUI()
+        private void InitializeComponent()
         {
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)
@@ -285,15 +217,11 @@ namespace WileyWidget.WinForms.Controls
 
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                 _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
-
-
             }
             catch { }
 
@@ -303,9 +231,7 @@ namespace WileyWidget.WinForms.Controls
             var dashboardLabel = new ToolStripLabel("Dashboard");
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 dashboardLabel.Image = iconService?.GetIcon("home", theme, 16);
                 dashboardLabel.ImageAlign = ContentAlignment.MiddleLeft;
@@ -320,7 +246,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
+            try { btnExportExcel.Image = _iconService?.GetIcon("excel", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -335,7 +261,7 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
+            try { btnExportPdf.Image = _iconService?.GetIcon("pdf", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -359,9 +285,7 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 btnAccounts.Image = iconService?.GetIcon("wallet", theme, 16);
                 btnAccounts.ImageAlign = ContentAlignment.MiddleLeft;
@@ -383,9 +307,7 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
                 btnCharts.Image = iconService?.GetIcon("chart", theme, 16);
                 btnCharts.ImageAlign = ContentAlignment.MiddleLeft;
@@ -635,10 +557,10 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_statusStrip);
 
             // Add overlays for loading/no-data states
-            _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard..." };
+            _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard...", Dock = DockStyle.Fill };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "Welcome! No data yet\r\nStart by adding accounts and budget entries" };
+            _noDataOverlay = new NoDataOverlay { Message = "Welcome! No data yet\r\nStart by adding accounts and budget entries", Dock = DockStyle.Fill };
             Controls.Add(_noDataOverlay);
 
             // Bindings
@@ -657,13 +579,79 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
+                        if (IsHandleCreated)
+                        {
+                            try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
+                        }
                         return;
                     }
                     ApplyCurrentTheme();
                 }
                 catch { }
             };
+        }
+
+        /// <summary>
+        /// Defers sizing validation until the control is fully laid out.
+        /// Prevents "controls cut off" issues by ensuring all nested panels, grids, and charts
+        /// have sufficient space and valid dimensions after the control is docked.
+        /// Per SafeControlSizeValidator documentation: validate after layout completion.
+        /// </summary>
+        private void DeferSizingValidation()
+        {
+            // Schedule validation after layout completes (100ms delay allows paint to settle)
+            var validationTimer = new System.Windows.Forms.Timer();
+            validationTimer.Interval = 100;
+            validationTimer.Tick += (s, e) =>
+            {
+                validationTimer.Stop();
+                validationTimer.Dispose();
+
+                if (this.IsDisposed) return;
+
+                try
+                {
+                    // Validate main panel size
+                    var panelValidation = SafeControlSizeValidator.ValidateControlSize(this);
+                    if (!panelValidation.IsValid)
+                    {
+                        _logger?.LogWarning($"Dashboard sizing issue: {panelValidation.Message}");
+                    }
+
+                    // Validate child control sizes - prevents cut-off controls
+                    if (_mainChart != null && !_mainChart.IsDisposed)
+                    {
+                        var chartValidation = SafeControlSizeValidator.ValidateControlSize(_mainChart);
+                        if (!chartValidation.IsValid && _mainChart.Width > 0 && _mainChart.Height > 0)
+                        {
+                            _logger?.LogWarning($"Chart sizing issue: {chartValidation.Message}");
+                        }
+                    }
+
+                    if (_detailsGrid != null && !_detailsGrid.IsDisposed)
+                    {
+                        var gridValidation = SafeControlSizeValidator.ValidateControlSize(_detailsGrid);
+                        if (!gridValidation.IsValid && _detailsGrid.Width > 0 && _detailsGrid.Height > 0)
+                        {
+                            _logger?.LogWarning($"Grid sizing issue: {gridValidation.Message}");
+                        }
+                    }
+
+                    // Adjust any controls with constraint violations
+                    foreach (Control ctrl in this.Controls)
+                    {
+                        if (ctrl != null && !ctrl.IsDisposed)
+                        {
+                            SafeControlSizeValidator.TryAdjustConstrainedSize(ctrl, out _, out _);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError($"Error during dashboard sizing validation: {ex.Message}");
+                }
+            };
+            validationTimer.Start();
         }
 
         /// <summary>
@@ -997,13 +985,19 @@ namespace WileyWidget.WinForms.Controls
 
             if (_detailsGrid != null && !_detailsGrid.IsDisposed && _detailsGrid.InvokeRequired)
             {
-                try { _detailsGrid.BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
+                if (_detailsGrid.IsHandleCreated)
+                {
+                    try { _detailsGrid.BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
+                }
                 return;
             }
 
             if (this.InvokeRequired)
             {
-                try { BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
+                if (this.IsHandleCreated)
+                {
+                    try { BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
+                }
                 return;
             }
 
@@ -1024,20 +1018,22 @@ namespace WileyWidget.WinForms.Controls
 
                 // KPI list is optional (legacy UI). Only bind if it exists.
                 var kpiList = _kpiList;
-                if (_vm.Metrics != null && kpiList != null && !kpiList.IsDisposed)
+                var kpiSnapshot = _vm.Metrics?.ToList();
+                if (kpiSnapshot != null && kpiList != null && !kpiList.IsDisposed)
                 {
-                    kpiList.DataSource = _vm.Metrics;
+                    kpiList.DataSource = kpiSnapshot;
                     kpiList.ItemHeight = 84;
                 }
 
-                var metricsList = _vm.Metrics;
-                if (metricsList != null && metricsList.Any())
+                // Snapshot collections to avoid cross-thread mutations during paint
+                var metricsSnapshot = _vm.Metrics?.ToList();
+                if (metricsSnapshot != null && metricsSnapshot.Any())
                 {
                     _mainChart.Series.Clear();
 
                     // Primary series: Department metrics (column chart)
                     var ser = new ChartSeries("Budget vs Actual", ChartSeriesType.Column);
-                    foreach (var m in metricsList)
+                    foreach (var m in metricsSnapshot)
                     {
                         if (m == null) continue;
                         ser.Points.Add(m.Name, m.Value);
@@ -1045,10 +1041,11 @@ namespace WileyWidget.WinForms.Controls
                     _mainChart.Series.Add(ser);
 
                     // Secondary series: Monthly revenue trend (line chart overlay)
-                    if (_vm.MonthlyRevenueData != null && _vm.MonthlyRevenueData.Any())
+                    var monthlyRevenueSnapshot = _vm.MonthlyRevenueData?.ToList();
+                    if (monthlyRevenueSnapshot != null && monthlyRevenueSnapshot.Any())
                     {
                         var revenueSeries = new ChartSeries("Monthly Revenue Trend", ChartSeriesType.Line);
-                        foreach (var month in _vm.MonthlyRevenueData)
+                        foreach (var month in monthlyRevenueSnapshot)
                         {
                             if (month == null) continue;
                             revenueSeries.Points.Add(month.Month, (double)month.Amount);
@@ -1066,10 +1063,11 @@ namespace WileyWidget.WinForms.Controls
                             c.Series.Clear();
 
                             // Use real MonthlyRevenueData from ViewModel if available (last 6 months)
-                            if (_vm.MonthlyRevenueData != null && _vm.MonthlyRevenueData.Any())
+                            var sparkSnapshot = monthlyRevenueSnapshot;
+                            if (sparkSnapshot != null && sparkSnapshot.Any())
                             {
                                 var s = new ChartSeries(seriesName, ChartSeriesType.Line);
-                                var recentMonths = _vm.MonthlyRevenueData.TakeLast(6).ToList();
+                                var recentMonths = sparkSnapshot.TakeLast(6).ToList();
                                 foreach (var month in recentMonths)
                                 {
                                     if (month == null) continue;
@@ -1305,7 +1303,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    }
                     return;
                 }
 
