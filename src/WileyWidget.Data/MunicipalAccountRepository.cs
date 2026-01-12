@@ -20,7 +20,7 @@ namespace WileyWidget.Data
     /// Scoped repository that uses injected singleton IMemoryCache for performance.
     /// Never disposes the cache singleton - follows pattern in UtilityCustomerRepository.
     /// </summary>
-    public sealed class MunicipalAccountRepository : IMunicipalAccountRepository
+    public sealed class MunicipalAccountRepository : IMunicipalAccountRepository, IDisposable
     {
         // Compiled queries to reduce first-query JIT/plan compilation overhead
         private static readonly Func<AppDbContext, List<MunicipalAccount>> CQ_GetAllOrdered =
@@ -76,6 +76,7 @@ namespace WileyWidget.Data
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
         private readonly ILogger<MunicipalAccountRepository>? _logger;
+        private readonly bool _ownsCache;
 
         // Primary constructor for DI with IDbContextFactory
         [ActivatorUtilitiesConstructor]
@@ -84,6 +85,8 @@ namespace WileyWidget.Data
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger;
+            // We do not own the injected cache (do not dispose shared singleton)
+            _ownsCache = false;
         }
 
         // Convenience constructor for unit tests that supply DbContextOptions
@@ -94,6 +97,8 @@ namespace WileyWidget.Data
             // Use a simple test factory to create contexts from options
             _contextFactory = new TestDbContextFactory(options);
             _cache = new MemoryCache(new MemoryCacheOptions());
+            // In test mode we created the cache and therefore own it
+            _ownsCache = true;
         }
 
         private class TestDbContextFactory : IDbContextFactory<AppDbContext>
@@ -780,12 +785,21 @@ namespace WileyWidget.Data
             public List<string> Errors { get; set; } = new List<string>();
         }
 
-        // Deliberately NOT implementing IDisposable.
-        // IMemoryCache is a shared singleton managed by the DI container.
-        // Scoped repositories must NEVER dispose the cache singleton.
-        // If cache is disposed by DI container, this repo gracefully handles
-        // ObjectDisposedException through try-catch in cache operations (see GetAllAsync, etc).
-        // This pattern prevents "cache disposed" warnings across the application.
-        // See UtilityCustomerRepository for reference implementation.
+        // Repository implements IDisposable to allow disposing caches created by the test constructor.
+        // For DI-injected caches we do not dispose (we set _ownsCache = false in normal constructor).
+        public void Dispose()
+        {
+            if (_ownsCache)
+            {
+                try
+                {
+                    (_cache as IDisposable)?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "MunicipalAccountRepository.Dispose: error disposing owned cache");
+                }
+            }
+        }
     }
 }

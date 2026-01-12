@@ -16,6 +16,7 @@ using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Text.Json;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
@@ -652,10 +653,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
             request.Headers.Accept.ParseAdd("application/json");
 
-            // Add query parameters for date range (current fiscal year)
-            var startDate = DateTime.Now.AddMonths(-12).ToString("yyyy-MM-dd");
-            var endDate = DateTime.Now.ToString("yyyy-MM-dd");
-            request.RequestUri = new Uri($"{requestUrl}?start_date={startDate}&end_date={endDate}");
+            // Add query parameters for date range (current fiscal year) using invariant culture
+            var startDate = DateTime.Now.AddMonths(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var endDate = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            request.RequestUri = new Uri($"{requestUrl}?start_date={WebUtility.UrlEncode(startDate)}&end_date={WebUtility.UrlEncode(endDate)}");
 
             using var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
 
@@ -696,8 +697,14 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                             if (string.IsNullOrEmpty(accountName)) continue;
 
                             // Clean up currency formatting
+                            var cleanedBudgetText = budgetText
+                                .Replace("$", string.Empty, StringComparison.Ordinal)
+                                .Replace(",", string.Empty, StringComparison.Ordinal);
+
                             var budgetAmount = decimal.TryParse(
-                                budgetText.Replace("$", "").Replace(",", ""),
+                                cleanedBudgetText,
+                                NumberStyles.Number,
+                                CultureInfo.InvariantCulture,
                                 out var ba) ? ba : 0m;
 
                             // Group by account name
