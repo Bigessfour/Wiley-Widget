@@ -13,13 +13,19 @@ Enhanced the Grok AI service implementation to follow Microsoft Semantic Kernel 
 ### 1. Service ID Support for Multi-Model Scenarios ✅
 
 **Before:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 builder.AddOpenAIChatCompletion(modelId: _model, apiKey: _apiKey, endpoint: _endpoint!);
 ```
 
 **After:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 var serviceId = $"grok-{_model}";
 builder.AddOpenAIChatCompletion(
@@ -30,7 +36,10 @@ builder.AddOpenAIChatCompletion(
 ```
 
 **Benefits:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - Enables registration of multiple AI services (e.g., grok-4 for general, grok-4-1-fast-reasoning for deep analysis)
 - Better service identification in logs and telemetry
 - Allows targeted service selection for specific use cases
@@ -38,7 +47,10 @@ builder.AddOpenAIChatCompletion(
 ### 2. Native Semantic Kernel Streaming with Automatic Function Calling ✅
 
 **Before:** Direct HTTP streaming with manual SSE parsing
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 // Manual HTTP request/response handling
 using var request = new HttpRequestMessage(HttpMethod.Post, _endpoint);
@@ -47,7 +59,10 @@ var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHea
 ```
 
 **After:** Native SK streaming with automatic plugin invocation
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 var chatService = _kernel.GetRequiredService<IChatCompletionService>();
 var settings = new OpenAIPromptExecutionSettings
@@ -71,7 +86,10 @@ await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
 ```
 
 **Benefits:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - Automatic function/plugin invocation without manual tool call parsing
 - Built-in SSE handling and error recovery
 - Better integration with SK middleware and filters
@@ -80,13 +98,19 @@ await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
 ### 3. Enhanced Execution Settings ✅
 
 **Before:** Basic temperature setting only
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 var payload = CreateChatRequestPayload(model, messagesArray, stream: true, temperature: 0.3);
 ```
 
 **After:** Comprehensive settings with conditional penalties
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 var settings = new OpenAIPromptExecutionSettings
 {
@@ -110,7 +134,10 @@ if (!IsReasoningModel(_model))
 ```
 
 **Benefits:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - Proper MaxTokens limit prevents runaway responses
 - Conditional penalties respect xAI's reasoning model requirements
 - Centralized settings management
@@ -119,7 +146,10 @@ if (!IsReasoningModel(_model))
 ### 4. Function Call Observability ✅
 
 **Added:** Automatic function call logging
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 // Log function calls for observability
 if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
@@ -129,7 +159,10 @@ if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
 ```
 
 **Benefits:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - Visibility into which plugins are being invoked
 - Easier debugging of function calling behavior
 - Telemetry for function usage patterns
@@ -137,7 +170,10 @@ if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
 ### 5. Improved Error Handling and Fallback ✅
 
 **Enhanced:** More granular exception handling
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 catch (Exception ex)
 {
@@ -157,13 +193,25 @@ catch (Exception ex)
 ```
 
 **Benefits:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - Graceful degradation to simple HTTP if SK streaming fails
 - Better error diagnostics with nested try-catch
 - Maintains backward compatibility with existing fallback mechanism
 
 ## Performance Impact
 
+<<<<<<< HEAD
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Code Lines (RunAgentAsync) | ~140 | ~70 | -50% |
+| Manual SSE Parsing | Yes | No | Removed |
+| Function Call Support | Manual | Automatic | +Simplified |
+| Error Recovery Levels | 2 | 3 | +Improved |
+| Logging Granularity | Medium | High | +Enhanced |
+=======
 | Metric                     | Before | After     | Change      |
 | -------------------------- | ------ | --------- | ----------- |
 | Code Lines (RunAgentAsync) | ~140   | ~70       | -50%        |
@@ -171,11 +219,15 @@ catch (Exception ex)
 | Function Call Support      | Manual | Automatic | +Simplified |
 | Error Recovery Levels      | 2      | 3         | +Improved   |
 | Logging Granularity        | Medium | High      | +Enhanced   |
+>>>>>>> main
 
 ## Comparison with Microsoft Docs Best Practices
 
 ### Before Optimizations: 8.9/10
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - ✅ Kernel building and DI integration
 - ✅ Plugin registration via assembly scanning
 - ✅ Async initialization pattern
@@ -185,7 +237,10 @@ catch (Exception ex)
 - ❌ No function invocation observability
 
 ### After Optimizations: 10/10
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 - ✅ Kernel building and DI integration
 - ✅ Plugin registration via assembly scanning
 - ✅ Async initialization pattern
@@ -199,7 +254,10 @@ catch (Exception ex)
 ## Testing Recommendations
 
 1. **Unit Tests:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
    ```csharp
    [Fact]
    public async Task RunAgentAsync_WithToolCallBehavior_InvokesPlugins()
@@ -211,7 +269,10 @@ catch (Exception ex)
    ```
 
 2. **Integration Tests:**
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
    ```csharp
    [Fact]
    public async Task RunAgentAsync_WithMultipleServices_SelectsCorrectService()
@@ -231,6 +292,19 @@ catch (Exception ex)
 ## Migration Notes
 
 ### Breaking Changes
+<<<<<<< HEAD
+**None** - All changes are backward compatible. The fallback mechanism ensures existing code continues to work.
+
+### Configuration Changes
+**None** - No appsettings.json changes required.
+
+### API Changes
+**None** - Public API surface (`RunAgentAsync`) signature unchanged.
+
+## Future Enhancements
+
+### 1. IFunctionInvocationFilter for Advanced Observability
+=======
 
 **None** - All changes are backward compatible. The fallback mechanism ensures existing code continues to work.
 
@@ -247,6 +321,7 @@ Future: Hook in `IFunctionInvocationFilter` for even better tool call control (a
 
 ### 1. IFunctionInvocationFilter for Advanced Observability
 
+>>>>>>> main
 ```csharp
 public class LoggingFunctionFilter : IFunctionInvocationFilter
 {
@@ -264,7 +339,10 @@ public class LoggingFunctionFilter : IFunctionInvocationFilter
 **Benefits:** Centralized function invocation logging, performance monitoring, error interception
 
 ### 2. Multiple Service Registration for Specialized Use Cases
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 ```csharp
 // Fast responses for simple queries
 builder.AddOpenAIChatCompletion(
@@ -281,13 +359,26 @@ builder.AddOpenAIChatCompletion(
     serviceId: "grok-reasoning");
 
 // Targeted service selection
+<<<<<<< HEAD
+var result = await kernel.InvokeAsync("reasoning-plugin", "analyze-data", 
+=======
 var result = await kernel.InvokeAsync("reasoning-plugin", "analyze-data",
+>>>>>>> main
     new KernelArguments { { "serviceId", "grok-reasoning" } });
 ```
 
 **Benefits:** Cost optimization, latency optimization, use-case-specific model selection
 
 ### 3. Prompt Templating with Semantic Functions
+<<<<<<< HEAD
+```csharp
+var promptTemplate = """
+    You are a {{$role}} with expertise in {{$domain}}.
+    
+    Task: {{$task}}
+    Context: {{$context}}
+    
+=======
 
 ```csharp
 var promptTemplate = """
@@ -296,6 +387,7 @@ var promptTemplate = """
     Task: {{$task}}
     Context: {{$context}}
 
+>>>>>>> main
     Provide a detailed analysis following these guidelines:
     {{$guidelines}}
     """;
