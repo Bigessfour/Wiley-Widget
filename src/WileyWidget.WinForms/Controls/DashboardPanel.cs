@@ -122,7 +122,9 @@ namespace WileyWidget.WinForms.Controls
             };
 
             InitializeComponent();
-            SetupUI();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
 
             // Defer sizing validations until control is properly laid out to prevent "controls cut off" issues
             // Dashboard has complex nested layouts (TableLayoutPanel, SplitContainer, gauges, chart, grid)
@@ -177,16 +179,9 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
-        {
-            Name = "DashboardPanel";
-            AccessibleName = DashboardPanelResources.PanelTitle; // "Dashboard"
-            Size = new Size(1200, 800);
-            // DockingManager will handle docking; do not set Dock here.
-            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
-        }
+        // InitializeComponent moved to DashboardPanel.Designer.cs for designer support
 
-        private void SetupUI()
+        private void InitializeComponent()
         {
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)

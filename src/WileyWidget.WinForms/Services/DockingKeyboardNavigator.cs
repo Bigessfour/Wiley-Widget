@@ -113,7 +113,7 @@ namespace WileyWidget.WinForms.Services
                     // No active control, activate first panel
                     if (_dockedPanels.Count > 0)
                     {
-                        _dockingManager.SetActiveControl(_dockedPanels[0]);
+                        _dockingManager.ActivateControl(_dockedPanels[0]);
                         _logger.LogDebug("Activated first panel: {PanelName}", _dockedPanels[0].Name);
                     }
                     return;
@@ -123,7 +123,7 @@ namespace WileyWidget.WinForms.Services
                 var targetPanel = FindPanelInDirection(activeControl, direction);
                 if (targetPanel != null)
                 {
-                    _dockingManager.SetActiveControl(targetPanel);
+                    _dockingManager.ActivateControl(targetPanel);
                     _logger.LogDebug("Activated adjacent panel: {Direction} -> {PanelName}", direction, targetPanel.Name);
                 }
             }
@@ -143,10 +143,13 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 var activeControl = _dockingManager.ActiveControl;
-                var currentIndex = _dockedPanels.IndexOf(activeControl as Panel);
+                var activePanel = activeControl as Panel;
+                if (activePanel == null) return;
+
+                var currentIndex = _dockedPanels.IndexOf(activePanel);
                 var nextIndex = (currentIndex + 1) % _dockedPanels.Count;
 
-                _dockingManager.SetActiveControl(_dockedPanels[nextIndex]);
+                _dockingManager.ActivateControl(_dockedPanels[nextIndex]);
                 _logger.LogDebug("Cycled to next panel: {PanelName}", _dockedPanels[nextIndex].Name);
             }
             catch (Exception ex)
@@ -165,10 +168,13 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 var activeControl = _dockingManager.ActiveControl;
-                var currentIndex = _dockedPanels.IndexOf(activeControl as Panel);
+                var activePanel = activeControl as Panel;
+                if (activePanel == null) return;
+
+                var currentIndex = _dockedPanels.IndexOf(activePanel);
                 var prevIndex = (currentIndex - 1 + _dockedPanels.Count) % _dockedPanels.Count;
 
-                _dockingManager.SetActiveControl(_dockedPanels[prevIndex]);
+                _dockingManager.ActivateControl(_dockedPanels[prevIndex]);
                 _logger.LogDebug("Cycled to previous panel: {PanelName}", _dockedPanels[prevIndex].Name);
             }
             catch (Exception ex)

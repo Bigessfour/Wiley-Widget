@@ -23,7 +23,7 @@ namespace WileyWidget.WinForms.Controls;
 /// Uses Syncfusion API properly: Dock layout, GradientPanelExt per Syncfusion documentation.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
+public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 {
     #region UI Controls
 

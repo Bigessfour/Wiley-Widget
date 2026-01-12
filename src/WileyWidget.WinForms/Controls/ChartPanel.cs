@@ -92,6 +92,9 @@ namespace WileyWidget.WinForms.Controls
 
             InitializeComponent();
 
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+
             // Apply current theme
             ApplyCurrentTheme();
 
@@ -123,6 +126,8 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            this.SuspendLayout();
+
             Name = "ChartPanel";
             Size = new Size(1000, 700);  // OPTIMIZED: Professional analytics panel size for high UX
             MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
@@ -621,6 +626,8 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { }
+            this.ResumeLayout(false);
+
         }
 
         /// <summary>

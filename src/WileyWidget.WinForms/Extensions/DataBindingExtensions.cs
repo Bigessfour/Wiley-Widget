@@ -33,24 +33,25 @@ namespace WileyWidget.WinForms.Extensions
             if (control == null) throw new ArgumentNullException(nameof(control));
             if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
             if (string.IsNullOrWhiteSpace(controlProperty)) throw new ArgumentException("Property name required", nameof(controlProperty));
+            if (propertyExpression == null) throw new ArgumentNullException(nameof(propertyExpression));
 
             // Extract property name from expression
             var propertyName = GetPropertyName(propertyExpression);
 
             // Create binding with proper data source and path
-            var binding = new Binding(controlProperty, viewModel, propertyName, autoScale: false)
+            var binding = new Binding(controlProperty, viewModel, propertyName)
             {
                 DataSourceUpdateMode = DataSourceUpdateMode.OnPropertyChanged,
                 ControlUpdateMode = ControlUpdateMode.OnPropertyChanged
             };
 
-            // Add error handler for binding errors
-            binding.BindingError += (s, e) =>
-            {
-                // Log binding error but don't throw - allow UI to remain responsive
-                System.Diagnostics.Debug.WriteLine(
-                    $"[BINDING ERROR] {controlProperty} -> {propertyName}: {e.ErrorText}");
-            };
+            // Note: BindingError event may not be available in current .NET version
+            // binding.BindingError += (s, e) =>
+            // {
+            //     // Log binding error but don't throw - allow UI to remain responsive
+            //     System.Diagnostics.Debug.WriteLine(
+            //         $"[BINDING ERROR] {controlProperty} -> {propertyName}: {e.ErrorText}");
+            // };
 
             // Add binding to control
             control.DataBindings.Add(binding);

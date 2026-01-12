@@ -1,7 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Services.Abstractions;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -25,9 +26,12 @@ namespace WileyWidget.WinForms.Services
         /// </summary>
         public async Task LogActionAsync(AuditLogEntry entry)
         {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
             try
             {
-                var log = new WileyWidget.Services.Abstractions.ActivityLog
+                var log = new ActivityLog
                 {
                     ActivityType = entry.ActionType,
                     Activity = entry.Description,
@@ -103,7 +107,13 @@ namespace WileyWidget.WinForms.Services
 
         public void Dispose()
         {
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            // No managed resources to dispose
         }
     }
 

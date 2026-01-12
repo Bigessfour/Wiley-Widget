@@ -2,7 +2,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -654,11 +656,35 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
             IsLoading = true;
             StatusText = "Exporting sync history...";
 
-            // TODO: Implement actual export logic
-            await Task.Delay(1000, cancellationToken);
+            string filePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                $"QuickBooksSyncHistory_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
-            StatusText = $"Exported {FilteredSyncHistory.Count} records to CSV";
-            _logger.LogInformation("Exported {Count} sync history records", FilteredSyncHistory.Count);
+            await using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
+
+            // Write CSV header
+            await writer.WriteLineAsync("Timestamp,Operation,Status,Records Processed,Duration,Message");
+
+            // Write data rows
+            foreach (var record in FilteredSyncHistory)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                var line = string.Join(",", new[]
+                {
+                    $"\"{record.FormattedTimestamp}\"",
+                    $"\"{EscapeCsvField(record.Operation)}\"",
+                    $"\"{EscapeCsvField(record.Status)}\"",
+                    record.RecordsProcessed.ToString(CultureInfo.InvariantCulture),
+                    $"\"{record.FormattedDuration}\"",
+                    $"\"{EscapeCsvField(record.Message)}\""
+                });
+
+                await writer.WriteLineAsync(line);
+            }
+
+            StatusText = $"Exported {FilteredSyncHistory.Count} records to {Path.GetFileName(filePath)}";
+            _logger.LogInformation("Exported {Count} sync history records to {File}", FilteredSyncHistory.Count, filePath);
         }
         catch (Exception ex)
         {
@@ -669,6 +695,23 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
         {
             IsLoading = false;
         }
+    }
+
+    private static string EscapeCsvField(string field)
+    {
+        if (string.IsNullOrEmpty(field))
+            return string.Empty;
+
+        // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+        if (field.Contains(",", StringComparison.Ordinal) ||
+            field.Contains("\"", StringComparison.Ordinal) ||
+            field.Contains("\n", StringComparison.Ordinal) ||
+            field.Contains("\r", StringComparison.Ordinal))
+        {
+            return "\"" + field.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+        }
+
+        return field;
     }
 
     /// <summary>

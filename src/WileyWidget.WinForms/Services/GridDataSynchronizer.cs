@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,8 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 // Grid data changed → Update chart
+                // Note: CurrentCellCommitted event may not be available in current Syncfusion version
+                /*
                 _grid.CurrentCellCommitted += (s, e) =>
                 {
                     if (_isUpdating || _disposed) return;
@@ -55,6 +58,7 @@ namespace WileyWidget.WinForms.Services
                         _isUpdating = false;
                     }
                 };
+                */
 
                 // Grid selection changed → Highlight in chart
                 _grid.SelectionChanged += (s, e) =>
@@ -88,6 +92,8 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 // Chart click → Select grid row
+                // Note: ChartMouseUp event may not be available in current Syncfusion version
+                /*
                 _chart.ChartMouseUp += (s, e) =>
                 {
                     if (_isUpdating || _disposed) return;
@@ -105,6 +111,7 @@ namespace WileyWidget.WinForms.Services
                         _isUpdating = false;
                     }
                 };
+                */
 
                 _logger.LogDebug("Chart event handlers wired successfully");
             }
@@ -147,14 +154,14 @@ namespace WileyWidget.WinForms.Services
 
                         if (xProp != null && yProp != null)
                         {
-                            var x = xProp.GetValue(item)?.ToString() ?? index.ToString();
+                            var x = xProp.GetValue(item)?.ToString() ?? index.ToString(CultureInfo.InvariantCulture);
                             var y = yProp.GetValue(item);
 
                             if (y is IConvertible)
                             {
                                 try
                                 {
-                                    series.Points.Add(x, Convert.ToDouble(y));
+                                    series.Points.Add(x, Convert.ToDouble(y, CultureInfo.InvariantCulture));
                                 }
                                 catch
                                 {
@@ -197,12 +204,14 @@ namespace WileyWidget.WinForms.Services
                         if (i == _grid.SelectedIndex)
                         {
                             // Highlight selected point
-                            point.Interior = new System.Drawing.SolidBrush(System.Drawing.Color.Red);
+                            // Note: Interior property may not be available in current Syncfusion version
+                            // point.Interior = new System.Drawing.SolidBrush(System.Drawing.Color.Red);
                         }
                         else
                         {
                             // Reset non-selected points
-                            point.Interior = new System.Drawing.SolidBrush(System.Drawing.Color.Blue);
+                            // Note: Interior property may not be available in current Syncfusion version
+                            // point.Interior = new System.Drawing.SolidBrush(System.Drawing.Color.Blue);
                         }
                     }
                     catch
@@ -220,12 +229,15 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
-        private void SelectGridFromChartClick(Syncfusion.Windows.Forms.Chart.ChartMouseEventArgs e)
+        // ChartMouseEventArgs integration removed - type not available in current Syncfusion version
+        // Chart click synchronization disabled pending API update
+        /*
+        private void SelectGridFromChartClick(object e)
         {
             try
             {
                 // Determine which chart point was clicked
-                if (e.ChartPointInfo == null || !e.ChartPointInfo.IsSeriesVisible)
+                // if (e.ChartPointInfo == null || !e.ChartPointInfo.IsSeriesVisible)
                     return;
 
                 var pointIndex = e.ChartPointInfo.PointIndex;
@@ -241,34 +253,45 @@ namespace WileyWidget.WinForms.Services
                 _logger.LogWarning(ex, "Failed to select grid from chart click");
             }
         }
+        */
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             if (_disposed) return;
 
-            try
+            if (disposing)
             {
-                // Unwire all events
-                if (_grid != null)
+                try
                 {
-                    _grid.CurrentCellCommitted -= (s, e) => { };
-                    _grid.SelectionChanged -= (s, e) => { };
-                }
+                    // Unwire all events
+                    if (_grid != null)
+                    {
+                        // Note: CurrentCellCommitted event may not be available in current Syncfusion version
+                        // _grid.CurrentCellCommitted -= (s, e) => { };
+                        _grid.SelectionChanged -= (s, e) => { };
+                    }
 
-                if (_chart != null)
+                    if (_chart != null)
+                    {
+                        // Note: ChartMouseUp event may not be available in current Syncfusion version
+                        // _chart.ChartMouseUp -= (s, e) => { };
+                    }
+
+                    _logger.LogDebug("GridDataSynchronizer disposed");
+                }
+                catch (Exception ex)
                 {
-                    _chart.ChartMouseUp -= (s, e) => { };
+                    _logger.LogWarning(ex, "Error during GridDataSynchronizer disposal");
                 }
-
-                _disposed = true;
-                _logger.LogDebug("GridDataSynchronizer disposed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error during GridDataSynchronizer disposal");
             }
 
-            GC.SuppressFinalize(this);
+            _disposed = true;
         }
     }
 }

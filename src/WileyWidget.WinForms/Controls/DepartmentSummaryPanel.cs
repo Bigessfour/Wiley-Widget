@@ -56,14 +56,19 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
 
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         Name = "DepartmentSummaryPanel";
-        Size = new Size(1000, 700);
+        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);
@@ -79,6 +84,8 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             // Fall back if DPI scaling not supported
         }
+        this.ResumeLayout(false);
+
     }
 
     private void SetupUI()

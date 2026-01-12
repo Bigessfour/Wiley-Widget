@@ -108,6 +108,9 @@ namespace WileyWidget.WinForms.Controls
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             _iconService = iconService;
             InitializeComponent();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         }
 
         /// <summary>
@@ -208,7 +211,7 @@ namespace WileyWidget.WinForms.Controls
 
             DataContext = viewModel;
 
-            SetupUI();
+            InitializeComponent();
             ApplyCurrentTheme();
 
             // Subscribe to theme changes
@@ -219,19 +222,9 @@ namespace WileyWidget.WinForms.Controls
             _ = LoadViewDataAsync();
         }
 
-        private void InitializeComponent()
-        {
-            Name = "SettingsPanel";
-            AccessibleName = SettingsPanelResources.PanelTitle; // "Settings"
-            Size = new Size(500, 400);
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-            AutoScroll = true;
-            Padding = new Padding(8);
-            // DockingManager will handle docking; do not set Dock here.
-            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
-        }
+        // InitializeComponent moved to SettingsPanel.Designer.cs for designer support
 
-        private void SetupUI()
+        private void InitializeComponent()
         {
             var padding = 20;
             var y = padding;

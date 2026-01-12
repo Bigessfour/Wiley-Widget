@@ -93,34 +93,16 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         : base(scopeFactory, logger)
     {
         InitializeComponent();
-        SetupUI();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        InitializeComponent();
         SubscribeToThemeChanges();
     }
 
+    // InitializeComponent moved to RevenueTrendsPanel.Designer.cs for designer support
+
     private void InitializeComponent()
-    {
-        Name = "RevenueTrendsPanel";
-        Size = new Size(1000, 700);
-        // CHANGE 1: Increased MinimumSize to ensure responsive layout doesn't crush content
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(900f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(650f));
-        AutoScroll = false;  // CHANGE: Disabled AutoScroll; use proportional layout instead
-        // CHANGE 2: Added consistent padding (12px) to the entire UserControl
-        Padding = new Padding(12);
-        Dock = DockStyle.Fill;
-        AccessibleName = "Revenue Trends Analysis Panel";
-        AccessibleDescription = "Displays monthly revenue trends with line chart and comprehensive breakdown grid. Includes summary metrics for total, average, peak revenue, and growth rate.";
-
-        try
-        {
-            AutoScaleMode = AutoScaleMode.Dpi;
-        }
-        catch
-        {
-            // Fall back if DPI scaling not supported
-        }
-    }
-
-    private void SetupUI()
     {
         SuspendLayout();
 

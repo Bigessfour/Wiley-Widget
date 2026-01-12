@@ -83,14 +83,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
 
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         Name = "AuditLogPanel";
-        Size = new Size(1200, 800);
+        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);
@@ -106,6 +111,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             // Fall back if DPI scaling not supported
         }
+
+        // InitializeComponent moved to AuditLogPanel.Designer.cs for designer support
+        this.ResumeLayout(false);
+
     }
 
     private void SetupUI()

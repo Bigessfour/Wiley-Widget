@@ -433,6 +433,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private void InitializeComponent()
         {
+            try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
             this.SuspendLayout();
             this.Name = "InsightFeedPanel";
             this.Size = new System.Drawing.Size(800, 600);

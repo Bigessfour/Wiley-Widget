@@ -85,6 +85,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         _themeService = themeService;
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
     }
 
     /// <summary>
@@ -1479,12 +1482,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         this.components = new System.ComponentModel.Container();
         this.Name = "BudgetPanel";
         this.Size = new Size(1400, 900);
+        try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
         this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         this.AutoScroll = true;
         this.Padding = new Padding(8);
+        this.ResumeLayout(false);
+
     }
 
     #endregion

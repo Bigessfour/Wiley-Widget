@@ -79,11 +79,14 @@ namespace WileyWidget.WinForms.Controls
         public WarRoomPanel(WarRoomViewModel viewModel, ILogger<WarRoomPanel>? logger = null)
         {
             InitializeComponent();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
             _logger = logger;
             _vm = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             DataContext = _vm;
             _logger?.LogInformation("WarRoomPanel initializing");
-            InitializeUI();
+            InitializeComponent();
             BindViewModel();
 
             // Defer sizing validation for complex WarRoom layouts with charts and grids
@@ -96,7 +99,7 @@ namespace WileyWidget.WinForms.Controls
         /// Initializes all UI controls with proper layout and databinding.
         /// Theme is applied globally via application startup.
         /// </summary>
-        private void InitializeUI()
+        private void InitializeComponent()
         {
             try
             {
@@ -964,47 +967,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
-        {
-            this.SuspendLayout();
-            this.Name = "WarRoomPanel";
-            this.Size = new System.Drawing.Size(1200, 900);
-            this.MinimumSize = new System.Drawing.Size(1024, 720);
-            this.AutoScaleMode = AutoScaleMode.Font;
-            this.ResumeLayout(false);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                try
-                {
-                    if (_vm != null)
-                    {
-                        _vm.PropertyChanged -= ViewModel_PropertyChanged;
-                    }
-
-                    _topPanel?.Dispose();
-                    _panelHeader?.Dispose();
-                    _loadingOverlay?.Dispose();
-                    _scenarioInput?.Dispose();
-                    _btnRunScenario?.Dispose();
-                    _revenueChart?.Dispose();
-                    _departmentChart?.Dispose();
-                    _projectionsGrid?.Dispose();
-                    _departmentImpactGrid?.Dispose();
-                    _riskGauge?.Dispose();
-
-                    _logger?.LogDebug("WarRoomPanel disposed successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Error during WarRoomPanel disposal");
-                }
-            }
-
-            base.Dispose(disposing);
-        }
+        // InitializeComponent moved to WarRoomPanel.Designer.cs for designer support
+        // Dispose moved to WarRoomPanel.Designer.cs for designer support
     }
 }

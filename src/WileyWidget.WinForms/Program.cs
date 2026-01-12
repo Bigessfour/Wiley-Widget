@@ -592,10 +592,7 @@ namespace WileyWidget.WinForms
 
                 // STEP 1: Load theme assembly - CRITICAL: must happen FIRST
                 // Records: Theme Initialization → LoadAssembly
-                if (_timelineService != null)
-                {
-                    _timelineService.RecordOperation("[THEME API] SfSkinManager.LoadAssembly(Office2019Theme)", "Theme Initialization");
-                }
+                _timelineService?.RecordOperation("[THEME API] SfSkinManager.LoadAssembly(Office2019Theme)", "Theme Initialization");
 
                 try
                 {
@@ -614,10 +611,7 @@ namespace WileyWidget.WinForms
 
                 // STEP 2: Set global ApplicationVisualTheme - cascades to all controls
                 // Records: Theme Initialization → SetApplicationVisualTheme
-                if (_timelineService != null)
-                {
-                    _timelineService.RecordOperation($"[THEME API] SfSkinManager.ApplicationVisualTheme = '{themeName}'", "Theme Initialization");
-                }
+                _timelineService?.RecordOperation($"[THEME API] SfSkinManager.ApplicationVisualTheme = '{themeName}'", "Theme Initialization");
 
                 try
                 {
@@ -633,10 +627,7 @@ namespace WileyWidget.WinForms
 
                 // STEP 3: Explicit verification call (optional but recommended)
                 // Records: Theme Initialization → VerifyThemeRegistration
-                if (_timelineService != null)
-                {
-                    _timelineService.RecordOperation("[THEME API] Verify theme registration (ApplicationVisualTheme != null)", "Theme Initialization");
-                }
+                _timelineService?.RecordOperation("[THEME API] Verify theme registration (ApplicationVisualTheme != null)", "Theme Initialization");
 
                 try
                 {
@@ -672,7 +663,22 @@ namespace WileyWidget.WinForms
 
         private static void ConfigureErrorReporting()
         {
-            // Configure error reporting service if needed
+            try
+            {
+                var errorReporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services);
+                var telemetry = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITelemetryService>(Services);
+
+                if (telemetry != null)
+                {
+                    errorReporting?.SetTelemetryService(telemetry);
+                }
+
+                _timelineService?.RecordOperation("Initialize error reporting and telemetry", "Chrome Initialization");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to fully configure error reporting and telemetry during startup");
+            }
         }
 
         private static void TryLoadDotNetEnv()
@@ -1415,7 +1421,7 @@ namespace WileyWidget.WinForms
 
         private static void WireGlobalExceptionHandlers()
         {
-            _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Error Handlers");
+            _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Chrome Initialization");
             Application.ThreadException += (sender, e) =>
             {
                 try
@@ -1446,7 +1452,7 @@ namespace WileyWidget.WinForms
                 }
             };
 
-            _timelineService?.RecordOperation("Wire AppDomain.UnhandledException handler", "Error Handlers");
+            _timelineService?.RecordOperation("Wire AppDomain.UnhandledException handler", "Chrome Initialization");
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
@@ -1467,6 +1473,31 @@ namespace WileyWidget.WinForms
                 {
                     Log.Warning(reportEx, "Failed to report AppDomain exception to ErrorReportingService");
                 }
+            };
+
+            _timelineService?.RecordOperation("Wire TaskScheduler.UnobservedTaskException handler", "Chrome Initialization");
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                try
+                {
+                    Log.Fatal(e.Exception, "Unobserved task exception");
+                }
+                catch (Exception fatalLogEx)
+                {
+                    Log.Error(fatalLogEx, "Log.Fatal failed for unobserved task exception");
+                }
+
+                try
+                {
+                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "Unobserved Task Exception", showToUser: false);
+                }
+                catch (Exception reportEx)
+                {
+                    Log.Warning(reportEx, "Failed to report unobserved task exception to ErrorReportingService");
+                }
+
+                // Mark as observed to prevent process termination (behavior varies by .NET version/config)
+                e.SetObserved();
             };
         }
 

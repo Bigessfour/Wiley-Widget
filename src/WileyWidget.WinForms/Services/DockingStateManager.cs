@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Runtime.Serialization;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 
@@ -45,8 +46,8 @@ namespace WileyWidget.WinForms.Services
                 {
                     try
                     {
-                        using var stream = File.OpenRead(_layoutPath);
-                        dockingManager.LoadDockingLayout(stream);
+                        var serializer = new AppStateSerializer(SerializeMode.BinaryFile, _layoutPath);
+                        dockingManager.LoadDockState(serializer);
                         _logger.LogDebug("✓ Docking layout loaded from cache successfully");
                     }
                     catch (Exception ex)
@@ -74,6 +75,8 @@ namespace WileyWidget.WinForms.Services
         /// </summary>
         public void SaveLayout(DockingManager dockingManager)
         {
+            if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
+
             try
             {
                 var directory = Path.GetDirectoryName(_layoutPath);
@@ -82,8 +85,9 @@ namespace WileyWidget.WinForms.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                using var stream = File.Create(_layoutPath);
-                dockingManager.SaveDockingLayout(stream);
+                var serializer = new AppStateSerializer(SerializeMode.BinaryFile, _layoutPath);
+                dockingManager.SaveDockState(serializer);
+                serializer.PersistNow();
                 _logger.LogDebug("✓ Docking layout saved to cache at {LayoutPath}", _layoutPath);
             }
             catch (Exception ex)

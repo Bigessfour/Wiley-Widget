@@ -1,9 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
+using WileyWidget.Data;
 using WileyWidget.WinForms.Models;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -16,6 +19,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
     private readonly IDepartmentExpenseService? _departmentExpenseService;
     private readonly IGrokRecommendationService? _grokRecommendationService;
+    private readonly IDbContextFactory<AppDbContext>? _dbContextFactory;
     private bool _disposed;
 
     #region Observable Properties
@@ -105,11 +109,13 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
     public RecommendedMonthlyChargeViewModel(
         ILogger<RecommendedMonthlyChargeViewModel>? logger,
+        IDbContextFactory<AppDbContext>? dbContextFactory = null,
         IDepartmentExpenseService? departmentExpenseService = null,
         IGrokRecommendationService? grokRecommendationService = null)
         : base(logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _dbContextFactory = dbContextFactory;
         _departmentExpenseService = departmentExpenseService;
         _grokRecommendationService = grokRecommendationService;
 
@@ -131,7 +137,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// Parameterless constructor for design-time support
     /// </summary>
     public RecommendedMonthlyChargeViewModel()
-        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance, null, null)
+        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance, null, null, null)
     {
     }
 
@@ -207,8 +213,54 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
             _logger.LogInformation("Saving current charges for {DeptCount} departments", Departments.Count);
 
-            // TODO: Persist to database using Entity Framework
-            await Task.Delay(300); // Simulate save operation
+            if (_dbContextFactory == null)
+            {
+                _logger.LogWarning("DbContextFactory not available - cannot save to database");
+                StatusText = "Database not available - charges not saved";
+                return;
+            }
+
+            await using var context = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+
+            foreach (var dept in Departments)
+            {
+                var existing = await context.DepartmentCurrentCharges
+                    .FirstOrDefaultAsync(d => d.Department == dept.Department)
+                    .ConfigureAwait(false);
+
+                // Get actual customer count for this department
+                var customerCount = await context.Charges
+                    .Where(c => c.ChargeType == dept.Department)
+                    .Select(c => c.BillId)
+                    .Distinct()
+                    .Join(context.UtilityBills,
+                          chargeBillId => chargeBillId,
+                          bill => bill.Id,
+                          (chargeBillId, bill) => bill.CustomerId)
+                    .Distinct()
+                    .CountAsync()
+                    .ConfigureAwait(false);
+
+                if (existing == null)
+                {
+                    existing = new DepartmentCurrentCharge
+                    {
+                        Department = dept.Department,
+                        CurrentCharge = dept.CurrentCharge,
+                        CustomerCount = customerCount,
+                        LastUpdated = DateTime.UtcNow
+                    };
+                    context.DepartmentCurrentCharges.Add(existing);
+                }
+                else
+                {
+                    existing.CurrentCharge = dept.CurrentCharge;
+                    existing.CustomerCount = customerCount;
+                    existing.LastUpdated = DateTime.UtcNow;
+                }
+            }
+
+            await context.SaveChangesAsync().ConfigureAwait(false);
 
             StatusText = "Charges saved successfully";
             _logger.LogInformation("Current charges saved successfully");

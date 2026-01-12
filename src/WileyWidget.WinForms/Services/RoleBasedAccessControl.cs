@@ -195,6 +195,8 @@ namespace WileyWidget.WinForms.Services
     {
         public static void RequirePermission(RoleBasedAccessControl rbac, string user, string permission)
         {
+            if (rbac == null) throw new ArgumentNullException(nameof(rbac));
+
             if (!rbac.HasPermission(user, permission))
             {
                 throw new UnauthorizedAccessException($"User '{user}' does not have permission: {permission}");
@@ -203,6 +205,8 @@ namespace WileyWidget.WinForms.Services
 
         public static void RequireRole(RoleBasedAccessControl rbac, string user, string role)
         {
+            if (rbac == null) throw new ArgumentNullException(nameof(rbac));
+
             if (!rbac.GetUserRoles(user).Contains(role))
             {
                 throw new UnauthorizedAccessException($"User '{user}' does not have role: {role}");

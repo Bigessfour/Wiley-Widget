@@ -76,7 +76,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
-        InitializeControls();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
     }
 
     /// <summary>
@@ -99,7 +101,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes all UI controls and sets up the layout.
     /// </summary>
-    private void InitializeControls()
+    private void InitializeComponent()
     {
         // Theme is applied automatically by SfSkinManager cascade from the parent form.
         // Avoid per-control SetTheme to prevent inconsistent/double theming.
@@ -1064,10 +1066,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
     }
 
-    /// <summary>
-    /// Required designer variable.
-    /// </summary>
-    private System.ComponentModel.IContainer? components = null;
+
 
     /// <summary>
     /// Clean up any resources being used.
@@ -1099,28 +1098,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _noDataOverlay.SafeDispose();
             _errorProvider.SafeDispose();
 
-            components?.Dispose();
+            // Note: No components container used in programmatic UI
+            // components?.Dispose();
         }
 
         base.Dispose(disposing);
     }
 
-    #region Windows Form Designer generated code
 
-    /// <summary>
-    /// Required method for Designer support - do not modify
-    /// the contents of this method with the code editor.
-    /// </summary>
-    private void InitializeComponent()
-    {
-        this.components = new System.ComponentModel.Container();
-        this.Name = "AnalyticsPanel";
-        this.AccessibleName = "Budget Analytics"; // For UI automation
-        this.Size = new Size(1400, 900);
-        this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        this.AutoScroll = true;
-        this.Padding = new Padding(8);
-    }
-
-    #endregion
 }

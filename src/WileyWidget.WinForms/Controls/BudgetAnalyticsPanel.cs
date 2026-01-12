@@ -73,6 +73,9 @@ namespace WileyWidget.WinForms.Controls
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
 
             InitializeComponent();
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
             SetupUI();
             BindViewModel();
             ApplyCurrentTheme();
@@ -80,10 +83,14 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            this.SuspendLayout();
+
             Name = "BudgetAnalyticsPanel";
-            Size = new Size(1200, 800);
+            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
+            this.ResumeLayout(false);
+
         }
 
         private void SetupUI()
