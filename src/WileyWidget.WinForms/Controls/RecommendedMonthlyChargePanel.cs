@@ -54,8 +54,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     {
         InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
 
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -73,8 +73,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     {
         InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         _viewModel = new RecommendedMonthlyChargeViewModel();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargePanel>.Instance;
 
@@ -932,13 +932,13 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     /// </summary>
     private void InitializeComponent()
     {
-            this.SuspendLayout();
+        this.SuspendLayout();
 
         this.components = new System.ComponentModel.Container();
         this.Name = "RecommendedMonthlyChargePanel";
         this.Size = new Size(1400, 900);
-            try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
-            this.ResumeLayout(false);
+        try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
+        this.ResumeLayout(false);
 
     }
 

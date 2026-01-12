@@ -94,8 +94,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     {
         InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         InitializeComponent();
         SubscribeToThemeChanges();
     }

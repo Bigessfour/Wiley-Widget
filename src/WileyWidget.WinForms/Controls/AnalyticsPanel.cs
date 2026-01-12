@@ -77,8 +77,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
     }
 
     /// <summary>

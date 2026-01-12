@@ -204,14 +204,16 @@ namespace WileyWidget.WinForms.ViewModels
             _pathProvider = pathProvider ?? throw new ArgumentNullException(nameof(pathProvider));
             _configuration = configuration ?? new ConfigurationBuilder().Build();
 
-            // Determine default fiscal year using consistent logic
-            var now = DateTime.Now;
-            var defaultFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+            // Determine default fiscal year using consistent logic with configuration support
+            var startMonth = _configuration.GetValue("FiscalYearStartMonth", 7);
+            var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now, startMonth);
+            var defaultFiscalYear = fyInfo.Year;
             SelectedYear = _configuration.GetValue("UI:DefaultFiscalYear", defaultFiscalYear);
 
-            // Set fiscal year date range (July 1 - June 30)
-            SelectedStartDate = new DateTime(SelectedYear - 1, 7, 1, 0, 0, 0, DateTimeKind.Utc);
-            SelectedEndDate = new DateTime(SelectedYear, 6, 30, 23, 59, 59, DateTimeKind.Utc);
+            // Set fiscal year date range based on selected year and start month
+            var selectedFyInfo = FiscalYearInfo.ForYear(SelectedYear, startMonth);
+            SelectedStartDate = DateTime.SpecifyKind(selectedFyInfo.StartDate, DateTimeKind.Utc);
+            SelectedEndDate = DateTime.SpecifyKind(selectedFyInfo.EndDate.AddTicks(TimeSpan.TicksPerDay - 1), DateTimeKind.Utc);
 
             // Initialize commands
             RefreshCommand = new AsyncRelayCommand(LoadChartDataAsync);
@@ -276,9 +278,11 @@ namespace WileyWidget.WinForms.ViewModels
 
                 token.ThrowIfCancellationRequested();
 
-                // Determine date range for fiscal year
-                var fiscalYearStart = new DateTime(yearToLoad - 1, 7, 1);
-                var fiscalYearEnd = new DateTime(yearToLoad, 6, 30);
+                // Determine date range for fiscal year using configured start month
+                var startMonth = _configuration.GetValue("FiscalYearStartMonth", 7);
+                var fyInfo = FiscalYearInfo.ForYear(yearToLoad, startMonth);
+                var fiscalYearStart = fyInfo.StartDate;
+                var fiscalYearEnd = fyInfo.EndDate;
 
                 // Load budget variance analysis from repository
                 var budgetAnalysis = await _budgetRepository.GetBudgetSummaryAsync(
@@ -590,9 +594,11 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger.LogDebug("Fiscal year changed to: {Year}", value);
 
-            // Update date range for new fiscal year
-            SelectedStartDate = new DateTime(value - 1, 7, 1, 0, 0, 0, DateTimeKind.Utc);
-            SelectedEndDate = new DateTime(value, 6, 30, 23, 59, 59, DateTimeKind.Utc);
+            // Update date range for new fiscal year using configured start month
+            var startMonth = _configuration.GetValue("FiscalYearStartMonth", 7);
+            var fyInfo = FiscalYearInfo.ForYear(value, startMonth);
+            SelectedStartDate = DateTime.SpecifyKind(fyInfo.StartDate, DateTimeKind.Utc);
+            SelectedEndDate = DateTime.SpecifyKind(fyInfo.EndDate.AddTicks(TimeSpan.TicksPerDay - 1), DateTimeKind.Utc);
 
             // Reload data for new year (only after initialization to avoid constructor-triggered loads)
             if (_initialized)
@@ -694,8 +700,9 @@ namespace WileyWidget.WinForms.ViewModels
             SelectedDepartment = null;
             SelectedCategory = "All Categories";
 
-            var now = DateTime.Now;
-            var defaultYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+            var startMonth = _configuration.GetValue("FiscalYearStartMonth", 7);
+            var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now, startMonth);
+            var defaultYear = fyInfo.Year;
             SelectedYear = _configuration.GetValue("UI:DefaultFiscalYear", defaultYear);
 
             _logger.LogInformation("Filters reset to defaults");

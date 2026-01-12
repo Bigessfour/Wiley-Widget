@@ -284,16 +284,17 @@ namespace WileyWidget.WinForms.ViewModels
                                 }
                                 else
                                 {
-                                    var now = DateTime.Now;
-                                    currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
-                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                                    var startMonth = _configuration.GetValue<int>("FiscalYearStartMonth", 7);
+                                    var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now, startMonth);
+                                    currentFiscalYear = fyInfo.Year;
+                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear} (Start Month: {StartMonth})", currentFiscalYear, startMonth);
                                 }
                             }
                             else
                             {
-                                var now = DateTime.Now;
-                                currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
-                                _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                                var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now);
+                                currentFiscalYear = fyInfo.Year;
+                                _logger.LogInformation("Using default computed fiscal year (July 1): {FiscalYear}", currentFiscalYear);
                             }
                         }
                         catch (Exception ex)

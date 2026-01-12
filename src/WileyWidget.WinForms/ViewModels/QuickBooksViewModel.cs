@@ -703,9 +703,12 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
             return string.Empty;
 
         // If field contains comma, quote, or newline, wrap in quotes and escape quotes
-        if (field.Contains(',') || field.Contains('"') || field.Contains('\n') || field.Contains('\r'))
+        if (field.Contains(",", StringComparison.Ordinal) ||
+            field.Contains("\"", StringComparison.Ordinal) ||
+            field.Contains("\n", StringComparison.Ordinal) ||
+            field.Contains("\r", StringComparison.Ordinal))
         {
-            return "\"" + field.Replace("\"", "\"\"") + "\"";
+            return "\"" + field.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
         }
 
         return field;
