@@ -29,21 +29,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     // UI Controls
     private SfDataGrid? _budgetGrid;
-    private SfButton? _loadBudgetsButton;
-    private SfButton? _addEntryButton;
-    private SfButton? _editEntryButton;
-    private SfButton? _deleteEntryButton;
-    private SfButton? _importCsvButton;
-    private SfButton? _exportCsvButton;
-    private SfButton? _exportPdfButton;
-    private SfButton? _exportExcelButton;
-    private TextBoxExt? _searchTextBox;
-    private SfComboBox? _fiscalYearComboBox;
-    private SfComboBox? _departmentComboBox;
-    private SfComboBox? _fundTypeComboBox;
-    private TextBoxExt? _varianceThresholdTextBox;
-    private CheckBoxAdv? _overBudgetCheckBox;
-    private CheckBoxAdv? _underBudgetCheckBox;
+    private Button? _loadBudgetsButton;
+    private Button? _addEntryButton;
+    private Button? _editEntryButton;
+    private Button? _deleteEntryButton;
+    private Button? _importCsvButton;
+    private Button? _exportCsvButton;
+    private Button? _exportPdfButton;
+    private Button? _exportExcelButton;
+    private TextBox? _searchTextBox;
+    private ComboBox? _fiscalYearComboBox;
+    private ComboBox? _departmentComboBox;
+    private ComboBox? _fundTypeComboBox;
+    private TextBox? _varianceThresholdTextBox;
+    private CheckBox? _overBudgetCheckBox;
+    private CheckBox? _underBudgetCheckBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
@@ -83,20 +83,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         Services.IThemeService? themeService = null)
         : base(scopeFactory, logger)
     {
-        _themeService = themeService;
+        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
+        if (logger == null) throw new ArgumentNullException(nameof(logger));
+
+        _viewModel = viewModel;
+        _logger = logger;
+
         InitializeComponent();
-
-        // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
-    }
-
-    /// <summary>
-    /// Called after ViewModel has been resolved from scoped service provider.
-    /// </summary>
-    protected override void OnViewModelResolved(BudgetViewModel viewModel)
-    {
-        base.OnViewModelResolved(viewModel);
-
         InitializeControls();
         BindViewModel();
         ApplySyncfusionTheme();
@@ -106,6 +99,52 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
         Logger.LogInformation("BudgetPanel initialized with ViewModel");
+    }
+
+    /// <summary>
+    /// Parameterless constructor for DI/designer support.
+    /// </summary>
+    public BudgetPanel() : this(ResolveBudgetViewModel(), ResolveLogger())
+    {
+    }
+
+    private static BudgetViewModel ResolveBudgetViewModel()
+    {
+        if (Program.Services == null)
+        {
+            throw new InvalidOperationException("BudgetPanel: Program.Services is null - cannot resolve BudgetViewModel");
+        }
+        try
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<BudgetViewModel>(Program.Services);
+            if (vm != null)
+            {
+                return vm;
+            }
+            throw new InvalidOperationException("BudgetPanel: BudgetViewModel not registered in DI container");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "BudgetPanel: Failed to resolve BudgetViewModel from DI");
+            throw;
+        }
+    }
+
+    private static ILogger<BudgetPanel> ResolveLogger()
+    {
+        if (Program.Services == null)
+        {
+            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<BudgetPanel>>(Program.Services)
+                ?? new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
+        catch
+        {
+            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
+        }
     }
 
     private void InitializeControls()
@@ -650,72 +689,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         buttonTable.Controls.Add(_exportExcelButton, 7, 0);
 
         _buttonPanel!.Controls.Add(buttonTable);
-
-        // Navigation panel
-        var navigationPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Right,
-            Width = 300,
-            Padding = new Padding(10),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(navigationPanel, "Office2019Colorful");
-
-        var navGroup = new GradientPanelExt
-        {
-            Text = "Navigate To",
-            Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(navGroup, "Office2019Colorful");
-
-        var navTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3
-        };
-
-        _navigateAccountsButton = new SfButton
-        {
-            Text = "View &Accounts",
-            Dock = DockStyle.Fill,
-            Height = 40,
-            AccessibleName = "Navigate to Accounts",
-            AccessibleDescription = "Navigate to Accounts panel"
-        };
-        _navigateAccountsButton.Click += (s, e) => NavigateToPanel<AccountsPanel>("Accounts");
-
-        _navigateChartsButton = new SfButton
-        {
-            Text = "View &Charts",
-            Dock = DockStyle.Fill,
-            Height = 40,
-            AccessibleName = "Navigate to Charts",
-            AccessibleDescription = "Navigate to Charts panel"
-        };
-        _navigateChartsButton.Click += (s, e) => NavigateToPanel<ChartPanel>("Charts");
-
-        _navigateAnalyticsButton = new SfButton
-        {
-            Text = "View Analytics",
-            Dock = DockStyle.Fill,
-            Height = 40,
-            AccessibleName = "Navigate to Analytics",
-            AccessibleDescription = "Navigate to Analytics panel"
-        };
-        _navigateAnalyticsButton.Click += (s, e) => NavigateToPanel<AnalyticsPanel>("Analytics");
-
-        navTable.Controls.Add(_navigateAccountsButton, 0, 0);
-        navTable.Controls.Add(_navigateChartsButton, 0, 1);
-        navTable.Controls.Add(_navigateAnalyticsButton, 0, 2);
-
-        navGroup.Controls.Add(navTable);
-        navigationPanel.Controls.Add(navGroup);
-        bottomPanel.Controls.Add(navigationPanel);
-
         bottomPanel.Controls.Add(_buttonPanel);
 
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
@@ -947,11 +920,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void AddEntryButton_Click(object? sender, EventArgs e)
     {
-        if (ViewModel == null) return;
-
         try
         {
-            Logger.LogInformation("Add Entry button clicked");
+            _logger.LogInformation("Add Entry button clicked");
 
             // Create a simple input form for adding new budget entry
             using var form = new Form
@@ -975,40 +946,40 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Account Number
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
-            var txtAccountNumber = new TextBoxExt { Dock = DockStyle.Fill };
+            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill };
             tableLayout.Controls.Add(txtAccountNumber, 1, 0);
 
             // Description
             tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
-            var txtDescription = new TextBoxExt { Dock = DockStyle.Fill };
+            var txtDescription = new TextBox { Dock = DockStyle.Fill };
             tableLayout.Controls.Add(txtDescription, 1, 1);
 
             // Budgeted Amount
             tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
-            var txtBudgeted = new TextBoxExt { Dock = DockStyle.Fill, Text = "0.00" };
+            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
             tableLayout.Controls.Add(txtBudgeted, 1, 2);
 
             // Actual Amount
             tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
-            var txtActual = new TextBoxExt { Dock = DockStyle.Fill, Text = "0.00" };
+            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
             // Department ID
             tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBoxExt { Dock = DockStyle.Fill, Text = "1" };
+            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = "1" };
             tableLayout.Controls.Add(txtDepartmentId, 1, 4);
 
             // Fund Type
             tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
-            var cmbFundType = new ComboBoxAdv { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedIndex = 0;
             tableLayout.Controls.Add(cmbFundType, 1, 5);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);
@@ -1035,29 +1006,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     BudgetedAmount = budgeted,
                     ActualAmount = actual,
                     DepartmentId = deptId,
-                    FiscalYear = ViewModel.SelectedFiscalYear,
+                    FiscalYear = _viewModel.SelectedFiscalYear,
                     FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund"),
                     Variance = budgeted - actual,
-                    StartPeriod = new DateTime(ViewModel.SelectedFiscalYear, 1, 1),
-                    EndPeriod = new DateTime(ViewModel.SelectedFiscalYear, 12, 31),
+                    StartPeriod = new DateTime(_viewModel.SelectedFiscalYear, 1, 1),
+                    EndPeriod = new DateTime(_viewModel.SelectedFiscalYear, 12, 31),
                     CreatedAt = DateTime.UtcNow
                 };
 
-                Task.Run(async () => await ViewModel.AddEntryAsync(entry));
+                Task.Run(async () => await _viewModel.AddEntryAsync(entry));
                 UpdateStatus("Budget entry added successfully");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error in AddEntryButton_Click");
+            _logger.LogError(ex, "Error in AddEntryButton_Click");
             MessageBox.Show($"Error adding entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private async void EditEntryButton_Click(object? sender, EventArgs e)
     {
-        if (ViewModel == null) return;
-
         try
         {
             if (_budgetGrid?.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
@@ -1069,7 +1038,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
             if (selectedEntry == null) return;
 
-            Logger.LogInformation("Edit Entry button clicked for entry {Id}", selectedEntry.Id);
+            _logger.LogInformation("Edit Entry button clicked for entry {Id}", selectedEntry.Id);
 
             // Similar dialog to Add but pre-populated with existing values
             using var form = new Form
@@ -1093,34 +1062,34 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Pre-populate fields
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
-            var txtAccountNumber = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.AccountNumber };
+            var txtAccountNumber = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.AccountNumber };
             tableLayout.Controls.Add(txtAccountNumber, 1, 0);
 
             tableLayout.Controls.Add(new Label { Text = "Description:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
-            var txtDescription = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.Description };
+            var txtDescription = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.Description };
             tableLayout.Controls.Add(txtDescription, 1, 1);
 
             tableLayout.Controls.Add(new Label { Text = "Budgeted Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
-            var txtBudgeted = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.BudgetedAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            var txtBudgeted = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.BudgetedAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtBudgeted, 1, 2);
 
             tableLayout.Controls.Add(new Label { Text = "Actual Amount:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 3);
-            var txtActual = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
+            var txtActual = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
             tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBoxExt { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
+            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtDepartmentId, 1, 4);
 
             tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
-            var cmbFundType = new ComboBoxAdv { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+            var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedItem = selectedEntry.FundType.ToString();
             tableLayout.Controls.Add(cmbFundType, 1, 5);
 
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);
@@ -1147,32 +1116,31 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.DepartmentId = deptId;
                 selectedEntry.FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund");
                 selectedEntry.Variance = budgeted - actual;
-                selectedEntry.UpdatedAt = DateTime.Now;
-                await ViewModel.UpdateEntryAsync(selectedEntry);
+                selectedEntry.UpdatedAt = DateTime.UtcNow;
+
+                Task.Run(async () => await _viewModel.UpdateEntryAsync(selectedEntry));
                 UpdateStatus("Budget entry updated successfully");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error in EditEntryButton_Click");
+            _logger.LogError(ex, "Error in EditEntryButton_Click");
             MessageBox.Show($"Error editing entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
-    private async Task DeleteEntryAsync()
+    private Task DeleteEntryAsync()
     {
         try
         {
-            if (ViewModel == null) return;
-
-            if (_budgetGrid.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
+            if (_budgetGrid?.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
             {
                 MessageBox.Show("Please select a budget entry to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
+                return Task.CompletedTask;
             }
 
             var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
-            if (selectedEntry == null) return;
+            if (selectedEntry == null) return Task.CompletedTask;
 
             var result = MessageBox.Show(
                 $"Are you sure you want to delete budget entry '{selectedEntry.AccountNumber} - {selectedEntry.Description}'?\n\nThis action cannot be undone.",
@@ -1182,16 +1150,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             if (result == DialogResult.Yes)
             {
-                Logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
-                await ViewModel.DeleteEntryAsync(selectedEntry.Id);
+                _logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
+                Task.Run(async () => await _viewModel.DeleteEntryAsync(selectedEntry.Id));
                 UpdateStatus($"Deleted budget entry {selectedEntry.AccountNumber}");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error in DeleteEntryAsync");
+            _logger.LogError(ex, "Error in DeleteEntryAsync");
             MessageBox.Show($"Error deleting entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        return Task.CompletedTask;
     }
 
     private void ImportCsvButton_Click(object? sender, EventArgs e)

@@ -185,13 +185,9 @@ namespace WileyWidget.Services
             {
                 try
                 {
-                    // CRITICAL FIX: Create isolated scope for validation to prevent
-                    // poisoning EF Core's ServiceProviderCache with disposed providers
-                    using (var scope = serviceProvider.CreateScope())
-                    {
-                        var isolatedProvider = scope.ServiceProvider;
-                        _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
-                        var service = isolatedProvider.GetService(serviceType);
+                    using var scope = serviceProvider.CreateScope();
+                    _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
+                    var service = scope.ServiceProvider.GetService(serviceType);
 
                         if (service == null)
                         {

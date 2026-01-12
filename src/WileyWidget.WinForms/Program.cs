@@ -16,7 +16,6 @@ using Syncfusion.WinForms.DataGrid;
 using System.Security.Cryptography;
 using System.Text;
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
@@ -58,222 +57,11 @@ namespace WileyWidget.WinForms
         /// </summary>
         public static void RegisterBackgroundTask(Task task)
         {
-            lock (_pendingTasksLock)
-            {
-                _pendingBackgroundTasks.Add(task);
-            }
-        }
-
-        private const string FallbackConnectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-
-        private sealed record SyncfusionLicenseDiagnostics(string Source, bool IsDevelopment, int Length, string Hash);
-
-        private static SyncfusionLicenseDiagnostics? _syncfusionLicenseDiagnostics;
-
-        private static void ConfigureBootstrapLogger()
-        {
-            try
-            {
-                var basePath = AppContext.BaseDirectory ?? Environment.CurrentDirectory;
-                var logsPath = Path.Combine(basePath, "logs");
-                Directory.CreateDirectory(logsPath);
-                var logFileTemplate = Path.Combine(logsPath, "app-.log");
-
-                Log.Logger = new LoggerConfiguration()
-                    .MinimumLevel.Debug()
-                    .Enrich.FromLogContext()
-                    .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.File(logFileTemplate,
-                        formatProvider: CultureInfo.InvariantCulture,
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 30,
-                        fileSizeLimitBytes: 10 * 1024 * 1024,
-                        rollOnFileSizeLimit: true,
-                        shared: true)
-                    .CreateLogger();
-
-                Log.Debug("✓ Bootstrap logger initialized - CENTRALIZED LOGS (path: {LogsPath})", logsPath);
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    Log.Logger = new LoggerConfiguration()
-                        .MinimumLevel.Debug()
-                        .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                        .CreateLogger();
-
-                    Log.Warning(ex, "Bootstrap logger fallback initialized");
-                }
-                catch
-                {
-                    // Swallow: if logging cannot be configured at all, keep default silent logger.
-                }
-            }
-        }
-
-        private static void EnsureTimelineService()
-        {
-            if (_timelineService == null)
-            {
-                _timelineService = new StartupTimelineService(NullLogger<StartupTimelineService>.Instance);
-            }
-        }
-
-        private static void RegisterSyncfusionLicense()
-        {
-            var licenseStopwatch = Stopwatch.StartNew();
-            var envName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-                          ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-                          ?? "Production";
-            var isDevelopment = string.Equals(envName, "Development", StringComparison.OrdinalIgnoreCase);
-
-            // Prefer canonical environment variable first, then configuration keys (top-level SYNCFUSION_LICENSE_KEY or Syncfusion:LicenseKey)
-            var licenseKeySource = "";
-            string licenseKey = null;
-
-            var envKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-            var envKeyAlt = Environment.GetEnvironmentVariable("Syncfusion__LicenseKey");
-
-            if (!string.IsNullOrWhiteSpace(envKey))
-            {
-                licenseKey = envKey;
-                licenseKeySource = "env:SYNCFUSION_LICENSE_KEY";
-            }
-            else if (!string.IsNullOrWhiteSpace(envKeyAlt))
-            {
-                licenseKey = envKeyAlt;
-                licenseKeySource = "env:Syncfusion__LicenseKey";
-            }
-            else
-            {
-                var builder = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true, reloadOnChange: false)
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-                    // Support running from repo root (before files are copied to output)
-                    .AddJsonFile(Path.Combine("src", "WileyWidget.WinForms", "appsettings.json"), optional: true, reloadOnChange: false);
-
-                if (isDevelopment)
-                {
-                    builder.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly(), optional: true);
-                }
-
-                builder.AddEnvironmentVariables();
-                var cfg = builder.Build();
-
-                // Check top-level key first for consistent custody chain
-                var cfgTop = cfg["SYNCFUSION_LICENSE_KEY"];
-                var cfgNested = cfg["Syncfusion:LicenseKey"];
-
-                if (!string.IsNullOrWhiteSpace(cfgTop))
-                {
-                    licenseKey = cfgTop;
-                    licenseKeySource = "cfg:SYNCFUSION_LICENSE_KEY";
-                }
-                else if (!string.IsNullOrWhiteSpace(cfgNested))
-                {
-                    licenseKey = cfgNested;
-                    licenseKeySource = "cfg:Syncfusion:LicenseKey";
-                }
-            }
-
-            var rawKey = licenseKey;
-            licenseKey = licenseKey?.Trim();
-            if (!string.IsNullOrEmpty(licenseKey) &&
-                ((licenseKey.Length >= 2 && licenseKey[0] == '"' && licenseKey[^1] == '"') ||
-                 (licenseKey.Length >= 2 && licenseKey[0] == '\'' && licenseKey[^1] == '\'')))
-            {
-                licenseKey = licenseKey.Substring(1, licenseKey.Length - 2);
-            }
-
-            // If the key was pasted with line breaks/spaces (common when copying from portals), remove whitespace.
-            // This keeps the operation simple while preventing the Base64 FormatException you saw.
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                licenseKey = string.Concat(licenseKey.Where(c => !char.IsWhiteSpace(c)));
-            }
-
-            if (string.IsNullOrWhiteSpace(licenseKey))
-            {
-                // In Development, allow running without a key (evaluation/trial behavior). In Production, fail fast.
-                if (!isDevelopment)
-                {
-                    throw new InvalidOperationException("Syncfusion license key is missing. Set SYNCFUSION_LICENSE_KEY or Syncfusion:LicenseKey.");
-                }
-
-                Log.Warning("Syncfusion license key not found (Development={IsDev}).", isDevelopment);
-            }
-            else
-            {
-                _syncfusionLicenseDiagnostics = new SyncfusionLicenseDiagnostics(
-                    string.IsNullOrWhiteSpace(licenseKeySource) ? "unknown" : licenseKeySource,
-                    isDevelopment,
-                    licenseKey.Length,
-                    ShortHash(licenseKey));
-
-                try
-                {
-                    // SECURITY: Only log safe diagnostics (length + hash) - never write full license key to disk
-                    Log.Debug("Syncfusion license loaded (source={Source}, len={Length}, hash={Hash})",
-                        licenseKeySource, licenseKey.Length, ShortHash(licenseKey));
-
-                    // This is the only required Syncfusion licensing operation. Use fully-qualified method to be explicit.
-                    try
-                    {
-                        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                        Log.Debug("Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense() completed successfully");
-                    }
-                    catch (Exception regEx)
-                    {
-                        throw new InvalidOperationException(
-                            $"Failed to register Syncfusion license. The license key may be invalid, expired, or not valid for version 32.1.19. Exception: {regEx.Message}",
-                            regEx);
-                    }
-                }
-                catch (FormatException ex)
-                {
-                    // Syncfusion troubleshooting: invalid/quoted/truncated license key can trigger Base64 FormatException.
-                    throw new InvalidOperationException(
-                        "Syncfusion license key appears invalid (Base-64 parse failed). " +
-                        "Verify the key has no surrounding quotes and no extra whitespace/newlines, and that it is complete.",
-                        ex);
-                }
-            }
-
-            licenseStopwatch.Stop();
-            if (licenseStopwatch.ElapsedMilliseconds > 750)
-            {
-                Log.Information("RegisterSyncfusionLicense completed in {Elapsed}ms (monitor for I/O growth)", licenseStopwatch.ElapsedMilliseconds);
-            }
-            else
-            {
-                Log.Debug("RegisterSyncfusionLicense completed in {Elapsed}ms", licenseStopwatch.ElapsedMilliseconds);
-            }
-        }
-
-        [STAThread]
-        static void Main(string[] args)
-        {
-            ConfigureBootstrapLogger();
-            SetInvariantCulture();
-
-            // Load environment variables early (optional). Guard against malformed .env lines which can throw FormatException.
-            TryLoadDotNetEnv();
-            RunMain(args);
-        }
-
-        private static void RunMain(string[] args)
-        {
+            // ENHANCED EXCEPTION DIAGNOSTICS
+            AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
+            DotNetEnv.Env.Load("secrets/my.secrets");
+            DotNetEnv.Env.Load();
             Log.Debug("Main method started");
-
-            EnsureTimelineService();
-            var verifyStartup = IsVerifyStartup(args);
-
-            // No SynchronizationContext installation - we rely on the STA main thread for all WinForms operations.
-            // Background work uses Task.Run() but we wait synchronously when required to preserve STA thread safety.
-
             AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
             {
                 if (resolveArgs.Name != null && resolveArgs.Name.StartsWith("Microsoft.WinForms.Utilities.Shared", StringComparison.OrdinalIgnoreCase))
@@ -286,84 +74,59 @@ namespace WileyWidget.WinForms
             SplashForm? splash = null;
             try
             {
-                using (_timelineService?.BeginPhaseScope("License Registration"))
-                {
-                    RegisterSyncfusionLicense();
-                    Log.Information("Startup milestone: License Registration complete");
-                }
-
-                if (_syncfusionLicenseDiagnostics != null)
-                {
-                    var d = _syncfusionLicenseDiagnostics;
-                    if (verifyStartup)
-                    {
-                        Log.Information(
-                            "Syncfusion license key resolved in Main (source={Source}, len={Length}, hash={Hash}, isDev={IsDev})",
-                            d.Source,
-                            d.Length,
-                            d.Hash,
-                            d.IsDevelopment);
-                    }
-                    else
-                    {
-                        Log.Debug(
-                            "Syncfusion license key resolved in Main (source={Source}, len={Length}, hash={Hash}, isDev={IsDev})",
-                            d.Source,
-                            d.Length,
-                            d.Hash,
-                            d.IsDevelopment);
-                    }
-                }
-                else if (verifyStartup)
-                {
-                    Log.Warning("Syncfusion license key was not resolved in Main.");
-                }
-
-                using (_timelineService?.BeginPhaseScope("WinForms Initialization"))
-                {
-                    InitializeWinForms();
-                    Log.Information("Startup milestone: WinForms Initialization complete");
-                }
-
-                using (_timelineService?.BeginPhaseScope("Theme Initialization"))
-                {
-                    InitializeTheme();
-                    Log.Information("Startup milestone: Theme Initialization complete");
-                }
-
-                // Detect WebView2 before showing main form (required for JARVIS Chat)
-                using (_timelineService?.BeginPhaseScope("WebView2 Detection"))
-                {
-                    DetectAndPromptWebView2();
-                    Log.Information("Startup milestone: WebView2 Detection complete");
-                }
-
                 splash = new SplashForm();
-                splash.ShowSplash();
-
                 void SplashReport(double progress, string message, bool isIndeterminate = false)
                 {
-                    splash?.Report(progress, message, isIndeterminate);
+                    var s = splash;
+                    if (s == null) return;
+                    s.InvokeOnUiThread(() => s.Report(progress, message, isIndeterminate));
                 }
 
                 void SplashComplete(string message)
                 {
-                    splash?.Complete(message);
+                    var s = splash;
+                    if (s == null) return;
+                    s.InvokeOnUiThread(() => s.Complete(message));
                 }
 
-                SplashReport(0.02, "Initializing application...", isIndeterminate: true);
-                SplashReport(0.05, "Building dependency injection container...", isIndeterminate: true);
-
-                IHost host;
-                using (_timelineService?.BeginPhaseScope("DI Container Build"))
-                {
-                    var hostBuildScope = System.Diagnostics.Stopwatch.StartNew();
-                    host = BuildHost(args);
-                    hostBuildScope.Stop();
-                    Log.Debug("DI Container built in {Elapsed}ms", hostBuildScope.ElapsedMilliseconds);
-                }
+                SplashReport(0.05, "Building dependency injection container...");
+                var hostBuildScope = System.Diagnostics.Stopwatch.StartNew();
+                IHost host = BuildHost(args);
+                hostBuildScope.Stop();
+                Log.Debug("DI Container built in {Elapsed}ms", hostBuildScope.ElapsedMilliseconds);
                 Log.Information("Startup milestone: DI Container Build complete");
-                SplashReport(0.20, "DI container ready");
+
+                // Register Syncfusion license immediately after configuration is available
+                var mainConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
+                var xaiKey = mainConfig["XAI:ApiKey"];
+                var syncKey = mainConfig["Syncfusion:LicenseKey"];
+                Log.Debug("[CONFIG] XAI:ApiKey present={Present}, length={Length}", xaiKey != null, xaiKey?.Length ?? 0);
+                Log.Debug("[CONFIG] Syncfusion:LicenseKey present={Present}, length={Length}", syncKey != null, syncKey?.Length ?? 0);
+                var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
+
+                using (_timelineService?.BeginPhaseScope("License Registration"))
+                {
+                    await startupOrchestrator.RegisterLicenseAsync().ConfigureAwait(false);
+                    Log.Information("Startup milestone: License Registration complete");
+                }
+
+                using (_timelineService?.BeginPhaseScope("Theme Initialization"))
+                {
+                    await startupOrchestrator.InitializeThemeAsync().ConfigureAwait(false);
+                    Log.Information("Startup milestone: Theme Initialization complete");
+                }
+
+                InitializeWinForms();
+                Log.Information("Startup milestone: WinForms Initialization complete");
+
+                SplashReport(0.10, "Validating configuration secrets...");
+                using (_timelineService?.BeginPhaseScope("Secret Validation"))
+                {
+                    var secretServices = host.Services;
+                    // Offload secret validation to background thread to avoid UI thread blocking
+                    await Task.Run(() => ValidateSecrets(secretServices)).ConfigureAwait(false);
+                    SplashReport(0.12, "Secrets validated");
+                }
 
                 // Get required services early
                 var getOrchestratorStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -372,80 +135,84 @@ namespace WileyWidget.WinForms
                 getOrchestratorStopwatch.Stop();
                 Log.Information("DIAGNOSTIC: GetRequiredService<IStartupOrchestrator> completed in {Elapsed}ms", getOrchestratorStopwatch.ElapsedMilliseconds);
 
-                // CRITICAL: Create application-lifetime scope (do NOT use 'using' - must live until app exits)
-                // This scope provides scoped services (DbContext, repositories) for the entire UI lifetime
-                _applicationScope = host.Services.CreateScope();
-                Services = _applicationScope.ServiceProvider;
-
-                _timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services) ?? _timelineService;
+                _timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services);
                 if (_timelineService != null && _timelineService.IsEnabled)
                 {
                     Log.Debug("[TIMELINE] StartupTimelineService enabled - tracking startup phases");
                 }
 
-                SplashReport(0.30, "Validating configuration...", isIndeterminate: true);
-                using (_timelineService?.BeginPhaseScope("Secret Validation"))
-                {
-                    ValidateSecrets(host.Services);
-                }
-                Log.Debug("Secret validation complete");
+                var mainXaiKey = mainConfig["XAI:ApiKey"];
+                Log.Debug("[MAIN CONFIG] XAI:ApiKey present={Present}, length={Length}", mainXaiKey != null, mainXaiKey?.Length ?? 0);
 
-                // Microsoft guidance: Defer DI validation to background - it's diagnostic, not functional
-                // "ValidateOnBuild is false by default in non-Development modes for performance reasons"
-                // Move validation off UI thread to prevent 985ms startup blocking
-#if DEBUG
-                _ = Task.Run(async () =>
+                using (_timelineService?.BeginPhaseScope("SynchronizationContext Capture"))
                 {
-                    try
-                    {
-                        Log.Debug("Starting background DI validation (Development mode only)");
-                        await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
-                        Log.Information("Background DI validation complete - all services valid");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Background DI validation failed - check service registrations");
-                    }
-                });
-#else
-                Log.Debug("DI validation skipped (Release mode - validates at build time via ValidateOnBuild)");
-#endif
-                SplashReport(0.50, "Validation complete");
+                    CaptureSynchronizationContext();
+                }
+
+                SplashReport(0.10, "Validating service registration...");
+                using (var validationScope = _timelineService?.BeginPhaseScope("DI Validation"))
+                {
+                    // Run DI validation on threadpool to keep startup UI responsive
+                    var validationTask = Task.Run(async () =>
+                        await startupOrchestrator.ValidateServicesAsync(uiScope.ServiceProvider, CancellationToken.None).ConfigureAwait(false));
+                    await validationTask.ConfigureAwait(false);
+                    SplashReport(0.18, "DI validation complete");
+                }
+
+                SplashReport(0.15, "Preparing theme system...");
+
+                SplashReport(0.40, "Configuring error reporting...");
+                _timelineService?.RecordOperation("Configure error reporting", "Error Handlers");
+                ConfigureErrorReporting();
 
                 // Verification mode: run deeper checks before exiting
-                if (verifyStartup)
+                if (IsVerifyStartup(args))
                 {
                     Log.Information("Startup verification mode active; running verification and exiting.");
 
-                    SplashReport(0.70, "Verifying database connectivity...", isIndeterminate: true);
+                    SplashReport(0.50, "Verifying database connectivity...");
                     using (var healthScope = host.Services.CreateScope())
                     {
                         using (_timelineService?.BeginPhaseScope("Database Health Check"))
                         {
-                            SplashReport(0.80, "Checking database health...", isIndeterminate: true);
-                            Task.Run(async () => await RunStartupHealthCheckAsync(healthScope.ServiceProvider).ConfigureAwait(false)).GetAwaiter().GetResult();
-                            SplashReport(0.90, "Database verified");
+                            SplashReport(0.60, "Checking database health...");
+                            await Task.Run(async () => await RunStartupHealthCheckAsync(healthScope.ServiceProvider).ConfigureAwait(false)).ConfigureAwait(false);
+                            SplashReport(0.65, "Database verified");
                         }
                     }
 
                     SplashComplete("Startup verification complete");
-                    RunVerifyStartup(host).GetAwaiter().GetResult();
+                    await RunVerifyStartup(host);
                     return;
                 }
 
-                // Create MainForm early - this is the most visible milestone
-                SplashReport(0.60, "Initializing main window...", isIndeterminate: true);
+                SplashReport(0.75, "Initializing main window...");
                 MainForm mainForm;
                 try
                 {
-                    using (_timelineService?.BeginPhaseScope("MainForm Creation"))
-                    {
-                        mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
-                        Log.Debug("MainForm instance created");
-                    }
-                    Log.Information("Startup milestone: MainForm Creation complete");
+                    mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
                 }
-                catch (Exception ex)
+                Log.Debug("MainForm created");
+
+                SplashReport(0.80, "Wiring global exception handlers...");
+                using (var handlerScope = _timelineService?.BeginPhaseScope("Chrome Initialization"))
+                {
+                    WireGlobalExceptionHandlers();
+                }
+                Log.Debug("Exception handlers wired");
+
+                SplashReport(0.95, "Ready");
+                using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
+                {
+                    SplashComplete("Ready");
+                    splash.Dispose();
+                }
+                Log.Information("Startup milestone: Ready");
+
+                ScheduleAutoCloseIfRequested(args, mainForm);
+
+                Log.Debug("Entering UI message loop");
+                using (var uiLoopScope = _timelineService?.BeginPhaseScope("UI Message Loop"))
                 {
                     Log.Fatal(ex, "Failed to create MainForm - likely Syncfusion license or control instantiation issue");
                     throw;
@@ -552,12 +319,21 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                var invariant = CultureInfo.InvariantCulture;
-                CultureInfo.DefaultThreadCurrentCulture = invariant;
-                CultureInfo.DefaultThreadCurrentUICulture = invariant;
-                Thread.CurrentThread.CurrentCulture = invariant;
-                Thread.CurrentThread.CurrentUICulture = invariant;
-                Log.Debug("Default culture set to InvariantCulture for deterministic parsing");
+                var licenseKey = configuration["Syncfusion:LicenseKey"];
+                if (string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
+                }
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+
+                // Validate the license key
+                // bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
+                // if (!isValid)
+                // {
+                //     throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
+                // }
+
+                Log.Debug("Syncfusion license registered successfully.");
             }
             catch (Exception ex)
             {
@@ -585,7 +361,7 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                Log.Information("[THEME] Starting theme initialization (Syncfusion 32.1.19, string-based API)");
+                Log.Debug("Starting theme initialization");
 
                 var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
                 Log.Information("[THEME] Default theme name from ThemeColors: {ThemeName}", themeName);
@@ -596,60 +372,38 @@ namespace WileyWidget.WinForms
 
                 try
                 {
-                    var assembly = typeof(Office2019Theme).Assembly;
-                    Log.Information("[THEME] Loading Office2019Theme assembly from: {AssemblyName} (version {AssemblyVersion})",
-                        assembly.GetName().Name, assembly.GetName().Version);
-
-                    SfSkinManager.LoadAssembly(assembly);
-                    Log.Information("[THEME] ✓ Office2019Theme assembly loaded successfully");
+                    SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                    Log.Debug("Office2019Theme assembly loaded successfully");
                 }
                 catch (Exception loadEx)
                 {
-                    Log.Error(loadEx, "[THEME FATAL] SfSkinManager.LoadAssembly failed - theme assembly not registered");
-                    throw;
+
+                    Log.Error(loadEx, "Failed to load Office2019Theme assembly");
+                    throw; // Rethrow to outer catch for comprehensive handling
                 }
 
-                // STEP 2: Set global ApplicationVisualTheme - cascades to all controls
-                // Records: Theme Initialization → SetApplicationVisualTheme
-                _timelineService?.RecordOperation($"[THEME API] SfSkinManager.ApplicationVisualTheme = '{themeName}'", "Theme Initialization");
+                // Apply global theme - use default from ThemeColors (fallback to Office2019Colorful)
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                Log.Debug("Setting ApplicationVisualTheme to: {ThemeName}", themeName);
 
                 try
                 {
-                    Log.Information("[THEME] Setting ApplicationVisualTheme to: {ThemeName} (global cascade)", themeName);
-                    SfSkinManager.ApplicationVisualTheme = themeName;
-                    Log.Information("[THEME] ✓ ApplicationVisualTheme set - will cascade to all Syncfusion controls");
+                    SkinManager.ApplicationVisualTheme = themeName;  // Global application-wide theme
+                    Log.Debug("ApplicationVisualTheme set to: {ThemeName}", themeName);
                 }
                 catch (Exception setEx)
                 {
-                    Log.Error(setEx, "[THEME FATAL] Failed to set ApplicationVisualTheme to '{ThemeName}' - check Syncfusion package version and theme registration", themeName);
-                    throw;
+
+                    Log.Error(setEx, "Failed to set ApplicationVisualTheme to {ThemeName}", themeName);
+                    throw; // Rethrow to outer catch for comprehensive handling
                 }
 
-                // STEP 3: Explicit verification call (optional but recommended)
-                // Records: Theme Initialization → VerifyThemeRegistration
-                _timelineService?.RecordOperation("[THEME API] Verify theme registration (ApplicationVisualTheme != null)", "Theme Initialization");
-
-                try
-                {
-                    var verifyTheme = SfSkinManager.ApplicationVisualTheme;
-                    if (verifyTheme == themeName)
-                    {
-                        Log.Information("[THEME] ✓ Theme registration verified: {VerifiedTheme}", verifyTheme);
-                    }
-                    else
-                    {
-                        Log.Warning("[THEME] Theme mismatch: Expected='{Expected}', Actual='{Actual}'", themeName, verifyTheme);
-                    }
-                }
-                catch (Exception verifyEx)
-                {
-                    Log.Warning(verifyEx, "[THEME] Theme registration verification failed - theme may not be properly loaded");
-                }
-
-                Log.Information("[THEME] ✓ Theme initialization completed successfully - awaiting form instantiation for cascade");
+                Log.Debug("Theme initialization completed successfully");
             }
             catch (Exception ex)
             {
+                // COMPREHENSIVE ERROR LOGGING
+
                 if (ex.InnerException != null)
                 {
                     Log.Error(ex.InnerException, "[THEME FATAL] InnerException: {InnerMessage}", ex.InnerException.Message);
@@ -793,74 +547,10 @@ namespace WileyWidget.WinForms
         /// </remarks>
         private static void DetectAndPromptWebView2()
         {
-            try
-            {
-                Log.Debug("[WEBVIEW2] Checking WebView2 runtime availability...");
-
-                // Synchronous check - uses Win32 registry (fast)
-                var versionString = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
-                if (!string.IsNullOrWhiteSpace(versionString))
-                {
-                    Log.Information("[WEBVIEW2] WebView2 runtime detected: version {Version}", versionString);
-                    return; // WebView2 available - proceed
-                }
-
-                Log.Warning("[WEBVIEW2] WebView2 runtime not found. User will see download prompt.");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "[WEBVIEW2] Error detecting WebView2 runtime (Blazor features may be unavailable)");
-            }
-
-            // If we reach here, WebView2 is missing - show user-friendly prompt
-            PromptWebView2Download();
-        }
-
-        /// <summary>
-        /// Shows a message box prompting user to download and install WebView2 runtime.
-        /// </summary>
-        private static void PromptWebView2Download()
-        {
-            try
-            {
-                const string downloadUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
-                var message = "WebView2 Runtime is required for JARVIS Chat and other advanced features.\n\n" +
-                    "Would you like to open the download page?\n\n" +
-                    "You can also manually download from:\n" +
-                    "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
-
-                var result = MessageBox.Show(
-                    message,
-                    "WebView2 Runtime Required",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Information);
-
-                if (result == DialogResult.Yes)
-                {
-                    try
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = downloadUrl,
-                            UseShellExecute = true
-                        });
-                        Log.Information("[WEBVIEW2] User initiated WebView2 download");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "[WEBVIEW2] Failed to open download URL");
-                        MessageBox.Show(
-                            $"Failed to open browser. Please visit the URL manually:",
-                            "Browser Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[WEBVIEW2] Unexpected error in WebView2 prompt");
-            }
+            // Don't manually set WindowsFormsSynchronizationContext before Application.Run
+            // Application.Run will set it automatically when the message pump starts
+            // Just capture whatever context is current at this point
+            UISynchronizationContext = System.Threading.SynchronizationContext.Current;
         }
 
         private static IHost BuildHost(string[] args)
@@ -905,9 +595,16 @@ namespace WileyWidget.WinForms
 
         private static void AddConfiguration(HostApplicationBuilder builder)
         {
-            // Provider order per Microsoft guidance (lowest -> highest):
-            // JSON files -> (Development) user secrets -> environment variables.
-            // (Command line args are already handled by Host.CreateApplicationBuilder(args).)
+            // Ensure .env is loaded before adding configuration sources
+            // DotNetEnv sets environment variables at process level
+            try
+            {
+                DotNetEnv.Env.TraversePath().Load();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to load .env file");
+            }
 
             // DotNetEnv-style files are a development convenience; keep them Development-only.
             if (builder.Environment.IsDevelopment())
@@ -967,8 +664,7 @@ namespace WileyWidget.WinForms
                 if (!string.IsNullOrWhiteSpace(xaiApiKeyEnv))
                 {
                     overrides["XAI:ApiKey"] = xaiApiKeyEnv;
-                    overrides["Grok:ApiKey"] = xaiApiKeyEnv;  // Also set Grok:ApiKey for GrokAgentService
-                    Log.Debug("[CONFIG] Overriding XAI:ApiKey and Grok:ApiKey from environment variable (length: {Length})", xaiApiKeyEnv.Length);
+                    Log.Debug("[CONFIG] Overriding XAI:ApiKey from environment variable (length: {Length})", xaiApiKeyEnv.Length);
                 }
                 else
                 {
@@ -1239,9 +935,12 @@ namespace WileyWidget.WinForms
 
         /// <summary>
         /// Runs a startup health check against the database to validate connectivity before the main UI is shown.
-        /// This method is <c>internal</c> to allow automated tests to invoke the startup health check logic
-        /// without launching the full application. It should not be called directly by production code outside <c>Program.cs</c>.
         /// </summary>
+        /// <remarks>
+        /// This method is <c>internal</c> to allow automated tests to invoke the startup health check logic
+        /// without launching the full application. It should not be called directly by production code
+        /// outside of <c>Program.cs</c>.
+        /// </remarks>
         internal static async Task RunStartupHealthCheckAsync(IServiceProvider services)
         {
             Log.Debug("[DIAGNOSTIC] Entered RunStartupHealthCheckAsync");
@@ -1336,48 +1035,6 @@ namespace WileyWidget.WinForms
                 }
 
                 Log.Debug("Exiting RunStartupHealthCheckAsync successfully");
-
-                // Run registered health checks
-                Log.Debug("[DIAGNOSTIC] Running registered health checks");
-                try
-                {
-                    var healthCheckService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>(scopedServices);
-                    if (healthCheckService != null)
-                    {
-                        var healthResult = await healthCheckService.CheckHealthAsync(
-                            predicate: check => check.Tags.Contains("startup"),
-                            cancellationToken: CancellationToken.None).ConfigureAwait(false);
-
-                        foreach (var entry in healthResult.Entries)
-                        {
-                            var status = entry.Value.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy ? "Healthy" :
-                                        entry.Value.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded ? "Degraded" : "Unhealthy";
-
-                            Log.Information("Health Check '{Name}': {Status}", entry.Key, status);
-
-                            if (entry.Value.Data != null && entry.Value.Data.Count > 0)
-                            {
-                                foreach (var data in entry.Value.Data)
-                                {
-                                    Log.Debug("  {Key}: {Value}", data.Key, data.Value);
-                                }
-                            }
-
-                            if (!string.IsNullOrEmpty(entry.Value.Description))
-                            {
-                                Log.Information("  Description: {Description}", entry.Value.Description);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Log.Debug("HealthCheckService not available");
-                    }
-                }
-                catch (Exception hcEx)
-                {
-                    Log.Warning(hcEx, "Failed to run health checks");
-                }
             }
             catch (Exception ex)
             {
@@ -1564,14 +1221,14 @@ namespace WileyWidget.WinForms
             try
             {
                 if (autoCloseMs <= 0) return;
-                using var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
-                timer.Elapsed += (_, _) =>
+                var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
+                timer.Elapsed += (sender, _) =>
                 {
                     try
                     {
-                        if (mainForm != null && !mainForm.IsDisposed && mainForm.IsHandleCreated)
+                        if (mainForm != null && !mainForm.IsDisposed)
                         {
-                            mainForm.BeginInvoke(new System.Action(() =>
+                            mainForm.BeginInvoke(new Action(() =>
                             {
                                 try
                                 {
@@ -1589,14 +1246,18 @@ namespace WileyWidget.WinForms
                     }
                     catch (Exception ex)
                     {
-                        Log.Warning(ex, "Auto-close timer failed");
+                        Console.Error.WriteLine($"Auto-close timer failed: {ex}");
+                    }
+                    finally
+                    {
+                        timer.Dispose();
                     }
                 };
                 timer.Start();
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to schedule auto-close");
+                Console.Error.WriteLine($"Failed to schedule auto-close: {ex}");
             }
         }
 
@@ -1916,7 +1577,9 @@ namespace WileyWidget.WinForms
             }
             catch (Exception uiEx)
             {
-                Log.Fatal(uiEx, "UI error display failed during startup error reporting");
+                // Last resort - write to console
+                Console.Error.WriteLine($"Critical startup error: {ex.Message}");
+                Console.Error.WriteLine($"UI error display failed: {uiEx.Message}");
             }
         }
 
@@ -2001,67 +1664,22 @@ namespace WileyWidget.WinForms
         {
             var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(services);
 
-            var environment = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IHostEnvironment>(services);
-            var isDevelopment = environment?.IsDevelopment() ?? false;
-            var isProduction = environment?.IsProduction() ?? !isDevelopment;
-
-            static void FailFast(string message)
-            {
-                Log.Fatal(message);
-
-                try
-                {
-                    if (Environment.UserInteractive && !Application.MessageLoop)
-                    {
-                        MessageBox.Show(message, "Startup configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-                catch
-                {
-                    // Ignore UI notification failures; the exception path will still stop startup.
-                }
-
-                throw new InvalidOperationException(message);
-            }
-
             // Check database connection string
             var connectionString = config.GetConnectionString("DefaultConnection");
-            var usingFallbackConnection = string.Equals(connectionString, FallbackConnectionString, StringComparison.OrdinalIgnoreCase);
-
-            if (string.IsNullOrWhiteSpace(connectionString) || (isProduction && usingFallbackConnection))
+            if (string.IsNullOrEmpty(connectionString))
             {
-                var message = usingFallbackConnection
-                    ? "DefaultConnection is using the development fallback connection string. Configure a production SQL Server connection string before launching."
-                    : "DefaultConnection is not configured. Set ConnectionStrings:DefaultConnection to a valid SQL Server connection string.";
-
-                if (isDevelopment)
-                {
-                    Log.Warning(message);
-                }
-                else
-                {
-                    FailFast(message);
-                }
+                Log.Warning("No database connection string found in configuration. Ensure secrets/my.secrets or .env contains a valid 'ConnectionStrings:DefaultConnection'.");
             }
             else
             {
-                Log.Debug("Database connection string configured (length: {Length})", connectionString!.Length);
+                Log.Debug("Database connection string configured (length: {Length})", connectionString.Length);
             }
 
             // Check Syncfusion license key
             var syncfusionKey = config["Syncfusion:LicenseKey"];
-            if (string.IsNullOrWhiteSpace(syncfusionKey))
+            if (string.IsNullOrEmpty(syncfusionKey))
             {
-                var message = "Syncfusion license key is missing. Set Syncfusion:LicenseKey or SYNCFUSION_LICENSE_KEY.";
-
-                if (isDevelopment)
-                {
-                    Log.Warning(message);
-                }
-                else
-                {
-                    FailFast(message);
-                }
+                Log.Warning("No Syncfusion license key found. UI controls may display evaluation nag screens or fail to initialize properly.");
             }
             else
             {
@@ -2070,18 +1688,9 @@ namespace WileyWidget.WinForms
 
             // Check xAI API key
             var xaiKey = config["XAI:ApiKey"];
-            if (string.IsNullOrWhiteSpace(xaiKey))
+            if (string.IsNullOrEmpty(xaiKey))
             {
-                var message = "xAI API key is missing. Set XAI:ApiKey or XAI_API_KEY.";
-
-                if (isDevelopment)
-                {
-                    Log.Warning(message);
-                }
-                else
-                {
-                    FailFast(message);
-                }
+                Log.Warning("No xAI API key found. AI recommendation services will use stub implementations.");
             }
             else
             {

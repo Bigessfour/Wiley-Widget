@@ -58,15 +58,7 @@ namespace WileyWidget.Services.Abstractions
     /// <summary>
     /// Simple expense line returned from QuickBooks (abstraction level).
     /// </summary>
-    /// <param name="Amount">The monetary amount of the expense line.</param>
-    /// <param name="Date">The date the expense occurred.</param>
-    /// <param name="Description">Optional description or memo for the expense.</param>
-    /// <param name="Department">The department or class associated with the expense.</param>
-    public sealed record ExpenseLine(
-        decimal Amount,
-        DateTime? Date = null,
-        string? Description = null,
-        string? Department = null);
+    public sealed record ExpenseLine(decimal Amount);
 
     public sealed class UrlAclCheckResult
     {

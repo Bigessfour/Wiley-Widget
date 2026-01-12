@@ -196,6 +196,9 @@ namespace WileyWidget.WinForms.Configuration
             // Startup orchestration (license, theme, DI validation)
             services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
 
+            // Startup orchestration (license, theme, DI validation)
+            services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
+
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
             services.AddSingleton<IDiValidationService, DiValidationService>();
             services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
@@ -288,12 +291,6 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddSingleton<IThemeService, ThemeService>();
             services.AddSingleton<IThemeIconService, ThemeIconService>();
-
-            // DPI-aware image service using Syncfusion ImageListAdv (automatic multi-DPI support)
-            services.AddSingleton<DpiAwareImageService>();
-
-            // Path provider: supplies export and other filesystem paths in a testable way
-            services.AddSingleton<IPathProvider, PathProvider>();
 
             // Panel Navigation Service
             // NOTE: This service depends on MainForm's DockingManager + central document panel.

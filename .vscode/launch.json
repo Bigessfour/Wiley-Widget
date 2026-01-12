@@ -6,27 +6,27 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build WileyWidget.WinForms",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.dll",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
       "console": "integratedTerminal",
       "env": {
-        "DOTNET_ENVIRONMENT": "Development",
-        "_NT_SYMBOL_PATH": "",
-        "_NT_ALT_SYMBOL_PATH": ""
+        "DOTNET_ENVIRONMENT": "Development"
       },
       "sourceFileMap": {
         "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
       },
       "symbolOptions": {
         "searchPaths": [
-          "${workspaceFolder}",
-          "${workspaceFolder}/.symbols",
+          "${workspaceFolder}/**",
+          "https://symbols.nuget.org/download/symbols",
+          "https://msdl.microsoft.com/download/symbols",
+          "C:\\SyncfusionSymbols**",
           "${env:USERPROFILE}\\.nuget\\packages"
         ],
-        "searchMicrosoftSymbolServer": false,
-        "searchNuGetOrgSymbolServer": false,
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
         "cachePath": "${workspaceFolder}/.vsdbg"
       },
       "sourceLinkOptions": {
@@ -34,29 +34,13 @@
           "enabled": true
         }
       },
-      "justMyCode": true,
+      "justMyCode": false,
       "requireExactSource": false,
       "enableStepFiltering": false,
       "logging": {
-        "moduleLoad": false,
+        "module": true,
         "engineLogging": false
       }
-    },
-    {
-      "name": "Attach Native (cppvsdbg)",
-      "type": "cppvsdbg",
-      "request": "attach",
-      "processId": "${command:pickProcess}",
-      "stopAtEntry": false
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Wiley Widget - Managed + Native",
-      "configurations": [
-        "Wiley Widget WinForms – Full Symbols + Hot Reload",
-        "Attach Native (cppvsdbg)"
-      ]
     }
   ]
 }

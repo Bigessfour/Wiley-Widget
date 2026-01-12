@@ -33,6 +33,11 @@ public class DepartmentExpenseService : IDepartmentExpenseService
         "Gas"
     };
 
+    /// <summary>
+    /// Simple representation of an expense line returned from QuickBooks (Amount only).
+    /// </summary>
+    private record ExpenseLine(decimal Amount);
+
     public DepartmentExpenseService(
         ILogger<DepartmentExpenseService> logger,
         IConfiguration configuration,

@@ -7,7 +7,6 @@ using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
@@ -76,10 +75,10 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler? _browseExportPathHandler;
 
         // AI / XAI controls
-        private GradientPanelExt? _aiGroup;
-        private CheckBoxAdv? _chkEnableAi;
-        private TextBoxExt? _txtXaiApiEndpoint;
-        private TextBoxExt? _txtXaiApiKey;
+        private GroupBox? _aiGroup;
+        private CheckBox? _chkEnableAi;
+        private TextBox? _txtXaiApiEndpoint;
+        private TextBox? _txtXaiApiKey;
         private Syncfusion.WinForms.Controls.SfButton? _btnShowApiKey;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbXaiModel;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numXaiTimeout;
@@ -222,7 +221,14 @@ namespace WileyWidget.WinForms.Controls
             _ = LoadViewDataAsync();
         }
 
-        // InitializeComponent moved to SettingsPanel.Designer.cs for designer support
+        private void InitializeComponent()
+        {
+            Name = "SettingsPanel";
+            AccessibleName = SettingsPanelResources.PanelTitle; // "Settings"
+            Size = new Size(500, 400);
+            Dock = DockStyle.Fill;
+            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
+        }
 
         private void InitializeComponent()
         {
@@ -251,8 +257,8 @@ namespace WileyWidget.WinForms.Controls
             var themeLabel = new Label { Text = SettingsPanelResources.AppearanceGroup, AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             _themeGroup.Controls.Add(themeLabel);
 
-            _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 50), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
-            try { _themeCombo.DataSource = ViewModel?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
+            _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 30), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
+            try { _themeCombo.DataSource = _vm?.Themes?.Cast<object>().ToList() ?? Enum.GetValues<AppTheme>().Cast<object>().ToList(); } catch { }
             try { _themeCombo.SelectedItem = _themeService.Preference; } catch { }
             _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is AppTheme sel) _themeService.SetTheme(sel); } catch { } };
 
@@ -320,61 +326,46 @@ namespace WileyWidget.WinForms.Controls
             y += 125;
 
             // AI / xAI settings group
-            _aiGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 240) };
-            var aiLabel = new Label { Text = "AI / xAI Settings", AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            _aiGroup.Controls.Add(aiLabel);
+            _aiGroup = new GroupBox { Text = "AI / xAI Settings", Location = new Point(padding, y), Size = new Size(440, 240), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
 
-            _chkEnableAi = new CheckBoxAdv { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
-            _chkEnableAi.CheckedChanged += (s, e) =>
-            {
-                try
-                {
-                    if (ViewModel is not null)
-                    {
-                        ViewModel.EnableAi = _chkEnableAi.Checked;
-                    }
-                }
-                catch { }
-            };
+            _chkEnableAi = new CheckBox { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = _vm?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
+            _chkEnableAi.CheckedChanged += (s, e) => { try { if (_vm != null) _vm.EnableAi = _chkEnableAi.Checked; } catch { } };
 
             var lblEndpoint = new Label { Text = "API Endpoint:", AutoSize = true, Location = new Point(20, 56), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
-            _txtXaiApiEndpoint = new TextBoxExt { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = ViewModel?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
-#pragma warning restore RS0030
-            _txtXaiApiEndpoint.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiEndpoint = _txtXaiApiEndpoint.Text; } catch { } };
+            _txtXaiApiEndpoint = new TextBox { Name = "txtXaiApiEndpoint", Location = new Point(120, 52), Width = 300, Font = new Font("Segoe UI", 10F), Text = _vm?.XaiApiEndpoint ?? string.Empty, AccessibleName = "xAI API Endpoint", AccessibleDescription = "Endpoint for xAI Grok API" };
+            _txtXaiApiEndpoint.TextChanged += (s, e) => { try { if (_vm != null) _vm.XaiApiEndpoint = _txtXaiApiEndpoint.Text; } catch { } };
 
             var lblModel = new Label { Text = "Model:", AutoSize = true, Location = new Point(20, 84), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
             _cmbXaiModel = new Syncfusion.WinForms.ListView.SfComboBox { Name = "cmbXaiModel", Location = new Point(120, 80), Size = new Size(220, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList };
-            try { _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList(); _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4-0709"; } catch { }
-            _cmbXaiModel.SelectedIndexChanged += (s, e) => { try { if (_cmbXaiModel.SelectedItem is string str && ViewModel != null) ViewModel.XaiModel = str; } catch { } };
+            try { _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList(); _cmbXaiModel.SelectedItem = _vm?.XaiModel ?? "grok-4-0709"; } catch { }
+            _cmbXaiModel.SelectedIndexChanged += (s, e) => { try { if (_cmbXaiModel.SelectedItem is string str && _vm != null) _vm.XaiModel = str; } catch { } };
 
             var lblApiKey = new Label { Text = "API Key:", AutoSize = true, Location = new Point(20, 112), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
-            _txtXaiApiKey = new TextBoxExt { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = ViewModel?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
-#pragma warning restore RS0030
-            _txtXaiApiKey.TextChanged += (s, e) => { try { if (ViewModel != null) ViewModel.XaiApiKey = _txtXaiApiKey.Text; } catch { } };
+            _txtXaiApiKey = new TextBox { Name = "txtXaiApiKey", Location = new Point(120, 108), Width = 220, Font = new Font("Segoe UI", 10F), UseSystemPasswordChar = true, Text = _vm?.XaiApiKey ?? string.Empty, AccessibleName = "xAI API Key", AccessibleDescription = "API key for xAI Grok (stored securely)" };
+            _txtXaiApiKey.TextChanged += (s, e) => { try { if (_vm != null) _vm.XaiApiKey = _txtXaiApiKey.Text; } catch { } };
+
             _btnShowApiKey = new Syncfusion.WinForms.Controls.SfButton { Name = "btnShowApiKey", Text = "Show", Size = new Size(50, 24), Location = new Point(350, 106), AccessibleName = "Show API Key", AccessibleDescription = "Toggle display of API key" };
             _btnShowApiKey.Click += (s, e) => { try { if (_txtXaiApiKey != null) { _txtXaiApiKey.UseSystemPasswordChar = !_txtXaiApiKey.UseSystemPasswordChar; _btnShowApiKey.Text = _txtXaiApiKey.UseSystemPasswordChar ? "Show" : "Hide"; } } catch { } };
 
             var lblTimeout = new Label { Text = "Timeout (s):", AutoSize = true, Location = new Point(20, 140), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTimeout", Location = new Point(120, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 300, Value = ViewModel?.XaiTimeout ?? 30 };
-            _numXaiTimeout.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiTimeout.Value.HasValue) ViewModel.XaiTimeout = (int)_numXaiTimeout.Value.Value; } catch { } };
+            _numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTimeout", Location = new Point(120, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 300, Value = _vm?.XaiTimeout ?? 30 };
+            _numXaiTimeout.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiTimeout.Value.HasValue) _vm.XaiTimeout = (int)_numXaiTimeout.Value.Value; } catch { } };
 
             var lblMaxTokens = new Label { Text = "Max tokens:", AutoSize = true, Location = new Point(210, 140), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiMaxTokens", Location = new Point(290, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 65536, Value = ViewModel?.XaiMaxTokens ?? 2000 };
-            _numXaiMaxTokens.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiMaxTokens.Value.HasValue) ViewModel.XaiMaxTokens = (int)_numXaiMaxTokens.Value.Value; } catch { } };
+            _numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiMaxTokens", Location = new Point(290, 136), Size = new Size(80, 24), MinValue = 1, MaxValue = 65536, Value = _vm?.XaiMaxTokens ?? 2000 };
+            _numXaiMaxTokens.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiMaxTokens.Value.HasValue) _vm.XaiMaxTokens = (int)_numXaiMaxTokens.Value.Value; } catch { } };
 
             var lblTemperature = new Label { Text = "Temperature:", AutoSize = true, Location = new Point(20, 168), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
-            _numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTemperature", Location = new Point(120, 164), Size = new Size(80, 24), MinValue = 0.0, MaxValue = 1.0, Value = ViewModel?.XaiTemperature ?? 0.7 };
-            _numXaiTemperature.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiTemperature.Value.HasValue) ViewModel.XaiTemperature = Convert.ToDouble(_numXaiTemperature.Value.Value); } catch { } };
+            _numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox { Name = "numXaiTemperature", Location = new Point(120, 164), Size = new Size(80, 24), MinValue = 0.0, MaxValue = 1.0, Value = _vm?.XaiTemperature ?? 0.7 };
+            _numXaiTemperature.ValueChanged += (s, e) => { try { if (_vm != null && _numXaiTemperature.Value.HasValue) _vm.XaiTemperature = Convert.ToDouble(_numXaiTemperature.Value.Value); } catch { } };
 
             // Help and guidance for AI settings
-            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), AutoEllipsis = true };
+            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), ForeColor = Color.Gray, AutoEllipsis = true };
             _lnkAiLearnMore = new LinkLabel { Text = SettingsPanelResources.AiSettingsLearnMoreLabel, Location = new Point(20, 220), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             _lnkAiLearnMore.LinkClicked += (s, e) => ShowAiHelpDialog();
 
             // Cache note label
-            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), AutoEllipsis = true, AccessibleName = "AI cache note" };
+            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), ForeColor = Color.DarkBlue, AutoEllipsis = true, AccessibleName = "AI cache note" };
 
             _aiToolTip = new ToolTip();
             _aiToolTip.SetToolTip(_chkEnableAi, "Enable or disable AI features. When disabled, the app uses rule-based recommendations.");
@@ -387,14 +378,20 @@ namespace WileyWidget.WinForms.Controls
 
             // Reset and Clear Cache buttons
             var btnResetAi = new Syncfusion.WinForms.Controls.SfButton { Name = "btnResetAi", Text = "Reset to defaults", Size = new Size(120, 24), Location = new Point(260, 220), AccessibleName = "Reset AI settings", AccessibleDescription = "Reset AI settings to their default values" };
-            btnResetAi.Click += (s, e) => { try { ViewModel?.ResetAiCommand?.Execute(null); MessageBox.Show(this, "AI settings reset to defaults. Save settings to persist changes.", "AI settings reset", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Reset AI defaults failed"); } };
+            btnResetAi.Click += (s, e) => { try { _vm?.ResetAiCommand?.Execute(null); MessageBox.Show(this, "AI settings reset to defaults. Save settings to persist changes.", "AI settings reset", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Reset AI defaults failed"); } };
 
             var btnClearAiCache = new Syncfusion.WinForms.Controls.SfButton { Name = "btnClearAiCache", Text = "Clear AI Cache", Size = new Size(120, 24), Location = new Point(120, 220), AccessibleName = "Clear AI cache", AccessibleDescription = "Clear cached AI recommendations and explanations" };
             btnClearAiCache.Click += (s, e) =>
             {
                 try
                 {
-                    using var scope = ScopeFactory.CreateScope();
+                    if (Program.Services == null)
+                    {
+                        MessageBox.Show(this, "Application services are not available; cannot clear cache.", "Clear cache", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    using var scope = Program.Services.CreateScope();
                     var svc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Business.Interfaces.IGrokRecommendationService>(scope.ServiceProvider);
                     if (svc == null)
                     {
@@ -499,7 +496,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 // Ensure we have a BindingSource connected to the ViewModel for data bindings
                 _settingsBinding = new BindingSource();
-                try { _settingsBinding.DataSource = ViewModel; } catch { }
+                try { _settingsBinding.DataSource = _vm; } catch { }
             }
             catch { }
 
@@ -517,15 +514,15 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_error_provider != null && ViewModel != null)
                 {
-                    _errorBinding = new ErrorProviderBinding(_error_provider, ViewModel);
-                    _errorBinding.MapControl(nameof(ViewModel.DefaultExportPath), _txtExportPath!);
-                    _errorBinding.MapControl(nameof(ViewModel.DateFormat), _txtDateFormat!);
-                    _errorBinding.MapControl(nameof(ViewModel.CurrencyFormat), _txtCurrencyFormat!);
-                    _errorBinding.MapControl(nameof(ViewModel.LogLevel), _cmbLogLevel!);
+                    _errorBinding = new ErrorProviderBinding(_error_provider, _vm);
+                    _errorBinding.MapControl(nameof(_vm.DefaultExportPath), _txtExportPath!);
+                    _errorBinding.MapControl(nameof(_vm.DateFormat), _txtDateFormat!);
+                    _errorBinding.MapControl(nameof(_vm.CurrencyFormat), _txtCurrencyFormat!);
+                    _errorBinding.MapControl(nameof(_vm.LogLevel), _cmbLogLevel!);
 
                     // XAI mappings
-                    try { _errorBinding.MapControl(nameof(ViewModel.XaiApiEndpoint), _txtXaiApiEndpoint!); } catch { }
-                    try { _errorBinding.MapControl(nameof(ViewModel.XaiApiKey), _txtXaiApiKey!); } catch { }
+                    try { _errorBinding.MapControl(nameof(_vm.XaiApiEndpoint), _txtXaiApiEndpoint!); } catch { }
+                    try { _errorBinding.MapControl(nameof(_vm.XaiApiKey), _txtXaiApiKey!); } catch { }
                 }
             }
             catch (Exception ex)
@@ -580,11 +577,11 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Validate settings before closing if there are unsaved changes
-                if (ViewModel.HasUnsavedChanges)
+                if (_vm.HasUnsavedChanges)
                 {
-                    if (!ViewModel.ValidateSettings())
+                    if (!_vm.ValidateSettings())
                     {
-                        var errors = ViewModel.GetValidationSummary();
+                        var errors = _vm.GetValidationSummary();
                         if (errors.Count > 0)
                         {
                             MessageBox.Show(
@@ -597,7 +594,7 @@ namespace WileyWidget.WinForms.Controls
                     }
 
                     // Persist settings if a Save command is available
-                    try { ViewModel.SaveCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Failed to save settings on close"); }
+                    try { _vm.SaveCommand?.Execute(null); } catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Failed to save settings on close"); }
                 }
 
                 var parentForm = this.FindForm();

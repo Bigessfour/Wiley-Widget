@@ -500,10 +500,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         {
             if (InvokeRequired)
             {
-                if (IsHandleCreated && !IsDisposed)
-                {
-                    BeginInvoke(new System.Action(() => ShowError(ex)));
-                }
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -528,10 +525,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
-            }
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -576,10 +570,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(UpdateUI));
-            }
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 
@@ -798,8 +789,21 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private void SubscribeToThemeChanges()
     {
-        // CHANGE 26: Theme subscription handled by SfSkinManager cascade
-        // No additional subscription needed
+        _themeChangedHandler = (s, theme) =>
+        {
+            if (IsDisposed) return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(() => ApplyTheme()));
+            }
+            else
+            {
+                ApplyTheme();
+            }
+        };
+
+        ThemeManager.ThemeChanged += _themeChangedHandler;
     }
 
     private void ApplyTheme()

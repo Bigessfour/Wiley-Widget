@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -271,6 +267,52 @@ namespace WileyWidget.WinForms.Services
                 catch { }
 
                 // Small pause to allow DockingManager to settle after ChatPanel-specific configuration
+                try { System.Threading.Thread.Sleep(250); } catch { }
+
+                // Propagate accessibility and header/dock caption so UI automation can find panels reliably
+                try
+                {
+                    panel.AccessibleName = panelName;
+                    panel.AccessibleDescription = $"Panel: {panelName}";
+                    panel.Tag = panelName;
+
+                    // If panel has a PanelHeader control, ensure its title matches and is discoverable
+                    var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
+                    if (header != null)
+                    {
+                        header.Title = panelName; // PanelHeader.Title sets headerLabel.Name and AccessibleName
+                        try { header.AccessibleName = panelName + " header"; } catch { }
+                    }
+
+                    // If Syncfusion DockHandler is present, set its Text and a stable Name if supported (via reflection)
+                    var dh = panel.GetType().GetProperty("DockHandler")?.GetValue(panel);
+                    if (dh != null)
+                    {
+                        try
+                        {
+                            var txtProp = dh.GetType().GetProperty("Text");
+                            if (txtProp != null) txtProp.SetValue(dh, panelName);
+                        }
+                        catch { }
+
+                        try
+                        {
+                            var nameProp = dh.GetType().GetProperty("Name");
+                            if (nameProp != null && nameProp.CanWrite) nameProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
+                        }
+                        catch { }
+
+                        try
+                        {
+                            var aidProp = dh.GetType().GetProperty("AutomationId");
+                            if (aidProp != null && aidProp.CanWrite) aidProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                // Small pause to allow DockingManager to update UI (helps FlaUI detection)
                 try { System.Threading.Thread.Sleep(250); } catch { }
 
                 // Cache for reuse

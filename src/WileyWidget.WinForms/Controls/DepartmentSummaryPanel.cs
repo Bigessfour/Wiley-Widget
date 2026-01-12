@@ -340,10 +340,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         {
             if (InvokeRequired)
             {
-                if (IsHandleCreated && !IsDisposed)
-                {
-                    BeginInvoke(new System.Action(() => ShowError(ex)));
-                }
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -368,10 +365,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
-            }
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -418,10 +412,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
 
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(UpdateUI));
-            }
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 

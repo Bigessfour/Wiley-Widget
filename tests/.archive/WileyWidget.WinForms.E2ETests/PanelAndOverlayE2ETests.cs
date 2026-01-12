@@ -189,7 +189,7 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(mainThemeBtn);
             var original = mainThemeBtn!.Name ?? string.Empty;
 
-            var settings = NavigationHelper.OpenView(_automation!, window!, "Nav_Settings", "Settings");
+            var settings = NavigationHelper.OpenView(_automation!, window, "Nav_Settings", "Settings");
             Assert.NotNull(settings);
 
             var themeCombo = WaitForElement(settings, cf => cf.ByAutomationId("themeCombo"), 8)?.AsComboBox();
@@ -205,11 +205,8 @@ namespace WileyWidget.WinForms.E2ETests
                 // Wait for main theme button text to change
                 var changed = Retry.WhileTrue(() =>
                 {
-                    var btnElement = window!.FindFirstDescendant(cf => cf.ByAutomationId("ThemeToggle").Or(cf.ByName("Theme_Toggle")).Or(cf.ByControlType(ControlType.Button)));
-                    if (btnElement is null)
-                        throw new InvalidOperationException("Theme toggle button not found");
-                    var btn = btnElement.AsButton();
-                    return string.Equals(btn.Name ?? string.Empty, original, StringComparison.Ordinal);
+                    var btn = window.FindFirstDescendant(cf => cf.ByAutomationId("ThemeToggle").Or(cf.ByName("Theme_Toggle")).Or(cf.ByControlType(ControlType.Button)))?.AsButton();
+                    return btn == null || string.Equals(btn.Name ?? string.Empty, original, StringComparison.Ordinal);
                 }, TimeSpan.FromSeconds(8), TimeSpan.FromMilliseconds(200));
 
                 Assert.True(changed.Success, "Theme did not change after selecting new theme");

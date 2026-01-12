@@ -14,7 +14,6 @@ public class SyncfusionLicenseHealthCheck : IHealthCheck
     private static DateTime _lastCheck = DateTime.MinValue;
     private static HealthCheckResult? _cachedResult;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
-    private static readonly object _lock = new();
 
     public SyncfusionLicenseHealthCheck(ILogger<SyncfusionLicenseHealthCheck> logger)
     {
@@ -27,13 +26,10 @@ public class SyncfusionLicenseHealthCheck : IHealthCheck
     {
         try
         {
-            lock (_lock)
+            // Use cached result if recent
+            if (_cachedResult != null && DateTime.UtcNow - _lastCheck < CacheDuration)
             {
-                // Use cached result if recent
-                if (_cachedResult != null && DateTime.UtcNow - _lastCheck < CacheDuration)
-                {
-                    return Task.FromResult(_cachedResult.Value);
-                }
+                return Task.FromResult(_cachedResult.Value);
             }
 
             var data = new Dictionary<string, object>();
@@ -90,12 +86,8 @@ public class SyncfusionLicenseHealthCheck : IHealthCheck
             var result = new HealthCheckResult(status, description, data: data);
 
             // Cache result
-            lock (_lock)
-            {
-                _cachedResult = result;
-                _lastCheck = DateTime.UtcNow;
-                _cachedVersion = syncfusionVersion;
-            }
+            _cachedResult = result;
+            _lastCheck = DateTime.UtcNow;
 
             return Task.FromResult(result);
         }

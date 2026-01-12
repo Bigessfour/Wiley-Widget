@@ -20,7 +20,6 @@ using WileyWidget.Services.Tests.TestHelpers;
 
 namespace WileyWidget.Services.Tests.ServiceTests
 {
-#pragma warning disable CA2000 // GrokRecommendationService test helper objects (handlers, clients) intentionally not disposed; acceptable for unit test scope
     public sealed class GrokRecommendationServiceTests : IDisposable
     {
         private readonly Mock<ILogger<GrokRecommendationService>> _logger = new();
@@ -29,11 +28,11 @@ namespace WileyWidget.Services.Tests.ServiceTests
         public GrokRecommendationServiceTests()
         {
             // Setup cache mock to handle TryGetValue and Set calls
-#pragma warning disable CS8600, CS8601 // Possible null reference assignment and conversion
-            _cache.Setup(c => c.TryGetValue(It.IsAny<object>(), out It.Ref<object?>.IsAny!)).Returns(false);
+#pragma warning disable CS8601 // Possible null reference assignment
+            _cache.Setup(c => c.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny)).Returns(false);
             var mockCacheEntry = new Mock<ICacheEntry>();
             _cache.Setup(c => c.CreateEntry(It.IsAny<object>())).Returns(mockCacheEntry.Object);
-#pragma warning restore CS8600, CS8601
+#pragma warning restore CS8601
         }
 
         public void Dispose()
@@ -613,8 +612,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
             explanation.Should().Be(explanationText);
             memoryCache.TryGetValue(explanationCacheKey, out object? cachedObj).Should().BeTrue();
             cachedObj.Should().BeOfType<string>();
-            (cachedObj as string).Should().NotBeNull();
-            (cachedObj as string).Should().Be(explanationText);
+            ((string)cachedObj).Should().Be(explanationText);
         }
 
         [Fact]
@@ -629,9 +627,7 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var cacheMock = new Mock<IMemoryCache>();
             object? cachedObj = cachedResult;
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
             cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cachedObj)).Returns(true);
-#pragma warning restore CS8600
 
             var httpFactory = new Mock<IHttpClientFactory>();
             var svc = new GrokRecommendationService(_logger.Object, config, httpFactory.Object, cacheMock.Object);
@@ -658,11 +654,8 @@ namespace WileyWidget.Services.Tests.ServiceTests
 
             var cacheMock = new Mock<IMemoryCache>();
             string cachedExplanation = "Cached explanation text";
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
             object? cachedObj = cachedExplanation;
-            _ = cachedObj;
             cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cachedObj)).Returns(true);
-#pragma warning restore CS8600
 
             var httpFactory = new Mock<IHttpClientFactory>();
             var svc = new GrokRecommendationService(_logger.Object, config, httpFactory.Object, cacheMock.Object);
@@ -706,5 +699,4 @@ namespace WileyWidget.Services.Tests.ServiceTests
             result.Should().StartWith("Based on your monthly expenses");
         }
     }
-#pragma warning restore CA2000
 }

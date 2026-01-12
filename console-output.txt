@@ -1,0 +1,408 @@
+DEBUG: env SYNCFUSION_LICENSE_KEY len=92 starts=Ngo9BigBOg hash=62bddfd4 
+DEBUG: env Syncfusion__LicenseKey len=0 starts=null hash= 
+16:55:42 [INF]  Startup milestone: DI Container Build complete
+[16:55:42 INF] Startup milestone: DI Container Build complete
+16:55:42 [INF]  Startup milestone: License Registration complete
+[16:55:42 INF] Startup milestone: License Registration complete
+info: WileyWidget.WinForms.Services.StartupOrchestrator[0]
+      Application theme set to Office2019Colorful
+16:55:42 [INF]  Startup milestone: Theme Initialization complete
+[16:55:42 INF] Startup milestone: Theme Initialization complete
+16:55:42 [WRN]  Syncfusion license quick-check did not pass; UI may show invalid license dialogs/watermarks.
+[16:55:42 WRN] Syncfusion license quick-check did not pass; UI may show invalid license dialogs/watermarks.
+info: WileyWidget.Services.StartupTimelineService[0]
+      StartupTimelineService initialized - tracking startup on UI thread 2
+info: WileyWidget.Services.StartupTimelineService[0]
+      Canonical phase order loaded: 12 expected phases defined
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase START [UI]: DI Validation (expected order: 5, chronological: 1)
+warn: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] ? DEPENDENCY WARNING: Phase 'DI Validation' started but dependency 'DI Container Build' not completed
+[SERILOG] 2025-12-29T23:55:42.2375823Z Serilog.Sinks.File.RollingFileSink: file target C:\Users\biges\Desktop\Wiley-Widget\logs\errors-20251229.log was locked, attempting to open next in sequence (attempt 1) (Temporary, unspecified events)
+warn: WileyWidget.WinForms.Services.StartupOrchestrator[0]
+      DI validation requested on non-STA thread (apartment=MTA); running on a dedicated STA thread to avoid WinForms deadlocks.
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      +----------------------------------------------------------------+
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª         COMPREHENSIVE DI VALIDATION STARTING                   ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      +----------------------------------------------------------------+
+info: WileyWidget.Services.DiValidationService[0]
+      === Starting Critical Services Validation ===
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving Microsoft.Extensions.Configuration.IConfiguration (Category=Critical Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IConfiguration registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving Serilog.ILogger (Category=Critical Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? ILogger registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.ErrorReportingService (Category=Critical Services)
+16:55:42 [INF]  Telemetry event: ErrorReportingService_Initialized
+[16:55:42 INF] Telemetry event: ErrorReportingService_Initialized
+info: WileyWidget.Services.DiValidationService[0]
+      ? ErrorReportingService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.ITelemetryService (Category=Critical Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? ITelemetryService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      ? All validations passed (4 services verified in 10ms)
+info: WileyWidget.Services.DiValidationService[0]
+      === Starting Repositories Validation ===
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IAccountsRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAccountsRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IActivityLogRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IActivityLogRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IAuditRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAuditRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IBudgetRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IBudgetRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IDepartmentRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IDepartmentRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IEnterpriseRepository (Category=Repositories)
+info: WileyWidget.Data.EnterpriseRepository[0]
+      EnterpriseRepository constructed and DB factory injected
+info: WileyWidget.Services.DiValidationService[0]
+      ? IEnterpriseRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IMunicipalAccountRepository (Category=Repositories)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IMunicipalAccountRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IUtilityBillRepository (Category=Repositories)
+info: WileyWidget.Data.UtilityBillRepository[0]
+      UtilityBillRepository constructed and DB factory injected
+info: WileyWidget.Services.DiValidationService[0]
+      ? IUtilityBillRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Business.Interfaces.IUtilityCustomerRepository (Category=Repositories)
+info: WileyWidget.Data.UtilityCustomerRepository[0]
+      UtilityCustomerRepository constructed and DB factory injected
+info: WileyWidget.Services.DiValidationService[0]
+      ? IUtilityCustomerRepository registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      ? All validations passed (9 services verified in 77ms)
+info: WileyWidget.Services.DiValidationService[0]
+      === Starting Business Services Validation ===
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.ISettingsService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? ISettingsService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.ISecretVaultService (Category=Business Services)
+info: WileyWidget.Services.EncryptedLocalSecretVaultService[0]
+      EncryptedLocalSecretVaultService initialized successfully. Vault: C:\Users\biges\AppData\Roaming\WileyWidget\Secrets
+info: WileyWidget.Services.DiValidationService[0]
+      ? ISecretVaultService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.HealthCheckService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? HealthCheckService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IDiValidationService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IDiValidationService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IQuickBooksApiClient (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IQuickBooksApiClient registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IQuickBooksService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IQuickBooksService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IDashboardService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IDashboardService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.Services.IBudgetCategoryService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IBudgetCategoryService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.IWileyWidgetContextService (Category=Business Services)
+info: WileyWidget.Data.EnterpriseRepository[0]
+      EnterpriseRepository constructed and DB factory injected
+info: WileyWidget.Services.DataAnonymizerService[0]
+      DataAnonymizerService initialized with anonymization cache
+info: WileyWidget.Services.WileyWidgetContextService[0]
+      WileyWidgetContextService initialized with data anonymization support
+info: WileyWidget.Services.DiValidationService[0]
+      ? IWileyWidgetContextService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IAIService (Category=Business Services)
+info: WileyWidget.Data.EnterpriseRepository[0]
+      EnterpriseRepository constructed and DB factory injected
+info: WileyWidget.Services.DataAnonymizerService[0]
+      DataAnonymizerService initialized with anonymization cache
+info: WileyWidget.Services.WileyWidgetContextService[0]
+      WileyWidgetContextService initialized with data anonymization support
+info: WileyWidget.Services.AILoggingService[0]
+      AILoggingService initialized with dedicated Serilog file sink at C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\logs\ai-usage.log
+[XAISERVICE DEBUG] XAI:ApiKey from config = xai-cmVc4XXJ6PH... (84 chars)
+[XAISERVICE DEBUG] Config type = Microsoft.Extensions.Configuration.ConfigurationManager
+info: WileyWidget.Services.XAIService[0]
+      ? XAIService initialized with Polly v8 resilience pipeline (rate limit: 50/min, timeout: 20s, circuit breaker: 50% failure ratio, retry: 3x exponential with jitter)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAIService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IAILoggingService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAILoggingService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IAuditService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAuditService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IReportExportService (Category=Business Services)
+16:55:42 [INF] WileyWidget.Services.ReportExportService ReportExportService initialized
+[16:55:42 INF] ReportExportService initialized
+info: WileyWidget.Services.DiValidationService[0]
+      ? IReportExportService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IReportService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IReportService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Excel.IExcelReaderService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IExcelReaderService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Export.IExcelExportService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IExcelExportService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IDataAnonymizerService (Category=Business Services)
+info: WileyWidget.Services.DataAnonymizerService[0]
+      DataAnonymizerService initialized with anonymization cache
+info: WileyWidget.Services.DiValidationService[0]
+      ? IDataAnonymizerService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IChargeCalculatorService (Category=Business Services)
+info: WileyWidget.Data.EnterpriseRepository[0]
+      EnterpriseRepository constructed and DB factory injected
+info: WileyWidget.Services.DiValidationService[0]
+      ? IChargeCalculatorService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IAnalyticsService (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAnalyticsService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IAnalyticsPipeline (Category=Business Services)
+info: WileyWidget.Data.EnterpriseRepository[0]
+      EnterpriseRepository constructed and DB factory injected
+info: WileyWidget.Services.DiValidationService[0]
+      ? IAnalyticsPipeline registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.Services.Abstractions.IGrokSupercomputer (Category=Business Services)
+info: WileyWidget.Services.DiValidationService[0]
+      ? IGrokSupercomputer registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.Services.IThemeService (Category=Business Services)
+16:55:42 [INF] WileyWidget.WinForms.Services.ThemeService ThemeService initialized with default theme: Office2019Colorful
+[16:55:42 INF] ThemeService initialized with default theme: Office2019Colorful
+info: WileyWidget.Services.DiValidationService[0]
+      ? IThemeService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.Services.IThemeIconService (Category=Business Services)
+16:55:42 [DBG] WileyWidget.WinForms.Services.ThemeIconService ThemeIconService initialized with 67 known icon names
+[16:55:42 DBG] ThemeIconService initialized with 67 known icon names
+info: WileyWidget.Services.DiValidationService[0]
+      ? IThemeIconService registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      ? All validations passed (23 services verified in 98ms)
+info: WileyWidget.Services.DiValidationService[0]
+      === Starting ViewModels Validation ===
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.ChartViewModel (Category=ViewModels)
+info: WileyWidget.WinForms.ViewModels.ChartViewModel[0]
+      ChartViewModel constructed
+info: WileyWidget.Services.DiValidationService[0]
+      ? ChartViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.SettingsViewModel (Category=ViewModels)
+info: WileyWidget.WinForms.ViewModels.SettingsViewModel[0]
+      DefaultExportPath changed to: C:\Users\biges\OneDrive\Documents
+info: WileyWidget.WinForms.ViewModels.SettingsViewModel[0]
+      SettingsViewModel initialized with default export path: C:\Users\biges\OneDrive\Documents
+info: WileyWidget.Services.DiValidationService[0]
+      ? SettingsViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.AccountsViewModel (Category=ViewModels)
+info: WileyWidget.Services.DiValidationService[0]
+      ? AccountsViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.DashboardViewModel (Category=ViewModels)
+info: WileyWidget.Services.DiValidationService[0]
+      ? DashboardViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.AnalyticsViewModel (Category=ViewModels)
+info: WileyWidget.Services.DiValidationService[0]
+      ? AnalyticsViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.ViewModels.BudgetOverviewViewModel (Category=ViewModels)
+info: WileyWidget.Services.DiValidationService[0]
+      ? BudgetOverviewViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.BudgetViewModel (Category=ViewModels)
+info: WileyWidget.Services.DiValidationService[0]
+      ? BudgetViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.CustomersViewModel (Category=ViewModels)
+info: WileyWidget.Data.UtilityCustomerRepository[0]
+      UtilityCustomerRepository constructed and DB factory injected
+info: WileyWidget.WinForms.ViewModels.CustomersViewModel[0]
+      CustomersViewModel constructed
+info: WileyWidget.Services.DiValidationService[0]
+      ? CustomersViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.MainViewModel (Category=ViewModels)
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel constructed with IDashboardService
+info: WileyWidget.Services.DiValidationService[0]
+      ? MainViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.ViewModels.ReportsViewModel (Category=ViewModels)
+info: WileyWidget.WinForms.ViewModels.ReportsViewModel[0]
+      ReportsViewModel initialized. Reports folder: C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\bin\Debug\net9.0-windows10.0.26100.0\Reports
+info: WileyWidget.Services.DiValidationService[0]
+      ? ReportsViewModel registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      ? All validations passed (10 services verified in 15ms)
+info: WileyWidget.Services.DiValidationService[0]
+      === Starting Forms (MainForm only - panels resolved via navigation service) Validation ===
+info: WileyWidget.Services.DiValidationService[0]
+      [DI_VALIDATION] Resolving WileyWidget.WinForms.Forms.MainForm (Category=Forms (MainForm only - panels resolved via navigation service))
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      UI Architecture: Docking=True, TestHarness=False
+info: WileyWidget.Services.DiValidationService[0]
+      ? MainForm registered successfully
+info: WileyWidget.Services.DiValidationService[0]
+      ? All validations passed (1 services verified in 11ms)
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      +----------------------------------------------------------------+
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª         COMPREHENSIVE DI VALIDATION COMPLETE                   ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª----------------------------------------------------------------ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª Total Services Validated:   47                            ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª Errors:                      0                            ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª Warnings:                    0                            ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª Duration:                  217ms                       ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      ª Status:                   ? PASSED                       ª
+info: WileyWidget.WinForms.Services.WinFormsDiValidator[0]
+      +----------------------------------------------------------------+
+info: WileyWidget.WinForms.Services.StartupOrchestrator[0]
+      DI validation succeeded: 47 services validated with 0 warnings
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase END [UI]: DI Validation (duration: 226.8355ms)
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase START [UI] [UI-CRITICAL]: MainForm Creation (expected order: 7, chronological: 3)
+warn: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] ? DEPENDENCY WARNING: Phase 'MainForm Creation' started but dependency 'Theme Initialization' not completed
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      UI Architecture: Docking=True, TestHarness=False
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase END [UI]: MainForm Creation (duration: 5.3905ms)
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase START [UI] [UI-CRITICAL]: Chrome Initialization (expected order: 8, chronological: 4)
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase END [UI]: Chrome Initialization (duration: 0.2424ms)
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase START [UI] [UI-CRITICAL]: Splash Screen Hide (expected order: 11, chronological: 7)
+warn: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] ? DEPENDENCY WARNING: Phase 'Splash Screen Hide' started but dependency 'Data Prefetch' not completed
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase END [UI]: Splash Screen Hide (duration: 414.3355ms)
+warn: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] ? BLOCKING PHASE: 'Splash Screen Hide' took 414.3355ms on UI thread (>300ms threshold)
+16:55:42 [INF]  Startup milestone: Ready
+[16:55:42 INF] Startup milestone: Ready
+info: WileyWidget.Services.StartupTimelineService[0]
+      [TIMELINE] Phase START [UI] [UI-CRITICAL]: UI Message Loop (expected order: 12, chronological: 8)
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      MainForm startup completed successfully
+16:55:43 [DBG] WileyWidget.WinForms.Services.ThemeIconService Generating icon chat for theme Office2019Colorful with size 16
+[16:55:43 DBG] Generating icon chat for theme Office2019Colorful with size 16
+16:55:43 [DBG] WileyWidget.WinForms.Services.ThemeIconService Generating icon quickbooks for theme Office2019Colorful with size 16
+[16:55:43 DBG] Generating icon quickbooks for theme Office2019Colorful with size 16
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      OnShown: Starting deferred initialization
+[SERILOG] 2025-12-29T23:55:44.0177188Z Serilog.Sinks.File.RollingFileSink: file target C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\logs\mainform-async-20251229.log was locked, attempting to open next in sequence (attempt 1) (Temporary, unspecified events)
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      DockingManager document mode disabled (using DockingManager for panels only)
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Retrieving data statistics...
+16:55:45 [INF]  BudgetRepository: Getting data statistics for FY 2026 using provider: Microsoft.EntityFrameworkCore.SqlServer, Connection: Server=.\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;
+[16:55:45 INF] BudgetRepository: Getting data statistics for FY 2026 using provider: Microsoft.EntityFrameworkCore.SqlServer, Connection: Server=.\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;
+16:55:45 [INF]  BudgetRepository: Query result - TotalRecords: 20, Oldest: 10/28/2025 00:00:00, Newest: 10/28/2025 00:00:00
+[16:55:45 INF] BudgetRepository: Query result - TotalRecords: 20, Oldest: 10/28/2025 00:00:00, Newest: 10/28/2025 00:00:00
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Data statistics retrieved in 241ms - 20 records, Oldest: 2025-10-28 00:00:00, Newest: 2025-10-28 00:00:00
+16:55:45 [INF]  Health Check 'syncfusion_license': Healthy
+[16:55:45 INF] Health Check 'syncfusion_license': Healthy
+16:55:45 [INF]    Description: Syncfusion license key present and appears valid. Version: 32.1.19
+[16:55:45 INF]   Description: Syncfusion license key present and appears valid. Version: 32.1.19
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      Deferred startup health check completed
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      No saved docking layout found at C:\Users\biges\AppData\Roaming\WileyWidget\wiley_widget_docking_layout.xml - using default layout
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      Applied SkinManager theme to docking panels
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      DockingManager initialized successfully in 1887ms
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      Docking initialized successfully
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      Initializing MainViewModel
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel constructed with IDashboardService
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel: InitializeAsync called
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel: LoadDataAsync - Loading dashboard data
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: GetDashboardDataAsync called for FY 2026
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Fetching data for FY 2026 (2025-07-01 to 2026-06-30)
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Budget summary retrieved (IsNull=False)
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Budget metrics - Budgeted: ñ192,656.00, Actual: ñ0.00, Variance: ñ192,656.00
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Added 1 fund summaries (of 1 total)
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Retrieved 31 municipal accounts
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Retrieved 20 budget entries for FY 2026
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Successfully fetched 7 dashboard items (Revenue accts: 0, Expense accts: 0)
+info: WileyWidget.Services.DashboardService[0]
+      DashboardService: Retrieved 7 dashboard items from repository
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel: LoadDataAsync - Retrieved 7 dashboard items
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel: LoadDataAsync - Dashboard data loaded successfully. 7 items processed
+info: WileyWidget.WinForms.ViewModels.MainViewModel[0]
+      MainViewModel: InitializeAsync completed successfully
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      MainViewModel initialized successfully
+info: WileyWidget.WinForms.Forms.MainForm[0]
+      OnShown: Deferred initialization completed

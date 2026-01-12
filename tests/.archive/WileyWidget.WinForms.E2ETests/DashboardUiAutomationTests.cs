@@ -40,11 +40,16 @@ namespace WileyWidget.WinForms.E2ETests
             Assert.NotNull(window);
             Assert.Contains("Dashboard - Wiley Widget", window.Title, StringComparison.OrdinalIgnoreCase);
 
-            // Use MainFormPage for UI interactions
-            var mainFormPage = new MainFormPage(automation, window);
+            // Wait for the window to be ready
+            WaitForBusyIndicator(TimeSpan.FromSeconds(5));
 
-            // Navigate to Dashboard to ensure it's loaded (may already be loaded based on title)
-            mainFormPage.NavigateToDashboard();
+            // Try to find and click the Load Dashboard button
+            var loadButton = window.FindFirstDescendant(cf => cf.ByName("Toolbar_LoadButton"));
+            if (loadButton != null)
+            {
+                loadButton.Click();
+                // Wait for loading to complete
+                WaitForBusyIndicator(TimeSpan.FromSeconds(10));
 
             // Verify no crash - window should still be responsive
             Assert.NotNull(window);

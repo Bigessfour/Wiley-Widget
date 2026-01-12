@@ -528,11 +528,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
                     if (amount != 0m)
                     {
-                        results.Add(new ExpenseLine(
-                            amount,
-                            purchase.TxnDate,
-                            purchase.PrivateNote,
-                            purchase.DepartmentRef?.name));
+                        results.Add(new ExpenseLine(amount));
                     }
                 }
                 catch (Exception ex)

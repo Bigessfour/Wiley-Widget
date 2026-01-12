@@ -179,7 +179,14 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        // InitializeComponent moved to DashboardPanel.Designer.cs for designer support
+        private void InitializeComponent()
+        {
+            Name = "DashboardPanel";
+            AccessibleName = DashboardPanelResources.PanelTitle; // "Dashboard"
+            Size = new Size(1200, 800);
+            Dock = DockStyle.Fill;
+            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
+        }
 
         private void InitializeComponent()
         {
@@ -194,20 +201,13 @@ namespace WileyWidget.WinForms.Controls
                 if (dh != null && txtProp != null) txtProp.SetValue(dh, DashboardPanelResources.PanelTitle);
             }
             catch { }
-            _topPanel = new GradientPanelExt
-            {
-                Dock = DockStyle.Top,
-                Height = 44,
-                Padding = new Padding(8),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
+            _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
 
-            // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
-            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_Load", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
+            // Load button (automation-friendly id)
+            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
             btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDashboardCommand != null) await _vm.LoadDashboardCommand.ExecuteAsync(null); } catch { } };
             _refreshCommand = _vm.RefreshCommand;
             _btnRefresh.Click += (s, e) =>
@@ -222,6 +222,35 @@ namespace WileyWidget.WinForms.Controls
                 _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                 _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
+
+                _btnRefreshThemeChangedHandler = (s, t) =>
+                {
+                    try
+                    {
+                        // Re-resolve icon service on theme change to avoid stale closure
+                        var svc = Program.Services != null
+                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
+                            : null;
+                        if (_dispatcherHelper != null)
+                        {
+                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
+                        }
+                        else
+                        {
+                            var parent = _btnRefresh.GetCurrentParent();
+                            if (parent != null && parent.InvokeRequired)
+                            {
+                                parent.BeginInvoke(new System.Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
+                            }
+                            else
+                            {
+                                _btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
+                            }
+                        }
+                    }
+                    catch { }
+                };
+                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnRefreshThemeChangedHandler;
             }
             catch { }
 
@@ -246,7 +275,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = _iconService?.GetIcon("excel", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
+            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -261,7 +290,7 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = _iconService?.GetIcon("pdf", _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful, 16); } catch { }
+            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -560,7 +589,7 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard...", Dock = DockStyle.Fill };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "Welcome! No data yet\r\nStart by adding accounts and budget entries", Dock = DockStyle.Fill };
+            _noDataOverlay = new NoDataOverlay { Message = "No data yet – import or add entries to get started." };
             Controls.Add(_noDataOverlay);
 
             // Bindings
@@ -579,10 +608,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        if (IsHandleCreated)
-                        {
-                            try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
-                        }
+                        try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
                         return;
                     }
                     ApplyCurrentTheme();
@@ -985,19 +1011,13 @@ namespace WileyWidget.WinForms.Controls
 
             if (_detailsGrid != null && !_detailsGrid.IsDisposed && _detailsGrid.InvokeRequired)
             {
-                if (_detailsGrid.IsHandleCreated)
-                {
-                    try { _detailsGrid.BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
-                }
+                try { _detailsGrid.BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
                 return;
             }
 
             if (this.InvokeRequired)
             {
-                if (this.IsHandleCreated)
-                {
-                    try { BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
-                }
+                try { BeginInvoke(new System.Action(TryApplyViewModelBindings)); } catch { }
                 return;
             }
 
@@ -1131,6 +1151,20 @@ namespace WileyWidget.WinForms.Controls
                         _noDataOverlay.Visible = show;
                         if (show) _noDataOverlay.BringToFront();
                     }
+
+                    _vm.PropertyChanged += (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading) || e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.Metrics))
+                        {
+                            try
+                            {
+                                if (this.InvokeRequired) BeginInvoke(new System.Action(UpdateNoData)); else UpdateNoData();
+                            }
+                            catch { }
+                        }
+                    };
+
+                    UpdateNoData();
                 }
                 catch { }
 
@@ -1303,10 +1337,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
-                    }
+                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
                     return;
                 }
 

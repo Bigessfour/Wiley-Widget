@@ -6,7 +6,6 @@ using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using System.Diagnostics.CodeAnalysis;
 
 namespace WileyWidget.Data
 {
@@ -17,7 +16,6 @@ namespace WileyWidget.Data
     /// </summary>
     public class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
-        [SuppressMessage("Microsoft.Globalization", "CA1303", Justification = "Design-time diagnostic messages use literal strings")]
         public AppDbContext CreateDbContext(string[] args)
         {
             // Mimic Program.cs environment loading

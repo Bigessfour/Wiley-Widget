@@ -18,7 +18,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// Manages chat message history, tool parsing/execution, and optional conversational fallback.
 /// Follows MVVM pattern with CommunityToolkit.Mvvm for WinForms data binding.
 /// </summary>
-public partial class AIChatViewModel : ViewModelBase, IAIChatViewModel, IDisposable
+public partial class AIChatViewModel : ViewModelBase, IDisposable
 {
     #region Dependencies
 
@@ -174,10 +174,7 @@ public partial class AIChatViewModel : ViewModelBase, IAIChatViewModel, IDisposa
         IsLoading = true;
         StatusText = "Processing message...";
 
-        // Add timeout to prevent hanging
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-
-        await _executionSemaphore.WaitAsync(cts.Token);
+        await _executionSemaphore.WaitAsync();
         try
         {
             // Add user message
@@ -227,14 +224,12 @@ public partial class AIChatViewModel : ViewModelBase, IAIChatViewModel, IDisposa
                 {
                     Logger.LogInformation("No tool detected; attempting conversational AI response");
                     StatusText = "Getting AI insights...";
-
-                    // Use the same timeout CTS
                     try
                     {
                         responseMessage = await _conversationalAIService.GetInsightsAsync(
                             context: "User querying codebase via AI Chat interface. Provide helpful, concise responses.",
                             question: input,
-                            cancellationToken: cts.Token);
+                            cancellationToken: CancellationToken.None);
 
                         if (string.IsNullOrWhiteSpace(responseMessage))
                         {
@@ -255,9 +250,9 @@ public partial class AIChatViewModel : ViewModelBase, IAIChatViewModel, IDisposa
                     }
                     catch (TaskCanceledException tcEx)
                     {
-                        Logger.LogWarning(tcEx, "XAI request timed out after 30 seconds");
+                        Logger.LogWarning(tcEx, "XAI request timed out");
                         responseMessage = ConversationalAIHelper.FormatFriendlyError(tcEx);
-                        ErrorMessage = "AI request timed out after 30 seconds. Please try again.";
+                        ErrorMessage = "AI request timed out. Please try again.";
                     }
                     catch (HttpRequestException hrEx)
                     {

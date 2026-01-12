@@ -73,11 +73,8 @@ namespace WileyWidget.WinForms.Forms
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
+        private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
-        private DockingLayoutManager? _dockingLayoutManager; // Layout persistence manager
-        private List<string> _mruList = new();
-
-        private const int WS_EX_COMPOSITED = 0x02000000;
 
         /// <summary>
         /// Enables flicker reduction via WS_EX_COMPOSITED for heavy UI chrome (Ribbon + Docking).
@@ -206,15 +203,14 @@ namespace WileyWidget.WinForms.Forms
 
         public MainForm()
             : this(
-                GetDefaultServiceProvider(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(GetDefaultServiceProvider()) ?? new ConfigurationBuilder().Build(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(GetDefaultServiceProvider()) ?? NullLogger<MainForm>.Instance,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(GetDefaultServiceProvider()) ?? ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(GetDefaultServiceProvider()))
+                Program.Services ?? new ServiceCollection().BuildServiceProvider(),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
         {
         }
 
-        private static IServiceProvider GetDefaultServiceProvider()
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
         {
             return Program.Services ?? WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: true).BuildServiceProvider();
         }
@@ -229,13 +225,6 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
             _panelNavigator = null;
-            _iconService = iconService;
-
-            // CRITICAL FIX: Initialize components container in constructor
-            // This ensures components is available when DockingManager is created
-            // Per Syncfusion best practices: DockingManager requires a valid IContainer
-            components = new System.ComponentModel.Container();
-            _logger.LogDebug("MainForm constructor: Components container initialized");
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
@@ -263,10 +252,10 @@ namespace WileyWidget.WinForms.Forms
 
             IsMdiContainer = false;
 
-            // TEMP DISABLE: Drag-drop fails on non-STA (logs FTL). Re-enable after MainForm shows.
-            // AllowDrop = true;
-            // DragEnter += MainForm_DragEnter;
-            // DragDrop += MainForm_DragDrop;
+            // Enable drag-drop for files
+            AllowDrop = true;
+            DragEnter += MainForm_DragEnter;
+            DragDrop += MainForm_DragDrop;
 
             // Set reasonable form size constraints to prevent unusable states
             // Use settings from UIConfiguration and avoid touching the real Desktop in test harness mode
@@ -525,134 +514,9 @@ namespace WileyWidget.WinForms.Forms
             // Heavy initialization (Chrome, Docking) must complete before form is shown to prevent rendering issues
             _logger?.LogDebug("OnLoad: Starting UI initialization on UI thread {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
+            // Z-order management: ribbon/status above docking panels.
             try
             {
-                // Phase 1: Initialize Chrome (Ribbon, StatusBar, MenuBar) - must run on UI thread
-                _logger?.LogDebug("OnLoad: Initializing UI chrome");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: About to call InitializeChrome()");
-                InitializeChrome();
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: InitializeChrome() completed - Controls.Count={Controls.Count}");
-                _logger?.LogInformation("OnLoad: Chrome initialization completed - added {ControlCount} controls", Controls.Count);
-
-                // Verify controls were actually added
-                if (_ribbon != null) Console.WriteLine($"[DIAGNOSTIC] Ribbon exists: Size={_ribbon.Size}, Visible={_ribbon.Visible}, Parent={_ribbon.Parent?.Name}");
-                if (_statusBar != null) Console.WriteLine($"[DIAGNOSTIC] StatusBar exists: Size={_statusBar.Size}, Visible={_statusBar.Visible}, Parent={_statusBar.Parent?.Name}");
-                if (_menuStrip != null) Console.WriteLine($"[DIAGNOSTIC] MenuStrip exists: Size={_menuStrip.Size}, Visible={_menuStrip.Visible}, Parent={_menuStrip.Parent?.Name}");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "OnLoad: InitializeChrome failed");
-                Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeChrome failed: {ex.Message}");
-                Console.WriteLine($"[DIAGNOSTIC ERROR] Stack: {ex.StackTrace}");
-                // Continue - chrome initialization failure is non-critical
-            }
-
-            try
-            {
-                // Phase 2: Initialize Syncfusion Docking - must run on UI thread
-                if (!_syncfusionDockingInitialized)
-                {
-                    _logger?.LogDebug("OnLoad: Initializing Syncfusion docking");
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: About to call InitializeSyncfusionDocking()");
-                    InitializeSyncfusionDocking();
-                    _syncfusionDockingInitialized = true;
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: InitializeSyncfusionDocking() completed - _dockingManager={_dockingManager != null}");
-                    _logger?.LogInformation("OnLoad: Docking initialization completed");
-
-                    // Initialize panel navigator after docking is ready
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: About to call EnsurePanelNavigatorInitialized() - _dockingManager={_dockingManager != null}");
-                    EnsurePanelNavigatorInitialized();
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] OnLoad: EnsurePanelNavigatorInitialized() completed - _panelNavigator={_panelNavigator != null}");
-
-                    // Auto-show dashboard if configured
-                    if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown && _panelNavigator != null)
-                    {
-                        _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
-                        _dashboardAutoShown = true;
-                        _logger?.LogDebug("OnLoad: Auto-showed Dashboard panel");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "OnLoad: Failed to initialize docking manager");
-                Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeSyncfusionDocking failed: {ex.Message}");
-                Console.WriteLine($"[DIAGNOSTIC ERROR] Stack: {ex.StackTrace}");
-                // Continue - docking initialization failure is non-critical
-            }
-
-            try
-            {
-                // Phase 3: Ensure docking z-order
-                if (_uiConfig.UseSyncfusionDocking)
-                {
-                    EnsureDockingZOrder();
-                    _logger?.LogDebug("OnLoad: Docking z-order ensured");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "OnLoad: Failed to ensure docking z-order");
-            }
-
-            // CRITICAL: Verify docking state after potential LoadDockState
-            // If layout load failed or panels are not visible, force default docking
-            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
-            {
-                try
-                {
-                    var dockedControlCount = 0;
-                    foreach (Control ctrl in this.Controls)
-                    {
-                        if (ctrl is Panel panel && panel.Visible)
-                        {
-                            try
-                            {
-                                if (_dockingManager.GetEnableDocking(panel))
-                                {
-                                    dockedControlCount++;
-                                }
-                            }
-                            catch { /* Skip non-docked panels */ }
-                        }
-                    }
-
-                    _logger?.LogDebug("OnLoad: Post-LoadDockState verification - {DockedCount} docked panels found", dockedControlCount);
-                    Console.WriteLine($"[DIAGNOSTIC] OnLoad: Post-LoadDockState verification - {dockedControlCount} docked panels");
-
-                    // If no docked panels found, default docking will occur naturally
-                    // REMOVED: Blocking LoadLayoutAsync().GetAwaiter().GetResult() call that caused 21-second UI freeze
-                    // The fallback was loading a non-existent temp file and blocking the UI thread unnecessarily
-                    if (dockedControlCount == 0)
-                    {
-                        _logger?.LogDebug("OnLoad: No docked panels found - default docking will occur naturally");
-                        Console.WriteLine("[DIAGNOSTIC] OnLoad: No docked panels found - default docking will occur naturally");
-                    }
-                }
-                catch (Exception verifyEx)
-                {
-                    _logger?.LogWarning(verifyEx, "OnLoad: Failed to verify docking state post-load");
-                }
-            }
-
-            UpdateDockingStateText();
-
-            // Z-order management: Keep chrome on top, but AFTER docking manager setup
-            // CRITICAL: Ribbon and StatusBar should be on top of docking panels
-            // But DON'T call BringToFront before docking is initialized - it can hide panels
-            try
-            {
-                // Let DockingManager settle first, then bring chrome to front
-                if (_dockingManager != null && _dockingManager.HostControl != null)
-                {
-                    // Send DockingManager's host control to back so chrome stays on top
-                    if (_dockingManager.HostControl is Control hostControl)
-                    {
-                        hostControl.SendToBack();
-                        _logger?.LogDebug("Docking host control sent to back");
-                    }
-                }
-
                 if (_ribbon != null)
                 {
                     _ribbon.BringToFront();
@@ -665,37 +529,14 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("Status bar brought to front");
                 }
 
-                // Force repaint to show docking panels
                 Refresh();
                 Invalidate();
-                _logger?.LogInformation("OnLoad: UI initialization and z-order management completed successfully");
+                _logger?.LogDebug("Z-order management completed successfully");
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "OnLoad failed during z-order configuration");
                 throw;
-            }
-
-            // Finalize form sizing and layout after chrome/docking init
-            try
-            {
-                if (!_uiConfig.IsUiTestHarness)
-                {
-                    // Ensure we meet configured defaults, then maximize for best use of space
-                    this.Size = new Size(
-                        Math.Max(this.Width, _uiConfig.DefaultFormSize.Width),
-                        Math.Max(this.Height, _uiConfig.DefaultFormSize.Height));
-
-                    this.StartPosition = FormStartPosition.CenterScreen;
-                    this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
-                }
-
-                Refresh();
-                _ribbon?.PerformLayout();
-            }
-            catch (Exception sizingEx)
-            {
-                _logger?.LogDebug(sizingEx, "OnLoad: post-init sizing/layout failed");
             }
 
             // Panel navigation is created after docking is initialized (OnShown).
@@ -891,22 +732,40 @@ namespace WileyWidget.WinForms.Forms
             _initializationCts = new CancellationTokenSource();
             var cancellationToken = _initializationCts.Token;
 
-            // Apply final theme safe point after initial paint (already on UI thread in OnShown)
+            // Defer chrome initialization until after the window is visible
             try
             {
-                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(_serviceProvider ?? Program.Services!);
-                var themeName = config["UI:Theme"] ?? "Office2019Colorful";
-                SkinManager.ApplicationVisualTheme = themeName;
-                _logger?.LogDebug("Global Syncfusion theme applied after first paint: {ThemeName}", themeName);
+                _logger?.LogDebug("OnShown: initializing UI chrome");
+                InitializeChrome();
             }
-            catch (Exception themeEx)
+            catch (Exception ex)
             {
-                _logger?.LogWarning(themeEx, "Deferred theme initialization failed - continuing with current styling");
+                _logger?.LogError(ex, "OnShown: InitializeChrome failed");
             }
 
+            // Apply final theme safe point after initial paint (UI thread)
+            try
+            {
+                BeginInvoke((System.Action)(() =>
+                {
+                    try
+                    {
+                        SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                        var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(_serviceProvider ?? Program.Services!);
+                        var themeName = config["UI:Theme"] ?? "Office2019Colorful";
+                        SkinManager.ApplicationVisualTheme = themeName;
+                        _logger?.LogDebug("Global Syncfusion theme applied after first paint: {ThemeName}", themeName);
+                    }
+                    catch (Exception themeEx)
+                    {
+                        _logger?.LogWarning(themeEx, "Deferred theme initialization failed - continuing with current styling");
+                    }
+                }));
+            }
+            catch { }
+
             // Database health check + test data seeding (background)
-            var healthCheckTask = Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
@@ -920,32 +779,8 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(ex, "Deferred startup health check failed (non-fatal)");
                 }
             });
-            Program.RegisterBackgroundTask(healthCheckTask);
 
-            // Initialize Grok service asynchronously (deferred initialization pattern)
-            var grokTask = Task.Run(async () =>
-            {
-                try
-                {
-                    if (_serviceProvider == null) return;
-                    var grokService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                        .GetService<WileyWidget.WinForms.Services.AI.GrokAgentService>(_serviceProvider);
-                    if (grokService is IAsyncInitializable asyncInitializable)
-                    {
-                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        cts.CancelAfter(TimeSpan.FromSeconds(30));
-                        await asyncInitializable.InitializeAsync(cts.Token).ConfigureAwait(false);
-                        _logger?.LogInformation("Grok service initialized asynchronously on background thread");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to initialize Grok service asynchronously (non-critical - chat will function via HTTP fallback)");
-                }
-            });
-            Program.RegisterBackgroundTask(grokTask);
-
-            var seedTask = Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
@@ -958,7 +793,6 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(seedEx, "Deferred test data seeding failed (non-critical)");
                 }
             });
-            Program.RegisterBackgroundTask(seedTask);
 
             // Track form shown event for startup timeline analysis
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -999,8 +833,112 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger?.LogInformation("OnShown: Starting deferred background initialization");
 
-                // Call MainForm's own InitializeAsync to defer heavy data loading
-                _ = InitializeAsync(cancellationToken).ConfigureAwait(false);
+                // Phase 1: Initialize Syncfusion docking (synchronous UI operation - execute directly on UI thread)
+                ApplyStatus("Initializing...");
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!_syncfusionDockingInitialized)
+                {
+                    try
+                    {
+                        InitializeSyncfusionDocking();
+                        _syncfusionDockingInitialized = true;
+                        _logger?.LogInformation("Docking initialized successfully");
+
+                        EnsurePanelNavigatorInitialized();
+
+                        if (_uiConfig.AutoShowDashboard && !_dashboardAutoShown && _panelNavigator != null)
+                        {
+                            _panelNavigator.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                            _dashboardAutoShown = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize docking manager in OnShown");
+                        // Continue - not fatal
+                    }
+                }
+
+                // Phase 2: Ensure docking z-order (layout already loaded synchronously in InitializeSyncfusionDocking)
+                if (_uiConfig.UseSyncfusionDocking)
+                {
+                    // REMOVED: Redundant async reload - LoadDockingLayout() already called synchronously in InitializeSyncfusionDocking()
+                    // This eliminates double-load performance hit and simplifies startup flow
+                    try { EnsureDockingZOrder(); }
+                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
+                }
+
+                // Phase 3: Initialize dashboard data asynchronously
+                _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
+                _logger?.LogInformation("Initializing MainViewModel");
+                ApplyStatus("Loading dashboard data...");
+                cancellationToken.ThrowIfCancellationRequested();
+
+                MainViewModel? mainVm = null;
+                try
+                {
+                    if (_serviceProvider == null)
+                    {
+                        _logger?.LogError("ServiceProvider is null during MainViewModel initialization");
+                        ApplyStatus("Initialization error: ServiceProvider unavailable");
+                        return;
+                    }
+
+                    // Create a scope for scoped services - CRITICAL: Keep scope alive for MainViewModel's lifetime
+                    // Disposing the scope immediately causes ObjectDisposedException when MainViewModel uses DbContext
+                    _mainViewModelScope = _serviceProvider.CreateScope();
+                    var scopedServices = _mainViewModelScope.ServiceProvider;
+                    mainVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
+                    _asyncLogger?.Information("MainForm OnShown: MainViewModel resolved from DI container");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
+                    _asyncLogger?.Error(ex, "MainForm OnShown: Failed to resolve MainViewModel from DI container");
+                }
+
+                if (mainVm != null)
+                {
+                    try
+                    {
+                        _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
+                        await mainVm.InitializeAsync(cancellationToken).ConfigureAwait(true);
+                        _logger?.LogInformation("MainViewModel initialized successfully");
+                        _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogInformation("Dashboard initialization cancelled");
+                        _asyncLogger?.Information("MainForm OnShown: Dashboard initialization cancelled");
+                        ApplyStatus("Initialization cancelled");
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
+                        _asyncLogger?.Error(ex, "MainForm OnShown: Failed to initialize MainViewModel in OnShown");
+                        ApplyStatus("Error loading dashboard data");
+                        // Show user-friendly error message
+                        if (this.IsHandleCreated)
+                        {
+                            try
+                            {
+                                MessageBox.Show(this,
+                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                    "Initialization Error",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+                            }
+                            catch { /* Swallow MessageBox errors */ }
+                        }
+                        return;
+                    }
+                }
+                else
+                {
+                    _logger?.LogWarning("MainViewModel not available in service provider");
+                }
 
                 ApplyStatus("Ready");
                 _logger?.LogInformation("OnShown: Deferred initialization completed");
@@ -1049,139 +987,22 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: _panelNavigator={_panelNavigator != null}, _serviceProvider={_serviceProvider != null}, _dockingManager={_dockingManager != null}");
+                if (_panelNavigator != null) return;
+                if (_serviceProvider == null) return;
+                if (_dockingManager == null) return;
+                if (_centralDocumentPanel == null) return;
 
-                if (_panelNavigator != null)
-                {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: Already initialized, returning");
-                    return;
-                }
-
-                if (_serviceProvider == null)
-                {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: _serviceProvider is null, returning");
-                    return;
-                }
-
-                if (_dockingManager == null)
-                {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: _dockingManager is null, returning");
-                    _logger?.LogWarning("Cannot initialize PanelNavigationService - DockingManager not yet created");
-                    return;
-                }
-
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: Creating PanelNavigationService...");
-
-                // Note: Central panel is now managed by DockingLayoutManager
-                // Pass MainForm as parent control for panel hosting
                 var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                     .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
 
-                _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
+                _panelNavigator = new PanelNavigationService(_dockingManager, _centralDocumentPanel, _serviceProvider, navLogger);
                 _logger?.LogDebug("PanelNavigationService created after docking initialization");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: PanelNavigationService created successfully");
-
-                // Enable navigation buttons after PanelNavigator is ready
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: About to call EnableNavigationButtons()");
-                EnableNavigationButtons();
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnsurePanelNavigatorInitialized: EnableNavigationButtons() completed");
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Failed to initialize PanelNavigationService");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC ERROR] EnsurePanelNavigatorInitialized failed: {ex.Message}");
             }
         }
-
-        /// <summary>
-        /// Enables navigation buttons after PanelNavigationService is initialized.
-        /// Called from EnsurePanelNavigatorInitialized to ensure proper timing.
-        /// </summary>
-        private void EnableNavigationButtons()
-        {
-            try
-            {
-                int enabledCount = 0;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: _ribbon={_ribbon != null}, tabs={_ribbon?.Header.MainItems.Count ?? 0}");
-
-                // Enable ribbon navigation buttons
-                if (_ribbon != null)
-                {
-                    // Navigate through ribbon structure: Header.MainItems → ToolStripTabItem → Panel → ToolStripEx (via AddToolStrip)
-                    foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
-                    {
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: Checking tab '{tab.Text}', Panel={tab.Panel != null}");
-
-                        if (tab.Panel != null)
-                        {
-                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: Panel.Controls.Count = {tab.Panel.Controls.Count}");
-
-                            foreach (Control control in tab.Panel.Controls)
-                            {
-                                if (control is ToolStripEx toolStrip)
-                                {
-                                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: ToolStripEx '{toolStrip.Name}' has {toolStrip.Items.Count} items");
-
-                                    foreach (ToolStripItem item in toolStrip.Items)
-                                    {
-                                        // Check direct buttons
-                                        if (item is ToolStripButton btn && btn.Name.StartsWith("Nav_", StringComparison.Ordinal))
-                                        {
-                                            btn.Enabled = true;
-                                            enabledCount++;
-                                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: Enabled '{btn.Name}' ('{btn.Text}')");
-                                            _logger?.LogDebug("Enabled navigation button: {ButtonName}", btn.Name);
-                                        }
-                                        // Check buttons inside ToolStripPanelItem containers
-                                        else if (item is ToolStripPanelItem panel)
-                                        {
-                                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: Found ToolStripPanelItem '{panel.Text}' with {panel.Items.Count} items");
-                                            foreach (ToolStripItem panelItem in panel.Items)
-                                            {
-                                                if (panelItem is ToolStripButton panelBtn && panelBtn.Name.StartsWith("Nav_", StringComparison.Ordinal))
-                                                {
-                                                    panelBtn.Enabled = true;
-                                                    enabledCount++;
-                                                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: Enabled panel button '{panelBtn.Name}' ('{panelBtn.Text}')");
-                                                    _logger?.LogDebug("Enabled navigation button in panel: {ButtonName}", panelBtn.Name);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    _logger?.LogWarning("EnableNavigationButtons: _ribbon is null");
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] EnableNavigationButtons: _ribbon is null!");
-                }
-
-                // Enable navigation strip buttons
-                if (_navigationStrip != null)
-                {
-                    foreach (ToolStripItem item in _navigationStrip.Items)
-                    {
-                        if (item is ToolStripButton btn && btn.Name.StartsWith("Nav_", StringComparison.Ordinal))
-                        {
-                            btn.Enabled = true;
-                            enabledCount++;
-                            _logger?.LogDebug("Enabled navigation strip button: {ButtonName}", btn.Name);
-                        }
-                    }
-                }
-
-                _logger?.LogInformation("Navigation buttons enabled: {Count} total", enabledCount);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to enable navigation buttons");
-            }
-        }
-
-
 
         private void TryLaunchReportViewerOnLoad()
         {

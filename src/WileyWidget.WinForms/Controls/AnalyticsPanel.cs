@@ -1,20 +1,16 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Extensions;
-using WileyWidget.Services.Extensions;
 using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Drawing;
-using Syncfusion.WinForms.ListView;
-using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -32,31 +28,27 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private ChartControl? _trendsChart;
     private ChartControlRegionEventWiring? _trendsChartRegionEventWiring;
     private ChartControl? _forecastChart;
-    private ChartControlRegionEventWiring? _forecastChartRegionEventWiring;
-    private SfButton? _performAnalysisButton;
-    private SfButton? _runScenarioButton;
-    private SfButton? _generateForecastButton;
-    private SfButton? _refreshButton;
-    private SfButton? _navigateToBudgetButton;
-    private SfButton? _navigateToAccountsButton;
-    private SfButton? _navigateToDashboardButton;
-    private TextBoxExt? _rateIncreaseTextBox;
-    private TextBoxExt? _expenseIncreaseTextBox;
-    private TextBoxExt? _revenueTargetTextBox;
-    private TextBoxExt? _projectionYearsTextBox;
-    private TextBoxExt? _metricsSearchTextBox;
-    private TextBoxExt? _variancesSearchTextBox;
-    private SfListView? _insightsListBox;
-    private SfListView? _recommendationsListBox;
+    private Button? _performAnalysisButton;
+    private Button? _runScenarioButton;
+    private Button? _generateForecastButton;
+    private Button? _refreshButton;
+    private TextBox? _rateIncreaseTextBox;
+    private TextBox? _expenseIncreaseTextBox;
+    private TextBox? _revenueTargetTextBox;
+    private TextBox? _projectionYearsTextBox;
+    private TextBox? _metricsSearchTextBox;
+    private TextBox? _variancesSearchTextBox;
+    private ListBox? _insightsListBox;
+    private ListBox? _recommendationsListBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
     private Label? _averageVarianceLabel;
     private Label? _recommendationExplanationLabel;
-    private GradientPanelExt? _scenarioPanel;
-    private GradientPanelExt? _resultsPanel;
-    private GradientPanelExt? _chartsPanel;
-    private GradientPanelExt? _buttonPanel;
+    private Panel? _scenarioPanel;
+    private Panel? _resultsPanel;
+    private Panel? _chartsPanel;
+    private Panel? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -68,7 +60,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes a new instance of the AnalyticsPanel class.
     /// </summary>
-    /// <param name="scopeFactory">The service scope factory for resolving scoped dependencies.</param>
+    /// <param name="viewModel">The analytics view model.</param>
     /// <param name="logger">The logger instance.</param>
     public AnalyticsPanel(
         IServiceScopeFactory scopeFactory,
@@ -82,29 +74,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     }
 
     /// <summary>
-    /// Called after the ViewModel has been resolved from the scoped service provider.
-    /// Binds the ViewModel to UI controls and subscribes to events.
-    /// </summary>
-    /// <param name="viewModel">The resolved ViewModel instance.</param>
-    protected override void OnViewModelResolved(AnalyticsViewModel viewModel)
-    {
-        base.OnViewModelResolved(viewModel);
-
-        // Wire up ViewModel events
-        if (viewModel == null)
-            throw new ArgumentNullException(nameof(viewModel));
-        viewModel.PropertyChanged += ViewModel_PropertyChanged;
-
-        Logger.LogDebug("AnalyticsPanel ViewModel resolved and bound");
-    }
-
-    /// <summary>
     /// Initializes all UI controls and sets up the layout.
     /// </summary>
-    private void InitializeComponent()
+    private void InitializeControls()
     {
-        // Theme is applied automatically by SfSkinManager cascade from the parent form.
-        // Avoid per-control SetTheme to prevent inconsistent/double theming.
+        // Apply Syncfusion theme using SkinManager
+        SfSkinManager.SetTheme(this, "Office2019Colorful");
 
         // Set up form properties
         Text = "Budget Analytics";
@@ -113,11 +88,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
-        _panelHeader.RefreshClicked += async (s, e) =>
-        {
-            if (ViewModel != null)
-                await ViewModel.RefreshCommand.ExecuteAsync(null);
-        };
+        _panelHeader.RefreshClicked += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
@@ -235,34 +206,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _refreshButton.Click += async (s, e) => await ViewModel!.RefreshCommand.ExecuteAsync(null);
-
-        _navigateToBudgetButton = new SfButton
-        {
-            Text = "Go to &Budget",
-            TabIndex = 5,
-            AccessibleName = "Navigate to Budget Panel",
-            AccessibleDescription = "Navigate to the Budget panel"
-        };
-        _navigateToBudgetButton.Click += (s, e) => NavigateToPanel("BudgetPanel");
-
-        _navigateToAccountsButton = new SfButton
-        {
-            Text = "Go to &Accounts",
-            TabIndex = 6,
-            AccessibleName = "Navigate to Accounts Panel",
-            AccessibleDescription = "Navigate to the Accounts panel"
-        };
-        _navigateToAccountsButton.Click += (s, e) => NavigateToPanel("AccountsPanel");
-
-        _navigateToDashboardButton = new SfButton
-        {
-            Text = "Go to &Dashboard",
-            TabIndex = 7,
-            AccessibleName = "Navigate to Dashboard Panel",
-            AccessibleDescription = "Navigate to the Dashboard panel"
-        };
-        _navigateToDashboardButton.Click += (s, e) => NavigateToPanel("DashboardPanel");
+        _refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
 
         buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
@@ -475,6 +419,18 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
         metricsSearchPanel.Controls.Add(metricsSearchLabel);
 
+        // Metrics search
+        var metricsSearchPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+        var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
+        _metricsSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 9 };
+        _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
+        metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
+        metricsSearchPanel.Controls.Add(metricsSearchLabel);
+
         _metricsGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -518,6 +474,18 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 #pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
         _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
 #pragma warning restore RS0030
+        _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
+        variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
+        variancesSearchPanel.Controls.Add(variancesSearchLabel);
+
+        // Variances search
+        var variancesSearchPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+        var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
+        _variancesSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 11 };
         _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
         variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
         variancesSearchPanel.Controls.Add(variancesSearchLabel);
@@ -610,15 +578,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         bottomPanel.Controls.Add(_resultsPanel);
 
         // Summary panel
-        var summaryPanel = new GradientPanelExt
+        var summaryPanel = new Panel
         {
             Dock = DockStyle.Bottom,
             Height = 60,
-            Padding = new Padding(10),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            Padding = new Padding(10)
         };
-        SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
 
         var summaryTable = new TableLayoutPanel
         {
@@ -734,17 +699,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void RateIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (_rateIncreaseTextBox == null || ViewModel == null) return;
-
-        if (decimal.TryParse(_rateIncreaseTextBox.Text, out var value) && value >= 0 && value <= 100)
-        {
-            ViewModel.RateIncreasePercentage = value;
-            _errorProvider?.SetError(_rateIncreaseTextBox, string.Empty);
-        }
+        if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
+            _viewModel.RateIncreasePercentage = value;
         else
-        {
-            _errorProvider?.SetError(_rateIncreaseTextBox, "Rate increase must be between 0 and 100");
-        }
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -752,17 +710,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void ExpenseIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (_expenseIncreaseTextBox == null || ViewModel == null) return;
-
-        if (decimal.TryParse(_expenseIncreaseTextBox.Text, out var value) && value >= 0 && value <= 100)
-        {
-            ViewModel.ExpenseIncreasePercentage = value;
-            _errorProvider?.SetError(_expenseIncreaseTextBox, string.Empty);
-        }
+        if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
+            _viewModel.ExpenseIncreasePercentage = value;
         else
-        {
-            _errorProvider?.SetError(_expenseIncreaseTextBox, "Expense increase must be between 0 and 100");
-        }
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -770,17 +721,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void RevenueTargetTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (_revenueTargetTextBox == null || ViewModel == null) return;
-
-        if (decimal.TryParse(_revenueTargetTextBox.Text, out var value) && value >= 0 && value <= 100)
-        {
-            ViewModel.RevenueTargetPercentage = value;
-            _errorProvider?.SetError(_revenueTargetTextBox, string.Empty);
-        }
+        if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value) && value >= 0 && value <= 100)
+            _viewModel.RevenueTargetPercentage = value;
         else
-        {
-            _errorProvider?.SetError(_revenueTargetTextBox, "Revenue target must be between 0 and 100");
-        }
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -788,17 +732,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void ProjectionYearsTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (_projectionYearsTextBox == null || ViewModel == null) return;
-
-        if (int.TryParse(_projectionYearsTextBox.Text, out var value) && value > 0 && value <= 10)
-        {
-            ViewModel.ProjectionYears = value;
-            _errorProvider?.SetError(_projectionYearsTextBox, string.Empty);
-        }
+        if (int.TryParse(_projectionYearsTextBox?.Text, out var value) && value > 0 && value <= 10)
+            _viewModel.ProjectionYears = value;
         else
-        {
-            _errorProvider?.SetError(_projectionYearsTextBox, "Projection years must be between 1 and 10");
-        }
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -806,8 +743,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void MetricsSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (ViewModel != null)
-            ViewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
+        _viewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
     }
 
     /// <summary>
@@ -815,15 +751,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void VariancesSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (ViewModel != null)
-            ViewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
+        _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
     }
 
     /// <summary>
     /// Handles view model property changed event.
-    /// Per Microsoft WinForms documentation: All UI updates from cross-thread PropertyChanged
-    /// handlers must be marshaled to the UI thread using Control.InvokeRequired check.
-    /// Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls-to-windows-forms-controls
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -841,12 +773,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.FilteredMetrics):
-                _metricsGrid?.DataSource = ViewModel.FilteredMetrics;
+            case nameof(_viewModel.FilteredMetrics):
+                if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.FilteredMetrics;
                 break;
 
-            case nameof(ViewModel.FilteredTopVariances):
-                _variancesGrid?.DataSource = ViewModel.FilteredTopVariances;
+            case nameof(_viewModel.FilteredTopVariances):
+                if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.FilteredTopVariances;
                 break;
 
             case nameof(ViewModel.TrendData):
@@ -898,6 +830,26 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
             case nameof(ViewModel.RecommendationExplanation):
                 if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = ViewModel.RecommendationExplanation;
+                break;
+
+            case nameof(_viewModel.TotalBudgetedAmount):
+                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {_viewModel.TotalBudgetedAmount:C}";
+                break;
+
+            case nameof(_viewModel.TotalActualAmount):
+                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {_viewModel.TotalActualAmount:C}";
+                break;
+
+            case nameof(_viewModel.TotalVarianceAmount):
+                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {_viewModel.TotalVarianceAmount:C}";
+                break;
+
+            case nameof(_viewModel.AverageVariancePercentage):
+                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {_viewModel.AverageVariancePercentage:P}";
+                break;
+
+            case nameof(_viewModel.RecommendationExplanation):
+                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = _viewModel.RecommendationExplanation;
                 break;
         }
     }
@@ -962,45 +914,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     }
 
     /// <summary>
-    /// Navigates to the specified panel.
-    /// </summary>
-    /// <param name="panelName">The name of the panel to navigate to.</param>
-    private void NavigateToPanel(string panelName)
-    {
-        try
-        {
-            var parentForm = this.FindForm();
-            if (parentForm is Forms.MainForm mainForm)
-            {
-                // Map panel names to types
-                switch (panelName)
-                {
-                    case "BudgetPanel":
-                        mainForm.ShowPanel<BudgetPanel>("Budget Management");
-                        break;
-                    case "AccountsPanel":
-                        mainForm.ShowPanel<AccountsPanel>("Municipal Accounts");
-                        break;
-                    case "DashboardPanel":
-                        mainForm.ShowPanel<DashboardPanel>("Dashboard");
-                        break;
-                    default:
-                        Logger.LogWarning("Unknown panel name: {PanelName}", panelName);
-                        break;
-                }
-                return;
-            }
-
-            var method = parentForm?.GetType().GetMethod("ShowPanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(parentForm, new object[] { panelName });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "AnalyticsPanel: NavigateToPanel failed for {PanelName}", panelName);
-        }
-    }
-
-    /// <summary>
     /// Closes the panel.
     /// </summary>
     private void ClosePanel()
@@ -1019,7 +932,33 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "AnalyticsPanel: ClosePanel failed");
+            _logger.LogWarning(ex, "AnalyticsPanel: ClosePanel failed");
+        }
+    }
+
+    /// <summary>
+    /// Handles the load event.
+    /// </summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        try
+        {
+            // Initialize scenario parameters
+            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+            _metricsSearchTextBox!.Text = _viewModel.MetricsSearchText;
+            _variancesSearchTextBox!.Text = _viewModel.VariancesSearchText;
+
+            // Auto-load data
+            _ = Task.Run(async () => await _viewModel.RefreshCommand.ExecuteAsync(null));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing panel");
         }
     }
 
@@ -1106,4 +1045,17 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     }
 
 
+    /// <summary>
+    /// Required method for Designer support - do not modify
+    /// the contents of this method with the code editor.
+    /// </summary>
+    private void InitializeComponent()
+    {
+        this.components = new System.ComponentModel.Container();
+        this.Name = "AnalyticsPanel";
+        this.AccessibleName = "Budget Analytics"; // For UI automation
+        this.Size = new Size(1400, 900);
+    }
+
+    #endregion
 }

@@ -58,9 +58,6 @@
     "yzhang.markdown-all-in-one",
     "davidanson.vscode-markdownlint",
 
-    // === Blazor & Razor Support ===
-    "austincummings.razor-plus",
-
     // === Code Execution ===
     "formulahendry.code-runner",
 

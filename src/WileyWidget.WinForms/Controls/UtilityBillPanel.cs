@@ -437,6 +437,91 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _billsGrid.QueryCellStyle += BillsGrid_QueryCellStyle;
 
         _gridPanel.Controls.Add(_billsGrid);
+        topPanel.Controls.Add(_gridPanel);
+
+        // Button panel
+        _buttonPanel = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 50,
+            Padding = new Padding(10)
+        };
+
+        var buttonTable = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 6,
+            RowCount = 1
+        };
+
+        for (int i = 0; i < 6; i++)
+            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
+
+        _createBillButton = new Button
+        {
+            Text = "&Create Bill",
+            TabIndex = 2,
+            AccessibleName = "Create Bill",
+            AccessibleDescription = "Create a new utility bill for the selected customer"
+        };
+        _createBillButton.Click += async (s, e) => await _viewModel.CreateBillCommand.ExecuteAsync(null);
+
+        _saveBillButton = new Button
+        {
+            Text = "&Save Bill",
+            TabIndex = 3,
+            AccessibleName = "Save Bill",
+            AccessibleDescription = "Save changes to the selected bill"
+        };
+        _saveBillButton.Click += async (s, e) => await _viewModel.SaveBillCommand.ExecuteAsync(null);
+
+        _deleteBillButton = new Button
+        {
+            Text = "&Delete Bill",
+            TabIndex = 4,
+            AccessibleName = "Delete Bill",
+            AccessibleDescription = "Delete the selected bill"
+        };
+        _deleteBillButton.Click += async (s, e) => await _viewModel.DeleteBillCommand.ExecuteAsync(null);
+
+        _markPaidButton = new Button
+        {
+            Text = "&Mark Paid",
+            TabIndex = 5,
+            AccessibleName = "Mark Paid",
+            AccessibleDescription = "Mark the selected bill as paid"
+        };
+        _markPaidButton.Click += async (s, e) => await _viewModel.MarkAsPaidCommand.ExecuteAsync(null);
+
+        _generateReportButton = new Button
+        {
+            Text = "&Generate Report",
+            TabIndex = 6,
+            AccessibleName = "Generate Report",
+            AccessibleDescription = "Generate a report of utility bills"
+        };
+        _generateReportButton.Click += async (s, e) => await _viewModel.GenerateReportCommand.ExecuteAsync(null);
+
+        _refreshButton = new Button
+        {
+            Text = "&Refresh",
+            TabIndex = 7,
+            AccessibleName = "Refresh",
+            AccessibleDescription = "Refresh the utility bill data"
+        };
+        _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+
+        buttonTable.Controls.Add(_createBillButton, 0, 0);
+        buttonTable.Controls.Add(_saveBillButton, 1, 0);
+        buttonTable.Controls.Add(_deleteBillButton, 2, 0);
+        buttonTable.Controls.Add(_markPaidButton, 3, 0);
+        buttonTable.Controls.Add(_generateReportButton, 4, 0);
+        buttonTable.Controls.Add(_refreshButton, 5, 0);
+
+        _buttonPanel!.Controls.Add(buttonTable);
+        topPanel.Controls.Add(_buttonPanel);
+
+        _mainSplitContainer.Panel1.Controls.Add(topPanel);
     }
 
     private void InitializeBottomPanel()
@@ -581,17 +666,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120f)
         });
 
-        _customersGrid.Columns.Add(new GridTextColumn
-        {
-            MappingName = "StatusDescription",
-            HeaderText = "Status",
-            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(100f)
-        });
+        _customersGrid.CurrentCellActivated += CustomersGrid_CurrentCellActivated;
+#pragma warning disable CS8602
+        customersPanel.Controls.Add(_customersGrid!);
+#pragma warning restore CS8602
+        bottomPanel.Controls.Add(customersPanel);
 
-        _customersGrid.SelectionChanged += CustomersGrid_SelectionChanged;
-
-        customersPanel.Controls.Add(_customersGrid);
-        _customersGrid = customersPanel.Controls[0] as SfDataGrid;
+        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
     }
 
     #endregion

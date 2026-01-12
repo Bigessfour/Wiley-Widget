@@ -20,23 +20,23 @@
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": false,
-  "terminal.integrated.shellIntegration.enabled": true,
   "task.autoClose": true,
 
   // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
   "github.copilot.chat.mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "roots": ["${workspaceFolder}"],
+      "env": {
+        "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
+      }
+    },
     "microsoft-learn": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
-      }
     },
     "csharp-mcp": {
       "command": "InfinityFlow.CSharp.Eval",
@@ -96,7 +96,7 @@
     "source.organizeImports": "explicit",
     "source.fixAll.powershell": "explicit"
   },
-  "editor.minimap.enabled": true,
+  "editor.minimap.enabled": false,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",
   "editor.quickSuggestions": {
@@ -157,7 +157,6 @@
   "dotnet.server.searchSubdirectoriesForSolution": true,
   "dotnet.unitTests.runTestsInParallel": true,
   "dotnet.unitTests.showCodeLens": true,
-  "dotnet.startupProject": "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,
@@ -169,27 +168,6 @@
   "[csharp]": {
     "editor.formatOnSave": true
   },
-
-  // ============================================================================
-  // Razor+ Configuration (Blazor WebView Support)
-  // ============================================================================
-  "[razor]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "austincummings.razor-plus"
-  },
-  "razorPlus.blazorWasm": true,
-  "razorPlus.enableCodeActions": true,
-  "razorPlus.enableCompletion": true,
-  "razorPlus.enableDiagnostics": true,
-  "razorPlus.enableHover": true,
-  "razorPlus.enableSemanticTokens": true,
-
-  // ============================================================================
-  // WebView2 Configuration (Blazor WebView Runtime)
-  // ============================================================================
-  // WebView2 is the underlying runtime for BlazorWebView in WinForms
-  // These settings optimize development experience
-  "webview2.debugLogging": false,
 
   // ============================================================================
   // Testing Configuration
@@ -298,12 +276,6 @@
   "debug.toolBarLocation": "docked",
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
-
-  // Always break on ArgumentException (for enumType debugging)
-  "csharp.exceptionOptions": {
-    "System.ArgumentException": "always",
-    "System.Exception": "never"
-  },
 
   // ============================================================================
   // Continue/Grok 4.1 Integration (Updated 2025-12-05)

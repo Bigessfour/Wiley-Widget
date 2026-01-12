@@ -33,7 +33,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IAILoggingService _aiLoggingService;
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _concurrencySemaphore;
-    private readonly ITelemetryService? _telemetryService;
+    private readonly SigNozTelemetryService? _telemetryService;
     private readonly bool _enabled;
     private readonly string _endpoint;
     private readonly string _model;
@@ -82,7 +82,7 @@ public class XAIService : IAIService, IDisposable
             throw new InvalidOperationException("XAI API key not configured but XAI is enabled");
         }
 
-        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "30", CultureInfo.InvariantCulture);
+        var timeoutSeconds = double.Parse(configuration["XAI:TimeoutSeconds"] ?? "15", CultureInfo.InvariantCulture);
         // Allow tests to override circuit-breaker break duration (seconds) via configuration
         // Use TryParse to avoid throwing if configuration is malformed; default to 60 seconds
         var circuitBreakerBreakSeconds = 60;

@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using WileyWidget.Data;
 using WileyWidget.WinForms.Models;
 using WileyWidget.Business.Interfaces;
-using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -19,7 +18,6 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
     private readonly IDepartmentExpenseService? _departmentExpenseService;
     private readonly IGrokRecommendationService? _grokRecommendationService;
-    private readonly IDbContextFactory<AppDbContext>? _dbContextFactory;
     private bool _disposed;
 
     #region Observable Properties
@@ -109,13 +107,11 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
 
     public RecommendedMonthlyChargeViewModel(
         ILogger<RecommendedMonthlyChargeViewModel>? logger,
-        IDbContextFactory<AppDbContext>? dbContextFactory = null,
         IDepartmentExpenseService? departmentExpenseService = null,
         IGrokRecommendationService? grokRecommendationService = null)
         : base(logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _dbContextFactory = dbContextFactory;
         _departmentExpenseService = departmentExpenseService;
         _grokRecommendationService = grokRecommendationService;
 
@@ -137,7 +133,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// Parameterless constructor for design-time support
     /// </summary>
     public RecommendedMonthlyChargeViewModel()
-        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance, null, null, null)
+        : this(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargeViewModel>.Instance, null, null)
     {
     }
 

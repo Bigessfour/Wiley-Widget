@@ -36,10 +36,10 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     private Label? _totalExpensesLabel;
     private Label? _suggestedRevenueLabel;
     private Label? _overallStatusLabel;
-    private TextBoxExt? _explanationTextBox;
-    private GradientPanelExt? _summaryPanel;
-    private GradientPanelExt? _chartPanel;
-    private GradientPanelExt? _buttonPanel;
+    private TextBox? _explanationTextBox;
+    private Panel? _summaryPanel;
+    private Panel? _chartPanel;
+    private Panel? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private SplitContainer? _leftSplitContainer;
     private StatusStrip? _statusStrip;
@@ -86,6 +86,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         Name = "RecommendedMonthlyChargePanel";
         Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
+        BackColor = System.Drawing.SystemColors.Control;
 
         // ============================================================================
         // Panel Header
@@ -103,13 +104,68 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Button Panel - Top Action Buttons
         // ============================================================================
-        _buttonPanel = new GradientPanelExt
+        _buttonPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 60,
             Padding = new Padding(10),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackColor = System.Drawing.SystemColors.Control
+        };
+
+        _refreshButton = new Button
+        {
+            Text = "&Refresh Data",
+            Location = new Point(10, 15),
+            Size = new Size(130, 35),
+            TabIndex = 1,
+            UseVisualStyleBackColor = true,
+            AccessibleName = "Refresh Data",
+            AccessibleDescription = "Refresh department expense data from QuickBooks"
+        };
+        _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+        var refreshTooltip = new ToolTip();
+        refreshTooltip.SetToolTip(_refreshButton, "Load latest expense data from QuickBooks (Alt+R)");
+
+        _queryGrokButton = new Button
+        {
+            Text = "Query &AI",
+            Location = new Point(150, 15),
+            Size = new Size(130, 35),
+            TabIndex = 2,
+            UseVisualStyleBackColor = true,
+            AccessibleName = "Query AI",
+            AccessibleDescription = "Get AI-driven rate recommendations from Grok"
+        };
+        _queryGrokButton.Click += async (s, e) => await QueryGrokAsync();
+        var grokTooltip = new ToolTip();
+        grokTooltip.SetToolTip(_queryGrokButton, "Query Grok AI for recommended adjustment factors (Alt+A)");
+
+        _saveButton = new Button
+        {
+            Text = "&Save Changes",
+            Location = new Point(290, 15),
+            Size = new Size(130, 35),
+            TabIndex = 3,
+            UseVisualStyleBackColor = true,
+            AccessibleName = "Save Changes",
+            AccessibleDescription = "Save current charge modifications to database"
+        };
+        _saveButton.Click += async (s, e) => await SaveChangesAsync();
+        var saveTooltip = new ToolTip();
+        saveTooltip.SetToolTip(_saveButton, "Save modified charges to database (Alt+S)");
+
+        _buttonPanel.Controls.AddRange(new Control[] { _refreshButton, _queryGrokButton, _saveButton });
+        Controls.Add(_buttonPanel);
+
+        // ============================================================================
+        // Summary Panel - Revenue, Expenses, Status Display
+        // ============================================================================
+        _summaryPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 180,
+            Padding = new Padding(15),
+            BackColor = System.Drawing.SystemColors.Window
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
@@ -178,13 +234,23 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         };
         _summaryPanel.Controls.Add(summaryTitleLabel);
 
+        var summaryTitleLabel = new Label
+        {
+            Text = "Financial Summary",
+            Location = new Point(15, 10),
+            Size = new Size(200, 25),
+            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+            ForeColor = System.Drawing.SystemColors.ControlDarkDark
+        };
+        _summaryPanel.Controls.Add(summaryTitleLabel);
+
         _totalRevenueLabel = new Label
         {
             Text = "Current Revenue: $0.00",
             Location = new Point(15, 40),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            // ForeColor removed - let SkinManager handle theming
+            ForeColor = System.Drawing.Color.DarkBlue,
             TabIndex = 4,
             AccessibleName = "Total Current Revenue",
             AccessibleDescription = "Total monthly revenue from all departments at current rates"
@@ -196,7 +262,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 65),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            // ForeColor removed - let SkinManager handle theming
+            ForeColor = System.Drawing.Color.DarkGreen,
             TabIndex = 5,
             AccessibleName = "Total Suggested Revenue",
             AccessibleDescription = "Total monthly revenue at AI-suggested rates"
@@ -208,7 +274,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 90),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F),
-            // ForeColor removed - let SkinManager handle theming
+            ForeColor = System.Drawing.Color.DarkRed,
             TabIndex = 6,
             AccessibleName = "Total Monthly Expenses",
             AccessibleDescription = "Total monthly expenses across all departments"
@@ -225,13 +291,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             AccessibleDescription = "Overall profitability status: Losing Money, Breaking Even, or Profitable"
         };
 
-        _explanationTextBox = new TextBoxExt
+        _explanationTextBox = new TextBox
         {
             Multiline = true,
             ReadOnly = true,
             Location = new Point(15, 120),
             Size = new Size(1200, 45),
             ScrollBars = ScrollBars.Vertical,
+            BackColor = System.Drawing.Color.FromArgb(245, 245, 245),
             BorderStyle = BorderStyle.FixedSingle,
             TabIndex = 8,
             Font = new Font("Segoe UI", 9F),
@@ -255,6 +322,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
+            SplitterDistance = 700,
             BorderStyle = BorderStyle.FixedSingle
         };
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
@@ -281,6 +349,36 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(deptGridPanel, "Office2019Colorful");
+
+        var deptGridLabel = new Label
+        {
+            Text = "Department Rate Analysis",
+            Dock = DockStyle.Top,
+            Height = 25,
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+            Padding = new Padding(5, 3, 0, 0)
+        };
+        deptGridPanel.Controls.Add(deptGridLabel);
+
+        // ============================================================================
+        // Left Split Container - Top (Departments) | Bottom (Benchmarks)
+        // ============================================================================
+        _leftSplitContainer = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 350,
+            BorderStyle = BorderStyle.None
+        };
+
+        // ============================================================================
+        // Departments Grid (Top Left)
+        // ============================================================================
+        var deptGridPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(5)
+        };
 
         var deptGridLabel = new Label
         {
@@ -388,14 +486,11 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Benchmarks Grid (Bottom Left)
         // ============================================================================
-        var benchmarkPanel = new GradientPanelExt
+        var benchmarkPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(5),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            Padding = new Padding(5)
         };
-        SfSkinManager.SetVisualStyle(benchmarkPanel, "Office2019Colorful");
 
         var benchmarkLabel = new Label
         {
@@ -485,11 +580,11 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         // ============================================================================
         // Chart Panel (Right Side)
         // ============================================================================
-        _chartPanel = new GradientPanelExt
+        _chartPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            Padding = new Padding(10),
+            BackColor = System.Drawing.SystemColors.Window
         };
         SfSkinManager.SetVisualStyle(_chartPanel, "Office2019Colorful");
 
@@ -497,7 +592,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Fill,
             TabIndex = 11,
-            AccessibleName = "Department Expense Chart"
+            AccessibleName = "Department Expense Chart",
+            BackColor = System.Drawing.SystemColors.Window
         };
         _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
@@ -573,7 +669,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _viewModel.Benchmarks.CollectionChanged += (s, e) =>
         {
             if (_benchmarksGrid != null && InvokeRequired)
-                Invoke(new System.Action(() => _benchmarksGrid.Refresh()));
+                Invoke(new Action(() => _benchmarksGrid.Refresh()));
             else
                 _benchmarksGrid?.Refresh();
         };
@@ -595,7 +691,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     {
         if (InvokeRequired)
         {
-            Invoke(new System.Action(() => ViewModel_PropertyChanged(sender, e, Get_explanationTextBox1())));
+            Invoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -629,10 +725,10 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                     // Use semantic status colors (approved exception to SfSkinManager)
                     _overallStatusLabel.ForeColor = _viewModel.OverallStatusColor switch
                     {
-                        "Red" => Color.Red,
-                        "Orange" => Color.Orange,
-                        "Green" => Color.Green,
-                        _ => SystemColors.ControlText
+                        "Red" => System.Drawing.Color.FromArgb(192, 0, 0),
+                        "Orange" => System.Drawing.Color.FromArgb(255, 140, 0),
+                        "Green" => System.Drawing.Color.FromArgb(0, 128, 0),
+                        _ => System.Drawing.Color.Gray
                     };
                 }
                 break;
@@ -671,8 +767,8 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                 break;
 
             case nameof(_viewModel.RecommendationExplanation):
-                if (_explanationTextBox1 != null)
-                    _explanationTextBox1.Text = _viewModel.RecommendationExplanation ?? "Click 'Query AI' to get AI-powered rate recommendations.";
+                if (_explanationTextBox != null)
+                    _explanationTextBox.Text = _viewModel.RecommendationExplanation ?? "Click 'Query AI' to get AI-powered rate recommendations.";
                 break;
 
             case nameof(_viewModel.StatusText):
@@ -712,6 +808,11 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             var currentRevenueSeries = new ChartSeries("Current Charge", ChartSeriesType.Column);
             var suggestedRevenueSeries = new ChartSeries("Suggested Charge", ChartSeriesType.Column);
 
+            // Configure series appearance
+            expenseSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(220, 53, 69)); // Red
+            currentRevenueSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(0, 123, 255)); // Blue
+            suggestedRevenueSeries.Style.Interior = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(40, 167, 69)); // Green
+
             // Add data points for each department
             foreach (var department in _viewModel.Departments.OrderBy(d => d.Department))
             {
@@ -743,7 +844,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 
             // Enable tooltips
             _chartControl.ShowToolTips = true;
-            // Tooltip uses theme defaults
+            _chartControl.Tooltip.BackgroundColor = new Syncfusion.Drawing.BrushInfo(System.Drawing.Color.FromArgb(240, 240, 240));
 
             // Refresh chart to apply changes
             _chartControl.Refresh();
@@ -904,8 +1005,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             // Dispose Syncfusion controls
             _departmentsGrid?.Dispose();
             _benchmarksGrid?.Dispose();
-            try { _chartRegionEventWiring?.Dispose(); } catch { }
-            _chartRegionEventWiring = null;
             _chartControl?.Dispose();
 
             // Dispose containers

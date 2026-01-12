@@ -99,90 +99,56 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private int projectionYears = 3;
 
-        /// <summary>
-        /// Gets or sets the total budgeted amount across all analyzed accounts.
-        /// </summary>
+        // Summary properties
         [ObservableProperty]
         private decimal totalBudgetedAmount;
 
-        /// <summary>
-        /// Gets or sets the total actual amount across all analyzed accounts.
-        /// </summary>
         [ObservableProperty]
         private decimal totalActualAmount;
 
-        /// <summary>
-        /// Gets or sets the total variance amount (Actual - Budgeted).
-        /// </summary>
         [ObservableProperty]
         private decimal totalVarianceAmount;
 
-        /// <summary>
-        /// Gets or sets the average variance percentage across all analyzed accounts.
-        /// </summary>
         [ObservableProperty]
         private decimal averageVariancePercentage;
 
-        /// <summary>
-        /// Gets or sets the detailed explanation of recommendations from analysis.
-        /// </summary>
         [ObservableProperty]
         private string recommendationExplanation = string.Empty;
 
-        /// <summary>
-        /// Gets or sets the filtered collection of metrics based on search criteria.
-        /// </summary>
+        // Filtered collections
         [ObservableProperty]
         private ObservableCollection<AnalyticsMetric> filteredMetrics = new();
 
-        /// <summary>
-        /// Gets or sets the filtered collection of variances based on search criteria.
-        /// </summary>
         [ObservableProperty]
         private ObservableCollection<VarianceAnalysis> filteredTopVariances = new();
 
-        /// <summary>
-        /// Gets or sets the search text for filtering metrics.
-        /// </summary>
+        // Search/filter properties
         [ObservableProperty]
         private string metricsSearchText = string.Empty;
 
-        /// <summary>
-        /// Gets or sets the search text for filtering variances.
-        /// </summary>
         [ObservableProperty]
         private string variancesSearchText = string.Empty;
 
         /// <summary>
-        /// Gets the command to perform exploratory analysis on budget data.
-        /// Analyzes category breakdowns, top variances, trends, and generates insights.
+        /// Command to perform exploratory analysis
         /// </summary>
         public IAsyncRelayCommand PerformAnalysisCommand { get; }
 
         /// <summary>
-        /// Gets the command to run scenario analysis with rate adjustments.
-        /// Projects revenue and reserve impacts based on rate, expense, and revenue parameters.
+        /// Command to run scenario analysis
         /// </summary>
         public IAsyncRelayCommand RunScenarioCommand { get; }
 
         /// <summary>
-        /// Gets the command to generate reserve forecast for future years.
-        /// Provides predictive modeling with confidence intervals and risk assessment.
+        /// Command to generate forecast
         /// </summary>
         public IAsyncRelayCommand GenerateForecastCommand { get; }
 
         /// <summary>
-        /// Gets the command to refresh all analytics data.
-        /// Executes all three analysis types in sequence: exploratory, scenario, and forecast.
+        /// Command to refresh all data
         /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AnalyticsViewModel"/> class.
-        /// </summary>
-        /// <param name="analyticsService">The analytics service for performing analysis operations.</param>
-        /// <param name="logger">The logger instance for diagnostic logging.</param>
-        /// <exception cref="ArgumentNullException">Thrown when analyticsService or logger is null.</exception>
         public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger)
         {
             _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
@@ -192,28 +158,14 @@ namespace WileyWidget.WinForms.ViewModels
             RunScenarioCommand = new AsyncRelayCommand(RunRateScenarioAsync);
             GenerateForecastCommand = new AsyncRelayCommand(GenerateReserveForecastAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshAllDataAsync);
+
+            // Auto-load data on initialization
+            _ = Task.Run(async () => await RefreshCommand.ExecuteAsync(null));
         }
 
         /// <summary>
-        /// Explicit async initialization for AnalyticsViewModel. Call after construction.
+        /// Performs exploratory data analysis asynchronously
         /// </summary>
-        public async Task InitializeAsync()
-        {
-            try
-            {
-                await RefreshCommand.ExecuteAsync(null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during AnalyticsViewModel.InitializeAsync");
-            }
-        }
-        /// <summary>
-        /// Performs exploratory data analysis on budget data asynchronously.
-        /// Analyzes fiscal year data to identify category breakdowns, top variances, trends, and insights.
-        /// Falls back to sample data if service fails.
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task PerformExploratoryAnalysisAsync()
         {
             try
@@ -280,11 +232,8 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Runs rate scenario analysis to project financial impacts asynchronously.
-        /// Models the effects of rate, expense, and revenue adjustments over multiple years.
-        /// Falls back to sample data if service fails.
+        /// Runs rate scenario analysis asynchronously
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task RunRateScenarioAsync()
         {
             try
@@ -336,11 +285,8 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Generates reserve forecast for future years asynchronously.
-        /// Provides predictive modeling with confidence intervals and risk assessment.
-        /// Falls back to sample data if service fails.
+        /// Generates reserve forecast asynchronously
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task GenerateReserveForecastAsync()
         {
             try
@@ -377,10 +323,8 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Refreshes all analytics data by executing all analysis types in sequence.
-        /// Performs exploratory analysis, scenario modeling, and forecast generation.
+        /// Refreshes all analytics data asynchronously
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task RefreshAllDataAsync()
         {
             await PerformExploratoryAnalysisAsync();
@@ -389,8 +333,7 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Updates all summary properties (totals and averages) based on current variance data.
-        /// Calculates TotalBudgetedAmount, TotalActualAmount, TotalVarianceAmount, and AverageVariancePercentage.
+        /// Updates summary properties based on current data
         /// </summary>
         private void UpdateSummaries()
         {
@@ -401,8 +344,7 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Updates filtered collections based on search criteria.
-        /// Filters Metrics and TopVariances by MetricsSearchText and VariancesSearchText respectively.
+        /// Updates filtered collections based on search text
         /// </summary>
         private void UpdateFilteredCollections()
         {
@@ -417,24 +359,18 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Called when the MetricsSearchText property changes.
-        /// Triggers filtering of the metrics collection.
+        /// Called when metrics search text changes
         /// </summary>
-        /// <param name="value">The new search text value.</param>
         partial void OnMetricsSearchTextChanged(string value) => UpdateFilteredCollections();
 
         /// <summary>
-        /// Called when the VariancesSearchText property changes.
-        /// Triggers filtering of the variances collection.
+        /// Called when variances search text changes
         /// </summary>
-        /// <param name="value">The new search text value.</param>
         partial void OnVariancesSearchTextChanged(string value) => UpdateFilteredCollections();
 
         /// <summary>
-        /// Loads sample analytics data for design-time preview or service failure fallback.
-        /// Populates Metrics, TopVariances, TrendData, and Insights with realistic test data.
+        /// Loads sample data for design-time preview or fallback
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task LoadSampleDataAsync()
         {
             await Task.Run(() =>
@@ -477,10 +413,8 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Loads sample scenario projection data for service failure fallback.
-        /// Generates multi-year projections with revenue, expenses, reserves, and risk levels.
+        /// Loads sample scenario data
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task LoadSampleScenarioDataAsync()
         {
             await Task.Run(() =>
@@ -507,10 +441,8 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Loads sample forecast data for service failure fallback.
-        /// Generates monthly reserve predictions with confidence intervals for the projection period.
+        /// Loads sample forecast data
         /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task LoadSampleForecastDataAsync()
         {
             await Task.Run(() =>
@@ -559,13 +491,19 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public class AnalyticsMetric
     {
-        /// <summary>Gets or sets the category name</summary>
+        /// <summary>
+        /// Gets or sets the category name
+        /// </summary>
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>Gets or sets the metric value</summary>
+        /// <summary>
+        /// Gets or sets the metric value
+        /// </summary>
         public decimal Value { get; set; }
 
-        /// <summary>Gets or sets the unit of measurement</summary>
+        /// <summary>
+        /// Gets or sets the unit of measurement
+        /// </summary>
         public string Unit { get; set; } = string.Empty;
     }
 }

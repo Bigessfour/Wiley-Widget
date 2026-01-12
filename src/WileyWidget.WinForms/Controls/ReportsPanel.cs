@@ -148,7 +148,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         SuspendLayout();
 
         Name = "ReportsPanel";
-        AccessibleName = "Reports Panel";
+        AccessibleName = "Reports"; // Panel title for UI automation
         Size = new Size(1400, 900);
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
@@ -163,10 +163,15 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Height = 50
         };
         _panelHeader.Title = "Reports";
-        _panelHeaderRefreshHandler = async (s, e) => await RefreshReportsAsync();
-        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
-        _panelHeaderCloseHandler = (s, e) => ClosePanel();
-        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+        try
+        {
+            var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+            var txtProp = dh?.GetType().GetProperty("Text");
+            if (dh != null && txtProp != null) txtProp.SetValue(dh, "Reports");
+        }
+        catch { }
+        _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
+        _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
         // Main layout container with parameters panel support
@@ -335,11 +340,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _reportSelector = new SfComboBox
         {
             Name = "reportSelector",
-            AccessibleName = "Report Selector",
-            Width = 300,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            ThemeName = "Office2019Colorful",
-            Margin = new Padding(0, 5, 10, 0)
+            AccessibleName = "reportSelector",
+            Location = new Point(65, 10),
+            Size = new Size(300, 25),
+            DropDownStyle = ComboBoxStyle.DropDownList
         };
         _reportSelector.SelectedIndexChanged += ReportSelector_SelectedIndexChanged;
         toolbarFlow.Controls.Add(_reportSelector);
@@ -347,13 +351,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Load/Generate button
         _loadReportButton = new SfButton
         {
-            Text = "&Generate",
-            Name = "loadReportButton",
-            AccessibleName = "Generate Report",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(100, 30),
-            Enabled = false,
-            Margin = new Padding(0, 0, 10, 0)
+            Text = "Generate",
+            Name = "Toolbar_Generate",
+            AccessibleName = "Generate",
+            Location = new Point(380, 10),
+            Size = new Size(100, 30),
+            Enabled = false
         };
         _loadReportButton.Click += async (s, e) => await LoadSelectedReportAsync();
         toolbarFlow.Controls.Add(_loadReportButton);
@@ -375,26 +378,24 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Export buttons
         _exportPdfButton = new SfButton
         {
-            Text = "Export &PDF",
-            Name = "exportPdfButton",
+            Text = "Export PDF",
+            Name = "Toolbar_ExportPdf",
             AccessibleName = "Export PDF",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(100, 30),
-            Enabled = false,
-            Margin = new Padding(0, 0, 10, 0)
+            Location = new Point(490, 10),
+            Size = new Size(100, 30),
+            Enabled = false
         };
         _exportPdfButton.Click += async (s, e) => await ExportToPdfAsync();
         toolbarFlow.Controls.Add(_exportPdfButton);
 
         _exportExcelButton = new SfButton
         {
-            Text = "Export &Excel",
-            Name = "exportExcelButton",
+            Text = "Export Excel",
+            Name = "Toolbar_ExportExcel",
             AccessibleName = "Export Excel",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(100, 30),
-            Enabled = false,
-            Margin = new Padding(0, 0, 10, 0)
+            Location = new Point(600, 10),
+            Size = new Size(100, 30),
+            Enabled = false
         };
         _exportExcelButton.Click += async (s, e) => await ExportToExcelAsync();
         toolbarFlow.Controls.Add(_exportExcelButton);
@@ -402,13 +403,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Print button
         _printButton = new SfButton
         {
-            Text = "P&rint",
-            Name = "printButton",
-            AccessibleName = "Print Report",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(100, 30),
-            Enabled = false,
-            Margin = new Padding(0)
+            Text = "&Print",
+            Name = "Toolbar_Print",
+            AccessibleName = "Print",
+            Location = new Point(710, 10),
+            Size = new Size(100, 30),
+            Enabled = false
         };
         _printButton.Click += async (s, e) => await PrintReportAsync();
         toolbarFlow.Controls.Add(_printButton);
@@ -420,6 +420,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Bottom panel: FastReport viewer container
         var viewerPanel = new GradientPanelExt
         {
+            Name = "PreviewPanel",
+            AccessibleName = "Report Preview",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
@@ -463,7 +465,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         };
         _statusLabel = new ToolStripStatusLabel
         {
-            Name = "statusLabel",
+            Name = "StatusLabel",
             AccessibleName = "Status",
             Text = "Ready",
             Spring = true,
@@ -964,7 +966,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         LoadAvailableReports();
         UpdateStatus("Reports list refreshed");
-        Logger.LogDebug("Reports list refreshed");
         return Task.CompletedTask;
     }
 

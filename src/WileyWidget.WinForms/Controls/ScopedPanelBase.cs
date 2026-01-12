@@ -31,25 +31,9 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     protected TViewModel? ViewModel => _viewModel;
 
     /// <summary>
-    /// Lightweight DataContext for MVVM-style bindings.
-    /// Populated when the ViewModel is resolved; hidden properties in derived classes are updated via reflection.
-    /// </summary>
-    public new object? DataContext => _dataContext;
-
-    /// <summary>
-    /// Gets the ViewModel instance for testing purposes. Exposes the protected ViewModel property.
-    /// </summary>
-    public TViewModel? GetViewModelForTesting() => _viewModel;
-
-    /// <summary>
     /// Gets the logger instance for diagnostic logging.
     /// </summary>
     protected ILogger Logger => _logger;
-
-    /// <summary>
-    /// Protected access to the scope factory for derived classes that need to create additional scopes.
-    /// </summary>
-    protected IServiceScopeFactory ScopeFactory => _scopeFactory;
 
     /// <summary>
     /// Gets the scoped service provider for resolving additional dependencies.

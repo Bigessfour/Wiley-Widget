@@ -27,52 +27,31 @@ namespace WileyWidget.Models
 
         /// <summary>
         /// Creates a FiscalYearInfo from a given date.
-        /// Defaults to July 1st fiscal year start if not specified.
+        /// Assumes fiscal year starts July 1st (adjust if needed for your municipality).
         /// </summary>
-        /// <param name="date">The date to determine the fiscal year for</param>
-        /// <param name="startMonth">The month the fiscal year starts (default 7 for July)</param>
-        /// <returns>A new FiscalYearInfo instance</returns>
-        public static FiscalYearInfo FromDateTime(DateTime date, int startMonth = 7)
+        public static FiscalYearInfo FromDateTime(DateTime date)
         {
-            // If the date is before the start month, it's in the fiscal year that started last year
-            // If the date is the start month or later, it's in the fiscal year that started this year
+            // Most municipalities use July 1 - June 30 fiscal year
+            // If the date is before July, it's in the fiscal year that started last year
+            // If the date is July or later, it's in the fiscal year that started this year
             int fiscalYear;
             DateTime fiscalYearStart;
             DateTime fiscalYearEnd;
 
-            if (date.Month < startMonth)
+            if (date.Month < 7)
             {
-                // Before start month: FY started last year
+                // January-June: FY started last year
                 fiscalYear = date.Year;
-                fiscalYearStart = new DateTime(date.Year - 1, startMonth, 1);
-                fiscalYearEnd = new DateTime(date.Year, startMonth, 1).AddDays(-1);
+                fiscalYearStart = new DateTime(date.Year - 1, 7, 1);
+                fiscalYearEnd = new DateTime(date.Year, 6, 30);
             }
             else
             {
-                // Start month or later: FY started this year
+                // July-December: FY started this year
                 fiscalYear = date.Year + 1;
-                fiscalYearStart = new DateTime(date.Year, startMonth, 1);
-                fiscalYearEnd = new DateTime(date.Year + 1, startMonth, 1).AddDays(-1);
+                fiscalYearStart = new DateTime(date.Year, 7, 1);
+                fiscalYearEnd = new DateTime(date.Year + 1, 6, 30);
             }
-
-            return new FiscalYearInfo
-            {
-                Year = fiscalYear,
-                StartDate = fiscalYearStart,
-                EndDate = fiscalYearEnd
-            };
-        }
-
-        /// <summary>
-        /// Creates a FiscalYearInfo for a specific fiscal year number.
-        /// </summary>
-        /// <param name="fiscalYear">The fiscal year number (e.g., 2025)</param>
-        /// <param name="startMonth">The month the fiscal year starts (default 7 for July)</param>
-        /// <returns>A new FiscalYearInfo instance</returns>
-        public static FiscalYearInfo ForYear(int fiscalYear, int startMonth = 7)
-        {
-            var fiscalYearStart = new DateTime(fiscalYear - 1, startMonth, 1);
-            var fiscalYearEnd = new DateTime(fiscalYear, startMonth, 1).AddDays(-1);
 
             return new FiscalYearInfo
             {

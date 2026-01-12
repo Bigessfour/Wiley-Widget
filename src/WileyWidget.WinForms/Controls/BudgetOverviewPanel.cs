@@ -483,10 +483,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
-                    }
+                    BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
                     return;
                 }
 
@@ -704,10 +701,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
-                    }
+                    BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
                     return;
                 }
                 ApplyCurrentTheme();

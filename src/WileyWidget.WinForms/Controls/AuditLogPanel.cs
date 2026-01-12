@@ -10,14 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Input;
-using Syncfusion.WinForms.Input.Enums;
-using Syncfusion.WinForms.Input.Events;
-using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
@@ -40,18 +33,17 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private GradientPanelExt? _filterPanel;
     private SfDataGrid? _auditGrid;
     private SplitContainer? _mainSplit;
-    private GradientPanelExt? _chartHostPanel;
+    private Panel? _chartHostPanel;
     private ChartControl? _chartControl;
-    private ChartControlRegionEventWiring? _chartRegionEventWiring;
-    private SfButton? _btnRefresh;
-    private SfButton? _btnExportCsv;
-    private SfButton? _btnUpdateChart;
-    private CheckBoxAdv? _chkAutoRefresh;
-    private SfDateTimeEdit? _dtpStartDate;
-    private SfDateTimeEdit? _dtpEndDate;
-    private SfComboBox? _cmbActionType;
-    private SfComboBox? _cmbUser;
-    private SfComboBox? _cmbChartGroupBy;
+    private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
+    private Syncfusion.WinForms.Controls.SfButton? _btnExportCsv;
+    private Syncfusion.WinForms.Controls.SfButton? _btnUpdateChart;
+    private CheckBox? _chkAutoRefresh;
+    private DateTimePicker? _dtpStartDate;
+    private DateTimePicker? _dtpEndDate;
+    private Syncfusion.WinForms.ListView.SfComboBox? _cmbActionType;
+    private Syncfusion.WinForms.ListView.SfComboBox? _cmbUser;
+    private Syncfusion.WinForms.ListView.SfComboBox? _cmbChartGroupBy;
     private Label? _lblChartSummary;
 
     // Auto-refresh timer
@@ -61,7 +53,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _entriesCollectionChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _chartDataCollectionChangedHandler;
-
+    private EventHandler<AppTheme>? _themeChangedHandler;
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _btnRefreshClickHandler;
@@ -276,7 +268,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Padding = new Padding(8, 8, 8, 8)
         };
 
-        _cmbChartGroupBy = new SfComboBox
+        _cmbChartGroupBy = new Syncfusion.WinForms.ListView.SfComboBox
         {
             Width = 120,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
@@ -303,7 +295,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         };
         _cmbChartGroupBy.SelectedIndexChanged += _cmbChartGroupBySelectedIndexChangedHandler;
 
-        _btnUpdateChart = new SfButton
+        _btnUpdateChart = new Syncfusion.WinForms.Controls.SfButton
         {
             Text = "Update Chart",
             Width = 100,
@@ -326,10 +318,11 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
+            SplitterDistance = (int)(Width * 0.65),
+            Panel1MinSize = 300,
+            Panel2MinSize = 300,
             AccessibleName = "Audit grid and chart split container"
         };
-        // Defer setting Panel1MinSize, Panel2MinSize, and SplitterDistance until control is sized
-        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplit, 300, 300, (int)(Width * 0.65));
 
         // Audit grid (left)
         _auditGrid = new SfDataGrid
@@ -354,16 +347,13 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _mainSplit.Panel1.Controls.Add(_auditGrid);
 
         // Chart host (right)
-        _chartHostPanel = new GradientPanelExt
+        _chartHostPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(8),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Chart host panel",
             AccessibleDescription = "Displays chart of audit events"
         };
-        SfSkinManager.SetVisualStyle(_chartHostPanel, "Office2019Colorful");
 
         _chartControl = new ChartControl
         {
@@ -371,7 +361,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "Audit events chart",
             AccessibleDescription = "Chart showing counts of audit events over time"
         };
-        _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
         ConfigureChartForAudit();
 
@@ -487,7 +476,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         try
         {
-            ChartControlDefaults.Apply(_chartControl);
+            _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            _chartControl.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
+            _chartControl.ElementsSpacing = 5;
 
             _chartControl.PrimaryXAxis.ValueType = ChartValueType.DateTime;
             _chartControl.PrimaryXAxis.Title = "Date";
@@ -499,7 +490,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             _chartControl.PrimaryYAxis.Title = "Events";
             _chartControl.PrimaryYAxis.Font = new System.Drawing.Font("Segoe UI", 9F);
 
+            _chartControl.ShowToolTips = true;
             _chartControl.ShowLegend = false;
+
+            try
+            {
+                var chartType = _chartControl.GetType();
+                var propZoom = chartType.GetProperty("EnableZooming");
+                if (propZoom != null && propZoom.CanWrite)
+                {
+                    propZoom.SetValue(_chartControl, true);
+                }
+            }
+            catch { }
         }
         catch (Exception ex)
         {
@@ -643,10 +646,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             if (InvokeRequired)
             {
-                if (IsHandleCreated && !IsDisposed)
-                {
-                    BeginInvoke(new System.Action(() => ShowError(ex)));
-                }
+                BeginInvoke(new System.Action(() => ShowError(ex)));
             }
             else
             {
@@ -671,10 +671,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
-            }
+            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
             return;
         }
 
@@ -727,10 +724,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         if (InvokeRequired)
         {
-            if (IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke(new System.Action(UpdateUI));
-            }
+            BeginInvoke(new System.Action(UpdateUI));
             return;
         }
 
@@ -978,7 +972,21 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
     private void SubscribeToThemeChanges()
     {
-        // Theme subscription removed - handled by SfSkinManager
+        _themeChangedHandler = (s, theme) =>
+        {
+            if (IsDisposed) return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(() => ApplyTheme()));
+            }
+            else
+            {
+                ApplyTheme();
+            }
+        };
+
+        ThemeManager.ThemeChanged += _themeChangedHandler;
     }
 
     private void ApplyTheme()
@@ -1039,7 +1047,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             try { if (_btnRefresh != null && _btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler; } catch { }
             try { if (_btnExportCsv != null && _btnExportCsvClickHandler != null) _btnExportCsv.Click -= _btnExportCsvClickHandler; } catch { }
             try { if (_btnUpdateChart != null && _btnUpdateChartClickHandler != null) _btnUpdateChart.Click -= _btnUpdateChartClickHandler; } catch { }
-            try { if (_chkAutoRefresh != null && _chkAutoRefreshCheckedChangedHandler != null) _chkAutoRefresh.CheckStateChanged -= _chkAutoRefreshCheckedChangedHandler; } catch { }
+            try { if (_chkAutoRefresh != null && _chkAutoRefreshCheckedChangedHandler != null) _chkAutoRefresh.CheckedChanged -= _chkAutoRefreshCheckedChangedHandler; } catch { }
             try { if (_dtpStartDate != null && _dtpStartDateValueChangedHandler != null) _dtpStartDate.ValueChanged -= _dtpStartDateValueChangedHandler; } catch { }
             try { if (_dtpEndDate != null && _dtpEndDateValueChangedHandler != null) _dtpEndDate.ValueChanged -= _dtpEndDateValueChangedHandler; } catch { }
             try { if (_cmbActionType != null && _cmbActionTypeSelectedIndexChangedHandler != null) _cmbActionType.SelectedIndexChanged -= _cmbActionTypeSelectedIndexChangedHandler; } catch { }
@@ -1061,8 +1069,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Dispose controls using SafeDispose pattern
             try { _auditGrid?.SafeClearDataSource(); } catch { }
             try { _auditGrid?.SafeDispose(); } catch { }
-            try { _chartRegionEventWiring?.Dispose(); } catch { }
-            _chartRegionEventWiring = null;
             try { _chartControl?.Dispose(); } catch { }
             try { _chartHostPanel?.Dispose(); } catch { }
             try { _mainSplit?.Dispose(); } catch { }

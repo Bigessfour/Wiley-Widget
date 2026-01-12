@@ -387,7 +387,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                             // Update metrics and revenue data
                             UpdateMetricsCollection();
-                            await PopulateMonthlyRevenueDataAsync(currentFiscalYear, cancellationToken);
+                            PopulateMonthlyRevenueData(currentFiscalYear);
 
                             // Update metadata
                             MunicipalityName = "Town of Wiley";
@@ -457,61 +457,6 @@ namespace WileyWidget.WinForms.ViewModels
         private async Task RefreshDashboardDataAsync()
         {
             await LoadDashboardDataAsync();
-        }
-
-        /// <summary>
-        /// Lightweight refresh of only metrics and gauge values (no chart/grid data reload).
-        /// Used by adaptive timer for efficient real-time updates.
-        /// </summary>
-        private async Task RefreshMetricsAsync()
-        {
-            if (_budgetRepository == null)
-            {
-                _logger.LogWarning("RefreshMetricsAsync: BudgetRepository is null");
-                return;
-            }
-
-            try
-            {
-                _logger.LogDebug("RefreshMetricsAsync: START");
-                var now = DateTime.Now;
-
-                // Determine fiscal year
-                var currentFiscalYear = now.Month >= 7 ? now.Year + 1 : now.Year;
-                var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1);
-                var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30);
-
-                // Only fetch budget summary (lightweight query)
-                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd).ConfigureAwait(true);
-
-                if (analysis != null)
-                {
-                    // Update gauge-related properties only (already on UI thread)
-                    TotalBudgeted = analysis.TotalBudgeted;
-                    TotalActual = analysis.TotalActual;
-                    TotalVariance = analysis.TotalVariance;
-                    VariancePercentage = analysis.TotalVariancePercentage;
-
-                    // Recalculate gauge values
-                    TotalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
-
-                    // For revenue/expense gauges, use a simplified calculation (avoid full entry reload)
-                    // Assume revenue is ~40% and expenses ~60% of budget as baseline
-                    RevenueGauge = TotalBudgeted > 0 ? Math.Min(100f, (float)((TotalActual * 0.4m / (TotalBudgeted * 0.4m)) * 100)) : 0f;
-                    ExpensesGauge = TotalBudgeted > 0 ? Math.Min(100f, (float)((TotalActual * 0.6m / (TotalBudgeted * 0.6m)) * 100)) : 0f;
-
-                    // Variance gauge: map variance to 0-100 scale (positive variance = under budget = good)
-                    var varianceRatio = TotalBudgeted > 0 ? (float)(TotalVariance / TotalBudgeted) : 0f;
-                    NetPositionGauge = Math.Max(0, Math.Min(100, 50 + (varianceRatio * 100))); // -50% to +50% → 0-100
-
-                    LastRefreshTime = now;
-                    _logger.LogInformation("RefreshMetricsAsync: Metrics updated successfully at {Time}", now);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "RefreshMetricsAsync: Failed to refresh metrics");
-            }
         }
 
         /// <summary>

@@ -130,16 +130,10 @@ public partial class MainForm
 
             // Start status timer
             InitializeStatusTimer();
-            Console.WriteLine("[DIAGNOSTIC] Status timer initialized");
-
-            // Initialize loading overlay (always last to cover everything)
-            InitializeLoadingOverlay();
-            Console.WriteLine("[DIAGNOSTIC] Loading overlay initialized");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize UI chrome");
-            Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeChrome failed: {ex.Message}");
         }
         finally
         {
@@ -152,29 +146,166 @@ public partial class MainForm
             {
                 // Best-effort layout restoration
             }
-            chromeStopwatch.Stop();
-            _logger?.LogInformation("InitializeChrome complete in {ElapsedMs}ms - Size={Width}x{Height}, MinSize={MinWidth}x{MinHeight}",
-                chromeStopwatch.ElapsedMilliseconds,
-                Width,
-                Height,
-                MinimumSize.Width,
-                MinimumSize.Height);
-            Console.WriteLine($"[DIAGNOSTIC] InitializeChrome complete in {chromeStopwatch.ElapsedMilliseconds}ms");
         }
     }
 
     /// <summary>
     /// Initialize Syncfusion RibbonControlAdv for primary navigation, global search, and session theme toggle.
-    /// Delegates to RibbonFactory for centralized creation logic.
     /// </summary>
     private void InitializeRibbon()
     {
         try
         {
-            var iconService = ServiceProvider.GetService(typeof(IThemeIconService)) as IThemeIconService;
-            var (ribbon, homeTab) = RibbonFactory.CreateRibbon(this, _logger, iconService);
-            _ribbon = ribbon;
-            _homeTab = homeTab;
+            _ribbon = new RibbonControlAdv
+            {
+                Name = "Ribbon_Main",
+                AccessibleName = "Ribbon_Main",
+                Dock = (Syncfusion.Windows.Forms.Tools.DockStyleEx)DockStyle.Top
+            };
+
+            _homeTab = new ToolStripTabItem
+            {
+                Name = "RibbonTab_Home",
+                Text = "Home"
+            };
+
+            var homePanel = new ToolStripEx
+            {
+                Name = "RibbonHomePanel",
+                GripStyle = ToolStripGripStyle.Hidden,
+                Dock = DockStyle.None
+            };
+
+            var dashboardBtn = new ToolStripButton(MainFormResources.Dashboard) { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard" };
+            dashboardBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            };
+
+            var accountsBtn = new ToolStripButton(MainFormResources.Accounts) { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
+            accountsBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            };
+
+            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget" };
+            budgetBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            };
+
+            var chartsBtn = new ToolStripButton(MainFormResources.Charts) { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
+            chartsBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            };
+
+            var analyticsBtn = new ToolStripButton("Analytics") { Name = "Nav_Analytics", AccessibleName = "Nav_Analytics" };
+            analyticsBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true);
+            };
+
+            var auditLogBtn = new ToolStripButton("Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Nav_AuditLog" };
+            auditLogBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            };
+
+            var reportsBtn = new ToolStripButton(MainFormResources.Reports) { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
+            reportsBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "MainForm: Reports navigation button click failed");
+                }
+            };
+
+            var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
+            aiChatBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            };
+
+            var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
+            quickBooksBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            };
+
+            var settingsBtn = new ToolStripButton(MainFormResources.Settings) { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
+            settingsBtn.Click += (s, e) =>
+            {
+                _panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            };
+
+            var searchLabel = new ToolStripLabel { Text = "Search:", Name = "GlobalSearch_Label" };
+            var searchBox = new ToolStripTextBox
+            {
+                Name = "GlobalSearch",
+                AccessibleName = "GlobalSearch",
+                AutoSize = false,
+                Width = 240
+            };
+            searchBox.KeyDown += SearchBox_KeyDown;
+
+            var themeToggleBtn = new ToolStripButton
+            {
+                Name = "ThemeToggle",
+                AccessibleName = "Theme_Toggle",
+                AutoSize = true
+            };
+            themeToggleBtn.Click += ThemeToggleBtn_Click;
+            themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+
+            var gridLabel = new ToolStripLabel { Text = "Grid:", Name = "Grid_Label" };
+            var gridSortAscBtn = new ToolStripButton { Name = "Grid_SortAsc", Text = "Sort Asc", AutoSize = true };
+            var gridSortDescBtn = new ToolStripButton { Name = "Grid_SortDesc", Text = "Sort Desc", AutoSize = true };
+            var gridApplyFilterBtn = new ToolStripButton { Name = "Grid_ApplyTestFilter", Text = "Apply Filter", AutoSize = true };
+            var gridClearFilterBtn = new ToolStripButton { Name = "Grid_ClearFilter", Text = "Clear Filter", AutoSize = true };
+            var gridExportBtn = new ToolStripButton { Name = "Grid_ExportExcel", Text = "Export Grid", AutoSize = true };
+
+            gridSortAscBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: false);
+            gridSortDescBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: true);
+            gridApplyFilterBtn.Click += (s, e) => ApplyTestFilterToActiveGrid();
+            gridClearFilterBtn.Click += (s, e) => ClearActiveGridFilter();
+            gridExportBtn.Click += async (s, e) => await ExportActiveGridToExcel();
+
+            homePanel.Items.AddRange(new ToolStripItem[]
+            {
+                dashboardBtn,
+                new ToolStripSeparator(),
+                accountsBtn,
+                budgetBtn,
+                chartsBtn,
+                analyticsBtn,
+                auditLogBtn,
+                reportsBtn,
+                aiChatBtn,
+                quickBooksBtn,
+                new ToolStripSeparator(),
+                settingsBtn,
+                new ToolStripSeparator(),
+                searchLabel,
+                searchBox,
+                new ToolStripSeparator(),
+                themeToggleBtn,
+                new ToolStripSeparator(),
+                gridLabel,
+                gridSortAscBtn,
+                gridSortDescBtn,
+                gridApplyFilterBtn,
+                gridClearFilterBtn,
+                gridExportBtn
+            });
+
+            _homeTab.Panel.AddToolStrip(homePanel);
+            _ribbon.Header.AddMainItem(_homeTab);
+
             Controls.Add(_ribbon);
             _logger?.LogInformation("Ribbon initialized via factory");
             _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
@@ -665,7 +796,60 @@ public partial class MainForm
     {
         try
         {
-            _statusBar = StatusBarFactory.CreateStatusBar(this, _logger);
+            _statusBar = new StatusBarAdv
+            {
+                Name = "StatusBar_Main",
+                AccessibleName = "StatusBar_Main",
+                AccessibleDescription = "Application status bar showing current operation status and information",
+                Dock = DockStyle.Bottom,
+                BeforeTouchSize = new Size(1400, 26)
+            };
+
+            // REMOVED: Per-control theme application - StatusBar inherits theme from ApplicationVisualTheme
+            // Theme cascade from Program.cs ensures consistent styling
+
+            // Status label (left)
+            _statusLabel = new StatusBarAdvPanel
+            {
+                Name = "StatusLabel",
+                Text = "Ready",
+                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Left
+            };
+
+            // Status text panel (center)
+            _statusTextPanel = new StatusBarAdvPanel
+            {
+                Name = "StatusTextPanel",
+                Text = string.Empty,
+                Size = new Size(200, 27),
+                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Center
+            };
+
+            // State panel (Docking indicator)
+            _statePanel = new StatusBarAdvPanel
+            {
+                Name = "StatePanel",
+                Text = string.Empty,
+                Size = new Size(100, 27),
+                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Left
+            };
+
+            // Clock panel (right)
+            _clockPanel = new StatusBarAdvPanel
+            {
+                Name = "ClockPanel",
+                Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
+                Size = new Size(80, 27),
+                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Right
+            };
+
+            _statusBar.Controls.Add(_statusLabel);
+            _statusBar.Controls.Add(_statusTextPanel);
+            _statusBar.Controls.Add(_statePanel);
+            _statusBar.Controls.Add(_clockPanel);
+
+            Controls.Add(_statusBar);
+            _logger?.LogDebug("Status bar initialized successfully");
         }
         catch (Exception ex)
         {
@@ -789,30 +973,18 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_AuditLog clicked");
             };
 
-            var customersBtn = new ToolStripButton("Customers")
-            {
-                Name = "Nav_Customers",
-                AccessibleName = "Customers",
-                AccessibleDescription = "Navigate to Customers panel with customer/account information"
-            };
+            var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             customersBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
-                Console.WriteLine("[DIAGNOSTIC] Nav_Customers clicked");
             };
 
-            var reportsBtn = new ToolStripButton("Reports")
-            {
-                Name = "Nav_Reports",
-                AccessibleName = "Reports",
-                AccessibleDescription = "Navigate to Reports panel with generated reports and exports"
-            };
+            var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
             reportsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
-                Console.WriteLine("[DIAGNOSTIC] Nav_Reports clicked");
             };
 
             var aiChatBtn = new ToolStripButton("AI Chat")
@@ -854,16 +1026,15 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_Settings clicked");
             };
 
-            // Theme toggle (session-only)
+            // Theme toggle removed - session-only theme switching via menu or hotkey only
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
-                AccessibleName = "Theme Toggle",
-                AccessibleDescription = "Toggle between light and dark themes for current session",
+                AccessibleName = "Theme_Toggle",
                 AutoSize = true
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
-            themeToggleBtn.Text = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+            themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
             // Grid test helpers (navigation strip)
             var navGridApplyFilter = new ToolStripButton("Apply Grid Filter")
@@ -956,121 +1127,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Failed to initialize status timer");
-        }
-    }
-
-    /// <summary>
-    /// Initialize full-screen loading overlay for async operations.
-    /// Provides visual feedback during long-running tasks like initialization or data loading.
-    /// Overlay is positioned full-screen (DockStyle.Fill) and label is dynamically centered.
-    /// </summary>
-    private void InitializeLoadingOverlay()
-    {
-        try
-        {
-            _loadingOverlay = new Panel
-            {
-                Name = "LoadingOverlay",
-                Dock = DockStyle.Fill,
-                BackColor = GetLoadingOverlayColor(), // Semantic semi-transparent overlay color
-                Visible = false,
-                AccessibleName = "Loading Overlay",
-                AccessibleDescription = "Displays during long-running async operations"
-            };
-
-            _loadingLabel = new Label
-            {
-                Name = "LoadingLabel",
-                Text = MainFormResources.LoadingText,
-                ForeColor = GetLoadingLabelColor(), // Semantic white text color
-                Font = new Font(SegoeUiFontName, 12F, FontStyle.Bold),
-                AutoSize = true,
-                TextAlign = ContentAlignment.MiddleCenter,
-                AccessibleName = "Loading Message",
-                AccessibleDescription = "Current loading status message"
-            };
-
-            // Add label to overlay
-            _loadingOverlay.Controls.Add(_loadingLabel);
-
-            // Center label after it's added to container and size is known
-            // Use a deferred action to ensure label measurements are available
-            _loadingOverlay.Layout += (s, e) =>
-            {
-                if (_loadingLabel != null && !_loadingLabel.IsDisposed)
-                {
-                    // Center label both horizontally and vertically on first layout
-                    _loadingLabel.Location = new Point(
-                        Math.Max(0, (_loadingOverlay.Width - _loadingLabel.Width) / 2),
-                        Math.Max(0, (_loadingOverlay.Height - _loadingLabel.Height) / 2));
-                }
-            };
-
-            // Ensure form is added before label can be positioned correctly
-            Controls.Add(_loadingOverlay);
-            _loadingOverlay.BringToFront();
-
-            _logger?.LogDebug("Loading overlay initialized - centered label with dynamic repositioning on resize");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to initialize loading overlay");
-        }
-    }
-
-    /// <summary>
-    /// Show the loading overlay with optional message.
-    /// Thread-safe: can be called from any thread.
-    /// </summary>
-    /// <param name="message">Optional loading message to display.</param>
-    public void ShowLoadingOverlay(string? message = null)
-    {
-        if (_loadingOverlay == null) return;
-
-        try
-        {
-            if (InvokeRequired)
-            {
-                Invoke(() => ShowLoadingOverlay(message));
-                return;
-            }
-
-            if (_loadingLabel != null)
-            {
-                _loadingLabel.Text = message ?? MainFormResources.LoadingText;
-            }
-
-            _loadingOverlay.Visible = true;
-            _loadingOverlay.BringToFront();
-            Application.DoEvents(); // Allow UI to update
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to show loading overlay");
-        }
-    }
-
-    /// <summary>
-    /// Hide the loading overlay.
-    /// Thread-safe: can be called from any thread.
-    /// </summary>
-    public void HideLoadingOverlay()
-    {
-        if (_loadingOverlay == null) return;
-
-        try
-        {
-            if (InvokeRequired)
-            {
-                Invoke(HideLoadingOverlay);
-                return;
-            }
-
-            _loadingOverlay.Visible = false;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to hide loading overlay");
         }
     }
 
@@ -1679,21 +1735,12 @@ public partial class MainForm
 
             _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
 
-            // Ensure open forms explicitly refresh their visual style
+            // Refresh all open forms to apply new theme via ThemeManager (centralized)
             foreach (Form form in Application.OpenForms)
             {
                 try
                 {
-                    // Also explicitly set visual style on the form to avoid renderer race conditions
-                    try
-                    {
-                        Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(form, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
-                    }
-                    catch (Exception innerEx)
-                    {
-                        _logger?.LogDebug(innerEx, "Failed to SetVisualStyle on form {FormName}", form.Name);
-                    }
-
+                    WileyWidget.WinForms.Theming.ThemeManager.ApplyThemeToControl(form);
                     form.Refresh();
                 }
                 catch (Exception ex)
@@ -1709,6 +1756,39 @@ public partial class MainForm
             _logger?.LogError(ex, "Failed to toggle theme");
         }
     }
+
+    /// <summary>
+    /// Handle global search box keyboard events (Ctrl+F to focus, Enter to search)
+    /// </summary>
+    private void SearchBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not ToolStripTextBox searchBox) return;
+
+        try
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                var searchText = searchBox.Text;
+                if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    _logger?.LogInformation("Global search triggered: {SearchText}", searchText);
+                    PerformGlobalSearch(searchText);
+                }
+                e.Handled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Search box error");
+        }
+    }
+
+    /// <summary>
+    /// Validates Syncfusion license status and logs warning if trial/unlicensed.
+    /// </summary>
+    // Removed: ValidateSyncfusionLicense() method - redundant license check
+    // Program.cs startup already validates Syncfusion license and logs status
+    // Log output shows: "Syncfusion license registered and validated successfully"
 
     /// <summary>
     /// Performs a global search across all visible docked panels containing SfDataGrid controls.
@@ -2070,6 +2150,421 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Initialize the DockingManager component with proper configuration
+    /// </summary>
+    private void InitializeDockingManager()
+    {
+        components ??= new Container();
+        _dockingManager = new DockingManager(components);
+        _dockingManager.HostControl = this;
+
+        ConfigureDockingManagerSettings();
+    }
+
+    /// <summary>
+    /// Configure DockingManager settings and theme
+    /// </summary>
+    private void ConfigureDockingManagerSettings()
+    {
+        if (_dockingManager == null) return;
+
+        // Phase 1 Simplification: EnableDocumentMode permanently false (panels only)
+        _dockingManager.EnableDocumentMode = false;
+        _logger.LogInformation("DockingManager document mode disabled (using DockingManager for panels only)");
+
+        _dockingManager.PersistState = true;
+        _dockingManager.AnimateAutoHiddenWindow = true;
+        // REMOVED: Hard-coded fonts - SkinManager owns all theming, including fonts
+        // _dockingManager.AutoHideTabFont = _dockAutoHideTabFont = new Font(SegoeUiFontName, 9f);
+        // _dockingManager.DockTabFont = _dockTabFont = new Font(SegoeUiFontName, 9f);
+        _dockingManager.ShowCaption = true;
+
+        // Give the DockingManager a stable name for tooling/tests
+        try
+        {
+            var nameProp = _dockingManager.GetType().GetProperty("Name");
+            if (nameProp != null && nameProp.CanWrite)
+            {
+                nameProp.SetValue(_dockingManager, "DockingManager_Main");
+            }
+        }
+        catch { }
+
+        // Attach state events to keep navigation & diagnostics up-to-date
+        try
+        {
+            _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
+            _dockingManager.DockControlActivated += DockingManager_DockControlActivated;
+            _dockingManager.DockVisibilityChanged += DockingManager_DockVisibilityChanged;
+        }
+        catch { }
+
+        // REMOVED: Per-control theme application - DockingManager inherits theme from ApplicationVisualTheme
+        // Theme cascade from Program.cs ensures consistent styling
+    }
+
+    /// <summary>
+    /// Create all docking panels (left, center, right)
+    /// </summary>
+    private void CreateDockingPanels()
+    {
+        CreateLeftDockPanel();
+        CreateCentralDocumentPanel();
+        CreateRightDockPanel();
+    }
+
+    /// <summary>
+    /// Handle docking initialization errors with fallback
+    /// </summary>
+    private void HandleDockingInitializationError(Exception ex, string message)
+    {
+        _logger.LogError(ex, "{Message}: {Type} - {ExMessage}", message, ex.GetType().Name, ex.Message);
+        System.Diagnostics.Debug.WriteLine($"[DOCKING ERROR] {ex.GetType().Name}: {ex.Message}");
+
+        if (ex.InnerException != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"  InnerException: {ex.InnerException.Message}");
+        }
+
+        System.Diagnostics.Debug.WriteLine($"  StackTrace: {ex.StackTrace}");
+
+        // NOTE: Cannot fall back because docking is always enabled in UIConfiguration
+        _logger.LogError(ex, "Docking initialization failed and cannot fall back (docking is always enabled)");
+
+        // Re-throw the exception since we can't actually disable docking
+        throw new InvalidOperationException("Docking initialization failed and fallback is disabled", ex);
+    }
+
+    /// <summary>
+    /// Show user-friendly warning message for docking failure
+    /// </summary>
+    private void ShowDockingWarningMessage()
+    {
+        try
+        {
+            MessageBox.Show(
+                "Docking manager initialization failed. The application will continue with standard panel layout.",
+                "Docking Warning",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+        catch (Exception msgEx)
+        {
+            _logger.LogError(msgEx, "Failed to show docking warning message");
+            // Message box failed, but this is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Create left dock panel with dashboard cards (collapsible, auto-hide enabled)
+    /// </summary>
+    private void CreateLeftDockPanel()
+    {
+        if (_dockingManager == null) return;
+
+        _leftDockPanel = new Panel
+        {
+            Name = "LeftDockPanel",
+            AccessibleName = "LeftDockPanel",
+            AutoScroll = true,
+            BorderStyle = BorderStyle.None,
+            Padding = new Padding(8, 8, 8, 8)
+        };
+
+        var dashboardContent = CreateDashboardCardsPanel();
+        _leftDockPanel.Controls.Add(dashboardContent);
+
+        ConfigurePanelDocking(_leftDockPanel, DockingStyle.Left, 280, "Dashboard");
+
+        _logger.LogDebug("Left dock panel created with dashboard cards");
+    }
+
+    /// <summary>
+    /// Create central document panel for main content area
+    /// </summary>
+    private void CreateCentralDocumentPanel()
+    {
+        if (_dockingManager == null) return;
+
+        _centralDocumentPanel = new Panel
+        {
+            Name = "CentralDocumentPanel",
+            AccessibleName = "CentralDocumentPanel",
+            Dock = DockStyle.Fill,
+            Visible = true
+        };
+
+        AddCentralPanelToForm();
+        EnsureCentralPanelVisibility();
+
+        _logger.LogDebug("Central document panel created (standard Fill docking)");
+    }
+
+    /// <summary>
+    /// Add central panel to form with proper styling
+    /// </summary>
+    private void AddCentralPanelToForm()
+    {
+        if (_centralDocumentPanel == null) return;
+
+        Controls.Add(_centralDocumentPanel);
+
+        // REMOVED: Per-control theme application - central panel inherits theme from ApplicationVisualTheme
+        // Theme cascade from Program.cs ensures consistent styling
+
+        try
+        {
+            _centralDocumentPanel.BringToFront();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to bring central panel to front");
+            // Z-order adjustment is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Create right dock panel with activity grid (collapsible, auto-hide enabled)
+    /// </summary>
+    private void CreateRightDockPanel()
+    {
+        if (_dockingManager == null) return;
+
+        _rightDockPanel = new Panel
+        {
+            Name = "RightDockPanel",
+            AccessibleName = "RightDockPanel",
+            Padding = new Padding(8, 8, 8, 8),
+            BorderStyle = BorderStyle.None
+        };
+
+        var activityContent = CreateActivityGridPanel();
+        _rightDockPanel.Controls.Add(activityContent);
+
+        ConfigurePanelDocking(_rightDockPanel, DockingStyle.Right, 280, "Activity");
+
+        _logger.LogDebug("Right dock panel created with activity grid");
+    }
+
+    /// <summary>
+    /// Configure docking behavior for a panel
+    /// </summary>
+    private void ConfigurePanelDocking(Panel panel, DockingStyle style, int size, string label)
+    {
+        if (_dockingManager == null) return;
+
+        _dockingManager.SetEnableDocking(panel, true);
+        _dockingManager.DockControl(panel, this, style, size);
+        _dockingManager.SetAutoHideMode(panel, true);
+        _dockingManager.SetDockLabel(panel, label);
+        _dockingManager.SetAllowFloating(panel, true);
+
+        try
+        {
+            _dockingManager.SetControlMinimumSize(panel, new Size(200, 0));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to set minimum size for panel {PanelName}", panel.Name);
+            // Minimum size setting is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Create dashboard cards panel (extracted for reuse in docking)
+    /// </summary>
+    private Panel CreateDashboardCardsPanel()
+    {
+        var dashboardPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 5,
+            Padding = new Padding(12, 12, 12, 12),
+            CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+        };
+
+        AddDashboardPanelRows(dashboardPanel);
+        AddDashboardCards(dashboardPanel);
+
+        return dashboardPanel;
+    }
+
+    /// <summary>
+    /// Add row styles to dashboard panel
+    /// </summary>
+    private static void AddDashboardPanelRows(TableLayoutPanel dashboardPanel)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+        }
+    }
+
+    /// <summary>
+    /// Add dashboard cards to panel
+    /// </summary>
+    private void AddDashboardCards(TableLayoutPanel dashboardPanel)
+    {
+        var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText).Panel;
+        SetupCardClickHandler(accountsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+        });
+
+        var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
+        SetupCardClickHandler(chartsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+        });
+
+        var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
+        SetupCardClickHandler(settingsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+        });
+
+        var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
+        SetupCardClickHandler(reportsCard, () =>
+        {
+            if (_panelNavigator != null)
+                _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
+        });
+
+        var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText).Panel;
+
+        dashboardPanel.Controls.Add(accountsCard, 0, 0);
+        dashboardPanel.Controls.Add(chartsCard, 0, 1);
+        dashboardPanel.Controls.Add(settingsCard, 0, 2);
+        dashboardPanel.Controls.Add(reportsCard, 0, 3);
+        dashboardPanel.Controls.Add(infoCard, 0, 4);
+    }
+
+    /// <summary>
+    /// Create activity grid panel (extracted for reuse in docking)
+    /// Now loads data from ActivityLog database table for real-time activity tracking.
+    /// </summary>
+    private Panel CreateActivityGridPanel()
+    {
+        var activityPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10)
+        };
+
+        var activityHeader = new Label
+        {
+            Text = "Recent Activity",
+            // REMOVED: Hard-coded Font - SkinManager owns all theming
+            // Font = new Font(SegoeUiFontName, 12, FontStyle.Bold),
+            // REMOVED: ForeColor - SkinManager theme cascade handles label colors
+            Dock = DockStyle.Top,
+            Height = 35,
+            Padding = new Padding(5, 8, 0, 0)
+        };
+
+        _activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
+        {
+            Name = "ActivityDataGrid",
+            AccessibleName = "ActivityDataGrid",
+            Dock = DockStyle.Fill,
+            AutoGenerateColumns = false,
+            AllowEditing = false,
+            ShowGroupDropArea = false,
+            RowHeight = 36,
+            AllowSorting = true,
+            AllowFiltering = true
+        };
+        // REMOVED: Per-control theme application - grid inherits theme from ApplicationVisualTheme
+
+        // Map to ActivityLog properties with flexible column sizing
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 80, MinimumWidth = 60 });
+
+        // Load initial data from database
+        _ = LoadActivityDataAsync();
+
+        // Setup auto-refresh timer (every 30 seconds)
+        _activityRefreshTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 30000 // 30 seconds
+        };
+        _activityRefreshTimer.Tick += async (s, e) => await LoadActivityDataAsync();
+        _activityRefreshTimer.Start();
+
+        activityPanel.Controls.Add(_activityGrid);
+        activityPanel.Controls.Add(activityHeader);
+
+        return activityPanel;
+    }
+
+    /// <summary>
+    /// Load activity data from database asynchronously.
+    /// </summary>
+    private async Task LoadActivityDataAsync()
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var activityLogRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(scope.ServiceProvider);
+            if (activityLogRepository == null)
+            {
+                _logger.LogWarning("ActivityLogRepository not available, using fallback data");
+                LoadFallbackActivityData();
+                return;
+            }
+
+            var activities = await activityLogRepository.GetRecentActivitiesAsync(skip: 0, take: 50);
+
+            if (_activityGrid != null && !_activityGrid.IsDisposed)
+            {
+                if (_activityGrid.InvokeRequired)
+                {
+                    _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
+                }
+                else
+                {
+                    _activityGrid.DataSource = activities;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load activity data");
+            LoadFallbackActivityData();
+        }
+    }
+
+    private void LoadFallbackActivityData()
+    {
+        if (_activityGrid == null || _activityGrid.IsDisposed)
+            return;
+
+        var activities = new[]
+        {
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-15), Activity = "Report Generated", Details = "Budget Q4", User = "Scheduler" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-30), Activity = "QuickBooks Sync", Details = "42 records", User = "Integrator" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
+            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
+        };
+
+        if (_activityGrid.InvokeRequired)
+        {
+            _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
+        }
+        else
+        {
+            _activityGrid.DataSource = activities;
+        }
+    }
+
+    /// <summary>
     /// Hide standard panels when switching to Syncfusion docking
     /// </summary>
     private void HideStandardPanelsForDocking()
@@ -2110,6 +2605,604 @@ public partial class MainForm
         {
             _logger.LogDebug(ex, "Failed to ensure docking z-order");
         }
+    }
+
+    /// <summary>
+    /// Load saved docking layout from AppData
+    /// </summary>
+    private async void LoadDockingLayout()
+    {
+        if (!ShouldLoadDockingLayout())
+        {
+            return;
+        }
+
+        LogLoadPreconditions();
+
+        try
+        {
+            var layoutPath = GetDockingLayoutPath();
+
+            if (!ValidateLayoutFile(layoutPath))
+            {
+                return;
+            }
+
+            await LoadAndApplyDockingLayout(layoutPath);
+        }
+        catch (UnauthorizedAccessException authEx)
+        {
+            _logger.LogWarning(authEx, "No permission to read docking layout - using default layout. Check AppData permissions.");
+        }
+        catch (IOException ioEx)
+        {
+            _logger.LogWarning(ioEx, "I/O error loading docking layout - using default layout");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load docking layout - using default layout");
+        }
+    }
+
+    /// <summary>
+    /// Check if docking layout should be loaded
+    /// </summary>
+    private bool ShouldLoadDockingLayout()
+    {
+        // Check for Shift key held during startup - allows user to bypass problematic layout
+        if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+        {
+            _logger.LogWarning("Shift key detected - bypassing layout load and resetting to defaults");
+            _skipLayoutLoadForDiagnostics = true;
+            try
+            {
+                var layoutPath = GetDockingLayoutPath();
+                if (File.Exists(layoutPath))
+                {
+                    var backupPath = layoutPath + ".backup_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+                    File.Copy(layoutPath, backupPath, overwrite: true);
+                    File.Delete(layoutPath);
+                    _logger.LogInformation("Layout file backed up to {BackupPath} and deleted", backupPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to backup/delete layout file during Shift key reset");
+            }
+            ResetToDefaultLayout();
+            return false;
+        }
+
+        if (_skipLayoutLoadForDiagnostics)
+        {
+            _logger.LogInformation("Layout loading disabled via diagnostic flag");
+            return false;
+        }
+
+        if (_dockingManager == null)
+        {
+            return false;
+        }
+
+        if (!IsHandleCreated || !Application.MessageLoop)
+        {
+            _logger.LogDebug("Skipping LoadDockingLayout: handle not created or message loop not running");
+            return false;
+        }
+
+        if (this.IsDisposed || this.Disposing)
+        {
+            _logger.LogDebug("Skipping LoadDockingLayout: form disposing/disposed");
+            return false;
+        }
+
+        if (this.InvokeRequired)
+        {
+            try
+            {
+                this.Invoke(new System.Action(LoadDockingLayout));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to marshal LoadDockingLayout to UI thread");
+                // Marshaling failed, but this is non-critical
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Log preconditions for docking layout load
+    /// </summary>
+    private void LogLoadPreconditions()
+    {
+        try
+        {
+            var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            _logger.LogDebug("LoadDockingLayout START - ThreadId={ThreadId}, InvokeRequired={InvokeRequired}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
+                threadId, this.InvokeRequired, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to log load preconditions");
+            // Logging failure is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Validate layout file exists and is not corrupt
+    /// </summary>
+    private bool ValidateLayoutFile(string layoutPath)
+    {
+        if (!File.Exists(layoutPath))
+        {
+            _logger.LogInformation("No saved docking layout found at {Path} - using default layout", layoutPath);
+            return false;
+        }
+
+        var layoutFileInfo = new FileInfo(layoutPath);
+        if (layoutFileInfo.Length == 0)
+        {
+            HandleEmptyLayoutFile(layoutPath);
+            return false;
+        }
+
+        if (!ValidateLayoutXml(layoutPath))
+        {
+            return false;
+        }
+
+        return ValidateLayoutVersion(layoutPath);
+    }
+
+    /// <summary>
+    /// Validate layout version compatibility
+    /// </summary>
+    private bool ValidateLayoutVersion(string layoutPath)
+    {
+        try
+        {
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(layoutPath);
+
+            // Check for version attribute on root element
+            var versionAttr = xmlDoc.DocumentElement?.GetAttribute(LayoutVersionAttributeName);
+
+            if (string.IsNullOrEmpty(versionAttr))
+            {
+                _logger.LogWarning("Layout file missing version attribute - created by older version. Auto-resetting to default layout.");
+                HandleIncompatibleLayoutVersion(layoutPath, "<none>", CurrentLayoutVersion);
+                return false;
+            }
+
+            if (versionAttr != CurrentLayoutVersion)
+            {
+                _logger.LogWarning("Layout file version mismatch: file={FileVersion}, current={CurrentVersion}. Auto-resetting to default layout.", versionAttr, CurrentLayoutVersion);
+                HandleIncompatibleLayoutVersion(layoutPath, versionAttr, CurrentLayoutVersion);
+                return false;
+            }
+
+            _logger.LogDebug("Layout version validated: {Version}", versionAttr);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to validate layout version - resetting to default");
+            HandleIncompatibleLayoutVersion(layoutPath, "<error>", CurrentLayoutVersion);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Handle incompatible layout version
+    /// </summary>
+    private void HandleIncompatibleLayoutVersion(string layoutPath, string fileVersion, string currentVersion)
+    {
+        try
+        {
+            // Backup the incompatible layout for diagnostics
+            var backupPath = layoutPath + ".v" + fileVersion.Replace("<", "", StringComparison.Ordinal).Replace(">", "", StringComparison.Ordinal) + "_backup_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            if (File.Exists(layoutPath))
+            {
+                File.Copy(layoutPath, backupPath, overwrite: true);
+                _logger.LogInformation("Incompatible layout backed up to {BackupPath}", backupPath);
+            }
+
+            File.Delete(layoutPath);
+            ResetToDefaultLayout();
+            _logger.LogInformation("Layout reset to default after version incompatibility");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to handle incompatible layout version");
+        }
+    }
+
+    /// <summary>
+    /// Handle empty layout file
+    /// </summary>
+    private void HandleEmptyLayoutFile(string layoutPath)
+    {
+        _logger.LogInformation("Docking layout file {Path} is empty - resetting to default layout", layoutPath);
+
+        try
+        {
+            File.Delete(layoutPath);
+            ResetToDefaultLayout();
+            _logger.LogInformation("Docking layout reset to default successfully");
+        }
+        catch (Exception deleteEx)
+        {
+            _logger.LogWarning(deleteEx, "Failed to delete empty docking layout file {Path}", layoutPath);
+            // Deletion failure is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Validate XML structure of layout file
+    /// </summary>
+    private bool ValidateLayoutXml(string layoutPath)
+    {
+        try
+        {
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(layoutPath);
+            _logger.LogDebug("Layout XML validated successfully");
+            return true;
+        }
+        catch (XmlException xmlEx)
+        {
+            HandleCorruptLayoutFile(layoutPath, xmlEx);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Handle corrupt layout file
+    /// </summary>
+    private void HandleCorruptLayoutFile(string layoutPath, XmlException xmlEx)
+    {
+        _logger.LogInformation(xmlEx, "Corrupt XML layout file detected at {Path} - resetting to default layout", layoutPath);
+
+        try
+        {
+            File.Delete(layoutPath);
+            _logger.LogInformation("Deleted corrupt layout file");
+            ResetToDefaultLayout();
+            _logger.LogInformation("Docking layout reset to default successfully");
+        }
+        catch (Exception deleteEx)
+        {
+            _logger.LogWarning(deleteEx, "Failed to delete corrupt layout file - will be overwritten on save");
+            // Deletion failure is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Reset docking layout to default state
+    /// </summary>
+    private void ResetToDefaultLayout()
+    {
+        if (_dockingManager == null) return;
+
+        _dockingManager.LoadDesignerDockState();
+        ApplyThemeToDockingPanels();
+    }
+
+    /// <summary>
+    /// Load and apply docking layout from file with performance monitoring and timeout
+    /// </summary>
+    private async Task LoadAndApplyDockingLayout(string layoutPath)
+    {
+        if (_dockingManager == null)
+        {
+            _logger.LogWarning("Cannot load docking layout - DockingManager is null");
+            return;
+        }
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            var dynamicPanelInfos = LoadDynamicPanelMetadata(layoutPath);
+            RecreateDynamicPanels(dynamicPanelInfos);
+
+            // Load additional dynamic panels from JSON metadata
+            LoadDynamicPanels(layoutPath);
+
+            var serializer = new AppStateSerializer(
+                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
+
+            try
+            {
+                LogDockStateLoad(layoutPath);
+
+                // Use Task.Run with timeout to detect slow/hung layout loads
+                var loadTask = Task.Run(() =>
+                {
+                    if (this.InvokeRequired)
+                    {
+                        this.Invoke(() => _dockingManager?.LoadDockState(serializer));
+                    }
+                    else
+                    {
+                        _dockingManager?.LoadDockState(serializer);
+                    }
+                });
+
+                var timeoutTask = Task.Delay(LayoutLoadTimeoutMs);
+                var completedTask = await Task.WhenAny(loadTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    stopwatch.Stop();
+                    _logger.LogError("Layout load exceeded timeout of {TimeoutMs}ms - layout is too complex or corrupted. Auto-resetting to defaults.", LayoutLoadTimeoutMs);
+                    HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
+                stopwatch.Stop();
+                var elapsedMs = stopwatch.ElapsedMilliseconds;
+
+                if (elapsedMs > LayoutLoadWarningMs)
+                {
+                    _logger.LogWarning("Layout load took {ElapsedMs}ms (threshold: {ThresholdMs}ms) - consider simplifying layout", elapsedMs, LayoutLoadWarningMs);
+                }
+                else
+                {
+                    _logger.LogInformation("Docking layout loaded from {Path} in {ElapsedMs}ms", layoutPath, elapsedMs);
+                }
+            }
+            catch (Exception loadEx)
+            {
+                stopwatch.Stop();
+                if (loadEx is NullReferenceException)
+                {
+                    HandleDockStateLoadError(layoutPath, loadEx, "NullReferenceException while loading docking layout");
+                }
+                else
+                {
+                    HandleDockStateLoadError(layoutPath, loadEx, "Failed to load docking layout from {Path}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Unexpected error during layout load - resetting to defaults");
+            HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    /// <summary>
+    /// Handle slow or hung layout load by resetting to defaults
+    /// </summary>
+    private void HandleSlowLayoutLoad(string layoutPath, long elapsedMs)
+    {
+        try
+        {
+            _logger.LogWarning("Layout load performance issue detected (elapsed: {ElapsedMs}ms)", elapsedMs);
+
+            // Backup problematic layout for analysis
+            var backupPath = layoutPath + ".slow_" + DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            if (File.Exists(layoutPath))
+            {
+                File.Copy(layoutPath, backupPath, overwrite: true);
+                _logger.LogInformation("Slow layout backed up to {BackupPath}", backupPath);
+            }
+
+            File.Delete(layoutPath);
+            ResetToDefaultLayout();
+            _logger.LogInformation("Layout reset to default after performance timeout");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to handle slow layout load");
+        }
+    }
+
+    /// <summary>
+    /// Best-effort extraction of dynamic panel metadata from a saved layout file.
+    /// The Syncfusion layout format is proprietary; we extract simple attributes
+    /// such as Name, DockLabel and IsAutoHide if present so we can recreate panels.
+    /// </summary>
+    private List<DynamicPanelInfo> LoadDynamicPanelMetadata(string layoutPath)
+    {
+        var results = new List<DynamicPanelInfo>();
+        if (string.IsNullOrWhiteSpace(layoutPath) || !File.Exists(layoutPath)) return results;
+
+        try
+        {
+            var doc = new XmlDocument();
+            doc.Load(layoutPath);
+
+            // Attempt to find nodes that might represent dynamic panels - best-effort
+            var nodes = doc.SelectNodes("//PanelInfo") ?? doc.SelectNodes("//Panel");
+            if (nodes != null)
+            {
+                foreach (XmlNode node in nodes)
+                {
+                    try
+                    {
+                        var info = new DynamicPanelInfo();
+                        var nameAttr = node.Attributes?["Name"]?.Value ?? node.Attributes?["name"]?.Value;
+                        if (!string.IsNullOrWhiteSpace(nameAttr)) info.Name = nameAttr;
+                        info.DockLabel = node.Attributes?["DockLabel"]?.Value ?? node.Attributes?["dockLabel"]?.Value;
+                        if (bool.TryParse(node.Attributes?["IsAutoHide"]?.Value ?? node.Attributes?["isAutoHide"]?.Value, out var isAuto))
+                        {
+                            info.IsAutoHide = isAuto;
+                        }
+
+                        results.Add(info);
+                    }
+                    catch { /* ignore individual node errors */ }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to parse dynamic panel metadata from layout {Path}", layoutPath);
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Log dock state load operation
+    /// </summary>
+    private void LogDockStateLoad(string layoutPath)
+    {
+        _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
+            System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath, this.InvokeRequired, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
+    }
+
+    /// <summary>
+    /// Handle errors during dock state load
+    /// </summary>
+    private void HandleDockStateLoadError(string layoutPath, Exception ex, string message)
+    {
+        _logger.LogWarning(ex, "{Message} - resetting to default layout ({Path})", message, layoutPath);
+
+        try
+        {
+            File.Delete(layoutPath);
+            _logger.LogInformation("Deleted corrupt docking layout file {Path}", layoutPath);
+        }
+        catch (Exception deleteEx)
+        {
+            _logger.LogWarning(deleteEx, "Failed to delete corrupt docking layout file {Path}", layoutPath);
+            // Deletion failure is non-critical
+        }
+
+        try
+        {
+            ResetToDefaultLayout();
+            _logger.LogInformation("Docking layout reset to default successfully after failed load");
+        }
+        catch (Exception fallbackEx)
+        {
+            _logger.LogWarning(fallbackEx, "Failed to reset docking layout after failed load");
+            // Reset failure - system is in degraded state but functional
+        }
+    }
+
+    /// <summary>
+    /// Recreate dynamic panels from metadata
+    /// </summary>
+    private void RecreateDynamicPanels(List<DynamicPanelInfo> panelInfos)
+    {
+        foreach (var panelInfo in panelInfos)
+        {
+            try
+            {
+                RecreateDynamicPanel(panelInfo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to recreate dynamic panel '{PanelName}'", panelInfo.Name);
+                // Panel recreation failure is non-critical
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create a dynamic panel based on saved metadata
+    /// </summary>
+    /// <param name="panelInfo">Information about the panel to recreate</param>
+    private void RecreateDynamicPanel(DynamicPanelInfo panelInfo)
+    {
+        if (_dynamicDockPanels == null || _dockingManager == null)
+            return;
+
+        // Skip if panel already exists
+        if (_dynamicDockPanels.ContainsKey(panelInfo.Name))
+            return;
+
+        try
+        {
+            // Create a basic panel - in a real implementation, you might need to recreate
+            // the specific panel type and content based on the panel name or type
+            var panel = new Panel
+            {
+                Name = panelInfo.Name
+                // REMOVED: BackColor, ForeColor - SkinManager theme cascade handles panel colors
+            };
+
+            // Add some basic content based on panel name (this is a simplified example)
+            // In practice, you'd have a factory method or registry to recreate the proper content
+            if (panelInfo.Name.Contains("Chat", StringComparison.OrdinalIgnoreCase))
+            {
+                // Recreate AI chat panel
+                panel.Controls.Add(new Label { Text = "AI Chat Panel", Dock = DockStyle.Top });
+            }
+            else if (panelInfo.Name.Contains("Log", StringComparison.OrdinalIgnoreCase))
+            {
+                // Recreate log panel
+                panel.Controls.Add(new Label { Text = "Log Panel", Dock = DockStyle.Top });
+            }
+            else
+            {
+                // Generic panel
+                panel.Controls.Add(new Label { Text = $"{panelInfo.Name} Panel", Dock = DockStyle.Top });
+            }
+
+            // Set up docking
+            _dockingManager.SetDockLabel(panel, panelInfo.DockLabel ?? panelInfo.Name);
+            if (panelInfo.IsAutoHide)
+            {
+                _dockingManager.SetAutoHideMode(panel, true);
+            }
+
+            // Dock the panel (position will be restored by LoadDockState)
+            _dockingManager.DockControl(panel, this, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
+
+            // Track the panel
+            _dynamicDockPanels ??= new Dictionary<string, Panel>();
+            _dynamicDockPanels[panelInfo.Name] = panel;
+            panel = null; // ownership transferred to DockingManager/dictionary
+
+            _logger.LogInformation("Recreated dynamic panel '{PanelName}'", panelInfo.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recreate dynamic panel '{PanelName}'", panelInfo.Name);
+        }
+    }
+
+    /// <summary>
+    /// Information about a dynamic panel for serialization
+    /// </summary>
+    private sealed class DynamicPanelInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = "System.Windows.Forms.Panel";
+        public string? DockLabel { get; set; }
+        public bool IsAutoHide { get; set; }
+    }
+
+    private static void TryDeleteLayoutFiles(string? layoutPath)
+    {
+        if (string.IsNullOrWhiteSpace(layoutPath))
+        {
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(layoutPath))
+            {
+                File.Delete(layoutPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Swallow - deletion is best-effort cleanup
+            System.Diagnostics.Debug.WriteLine($"Failed to delete layout file: {ex.Message}");
+        }
+
+        TryCleanupTempFile(layoutPath + ".tmp");
     }
 
     /// <summary>
@@ -2236,10 +3329,84 @@ public partial class MainForm
         // Ensure central panels remain visible after visibility changes (delegate to layout manager)
         if (_dockingLayoutManager != null)
         {
-            // Note: Central panel visibility is now managed by DockingLayoutManager
-            _logger.LogDebug("Central panel visibility delegated to DockingLayoutManager");
+            EnsureCentralPanelVisible();
+            EnsureSidePanelsZOrder();
+            RefreshFormLayout();
+
+            _logger.LogDebug("Central panel visibility ensured for docked layout");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to ensure central panel visibility in docked layout");
+            // Visibility adjustment failure is non-critical
         }
     }
+
+    /// <summary>
+    /// Ensure central document panel is visible
+    /// </summary>
+    private void EnsureCentralPanelVisible()
+    {
+        if (_centralDocumentPanel == null) return;
+
+        try
+        {
+            _centralDocumentPanel.Visible = true;
+            _centralDocumentPanel.BringToFront();
+            _centralDocumentPanel.Invalidate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set central document panel visibility");
+            // Visibility setting failure is non-critical
+        }
+    }
+
+    /// <summary>
+    /// Ensure side panels are behind central content
+    /// </summary>
+    private void EnsureSidePanelsZOrder()
+    {
+        if (_leftDockPanel != null)
+        {
+            try
+            {
+                _leftDockPanel.SendToBack();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to set left dock panel z-order");
+                // Z-order adjustment failure is non-critical
+            }
+        }
+
+        if (_rightDockPanel != null)
+        {
+            try
+            {
+                _rightDockPanel.SendToBack();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to set right dock panel z-order");
+                // Z-order adjustment failure is non-critical
+            }
+        }
+    }
+
+    /// <summary>
+    /// Refresh form layout (Phase 1 Simplification)
+    /// </summary>
+    private void RefreshFormLayout()
+    {
+        if (_dockingManager == null) return;
+
+        this.Refresh();
+
+        this.Invalidate();
+    }
+
+    // Phase 1 Simplification: EnsureNonDockingVisibility removed - docking always enabled
 
     #endregion
 
@@ -2497,6 +3664,7 @@ public partial class MainForm
     /// </summary>
     public void CloseSettingsPanel()
     {
+        // Legacy method - SettingsForm replaced by SettingsPanel
         _panelNavigator?.HidePanel("Settings");
     }
 
@@ -2506,12 +3674,6 @@ public partial class MainForm
     /// <param name="panelName">Name of the panel to close.</param>
     public void ClosePanel(string panelName)
     {
-        if (string.IsNullOrWhiteSpace(panelName))
-        {
-            _logger?.LogWarning("ClosePanel called with null or empty panelName");
-            return;
-        }
-
         _panelNavigator?.HidePanel(panelName);
     }
 

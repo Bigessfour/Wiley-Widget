@@ -216,7 +216,45 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        // InitializeComponent moved to AccountsPanel.Designer.cs for designer support
+        private void InitializeComponent()
+        {
+            Name = "AccountsPanel";
+            // Set AccessibleName for UI automation (E2E tests search by this)
+            AccessibleName = AccountsPanelResources.PanelTitle; // "Municipal Accounts"
+            Size = new Size(1200, 800);
+            // Prefer DPI scaling for modern displays
+            try
+            {
+                this.AutoScaleMode = AutoScaleMode.Dpi;
+            }
+            catch { }
+            Dock = DockStyle.Fill;
+            Serilog.Log.Debug("AccountsPanel: InitializeComponent completed");
+
+            // Add load event handler for initial data loading
+            this.Load += AccountsPanel_Load;
+
+            // Initialize ErrorProvider for data validation
+            errorProvider = new ErrorProvider()
+            {
+                BlinkStyle = ErrorBlinkStyle.BlinkIfDifferentError,
+                Icon = SystemIcons.Warning
+            };
+
+            // Create a single ToolTip instance used across the panel (disposed in Dispose)
+            try
+            {
+                Controls.Add(gridAccounts);
+                // Add overlays (loading spinner and no-data friendly message)
+                _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
+                Controls.Add(_loadingOverlay);
+
+                _noDataOverlay = new NoDataOverlay { Message = "No accounts to display" };
+                Controls.Add(_noDataOverlay);
+                _toolTip = new ToolTip() { AutoPopDelay = 10000, InitialDelay = 500, ReshowDelay = 100, ShowAlways = true };
+            }
+            catch { }
+        }
 
         /// <summary>
         /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
@@ -880,7 +918,240 @@ namespace WileyWidget.WinForms.Controls
                     var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");
                     if (atwProp != null && atwProp.PropertyType == typeof(bool))
                     {
-                        atwProp.SetValue(gridAccounts, false);
+                        MessageBox.Show("No grid available to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    await WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(gridAccounts, sfd.FileName);
+                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            // Navigation separator and buttons per Syncfusion demos pattern
+            var separator = new Label { Text = "  |  ", AutoSize = true, Margin = new Padding(6, 14, 6, 6), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
+
+            // View Charts navigation button
+            var btnViewCharts = new Button
+            {
+                Text = "Charts",
+                Name = "btnViewCharts",
+                Width = 80,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                AccessibleName = "View Charts",
+                AccessibleDescription = "Navigate to budget visualization charts"
+            };
+            try { _toolTip?.SetToolTip(btnViewCharts, "Open Charts panel (Ctrl+Shift+C)"); } catch { }
+            try
+            {
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
+                    : null;
+                btnViewCharts.Image = iconService?.GetIcon("chart", ThemeManager.CurrentTheme, 14);
+                btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
+                btnViewCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
+            }
+            catch { }
+            btnViewCharts.Click += (s, e) =>
+            {
+                try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Charts"); } catch { }
+                NavigateToPanel<ChartPanel>("Charts");
+            };
+
+            // Dashboard navigation button
+            var btnDashboard = new Button
+            {
+                Text = "Home",
+                Name = "btnDashboard",
+                Width = 80,
+                Height = 32,
+                Margin = new Padding(6, 10, 6, 6),
+                AccessibleName = "Go to Dashboard",
+                AccessibleDescription = "Navigate to Dashboard overview"
+            };
+            try { _toolTip?.SetToolTip(btnDashboard, "Open Dashboard panel (Ctrl+Shift+D)"); } catch { }
+            try
+            {
+                var iconService = Program.Services != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
+                    : null;
+                btnDashboard.Image = iconService?.GetIcon("home", ThemeManager.CurrentTheme, 14);
+                btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
+                btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
+            }
+            catch { }
+            btnDashboard.Click += (s, e) =>
+            {
+                try { Serilog.Log.Information("AccountsPanel: Navigate requested -> Dashboard"); } catch { }
+                NavigateToPanel<DashboardPanel>("Dashboard");
+            };
+
+            // Layout top panel using FlowLayoutPanel
+            var flow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight
+            };
+
+            // Toolbar buttons: Load, Apply Filters, Allow Editing (automation-friendly IDs)
+            var btnLoad = new Button { Text = "Load Accounts", Name = "Toolbar_Load", AccessibleName = "Load Accounts", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+            btnLoad.Click += async (s, e) => { try { if (ViewModel?.LoadAccountsCommand != null) await ViewModel.LoadAccountsCommand.ExecuteAsync(null); } catch { } };
+
+            var btnApplyFilters = new Button { Text = "Apply Filters", Name = "Toolbar_ApplyFilters", AccessibleName = "Apply Filters", AutoSize = true, Margin = new Padding(6, 6, 6, 6) };
+            btnApplyFilters.Click += (s, e) => { try { /* Trigger filter apply - UI binds to combo selections; if a command exists, invoke it */ } catch { } };
+
+            var chkAllowEdit = new CheckBox { Text = "Allow Editing", Name = "Toolbar_AllowEditing", AccessibleName = "Allow Editing", AutoSize = true, Appearance = System.Windows.Forms.Appearance.Button, Margin = new Padding(6, 6, 6, 6) };
+            chkAllowEdit.CheckedChanged += (s, e) => { try { if (gridAccounts != null) gridAccounts.AllowEditing = chkAllowEdit.Checked; } catch { } };
+
+            flow.Controls.Add(fundLabel);
+            flow.Controls.Add(comboFund);
+            flow.Controls.Add(acctTypeLabel);
+            flow.Controls.Add(comboAccountType);
+            flow.Controls.Add(btnLoad);
+            flow.Controls.Add(btnApplyFilters);
+            flow.Controls.Add(chkAllowEdit);
+            flow.Controls.Add(btnRefresh);
+            flow.Controls.Add(btnAdd);
+            flow.Controls.Add(btnEdit);
+            flow.Controls.Add(btnDelete);
+            flow.Controls.Add(btnExportExcel);
+            flow.Controls.Add(btnExportPdf);
+            flow.Controls.Add(separator);
+            flow.Controls.Add(btnViewCharts);
+            flow.Controls.Add(btnDashboard);
+
+            topPanel.Controls.Add(flow);
+
+            // Wire header actions to view model
+            try
+            {
+                _panelHeader.Title = AccountsPanelResources.PanelTitle;
+                // Propagate title to docking handler (if present) to ensure Syncfusion captions are set for automation
+                try
+                {
+                    var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
+                    var txtProp = dh?.GetType().GetProperty("Text");
+                    if (dh != null && txtProp != null) txtProp.SetValue(dh, AccountsPanelResources.PanelTitle);
+                }
+                catch { }
+                _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
+                _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+                _panelHeaderPinHandler = OnPanelHeaderPinToggled;
+                _panelHeader.PinToggled += _panelHeaderPinHandler;
+                _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
+                _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+            }
+            catch { }
+
+            Controls.Add(_panelHeader);
+            Controls.Add(topPanel);
+
+            // Data grid - configured per Syncfusion demo best practices (Themes, Filtering, Sorting demos)
+            gridAccounts = new SfDataGrid
+            {
+                Name = "dataGridAccounts",
+                Dock = DockStyle.Fill,
+                AutoGenerateColumns = false,
+                AllowEditing = false,
+                AllowGrouping = true,
+                AllowFiltering = true,
+                AllowSorting = true,
+                AllowResizingColumns = true,
+                AllowDraggingColumns = true,
+                ShowGroupDropArea = true,
+                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
+                SelectionMode = GridSelectionMode.Extended,
+                NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
+                ShowRowHeader = true,
+                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(35.0f), // Per demos: DPI-aware height
+                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f), // Per demos: DPI-aware height
+                AllowTriStateSorting = true, // Per demos: enables tri-state sorting
+                ShowSortNumbers = true, // Per demos: shows sort order numbers
+                AutoExpandGroups = true, // Per demos: auto expand grouped rows
+                LiveDataUpdateMode = Syncfusion.Data.LiveDataUpdateMode.AllowDataShaping, // Per demos: real-time updates
+                AllowResizingHiddenColumns = false, // Per demos: prevent resizing hidden columns
+                AccessibleName = "Accounts data grid",
+                AccessibleDescription = "Grid displaying municipal accounts with filtering and sorting"
+            };
+            // Per-control SetVisualStyle removed: centralize theme via ThemeManager.ApplyThemeToControl(this)
+            try
+            {
+                var atwProp = gridAccounts.GetType().GetProperty("AllowTextWrapping");
+                if (atwProp != null && atwProp.PropertyType == typeof(bool))
+                {
+                    atwProp.SetValue(gridAccounts, false);
+                }
+            }
+            catch { }
+
+            // Configure grid style
+            gridAccounts.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI Semibold", 9F));
+            gridAccounts.Style.CellStyle.Font = new GridFontInfo(new Font("Segoe UI", 9F));
+
+            // Configure columns with proper formatting per Syncfusion demos
+            gridAccounts.Columns.Add(new GridTextColumn
+            {
+                MappingName = "AccountNumber",
+                HeaderText = AccountsPanelResources.AccountNumberHeader,
+                MinimumWidth = 100,
+                AllowFiltering = true,
+                AllowSorting = true
+            });
+            gridAccounts.Columns.Add(new GridTextColumn
+            {
+                MappingName = "AccountName",
+                HeaderText = AccountsPanelResources.AccountNameHeader,
+                MinimumWidth = 200,
+                AllowFiltering = true,
+                AllowSorting = true
+            });
+            gridAccounts.Columns.Add(new GridTextColumn
+            {
+                MappingName = "AccountType",
+                HeaderText = AccountsPanelResources.TypeHeader,
+                MinimumWidth = 100,
+                AllowFiltering = true,
+                AllowGrouping = true
+            });
+            gridAccounts.Columns.Add(new GridTextColumn
+            {
+                MappingName = "FundName",
+                HeaderText = AccountsPanelResources.FundHeader,
+                MinimumWidth = 120,
+                AllowFiltering = true,
+                AllowGrouping = true
+            });
+            gridAccounts.Columns.Add(new GridNumericColumn
+            {
+                MappingName = "CurrentBalance",
+                HeaderText = AccountsPanelResources.BalanceHeader,
+                Format = "C2",
+                // Older/newer Syncfusion versions may not include the FormatMode enum; attempt to set via reflection when available.
+                // We'll fall back to Format string if FormatMode isn't present.
+                MinimumWidth = 120,
+                // Use culture-aware NumberFormatInfo to avoid invariant culture issues with RegionInfo lookups
+                NumberFormatInfo = System.Globalization.CultureInfo.GetCultureInfo("en-US").NumberFormat,
+                AllowFiltering = true,
+                AllowSorting = true
+            });
+
+            // If possible, set FormatMode on numeric column via reflection (some Syncfusion builds removed the enum at compile-time)
+            try
+            {
+                var curr = gridAccounts.Columns.FirstOrDefault(c => c.MappingName == "CurrentBalance");
+                if (curr != null)
+                {
+                    var fmProp = curr.GetType().GetProperty("FormatMode");
+                    if (fmProp != null)
+                    {
+                        var enumType = fmProp.PropertyType;
+                        var f = enumType.GetField("Currency") ?? enumType.GetFields().FirstOrDefault();
+                        if (f != null) fmProp.SetValue(curr, f.GetValue(null));
                     }
                 }
                 catch { }
@@ -1195,10 +1466,7 @@ namespace WileyWidget.WinForms.Controls
                 // Fallback: if no dispatcher helper, check InvokeRequired for cross-thread safety
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
-                    }
+                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
                     return;
                 }
 
@@ -1656,10 +1924,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
-                    }
+                    try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
                     return;
                 }
 

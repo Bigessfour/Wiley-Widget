@@ -12,12 +12,7 @@ using Syncfusion.Pdf.Graphics;
 using System.IO;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Utils;
 using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Drawing;
-using Syncfusion.WinForms.Controls;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -51,12 +46,12 @@ namespace WileyWidget.WinForms.Controls
         private Syncfusion.WinForms.Controls.SfButton? _btnExportPdf;
         private Syncfusion.WinForms.ListView.SfComboBox? _comboDepartmentFilter;
         private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _topPanel;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _summaryPanel;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _lblTotalBudget;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _lblTotalActual;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _lblTotalVariance;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _lblVariancePercent;
+        private Panel? _topPanel;
+        private Panel? _summaryPanel;
+        private Panel? _lblTotalBudget;
+        private Panel? _lblTotalActual;
+        private Panel? _lblTotalVariance;
+        private Panel? _lblVariancePercent;
         private ErrorProvider? _errorProvider;
         private readonly List<ToolTip> _toolTips = new();
 
@@ -146,14 +141,7 @@ namespace WileyWidget.WinForms.Controls
                 if (dh != null && txtProp != null) txtProp.SetValue(dh, ChartPanelResources.PanelTitle);
             }
             catch { }
-            _topPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
-            {
-                Dock = DockStyle.Top,
-                Height = 40,  // OPTIMIZED: Reduced from 44 to 40 for more chart space
-                Padding = new Padding(4),  // OPTIMIZED: Reduced from 8 to 4 for tighter layout
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
+            _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
 
             _comboDepartmentFilter = new Syncfusion.WinForms.ListView.SfComboBox
             {
@@ -410,13 +398,6 @@ namespace WileyWidget.WinForms.Controls
             // Chart control - configured per Syncfusion demo best practices (ChartAppearance.cs pattern)
             // Theme applied automatically by SfSkinManager cascade from parent form
             _chartControl = new ChartControl { Name = "Chart_Cartesian", Dock = DockStyle.Fill, AccessibleName = "Budget Trend" };
-            try
-            {
-                var dbProp = typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                dbProp?.SetValue(_chartControl, true);
-            }
-            catch { }
-            _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
             // Centralized defaults (appearance + zoom/scrollbar) with theme-friendly chart area
             ChartControlDefaults.Apply(_chartControl, new ChartControlDefaults.Options { TransparentChartArea = true });
@@ -484,89 +465,25 @@ namespace WileyWidget.WinForms.Controls
             };
             SfSkinManager.SetVisualStyle(piePanel, "Office2019Colorful");
 
-            // Use a SplitContainer to allow the user to resize the main chart area vs. the pie/summary panel.
-            var contentSplit = new SplitContainer
+            // Add a right-hand panel to host a small pie chart or placeholder for accessibility detection
+            var piePanel = new Panel
             {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                BorderStyle = BorderStyle.FixedSingle
+                Name = "Chart_Pie",
+                Width = 320,
+                Dock = DockStyle.Right,
+                AccessibleName = "Chart Pie"
             };
 
-            // Set Panel2MinSize immediately so tests and non-parented controls have a sensible minimum.
-            try
-            {
-                contentSplit.Panel2MinSize = ChartLayoutConstants.PiePanelMinWidth;
-            }
-            catch { /* May fail if control isn't parented yet; will set in deferred BeginInvoke below */ }
-            // Defer setting SplitterDistance to the next UI pass to avoid invalid range issues during initialization
-            try
-            {
-                if (!this.IsHandleCreated)
-                {
-                    // If handle not created, subscribe to HandleCreated event
-                    EventHandler? handleCreatedHandler = null;
-                    handleCreatedHandler = (s, e) =>
-                    {
-                        this.HandleCreated -= handleCreatedHandler;
-                        if (!IsDisposed)
-                        {
-                            try
-                            {
-                                try { contentSplit.Panel2MinSize = ChartLayoutConstants.PiePanelMinWidth; } catch { }
-                                var panel2Min = contentSplit.Panel2MinSize;
-                                var desired = this.Width > 0 ? (int)(this.Width * 0.7) : 700;
-                                var max = Math.Max(200, this.Width - panel2Min);
-                                var sd = Math.Min(Math.Max(200, desired), max);
-                                contentSplit.SplitterDistance = sd;
-                            }
-                            catch { }
-                        }
-                    };
-                    this.HandleCreated += handleCreatedHandler;
-                    return;
-                }
+            Controls.Add(_chartControl);
+            Controls.Add(piePanel);
 
-                this.BeginInvoke(new System.Action(() =>
-                {
-                    try
-                    {
-                        // Ensure Panel2MinSize is set in case the synchronous set failed above
-                        try { contentSplit.Panel2MinSize = ChartLayoutConstants.PiePanelMinWidth; } catch { }
-
-                        var panel2Min = contentSplit.Panel2MinSize;
-                        var desired = this.Width > 0 ? (int)(this.Width * 0.7) : 700;
-                        var max = Math.Max(200, this.Width - panel2Min);
-                        var sd = Math.Min(Math.Max(200, desired), max);
-                        contentSplit.SplitterDistance = sd;
-                    }
-                    catch { /* Ignore any sizing failures during initial layout */ }
-                }));
-            }
-            catch { /* BeginInvoke may not be available at design time - ignore */ }
-
-            // Put the chart in Panel1 and the pie panel in Panel2 (both fill their respective panels)
-            contentSplit.Panel1.Controls.Add(_chartControl);
-            contentSplit.Panel2.Controls.Add(piePanel);
-
-            Controls.Add(contentSplit);
-
-            // Ensure Panel2MinSize is set synchronously now that splitter has a parent/control tree
-            try
-            {
-                contentSplit.Panel2MinSize = ChartLayoutConstants.PiePanelMinWidth;
-            }
-            catch { }
-
-            // Add bottom summary panel with optimized spacing
-            _summaryPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
+            // Add bottom summary panel
+            _summaryPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 56,  // OPTIMIZED: Reduced from 60 to fit nicely with 4 metrics
-                Padding = new Padding(4),  // OPTIMIZED: Reduced from 8
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                Height = 60,
+                Padding = new Padding(8)
             };
-            SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
             var summaryFlow = new FlowLayoutPanel
             {
@@ -659,6 +576,42 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Bottom,
                 Height = 20,  // OPTIMIZED: Reduced from 24
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),  // OPTIMIZED: Reduced from 11
+                Tag = caption // Store caption for later updates
+            };
+
+            panel.Controls.Add(lblValue);
+            panel.Controls.Add(lblCaption);
+
+            return panel;
+        }
+
+        /// <summary>
+        /// Creates a formatted summary label for metrics display.
+        /// </summary>
+        private Panel CreateSummaryLabel(string caption, string value)
+        {
+            var panel = new Panel
+            {
+                Width = 200,
+                Height = 44,
+                Margin = new Padding(4)
+            };
+
+            var lblCaption = new Label
+            {
+                Text = caption,
+                Dock = DockStyle.Top,
+                Height = 18,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.Gray
+            };
+
+            var lblValue = new Label
+            {
+                Text = value,
+                Dock = DockStyle.Bottom,
+                Height = 24,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 Tag = caption // Store caption for later updates
             };
 
@@ -840,7 +793,14 @@ namespace WileyWidget.WinForms.Controls
                     }
                     else
                     {
-                        UpdateChartFromData();
+                        if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                        {
+                            try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
+                        }
+                        else
+                        {
+                            if (InvokeRequired) BeginInvoke(new System.Action(UpdateChartFromData)); else UpdateChartFromData();
+                        }
                     }
                 }
             }
@@ -880,7 +840,14 @@ namespace WileyWidget.WinForms.Controls
                     }
                     else
                     {
-                        UpdateChartFromData();
+                        if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
+                        {
+                            try { _ = _dispatcherHelper.InvokeAsync(UpdateChartFromData); } catch { }
+                        }
+                        else
+                        {
+                            if (InvokeRequired) BeginInvoke(new System.Action(UpdateChartFromData)); else UpdateChartFromData();
+                        }
                     }
                 }
             }
@@ -932,10 +899,7 @@ namespace WileyWidget.WinForms.Controls
                     }
                     if (InvokeRequired)
                     {
-                        if (IsHandleCreated)
-                        {
-                            try { BeginInvoke(new System.Action(() => OnViewModelPropertyChanged(sender, e))); } catch { }
-                        }
+                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
                         return;
                     }
 
@@ -974,10 +938,7 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
-                    {
-                        try { BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme))); } catch { }
-                    }
+                    try { BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme))); } catch { }
                     return;
                 }
 
@@ -1474,6 +1435,19 @@ namespace WileyWidget.WinForms.Controls
                     return;
                 }
 
+                // Show/hide overlays based on loading state and data availability
+                if (_loadingOverlay != null)
+                {
+                    _loadingOverlay.Visible = _vm.IsLoading;
+                }
+
+                if (_vm.IsLoading)
+                {
+                    if (_chartControl != null) _chartControl.Visible = false;
+                    if (_noDataOverlay != null) _noDataOverlay.Visible = false;
+                    return;
+                }
+
                 var data = _vm.ChartData;
                 if (data == null || !data.Any())
                 {
@@ -1494,9 +1468,9 @@ namespace WileyWidget.WinForms.Controls
 
                 var list = data.OrderByDescending(k => k.Value).ToList();
 
-                ChartSeries? series = null;
-
-                if (_chartControl != null && _preserveUserChartAppearance)
+                // Configure series per Syncfusion demo best practices (Column Charts demo)
+                var series = new ChartSeries("Budget Variance", ChartSeriesType.Column);
+                try
                 {
                     try
                     {
@@ -1543,49 +1517,49 @@ namespace WileyWidget.WinForms.Controls
                     series.Points.Add(index++, (double)d.Value);
                 }
 
-                if (!_preserveUserChartAppearance)
+                // Apply series style per demo patterns (ChartStyles demo)
+                series.Style.DisplayText = true;
+                series.Style.TextFormat = "{0:C0}";
+                series.Style.TextOrientation = Syncfusion.Windows.Forms.Chart.ChartTextOrientation.Up;
+                series.Style.Font.Facename = "Segoe UI";
+                series.Style.Font.Size = 8;
+                series.Style.Font.Bold = true;
+
+                // Use ThemeManager.Colors for theme-aware accent color
+                var colors = ThemeManager.Colors;
+                series.Style.Interior = new Syncfusion.Drawing.BrushInfo(colors.Accent);
+
+                // Color individual points based on variance (reflection for compatibility)
+                try
                 {
-                    // Apply series style per demo patterns (ChartStyles demo)
-                    series.Style.DisplayText = true;
-                    series.Style.TextFormat = "{0:C0}";
-                    series.Style.TextOrientation = Syncfusion.Windows.Forms.Chart.ChartTextOrientation.Up;
-                    series.Style.Font.Facename = "Segoe UI";
-                    series.Style.Font.Size = 8;
-                    series.Style.Font.Bold = true;
+                    for (int i = 0; i < list.Count && i < series.Points.Count; i++)
+                    {
+                        var point = series.Points[i];
+                        var variance = list[i].Value;
+
+                        // Try to set point color via reflection for compatibility across Syncfusion versions
+                        var interiorProp = point.GetType().GetProperty("Interior");
+                        if (interiorProp != null && interiorProp.CanWrite)
+                        {
+                            var color = variance >= 0
+                                ? Color.FromArgb(76, 175, 80)  // Green for under budget
+                                : Color.FromArgb(244, 67, 54); // Red for over budget
+                            interiorProp.SetValue(point, new Syncfusion.Drawing.BrushInfo(color));
+                        }
+                    }
+                }
+                catch
+                {
+                    // Per-point coloring not supported - use series color
+                }
+
+                // Make border transparent per demos
+                series.Style.Border.Color = Color.Transparent;
 
                     // Data visualization color - let theme handle via chart defaults
                     // series.Style.Interior inherited from theme
 
-                    // Color individual points based on variance (reflection for compatibility)
-                    try
-                    {
-                        for (int i = 0; i < list.Count && i < series.Points.Count; i++)
-                        {
-                            var point = series.Points[i];
-                            var variance = list[i].Value;
-
-                            // Try to set point color via reflection for compatibility across Syncfusion versions
-                            var interiorProp = point.GetType().GetProperty("Interior");
-                            if (interiorProp != null && interiorProp.CanWrite)
-                            {
-                                // If semantic status is required, use Color.Green/Red directly (allowed by project rules)
-                                var color = variance >= 0 ? Color.Green : Color.Red;
-                                interiorProp.SetValue(point, new Syncfusion.Drawing.BrushInfo(color));
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Per-point coloring not supported - use series color
-                    }
-
-                    // Make border transparent per demos
-                    series.Style.Border.Color = Color.Transparent;
-
-                    // Enable tooltips per demos
-                    series.PointsToolTipFormat = "{0}: {1:C0}";
-                    series.ShowTicks = true;
-                }
+                _chartControl?.Series.Add(series);
 
                 // Update X-axis labels with department names - simplified for compatibility
                 // Note: Syncfusion ChartControl automatically uses category labels from data points
@@ -1609,8 +1583,6 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (_vm == null) return;
-
                 // Update summary metric labels
                 UpdateSummaryLabelValue(_lblTotalBudget, _vm.TotalBudgeted.ToString("C0", System.Globalization.CultureInfo.CurrentCulture));
                 UpdateSummaryLabelValue(_lblTotalActual, _vm.TotalActual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture));
@@ -1623,8 +1595,7 @@ namespace WileyWidget.WinForms.Controls
                     var varianceValueLabel = _lblTotalVariance.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (varianceValueLabel != null)
                     {
-                        // Semantic status color: green for positive variance, red for negative (allowed by project rules)
-                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.Green : Color.Red;
+                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
                     }
                 }
 
@@ -1633,8 +1604,7 @@ namespace WileyWidget.WinForms.Controls
                     var percentValueLabel = _lblVariancePercent.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (percentValueLabel != null)
                     {
-                        // Semantic status color: green for positive %, red for negative (allowed by project rules)
-                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.Green : Color.Red;
+                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
                     }
                 }
 
@@ -1661,7 +1631,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Updates a summary label's value text.
         /// </summary>
-        private static void UpdateSummaryLabelValue(Syncfusion.Windows.Forms.Tools.GradientPanelExt? containerPanel, string value)
+        private void UpdateSummaryLabelValue(Panel? containerPanel, string value)
         {
             if (containerPanel == null) return;
 
@@ -1708,15 +1678,7 @@ namespace WileyWidget.WinForms.Controls
             }
             else if (InvokeRequired)
             {
-                try
-                {
-                    Invoke(new System.Action(() =>
-                    {
-                        if (_chartControl == null) return;
-                        bmp = new Bitmap(_chartControl.Width, _chartControl.Height);
-                        _chartControl.DrawToBitmap(bmp, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height));
-                    }));
-                }
+                try { Invoke(new System.Action(() => { bmp = new Bitmap(_chartControl.Width, _chartControl.Height); _chartControl.DrawToBitmap(bmp, new Rectangle(0, 0, _chartControl.Width, _chartControl.Height)); })); }
                 catch { bmp = null; }
             }
             else

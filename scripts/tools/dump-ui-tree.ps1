@@ -26,7 +26,7 @@
 #>
 
 param(
-    [int]$Timeout = 30,  # Reduced for faster iteration
+    [int]$Timeout = 30,
     [string]$OutputFile,
     [switch]$InstallDependencies,
     [string]$FlaUIVersion = "4.0.1"
@@ -109,51 +109,32 @@ $automation = [FlaUI.UIA3.UIA3Automation]::new()
 function Get-AutomationTree {
     param(
         [FlaUI.Core.AutomationElements.AutomationElement]$Element,
-        [Parameter(Mandatory)]
-        $Automation,
-        [int]$Depth = 0,
-        [ref]$Lines
+        [int]$Depth = 0
     )
 
     $indent = "  " * $Depth
-    if (-not $Element) { return }
-    $name = $Element.Name ?? ""
-    $aid = $Element.AutomationId ?? ""
-    $class = $Element.ClassName ?? ""
-    $controlType = "Unknown"
-    try {
-        if ($Element.ControlType -and $Element.ControlType.ProgrammaticName) {
-            $controlType = $Element.ControlType.ProgrammaticName.Split('.')[-1]
-        }
-    } catch {
-        # Silently handle null/missing ControlType properties
-    }
+    $name = $Element.Name
+    $aid = $Element.AutomationId
+    $class = $Element.ClassName
+    $controlType = $Element.ControlType.ProgrammaticName.Split('.')[-1]  # e.g., "Window" instead of full namespace
 
     $line = "$indent$controlType | Name: '$name' | Aid: '$aid' | Class: '$class'"
-    $Lines.Value += $line
+    Write-Output $line
 
-    # Get children - use FindAllChildren for simplicity and reliability
-    try {
-        $children = $Element.FindAllChildren()
-        foreach ($child in $children) {
-            if ($child) {
-                Get-AutomationTree -Element $child -Automation $Automation -Depth ($Depth + 1) -Lines $Lines
-            }
-        }
-    } catch {
-        # Silently handle children enumeration errors
+    # Get children (equivalent to TreeScope.Children)
+    $children = $Element.FindAll([FlaUI.Core.Definitions.TreeScope]::Children, $automation.ConditionFactory.TrueCondition)
+    foreach ($child in $children) {
+        Get-AutomationTree -Element $child -Depth ($Depth + 1)
     }
 }
 
 function Invoke-DumpUiTree {
-    $startTime = Get-Date
-    Write-Information "Starting WileyWidget at $($startTime.ToString('HH:mm:ss'))..." -InformationAction Continue
+    # Start the application
+    Write-Information "Starting WileyWidget application..." -InformationAction Continue
     $process = Start-Process -FilePath "dotnet" `
         -ArgumentList "run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj" `
         -PassThru `
         -WorkingDirectory (Join-Path $PSScriptRoot "..\..")
-
-    Write-Information "Process PID: $($process.Id)" -InformationAction Continue
 
     try {
         # Attach to the running process (robust)
@@ -178,127 +159,41 @@ function Invoke-DumpUiTree {
             }
         }
 
-        # Enhanced wait + fallback search
+        # Wait for the main window (automatic timeout handling)
         Write-Information "Waiting for main window (timeout: $Timeout seconds)..." -InformationAction Continue
         $mainWindow = $app.GetMainWindow($automation, [TimeSpan]::FromSeconds($Timeout))
 
         if (-not $mainWindow) {
-            Write-Warning "Main window timeout. Dumping all top-level windows..."
-            # Fallback: Search all desktop windows
-            $desktop = $automation.GetDesktop()
-            $allWindows = $desktop.FindAll([FlaUI.Core.Definitions.TreeScope]::Children,
-                $automation.ConditionFactory.ByControlType([FlaUI.Core.Definitions.ControlType]::Window))
-
-            Write-Information "Found $($allWindows.Length) top-level windows:" -InformationAction Continue
-            foreach ($win in $allWindows) {
-                $title = $win.Name
-                $aid = $win.AutomationId
-                $class = $win.ClassName
-                if ($title -match "Wiley|Widget" -or $class -match "WindowsForms") {
-                    Write-Information "  CANDIDATE: '$title' | Aid: '$aid' | Class: '$class'" -InformationAction Continue
-                } else {
-                    Write-Output "  '$title' | Aid: '$aid' | Class: '$class'"
-                }
-            }
-            # Auto-select best candidate (MainForm Aid)
-            $mainWindow = $allWindows | Where-Object { $_.AutomationId -eq 'MainForm' } | Select-Object -First 1
-            if ($mainWindow) {
-                Write-Information "Selected fallback main window: '$($mainWindow.Name)' | Aid: '$($mainWindow.AutomationId)' | Class: '$($mainWindow.ClassName)'" -InformationAction Continue
-            } else {
-                Write-Warning "No suitable fallback window found (Aid: MainForm)."
-                return  # Exit early on fail
-            }
+            Write-Error "Failed to find main window within $Timeout seconds."
+            exit 1
         }
 
         Write-Information "Found main window: $($mainWindow.Name)" -InformationAction Continue
 
-        # Wait for UI to stabilize and allow panels to load
-        Write-Information "Waiting for panels to load..." -InformationAction Continue
-        Start-Sleep -Seconds 2
-
-        # Try to click Dashboard button to force panel loading (optional - helps capture panel content)
-        try {
-            $navButtons = $mainWindow.FindAllDescendants()
-            $dashBtn = $navButtons | Where-Object { $_.Name -eq 'Nav_Dashboard' } | Select-Object -First 1
-            if ($dashBtn) {
-                Write-Information "Clicking Dashboard button to load panel..." -InformationAction Continue
-                try { $dashBtn.Click() } catch { }
-                Start-Sleep -Seconds 2  # Wait for panel to render
-            }
-        }
-        catch {
-            Write-Information "Could not click Dashboard button: $($_.Exception.Message)" -InformationAction Continue
-        }
-
-        # Dump the tree - collect lines
-        $treeLines = @()
-        Get-AutomationTree -Element $mainWindow -Automation $automation -Lines ([ref]$treeLines)
-        Write-Information "Captured $($treeLines.Count) tree lines." -InformationAction Continue
-
-        $treeData = @{
-            Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-            MainWindow = @{
-                Name = $mainWindow.Name
-                Aid = $mainWindow.AutomationId
-                Class = $mainWindow.ClassName
-            }
-            Tree = $treeLines
-        }
+        # Dump the tree
+        $treeOutput = Get-AutomationTree -Element $mainWindow
 
         if ($OutputFile) {
-            # Ensure tmp dir
-            $outDir = Split-Path $OutputFile -Parent
-            if ($outDir -and -not (Test-Path $outDir)) {
-                New-Item -ItemType Directory -Path $outDir -Force | Out-Null
-                Write-Information "Created directory: $outDir" -InformationAction Continue
-            }
-            $treeData | ConvertTo-Json -Depth 10 | Out-File -FilePath $OutputFile -Encoding UTF8
-            Write-Information "JSON tree dump saved to $OutputFile (lines: $($treeLines.Count))" -InformationAction Continue
+            $treeOutput | Out-File -FilePath $OutputFile -Encoding UTF8
+            Write-Information "Tree dump saved to $OutputFile" -InformationAction Continue
         }
         else {
-            $treeData | ConvertTo-Json -Depth 10
+            $treeOutput
         }
     }
     finally {
-        # Robust cleanup
-        Write-Information "Closing application..." -InformationAction Continue
+        # Clean up: close the app gracefully, fallback to kill
         try {
-            if ($app -and $process) {
-                $app.Close()
-                # Check if process still exists before calling WaitForExit
-                try {
-                    if ($null -ne $process.Id -and -not $process.HasExited) {
-                        if (-not $process.WaitForExit(5000)) {  # 5s grace
-                            Write-Warning "App close timeout; force closing."
-                            if (-not $process.HasExited) {
-                                $process.CloseMainWindow()
-                                if (-not $process.WaitForExit(3000)) {
-                                    Write-Warning "Force kill PID $($process.Id)."
-                                    if (-not $process.HasExited) {
-                                        $process.Kill()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch [System.InvalidOperationException] {
-                    Write-Information "Process already exited." -InformationAction Continue
-                }
-            }
-            Write-Information "Application exited successfully." -InformationAction Continue
+            if ($app) { $app.Close() }
         }
         catch {
-            Write-Warning "Cleanup error: $($_.Exception.Message)"
+            if ($process) { $process.Kill() }
         }
-        finally {
-            if ($automation) { $automation.Dispose() }
-        }
+        if ($automation) { $automation.Dispose() }
     }
 }
 
 # Run the script's main action only when executed directly (not dot-sourced)
 if ($MyInvocation.InvocationName -ne '.') {
-    if (-not $OutputFile) { $OutputFile = "tmp/tree.json" }  # Default to JSON
-    Invoke-DumpUiTree
+    Invoke-DumpUiTree -Timeout $Timeout -OutputFile $OutputFile -InstallDependencies:$InstallDependencies -FlaUIVersion $FlaUIVersion
 }
