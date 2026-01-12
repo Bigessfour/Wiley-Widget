@@ -123,7 +123,7 @@ namespace WileyWidget.WinForms.Services
             return suggestions.ToList();
         }
 
-        private void SearchGrid(SfDataGrid grid, string gridName, List<string> searchTerms, 
+        private void SearchGrid(SfDataGrid grid, string gridName, List<string> searchTerms,
             SearchOptions options, List<SearchResult> results)
         {
             if (grid.DataSource is not System.Collections.IEnumerable dataSource)

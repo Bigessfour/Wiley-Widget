@@ -1,4 +1,5 @@
 # WW0002 Analyzer Summary
+
 ## Summary
 
 I have successfully created a Roslyn analyzer rule **WW0002** to prevent future violations of missing `Size` property on `MemoryCacheEntryOptions` when `SizeLimit` is configured on `MemoryCache`.
@@ -40,21 +41,21 @@ await _cacheService.GetOrSetAsync(key, factory, cacheOptions);
 
 ### 📁 Files Created
 
-| File | Location | Purpose |
-| --- | --- | --- |
-| MemoryCacheSizeRequiredAnalyzer.cs | eng/analyzers/ | Core analyzer implementation (C# class) |
-| AnalyzerResources.cs | eng/analyzers/ | Localization strings for all analyzers |
-| WW0002_RULE_DOCUMENTATION.md | eng/analyzers/ | Comprehensive rule documentation with examples |
-| WW0002_EXAMPLES.cs | eng/analyzers/ | Practical violation and fix examples |
-| WW0002_QUICK_REFERENCE.md | eng/analyzers/ | Quick reference guide |
+| File                               | Location       | Purpose                                        |
+| ---------------------------------- | -------------- | ---------------------------------------------- |
+| MemoryCacheSizeRequiredAnalyzer.cs | eng/analyzers/ | Core analyzer implementation (C# class)        |
+| AnalyzerResources.cs               | eng/analyzers/ | Localization strings for all analyzers         |
+| WW0002_RULE_DOCUMENTATION.md       | eng/analyzers/ | Comprehensive rule documentation with examples |
+| WW0002_EXAMPLES.cs                 | eng/analyzers/ | Practical violation and fix examples           |
+| WW0002_QUICK_REFERENCE.md          | eng/analyzers/ | Quick reference guide                          |
 
 ### 📝 Files Modified
 
-| File | Changes |
-| --- | --- |
-| AnalyzerReleases.Unshipped.md (root) | Added WW0002 release notes |
-| AnalyzerReleases.Unshipped.md (eng) | Added WW0002 release notes |
-| .editorconfig | Added WW0002 severity configuration |
+| File                                 | Changes                             |
+| ------------------------------------ | ----------------------------------- |
+| AnalyzerReleases.Unshipped.md (root) | Added WW0002 release notes          |
+| AnalyzerReleases.Unshipped.md (eng)  | Added WW0002 release notes          |
+| .editorconfig                        | Added WW0002 severity configuration |
 
 ### 🔗 Implementation Details
 
@@ -98,6 +99,7 @@ services.AddSingleton<IMemoryCache>(sp =>
 ```
 
 Per Microsoft:
+
 > "An entry won't be cached if the sum of the cached entry sizes exceeds the value specified by SizeLimit. If no cache size limit is set, the cache size set on the entry is ignored."
 
 [Reference: Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory#use-setsize-size-and-sizelimit-to-limit-cache-size)

@@ -7,11 +7,13 @@
 ## 📋 What Was Delivered
 
 ### Code Files
+
 - ✅ `QuickBooksAuthService.cs` - Polly v8 resilience pipeline
 - ✅ `QuickBooksServiceV2.cs` - Production service with timeouts
 - ✅ All methods implement `IQuickBooksService` interface (drop-in replacement)
 
 ### Documentation
+
 - ✅ `QUICKBOOKS_INTEGRATION_COMPREHENSIVE_REVIEW.md` - Full technical review
 - ✅ `QUICKBOOKS_INTEGRATION_EXECUTIVE_SUMMARY.md` - Business summary
 - ✅ `QUICKBOOKS_IMPLEMENTATION_GUIDE.md` - Step-by-step instructions
@@ -22,11 +24,13 @@
 ## 🚀 Quick Start (5 minutes)
 
 ### 1. Add Polly NuGet Package
+
 ```bash
 dotnet add package Polly --version 8.4.0
 ```
 
 ### 2. Update Program.cs (DI Registration)
+
 ```csharp
 // Change from:
 // services.AddScoped<IQuickBooksService, QuickBooksService>();
@@ -36,12 +40,14 @@ services.AddScoped<IQuickBooksService, QuickBooksServiceV2>();
 ```
 
 ### 3. Build and Test
+
 ```bash
 dotnet build WileyWidget.sln
 dotnet test tests/WileyWidget.Tests/ --filter "QuickBooks"
 ```
 
 ### 4. Set Sandbox Credentials
+
 ```powershell
 $env:QBO_ENVIRONMENT = "sandbox"
 $env:QBO_CLIENT_ID = "your-client-id"
@@ -49,6 +55,7 @@ $env:QBO_CLIENT_SECRET = "your-client-secret"
 ```
 
 ### 5. Run
+
 ```bash
 dotnet run --project src/WileyWidget.WinForms/
 ```
@@ -57,19 +64,20 @@ dotnet run --project src/WileyWidget.WinForms/
 
 ## 🎯 Key Improvements
 
-| Issue | Before | After | Impact |
-|-------|--------|-------|--------|
-| Resilience | ❌ None | ✅ Polly v8 | 80% less failures |
-| Token Buffer | 60s ❌ | 300s ✅ | No mid-flight expiry |
-| Timeout | ∞ ❌ | 30s-5m ✅ | No hangs |
-| Batch Failure | All/Nothing | Partial ✅ | Better UX |
-| Token Rotation | ❌ Missing | ✅ Auto | Intuit compliant |
+| Issue          | Before      | After       | Impact               |
+| -------------- | ----------- | ----------- | -------------------- |
+| Resilience     | ❌ None     | ✅ Polly v8 | 80% less failures    |
+| Token Buffer   | 60s ❌      | 300s ✅     | No mid-flight expiry |
+| Timeout        | ∞ ❌        | 30s-5m ✅   | No hangs             |
+| Batch Failure  | All/Nothing | Partial ✅  | Better UX            |
+| Token Rotation | ❌ Missing  | ✅ Auto     | Intuit compliant     |
 
 ---
 
 ## ⚙️ Configuration
 
 ### Environment Variables
+
 ```powershell
 $env:QBO_CLIENT_ID = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk"
 $env:QBO_CLIENT_SECRET = "abcdefghijklmnopqrstuvwxyz1234567890"
@@ -78,6 +86,7 @@ $env:QBO_REALM_ID = "1234567890"  # (set after OAuth)
 ```
 
 ### Resilience Tuning
+
 ```csharp
 // Token Refresh
 const int TokenRefreshTimeoutSeconds = 15;      // HTTP timeout
@@ -97,6 +106,7 @@ const int RateLimitPerSecond = 10;              // Intuit safe limit
 ## 🧪 Testing
 
 ### Unit Tests
+
 ```bash
 # Run all QBO tests
 dotnet test tests/WileyWidget.Tests/ --filter "QuickBooks"
@@ -108,6 +118,7 @@ dotnet test --filter "Timeout"
 ```
 
 ### Integration Tests (Sandbox)
+
 ```bash
 # OAuth flow test
 dotnet test --filter "AuthorizeAsync"
@@ -120,6 +131,7 @@ dotnet test --filter "ImportChartOfAccountsAsync"
 ```
 
 ### Manual Testing
+
 ```csharp
 var qboService = serviceProvider.GetRequiredService<IQuickBooksService>();
 
@@ -145,20 +157,24 @@ Console.WriteLine("Token refreshed successfully");
 ## 📊 Metrics to Monitor
 
 ### Token Refresh
+
 - `qbo_token_refresh_attempts_total` - Success counter
 - `qbo_token_refresh_failures_total` - Failure counter
 - `qbo_token_refresh_duration_seconds` - Latency
 
 ### API Calls
+
 - `qbo_api_calls_total` - Total calls
 - `qbo_api_errors_total` - Error breakdown
 - `qbo_api_duration_seconds` - Latency by operation
 
 ### Circuit Breaker
+
 - `qbo_circuit_breaker_state` - Open/Closed status
 - `qbo_circuit_breaker_events_total` - State change count
 
 ### Business
+
 - `qbo_sync_success_rate` - % successful syncs
 - `qbo_accounts_imported_total` - Chart import progress
 - `qbo_budgets_synced_total` - Budget sync count
@@ -168,8 +184,10 @@ Console.WriteLine("Token refreshed successfully");
 ## 🐛 Troubleshooting
 
 ### Issue: "Circuit Breaker Open"
+
 **Cause:** 5 consecutive failures  
 **Fix:** Wait 5 minutes, check Intuit API status, verify credentials
+
 ```powershell
 # Check API status
 curl https://status.intuit.com/
@@ -180,23 +198,29 @@ Write-Host "Client Secret: [REDACTED]"
 ```
 
 ### Issue: "Operation Timed Out"
+
 **Cause:** Network slow or API slow  
 **Fix:** Increase timeout, check internet connection
+
 ```csharp
 const int BatchTotalTimeoutMinutes = 10;  // Instead of 5
 ```
 
 ### Issue: "Rate Limit Exceeded"
+
 **Cause:** Too many calls/second  
 **Fix:** Reduce rate limit or add delays
+
 ```csharp
 const int RateLimitPerSecond = 5;  // Instead of 10
 await Task.Delay(500);  // Add delay between pages
 ```
 
 ### Issue: "Token Invalid or Expired"
+
 **Cause:** OAuth tokens not set or corrupted  
 **Fix:** Re-authorize via OAuth flow
+
 ```csharp
 var authorized = await qboService.AuthorizeAsync();
 if (authorized)
@@ -209,13 +233,13 @@ if (authorized)
 
 ## 📚 Documentation Reference
 
-| Document | Purpose | Length |
-|----------|---------|--------|
-| `QUICKBOOKS_INTEGRATION_COMPREHENSIVE_REVIEW.md` | Detailed technical analysis | 20 pages |
-| `QUICKBOOKS_INTEGRATION_EXECUTIVE_SUMMARY.md` | Business overview & timeline | 5 pages |
-| `QUICKBOOKS_IMPLEMENTATION_GUIDE.md` | Step-by-step implementation | 15 pages |
-| `QUICKBOOKS_IMPLEMENTATION_COMPLETE.md` | Completion report | 12 pages |
-| **THIS FILE** | Quick reference | 2 pages |
+| Document                                         | Purpose                      | Length   |
+| ------------------------------------------------ | ---------------------------- | -------- |
+| `QUICKBOOKS_INTEGRATION_COMPREHENSIVE_REVIEW.md` | Detailed technical analysis  | 20 pages |
+| `QUICKBOOKS_INTEGRATION_EXECUTIVE_SUMMARY.md`    | Business overview & timeline | 5 pages  |
+| `QUICKBOOKS_IMPLEMENTATION_GUIDE.md`             | Step-by-step implementation  | 15 pages |
+| `QUICKBOOKS_IMPLEMENTATION_COMPLETE.md`          | Completion report            | 12 pages |
+| **THIS FILE**                                    | Quick reference              | 2 pages  |
 
 ---
 
@@ -237,11 +261,13 @@ if (authorized)
 ## 🔄 Compatibility
 
 ### Backward Compatible
+
 - ✅ Implements same `IQuickBooksService` interface
 - ✅ All method signatures identical
 - ✅ Drop-in replacement for v1
 
 ### Rolling Deployment Friendly
+
 ```csharp
 // Option 1: Full migration
 services.AddScoped<IQuickBooksService, QuickBooksServiceV2>();
@@ -258,6 +284,7 @@ else
 ## 🎓 Polly Concepts
 
 ### Resilience Pipeline (v2)
+
 ```
 User Request
     ↓
@@ -273,11 +300,13 @@ Actual Operation
 ### States
 
 **Circuit Breaker States:**
+
 - 🟢 **Closed** - Normal operation
 - 🟡 **Half-Open** - Testing after break
 - 🔴 **Open** - Failing, requests rejected
 
 **Retry Backoff:**
+
 ```
 Attempt 1: Immediate
 Attempt 2: ~500ms + jitter
@@ -290,24 +319,27 @@ Attempt 4: ~2s + jitter
 ## 💡 Pro Tips
 
 1. **Use Activity Tracing** - View in Application Insights
+
    ```csharp
    using var activity = _activitySource.StartActivity("GetChartOfAccounts");
    activity?.SetTag("total_accounts", accounts.Count);
    ```
 
 2. **Monitor Log Levels** - Set appropriately
+
    ```csharp
    // Critical = circuit breaker open
    _logger.LogCritical("QBO API Circuit Breaker OPEN");
-   
+
    // Warning = retry happening
    _logger.LogWarning("Token refresh retry {Attempt}/5", attemptNumber);
-   
+
    // Information = success
    _logger.LogInformation("Chart of accounts: {Count} accounts", count);
    ```
 
 3. **Check Resilience State** - For debugging
+
    ```csharp
    var status = await qboService.GetConnectionStatusAsync();
    Console.WriteLine($"Status: {status.StatusMessage}");
@@ -324,15 +356,19 @@ Attempt 4: ~2s + jitter
 ## 📞 Support
 
 ### For Implementation Issues
+
 → See `QUICKBOOKS_IMPLEMENTATION_GUIDE.md` Troubleshooting section
 
 ### For Technical Details
+
 → See `QUICKBOOKS_INTEGRATION_COMPREHENSIVE_REVIEW.md` Sections 2-3
 
 ### For Code Examples
+
 → See `QUICKBOOKS_IMPLEMENTATION_GUIDE.md` Testing section
 
 ### For Architecture
+
 → See `QUICKBOOKS_IMPLEMENTATION_COMPLETE.md` Architecture Comparison
 
 ---
@@ -340,11 +376,13 @@ Attempt 4: ~2s + jitter
 ## 🎯 Next Phase
 
 **Phase 4: Budget Reports API** (4-6 hours)
+
 - Fetch budget data from `/reports/BudgetVsActuals`
 - Parse report rows into QuickBooksBudget objects
 - Implement budget sync
 
 **Phase 5: PKCE Support** (2-3 hours)
+
 - Add proof key for code exchange
 - Enhanced OAuth2 security
 - Production-recommended for public clients

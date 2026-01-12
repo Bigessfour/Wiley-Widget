@@ -1,5 +1,4 @@
 using Syncfusion.WinForms.Core;
-using Syncfusion.WinForms.Drawing;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
@@ -38,13 +37,13 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            
+
             this.SuspendLayout();
-            
+
             try
             {
                 var standardPadding = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(16f);
-                
+
                 // Panel properties
                 this.Name = "ChatPanel";
                 this.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -119,7 +118,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        private System.ComponentModel.IContainer components;
     }
 }
+
+

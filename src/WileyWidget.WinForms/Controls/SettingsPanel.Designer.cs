@@ -51,36 +51,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private GradientPanelExt _mainPanel;
-        private GradientPanelExt _themeGroup;
-        private GradientPanelExt _aboutGroup;
-        private GradientPanelExt _aiGroup;
-        private Syncfusion.WinForms.ListView.SfComboBox _themeCombo;
-        private Syncfusion.WinForms.ListView.SfComboBox _fontCombo;
-        private Syncfusion.WinForms.ListView.SfComboBox _cmbLogLevel;
-        private Syncfusion.WinForms.Input.SfNumericTextBox _numAutoSaveInterval;
-        private Syncfusion.WinForms.Input.SfNumericTextBox _numXaiTimeout;
-        private Syncfusion.WinForms.Input.SfNumericTextBox _numXaiMaxTokens;
-        private Syncfusion.WinForms.Input.SfNumericTextBox _numXaiTemperature;
-        private Syncfusion.WinForms.Controls.SfButton _btnClose;
-        private Syncfusion.WinForms.Controls.SfButton _btnBrowseExportPath;
-        private Syncfusion.WinForms.Controls.SfButton _btnShowApiKey;
-        private TextBoxExt _txtAppTitle;
-        private TextBoxExt _txtExportPath;
-        private TextBoxExt _txtDateFormat;
-        private TextBoxExt _txtCurrencyFormat;
-        private TextBoxExt _txtXaiApiEndpoint;
-        private TextBoxExt _txtXaiApiKey;
-        private CheckBoxAdv _chkUseDemoData;
-        private CheckBoxAdv _chkOpenEditFormsDocked;
-        private CheckBoxAdv _chkEnableAi;
-        private Syncfusion.WinForms.ListView.SfComboBox _cmbXaiModel;
-        private System.Windows.Forms.Label _lblVersion;
-        private System.Windows.Forms.Label _lblDbStatus;
-        private System.Windows.Forms.Label _lblAiHelp;
-        private System.Windows.Forms.LinkLabel _lnkAiLearnMore;
-        private System.Windows.Forms.ErrorProvider _error_provider;
     }
 }
+
+

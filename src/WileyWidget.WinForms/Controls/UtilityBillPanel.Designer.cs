@@ -1,7 +1,6 @@
 using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Drawing;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
@@ -17,19 +16,6 @@ namespace WileyWidget.WinForms.Controls
         /// Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
-
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
 
         #region Windows Form Designer generated code
 
@@ -506,46 +492,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // ===== FIELD DECLARATIONS =====
-        
-        private System.ComponentModel.IContainer components;
-        private System.Windows.Forms.ToolTip _toolTip;
-        
-        // Layout
-        private System.Windows.Forms.TableLayoutPanel _mainLayout;
-        private System.Windows.Forms.SplitContainer _mainSplitContainer;
-        
-        // Header
-        private PanelHeader _panelHeader;
-        
-        // Summary section
-        private GradientPanelExt _summaryPanel;
-        private System.Windows.Forms.Label _totalOutstandingLabel;
-        private System.Windows.Forms.Label _overdueCountLabel;
-        private System.Windows.Forms.Label _totalRevenueLabel;
-        private System.Windows.Forms.Label _billsThisMonthLabel;
-        
-        // Action buttons
-        private GradientPanelExt _buttonPanel;
-        private Syncfusion.WinForms.Controls.SfButton _createBillButton;
-        private Syncfusion.WinForms.Controls.SfButton _saveBillButton;
-        private Syncfusion.WinForms.Controls.SfButton _deleteBillButton;
-        private Syncfusion.WinForms.Controls.SfButton _markPaidButton;
-        private Syncfusion.WinForms.Controls.SfButton _generateReportButton;
-        private Syncfusion.WinForms.Controls.SfButton _exportExcelButton;
-        private Syncfusion.WinForms.Controls.SfButton _refreshButton;
-        
-        // Data grids
-        private SfDataGrid _billsGrid;
-        private SfDataGrid _customersGrid;
-        
-        // Status bar
-        private System.Windows.Forms.StatusStrip _statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel _statusLabel;
-        
-        // Overlays
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
     }
 }
+
+

@@ -14,6 +14,7 @@
 **Location:** ~Line 1200 in OnLoad()
 
 **Current Code:**
+
 ```csharp
 try
 {
@@ -35,6 +36,7 @@ catch (Exception themeEx)
 ```
 
 **Action:**
+
 ```csharp
 try
 {
@@ -58,6 +60,7 @@ catch (Exception themeEx)
 **Location:** ~Line 1600
 
 **Current Code:**
+
 ```csharp
 try
 {
@@ -83,6 +86,7 @@ catch (Exception ex)
 ```
 
 **Action - Wrap in try-finally:**
+
 ```csharp
 try
 {
@@ -97,19 +101,19 @@ try
     var scopedServices = _mainViewModelScope.ServiceProvider;
     mainVm = GetRequiredService<MainViewModel>(scopedServices);
     _asyncLogger?.Information("MainViewModel resolved from DI container");
-    
+
     // ← Move ViewModel initialization inside try-finally
 }
 catch (Exception ex)
 {
     _logger?.LogError(ex, "Failed to resolve MainViewModel from DI container");
     _asyncLogger?.Error(ex, "Failed to resolve MainViewModel from DI container");
-    
+
     // NEW: Dispose scope on failure to release resources
     try { _mainViewModelScope?.Dispose(); }
     catch { /* Best effort */ }
     _mainViewModelScope = null;
-    
+
     ApplyStatus("Error loading initialization data");
     return; // ← Exit early, user can retry
 }
@@ -122,6 +126,7 @@ catch (Exception ex)
 ### Step 3: Implement Non-Blocking Docking Layout Loading (20 min)
 
 **Files:**
+
 - **New:** `src/WileyWidget.WinForms/Services/DockingStateManager.cs`
 - **Update:** `src/WileyWidget.WinForms/Forms/MainForm.cs`
 
@@ -216,30 +221,32 @@ namespace WileyWidget.WinForms.Services
 **Step 3b: Update MainForm.cs**
 
 Add field:
+
 ```csharp
 private DockingStateManager? _dockingStateManager;
 ```
 
 Update OnLoad (replace old LoadDockState logic):
+
 ```csharp
 protected override void OnLoad(EventArgs e)
 {
     // ... existing chrome initialization ...
-    
+
     try
     {
         InitializeSyncfusionDocking();
         _syncfusionDockingInitialized = true;
-        
+
         // NEW: Non-blocking layout load
-        _dockingStateManager = new DockingStateManager(GetDockingLayoutPath(), 
+        _dockingStateManager = new DockingStateManager(GetDockingLayoutPath(),
             Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetService<ILogger<DockingStateManager>>(_serviceProvider) ?? 
+                .GetService<ILogger<DockingStateManager>>(_serviceProvider) ??
             NullLogger<DockingStateManager>.Instance);
-        
+
         _dockingStateManager.TryLoadLayout(_dockingManager);
         _logger?.LogDebug("Docking layout loaded with 1-second timeout");
-        
+
         EnsurePanelNavigatorInitialized();
     }
     catch (Exception ex)
@@ -251,6 +258,7 @@ protected override void OnLoad(EventArgs e)
 ```
 
 Update OnFormClosing:
+
 ```csharp
 protected override void OnFormClosing(FormClosingEventArgs e)
 {
@@ -262,7 +270,7 @@ protected override void OnFormClosing(FormClosingEventArgs e)
             try { _dockingStateManager.SaveLayout(_dockingManager); }
             catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout"); }
         }
-        
+
         // ... rest of cleanup ...
     }
     finally
@@ -304,10 +312,10 @@ protected override void OnViewModelResolved(DashboardViewModel viewModel)
     this.BindProperty(nameof(LoadingOverlay.Visible), viewModel, vm => vm.IsLoading);
     this.BindProperty(nameof(NoDataOverlay.Visible), viewModel, vm => vm.HasNoData);
     this.BindProperty(nameof(_statusLabel.Text), viewModel, vm => vm.StatusMessage);
-    
+
     _kpiList.DataSource = viewModel.KpiMetrics;
     _detailsGrid.DataSource = viewModel.DepartmentDetails;
-    
+
     // Load initial data
     _ = RefreshDataAsync();
 }
@@ -322,7 +330,7 @@ protected override void Dispose(bool disposing)
             subscription?.Dispose();
         }
         _propertySubscriptions.Clear();
-        
+
         this.UnbindAll();
     }
     base.Dispose(disposing);
@@ -340,7 +348,7 @@ protected override void Dispose(bool disposing)
 protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
 {
     // ... existing Ctrl+F, Ctrl+Shift+T ...
-    
+
     // Alt+A: Show Accounts
     if (keyData == (Keys.Alt | Keys.A))
     {
@@ -412,12 +420,12 @@ private GridDataSynchronizer? _gridChartSync;
 protected override void OnViewModelResolved(BudgetViewModel viewModel)
 {
     // ... existing setup ...
-    
+
     // Wire grid-chart synchronization
-    _gridChartSync = new GridDataSynchronizer(_metricsGrid, _trendChart, 
-        _serviceProvider.GetService<ILogger<GridDataSynchronizer>>() ?? 
+    _gridChartSync = new GridDataSynchronizer(_metricsGrid, _trendChart,
+        _serviceProvider.GetService<ILogger<GridDataSynchronizer>>() ??
         NullLogger<GridDataSynchronizer>.Instance);
-    
+
     // Bind grid and chart data
     _metricsGrid.DataSource = viewModel.BudgetMetrics;
     LoadChartData();
@@ -443,6 +451,7 @@ protected override void Dispose(bool disposing)
 **Method:** `InitializeSyncfusionDocking()`
 
 Add after docking manager creation:
+
 ```csharp
 _dockingManager.AllowDockPanelAsFloatingWindow = true;
 _dockingManager.AllowDockPanelAsAutoHidePanel = true;
@@ -475,16 +484,16 @@ builder.Services.AddSingleton<ThemeSwitchService>(
 var themeDropdown = new ToolStripDropDown();
 var themeSwitchService = serviceProvider.GetService<ThemeSwitchService>();
 
-themeDropdown.Items.Add("Office2019Colorful", null, (s, e) => 
+themeDropdown.Items.Add("Office2019Colorful", null, (s, e) =>
     themeSwitchService?.SwitchTheme("Office2019Colorful"));
-themeDropdown.Items.Add("Office2019Black", null, (s, e) => 
+themeDropdown.Items.Add("Office2019Black", null, (s, e) =>
     themeSwitchService?.SwitchTheme("Office2019Black"));
-themeDropdown.Items.Add("Office2019White", null, (s, e) => 
+themeDropdown.Items.Add("Office2019White", null, (s, e) =>
     themeSwitchService?.SwitchTheme("Office2019White"));
 
 // Add to Home tab
-homeTabPanel.AddToolStripItem(new ToolStripButton("Themes") 
-{ 
+homeTabPanel.AddToolStripItem(new ToolStripButton("Themes")
+{
     DropDown = themeDropdown,
     Name = "Themes_Dropdown"
 });
@@ -523,22 +532,29 @@ homeTabPanel.AddToolStripItem(new ToolStripButton("Themes")
 ## TROUBLESHOOTING
 
 ### Issue: Compilation Error "DockingStateManager not found"
+
 **Solution:** Ensure file saved to exact path: `src/WileyWidget.WinForms/Services/DockingStateManager.cs`
 
 ### Issue: Theme not cascading to child controls
+
 **Solution:** Verify Program.InitializeTheme() called in Program.cs Main()
+
 ```csharp
 InitializeTheme();  // Must be called BEFORE MainForm creation
 ```
 
 ### Issue: Docking layout still loading slowly
+
 **Solution:** Check that TryLoadLayout timeout is set to 1 second (not higher)
+
 ```csharp
 bool completed = loadTask.Wait(TimeSpan.FromSeconds(1)); // ← 1 second
 ```
 
 ### Issue: DataBindingExtensions.BindProperty not compiling
+
 **Solution:** Verify all using statements in DataBindingExtensions.cs:
+
 ```csharp
 using System;
 using System.ComponentModel;
@@ -551,26 +567,26 @@ using System.Windows.Forms;
 
 ## SUCCESS METRICS
 
-| Metric | Target | Validation |
-|--------|--------|-----------|
-| **Startup Time** | < 3s | Use Task Manager or diagnostic logs |
-| **Theme Initialization** | < 100ms | Check [THEME] log entries duration |
-| **Docking Load** | < 1s | Check layout load log message |
-| **MainViewModel Init** | < 500ms | Check OnShown async logs |
-| **Memory Usage** | < 150MB | Task Manager after app fully loaded |
-| **Zero Compilation Warnings** | Pass | Visual Studio Error List empty |
+| Metric                        | Target  | Validation                          |
+| ----------------------------- | ------- | ----------------------------------- |
+| **Startup Time**              | < 3s    | Use Task Manager or diagnostic logs |
+| **Theme Initialization**      | < 100ms | Check [THEME] log entries duration  |
+| **Docking Load**              | < 1s    | Check layout load log message       |
+| **MainViewModel Init**        | < 500ms | Check OnShown async logs            |
+| **Memory Usage**              | < 150MB | Task Manager after app fully loaded |
+| **Zero Compilation Warnings** | Pass    | Visual Studio Error List empty      |
 
 ---
 
 ## ESTIMATED COMPLETION TIME
 
-| Tier | Time | Complexity |
-|------|------|-----------|
-| **TIER 1** (Critical Path) | 35 min | Low-Medium |
-| **TIER 2** (High-Value) | 90 min | Medium |
-| **TIER 3** (Nice-to-Have) | 50 min | Medium-High |
-| **Testing & Validation** | 60 min | Medium |
-| **Total** | ~4 hours | Medium |
+| Tier                       | Time     | Complexity  |
+| -------------------------- | -------- | ----------- |
+| **TIER 1** (Critical Path) | 35 min   | Low-Medium  |
+| **TIER 2** (High-Value)    | 90 min   | Medium      |
+| **TIER 3** (Nice-to-Have)  | 50 min   | Medium-High |
+| **Testing & Validation**   | 60 min   | Medium      |
+| **Total**                  | ~4 hours | Medium      |
 
 ---
 
@@ -588,4 +604,3 @@ using System.Windows.Forms;
 **Guide Version:** 1.0  
 **Last Updated:** January 15, 2026  
 **Status:** Ready for Implementation
-

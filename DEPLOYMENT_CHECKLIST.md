@@ -3,6 +3,7 @@
 ## ✅ CODE IMPLEMENTATION (100% COMPLETE)
 
 ### Core Services
+
 - [x] QuickBooksAuthService (450 lines)
   - [x] Polly v8 resilience pipeline
   - [x] Token refresh with timeout/circuit-breaker/retry
@@ -30,6 +31,7 @@
   - [x] Error handling for all scenarios
 
 ### Models & Abstractions
+
 - [x] IQuickBooksService interface (unchanged)
 - [x] QuickBooksBudget model (unchanged)
 - [x] QuickBooksBudgetLineItem model (unchanged)
@@ -69,6 +71,7 @@
 ## ✅ INTUIT API COMPLIANCE
 
 ### OAuth 2.0 (RFC 6749)
+
 - [x] Authorization endpoint: appcenter.intuit.com/connect/oauth2
 - [x] Token endpoint: oauth.platform.intuit.com/oauth2/v1/tokens/bearer
 - [x] Scope: com.intuit.quickbooks.accounting
@@ -78,6 +81,7 @@
 - [x] Token validation
 
 ### Data API (v3)
+
 - [x] Chart of Accounts: Query with pagination (500/page)
 - [x] Customers: Query with pagination (100/page)
 - [x] Vendors: Query with pagination (100/page)
@@ -86,6 +90,7 @@
 - [x] Budgets: Reports API (GET /v3/reports/BudgetVsActuals)
 
 ### Rate Limiting
+
 - [x] 10 requests/second limit (TokenBucket)
 - [x] Intuit limit: 100 requests/minute (safe margin: 6x)
 - [x] Proper backpressure handling
@@ -94,6 +99,7 @@
 ## ✅ RESILIENCE PATTERNS
 
 ### Token Refresh
+
 - [x] Timeout: 15 seconds
 - [x] Circuit breaker: 70% failure ratio, 5-minute break
 - [x] Retry: 5 attempts, exponential backoff, jitter
@@ -101,12 +107,14 @@
 - [x] Clear error messages
 
 ### API Operations
+
 - [x] Timeout: 30 seconds per operation
 - [x] Circuit breaker: 50% failure ratio, 2-minute break
 - [x] Retry: 3 attempts, exponential backoff, jitter
 - [x] Transient error detection
 
 ### Batch Operations
+
 - [x] Per-page timeout: 30 seconds
 - [x] Total timeout: 5 minutes
 - [x] Partial failure handling (continue on error)
@@ -245,6 +253,7 @@
 ## 🚀 DEPLOYMENT STEPS
 
 ### Pre-Deployment
+
 1. [ ] Review code changes in PR
 2. [ ] Verify test suite passes locally
 3. [ ] Run full build: `dotnet build WileyWidget.sln`
@@ -252,6 +261,7 @@
 5. [ ] Verify no new security issues
 
 ### Deployment
+
 1. [ ] Merge PR to main branch
 2. [ ] Create git tag: `git tag v2.0-qb-implementation`
 3. [ ] Push to origin: `git push origin main --tags`
@@ -259,6 +269,7 @@
 5. [ ] Run smoke tests in sandbox
 
 ### Post-Deployment
+
 1. [ ] Monitor error logs for first hour
 2. [ ] Check token refresh success rate (target: >98%)
 3. [ ] Verify rate limiter effectiveness
@@ -266,6 +277,7 @@
 5. [ ] Check circuit breaker states (should stay closed)
 
 ### Validation
+
 1. [ ] Complete OAuth flow in sandbox
 2. [ ] Fetch chart of accounts (>100 accounts)
 3. [ ] Sync customers, vendors, invoices
@@ -277,6 +289,7 @@
 ## 📊 SUCCESS METRICS
 
 Post-deployment, verify:
+
 - [x] Token refresh success rate: >98%
 - [x] API operation success rate: >95%
 - [x] Average API response time: <3 seconds

@@ -86,7 +86,7 @@ internal sealed class QuickBooksAuthService : IDisposable
         return new ResiliencePipelineBuilder<TokenResult>()
             // Outermost: Timeout prevents indefinite hangs
             .AddTimeout(TimeSpan.FromSeconds(TokenRefreshTimeoutSeconds))
-            
+
             // Middle: Circuit breaker prevents hammering Intuit on persistent failures
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TokenResult>
             {
@@ -113,7 +113,7 @@ internal sealed class QuickBooksAuthService : IDisposable
                     return ValueTask.CompletedTask;
                 }
             })
-            
+
             // Innermost: Retry handles transient failures with exponential backoff and jitter
             .AddRetry(new RetryStrategyOptions<TokenResult>
             {

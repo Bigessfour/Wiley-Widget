@@ -38,6 +38,7 @@ var width = 320;  // Breaks on 125%+ DPI
 ```
 
 **Guidelines:**
+
 - Use DpiAware for: Size, Padding, Margin, Location, Font size
 - Reference: `Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits()`
 - Standard DPI multipliers: 96 DPI (100%), 120 DPI (125%), 144 DPI (150%)
@@ -62,6 +63,7 @@ panel.Margin = new Padding(controlSpacing);
 ```
 
 **Spacing Hierarchy:**
+
 ```
 Component Level:   16 DLU (0.16")
 Section Level:     24 DLU (0.24")
@@ -75,27 +77,28 @@ Form Padding:      16 DLU (0.16")
 
 ```csharp
 // Title fonts
-var titleFont = new Font("Segoe UI", 
-    DpiAware.LogicalToDeviceUnits(12f), 
+var titleFont = new Font("Segoe UI",
+    DpiAware.LogicalToDeviceUnits(12f),
     FontStyle.Bold);
 
 // Label fonts
-var labelFont = new Font("Segoe UI", 
-    DpiAware.LogicalToDeviceUnits(9f), 
+var labelFont = new Font("Segoe UI",
+    DpiAware.LogicalToDeviceUnits(9f),
     FontStyle.Regular);
 
 // Help text fonts (smaller, slightly muted)
-var helpFont = new Font("Segoe UI", 
-    DpiAware.LogicalToDeviceUnits(8f), 
+var helpFont = new Font("Segoe UI",
+    DpiAware.LogicalToDeviceUnits(8f),
     FontStyle.Italic);
 
 // Mono font for data/codes
-var monoFont = new Font("Courier New", 
-    DpiAware.LogicalToDeviceUnits(9f), 
+var monoFont = new Font("Courier New",
+    DpiAware.LogicalToDeviceUnits(9f),
     FontStyle.Regular);
 ```
 
 **Best Practices:**
+
 - Title: 12pt Bold (Headers)
 - Body: 9pt Regular (Labels, input)
 - Help: 8pt Italic (Hints, descriptions)
@@ -125,6 +128,7 @@ grid.GridLineStroke = new Pen(Color.LightGray, 0.5f);  // Subtle grid lines
 ```
 
 **Guidelines:**
+
 - Input fields: `FixedSingle` (thin, subtle)
 - Section panels: `FixedSingle` (clear separation)
 - Data grids: `FixedSingle` + subtle grid lines
@@ -150,6 +154,7 @@ control.ForeColor = Color.Black;
 ```
 
 **WCAG 2.1 AA Contrast Ratios:**
+
 - Text to background: 4.5:1 minimum
 - UI components: 3:1 minimum
 - Office2019Colorful meets these standards automatically
@@ -213,6 +218,7 @@ panel.TabStop = false;
 ```
 
 **Best Practices:**
+
 - Start TabIndex at 1, increment sequentially
 - Group related controls together
 - Left-to-right, top-to-bottom flow
@@ -252,6 +258,7 @@ protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
 ```
 
 **Standard Shortcuts:**
+
 - `Ctrl+N` - New/Add
 - `Ctrl+S` - Save
 - `Ctrl+E` - Export/Edit
@@ -319,10 +326,10 @@ loadingOverlay.AccessibleDescription = "Loading account data from server...";
 private void InitializeComponent()
 {
     this.components = new System.ComponentModel.Container();
-    
+
     // BEGIN SUSPEND LAYOUT - speeds up initialization
     this.SuspendLayout();
-    
+
     try
     {
         // Initialize controls in logical order
@@ -330,7 +337,7 @@ private void InitializeComponent()
         // 2. Data controls
         // 3. UI controls
         // 4. Event handlers last
-        
+
         // Example: Initialize grid
         _grid = new SfDataGrid
         {
@@ -346,12 +353,12 @@ private void InitializeComponent()
             ExcelLikeCurrentCell = true,
             NavigationMode = NavigationMode.Row
         };
-        
+
         // Add columns explicitly (no auto-generation)
         _grid.Columns.Add(new GridTextColumn { /* ... */ });
-        
+
         Controls.Add(_grid);
-        
+
         // Theme after adding to parent
         SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
     }
@@ -365,6 +372,7 @@ private void InitializeComponent()
 ```
 
 **Performance Tips:**
+
 - Use `SuspendLayout()` / `ResumeLayout()` for bulk operations
 - Set `AutoGenerateColumns = false` for SfDataGrid
 - Avoid updating DataSource during initialization
@@ -422,7 +430,7 @@ private void InitializeComponent()
         BlinkStyle = ErrorBlinkStyle.NeverBlink,  // Avoid annoying blink
         Icon = SystemIcons.Exclamation
     };
-    
+
     // Wire validation
     txtAccountNumber.Validating += (s, e) =>
     {
@@ -436,13 +444,13 @@ private string ValidateAccountNumber(string value)
 {
     if (string.IsNullOrWhiteSpace(value))
         return "Account number is required";
-    
+
     if (value.Length > 20)
         return "Account number cannot exceed 20 characters";
-    
+
     if (!Regex.IsMatch(value, @"^\d{4,}$"))
         return "Account number must contain only digits (minimum 4)";
-    
+
     return string.Empty;  // No error
 }
 ```
@@ -474,7 +482,7 @@ txtAccountNumber.Validating += (s, e) =>
 
 ```csharp
 // Tooltip for field help
-_toolTip.SetToolTip(txtAccountNumber, 
+_toolTip.SetToolTip(txtAccountNumber,
     "Unique identifier for this account (e.g., 1000, 2100)\r\nMaximum 20 characters, digits only");
 
 // Status bar for context help (on focus)
@@ -519,10 +527,10 @@ private async Task LoadDataAsync()
     {
         _loadingOverlay.Visible = true;
         _loadingOverlay.Message = "Fetching accounts...";
-        
+
         var data = await _service.GetAccountsAsync();
         _grid.ItemsSource = data;
-        
+
         _loadingOverlay.Visible = false;
     }
     catch (Exception ex)
@@ -558,7 +566,7 @@ private void UpdateNoDataOverlay()
     if (!_viewModel.IsLoading && _viewModel.Accounts.Count == 0)
     {
         _noDataOverlay.Visible = true;
-        _noDataOverlay.ShowActionButton("➕ Add Account", 
+        _noDataOverlay.ShowActionButton("➕ Add Account",
             async (s, e) => await AddAccountAsync());
     }
     else
@@ -593,13 +601,13 @@ private void InitializeComponent()
 private async Task ImportDataAsync()
 {
     _progressBar.Visible = true;
-    
+
     for (int i = 0; i <= 100; i += 10)
     {
         _progressBar.Value = i;
         await Task.Delay(100);  // Simulate work
     }
-    
+
     _progressBar.Visible = false;
 }
 ```
@@ -618,37 +626,37 @@ _grid = new SfDataGrid
     AllowDraggingColumns = true,
     AllowResizingColumns = true,
     AllowMovingColumns = true,
-    
+
     // Performance
     AutoGenerateColumns = false,
     VirtualizingPixelCount = (int)DpiAware.LogicalToDeviceUnits(500f),
     EnableVirtualization = true,
-    
+
     // Editing
     AllowEditing = false,  // Use dialog for editing (safer)
     AllowDeleting = false,  // Use dialog with confirmation
-    
+
     // Selection & Navigation
     SelectionMode = GridSelectionMode.Single,  // or .Multiple
     NavigationMode = NavigationMode.Row,
     ShowRowHeader = true,
-    
+
     // Appearance
     ShowBorder = true,
     GridLinesVisibility = GridLinesVisibility.Horizontal,
     ExcelLikeCurrentCell = true,
     RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f),
     HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f),
-    
+
     // Features
     AllowFiltering = true,
     AllowSorting = true,
     AllowGrouping = true,
     ShowGroupDropArea = false,  // Unless grouping is common
-    
+
     // Sorting
     AllowTriStateSorting = true,
-    
+
     // Accessibility
     AccessibleName = "Accounts Grid",
     AccessibleDescription = "Table displaying all municipal accounts"
@@ -697,20 +705,20 @@ _comboBox = new SfComboBox
     DataSource = departments,
     DisplayMember = nameof(Department.Name),
     ValueMember = nameof(Department.Id),
-    
+
     // Behavior
     DropDownStyle = DropDownStyle.DropDownList,  // Read-only
     AllowFiltering = true,
     AllowNull = false,
-    
+
     // Appearance
     Width = (int)DpiAware.LogicalToDeviceUnits(200f),
     ShowBorder = true,
-    
+
     // Search
     AutoCompleteMode = AutoCompleteMode.SuggestAppend,
     AutoCompleteSource = AutoCompleteSource.CustomSource,
-    
+
     // Accessibility
     AccessibleName = "Department",
     AccessibleDescription = "Select the department this account belongs to"
@@ -723,7 +731,7 @@ _comboBox.TextChanged += (s, e) =>
     var filtered = departments
         .Where(d => d.Name.ToLower().Contains(searchText))
         .ToList();
-    
+
     _comboBox.DataSource = filtered;
 };
 ```
@@ -736,14 +744,14 @@ _button = new SfButton
     // Content
     Text = "&Save Account",  // & = keyboard shortcut
     AutoSize = true,
-    
+
     // Styling
     Style.BackColor = Color.Empty,  // Use theme color
     Style.ForeColor = Color.Empty,  // Use theme color
-    
+
     // Behavior
     DialogResult = DialogResult.OK,  // Or None for commands
-    
+
     // Accessibility
     AccessibleName = "Save Account",
     AccessibleDescription = "Save changes to the current account (Keyboard shortcut: Ctrl+S)",
@@ -765,19 +773,19 @@ _numericBox = new SfNumericTextBox
     FormatMode = FormatMode.Currency,  // or Percent
     Format = "C2",  // Currency with 2 decimals
     AllowNull = false,
-    
+
     // Range
     MinValue = 0,
     MaxValue = decimal.MaxValue,
-    
+
     // Behavior
     CultureInfo = CultureInfo.CurrentCulture,  // Respect user locale
     UpDownButtonAlignment = Alignment.Right,
-    
+
     // Appearance
     ShowBorder = true,
     Width = (int)DpiAware.LogicalToDeviceUnits(120f),
-    
+
     // Accessibility
     AccessibleName = "Balance Amount",
     AccessibleDescription = "Enter the account balance in currency format"
@@ -797,18 +805,18 @@ private void InitializeComponent()
 {
     // Step 1: Suspend layout
     this.SuspendLayout();
-    
+
     try
     {
         // Step 2: Initialize controls (no colors yet)
         var controls = CreateAllControls();
-        
+
         // Step 3: Add to parent
         controls.ForEach(c => this.Controls.Add(c));
-        
+
         // Step 4: Apply theme to parent (cascades to children)
         Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
-        
+
         // Step 5: Apply theme to container panels
         foreach (var panel in GetPanels())
         {
@@ -826,7 +834,7 @@ private void InitializeComponent()
 public void ApplyTheme(AppTheme theme)
 {
     SfSkinManager.SetVisualStyle(this, theme.SfThemeName);
-    
+
     // Update button icons
     var iconService = ServiceProvider?.GetService<IThemeIconService>();
     if (iconService != null)
@@ -845,12 +853,12 @@ private void InitializeComponent()
 {
     // Detect high contrast mode
     var isHighContrast = SystemInformation.HighContrast;
-    
+
     if (isHighContrast)
     {
         // Use appropriate theme for high contrast
         SfSkinManager.SetVisualStyle(this, "HighContrast");
-        
+
         // Increase font sizes
         _label.Font = new Font("Segoe UI", 11);  // Larger
         _button.Font = new Font("Segoe UI", 11);
@@ -929,4 +937,3 @@ Professional Syncfusion Windows Forms applications require attention to detail a
 **Document Version:** 1.0
 **Syncfusion Version:** 32.1.19
 **Status:** Reference Implementation Guide
-

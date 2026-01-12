@@ -10,22 +10,22 @@ Successfully created and implemented **Roslyn analyzer rule WW0002** to automati
 
 ### Core Implementation
 
-| Item | Status | Location |
-| --- | --- | --- |
-| Analyzer Class | ✅ Complete | `eng/analyzers/MemoryCacheSizeRequiredAnalyzer.cs` |
-| Resource Strings | ✅ Complete | `eng/analyzers/AnalyzerResources.cs` |
-| EditorConfig Rules | ✅ Complete | `.editorconfig` (line 459) |
-| Release Notes | ✅ Complete | `AnalyzerReleases.Unshipped.md`, `eng/analyzers/AnalyzerReleases.Unshipped.md` |
+| Item               | Status      | Location                                                                       |
+| ------------------ | ----------- | ------------------------------------------------------------------------------ |
+| Analyzer Class     | ✅ Complete | `eng/analyzers/MemoryCacheSizeRequiredAnalyzer.cs`                             |
+| Resource Strings   | ✅ Complete | `eng/analyzers/AnalyzerResources.cs`                                           |
+| EditorConfig Rules | ✅ Complete | `.editorconfig` (line 459)                                                     |
+| Release Notes      | ✅ Complete | `AnalyzerReleases.Unshipped.md`, `eng/analyzers/AnalyzerReleases.Unshipped.md` |
 
 ### Documentation
 
-| Document | Status | Location |
-| --- | --- | --- |
-| Quick Reference | ✅ Complete | `eng/analyzers/WW0002_QUICK_REFERENCE.md` |
-| Full Documentation | ✅ Complete | `eng/analyzers/WW0002_RULE_DOCUMENTATION.md` |
-| Code Examples | ✅ Complete | `eng/analyzers/WW0002_EXAMPLES.cs` |
-| Implementation Guide | ✅ Complete | `docs/WW0002_ANALYZER_IMPLEMENTATION.md` |
-| This Delivery Document | ✅ Complete | `DELIVERY_WW0002_ANALYZER.md` |
+| Document               | Status      | Location                                     |
+| ---------------------- | ----------- | -------------------------------------------- |
+| Quick Reference        | ✅ Complete | `eng/analyzers/WW0002_QUICK_REFERENCE.md`    |
+| Full Documentation     | ✅ Complete | `eng/analyzers/WW0002_RULE_DOCUMENTATION.md` |
+| Code Examples          | ✅ Complete | `eng/analyzers/WW0002_EXAMPLES.cs`           |
+| Implementation Guide   | ✅ Complete | `docs/WW0002_ANALYZER_IMPLEMENTATION.md`     |
+| This Delivery Document | ✅ Complete | `DELIVERY_WW0002_ANALYZER.md`                |
 
 ---
 
@@ -270,6 +270,7 @@ private static MemoryCacheEntryOptions MapOptions(CacheEntryOptions? options)
 ### Microsoft Documentation
 
 Per Microsoft Learn:
+
 > "An entry won't be cached if the sum of the cached entry sizes exceeds the value specified by SizeLimit. If no cache size limit is set, the cache size set on the entry is ignored."
 
 **Source**: <https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory#use-setsize-size-and-sizelimit-to-limit-cache-size>

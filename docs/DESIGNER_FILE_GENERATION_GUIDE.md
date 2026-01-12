@@ -53,7 +53,7 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            
+
             // [INITIALIZATION CODE]
             // [EVENT WIRING]
         }
@@ -66,6 +66,7 @@ namespace WileyWidget.WinForms.Controls
 ### 1.2 Key Rules
 
 **Usings Block (Fixed):**
+
 ```csharp
 using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.Drawing;
@@ -78,22 +79,26 @@ using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 ```
 
 **Critical Pattern 1: No Ambiguous Namespaces**
+
 - ✅ Use alias: `using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;`
 - ❌ DON'T import: `Syncfusion.Windows.Forms` (causes ambiguity)
 - ❌ DON'T import: `Syncfusion.WinForms.Input` directly (use fully qualified)
 
 **Critical Pattern 2: Fully Qualified Names**
+
 - ✅ `new Syncfusion.WinForms.ListView.SfComboBox()`
 - ✅ `new Syncfusion.WinForms.Input.SfNumericTextBox()`
 - ✅ `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(...)`
 - ❌ DON'T use ambiguous short names
 
 **Critical Pattern 3: Theme Application**
+
 - ✅ Use `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(control, ThemeColors.DefaultTheme)`
 - ❌ DON'T manually assign colors to BackColor/ForeColor
 - ❌ DON'T set per-control themes
 
 **Critical Pattern 4: ToolTip Initialization**
+
 - ✅ Create `_toolTip` in `InitializeComponent()`
 - ✅ Initialize before using: `_toolTip = new System.Windows.Forms.ToolTip(this.components);`
 - ❌ DON'T use uninitialized `_toolTip`
@@ -114,6 +119,7 @@ Get-ChildItem -Path "src/WileyWidget.WinForms/Controls" -Filter "*.cs" |
 ```
 
 **Expected panels (primary):**
+
 - AccountsPanel
 - BudgetPanel
 - ChartPanel
@@ -133,6 +139,7 @@ Get-ChildItem -Path "src/WileyWidget.WinForms/Controls" -Filter "*.cs" |
 **For each panel, execute these steps atomically:**
 
 #### Step A: Analyze the Panel Class
+
 1. Read the `.cs` file
 2. Identify:
    - Private field declarations (controls)
@@ -141,7 +148,9 @@ Get-ChildItem -Path "src/WileyWidget.WinForms/Controls" -Filter "*.cs" |
    - Event handler wiring
 
 #### Step B: Extract Control Declarations
+
 Example from AccountEditPanel:
+
 ```csharp
 private System.Windows.Forms.ToolTip _toolTip;
 private System.Windows.Forms.Label lblTitle;
@@ -151,19 +160,21 @@ private Syncfusion.WinForms.ListView.SfComboBox cmbDepartment;
 ```
 
 #### Step C: Generate InitializeComponent
+
 Structure:
+
 ```csharp
 private void InitializeComponent()
 {
     this.components = new System.ComponentModel.Container();
-    
+
     // Initialize ToolTip FIRST
     _toolTip = new System.Windows.Forms.ToolTip(this.components);
     _toolTip.AutoPopDelay = 5000;
     _toolTip.InitialDelay = 500;
     _toolTip.ReshowDelay = 200;
     _toolTip.ShowAlways = true;
-    
+
     // Control initialization
     // For each control:
     // 1. Instantiate with fully qualified type
@@ -172,10 +183,10 @@ private void InitializeComponent()
     // 4. Set Syncfusion-specific properties
     // 5. Add to parent container
     // 6. Wire tooltip
-    
+
     // Apply theme to appropriate control (usually buttonPanel or main container)
     Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(controlName, ThemeColors.DefaultTheme);
-    
+
     // Set form/panel properties
     this.Name = "PanelName";
     this.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -186,6 +197,7 @@ private void InitializeComponent()
 ```
 
 #### Step D: Generate Field Declarations
+
 ```csharp
 // At bottom of partial class
 private System.ComponentModel.IContainer components;
@@ -223,15 +235,16 @@ private System.Windows.Forms.Label lblTitle;
 
 **Group 1 Progress: 10 of 15 Designer Files Complete (67%)**
 
-| Metric | Status |
-|--------|--------|
-| **Designer Files Created** | 10/15 (67%) |
-| **Build Status** | ✅ Successful |
-| **Compilation Errors** | 0 |
-| **Test Coverage** | Ready for validation |
-| **Next Phase** | 6 remaining panels (estimated 1-2 hours) |
+| Metric                     | Status                                   |
+| -------------------------- | ---------------------------------------- |
+| **Designer Files Created** | 10/15 (67%)                              |
+| **Build Status**           | ✅ Successful                            |
+| **Compilation Errors**     | 0                                        |
+| **Test Coverage**          | Ready for validation                     |
+| **Next Phase**             | 6 remaining panels (estimated 1-2 hours) |
 
 **Key Achievements:**
+
 - ✅ Canonical pattern established and validated
 - ✅ ScopedPanelBase panels properly integrated
 - ✅ Theme compliance verified (SfSkinManager, no manual colors)
@@ -245,6 +258,7 @@ private System.Windows.Forms.Label lblTitle;
 **Group 1: Priority Panels (15 files) - 67% COMPLETE (10 of 15)**
 
 ✅ **COMPLETED: 10 Designer Files Generated**
+
 1. AccountEditPanel.Designer.cs
 2. AccountsPanel.Designer.cs
 3. BudgetPanel.Designer.cs
@@ -259,6 +273,7 @@ private System.Windows.Forms.Label lblTitle;
 **Build Status: ✅ SUCCESSFUL - No Compilation Errors**
 
 ⏳ **REMAINING: 6 Designer Files (Recommended Next Phase)**
+
 - CustomersPanel (UserControl - fully implemented with toolbar, grid, and summary)
 - UtilityBillPanel (ScopedPanelBase - fully implemented with bill and customer grids)
 - ChatPanel (ScopedPanelBase - Blazor-based AI chat panel)
@@ -281,18 +296,21 @@ This guide establishes the **canonical pattern** for generating designer files a
 ### Current Status (January 9, 2026)
 
 **Group 1: 67% Complete**
+
 - ✅ 10 of 15 designer files generated
 - ✅ Build verified (0 errors)
 - ✅ Pattern validated across ScopedPanelBase, UserControl, and complex panels
 - ✅ Theme compliance confirmed
 
 **Immediate Next Steps:**
+
 1. **Complete Group 1** (6 remaining panels: CustomersPanel, UtilityBillPanel, ChatPanel, WarRoomPanel, ProactiveInsightsPanel, RevenueTrendsPanel)
 2. **Execute Group 2-4** (Overlays, Forms, Dialogs)
 3. **Create automated script** for future panels
 4. **Update developer guidelines** with finalized pattern
 
 **Estimated Remaining Effort:**
+
 - Group 1 remaining: 1-2 hours
 - Group 2-4: 2-3 hours
 - Automation & documentation: 1 hour
@@ -301,5 +319,6 @@ This guide establishes the **canonical pattern** for generating designer files a
 ---
 
 **Version History:**
+
 - v1.0 (Jan 9, 2026): Initial canonical pattern established
 - v1.1 (Jan 9, 2026): Updated with Group 1 progress (10/15 complete)

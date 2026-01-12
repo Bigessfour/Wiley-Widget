@@ -286,7 +286,7 @@ def phase_grid():
             DOTNET_CMD,
             "run",
             "--project",
-            \"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj\",
+            "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
             "--no-build",
             "--",
             "InspectSfDataGrid",

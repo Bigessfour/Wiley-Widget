@@ -54,26 +54,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private SfDataGrid _parametersGrid;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private GradientPanelExt _reportViewerContainer;
-        private GradientPanelExt _toolbarPanel;
-        private GradientPanelExt _parametersPanel;
-        private Syncfusion.WinForms.ListView.SfComboBox _reportSelector;
-        private Syncfusion.WinForms.Controls.SfButton _loadReportButton;
-        private Syncfusion.WinForms.Controls.SfButton _exportPdfButton;
-        private Syncfusion.WinForms.Controls.SfButton _exportExcelButton;
-        private Syncfusion.WinForms.Controls.SfButton _printButton;
-        private Syncfusion.WinForms.Controls.SfButton _parametersButton;
-        private Syncfusion.WinForms.Controls.SfButton _applyParametersButton;
-        private Syncfusion.WinForms.Controls.SfButton _closeParametersButton;
-        private System.Windows.Forms.SplitContainer _mainSplitContainer;
-        private System.Windows.Forms.SplitContainer _parametersSplitContainer;
-        private System.Windows.Forms.StatusStrip _statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel _statusLabel;
     }
 }
+
+

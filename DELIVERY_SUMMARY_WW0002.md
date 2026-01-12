@@ -4,14 +4,14 @@ Successfully created **Roslyn analyzer rule WW0002** to prevent missing `Size` p
 
 ## Rule Specification
 
-| Property | Value |
-| --- | --- |
-| Rule ID | WW0002 |
-| Title | MemoryCacheEntryOptions missing required Size property |
-| Severity | Warning |
-| Category | Caching |
-| Enabled | Yes (by default) |
-| Status | Ready for use |
+| Property | Value                                                  |
+| -------- | ------------------------------------------------------ |
+| Rule ID  | WW0002                                                 |
+| Title    | MemoryCacheEntryOptions missing required Size property |
+| Severity | Warning                                                |
+| Category | Caching                                                |
+| Enabled  | Yes (by default)                                       |
+| Status   | Ready for use                                          |
 
 ## What It Detects
 

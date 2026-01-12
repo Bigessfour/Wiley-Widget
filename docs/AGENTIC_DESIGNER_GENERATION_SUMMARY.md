@@ -51,12 +51,15 @@ This deliverable provides a **complete, production-ready process** for systemati
 ### Essential Rules (Must Follow)
 
 **Rule 1: Namespace Aliases**
+
 ```csharp
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 ```
+
 - Prevents ambiguity between Syncfusion.Windows.Forms.ThemeColors and WileyWidget ThemeColors
 
 **Rule 2: Fully Qualified Syncfusion Types**
+
 ```csharp
 // ✅ DO THIS
 new Syncfusion.WinForms.ListView.SfComboBox()
@@ -70,6 +73,7 @@ SkinManager.SetVisualStyle(...)  // Incomplete
 ```
 
 **Rule 3: ToolTip Initialization**
+
 ```csharp
 // MUST be done in InitializeComponent FIRST
 _toolTip = new System.Windows.Forms.ToolTip(this.components);
@@ -83,6 +87,7 @@ _toolTip.SetToolTip(control, "Help text");
 ```
 
 **Rule 4: No Manual Color Assignments**
+
 ```csharp
 // ✅ Correct - Theme cascade from parent
 Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
@@ -93,6 +98,7 @@ control.ForeColor = Color.Black;
 ```
 
 **Rule 5: Theme Application**
+
 ```csharp
 // Apply theme via SfSkinManager ONLY
 Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
@@ -164,12 +170,14 @@ These panels are used most frequently and should be completed first:
 ## How to Use This Guide
 
 ### Step 1: Read the Guide
+
 - 📖 Open `docs/DESIGNER_FILE_GENERATION_GUIDE.md`
 - Understand the 8 sections (Structure, Rules, Workflow, Patterns, Issues, Automation, Validation, Documentation)
 
 ### Step 2: Choose Your Approach
 
 #### Option A: Manual Generation (Agentic but Step-by-Step)
+
 1. For each panel in Group 1:
    - Read the panel's `.cs` file
    - Extract control declarations
@@ -181,6 +189,7 @@ These panels are used most frequently and should be completed first:
 **Effort:** 2-3 hours for Group 1
 
 #### Option B: Scripted Batch Generation (Fully Automated)
+
 1. Create PowerShell script (template provided in guide, Part 6)
 2. Run: `.\generate-designers.ps1 -Group 1`
 3. Script will:
@@ -193,6 +202,7 @@ These panels are used most frequently and should be completed first:
 **Effort:** 30 min setup + 1 hour execution
 
 #### Option C: Hybrid (Recommended)
+
 1. Start with manual Group 1 (2-3 highest-priority panels)
 2. Create script based on successful patterns
 3. Run script on remaining Group 1 panels
@@ -202,6 +212,7 @@ These panels are used most frequently and should be completed first:
 **Effort:** 1.5 hours total
 
 ### Step 3: Validate Each Batch
+
 ```powershell
 # After generating each batch
 dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj -v minimal
@@ -212,22 +223,27 @@ dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj -v minimal
 ```
 
 ### Step 4: Document What You Generated
+
 For each completed batch, create a summary:
+
 ```markdown
 # Designer Generation Batch 1
 
 ## Generated Files
+
 - AccountsPanel.Designer.cs ✅
 - BudgetPanel.Designer.cs ✅
 - ChartPanel.Designer.cs ✅
 
 ## Compilation
+
 - Total panels processed: 3
 - Successful: 3
 - Failed: 0
 - Build time: 12 seconds
 
 ## Issues Found & Fixed
+
 - None
 
 ## Next: Process Group 1 remaining panels (12 of 15)
@@ -238,21 +254,25 @@ For each completed batch, create a summary:
 ## Why This Approach Works
 
 ### ✅ Agentic Execution
+
 - No human confirmation needed at each step
 - Process is fully scripted and repeatable
 - Can be run unattended (overnight, CI/CD pipeline)
 
 ### ✅ Safe & Validated
+
 - Every step produces compilable code
 - Build check after each batch prevents cascading errors
 - Rollback is simple (delete generated file, re-run)
 
 ### ✅ Scalable
+
 - Same pattern works for 2 panels or 200 panels
 - Parallel processing possible for independent panels
 - Batch grouping allows phased delivery
 
 ### ✅ Maintainable
+
 - Canonical pattern documented in one place
 - Future new panels follow same pattern
 - Existing panels documented with generation notes
@@ -264,22 +284,26 @@ For each completed batch, create a summary:
 After completing this process, you will have:
 
 ✅ **60+ Designer Files Generated**
+
 - One `.Designer.cs` for each panel/form/dialog
 - All following canonical pattern
 - All compiling without errors
 
 ✅ **Zero Manual Designer Work**
+
 - No need to open Visual Studio designer
 - No hand-editing form layouts
 - No GUI drag-drop operations
 
 ✅ **Production-Ready Forms**
+
 - Proper DI support (ScopedPanelBase)
 - Theme integration (SfSkinManager)
 - Accessibility support (AccessibleName/Description)
 - Complete event wiring
 
 ✅ **Future Scalability**
+
 - New panels automatically follow pattern
 - Script can be reused for new panels
 - Documentation guides developers
@@ -289,8 +313,10 @@ After completing this process, you will have:
 ## Quick Reference: Common Panel Types
 
 ### Type 1: Simple List Panel
+
 **Example:** CustomersPanel
 **Key Controls:**
+
 - `SfDataGrid` for data display
 - `SfComboBox` for filters
 - `SfButton` for actions (Add, Edit, Delete)
@@ -300,8 +326,10 @@ After completing this process, you will have:
 **Time to Generate:** 10-12 minutes
 
 ### Type 2: Chart + Grid Panel
+
 **Example:** ChartPanel, AnalyticsPanel
 **Key Controls:**
+
 - `ChartControl` for visualization
 - `SfDataGrid` for detailed data
 - `SplitContainer` to divide space
@@ -311,8 +339,10 @@ After completing this process, you will have:
 **Time to Generate:** 15-20 minutes
 
 ### Type 3: Settings/Config Panel
+
 **Example:** SettingsPanel
 **Key Controls:**
+
 - `SfTabControl` for sections
 - Various input controls per section
 - `SfButton` for Save/Cancel/Reset
@@ -321,8 +351,10 @@ After completing this process, you will have:
 **Time to Generate:** 12-15 minutes
 
 ### Type 4: Complex Form (MainForm)
+
 **Example:** MainForm
 **Key Controls:**
+
 - `RibbonControlAdv` for menu/toolbar
 - `StatusBarAdv` for status display
 - `DockingManager` for panel hosting
@@ -361,13 +393,13 @@ Your implementation is successful when:
 
 **Most Common Issues & Solutions:**
 
-| Issue | Solution |
-|-------|----------|
-| `CS0104: ThemeColors is ambiguous` | Add using alias: `using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;` |
-| `CS0103: SfSkinManager does not exist` | Use fully qualified: `Syncfusion.WinForms.Core.SfSkinManager` |
-| `NullReferenceException: _toolTip is null` | Initialize _toolTip BEFORE using: `_toolTip = new ToolTip(components);` |
-| `Build fails, designer not found` | Verify: (1) File path is correct, (2) Class name matches filename, (3) Namespace matches project |
-| `Theme not applying` | Ensure: (1) Called `InitializeComponent()` in constructor, (2) Used SfSkinManager, (3) No manual colors |
+| Issue                                      | Solution                                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `CS0104: ThemeColors is ambiguous`         | Add using alias: `using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;`                         |
+| `CS0103: SfSkinManager does not exist`     | Use fully qualified: `Syncfusion.WinForms.Core.SfSkinManager`                                           |
+| `NullReferenceException: _toolTip is null` | Initialize \_toolTip BEFORE using: `_toolTip = new ToolTip(components);`                                |
+| `Build fails, designer not found`          | Verify: (1) File path is correct, (2) Class name matches filename, (3) Namespace matches project        |
+| `Theme not applying`                       | Ensure: (1) Called `InitializeComponent()` in constructor, (2) Used SfSkinManager, (3) No manual colors |
 
 See `docs/DESIGNER_FILE_GENERATION_GUIDE.md` Part 5 for full troubleshooting guide.
 
@@ -385,14 +417,14 @@ See `docs/DESIGNER_FILE_GENERATION_GUIDE.md` Part 5 for full troubleshooting gui
 
 **Recommended Schedule:**
 
-| Phase | Time | Output |
-|-------|------|--------|
-| **Setup** | 30 min | PowerShell script, initial guide review |
-| **Group 1** | 2.5 hr | 15 core panels + documentation |
-| **Group 2** | 30 min | 4 utility/overlay panels |
-| **Group 3** | 1 hr | 2 main forms |
-| **Group 4** | 30 min | 3 dialogs |
-| **Total** | **5 hours** | **All 60+ designers complete** |
+| Phase       | Time        | Output                                  |
+| ----------- | ----------- | --------------------------------------- |
+| **Setup**   | 30 min      | PowerShell script, initial guide review |
+| **Group 1** | 2.5 hr      | 15 core panels + documentation          |
+| **Group 2** | 30 min      | 4 utility/overlay panels                |
+| **Group 3** | 1 hr        | 2 main forms                            |
+| **Group 4** | 30 min      | 3 dialogs                               |
+| **Total**   | **5 hours** | **All 60+ designers complete**          |
 
 ---
 

@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.Services
         public RealtimeDashboardService(ILogger<RealtimeDashboardService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Update dashboard every 5 seconds if subscribed
             _updateTimer = new Timer(UpdateDashboard, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         }
@@ -102,10 +102,10 @@ namespace WileyWidget.WinForms.Services
             {
                 if (metrics.TryGetValue(subscription.MetricId, out var data))
                 {
-                    DataUpdated?.Invoke(this, new DashboardDataUpdatedEventArgs 
-                    { 
-                        MetricId = subscription.MetricId, 
-                        Data = data 
+                    DataUpdated?.Invoke(this, new DashboardDataUpdatedEventArgs
+                    {
+                        MetricId = subscription.MetricId,
+                        Data = data
                     });
 
                     foreach (var callback in subscription.Callbacks)

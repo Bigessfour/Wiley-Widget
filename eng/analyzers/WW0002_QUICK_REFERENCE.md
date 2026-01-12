@@ -2,14 +2,14 @@
 
 ## Rule Information
 
-| Property | Value |
-| --- | --- |
-| Rule ID | **WW0002** |
-| Title | MemoryCacheEntryOptions missing required Size property |
-| Severity | Warning |
-| Category | Caching |
-| File Location | [eng/analyzers/MemoryCacheSizeRequiredAnalyzer.cs](./MemoryCacheSizeRequiredAnalyzer.cs) |
-| Enabled by Default | Yes |
+| Property           | Value                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| Rule ID            | **WW0002**                                                                               |
+| Title              | MemoryCacheEntryOptions missing required Size property                                   |
+| Severity           | Warning                                                                                  |
+| Category           | Caching                                                                                  |
+| File Location      | [eng/analyzers/MemoryCacheSizeRequiredAnalyzer.cs](./MemoryCacheSizeRequiredAnalyzer.cs) |
+| Enabled by Default | Yes                                                                                      |
 
 ## What It Detects
 

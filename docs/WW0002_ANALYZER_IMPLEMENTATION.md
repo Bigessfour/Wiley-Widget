@@ -73,6 +73,7 @@ Caching
 Detects when `MemoryCacheEntryOptions` objects are created without explicitly setting the `Size` property. The `Size` property is critical when the underlying `MemoryCache` is configured with a `SizeLimit`.
 
 Per Microsoft documentation:
+
 > "An entry won't be cached if the sum of the cached entry sizes exceeds the value specified by `SizeLimit`. If no cache size limit is set, the cache size set on the entry is ignored."
 
 ### What Triggers the Rule
@@ -138,11 +139,11 @@ await _cacheService.GetOrSetAsync(key, factory, cacheOptions);  // ✓ OK
 
 ### Resource Strings
 
-| Key | Value |
-| --- | --- |
-| WW0002_Title | MemoryCacheEntryOptions missing required Size property |
-| WW0002_MessageFormat | MemoryCacheEntryOptions created without Size property |
-| WW0002_Description | Detailed explanation with Microsoft quote and reference link |
+| Key                  | Value                                                        |
+| -------------------- | ------------------------------------------------------------ |
+| WW0002_Title         | MemoryCacheEntryOptions missing required Size property       |
+| WW0002_MessageFormat | MemoryCacheEntryOptions created without Size property        |
+| WW0002_Description   | Detailed explanation with Microsoft quote and reference link |
 
 ### EditorConfig Configuration
 
@@ -233,15 +234,15 @@ Potential improvements for future versions:
 
 ## Files Summary
 
-| File | Type | Purpose |
-| --- | --- | --- |
-| MemoryCacheSizeRequiredAnalyzer.cs | C# Class | Main analyzer implementation |
-| AnalyzerResources.cs | C# Class | Localization strings for all analyzers |
-| WW0002_RULE_DOCUMENTATION.md | Markdown | Comprehensive rule documentation |
-| WW0002_EXAMPLES.cs | C# Class | Code examples for reference |
-| AnalyzerReleases.Unshipped.md (root) | Markdown | Release notes (root-level) |
-| AnalyzerReleases.Unshipped.md (eng) | Markdown | Release notes (eng-specific) |
-| .editorconfig | Config | Analyzer severity configuration |
+| File                                 | Type     | Purpose                                |
+| ------------------------------------ | -------- | -------------------------------------- |
+| MemoryCacheSizeRequiredAnalyzer.cs   | C# Class | Main analyzer implementation           |
+| AnalyzerResources.cs                 | C# Class | Localization strings for all analyzers |
+| WW0002_RULE_DOCUMENTATION.md         | Markdown | Comprehensive rule documentation       |
+| WW0002_EXAMPLES.cs                   | C# Class | Code examples for reference            |
+| AnalyzerReleases.Unshipped.md (root) | Markdown | Release notes (root-level)             |
+| AnalyzerReleases.Unshipped.md (eng)  | Markdown | Release notes (eng-specific)           |
+| .editorconfig                        | Config   | Analyzer severity configuration        |
 
 ## Next Steps
 

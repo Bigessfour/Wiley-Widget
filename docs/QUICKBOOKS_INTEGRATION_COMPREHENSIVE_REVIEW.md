@@ -13,16 +13,16 @@ The WileyWidget QuickBooks Online (QBO) integration is **functionally operationa
 
 ### Key Findings
 
-| Aspect | Status | Grade | Risk |
-|--------|--------|-------|------|
-| **OAuth2 Implementation** | ✅ Functional | A- | LOW |
-| **Token Management** | ⚠️ Partially Implemented | C+ | **HIGH** |
-| **Data Synchronization** | ✅ Functional | B | MEDIUM |
-| **Resilience & Retry Logic** | ❌ Missing | F | **CRITICAL** |
-| **Budget Entity Handling** | ❌ Incomplete | D | **HIGH** |
-| **Error Handling** | ⚠️ Basic | C | MEDIUM |
-| **API Compliance** | ⚠️ Partial | B- | MEDIUM |
-| **Testing** | ⚠️ Limited | C | MEDIUM |
+| Aspect                       | Status                   | Grade | Risk         |
+| ---------------------------- | ------------------------ | ----- | ------------ |
+| **OAuth2 Implementation**    | ✅ Functional            | A-    | LOW          |
+| **Token Management**         | ⚠️ Partially Implemented | C+    | **HIGH**     |
+| **Data Synchronization**     | ✅ Functional            | B     | MEDIUM       |
+| **Resilience & Retry Logic** | ❌ Missing               | F     | **CRITICAL** |
+| **Budget Entity Handling**   | ❌ Incomplete            | D     | **HIGH**     |
+| **Error Handling**           | ⚠️ Basic                 | C     | MEDIUM       |
+| **API Compliance**           | ⚠️ Partial               | B-    | MEDIUM       |
+| **Testing**                  | ⚠️ Limited               | C     | MEDIUM       |
 
 ### Overall Assessment
 
@@ -49,6 +49,7 @@ QuickBooksService (Main Orchestrator)
 ### 1.2 Component Responsibilities
 
 #### **QuickBooksService** (1,200+ lines)
+
 - **Purpose:** Main orchestration layer for all QBO operations
 - **Responsibilities:**
   - OAuth2 flow management (authorization code exchange)
@@ -66,6 +67,7 @@ QuickBooksService (Main Orchestrator)
   - ⚠️ Token refresh retry logic is basic (only 3 retries with no exponential backoff)
 
 #### **QuickBooksAuthService** (150+ lines)
+
 - **Purpose:** OAuth2 authentication and token lifecycle
 - **Responsibilities:**
   - Token refresh with retry logic (3 attempts, exponential backoff)
@@ -78,6 +80,7 @@ QuickBooksService (Main Orchestrator)
   - Token expiry calculation uses UTC (correct) but lacks safety margin
 
 #### **QuickBooksApiClient** (150+ lines)
+
 - **Purpose:** Wrapper around Intuit SDK
 - **Responsibilities:**
   - Expose SDK entities (Customer, Invoice, Account, Budget)
@@ -98,6 +101,7 @@ QuickBooksService (Main Orchestrator)
 **Implementation:** `QuickBooksService.AcquireTokensInteractiveAsync()`
 
 ✅ **Follows Intuit Spec:**
+
 - Correct authorization endpoint: `https://appcenter.intuit.com/connect/oauth2`
 - Correct token endpoint: `https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer`
 - Proper scope: `com.intuit.quickbooks.accounting`
@@ -105,6 +109,7 @@ QuickBooksService (Main Orchestrator)
 - Realm ID captured from callback
 
 **Minor Recommendations:**
+
 ```csharp
 // Current: Simple state string
 var state = Guid.NewGuid().ToString("N");
@@ -140,6 +145,7 @@ public bool HasValidAccessToken()
 ```
 
 **Fix:**
+
 ```csharp
 // RECOMMENDED:
 private const int TokenExpiryBuffer = 300; // 5 minutes
@@ -148,7 +154,7 @@ public bool HasValidAccessToken()
 {
     if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
     if (s.QboTokenExpiry == default) return false;
-    
+
     // Ensure 5-minute buffer to prevent mid-flight expiry
     return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(TokenExpiryBuffer);
 }
@@ -167,6 +173,7 @@ var refresh = root.TryGetProperty("refresh_token", out var refreshTokenProp)
 ```
 
 **Fix:**
+
 ```csharp
 // RECOMMENDED:
 if (root.TryGetProperty("refresh_token", out var refreshTokenProp))
@@ -204,6 +211,7 @@ public async Task<bool> IsConnectedAsync()
 ```
 
 **Fix:**
+
 ```csharp
 // RECOMMENDED: Consistent UTC usage
 if (settings.QboTokenExpiry <= DateTime.UtcNow)
@@ -269,6 +277,7 @@ public async Task<List<QuickBooksBudget>> GetBudgetsAsync()
 ### 2.4 Rate Limiting ⚠️ PARTIALLY COMPLIANT
 
 **Current Implementation:**
+
 ```csharp
 private readonly RateLimiter _rateLimiter = new TokenBucketRateLimiter(
     new TokenBucketRateLimiterOptions
@@ -300,27 +309,29 @@ public async Task<List<Account>> GetChartOfAccountsAsync()
 ```
 
 **Intuit Rate Limits:**
+
 - 100 requests per minute per user (sliding window)
 - 10,000 requests per day per app
 - Bulk operations can be throttled
 
 **Recommendation:**
+
 ```csharp
 // Apply rate limiting to ALL API operations:
 private async Task<T> ExecuteWithRateLimitAsync<T>(
-    Func<Task<T>> operation, 
+    Func<Task<T>> operation,
     CancellationToken cancellationToken)
 {
     using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken);
     if (!lease.IsAcquired)
         throw new InvalidOperationException("Rate limit exceeded");
-    
+
     return await operation();
 }
 
 // Usage:
 var customers = await ExecuteWithRateLimitAsync(
-    () => _ds.FindCustomers(1, 100), 
+    () => _ds.FindCustomers(1, 100),
     cancellationToken);
 ```
 
@@ -348,7 +359,7 @@ for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             if (resp.StatusCode == HttpStatusCode.BadRequest)
                 throw new InvalidOperationException("Refresh token invalid");
-            
+
             if (attempt < maxRetries)
                 await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
         }
@@ -373,7 +384,7 @@ public QuickBooksAuthService(/* params */)
     _tokenRefreshPipeline = new ResiliencePipelineBuilder<TokenResult>()
         // Timeout: prevent indefinite hangs
         .AddTimeout(TimeSpan.FromSeconds(15))
-        
+
         // Circuit breaker: stop hammering Intuit if persistent failure
         .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TokenResult>
         {
@@ -390,7 +401,7 @@ public QuickBooksAuthService(/* params */)
                 return ValueTask.CompletedTask;
             }
         })
-        
+
         // Retry: handle transient failures
         .AddRetry(new RetryStrategyOptions<TokenResult>
         {
@@ -451,7 +462,7 @@ public QuickBooksService(/* params */)
     _qboApiPipeline = new ResiliencePipelineBuilder<List<Account>>()
         // Timeout: QBO API should respond in < 10s
         .AddTimeout(TimeSpan.FromSeconds(10))
-        
+
         // Circuit breaker: prevent cascading failures
         .AddCircuitBreaker(new CircuitBreakerStrategyOptions<List<Account>>
         {
@@ -469,7 +480,7 @@ public QuickBooksService(/* params */)
                 return ValueTask.CompletedTask;
             }
         })
-        
+
         // Retry: handle transient errors
         .AddRetry(new RetryStrategyOptions<List<Account>>
         {
@@ -520,7 +531,7 @@ public async Task<List<Account>> GetChartOfAccountsAsync()
 {
     var allAccounts = new List<Account>();
     var failedPages = new List<int>();
-    
+
     // First attempt: fetch all pages
     while (pageCount < maxPages)
     {
@@ -537,7 +548,7 @@ public async Task<List<Account>> GetChartOfAccountsAsync()
             failedPages.Add(pageCount);
         }
     }
-    
+
     // Second attempt: retry failed pages with backoff
     foreach (var failedPage in failedPages)
     {
@@ -553,7 +564,7 @@ public async Task<List<Account>> GetChartOfAccountsAsync()
             _logger.LogError(ex, "Retried page {Page} failed", failedPage);
         }
     }
-    
+
     return allAccounts;  // Partial success is acceptable
 }
 ```
@@ -582,6 +593,7 @@ public async Task<bool> TestConnectionAsync()
 ```
 
 **Issues:**
+
 - ❌ No timeout (could hang for minutes)
 - ❌ No retry logic
 - ❌ Doesn't validate realm connectivity
@@ -617,11 +629,11 @@ public async Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken c
     try
     {
         await EnsureInitializedAsync();
-        
+
         var s = EnsureSettingsLoaded();
-        
+
         // Check 1: Token availability
-        if (string.IsNullOrEmpty(s.QboAccessToken) || 
+        if (string.IsNullOrEmpty(s.QboAccessToken) ||
             string.IsNullOrEmpty(s.QboRefreshToken))
         {
             return new ConnectionStatus
@@ -630,7 +642,7 @@ public async Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken c
                 StatusMessage = "Not authorized - no tokens available"
             };
         }
-        
+
         // Check 2: Token expiry
         if (s.QboTokenExpiry <= DateTime.UtcNow.AddSeconds(300))
         {
@@ -648,7 +660,7 @@ public async Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken c
                 };
             }
         }
-        
+
         // Check 3: Realm ID set
         var realmId = _authService.GetRealmId();
         if (string.IsNullOrEmpty(realmId))
@@ -659,21 +671,21 @@ public async Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken c
                 StatusMessage = "Realm ID not configured"
             };
         }
-        
+
         // Check 4: API connectivity (with timeout and retry)
         var ds = await ResolveDataServiceAsync();
-        
+
         // Multi-level validation
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        
+
         try
         {
             // Try to fetch minimal data
             var customers = ds.FindCustomers(1, 1);
-            
+
             // Also validate that we can query another entity
             var accounts = ds.FindAccounts(1, 1);
-            
+
             return new ConnectionStatus
             {
                 IsConnected = true,
@@ -723,6 +735,7 @@ public async Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken c
 QuickBooks Online Accounting API v3 does NOT support direct budget CRUD operations. The `Intuit.Ipp.Data.Budget` class exists but cannot be used via `DataService.FindAll()`.
 
 **Current Code:**
+
 ```csharp
 public async Task<List<QuickBooksBudget>> GetBudgetsAsync()
 {
@@ -743,26 +756,26 @@ private async Task<List<QuickBooksBudget>> FetchBudgetsViaReportsApiAsync(
 {
     var realmId = _authService.GetRealmId();
     var accessToken = _authService.GetAccessToken();
-    
+
     var request = new HttpRequestMessage(HttpMethod.Get,
         $"https://quickbooks.api.intuit.com/v3/company/{realmId}/reports/BudgetVsActuals");
-    
+
     request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
         "Bearer", accessToken);
-    
+
     // Query parameters for time period filtering
     var queryParams = new Dictionary<string, string>
     {
         ["start_date"] = DateTime.Now.AddMonths(-12).ToString("yyyy-MM-dd"),
         ["end_date"] = DateTime.Now.ToString("yyyy-MM-dd")
     };
-    
+
     var response = await _httpClient.SendAsync(request, cancellationToken);
     response.EnsureSuccessStatusCode();
-    
+
     var json = await response.Content.ReadAsStringAsync(cancellationToken);
     var budgetData = JsonSerializer.Deserialize<QuickBooksBudgetReport>(json);
-    
+
     // Parse report rows into QuickBooksBudget objects
     return ParseBudgetReport(budgetData);
 }
@@ -777,7 +790,7 @@ private class QuickBooksBudgetReport
 private List<QuickBooksBudget> ParseBudgetReport(QuickBooksBudgetReport report)
 {
     var budgets = new List<QuickBooksBudget>();
-    
+
     // Aggregate budget data from report rows
     var groupedByAccount = report.Rows
         .GroupBy(r => r.AccountId)
@@ -792,7 +805,7 @@ private List<QuickBooksBudget> ParseBudgetReport(QuickBooksBudgetReport report)
             LastSyncDate = DateTime.UtcNow
         })
         .ToList();
-    
+
     return budgets;
 }
 ```
@@ -805,11 +818,12 @@ private List<QuickBooksBudget> ParseBudgetReport(QuickBooksBudgetReport report)
 Token refresh can fail silently in edge cases. Settings may be persisted without valid tokens, leaving the app in an unusable state.
 
 **Current Code:**
+
 ```csharp
 public async Task RefreshTokenAsync()
 {
     var s = _settings.Current;
-    
+
     try
     {
         var result = await RefreshAccessTokenAsync(s.QboRefreshToken!);
@@ -838,11 +852,11 @@ public async Task RefreshTokenAsync()
 public async Task RefreshTokenAsync()
 {
     var s = _settings.Current;
-    
+
     try
     {
         var result = await RefreshAccessTokenAsync(s.QboRefreshToken!);
-        
+
         // VALIDATE before persisting
         if (string.IsNullOrEmpty(result.AccessToken) ||
             string.IsNullOrEmpty(result.RefreshToken) ||
@@ -851,20 +865,20 @@ public async Task RefreshTokenAsync()
             throw new InvalidOperationException(
                 "Invalid token response from Intuit: missing required fields");
         }
-        
+
         // Only UPDATE after validation succeeds
         var newAccessToken = result.AccessToken;
         var newRefreshToken = result.RefreshToken;
         var newExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-        
+
         // Update settings
         s.QboAccessToken = newAccessToken;
         s.QboRefreshToken = newRefreshToken;
         s.QboTokenExpiry = newExpiry;
-        
+
         // PERSIST after all updates complete
         _settings.Save();
-        
+
         _logger.LogInformation(
             "Successfully refreshed QBO tokens (expires {Expiry})",
             newExpiry);
@@ -872,13 +886,13 @@ public async Task RefreshTokenAsync()
     catch (Exception ex)
     {
         _logger.LogError(ex, "Token refresh failed - clearing invalid credentials");
-        
+
         // Clear invalid tokens ONLY on failure
         s.QboAccessToken = null;
         s.QboRefreshToken = null;
         s.QboTokenExpiry = default;
         _settings.Save();
-        
+
         throw new QuickBooksAuthException(
             "Failed to refresh QuickBooks tokens. Please re-authorize the application.",
             ex);
@@ -894,6 +908,7 @@ public async Task RefreshTokenAsync()
 Batch operations like `GetChartOfAccountsAsync()` can hang indefinitely if network fails mid-operation.
 
 **Current Code:**
+
 ```csharp
 public async Task<List<Account>> GetChartOfAccountsAsync()
 {
@@ -913,20 +928,20 @@ public async Task<List<Account>> GetChartOfAccountsAsync(
     CancellationToken externalCancellationToken = default)
 {
     var allAccounts = new List<Account>();
-    
+
     // Create a timeout-aware cancellation token
     using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
     cts.CancelAfter(TimeSpan.FromMinutes(5));  // 5-minute total timeout
-    
+
     const int pageSize = 500;
     int startPosition = 1;
     int maxPages = 10;
     int pageCount = 0;
-    
+
     try
     {
         _logger.LogInformation("Starting chart of accounts batch fetch");
-        
+
         while (pageCount < maxPages)
         {
             // Per-page timeout: 30 seconds
@@ -934,33 +949,33 @@ public async Task<List<Account>> GetChartOfAccountsAsync(
             using var mergedToken = CancellationTokenSource.CreateLinkedTokenSource(
                 cts.Token,
                 pageTimeout.Token);
-            
+
             try
             {
                 var pageAccounts = await ExecuteQBOOperationAsync(
                     () => _dataService.FindAccounts(startPosition, pageSize),
                     mergedToken.Token);
-                
+
                 if (pageAccounts == null || pageAccounts.Count == 0)
                 {
                     _logger.LogInformation("No more accounts at position {Position}", startPosition);
                     break;
                 }
-                
+
                 allAccounts.AddRange(pageAccounts);
                 _logger.LogInformation(
                     "Fetched page {Page}: {Count} accounts (total: {Total})",
                     pageCount + 1, pageAccounts.Count, allAccounts.Count);
-                
+
                 if (pageAccounts.Count < pageSize)
                 {
                     // Got fewer than page size = reached end
                     break;
                 }
-                
+
                 startPosition += pageSize;
                 pageCount++;
-                
+
                 // Throttle between pages
                 await Task.Delay(100, mergedToken.Token);
             }
@@ -972,18 +987,18 @@ public async Task<List<Account>> GetChartOfAccountsAsync(
                 continue;
             }
         }
-        
+
         if (pageCount >= maxPages)
         {
             _logger.LogWarning(
                 "Hit maximum page limit ({MaxPages}). Total accounts: {Total}",
                 maxPages, allAccounts.Count);
         }
-        
+
         _logger.LogInformation(
             "Chart of accounts fetch completed: {Total} accounts",
             allAccounts.Count);
-        
+
         return allAccounts;
     }
     catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
@@ -1003,16 +1018,16 @@ public async Task<List<Account>> GetChartOfAccountsAsync(
 
 ### 6.1 Priority Matrix
 
-| Issue | Priority | Effort | Risk Reduction | Impact |
-|-------|----------|--------|----------------|--------|
-| Add Polly Resilience | 🔴 **CRITICAL** | 6-8h | 80% | Production stability |
-| Fix Budget Entity | 🔴 **CRITICAL** | 4-6h | 60% | Feature completeness |
-| Token Refresh Hardening | 🔴 **CRITICAL** | 3-4h | 70% | Reliability |
-| Add Operation Timeouts | 🟠 **HIGH** | 2-3h | 50% | Prevent hangs |
-| Implement PKCE | 🟠 **HIGH** | 2-3h | 30% | Security |
-| Improve Error Messages | 🟠 **HIGH** | 1-2h | 20% | Debuggability |
-| Add Comprehensive Logging | 🟡 **MEDIUM** | 2-3h | 40% | Observability |
-| Write Integration Tests | 🟡 **MEDIUM** | 4-6h | 35% | Regression prevention |
+| Issue                     | Priority        | Effort | Risk Reduction | Impact                |
+| ------------------------- | --------------- | ------ | -------------- | --------------------- |
+| Add Polly Resilience      | 🔴 **CRITICAL** | 6-8h   | 80%            | Production stability  |
+| Fix Budget Entity         | 🔴 **CRITICAL** | 4-6h   | 60%            | Feature completeness  |
+| Token Refresh Hardening   | 🔴 **CRITICAL** | 3-4h   | 70%            | Reliability           |
+| Add Operation Timeouts    | 🟠 **HIGH**     | 2-3h   | 50%            | Prevent hangs         |
+| Implement PKCE            | 🟠 **HIGH**     | 2-3h   | 30%            | Security              |
+| Improve Error Messages    | 🟠 **HIGH**     | 1-2h   | 20%            | Debuggability         |
+| Add Comprehensive Logging | 🟡 **MEDIUM**   | 2-3h   | 40%            | Observability         |
+| Write Integration Tests   | 🟡 **MEDIUM**   | 4-6h   | 35%            | Regression prevention |
 
 ### 6.2 Recommended Implementation Order
 
@@ -1039,12 +1054,12 @@ Week 3:
 
 ### 7.1 Architectural Issues
 
-| Issue | Impact | Fix Time |
-|-------|--------|----------|
-| Cloudflare tunnel logic in QBOService | MEDIUM | 1h - extract to separate class |
+| Issue                                   | Impact | Fix Time                               |
+| --------------------------------------- | ------ | -------------------------------------- |
+| Cloudflare tunnel logic in QBOService   | MEDIUM | 1h - extract to separate class         |
 | Too many responsibilities in QBOService | MEDIUM | 2h - decompose into dedicated services |
-| Mixed concerns (auth, API, sync) | MEDIUM | 2h - separate services |
-| No interface segregation | LOW | 1h - break up IQuickBooksService |
+| Mixed concerns (auth, API, sync)        | MEDIUM | 2h - separate services                 |
+| No interface segregation                | LOW    | 1h - break up IQuickBooksService       |
 
 ### 7.2 Testing Coverage
 
@@ -1065,17 +1080,17 @@ public class QuickBooksAuthServiceTests
 {
     [Fact]
     public async Task RefreshToken_ValidToken_SucceedsOnFirstAttempt();
-    
+
     [Fact]
     public async Task RefreshToken_TransientError_RetriesWithBackoff();
-    
+
     [Fact]
     public async Task RefreshToken_PersistentError_FailsAfterMaxRetries();
-    
+
     [Theory]
     [InlineData(5)] // 5 consecutive failures
     public async Task CircuitBreaker_OpensAfterThresholdFailures(int failureCount);
-    
+
     [Fact]
     public async Task TokenRefresh_ValidatesResponseFields_BeforePersisting();
 }
@@ -1084,10 +1099,10 @@ public class QuickBooksDataServiceTests
 {
     [Fact]
     public async Task GetChartOfAccounts_LargeDataset_CompartmentalizesPageFailures();
-    
+
     [Fact]
     public async Task GetChartOfAccounts_NetworkTimeout_ContinuesWithPartialData();
-    
+
     [Fact]
     public async Task BatchOperation_EnforcesPerPageTimeout();
 }
@@ -1103,42 +1118,35 @@ public class QuickBooksDataServiceTests
   - [ ] Token refresh: timeout + circuit breaker + retry
   - [ ] API calls: timeout + circuit breaker + retry
   - [ ] Batch operations: partial failure handling
-  
 - [ ] **Budget Entity Fully Functional**
   - [ ] Reports API integration implemented
   - [ ] Budget models populated from reports
   - [ ] Sync functionality working
-  
 - [ ] **Token Management Hardened**
   - [ ] Token validation before persistence
   - [ ] Safe margin on expiry (300s minimum)
   - [ ] Token rotation supported
   - [ ] Refresh token revocation handled
-  
 - [ ] **Timeout Protection Added**
   - [ ] Per-operation timeouts configured
   - [ ] Per-page timeouts in batch ops
   - [ ] Total operation timeout enforced
   - [ ] Timeout exceptions properly handled
-  
 - [ ] **Security Enhanced**
   - [ ] PKCE support added
   - [ ] Token encryption at rest verified
   - [ ] API key rotation tested
   - [ ] Sandbox credentials secured
-  
 - [ ] **Observability Improved**
   - [ ] Comprehensive logging added
   - [ ] Telemetry integration confirmed
   - [ ] Error tracking verified
   - [ ] Performance metrics collected
-  
 - [ ] **Testing Complete**
   - [ ] Unit tests: 80%+ coverage of core logic
   - [ ] Integration tests: OAuth flow, data sync
   - [ ] Sandbox testing: complete workflows
   - [ ] Failure scenarios: retry, circuit breaker, timeout
-  
 - [ ] **Documentation Updated**
   - [ ] API usage documented
   - [ ] Troubleshooting guide updated
@@ -1175,20 +1183,21 @@ Post-deployment metrics to track:
 
 ### Summary Table
 
-| Dimension | Current | Target | Gap |
-|-----------|---------|--------|-----|
-| **Resilience** | 20% | 95% | -75% |
-| **API Compliance** | 80% | 100% | -20% |
-| **Error Handling** | 40% | 95% | -55% |
-| **Testing** | 20% | 80% | -60% |
-| **Documentation** | 60% | 95% | -35% |
-| **Production Ready** | ❌ 40% | ✅ 100% | -60% |
+| Dimension            | Current | Target  | Gap  |
+| -------------------- | ------- | ------- | ---- |
+| **Resilience**       | 20%     | 95%     | -75% |
+| **API Compliance**   | 80%     | 100%    | -20% |
+| **Error Handling**   | 40%     | 95%     | -55% |
+| **Testing**          | 20%     | 80%     | -60% |
+| **Documentation**    | 60%     | 95%     | -35% |
+| **Production Ready** | ❌ 40%  | ✅ 100% | -60% |
 
 ### Recommendation
 
 **Current Status:** ⚠️ **NOT PRODUCTION READY**
 
 **Required Before Deployment:**
+
 1. ✅ Implement Polly resilience patterns (8-10 hours)
 2. ✅ Fix budget entity implementation (4-6 hours)
 3. ✅ Harden token management (3-4 hours)
@@ -1198,12 +1207,14 @@ Post-deployment metrics to track:
 **Estimated Timeline:** 3-4 weeks of focused engineering
 
 **Risk Without Remediation:** 🔴 **HIGH**
+
 - Token refresh failures cascade to complete app failure
 - Batch operations can hang indefinitely
 - No recovery from transient API failures
 - Budget synchronization non-functional
 
 **Risk With Remediation:** 🟢 **LOW**
+
 - Resilient to Intuit API transient failures
 - Graceful error handling and recovery
 - Complete feature implementation
@@ -1214,17 +1225,20 @@ Post-deployment metrics to track:
 ## 10. REFERENCES
 
 ### Intuit Documentation
+
 - [QBO Accounting API v3](https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api)
 - [OAuth 2.0 Implementation Guide](https://developer.intuit.com/app/developer/qbo/docs/auth/oauth2)
 - [REST API Rate Limits](https://developer.intuit.com/app/developer/qbo/docs/develop/rest-api-rate-limits)
 - [Budget vs Actuals Report API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/reports/budgetvactuals)
 
 ### Project Documentation
+
 - See `BACKEND_REVIEW_COMPLETE.md` for complete backend assessment
 - See `BACKEND_COMPREHENSIVE_REVIEW.md` for detailed architecture
 - See `POLLY_ENHANCEMENT_RECOMMENDATIONS.md` for resilience patterns
 
 ### Implementation Reference
+
 - Polly v8: https://github.com/App-vNext/Polly/tree/main/samples
 - Intuit SDK: https://github.com/IntuitDeveloper/QuickBooks-V4-CSharp-SDK
 - OAuth2 PKCE: https://datatracker.ietf.org/doc/html/rfc7636

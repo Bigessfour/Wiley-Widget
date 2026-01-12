@@ -2,7 +2,7 @@
 
 **Version:** 2.0 (Production-Ready)  
 **Date:** January 15, 2026  
-**Status:** Ready for Implementation  
+**Status:** Ready for Implementation
 
 ---
 
@@ -32,29 +32,34 @@ QuickBooksServiceV2 (Main Orchestrator - Production)
 ### Key Improvements
 
 ✅ **Polly v8 Resilience**
+
 - Token refresh: 15s timeout + 5-attempt retry + circuit breaker
 - API calls: 30s timeout + 3-attempt retry + circuit breaker
 - Batch operations: Per-page timeout (30s) + total timeout (5m)
 
 ✅ **Token Management**
+
 - 5-minute safety margin on token expiry (prevents mid-flight expiry)
 - Automatic refresh token rotation (per Intuit spec)
 - Validation before persistence (prevents corrupted state)
 - Consistent UTC usage throughout
 
 ✅ **Batch Operations**
+
 - Per-page timeout (30 seconds)
 - Total operation timeout (5 minutes)
 - Partial failure handling (continue on single page failure)
 - Progressive logging of success/failure
 
 ✅ **Error Handling**
+
 - Distinct error types: QuickBooksAuthException, TimeoutException
 - Circuit breaker events logged as critical
 - Transient error detection for retry logic
 - User-friendly error messages
 
 ✅ **Observability**
+
 - Activity tracing for all operations
 - Structured logging with context (realm ID, operation name, etc.)
 - Metrics: success rate, duration, retry count, page failure count
@@ -178,25 +183,25 @@ private async Task<List<QuickBooksBudget>> FetchBudgetsViaReportsApiAsync(
 {
     var realmId = _authService.GetRealmId();
     var accessToken = _authService.GetAccessToken();
-    
+
     var request = new HttpRequestMessage(HttpMethod.Get,
         $"https://quickbooks.api.intuit.com/v3/company/{realmId}/reports/BudgetVsActuals");
-    
+
     request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
         "Bearer", accessToken);
-    
+
     // Query parameters for time period filtering
     var startDate = DateTime.Now.AddMonths(-12).ToString("yyyy-MM-dd");
     var endDate = DateTime.Now.ToString("yyyy-MM-dd");
     request.RequestUri = new Uri(
         $"{request.RequestUri}?start_date={startDate}&end_date={endDate}");
-    
+
     var response = await _httpClient.SendAsync(request, cancellationToken);
     response.EnsureSuccessStatusCode();
-    
+
     var json = await response.Content.ReadAsStringAsync(cancellationToken);
     var budgetData = JsonSerializer.Deserialize<QuickBooksBudgetReport>(json);
-    
+
     // Parse report rows into QuickBooksBudget objects
     return ParseBudgetReport(budgetData);
 }
@@ -204,7 +209,7 @@ private async Task<List<QuickBooksBudget>> FetchBudgetsViaReportsApiAsync(
 private List<QuickBooksBudget> ParseBudgetReport(QuickBooksBudgetReport report)
 {
     var budgets = new List<QuickBooksBudget>();
-    
+
     // Aggregate budget data from report rows
     var groupedByAccount = report.Rows
         .GroupBy(r => r.AccountId)
@@ -219,7 +224,7 @@ private List<QuickBooksBudget> ParseBudgetReport(QuickBooksBudgetReport report)
             LastSyncDate = DateTime.UtcNow
         })
         .ToList();
-    
+
     return budgets;
 }
 ```
@@ -306,7 +311,7 @@ public class QuickBooksAuthServiceTests
                 expires_in = 3600
             }))
         };
-        
+
         _mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(validResponse);
 
@@ -332,7 +337,7 @@ public class QuickBooksAuthServiceTests
                 expires_in = 3600
             }))
         };
-        
+
         var callCount = 0;
         _mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
             .Returns(() => Task.FromResult(callCount++ < 2 ? failResponse : successResponse));
@@ -349,7 +354,7 @@ public class QuickBooksAuthServiceTests
     {
         // Arrange: 5 consecutive failures
         var failResponse = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
-        
+
         _mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(failResponse);
 
@@ -362,7 +367,7 @@ public class QuickBooksAuthServiceTests
             }
             catch { /* expected */ }
         }
-        
+
         // Circuit breaker should be open now
         var ex = Assert.ThrowsAsync<BrokenCircuitException>(
             () => _service.RefreshTokenAsync());
@@ -435,29 +440,29 @@ dotnet test --filter "CircuitBreaker or Retry or Timeout"
 
 ### Environment Variables
 
-| Variable | Required | Example | Purpose |
-|----------|----------|---------|---------|
-| `QBO_CLIENT_ID` | ✅ Yes | `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk` | OAuth client ID from Intuit |
-| `QBO_CLIENT_SECRET` | ✅ Yes | `abcdefghijklmnopqrstuvwxyz1234567890` | OAuth client secret |
-| `QBO_ENVIRONMENT` | ⚠️ Optional | `sandbox` or `production` | API environment (default: sandbox) |
-| `QBO_REALM_ID` | ⚠️ Optional | `1234567890` | QuickBooks company ID (set after OAuth) |
-| `QBO_REDIRECT_URI` | ⚠️ Optional | `https://localhost:8080/` | OAuth callback URI |
+| Variable            | Required    | Example                                 | Purpose                                 |
+| ------------------- | ----------- | --------------------------------------- | --------------------------------------- |
+| `QBO_CLIENT_ID`     | ✅ Yes      | `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk` | OAuth client ID from Intuit             |
+| `QBO_CLIENT_SECRET` | ✅ Yes      | `abcdefghijklmnopqrstuvwxyz1234567890`  | OAuth client secret                     |
+| `QBO_ENVIRONMENT`   | ⚠️ Optional | `sandbox` or `production`               | API environment (default: sandbox)      |
+| `QBO_REALM_ID`      | ⚠️ Optional | `1234567890`                            | QuickBooks company ID (set after OAuth) |
+| `QBO_REDIRECT_URI`  | ⚠️ Optional | `https://localhost:8080/`               | OAuth callback URI                      |
 
 ### Resilience Configuration
 
-| Parameter | Current | Recommended | Purpose |
-|-----------|---------|-------------|---------|
-| Token Timeout | 15s | 10-20s | HTTP timeout for token refresh |
-| Token Retries | 5 | 3-5 | Attempts before circuit break |
-| Token CB Ratio | 0.7 | 0.5-0.7 | Failure ratio to open circuit |
-| Token CB Break | 5min | 3-5min | Wait before retry after break |
-| API Timeout | 30s | 20-40s | HTTP timeout for API calls |
-| API Retries | 3 | 2-4 | Attempts before circuit break |
-| API CB Ratio | 0.5 | 0.4-0.6 | Failure ratio to open circuit |
-| API CB Break | 2min | 1-3min | Wait before retry after break |
-| Batch Page Timeout | 30s | 20-60s | Per-page timeout |
-| Batch Total Timeout | 5min | 3-10min | Total operation timeout |
-| Rate Limit | 10/sec | 5-20/sec | API calls per second |
+| Parameter           | Current | Recommended | Purpose                        |
+| ------------------- | ------- | ----------- | ------------------------------ |
+| Token Timeout       | 15s     | 10-20s      | HTTP timeout for token refresh |
+| Token Retries       | 5       | 3-5         | Attempts before circuit break  |
+| Token CB Ratio      | 0.7     | 0.5-0.7     | Failure ratio to open circuit  |
+| Token CB Break      | 5min    | 3-5min      | Wait before retry after break  |
+| API Timeout         | 30s     | 20-40s      | HTTP timeout for API calls     |
+| API Retries         | 3       | 2-4         | Attempts before circuit break  |
+| API CB Ratio        | 0.5     | 0.4-0.6     | Failure ratio to open circuit  |
+| API CB Break        | 2min    | 1-3min      | Wait before retry after break  |
+| Batch Page Timeout  | 30s     | 20-60s      | Per-page timeout               |
+| Batch Total Timeout | 5min    | 3-10min     | Total operation timeout        |
+| Rate Limit          | 10/sec  | 5-20/sec    | API calls per second           |
 
 ---
 
@@ -466,26 +471,31 @@ dotnet test --filter "CircuitBreaker or Retry or Timeout"
 ### Pre-Deployment
 
 - [ ] Compile without errors
+
   ```bash
   dotnet build src/WileyWidget.Services/WileyWidget.Services.csproj
   ```
 
 - [ ] Unit tests passing
+
   ```bash
   dotnet test tests/WileyWidget.Tests/
   ```
 
 - [ ] Sandbox integration tests passing
+
   ```bash
   dotnet test tests/WileyWidget.IntegrationTests/ --filter "QuickBooks"
   ```
 
 - [ ] Polly package installed
+
   ```bash
   dotnet list src/WileyWidget.Services/WileyWidget.Services.csproj package | grep Polly
   ```
 
 - [ ] Environment variables configured
+
   ```powershell
   Get-ChildItem Env:QBO_* | Select-Object Name, Value
   ```
@@ -512,7 +522,8 @@ dotnet test --filter "CircuitBreaker or Retry or Timeout"
 ### Issue: Token Refresh Fails with "Circuit Breaker Open"
 
 **Cause:** 5 consecutive token refresh failures  
-**Solution:** 
+**Solution:**
+
 1. Check Intuit API status
 2. Verify QBO_CLIENT_ID and QBO_CLIENT_SECRET are correct
 3. Wait 5 minutes for circuit breaker to reset
@@ -530,6 +541,7 @@ Get-Content $env:APPDATA\WileyWidget\logs\app-*.log | Select-Object -Last 50
 
 **Cause:** Network slow, API unresponsive  
 **Solution:**
+
 1. Increase total timeout in configuration
 2. Check internet connection
 3. Verify Intuit API not in maintenance
@@ -544,6 +556,7 @@ const int BatchTotalTimeoutMinutes = 10;  // Instead of 5
 
 **Cause:** Too many API calls per second  
 **Solution:**
+
 1. Reduce rate limiter tokens per second
 2. Increase delay between batch pages
 3. Reduce page size
@@ -597,12 +610,12 @@ await Task.Delay(500, cancellationToken);  // Instead of 100
 
 ### Expected Performance
 
-| Operation | v1 (No Resilience) | v2 (With Resilience) | Benefit |
-|-----------|-------------------|----------------------|---------|
-| Chart of Accounts (1000 items) | 1-2min (hangs on failure) | 1-2min (resilient) | ✅ No hangs |
-| Token Refresh | 1-5sec (can fail) | 1-5sec (retries) | ✅ 80% less failures |
-| API Call | 0.5-3sec (timeout risk) | 0.5-3sec (safe) | ✅ No infinite hangs |
-| Batch Operation | All or nothing | Partial success | ✅ Better UX |
+| Operation                      | v1 (No Resilience)        | v2 (With Resilience) | Benefit              |
+| ------------------------------ | ------------------------- | -------------------- | -------------------- |
+| Chart of Accounts (1000 items) | 1-2min (hangs on failure) | 1-2min (resilient)   | ✅ No hangs          |
+| Token Refresh                  | 1-5sec (can fail)         | 1-5sec (retries)     | ✅ 80% less failures |
+| API Call                       | 0.5-3sec (timeout risk)   | 0.5-3sec (safe)      | ✅ No infinite hangs |
+| Batch Operation                | All or nothing            | Partial success      | ✅ Better UX         |
 
 ### Monitoring Metrics
 

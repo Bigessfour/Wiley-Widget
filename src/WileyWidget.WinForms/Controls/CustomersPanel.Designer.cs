@@ -1,7 +1,6 @@
 using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Drawing;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
@@ -40,17 +39,17 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            
+
             // SUSPEND LAYOUT - Speeds up initialization with many controls
             this.SuspendLayout();
-            
+
             try
             {
                 // ===== DPI CONSTANTS =====
                 var standardPadding = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(16f);
                 var controlSpacing = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f);
                 var rowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(40f);
-                
+
                 // ===== CORE PANEL PROPERTIES =====
                 this.Name = "CustomersPanel";
                 this.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -152,8 +151,8 @@ namespace WileyWidget.WinForms.Controls
                     return new System.Windows.Forms.Label
                     {
                         Text = text,
-                        Font = new System.Drawing.Font("Segoe UI", 
-                            Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f), 
+                        Font = new System.Drawing.Font("Segoe UI",
+                            Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f),
                             System.Drawing.FontStyle.Bold),
                         Dock = System.Windows.Forms.DockStyle.Fill,
                         TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
@@ -473,46 +472,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // ===== FIELD DECLARATIONS =====
-        
-        private System.ComponentModel.IContainer components;
-        private System.Windows.Forms.ToolTip _toolTip;
-        private System.Windows.Forms.ErrorProvider _errorProvider;
-        
-        // Layout
-        private System.Windows.Forms.TableLayoutPanel _mainLayout;
-        
-        // Header & overlays
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        
-        // Summary section
-        private GradientPanelExt _summaryPanel;
-        private System.Windows.Forms.Label _totalCustomersLabel;
-        private System.Windows.Forms.Label _activeCustomersLabel;
-        private System.Windows.Forms.Label _balanceSummaryLabel;
-        
-        // Toolbar section
-        private GradientPanelExt _toolbarPanel;
-        private TextBoxExt _searchTextBox;
-        private Syncfusion.WinForms.Controls.SfButton _addCustomerButton;
-        private Syncfusion.WinForms.Controls.SfButton _editCustomerButton;
-        private Syncfusion.WinForms.Controls.SfButton _deleteCustomerButton;
-        private Syncfusion.WinForms.Controls.SfButton _refreshButton;
-        private Syncfusion.WinForms.Controls.SfButton _exportButton;
-        private SfComboBox _filterTypeComboBox;
-        private SfComboBox _filterLocationComboBox;
-        private CheckBoxAdv _showActiveOnlyCheckBox;
-        
-        // Data grid
-        private SfDataGrid _customersGrid;
-        
-        // Status bar
-        private System.Windows.Forms.StatusStrip _statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel _statusLabel;
-        private System.Windows.Forms.ToolStripStatusLabel _countLabel;
-        private System.Windows.Forms.ToolStripStatusLabel _balanceLabel;
     }
 }
+
+

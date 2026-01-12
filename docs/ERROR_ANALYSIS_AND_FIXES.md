@@ -31,6 +31,7 @@ Per Microsoft documentation ([Memory Caching in ASP.NET Core](https://learn.micr
 ### Microsoft-Documented Fix
 
 **From Documentation:**
+
 > "IMemoryCache instance in the constructor... request the IMemoryCache instance"
 
 **Recommended Pattern (from Microsoft docs):**
@@ -99,6 +100,7 @@ builder.Services.AddSingleton<IMemoryCache>(sp =>
 ### Root Cause
 
 Per Microsoft DI documentation:
+
 > "Scoped services are disposed at the end of the scope... Services registered as Scoped are disposed when the ServiceScope is disposed."
 
 **Problem:** ThemeIconService registered as **Scoped** but Dashboard panel accesses it after scope disposal during async initialization.
@@ -106,6 +108,7 @@ Per Microsoft DI documentation:
 ### Microsoft-Documented Fix
 
 **From Documentation:**
+
 > "Singleton services... Only one instance is used throughout the application lifetime... Use for state that needs to persist across requests."
 
 ThemeIconService provides stateless icon resolution - perfect singleton candidate.
@@ -274,6 +277,7 @@ System.MissingMethodException: Cannot dynamically create an instance of type 'Wi
 ### Root Cause
 
 Per Microsoft Semantic Kernel documentation:
+
 > "KernelPlugin registration via reflection requires parameterless constructors for dynamic instantiation."
 
 **Problem:** Plugins have dependency-injected constructors but no parameterless constructor for `Activator.CreateInstance()`.
@@ -281,6 +285,7 @@ Per Microsoft Semantic Kernel documentation:
 ### Microsoft-Documented Fix
 
 **From .NET Documentation ([Activator.CreateInstance](https://learn.microsoft.com/en-us/dotnet/api/system.activator.createinstance)):**
+
 > "Creates an instance of the specified type using that type's parameterless constructor."
 
 **Two Solutions:**
@@ -352,6 +357,7 @@ Exception thrown: 'System.InvalidOperationException' in System.Windows.Forms.dll
 ### Root Cause
 
 Per Microsoft WinForms documentation ([Control.InvokeRequired](https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.control.invokerequired)):
+
 > "Gets a value indicating whether the caller must call an invoke method when making method calls to the control because the caller is on a different thread than the one the control was created on."
 
 **Problem:** Likely cross-thread UI access during async ViewModel initialization in `AnalyticsPanel`.
@@ -388,13 +394,13 @@ Need to examine `AnalyticsPanel` initialization to identify specific cross-threa
 
 ## Summary Table
 
-| Error | Root Cause | Documentation Source | Fix Priority |
-|-------|-----------|---------------------|--------------|
-| MemoryCache Disposed | Wrong lifetime (scoped vs singleton) | Microsoft ASP.NET Core Caching | Critical |
-| ThemeIconService Disposed | Wrong lifetime (scoped vs singleton) | Microsoft DI Service Lifetimes | High |
-| WarRoom SplitterDistance | Setting before sizing | Microsoft WinForms SplitContainer | Critical |
-| Kernel Plugin Registration | No parameterless constructor | Microsoft Activator/DI | Medium |
-| Analytics InvalidOperation | Cross-thread UI access (suspected) | Microsoft WinForms Threading | High |
+| Error                      | Root Cause                           | Documentation Source              | Fix Priority |
+| -------------------------- | ------------------------------------ | --------------------------------- | ------------ |
+| MemoryCache Disposed       | Wrong lifetime (scoped vs singleton) | Microsoft ASP.NET Core Caching    | Critical     |
+| ThemeIconService Disposed  | Wrong lifetime (scoped vs singleton) | Microsoft DI Service Lifetimes    | High         |
+| WarRoom SplitterDistance   | Setting before sizing                | Microsoft WinForms SplitContainer | Critical     |
+| Kernel Plugin Registration | No parameterless constructor         | Microsoft Activator/DI            | Medium       |
+| Analytics InvalidOperation | Cross-thread UI access (suspected)   | Microsoft WinForms Threading      | High         |
 
 ---
 

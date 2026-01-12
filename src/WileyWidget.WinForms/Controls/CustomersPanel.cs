@@ -500,6 +500,9 @@ public partial class CustomersPanel : UserControl
             AutoSizeColumnsMode = AutoSizeColumnsMode.None
         };
 
+        // Apply professional styling
+        ConfigureGridStyling(_customersGrid);
+
         // Configure grid columns
         _customersGrid.Columns.Add(new GridTextColumn
         {
@@ -644,7 +647,77 @@ public partial class CustomersPanel : UserControl
     }
 
     /// <summary>
-    /// Handles view model property changes.
+    /// Configures professional styling for the data grid including header font and row appearance.
+    /// </summary>
+    /// <param name="grid">The SfDataGrid to style.</param>
+    private void ConfigureGridStyling(SfDataGrid grid)
+    {
+        try
+        {
+            // Header styling - bold, professional appearance
+            grid.Style.HeaderStyle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+            grid.Style.HeaderStyle.Borders.All = new GridBorder { LineStyle = GridLineStyle.Solid, LineWidth = 1 };
+
+            // Row styling - consistent font and sizing
+            grid.Style.RowStyle.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            grid.Style.RowStyle.TextAlignment = HorizontalAlignment.Left;
+
+            // Alternate row coloring for readability
+            grid.Style.AlternatingRowStyle.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+
+            // Selection styling
+            grid.Style.SelectedRowStyle.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+
+            // Footer styling for totals if needed
+            grid.Style.GroupCaptionStyle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+
+            _logger?.LogDebug("Grid styling applied successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning($"Failed to apply grid styling: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Validates and configures toolbar button text with consistent font sizing.
+    /// </summary>
+    private void ConfigureToolbarFonts()
+    {
+        try
+        {
+            var buttonFont = new Font("Segoe UI", 10f, FontStyle.Regular);
+
+            foreach (var control in new[] { _addCustomerButton, _editCustomerButton, _deleteCustomerButton,
+                                           _refreshButton, _exportButton, _syncQuickBooksButton,
+                                           _clearFiltersButton, _searchButton })
+            {
+                if (control is Control c)
+                    c.Font = buttonFont;
+            }
+
+            // Labels use slightly larger font for hierarchy
+            var labelFont = new Font("Segoe UI", 10f, FontStyle.Regular);
+            if (_totalCustomersLabel != null) _totalCustomersLabel.Font = labelFont;
+            if (_activeCustomersLabel != null) _activeCustomersLabel.Font = labelFont;
+            if (_balanceSummaryLabel != null) _balanceSummaryLabel.Font = labelFont;
+
+            // Status bar uses smaller font
+            var statusFont = new Font("Segoe UI", 9f, FontStyle.Regular);
+            if (_statusLabel != null) _statusLabel.Font = statusFont;
+            if (_countLabel != null) _countLabel.Font = statusFont;
+            if (_balanceLabel != null) _balanceLabel.Font = statusFont;
+
+            _logger?.LogDebug("Toolbar fonts configured");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning($"Failed to configure toolbar fonts: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -1113,6 +1186,8 @@ public partial class CustomersPanel : UserControl
 
         if (!DesignMode)
         {
+            ConfigureToolbarFonts();
+
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 

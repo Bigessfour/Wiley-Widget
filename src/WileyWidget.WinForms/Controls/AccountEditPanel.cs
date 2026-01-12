@@ -350,7 +350,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Cancels the edit operation and closes the panel.
         /// </summary>
-        private void Cancel()
+        private void Cancel(object? sender, EventArgs e)
         {
             SaveDialogResult = DialogResult.Cancel;
             var parent = this.FindForm();

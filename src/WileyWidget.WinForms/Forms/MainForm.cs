@@ -296,6 +296,17 @@ namespace WileyWidget.WinForms.Forms
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: COMPLETED");
         }
 
+        /// <summary>
+        /// Implements <see cref="IAsyncInitializable.InitializeAsync(CancellationToken)"/>.
+        /// Performs async initialization work after the MainForm is shown.
+        /// Currently a no-op as synchronous initialization is sufficient.
+        /// </summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken)
+        {
+            // Heavy async initialization can be placed here if needed in future
+            await Task.CompletedTask;
+        }
+
         private void MainForm_DragEnter(object? sender, DragEventArgs e)
         {
             try
@@ -741,7 +752,7 @@ namespace WileyWidget.WinForms.Forms
 
             // TIER 3: Keyboard Navigation Support
             // Alt+Left/Right/Up/Down: Navigate between docked panels
-            if ((keyData & Keys.Alt) == Keys.Alt && 
+            if ((keyData & Keys.Alt) == Keys.Alt &&
                 (keyData & (Keys.Left | Keys.Right | Keys.Up | Keys.Down)) != 0)
             {
                 // Keyboard navigation will be handled by DockingKeyboardNavigator when integrated
@@ -1345,13 +1356,15 @@ namespace WileyWidget.WinForms.Forms
             }
             catch { }
         }
+    }
+}
 
-        /// <summary>
-        /// Shows a user-friendly error dialog with retry option.
-        /// Thread-safe: can be called from any thread.
-        /// </summary>
-        /// <param name="title">Dialog title.</param>
-        /// <param name="message">Error message.</param>
-        /// <param name="exception">Optional exception for logging.</param>
-        /// <param name="showRetry">If true, shows retry button.</param>
-        /// <returns>DialogResult indicating user choice.</returns>
+/// <summary>
+/// Shows a user-friendly error dialog with retry option.
+/// Thread-safe: can be called from any thread.
+/// </summary>
+/// <param name="title">Dialog title.</param>
+/// <param name="message">Error message.</param>
+/// <param name="exception">Optional exception for logging.</param>
+/// <param name="showRetry">If true, shows retry button.</param>
+/// <returns>DialogResult indicating user choice.</returns>

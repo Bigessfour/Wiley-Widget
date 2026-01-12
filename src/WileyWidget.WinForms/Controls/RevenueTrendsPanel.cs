@@ -190,7 +190,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // SPLIT CONTAINER FOR CHART AND GRID (Dock.Fill, proportional)
         // ══════════════════════════════════════════════════════════════
         // CHANGE 8: Split container configured for proportional resizing
-                _mainSplit = new SplitContainer
+        _mainSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -245,6 +245,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         };
 
         ConfigureGridColumns();
+        ConfigureGridStyling(_metricsGrid);
         _mainSplit.Panel2.Controls.Add(_metricsGrid);
 
         Controls.Add(_mainSplit);
@@ -452,6 +453,29 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Format = "C2",
             AllowSorting = true
         });
+    }
+
+    /// <summary>
+    /// Configures professional styling for the data grid including row height and spacing.
+    /// </summary>
+    private void ConfigureGridStyling(SfDataGrid grid)
+    {
+        if (grid == null) return;
+
+        try
+        {
+            // Set row height for better visual spacing and clickability
+            grid.RowHeight = 32;
+
+            // Set header row height for better visual hierarchy
+            grid.HeaderRowHeight = 40;
+
+            Logger?.LogDebug("Revenue metrics grid spacing applied");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning($"Failed to apply grid spacing: {ex.Message}");
+        }
     }
 
     /// <summary>

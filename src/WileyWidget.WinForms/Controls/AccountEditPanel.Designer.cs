@@ -1,5 +1,4 @@
 using Syncfusion.WinForms.Core;
-using Syncfusion.WinForms.Drawing;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
@@ -38,14 +37,14 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            
+
             // Initialize ToolTip first
             _toolTip = new System.Windows.Forms.ToolTip(this.components);
             _toolTip.AutoPopDelay = 5000;
             _toolTip.InitialDelay = 500;
             _toolTip.ReshowDelay = 200;
             _toolTip.ShowAlways = true;
-            
+
             var padding = 16;
             var labelWidth = 140;
             var controlWidth = 320;
@@ -260,7 +259,7 @@ namespace WileyWidget.WinForms.Controls
             this.buttonPanel.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.buttonPanel.BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, System.Drawing.Color.Empty, System.Drawing.Color.Empty);
             this.buttonPanel.AccessibleName = "Account action buttons";
-            Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(this.buttonPanel, ThemeColors.DefaultTheme);
+            Syncfusion.WinForms.Theme.SfSkinManager.SetVisualStyle(this.buttonPanel, ThemeColors.DefaultTheme);
 
             this.btnSave = new Syncfusion.WinForms.Controls.SfButton();
             this.btnSave.Name = "btnSave";
@@ -295,9 +294,7 @@ namespace WileyWidget.WinForms.Controls
             this.Padding = new System.Windows.Forms.Padding(16);
         }
 
-        #endregion
-
-        // Field declarations
+        // Designer fields (auto-restored to match InitializeComponent)
         private System.Windows.Forms.ToolTip _toolTip;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblAccountNumber;
@@ -320,5 +317,7 @@ namespace WileyWidget.WinForms.Controls
         private WileyWidget.WinForms.Controls.GradientPanelExt buttonPanel;
         private Syncfusion.WinForms.Controls.SfButton btnSave;
         private Syncfusion.WinForms.Controls.SfButton btnCancel;
+
+        #endregion
     }
 }

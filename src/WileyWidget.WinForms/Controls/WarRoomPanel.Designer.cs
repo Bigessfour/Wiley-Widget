@@ -1,7 +1,6 @@
 using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Drawing;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
@@ -304,7 +303,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        private System.ComponentModel.IContainer components;
     }
 }
+
+

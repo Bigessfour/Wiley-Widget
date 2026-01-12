@@ -152,7 +152,7 @@ print("📊 PANELCONTROLSINTEGRATIONTESTS - COMPREHENSIVE ANALYSIS")
 print("=" * 80)
 
 print(f"\n✅ TOTAL TESTS: {len(tests)}")
-print(f"\n📈 Distribution by Difficulty:")
+print("\n📈 Distribution by Difficulty:")
 print(f"   3/10 (Basic):       {len(by_difficulty.get(3, []))} tests")
 print(f"   5/10 (Intermediate): {len(by_difficulty.get(5, []))} tests")
 print(f"   6-7/10 (Advanced):  {len(by_difficulty.get(7, []))} tests")
@@ -239,7 +239,7 @@ print("\n" + "=" * 80)
 print("✨ SESSION SUMMARY")
 print("=" * 80)
 print(
-    f"""
+    """
 You successfully evolved PanelControlsIntegrationTests through 4 distinct phases:
 
 START:   27 tests (Phase 1 only - reflection/inheritance)

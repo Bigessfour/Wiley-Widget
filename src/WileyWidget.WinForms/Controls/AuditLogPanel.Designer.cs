@@ -54,27 +54,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private SfDataGrid _auditGrid;
-        private ChartControl _chartControl;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private LoadingOverlay _chartLoadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private GradientPanelExt _filterPanel;
-        private GradientPanelExt _chartHostPanel;
-        private Syncfusion.WinForms.Controls.SfButton _btnRefresh;
-        private Syncfusion.WinForms.Controls.SfButton _btnExportCsv;
-        private Syncfusion.WinForms.Controls.SfButton _btnUpdateChart;
-        private CheckBoxAdv _chkAutoRefresh;
-        private SfDateTimeEdit _dtpStartDate;
-        private SfDateTimeEdit _dtpEndDate;
-        private Syncfusion.WinForms.ListView.SfComboBox _cmbActionType;
-        private Syncfusion.WinForms.ListView.SfComboBox _cmbUser;
-        private Syncfusion.WinForms.ListView.SfComboBox _cmbChartGroupBy;
-        private System.Windows.Forms.Label _lblChartSummary;
-        private System.Windows.Forms.SplitContainer _mainSplit;
-        private System.Windows.Forms.StatusStrip _statusStrip;
     }
 }
+
+

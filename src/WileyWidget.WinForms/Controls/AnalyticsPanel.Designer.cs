@@ -53,27 +53,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private SfDataGrid _metricsGrid;
-        private SfDataGrid _variancesGrid;
-        private ChartControl _trendsChart;
-        private ChartControl _forecastChart;
-        private SfListView _insightsListBox;
-        private SfListView _recommendationsListBox;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private Syncfusion.WinForms.Controls.SfButton _performAnalysisButton;
-        private Syncfusion.WinForms.Controls.SfButton _runScenarioButton;
-        private Syncfusion.WinForms.Controls.SfButton _generateForecastButton;
-        private Syncfusion.WinForms.Controls.SfButton _refreshButton;
-        private GradientPanelExt _scenarioPanel;
-        private GradientPanelExt _resultsPanel;
-        private GradientPanelExt _chartsPanel;
-        private GradientPanelExt _buttonPanel;
-        private System.Windows.Forms.SplitContainer _mainSplitContainer;
-        private System.Windows.Forms.StatusStrip _statusStrip;
-        private System.Windows.Forms.ErrorProvider _errorProvider;
     }
 }
+
+

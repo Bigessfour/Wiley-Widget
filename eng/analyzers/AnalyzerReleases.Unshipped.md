@@ -1,4 +1,5 @@
 # Analyzer Releases (Unshipped)
+
 ## Unshipped
 
 ### WW0001 - Avoid Color.FromArgb usage

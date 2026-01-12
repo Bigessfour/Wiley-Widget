@@ -55,20 +55,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private SfDataGrid _detailsGrid;
-        private SfListView _kpiList;
-        private ChartControl _mainChart;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private ToolStrip _toolStrip;
-        private ToolStripButton _btnRefresh;
-        private System.Windows.Forms.Label _lblLastRefreshed;
-        private GradientPanelExt _summaryPanel;
-        private System.Windows.Forms.StatusStrip _statusStrip;
-        private System.Windows.Forms.ErrorProvider _errorProvider;
-        private System.Windows.Forms.ToolTip _sharedTooltip;
     }
 }
+
+

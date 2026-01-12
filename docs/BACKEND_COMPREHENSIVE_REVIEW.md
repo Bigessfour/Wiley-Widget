@@ -1,22 +1,23 @@
 # 🔍 COMPREHENSIVE BACKEND REVIEW
+
 ## Database • Repositories • Models • Semantic Kernel
 
 **Date:** January 15, 2026  
 **Status:** ✅ **PRODUCTION READY**  
-**Framework:** .NET 10.0 | **EF Core:** 9.0.8 | **SQL Server:** Express  
+**Framework:** .NET 10.0 | **EF Core:** 9.0.8 | **SQL Server:** Express
 
 ---
 
 ## 📊 EXECUTIVE SUMMARY
 
-| Component | Status | Grade | Notes |
-|-----------|--------|-------|-------|
-| **Database Design** | ✅ Excellent | A+ | Well-normalized, proper FK relationships, seed data complete |
-| **Repository Pattern** | ✅ Excellent | A+ | Scoped, cache-aware, telemetry integrated, proper error handling |
-| **Models/Entities** | ✅ Good | A | Clear domain models, value objects, owned types; minor refinements possible |
-| **Semantic Kernel** | ✅ Excellent | A+ | Microsoft best practices, native streaming, auto function calling, production-ready |
-| **Data Layer Integration** | ✅ Excellent | A+ | Clean separation, DI-aware, proper scoping, no memory leaks |
-| **Overall Architecture** | ✅ PRODUCTION READY | A+ | Enterprise-grade implementation, ready for deployment |
+| Component                  | Status              | Grade | Notes                                                                               |
+| -------------------------- | ------------------- | ----- | ----------------------------------------------------------------------------------- |
+| **Database Design**        | ✅ Excellent        | A+    | Well-normalized, proper FK relationships, seed data complete                        |
+| **Repository Pattern**     | ✅ Excellent        | A+    | Scoped, cache-aware, telemetry integrated, proper error handling                    |
+| **Models/Entities**        | ✅ Good             | A     | Clear domain models, value objects, owned types; minor refinements possible         |
+| **Semantic Kernel**        | ✅ Excellent        | A+    | Microsoft best practices, native streaming, auto function calling, production-ready |
+| **Data Layer Integration** | ✅ Excellent        | A+    | Clean separation, DI-aware, proper scoping, no memory leaks                         |
+| **Overall Architecture**   | ✅ PRODUCTION READY | A+    | Enterprise-grade implementation, ready for deployment                               |
 
 ---
 
@@ -207,11 +208,12 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
 #### ✅ **Strengths**
 
 1. **Service Scope Factory Pattern**
+
    ```csharp
    public class BudgetRepository : IBudgetRepository
    {
        private readonly IServiceScopeFactory _scopeFactory;
-       
+
        public async Task<IEnumerable<BudgetEntry>> GetByFiscalYearAsync(int fiscalYear)
        {
            using var scope = _scopeFactory.CreateScope();
@@ -220,9 +222,11 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
        }
    }
    ```
+
    **Benefit:** No long-lived DbContext; proper lifetime management.
 
 2. **Cache-Aware Queries with Fallback**
+
    ```csharp
    private bool TryGetFromCache<T>(string key, out T? value)
    {
@@ -238,18 +242,22 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
        }
    }
    ```
+
    **Benefit:** Graceful degradation if cache is disposed.
 
 3. **Telemetry Integration via ActivitySource**
+
    ```csharp
    using var activity = ActivitySource.StartActivity("BudgetRepository.GetBudgetHierarchy");
    activity?.SetTag("fiscal_year", fiscalYear);
    // ... query ...
    activity?.SetStatus(ActivityStatusCode.Ok);
    ```
+
    **Benefit:** OpenTelemetry observability for performance monitoring.
 
 4. **Comprehensive Filtering Methods**
+
    ```csharp
    GetByFiscalYearAsync()
    GetByFundAsync()
@@ -258,9 +266,11 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
    GetByDateRangeAsync()
    GetBudgetSummaryAsync()
    ```
+
    **Coverage:** All common query patterns.
 
 5. **Sorting & Paging Support**
+
    ```csharp
    public async Task<(IEnumerable<BudgetEntry> Items, int TotalCount)> GetPagedAsync(
        int pageNumber = 1,
@@ -268,12 +278,13 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
        string? sortBy = null,
        bool sortDescending = false)
    ```
+
    **Benefit:** UI-friendly pagination, flexible sorting.
 
 6. **Variance Analysis & Reporting**
    ```csharp
    public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(
-       DateTime startDate, 
+       DateTime startDate,
        DateTime endDate)
    {
        // Calculates variance, percentage, groupings
@@ -284,15 +295,17 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
 #### ⚠️ **Areas for Enhancement**
 
 1. **Owned Type Property Access**
+
    ```csharp
    // Currently: AccountNumber treated as direct property
    // where(be => be.AccountNumber.StartsWith("4"))
-   
+
    // Could use: Value object pattern
    // where(be => be.AccountNumber.Value.StartsWith("4"))
    ```
 
 2. **GetQueryableAsync Lifetime Issue**
+
    ```csharp
    public Task<IQueryable<BudgetEntry>> GetQueryableAsync()
    {
@@ -302,6 +315,7 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
        return Task.FromResult(context.BudgetEntries.AsQueryable());
    }
    ```
+
    **Fix:** Return scope reference or materialize query immediately.
 
 3. **Race Condition in Cache Updates**
@@ -318,15 +332,15 @@ entity.ToTable(t => t.HasCheckConstraint("CK_Transaction_NonZero", "[Amount] != 
 
 ### All Repository Implementations
 
-| Repository | Methods | Features | Status |
-|------------|---------|----------|--------|
-| **BudgetRepository** | 20+ | Caching, telemetry, analysis | ✅ Excellent |
-| **AccountsRepository** | 15+ | Filtering, hierarchy | ✅ Good |
-| **DepartmentRepository** | 12+ | Tree navigation | ✅ Good |
-| **UtilityBillRepository** | 18+ | Status tracking, calculations | ✅ Excellent |
-| **EnterpriseRepository** | 10+ | Multi-tenant filtering | ✅ Good |
-| **ActivityLogRepository** | 8+ | Audit trail | ✅ Good |
-| **AuditRepository** | 10+ | Compliance logging | ✅ Good |
+| Repository                | Methods | Features                      | Status       |
+| ------------------------- | ------- | ----------------------------- | ------------ |
+| **BudgetRepository**      | 20+     | Caching, telemetry, analysis  | ✅ Excellent |
+| **AccountsRepository**    | 15+     | Filtering, hierarchy          | ✅ Good      |
+| **DepartmentRepository**  | 12+     | Tree navigation               | ✅ Good      |
+| **UtilityBillRepository** | 18+     | Status tracking, calculations | ✅ Excellent |
+| **EnterpriseRepository**  | 10+     | Multi-tenant filtering        | ✅ Good      |
+| **ActivityLogRepository** | 8+      | Audit trail                   | ✅ Good      |
+| **AuditRepository**       | 10+     | Compliance logging            | ✅ Good      |
 
 ---
 
@@ -402,7 +416,7 @@ UtilityBill
 public class AccountNumber
 {
     public string Value { get; set; } = null!;
-    
+
     // COAS chart validation
     public bool IsValid => !string.IsNullOrWhiteSpace(Value) && Value.All(c => c.IsDigit() || c == '.');
 }
@@ -477,10 +491,11 @@ public enum BudgetStatus
 ### ⚠️ **Potential Improvements**
 
 1. **Immutable Value Objects**
+
    ```csharp
    // Current: mutable
    public class AccountNumber { public string Value { get; set; } }
-   
+
    // Better: immutable with factory
    public record AccountNumber(string Value)
    {
@@ -490,6 +505,7 @@ public enum BudgetStatus
    ```
 
 2. **DDD Aggregates**
+
    ```csharp
    // Current: BudgetEntry and Transactions are separate
    // Better: BudgetAggregate with Transaction list (consistency boundary)
@@ -497,7 +513,7 @@ public enum BudgetStatus
    {
        public BudgetEntry Budget { get; }
        public IReadOnlyList<Transaction> Transactions { get; }
-       
+
        public void AddTransaction(Transaction t) { /* domain logic */ }
    }
    ```
@@ -507,9 +523,9 @@ public enum BudgetStatus
    // Current: No guard clauses
    public BudgetEntry(string accountNumber, decimal amount)
    {
-       if (string.IsNullOrWhiteSpace(accountNumber)) 
+       if (string.IsNullOrWhiteSpace(accountNumber))
            throw new ArgumentException("Account required");
-       if (amount <= 0) 
+       if (amount <= 0)
            throw new ArgumentException("Amount must be positive");
        // ...
    }
@@ -526,6 +542,7 @@ public enum BudgetStatus
 #### ✅ **Implementation Excellence**
 
 1. **Service ID Support for Multi-Model**
+
    ```csharp
    var serviceId = $"grok-{_model}";
    builder.AddOpenAIChatCompletion(
@@ -534,9 +551,11 @@ public enum BudgetStatus
        endpoint: _endpoint!,
        serviceId: serviceId);
    ```
+
    **Benefit:** Multiple model support, better service identification.
 
 2. **Native SK Streaming with Auto Function Calling**
+
    ```csharp
    var settings = new OpenAIPromptExecutionSettings
    {
@@ -544,7 +563,7 @@ public enum BudgetStatus
        Temperature = 0.3,
        MaxTokens = 4000
    };
-   
+
    await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
        history,
        executionSettings: settings,
@@ -557,6 +576,7 @@ public enum BudgetStatus
        }
    }
    ```
+
    **Benefits:**
    - No manual SSE parsing
    - Automatic function invocation
@@ -564,6 +584,7 @@ public enum BudgetStatus
    - Memory-efficient streaming
 
 3. **Async Initialization Pattern**
+
    ```csharp
    public class GrokAgentService : IAsyncInitializable
    {
@@ -581,9 +602,11 @@ public enum BudgetStatus
        }
    }
    ```
+
    **Benefit:** Non-blocking startup, proper resource initialization.
 
 4. **Plugin Auto-Registration**
+
    ```csharp
    KernelPluginRegistrar.ImportPluginsFromAssemblies(
        _kernel,
@@ -591,9 +614,11 @@ public enum BudgetStatus
        _logger,
        _serviceProvider);  // ← DI-aware instantiation
    ```
+
    **Benefit:** Automatic discovery of [KernelFunction] decorated methods.
 
 5. **Comprehensive Error Handling**
+
    ```csharp
    catch (Exception ex)
    {
@@ -610,18 +635,22 @@ public enum BudgetStatus
        }
    }
    ```
+
    **Benefit:** Graceful degradation, 3-level error recovery.
 
 6. **API Key Management**
+
    ```csharp
    // Multi-source detection: config > user env > machine env > process env
    var configApiKey = config["Grok:ApiKey"] ?? config["XAI:ApiKey"];
    var (envApiKey, envSource) = TryGetEnvironmentScopedApiKey();
    var selectedKey = string.IsNullOrWhiteSpace(configApiKey) ? envApiKey : configApiKey;
    ```
+
    **Benefit:** Flexible configuration, environment precedence.
 
 7. **Model Discovery & Auto-Selection**
+
    ```csharp
    public async Task<string?> AutoSelectModelAsync(CancellationToken ct = default)
    {
@@ -631,18 +660,20 @@ public enum BudgetStatus
            var desc = await _modelDiscoveryService.ChooseBestModelAsync(_model, ct);
            if (desc != null) return desc.Id;
        }
-       
+
        // Fallback: enumerate /models endpoint
        var models = await ListAvailableModelsAsync(ct);
        var preferred = new[] { "grok-4", "grok-4-1-fast", "grok-4-1-fast-reasoning" };
        return models.FirstOrDefault(m => preferred.Contains(m));
    }
    ```
+
    **Benefit:** Intelligent model selection, fallback mechanism.
 
 #### ⚠️ **Areas for Enhancement**
 
 1. **Plugin Registration Error Handling**
+
    ```csharp
    // Current: Silently ignores plugin registration failures
    try
@@ -655,34 +686,38 @@ public enum BudgetStatus
        // Continues without plugins - may be unexpected
    }
    ```
+
    **Fix:** Distinguish between fatal vs non-fatal plugin errors.
 
 2. **Streaming Response Timeout**
+
    ```csharp
    // Current: No timeout on GetStreamingChatMessageContentsAsync
    // Could hang indefinitely if API stops responding
-   
+
    // Better: Add CancellationToken with timeout
    using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
    cts.CancelAfter(TimeSpan.FromSeconds(30));
-   
-   await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(..., 
+
+   await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(...,
        cancellationToken: cts.Token))
    ```
 
 3. **Function Invocation Observability**
+
    ```csharp
    // Current: Basic logging of function calls
    if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
    {
        _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
    }
-   
+
    // Better: Capture function inputs/outputs, duration, errors
    // Use IFunctionInvocationFilter for comprehensive logging
    ```
 
 4. **Model-Specific Configuration**
+
    ```csharp
    // Current: All penalties applied uniformly
    if (!IsReasoningModel(_model))
@@ -690,7 +725,7 @@ public enum BudgetStatus
        settings.PresencePenalty = _defaultPresencePenalty;
        settings.FrequencyPenalty = _defaultFrequencyPenalty;
    }
-   
+
    // Better: Model-specific temperature, max tokens, penalties
    var modelConfig = GetModelConfig(_model);
    settings.Temperature = modelConfig.Temperature;
@@ -702,11 +737,12 @@ public enum BudgetStatus
 **File:** `src/WileyWidget.Services/SemanticSearchService.cs`
 
 #### Implementation
+
 ```csharp
 public class SemanticSearchService : ISemanticSearchService
 {
     private readonly ITextEmbeddingGenerationService? _embeddingService;
-    
+
     public async Task<List<SemanticSearchResult<T>>> SearchAsync<T>(
         IEnumerable<T> items,
         string query,
@@ -715,24 +751,24 @@ public class SemanticSearchService : ISemanticSearchService
     {
         // Generate query embedding
         var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
-        
+
         // Calculate cosine similarity for each item
         var results = new List<SemanticSearchResult<T>>();
         foreach (var item in items)
         {
             var itemEmbedding = await _embeddingService.GenerateEmbeddingAsync(itemText);
             var similarity = TensorPrimitives.CosineSimilarity(queryEmbedding.Span, itemEmbedding.Span);
-            
+
             if (similarity >= threshold)
-                results.Add(new SemanticSearchResult<T> { 
-                    Item = item, 
-                    SimilarityScore = similarity 
+                results.Add(new SemanticSearchResult<T> {
+                    Item = item,
+                    SimilarityScore = similarity
                 });
         }
-        
+
         return results.OrderByDescending(r => r.SimilarityScore).ToList();
     }
-    
+
     // Fallback: Keyword search when embedding service unavailable
     private Task<List<SemanticSearchResult<T>>> FallbackKeywordSearchAsync<T>(...)
     {
@@ -743,6 +779,7 @@ public class SemanticSearchService : ISemanticSearchService
 ```
 
 **Strengths:**
+
 - ✅ Graceful fallback to keyword search
 - ✅ Cosine similarity calculation
 - ✅ Configurable threshold
@@ -784,6 +821,7 @@ Service → ViewModel → UI
 ### Concurrency Handling
 
 **Optimistic Locking:**
+
 ```csharp
 // MunicipalAccount has RowVersion
 var account = await context.MunicipalAccounts.FindAsync(id);
@@ -803,6 +841,7 @@ catch (DbUpdateConcurrencyException ex)
 ### Transaction Boundaries
 
 **Repository Pattern Scope:**
+
 ```csharp
 using var scope = _scopeFactory.CreateScope();
 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -823,6 +862,7 @@ var result = await context.BudgetEntries
 ### Unit Tests
 
 **Repository Tests:**
+
 ```csharp
 [Fact]
 public async Task GetByFiscalYearAsync_WithValidYear_ReturnsCachedResults()
@@ -831,11 +871,11 @@ public async Task GetByFiscalYearAsync_WithValidYear_ReturnsCachedResults()
     var mockCache = new Mock<IMemoryCache>();
     var mockScopeFactory = new Mock<IServiceScopeFactory>();
     var repo = new BudgetRepository(mockScopeFactory.Object, mockCache.Object);
-    
+
     // Act
     var result1 = await repo.GetByFiscalYearAsync(2025);
     var result2 = await repo.GetByFiscalYearAsync(2025); // Should use cache
-    
+
     // Assert
     Assert.Equal(result1, result2);
     mockCache.Verify(c => c.TryGetValue(...), Times.AtLeast(2));
@@ -847,11 +887,11 @@ public async Task GetBudgetSummaryAsync_CalculatesVarianceCorrectly()
     // Arrange
     var context = CreateInMemoryContext();
     context.BudgetEntries.Add(new BudgetEntry { BudgetedAmount = 100, ActualAmount = 80 });
-    
+
     // Act
     var analysis = await new BudgetRepository(scopeFactory, cache)
         .GetBudgetSummaryAsync(DateTime.Now.AddDays(-30), DateTime.Now);
-    
+
     // Assert
     Assert.Equal(20, analysis.TotalVariance);
     Assert.Equal(20.0, analysis.TotalVariancePercentage);
@@ -861,6 +901,7 @@ public async Task GetBudgetSummaryAsync_CalculatesVarianceCorrectly()
 ### Integration Tests
 
 **Database Tests:**
+
 ```csharp
 [Fact]
 public async Task BudgetEntry_WithParent_MaintainsHierarchy()
@@ -869,17 +910,17 @@ public async Task BudgetEntry_WithParent_MaintainsHierarchy()
     using var context = new AppDbContext(options);
     var parent = new BudgetEntry { AccountNumber = "1000", Description = "Total" };
     var child = new BudgetEntry { ParentId = parent.Id, AccountNumber = "1100" };
-    
+
     // Act
     context.BudgetEntries.Add(parent);
     context.BudgetEntries.Add(child);
     await context.SaveChangesAsync();
-    
+
     // Assert
     var retrieved = await context.BudgetEntries
         .Include(be => be.Children)
         .FirstAsync(be => be.Id == parent.Id);
-    
+
     Assert.Single(retrieved.Children);
 }
 
@@ -891,12 +932,12 @@ public async Task DeleteBudgetEntry_WithFKRestrict_ThrowsException()
     var transaction = new Transaction { BudgetEntryId = budget.Id };
     context.Transactions.Add(transaction);
     await context.SaveChangesAsync();
-    
+
     // Act & Assert
     context.BudgetEntries.Remove(budget);
     var ex = await Assert.ThrowsAsync<DbUpdateException>(
         () => context.SaveChangesAsync());
-    
+
     Assert.Contains("FK", ex.Message);
 }
 ```
@@ -909,15 +950,15 @@ public async Task GrokAgentService_InitializesKernel_Successfully()
 {
     // Arrange
     var config = new ConfigurationBuilder()
-        .AddInMemoryCollection(new[] { 
+        .AddInMemoryCollection(new[] {
             new KeyValuePair<string, string?>("Grok:ApiKey", "test-key")
         })
         .Build();
     var service = new GrokAgentService(config);
-    
+
     // Act
     await service.InitializeAsync();
-    
+
     // Assert
     Assert.True(service.IsInitialized);
     Assert.NotNull(service.Kernel);
@@ -931,12 +972,12 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
     var service = new GrokAgentService(config);
     await service.InitializeAsync();
     var chunks = new List<string>();
-    
+
     // Act
     var result = await service.RunAgentAsync(
         "What is 2+2?",
         onStreamingChunk: chunk => chunks.Add(chunk));
-    
+
     // Assert
     Assert.NotEmpty(result);
     Assert.NotEmpty(chunks);
@@ -948,6 +989,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 ## 📋 PRODUCTION READINESS CHECKLIST
 
 ### Database
+
 - [x] Schema normalized (3NF)
 - [x] All FKs with Restrict behavior
 - [x] Proper indexes on hot paths
@@ -958,6 +1000,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 - [x] Decimal precision for financial data
 
 ### Repositories
+
 - [x] Service scope factory pattern
 - [x] Cache integration with fallback
 - [x] Telemetry via ActivitySource
@@ -967,6 +1010,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 - [x] Read-only projections (AsNoTracking)
 
 ### Models
+
 - [x] Clear entity relationships
 - [x] Value objects for domain concepts
 - [x] Enums for known domains
@@ -975,6 +1019,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 - [x] Hierarchical support
 
 ### Semantic Kernel
+
 - [x] Service ID for multi-model
 - [x] Native streaming with auto function calling
 - [x] Async initialization
@@ -985,6 +1030,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 - [x] Comprehensive logging
 
 ### Architecture
+
 - [x] Clean separation of concerns
 - [x] DI integration throughout
 - [x] No memory leaks
@@ -997,17 +1043,20 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 ## 🚀 DEPLOYMENT CONSIDERATIONS
 
 ### Database
+
 - **Migration Strategy:** Use `database update` on deployment
 - **Backup:** Full backup before major schema changes
 - **Indexes:** Monitor query plans in production
 - **Growth:** Plan for partitioning if dataset exceeds 100M rows
 
 ### Caching
+
 - **TTL:** 30 minutes default (configurable)
 - **Monitoring:** Track cache hit rates
 - **Invalidation:** Clear cache on data modification
 
 ### Semantic Kernel
+
 - **API Keys:** Store in encrypted vault (DPAPI)
 - **Rate Limits:** Implement circuit breaker for API limits
 - **Timeouts:** 30-second timeout on streaming
@@ -1019,13 +1068,13 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 
 ### Typical Query Times (Development)
 
-| Query | Time | Notes |
-|-------|------|-------|
-| `GetByFiscalYearAsync()` | <50ms (cached) | 100ms first run |
-| `GetBudgetHierarchyAsync()` | <200ms | Includes navigation |
-| `GetPagedAsync(1, 50)` | <150ms | With sorting |
-| `GetBudgetSummaryAsync()` | <300ms | In-memory aggregation |
-| `RunAgentAsync()` | 2-5s | API latency-dependent |
+| Query                       | Time           | Notes                 |
+| --------------------------- | -------------- | --------------------- |
+| `GetByFiscalYearAsync()`    | <50ms (cached) | 100ms first run       |
+| `GetBudgetHierarchyAsync()` | <200ms         | Includes navigation   |
+| `GetPagedAsync(1, 50)`      | <150ms         | With sorting          |
+| `GetBudgetSummaryAsync()`   | <300ms         | In-memory aggregation |
+| `RunAgentAsync()`           | 2-5s           | API latency-dependent |
 
 ### Memory Usage
 
@@ -1041,6 +1090,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 ### Overall Grade: **A+** (Production Ready)
 
 **What's Excellent:**
+
 - ✅ Enterprise-grade database design
 - ✅ Exemplary repository pattern
 - ✅ Comprehensive Semantic Kernel integration
@@ -1048,6 +1098,7 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 - ✅ Clean architecture & separation of concerns
 
 **Minor Improvements:**
+
 1. **GetQueryableAsync** - Fix scope lifetime issue
 2. **Plugin Errors** - Distinguish fatal vs non-fatal
 3. **Streaming Timeout** - Add explicit cancellation timeout
@@ -1064,4 +1115,3 @@ public async Task RunAgentAsync_WithValidPrompt_ReturnsResponse()
 **WileyWidget - Municipal Budget Management System**  
 **.NET 10.0 | EF Core 9.0 | Semantic Kernel 1.16**  
 **January 15, 2026**
-

@@ -54,22 +54,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private ChartControl _chartControl;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private Syncfusion.WinForms.ListView.SfComboBox _comboDepartmentFilter;
-        private Syncfusion.WinForms.Controls.SfButton _btnRefresh;
-        private Syncfusion.WinForms.Controls.SfButton _btnExportPng;
-        private Syncfusion.WinForms.Controls.SfButton _btnExportPdf;
-        private GradientPanelExt _topPanel;
-        private GradientPanelExt _summaryPanel;
-        private System.Windows.Forms.Label _lblTotalBudget;
-        private System.Windows.Forms.Label _lblTotalActual;
-        private System.Windows.Forms.Label _lblTotalVariance;
-        private System.Windows.Forms.Label _lblVariancePercent;
-        private System.Windows.Forms.ErrorProvider _errorProvider;
     }
 }
+
+

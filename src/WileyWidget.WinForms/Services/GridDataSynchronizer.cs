@@ -131,18 +131,18 @@ namespace WileyWidget.WinForms.Services
                     {
                         // Extract X and Y values from item using reflection
                         // Supports common property names: XValue/YValue, Date/Value, Month/Amount
-                        var xProp = item.GetType().GetProperty("XValue", 
-                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ?? 
-                                item.GetType().GetProperty("Date", 
-                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ?? 
-                                item.GetType().GetProperty("Month", 
+                        var xProp = item.GetType().GetProperty("XValue",
+                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ??
+                                item.GetType().GetProperty("Date",
+                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ??
+                                item.GetType().GetProperty("Month",
                                 System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public);
 
-                        var yProp = item.GetType().GetProperty("YValue", 
-                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ?? 
-                                item.GetType().GetProperty("Value", 
-                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ?? 
-                                item.GetType().GetProperty("Amount", 
+                        var yProp = item.GetType().GetProperty("YValue",
+                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ??
+                                item.GetType().GetProperty("Value",
+                                System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public) ??
+                                item.GetType().GetProperty("Amount",
                                 System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public);
 
                         if (xProp != null && yProp != null)

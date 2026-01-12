@@ -51,28 +51,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private SfDataGrid _syncHistoryGrid;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private GradientPanelExt _connectionPanel;
-        private GradientPanelExt _operationsPanel;
-        private GradientPanelExt _summaryPanel;
-        private GradientPanelExt _historyPanel;
-        private System.Windows.Forms.Label _connectionStatusLabel;
-        private System.Windows.Forms.Label _companyNameLabel;
-        private System.Windows.Forms.Label _lastSyncLabel;
-        private Syncfusion.WinForms.Controls.SfButton _connectButton;
-        private Syncfusion.WinForms.Controls.SfButton _disconnectButton;
-        private Syncfusion.WinForms.Controls.SfButton _testConnectionButton;
-        private Syncfusion.WinForms.Controls.SfButton _syncDataButton;
-        private Syncfusion.WinForms.Controls.SfButton _importAccountsButton;
-        private Syncfusion.WinForms.Controls.SfButton _refreshHistoryButton;
-        private Syncfusion.WinForms.Controls.SfButton _clearHistoryButton;
-        private Syncfusion.WinForms.Controls.SfButton _exportHistoryButton;
-        private ProgressBarAdv _syncProgressBar;
-        private System.Windows.Forms.SplitContainer _mainSplitContainer;
     }
 }
+
+

@@ -54,26 +54,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         #endregion
-
-        // Field declarations
-        private System.Windows.Forms.ToolTip _toolTip;
-        private SfDataGrid _budgetGrid;
-        private PanelHeader _panelHeader;
-        private LoadingOverlay _loadingOverlay;
-        private NoDataOverlay _noDataOverlay;
-        private Syncfusion.WinForms.ListView.SfComboBox _comboFund;
-        private Syncfusion.WinForms.ListView.SfComboBox _comboAccountType;
-        private Syncfusion.WinForms.Controls.SfButton _btnRefresh;
-        private Syncfusion.WinForms.Controls.SfButton _btnAdd;
-        private Syncfusion.WinForms.Controls.SfButton _btnEdit;
-        private Syncfusion.WinForms.Controls.SfButton _btnDelete;
-        private Syncfusion.WinForms.Controls.SfButton _btnExportExcel;
-        private Syncfusion.WinForms.Controls.SfButton _btnExportPdf;
-        private GradientPanelExt _topPanel;
-        private GradientPanelExt _summaryPanel;
-        private System.Windows.Forms.Label _lblTotalBalance;
-        private System.Windows.Forms.Label _lblAccountCount;
-        private System.Windows.Forms.ErrorProvider _errorProvider;
-        private System.Windows.Forms.BindingSource _budgetBindingSource;
     }
 }
+
+

@@ -9,22 +9,27 @@
 ## TL;DR
 
 ### The Problem
+
 WileyWidget's QuickBooks integration **works** but lacks production-grade resilience. Without critical fixes, it will fail catastrophically under network issues or Intuit API problems.
 
 ### The Impact
+
 - 🔴 **Token refresh failures** → Complete app lockout
 - 🔴 **Batch operations hang indefinitely** → No timeout protection
 - 🔴 **Budget feature broken** → Not implemented correctly
 - 🔴 **No retry logic** → Single transient error = total failure
 
 ### The Fix
+
 **3-4 weeks of engineering** to add:
+
 1. Polly resilience patterns (retry/circuit breaker/timeout)
 2. Budget entity via Reports API
 3. Token validation hardening
 4. Comprehensive error handling
 
 ### Bottom Line
+
 ✅ **Safe for development/testing**  
 ⚠️ **Unsafe for pilot users**  
 ❌ **Not approved for production**
@@ -108,14 +113,15 @@ Recommended:
 
 ## Testing Status
 
-| Test Type | Coverage | Status |
-|-----------|----------|--------|
-| **Unit Tests** | 20% | ⚠️ Limited |
-| **Integration Tests** | 5% | ❌ Missing |
-| **Sandbox Tests** | 0% | ❌ Not attempted |
-| **Failure Scenario Tests** | 0% | ❌ Missing |
+| Test Type                  | Coverage | Status           |
+| -------------------------- | -------- | ---------------- |
+| **Unit Tests**             | 20%      | ⚠️ Limited       |
+| **Integration Tests**      | 5%       | ❌ Missing       |
+| **Sandbox Tests**          | 0%       | ❌ Not attempted |
+| **Failure Scenario Tests** | 0%       | ❌ Missing       |
 
 **Recommended additions:**
+
 - ✅ Token refresh retry logic (3 tests)
 - ✅ Circuit breaker activation (2 tests)
 - ✅ Batch operation timeout (2 tests)
@@ -127,6 +133,7 @@ Recommended:
 ## Implementation Roadmap
 
 ### Phase 1: Critical Resilience (Week 1)
+
 ```
 Mon-Tue: Implement Polly pipelines
   - Token refresh: Timeout + Circuit Breaker + Retry
@@ -147,6 +154,7 @@ Fri: Code review + basic testing
 ```
 
 ### Phase 2: Feature Completion (Week 2)
+
 ```
 Mon-Tue: Budget Reports API implementation
   - Fetch from Reports API
@@ -162,6 +170,7 @@ Fri: Integration testing
 ```
 
 ### Phase 3: Testing & Documentation (Week 3)
+
 ```
 Mon-Tue: Write comprehensive tests
   - Failure scenarios (retry, circuit breaker, timeout)
@@ -204,13 +213,13 @@ Fri: Pre-production validation
 
 ## Resource Estimate
 
-| Phase | Duration | Engineers | Cost |
-|-------|----------|-----------|------|
-| **Critical Fixes** | 1 week | 1 FTE | ~$3K |
-| **Feature Completion** | 1 week | 1 FTE | ~$3K |
-| **Testing & Docs** | 1 week | 1 FTE | ~$3K |
-| **Code Review/QA** | 3 days | 0.5 FTE | ~$1.5K |
-| **TOTAL** | 3-4 weeks | ~2.5 FTE | ~$10.5K |
+| Phase                  | Duration  | Engineers | Cost    |
+| ---------------------- | --------- | --------- | ------- |
+| **Critical Fixes**     | 1 week    | 1 FTE     | ~$3K    |
+| **Feature Completion** | 1 week    | 1 FTE     | ~$3K    |
+| **Testing & Docs**     | 1 week    | 1 FTE     | ~$3K    |
+| **Code Review/QA**     | 3 days    | 0.5 FTE   | ~$1.5K  |
+| **TOTAL**              | 3-4 weeks | ~2.5 FTE  | ~$10.5K |
 
 **Break-even:** 1 production incident avoided = $5K+ (lost productivity + data recovery)
 
@@ -232,16 +241,19 @@ Fri: Pre-production validation
 **Decision:** Allocate 3-4 weeks to address critical issues before production deployment.
 
 **Justification:**
+
 - Cost of fixing now: ~$10.5K (engineering effort)
 - Cost of production incident: ~$50K+ (downtime + reputation + data recovery)
 - Risk reduction: 95%+ improvement in reliability
 
 **Timeline:**
+
 - **Sprint 1 (Week 1-2):** Critical issues fixed
 - **Sprint 2 (Week 2-3):** Features completed + tested
 - **Staging (Week 3-4):** Full validation before production launch
 
 **Success Criteria:**
+
 - ✅ All unit tests passing (80%+ coverage)
 - ✅ All integration tests passing
 - ✅ Sandbox testing completed successfully
@@ -254,24 +266,28 @@ Fri: Pre-production validation
 ## Next Steps
 
 ### Immediate (This Week)
+
 1. [ ] Schedule kickoff meeting with engineering team
 2. [ ] Review this document with stakeholders
 3. [ ] Create GitHub issues for each critical fix
 4. [ ] Assign Sprint 1 work (resilience patterns)
 
 ### Sprint 1 (Next Week)
+
 1. [ ] Implement Polly v8 resilience pipelines
 2. [ ] Add timeout protection to all operations
 3. [ ] Harden token refresh logic
 4. [ ] Write unit tests for resilience scenarios
 
 ### Sprint 2 (Following Week)
+
 1. [ ] Implement Budget Reports API
 2. [ ] Add PKCE support
 3. [ ] Enhance error handling
 4. [ ] Write integration tests
 
 ### Pre-Production (Week 4)
+
 1. [ ] Full sandbox testing
 2. [ ] Performance validation
 3. [ ] Security review
@@ -282,21 +298,27 @@ Fri: Pre-production validation
 ## Questions & Answers
 
 ### Q: Can we use QuickBooks integration in production now?
+
 **A:** No. It will fail on first network issue or Intuit outage. Not approved.
 
 ### Q: How long until production ready?
+
 **A:** 3-4 weeks with 1 FTE engineer.
 
 ### Q: What happens if we skip these fixes?
+
 **A:** App crashes completely on any QuickBooks API failure. User data at risk.
 
 ### Q: Is there a workaround?
+
 **A:** Disable QuickBooks integration until fixes are complete.
 
 ### Q: What about the budget feature?
+
 **A:** Currently non-functional. Requires 4-6 hours to implement Reports API.
 
 ### Q: How critical is PKCE?
+
 **A:** Recommended (enhances security) but not blocking production.
 
 ---
@@ -304,11 +326,13 @@ Fri: Pre-production validation
 ## Contact & Support
 
 **For questions about this review:**
+
 - Review author: GitHub Copilot
 - Date: January 15, 2026
 - Full document: `docs/QUICKBOOKS_INTEGRATION_COMPREHENSIVE_REVIEW.md`
 
 **For implementation support:**
+
 - See detailed remediation code in full review document
 - Polly v8 samples: https://github.com/App-vNext/Polly/tree/main/samples
 - Intuit API docs: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api
