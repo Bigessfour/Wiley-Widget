@@ -1,6 +1,7 @@
 # IDbContextFactory Pattern Conversion Guide
 
 ## Overview
+
 Convert repositories from direct AppDbContext injection to IDbContextFactory<AppDbContext> pattern to prevent ObjectDisposedException.
 
 ## Files to Update
@@ -8,6 +9,7 @@ Convert repositories from direct AppDbContext injection to IDbContextFactory<App
 ### 1. src/WileyWidget.Data/AccountsRepository.cs
 
 **Changes:**
+
 ```csharp
 // BEFORE
 private readonly AppDbContext _dbContext;
@@ -29,6 +31,7 @@ public AccountsRepository(IDbContextFactory<AppDbContext> contextFactory, ILogge
 ```
 
 **Method Pattern:**
+
 ```csharp
 // BEFORE
 var result = await _dbContext.Set<MunicipalAccount>()
@@ -46,6 +49,7 @@ var result = await context.Set<MunicipalAccount>()
 ### 2. src/WileyWidget.Data/BudgetRepository.cs
 
 Same pattern as above, but has 30+ methods. Each method using `_context` needs:
+
 1. Create context: `await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);`
 2. Replace `_context.` with `context.`
 3. Add `.AsNoTracking()` for read queries
@@ -53,6 +57,7 @@ Same pattern as above, but has 30+ methods. Each method using `_context` needs:
 ### 3. src/WileyWidget.Data/MunicipalAccountRepository.cs
 
 This file has both `AppDbContext _context` field AND uses compiled queries. Keep compiled queries, but update:
+
 - Constructor to inject `IDbContextFactory<AppDbContext>`
 - Store factory in field
 - Create context in methods that use `_context`
@@ -76,6 +81,7 @@ Service layer file - update to use factory pattern like repositories.
 ## Testing After Changes
 
 Run these tests to verify:
+
 ```powershell
 # Build
 dotnet build src/WileyWidget.Data/WileyWidget.Data.csproj

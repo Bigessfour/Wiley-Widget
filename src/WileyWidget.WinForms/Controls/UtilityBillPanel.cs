@@ -21,6 +21,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.Services;
+using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -90,6 +91,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             InitializeControls();
             BindViewModel();
 
+            // Defer sizing validation until layout is complete
+            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
             Logger.LogDebug("UtilityBillPanel initialized successfully");
         }
         catch (Exception ex)
@@ -135,9 +139,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = (int)DpiAware.LogicalToDeviceUnits(500f),
             TabStop = false
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, (int)DpiAware.LogicalToDeviceUnits(500f));
 
         InitializeTopPanel();
         InitializeBottomPanel();

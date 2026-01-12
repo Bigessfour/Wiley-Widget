@@ -7,6 +7,7 @@ using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Theming;
@@ -78,18 +79,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <param name="logger">Logger instance for diagnostic logging.</param>
     public BudgetPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<BudgetViewModel>> logger)
+        ILogger<ScopedPanelBase<BudgetViewModel>> logger,
+        Services.IThemeService? themeService = null)
         : base(scopeFactory, logger)
     {
-        // Resolve theme service from DI (optional)
-        try
-        {
-            _themeService = Program.Services != null
-                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeService>(Program.Services)
-                : null;
-        }
-        catch { }
-
+        _themeService = themeService;
         InitializeComponent();
     }
 
@@ -104,6 +98,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         BindViewModel();
         ApplySyncfusionTheme();
         ApplyTheme(_themeService?.CurrentTheme ?? AppTheme.Office2019Colorful);
+
+        // Defer sizing validation until layout is complete
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
         Logger.LogInformation("BudgetPanel initialized with ViewModel");
     }
@@ -133,9 +130,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 150
+            Orientation = Orientation.Vertical
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 150);
 
         // Top panel - Summary and filters
         InitializeTopPanel();

@@ -15,6 +15,7 @@ using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
@@ -85,6 +86,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         base.OnViewModelResolved(viewModel);
         InitializeControls();
         BindViewModel();
+
+        // Defer sizing validation - Reports has complex SplitContainer and grid layouts
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
         Logger.LogDebug("ReportsPanel initialized with ViewModel");
     }
 
@@ -169,9 +174,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            Panel2Collapsed = true, // Initially hidden
-            SplitterDistance = 200
+            Panel2Collapsed = true // Initially hidden
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_parametersSplitContainer, 200);
 
         // Parameters panel (top, initially collapsed)
         _parametersPanel = new GradientPanelExt
@@ -262,9 +267,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterDistance = 60
+            Orientation = Orientation.Horizontal
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 60);
 
         // Top panel: Toolbar
         _toolbarPanel = new GradientPanelExt

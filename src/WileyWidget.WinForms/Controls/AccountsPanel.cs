@@ -8,6 +8,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Theming;
 using WwThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -64,6 +65,8 @@ namespace WileyWidget.WinForms.Controls
     {
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
         private Services.IThemeService? _themeService;
+        private readonly Services.IThemeIconService? _iconService;
+        private readonly WileyWidget.Services.ErrorReportingService? _errorReportingService;
 
         /// <summary>
         /// A simple DataContext property for ViewModel access.
@@ -124,10 +127,14 @@ namespace WileyWidget.WinForms.Controls
         public AccountsPanel(
             IServiceScopeFactory scopeFactory,
             ILogger<ScopedPanelBase<AccountsViewModel>> logger,
-            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null,
+            Services.IThemeIconService? iconService = null,
+            WileyWidget.Services.ErrorReportingService? errorReportingService = null)
             : base(scopeFactory, logger)
         {
             _dispatcherHelper = dispatcherHelper;
+            _iconService = iconService;
+            _errorReportingService = errorReportingService;
             Serilog.Log.Debug("AccountsPanel: constructor completed (ViewModel will be resolved in OnViewModelResolved)");
         }
 
@@ -184,6 +191,9 @@ namespace WileyWidget.WinForms.Controls
 
                 // Apply current theme
                 ApplyCurrentTheme();
+
+                // Defer sizing validation until layout is complete
+                this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
                 // Subscribe to theme changes
                 _panelThemeChangedHandler = OnThemeChanged;
@@ -440,9 +450,7 @@ namespace WileyWidget.WinForms.Controls
             catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful;
                 btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
                 btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
@@ -453,10 +461,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
@@ -488,10 +493,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        var reporting = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.ErrorReportingService>(Program.Services)
-                            : null;
-                        reporting?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
+                        _errorReportingService?.ReportError(ex, "Error running FilterAccountsCommand", showToUser: false);
                     }
                     catch { }
                 }
@@ -514,9 +516,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(btnAdd, "Create a new municipal account (Ctrl+N)"); } catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful;
                 btnAdd.Image = iconService?.GetIcon("add", theme, 14);
                 btnAdd.ImageAlign = ContentAlignment.MiddleLeft;
@@ -525,10 +525,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnAdd.Image = svc?.GetIcon("add", t, 14));
@@ -564,9 +561,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(btnEdit, "Modify the selected account (Enter or Double-click)"); } catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful;
                 btnEdit.Image = iconService?.GetIcon("edit", theme, 14);
                 btnEdit.ImageAlign = ContentAlignment.MiddleLeft;
@@ -575,10 +570,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnEdit.Image = svc?.GetIcon("edit", t, 14));
@@ -614,9 +606,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(btnDelete, "Remove the selected account permanently (Delete)"); } catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful;
                 btnDelete.Image = iconService?.GetIcon("delete", theme, 14);
                 btnDelete.ImageAlign = ContentAlignment.MiddleLeft;
@@ -625,10 +615,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnDelete.Image = svc?.GetIcon("delete", t, 14));
@@ -662,9 +649,7 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 var theme = AppTheme.Office2019Colorful;
                 btnExportExcel.Image = iconService?.GetIcon("excel", theme, 14);
                 btnExportExcel.ImageAlign = ContentAlignment.MiddleLeft;
@@ -673,10 +658,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnExportExcel.Image = svc?.GetIcon("excel", t, 14));
@@ -727,9 +709,7 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 // Use default theme for icon selection
                 btnExportPdf.Image = iconService?.GetIcon("pdf", AppTheme.Office2019Colorful, 14);
                 btnExportPdf.ImageAlign = ContentAlignment.MiddleLeft;
@@ -738,10 +718,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        // Re-resolve icon service on theme change
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
+                        var svc = _iconService;
                         if (_dispatcherHelper != null)
                         {
                             _ = _dispatcherHelper.InvokeAsync(() => btnExportPdf.Image = svc?.GetIcon("pdf", t, 14));
@@ -797,9 +774,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(btnViewCharts, "Open Charts panel (Ctrl+Shift+C)"); } catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 btnViewCharts.Image = iconService?.GetIcon("chart", AppTheme.Office2019Colorful, 14);
                 btnViewCharts.ImageAlign = ContentAlignment.MiddleLeft;
                 btnViewCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -825,9 +800,7 @@ namespace WileyWidget.WinForms.Controls
             try { _toolTip?.SetToolTip(btnDashboard, "Open Dashboard panel (Ctrl+Shift+D)"); } catch { }
             try
             {
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
                 btnDashboard.Image = iconService?.GetIcon("home", AppTheme.Office2019Colorful, 14);
                 btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
                 btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -1243,7 +1216,10 @@ namespace WileyWidget.WinForms.Controls
                 // Fallback: if no dispatcher helper, check InvokeRequired for cross-thread safety
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e))); } catch { }
+                    }
                     return;
                 }
 
@@ -1370,9 +1346,7 @@ namespace WileyWidget.WinForms.Controls
                 if (display == null) return;
 
                 var cm = new ContextMenuStrip();
-                var iconService = Program.Services != null
-                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                    : null;
+                var iconService = _iconService;
 
                 var miEdit = new ToolStripMenuItem("Edit");
                 try { miEdit.Image = iconService?.GetIcon("edit", AppTheme.Office2019Colorful, 14); } catch { }
@@ -1451,7 +1425,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Open AccountEditPanel inside a modal form for adding
-                using var scope = Program.Services.CreateScope();
+                using var scope = ScopeFactory.CreateScope();
                 var provider = scope.ServiceProvider;
                 var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
                 using var modal = new Form { StartPosition = FormStartPosition.CenterParent, Size = new Size(520, 560) };
@@ -1487,7 +1461,7 @@ namespace WileyWidget.WinForms.Controls
                     return;
                 }
 
-                using var scope = Program.Services.CreateScope();
+                using var scope = ScopeFactory.CreateScope();
                 var provider = scope.ServiceProvider;
                 var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountEditPanel>(provider);
                 // Populate any existing values if AccountEditPanel had a constructor for existing; for now, host and show
@@ -1703,7 +1677,10 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new System.Action(UpdateNoDataOverlay)); } catch { }
+                    }
                     return;
                 }
 

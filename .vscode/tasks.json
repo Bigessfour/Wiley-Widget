@@ -1,59 +1,5 @@
 {
 	"version": "2.0.0",
-	// Pragmatic Problem Matcher Configuration for Wiley Widget
-	// ========================================================
-	// Focus: FUNCTIONAL ISSUES ONLY (runtime blockers, not cosmetic)
-	//
-	// CRITICAL ERROR CODES (filtered):
-	// --------------------------------
-	// Nullability Issues (Real bugs):
-	//   - CS8600: Converting null literal or possible null value
-	//   - CS8601: Possible null reference assignment
-	//   - CS8602: Dereference of a possibly null reference (!!!)
-	//   - CS8603: Possible null reference return
-	//   - CS8604: Possible null reference argument
-	//   - CS8618: Non-nullable field uninitialized
-	//   - CS8625: Cannot convert null literal to non-nullable reference
-	//
-	// Async/Await Issues:
-	//   - CS4014: Call is not awaited (fire-and-forget danger)
-	//   - CS1998: Async method lacks 'await' operators
-	//
-	// Type System Violations:
-	//   - CS0029: Cannot implicitly convert type
-	//   - CS0266: Cannot implicitly convert (explicit cast exists)
-	//   - CS1503: Argument type mismatch
-	//   - CS1061: Type does not contain definition (missing member)
-	//   - CS0103: Name does not exist in current context
-	//   - CS0246: Type or namespace not found
-	//   - CS0234: Type/namespace not found in namespace
-	//
-	// DI Resolution Issues:`n	//   - CS0115: No suitable method found to override
-	//   - CS0534: Does not implement inherited abstract member
-	//   - CS0051: Inconsistent accessibility
-	//   - CS0052: Inconsistent accessibility (field)
-	//
-	// Deprecation (Security/Breaking Changes):
-	//   - CS0619: Obsolete member usage
-	//
-	// IGNORED (Cosmetic/Style):
-	// -------------------------
-	// - IDE0001-IDE9999: All IntelliSense style suggestions
-	// - CS0168: Variable declared but never used
-	// - CS0219: Variable assigned but never used
-	// - CS8321: Local function is declared but never used
-	// - IDE0008: Use explicit type instead of 'var'
-	// - IDE0011: Add braces
-	// - IDE0055: Fix formatting
-	// - Unused imports, naming conventions, etc.
-	//
-	// Integration Notes:
-	// ------------------
-	// - Works with Serilog startup diagnostics
-	// - Detects DI resolution failures
-	// - EF Core N+1 issues appear as CS1061 (missing async methods)
-	// - Vault security leaks show as CS8600/CS8602 (null handling)
-	//
 	"tasks": [
 		{
 			"label": "prettier:write-all",
@@ -146,7 +92,10 @@
 				"build",
 				"${workspaceFolder}\\src\\WileyWidget.WinForms\\WileyWidget.WinForms.csproj"
 			],
-			"group": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"presentation": {
 				"reveal": "silent",
 				"panel": "shared"
@@ -182,10 +131,7 @@
 				"--verbosity",
 				"minimal"
 			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
+			"group": "build",
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
@@ -262,7 +208,6 @@
 			},
 			"problemMatcher": []
 		},
-
 		{
 			"label": "WileyWidget: Clean & Build",
 			"type": "shell",
@@ -676,7 +621,6 @@
 			},
 			"problemMatcher": "$msCompile"
 		},
-
 		{
 			"label": "build: Webhooks",
 			"type": "shell",
@@ -797,7 +741,7 @@
 			"command": "dotnet",
 			"args": [
 				"build",
-				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"${workspaceFolder}/tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
 				"--verbosity",
 				"minimal"
 			],
@@ -977,7 +921,7 @@
 			"command": "dotnet",
 			"args": [
 				"build",
-				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"${workspaceFolder}/tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
 				"--verbosity",
 				"minimal"
 			],
@@ -1070,6 +1014,31 @@
 			},
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "Clean Logs, Build & Watch",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Remove-Item -Path '${workspaceFolder}/logs' -Recurse -Force -ErrorAction SilentlyContinue; Write-Output 'Logs cleaned'; dotnet watch run --project ${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"clear": true
+			},
+			"problemMatcher": "$msCompile",
+			"isBackground": false,
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
 		}
 	],
 	"inputs": [

@@ -31,8 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Banned symbols configuration file -->
-    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+    <!-- Banned symbols configuration file (deprecated/removed) -->
+    <!-- <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" /> -->
   </ItemGroup>
 
   <PropertyGroup>

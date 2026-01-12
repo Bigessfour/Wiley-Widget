@@ -58,7 +58,8 @@ public class UtilityBillRepository : IUtilityBillRepository
                     .OrderByDescending(b => b.BillDate)
                     .ToListAsync();
 
-                _cache.Set(cacheKey, bills, TimeSpan.FromMinutes(5));
+                var options = new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+                _cache.Set(cacheKey, bills, options);
                 _logger.LogInformation("Cached {Count} utility bills for 5 minutes", bills?.Count() ?? 0);
             }
             else
@@ -124,7 +125,8 @@ public class UtilityBillRepository : IUtilityBillRepository
                 .OrderByDescending(b => b.BillDate)
                 .ToListAsync();
 
-            _cache.Set(cacheKey, bills, TimeSpan.FromMinutes(5));
+            var options = new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+            _cache.Set(cacheKey, bills, options);
         }
 
         return bills!;

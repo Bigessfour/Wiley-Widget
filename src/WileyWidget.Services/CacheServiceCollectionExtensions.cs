@@ -12,10 +12,17 @@ namespace WileyWidget.Services
         /// </summary>
         public static IServiceCollection AddWileyMemoryCache(this IServiceCollection services, Action<MemoryCacheOptions>? configure = null)
         {
+            // CRITICAL: Do NOT call services.AddMemoryCache() here. It registers IMemoryCache with default lifetime
+            // which conflicts with the singleton registration in DependencyInjection.cs (line 121-132).
+            // Per Microsoft docs (https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory):
+            // "Create a cache singleton for caching" - prevents premature disposal during DI scope cleanup.
+            // Multiple registrations of same type cause last-wins behavior, breaking the singleton contract.
+
             if (configure != null)
                 services.AddSingleton(new MemoryCacheOptions());
 
-            services.AddMemoryCache(configure);
+            // Register only the cache service wrapper, not the underlying IMemoryCache
+            // The wrapper will receive the singleton IMemoryCache from DependencyInjection.cs
             services.AddSingleton<ICacheService, MemoryCacheService>();
             return services;
         }

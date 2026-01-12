@@ -127,13 +127,13 @@ if (_parametersGrid.Style?.HeaderStyle?.Font != null)
 
 **Implementation**:
 
-| AppTheme | Syncfusion ThemeName | Notes |
-|----------|---------------------|-------|
-| `Dark` | `Office2019Black` | Black background, high contrast |
-| `Office2019Dark` | `Office2019DarkGray` | Dark gray, softer contrast |
-| `Office2019Black` | `Office2019Black` | Direct mapping |
-| `HighContrastBlack` | `HighContrastBlack` | Accessibility theme |
-| `Light` (default) | `Office2019Colorful` | Default light theme |
+| AppTheme            | Syncfusion ThemeName | Notes                           |
+| ------------------- | -------------------- | ------------------------------- |
+| `Dark`              | `Office2019Black`    | Black background, high contrast |
+| `Office2019Dark`    | `Office2019DarkGray` | Dark gray, softer contrast      |
+| `Office2019Black`   | `Office2019Black`    | Direct mapping                  |
+| `HighContrastBlack` | `HighContrastBlack`  | Accessibility theme             |
+| `Light` (default)   | `Office2019Colorful` | Default light theme             |
 
 **Validation**: ✅ Comprehensive theme mapping with sensible defaults.
 

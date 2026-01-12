@@ -6,23 +6,44 @@ namespace WileyWidget.Abstractions
     /// <summary>
     /// Cache entry configuration used by the cache service implementations.
     /// Mirrors common options from Microsoft.Extensions.Caching.Memory but keeps the abstraction free of framework types.
+    /// Per Microsoft: https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory
     /// </summary>
     public class CacheEntryOptions
     {
         /// <summary>
         /// Absolute expiration relative to now.
+        /// Per Microsoft: "Guarantees the data won't be cached longer than the absolute time"
         /// </summary>
         public TimeSpan? AbsoluteExpirationRelativeToNow { get; set; }
 
         /// <summary>
         /// Sliding expiration window.
+        /// Per Microsoft: "Keep in cache for this time, reset time if accessed"
+        /// Combine with AbsoluteExpirationRelativeToNow to prevent indefinite caching.
         /// </summary>
         public TimeSpan? SlidingExpiration { get; set; }
 
         /// <summary>
         /// Logical size of the cache entry; used by size-limited caches.
+        /// Per Microsoft: "If the cache size limit is set, all entries must specify size"
         /// </summary>
         public long? Size { get; set; }
+
+        /// <summary>
+        /// Cache item priority for eviction order (Low, Normal, High, NeverRemove).
+        /// Per Microsoft: "Items by priority. Lowest priority items are removed first"
+        /// Used in conjunction with SizeLimit to control which entries are evicted.
+        /// Default: Normal
+        /// </summary>
+        public int Priority { get; set; } = 1; // Microsoft.Extensions.Caching.Memory.CacheItemPriority.Normal = 1
+
+        /// <summary>
+        /// Callback invoked when this cache entry is evicted.
+        /// Per Microsoft: "The callback is run on a different thread from the code that removes the item from the cache"
+        /// Signature: (key: string, value: object, reason: int (EvictionReason), state: object)
+        /// Use for monitoring, cleanup, or cache re-warming patterns.
+        /// </summary>
+        public Action<string, object, int>? PostEvictionCallback { get; set; }
     }
 
     /// <summary>

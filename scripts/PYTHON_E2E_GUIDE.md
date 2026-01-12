@@ -3,6 +3,7 @@
 ## Files Created
 
 ### 1. **scripts/e2e_test_local.py** (Main testing script)
+
 - **Purpose**: Comprehensive E2E testing with all 5 phases
 - **Usage**: `python scripts/e2e_test_local.py [phase]`
 - **Phases**:
@@ -18,36 +19,43 @@
   - `publish` - Publish release
 
 ### 2. **scripts/quick_e2e.py** (One-command test)
+
 - **Purpose**: Quick validation of all critical paths
 - **Usage**: `python scripts/quick_e2e.py`
 - **Runs**: Build + Repo + ViewModel + Integration + Theme
 
 ### 3. **scripts/E2E_TESTING.md** (Documentation)
+
 - **Purpose**: Quick reference guide for running tests
 - **Contains**: Usage examples, troubleshooting, architecture notes
 
 ## What Gets Validated
 
 ### Phase 1: Build
+
 ✓ Solution compiles with Release configuration
 
 ### Phase 2: Data Pipeline Tests
+
 - **2a (Repo)**: Database ↔ Repositories (CRUD, queries, paging, sorting)
 - **2b (ViewModel)**: Repositories → Services → ViewModels (data binding, FY computation)
 - **2c (Integration)**: Dependency Injection (DI container, scoping, lifetimes)
 
 ### Phase 3: Form/UI Tests
+
 - **3a (Theme)**: Syncfusion theme compliance via SfSkinManager
 - **3b (Grid)**: SfDataGrid configuration and data binding
 - **3c (Batch)**: All forms pass theme validation
 
 ### Phase 4: Full E2E Pipeline
+
 - Complete flow: Database → Repositories → Services → ViewModels → Forms
 - Instantiates DashboardViewModel headlessly
 - Loads data from database
 - Validates no errors occur
 
 ### Phase 5: Publish
+
 - Release build created
 - Executable size validated (~80MB)
 
@@ -92,6 +100,7 @@ The script is designed to integrate with GitHub Actions:
 ## Before & After
 
 ### Before (PowerShell nightmare)
+
 ```powershell
 # Multiple terminal windows, manual commands
 dotnet test tests/WileyWidget.Services.Tests/...
@@ -101,6 +110,7 @@ dotnet run --project tools/WileyWidgetMcpServer/...
 ```
 
 ### After (Single Python command)
+
 ```bash
 python scripts/e2e_test_local.py all
 # Done! Full pipeline validated.
@@ -147,6 +157,7 @@ Overall: 9/9 phases passed
 ## No PowerShell Required!
 
 All functionality is pure Python using the `subprocess` module to run dotnet commands. The scripts are:
+
 - Cross-platform (Windows/Linux/Mac)
 - Simple to understand
 - Easy to debug

@@ -100,21 +100,25 @@ You'll know everything is working when:
 ## Troubleshooting
 
 **Tests hanging?**
+
 - Press Ctrl+C to cancel
 - Check if another dotnet process is running
 - Try `python scripts/e2e_test_local.py build` first
 
 **Build failures?**
+
 - Run `dotnet restore` manually
 - Check NuGet sources
 - Delete `bin/obj` folders
 
 **Test failures?**
+
 - Run individual test phase to isolate issue
 - Check test output for specific errors
 - Review test README files in test directories
 
 **Theme validation failing?**
+
 - Ensure no manual BackColor/ForeColor assignments
 - Check Syncfusion controls have ThemeName set correctly
 - Verify SfSkinManager.SetVisualStyle is called in form constructor

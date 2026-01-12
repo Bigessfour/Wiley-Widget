@@ -9,17 +9,18 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Extensions;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
+using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
 /// QuickBooks integration panel with full MVVM pattern, connection management, and sync history tracking.
 /// Inherits from ScopedPanelBase for proper DI lifecycle management.
-/// Provides connection status monitoring, data synchronization, and import operations.
+/// Uses Syncfusion API properly: Dock layout, GradientPanelExt per Syncfusion documentation.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
 public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
@@ -29,15 +30,15 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private StatusStrip? _statusStrip;
-    private ToolStripStatusLabel? _statusLabel;
-    private ToolStripProgressBar? _progressBar;
 
-    private TableLayoutPanel? _mainLayout;
+    // Main layout containers (use Dock, not absolute positioning)
     private SplitContainer? _mainSplitContainer;
-
-    // Connection Panel
     private GradientPanelExt? _connectionPanel;
+    private GradientPanelExt? _operationsPanel;
+    private GradientPanelExt? _summaryPanel;
+    private GradientPanelExt? _historyPanel;
+
+    // Connection Panel Controls (Dock-based layout)
     private Label? _connectionStatusLabel;
     private Label? _companyNameLabel;
     private Label? _lastSyncLabel;
@@ -45,21 +46,19 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SfButton? _disconnectButton;
     private SfButton? _testConnectionButton;
 
-    // Operations Panel
-    private GradientPanelExt? _operationsPanel;
+    // Operations Panel Controls (Dock-based layout)
     private SfButton? _syncDataButton;
     private SfButton? _importAccountsButton;
     private SfButton? _refreshHistoryButton;
     private SfButton? _clearHistoryButton;
     private SfButton? _exportHistoryButton;
-    private Syncfusion.Windows.Forms.Tools.ProgressBarAdv? _syncProgressBar;
+    private ProgressBarAdv? _syncProgressBar;
 
     // Sync History Grid
     private SfDataGrid? _syncHistoryGrid;
     private TextBoxExt? _filterTextBox;
 
-    // Summary Panel
-    private GradientPanelExt? _summaryPanel;
+    // Summary Panel KPI Labels
     private Label? _totalSyncsLabel;
     private Label? _successfulSyncsLabel;
     private Label? _failedSyncsLabel;
@@ -72,15 +71,12 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Initializes a new instance of the <see cref="QuickBooksPanel"/> class.
     /// </summary>
-    /// <param name="scopeFactory">Service scope factory for DI.</param>
-    /// <param name="logger">Logger instance.</param>
     public QuickBooksPanel(
         IServiceScopeFactory scopeFactory,
         ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
     }
-
 
     /// <summary>
     /// Called after the ViewModel has been resolved. Initializes UI and bindings.
@@ -110,6 +106,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 await ViewModel.InitializeAsync();
                 UpdateLoadingState();
                 UpdateNoDataOverlay();
+
+                // Defer sizing validation - QuickBooks panel has nested SplitContainers and grids
+                this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
             }
             catch (Exception ex)
             {
@@ -121,7 +120,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     #region Control Initialization
 
     /// <summary>
-    /// Initializes all UI controls and layout.
+    /// Initializes all UI controls and layout using proper Syncfusion API (Dock-based, not absolute positioning).
     /// </summary>
     private void InitializeControls()
     {
@@ -129,10 +128,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        AutoScroll = true;
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1000f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(750f));
         Padding = new Padding(8);
-        // DockingManager will handle docking; do not set Dock here.
+        Dock = DockStyle.Fill;
 
         // Panel header
         _panelHeader = new PanelHeader
@@ -145,36 +143,39 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
-        // Main layout container
-        _mainLayout = new TableLayoutPanel
+        // Summary panel (KPI metrics)
+        CreateSummaryPanel();
+        Controls.Add(_summaryPanel!);
+
+        // Main split container: top = connection/operations, bottom = history
+        _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            RowCount = 3,
-            ColumnCount = 1
-            // BackColor removed - let SkinManager handle theming
+            Orientation = Orientation.Horizontal,
+            FixedPanel = FixedPanel.None
         };
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));   // Summary
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // Split container
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // Status bar
 
-        // Create summary panel
-        CreateSummaryPanel();
-        if (_summaryPanel == null)
-        {
-            _summaryPanel = new GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(10, 10, 10, 5), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
-            SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
-        }
-        _mainLayout.Controls.Add(_summaryPanel!, 0, 0);
+        // Defer min size and splitter distance assignment until control is properly sized
+        // This prevents InvalidOperationException during initialization
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
+            _mainSplitContainer,
+            panel1MinSize: 250,
+            panel2MinSize: 200,
+            desiredDistance: 320);
 
-        // Create main split container
-        CreateMainContent();
-        _mainLayout.Controls.Add(_mainSplitContainer!, 0, 1);
+        // Setup proportional resizing for responsive layout
+        SafeSplitterDistanceHelper.SetupProportionalResizing(_mainSplitContainer, 0.42);  // favor history grid space
 
-        // Create status strip
-        CreateStatusStrip();
-        _mainLayout.Controls.Add(_statusStrip!, 0, 2);
+        // Top: Connection and Operations panels (side by side)
+        CreateConnectionAndOperationsPanels();
+        _mainSplitContainer.Panel1.Controls.Add(CreateTopPanel());
 
-        Controls.Add(_mainLayout);
+        // Bottom: Sync History
+        CreateSyncHistoryGrid();
+        CreateHistoryPanel();
+        _mainSplitContainer.Panel2.Controls.Add(_historyPanel!);
+
+        Controls.Add(_mainSplitContainer);
 
         // Create overlays
         _loadingOverlay = new LoadingOverlay
@@ -198,112 +199,94 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Creates the summary panel with KPI metrics.
+    /// Creates the summary panel with KPI metrics using GradientPanelExt per Syncfusion API.
     /// </summary>
     private void CreateSummaryPanel()
     {
         _summaryPanel = new GradientPanelExt
         {
-            Dock = DockStyle.Fill,
-            // BackColor removed - let SkinManager handle theming
-            Padding = new Padding(10, 10, 10, 5),
+            Dock = DockStyle.Top,
+            Height = 125,
+            Padding = new Padding(8, 6, 8, 6),
             BorderStyle = BorderStyle.None,
+            CornerRadius = 4,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
-        var flowPanel = new FlowLayoutPanel
+        var summaryTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoScroll = true
+            ColumnCount = 3,
+            RowCount = 2,
+            Padding = new Padding(2),
+            Margin = Padding.Empty
         };
 
-        // Create KPI cards
-        _totalSyncsLabel = CreateMetricCard("Total Syncs", "0");
-        _successfulSyncsLabel = CreateMetricCard("Successful", "0");
-        _failedSyncsLabel = CreateMetricCard("Failed", "0");
-        _totalRecordsLabel = CreateMetricCard("Records Synced", "0");
-        _accountsImportedLabel = CreateMetricCard("Accounts Imported", "0");
-        _avgDurationLabel = CreateMetricCard("Avg Duration", "0s");
+        for (var i = 0; i < 3; i++)
+        {
+            summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        }
 
-        flowPanel.Controls.Add(_totalSyncsLabel.Parent!);
-        flowPanel.Controls.Add(_successfulSyncsLabel.Parent!);
-        flowPanel.Controls.Add(_failedSyncsLabel.Parent!);
-        flowPanel.Controls.Add(_totalRecordsLabel.Parent!);
-        flowPanel.Controls.Add(_accountsImportedLabel.Parent!);
-        flowPanel.Controls.Add(_avgDurationLabel.Parent!);
+        summaryTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+        summaryTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
 
-        _summaryPanel.Controls.Add(flowPanel);
+        _totalSyncsLabel = CreateMetricCard(summaryTable, 0, 0, "Total Syncs", "0");
+        _successfulSyncsLabel = CreateMetricCard(summaryTable, 1, 0, "Successful", "0");
+        _failedSyncsLabel = CreateMetricCard(summaryTable, 2, 0, "Failed", "0");
+        _totalRecordsLabel = CreateMetricCard(summaryTable, 0, 1, "Records Synced", "0");
+        _accountsImportedLabel = CreateMetricCard(summaryTable, 1, 1, "Accounts Imported", "0");
+        _avgDurationLabel = CreateMetricCard(summaryTable, 2, 1, "Avg Duration", "0s");
+
+        _summaryPanel.Controls.Add(summaryTable);
     }
 
     /// <summary>
-    /// Creates a metric card for the summary panel.
+    /// Creates a metric card for the summary panel using GradientPanelExt.
+    /// Cards use theme-compliant styling via SfSkinManager.
     /// </summary>
-    private Label CreateMetricCard(string title, string value)
+    private Label CreateMetricCard(TableLayoutPanel parent, int column, int row, string title, string value)
     {
         var cardPanel = new GradientPanelExt
         {
-            Size = new Size(200, 60),
-            // BackColor removed - let SkinManager handle theming
+            Dock = DockStyle.Fill,
+            Margin = new Padding(4),
             BorderStyle = BorderStyle.FixedSingle,
-            Margin = new Padding(5),
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            CornerRadius = 4,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            Padding = new Padding(10, 8, 10, 8)
         };
         SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
 
         var titleLabel = new Label
         {
             Text = title,
-            Location = new Point(10, 8),
-            Size = new Size(180, 18),
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular)
-            // ForeColor removed - let SkinManager handle theming
+            Dock = DockStyle.Top,
+            Height = 18,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+            AutoSize = false
         };
 
         var valueLabel = new Label
         {
             Text = value,
-            Location = new Point(10, 28),
-            Size = new Size(180, 24),
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI", 13f, FontStyle.Bold),
-            // ForeColor removed - let SkinManager handle theming
+            AutoSize = false
         };
 
-        cardPanel.Controls.Add(titleLabel);
         cardPanel.Controls.Add(valueLabel);
+        cardPanel.Controls.Add(titleLabel);
+        parent.Controls.Add(cardPanel, column, row);
 
         return valueLabel;
     }
 
     /// <summary>
-    /// Creates the main split container with connection/operations and sync history.
-    /// </summary>
-    private void CreateMainContent()
-    {
-        _mainSplitContainer = new SplitContainer
-        {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterDistance = 350,
-            FixedPanel = FixedPanel.Panel1
-        };
-
-        // Top panel: Connection and Operations
-        CreateConnectionAndOperationsPanel();
-        _mainSplitContainer.Panel1.Controls.Add(CreateTopPanel());
-
-        // Bottom panel: Sync History Grid
-        CreateSyncHistoryGrid();
-        _mainSplitContainer.Panel2.Controls.Add(CreateHistoryPanel());
-
-        _mainSplitContainer.Panel1.Padding = new Padding(10);
-        _mainSplitContainer.Panel2.Padding = new Padding(10);
-    }
-
-    /// <summary>
-    /// Creates the top panel with connection status and operations.
+    /// Creates the top panel with connection and operations panels side-by-side.
+    /// Uses SafeSplitterDistanceHelper to avoid SplitterDistance out-of-bounds exceptions.
     /// </summary>
     private GradientPanelExt CreateTopPanel()
     {
@@ -311,16 +294,29 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            CornerRadius = 0,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            Padding = new Padding(10)
         };
         SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
+        // Vertical split: left = connection, right = operations (safe deferred sizing)
         var splitTop = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = 450
+            FixedPanel = FixedPanel.None
         };
+
+        // Defer min sizes and splitter distance until the control has real dimensions
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
+            splitTop,
+            panel1MinSize: 280,
+            panel2MinSize: 280,
+            desiredDistance: 400);
+
+        // Maintain ~50% split during resize with helper-managed bounds
+        SafeSplitterDistanceHelper.SetupProportionalResizing(splitTop, 0.5);
 
         splitTop.Panel1.Controls.Add(_connectionPanel!);
         splitTop.Panel2.Controls.Add(_operationsPanel!);
@@ -330,277 +326,350 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Creates the connection status panel.
+    /// Creates connection and operations panels with proper Dock layout (no absolute positioning).
     /// </summary>
-    private void CreateConnectionAndOperationsPanel()
+    private void CreateConnectionAndOperationsPanels()
     {
         // Connection Panel
         _connectionPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
-            // BackColor removed - let SkinManager handle theming
             BorderStyle = BorderStyle.None,
+            CornerRadius = 2,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_connectionPanel, "Office2019Colorful");
 
-        var connectionPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(10)
-        };
-
-        var connectionLabel = new Label
+        // Connection header
+        var connectionHeader = new Label
         {
             Text = "Connection Status",
-            Location = new Point(5, 5),
-            Size = new Size(200, 22),
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+            Dock = DockStyle.Top,
+            Height = 28,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        connectionPanel.Controls.Add(connectionLabel);
+        _connectionPanel.Controls.Add(connectionHeader);
 
-        int yPos = 35;
+        // Connection info panel
+        var infoPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Top,
+            Height = 100,
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            CornerRadius = 0,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(infoPanel, "Office2019Colorful");
 
         _connectionStatusLabel = new Label
         {
             Text = "Status: Checking...",
-            Location = new Point(15, yPos),
-            Size = new Size(400, 22),
-            Font = new Font("Segoe UI", 10f, FontStyle.Regular)
+            Dock = DockStyle.Top,
+            Height = 28,
+            Font = new Font("Segoe UI", 10f, FontStyle.Regular),
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        connectionPanel.Controls.Add(_connectionStatusLabel);
-        yPos += 28;
+        infoPanel.Controls.Add(_connectionStatusLabel);
 
         _companyNameLabel = new Label
         {
             Text = "Company: -",
-            Location = new Point(15, yPos),
-            Size = new Size(400, 20),
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular)
-            // ForeColor removed - let SkinManager handle theming
+            Dock = DockStyle.Top,
+            Height = 24,
+            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        connectionPanel.Controls.Add(_companyNameLabel);
-        yPos += 25;
+        infoPanel.Controls.Add(_companyNameLabel);
 
         _lastSyncLabel = new Label
         {
             Text = "Last Sync: -",
-            Location = new Point(15, yPos),
-            Size = new Size(400, 20),
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular)
-            // ForeColor removed - let SkinManager handle theming
+            Dock = DockStyle.Top,
+            Height = 24,
+            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        connectionPanel.Controls.Add(_lastSyncLabel);
-        yPos += 35;
+        infoPanel.Controls.Add(_lastSyncLabel);
 
-        // Connection buttons
-        int xPos = 15;
+        _connectionPanel.Controls.Add(infoPanel);
+
+        // Buttons panel - use FlowLayoutPanel for proper wrapping
+        var buttonsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 60,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            Padding = new Padding(5),
+            AutoSize = true
+        };
+
         _connectButton = new SfButton
         {
             Text = "Connect",
-            Location = new Point(xPos, yPos),
-            Size = new Size(100, 35),
-            // Style colors removed - let SkinManager handle theming
+            AutoSize = true,
+            Margin = new Padding(3),
             AccessibleName = "Connect to QuickBooks",
             AccessibleDescription = "Establishes connection to QuickBooks Online"
         };
         _connectButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ConnectCommand);
-        connectionPanel.Controls.Add(_connectButton);
-        xPos += 110;
+        buttonsPanel.Controls.Add(_connectButton);
 
         _disconnectButton = new SfButton
         {
             Text = "Disconnect",
-            Location = new Point(xPos, yPos),
-            Size = new Size(110, 35),
+            AutoSize = true,
+            Margin = new Padding(3),
             AccessibleName = "Disconnect from QuickBooks",
             AccessibleDescription = "Terminates current QuickBooks Online connection"
         };
-        _disconnectButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.DisconnectCommand);
-        connectionPanel.Controls.Add(_disconnectButton);
-        xPos += 120;
+        _disconnectButton.Click += async (s, e) =>
+        {
+            if (await ShowDisconnectConfirmationAsync())
+            {
+                await ExecuteCommandAsync(ViewModel?.DisconnectCommand);
+            }
+        };
+        buttonsPanel.Controls.Add(_disconnectButton);
 
         _testConnectionButton = new SfButton
         {
             Text = "Test Connection",
-            Location = new Point(xPos, yPos),
-            Size = new Size(130, 35),
+            AutoSize = true,
+            Margin = new Padding(3),
             AccessibleName = "Test QuickBooks Connection",
             AccessibleDescription = "Verifies QuickBooks Online connection status"
         };
         _testConnectionButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.TestConnectionCommand);
-        connectionPanel.Controls.Add(_testConnectionButton);
+        buttonsPanel.Controls.Add(_testConnectionButton);
 
-        _connectionPanel.Controls.Add(connectionPanel);
+        _connectionPanel.Controls.Add(buttonsPanel);
 
         // Operations Panel
         _operationsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
-            // BackColor removed - let SkinManager handle theming
             BorderStyle = BorderStyle.None,
+            CornerRadius = 2,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_operationsPanel, "Office2019Colorful");
 
-        var operationsPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(10)
-        };
-
-        var operationsLabel = new Label
+        // Operations header
+        var operationsHeader = new Label
         {
             Text = "QuickBooks Operations",
-            Location = new Point(5, 5),
-            Size = new Size(200, 22),
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+            Dock = DockStyle.Top,
+            Height = 28,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
         };
-        operationsPanel.Controls.Add(operationsLabel);
+        _operationsPanel.Controls.Add(operationsHeader);
 
-        yPos = 35;
+        // Operations buttons - use FlowLayoutPanel
+        var opsPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 130,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(5),
+            AutoSize = true
+        };
 
         _syncDataButton = new SfButton
         {
             Text = "🔄 Sync Data",
-            Location = new Point(15, yPos),
-            Size = new Size(140, 40),
+            AutoSize = true,
+            Margin = new Padding(3),
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            // Style colors removed - let SkinManager handle theming
             AccessibleName = "Sync Data with QuickBooks",
             AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online"
         };
-        _syncDataButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.SyncDataCommand);
-        operationsPanel.Controls.Add(_syncDataButton);
-        yPos += 50;
+        _syncDataButton.Click += async (s, e) =>
+        {
+            if (await ShowSyncConfirmationAsync("Sync Data"))
+            {
+                await ExecuteCommandAsync(ViewModel?.SyncDataCommand);
+            }
+        };
+        opsPanel.Controls.Add(_syncDataButton);
 
         _importAccountsButton = new SfButton
         {
             Text = "📥 Import Chart of Accounts",
-            Location = new Point(15, yPos),
-            Size = new Size(220, 40),
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
+            AutoSize = true,
+            Margin = new Padding(3),
             AccessibleName = "Import Chart of Accounts",
             AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online"
         };
         _importAccountsButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
-        operationsPanel.Controls.Add(_importAccountsButton);
-        yPos += 55;
+        opsPanel.Controls.Add(_importAccountsButton);
+
+        _operationsPanel.Controls.Add(opsPanel);
 
         // Sync progress bar
-        _syncProgressBar = new Syncfusion.Windows.Forms.Tools.ProgressBarAdv
+        _syncProgressBar = new ProgressBarAdv
         {
-            Location = new Point(15, yPos),
-            Size = new Size(400, 25),
+            Dock = DockStyle.Bottom,
+            Height = 25,
             Visible = false,
-            ProgressStyle = Syncfusion.Windows.Forms.Tools.ProgressBarStyles.WaitingGradient
+            ProgressStyle = ProgressBarStyles.WaitingGradient
         };
-        operationsPanel.Controls.Add(_syncProgressBar);
-
-        _operationsPanel.Controls.Add(operationsPanel);
+        _operationsPanel.Controls.Add(_syncProgressBar);
     }
 
     /// <summary>
-    /// Creates the sync history panel with grid and filter.
+    /// Creates the sync history panel with grid and filter bar.
     /// </summary>
-    private GradientPanelExt CreateHistoryPanel()
+    private void CreateHistoryPanel()
     {
-        var historyPanel = new GradientPanelExt
+        _historyPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            CornerRadius = 2,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            Padding = new Padding(8)
         };
-        SfSkinManager.SetVisualStyle(historyPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_historyPanel, "Office2019Colorful");
 
+        // History header with filter
         var headerPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
-            Height = 45,
-            Padding = new Padding(0, 5, 0, 5),
+            Height = 56,
+            Padding = new Padding(6, 6, 6, 2),
             BorderStyle = BorderStyle.None,
+            CornerRadius = 0,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(headerPanel, "Office2019Colorful");
 
+        var headerLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 4,
+            RowCount = 1,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty
+        };
+
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
         var titleLabel = new Label
         {
             Text = "Sync History",
-            Location = new Point(5, 12),
-            Size = new Size(120, 22),
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+            Anchor = AnchorStyles.Left,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoSize = true,
+            Margin = new Padding(2, 0, 12, 0)
         };
-        headerPanel.Controls.Add(titleLabel);
+        headerLayout.Controls.Add(titleLabel, 0, 0);
 
-        int xPos = 130;
         var filterLabel = new Label
         {
             Text = "Filter:",
-            Location = new Point(xPos, 14),
-            Size = new Size(45, 20)
+            Anchor = AnchorStyles.Left,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoSize = true,
+            Margin = new Padding(0, 0, 6, 0)
         };
-        headerPanel.Controls.Add(filterLabel);
-        xPos += 50;
+        headerLayout.Controls.Add(filterLabel, 1, 0);
 
         _filterTextBox = new TextBoxExt
         {
-            Location = new Point(xPos, 11),
-            Size = new Size(200, 25)
-            // NullText removed: property does not exist on TextBoxExt
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 12, 0),
+            MinimumSize = new Size(220, 28)
         };
         _filterTextBox.TextChanged += (s, e) =>
         {
             if (ViewModel != null)
                 ViewModel.FilterText = _filterTextBox.Text;
         };
-        headerPanel.Controls.Add(_filterTextBox);
-        xPos += 210;
+        headerLayout.Controls.Add(_filterTextBox, 2, 0);
 
-        _refreshHistoryButton = new SfButton
+        // Buttons - use FlowLayoutPanel for consistent spacing
+        var buttonsFlow = new FlowLayoutPanel
         {
-            Text = "🔄 Refresh",
-            Location = new Point(xPos, 9),
-            Size = new Size(95, 28),
-            AccessibleName = "Refresh Sync History",
-            AccessibleDescription = "Reloads sync history from database"
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        _refreshHistoryButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.RefreshHistoryCommand);
-        headerPanel.Controls.Add(_refreshHistoryButton);
-        xPos += 105;
-
-        _clearHistoryButton = new SfButton
-        {
-            Text = "🗑 Clear",
-            Location = new Point(xPos, 9),
-            Size = new Size(85, 28),
-            AccessibleName = "Clear Sync History",
-            AccessibleDescription = "Removes all sync history records from the display"
-        };
-        _clearHistoryButton.Click += (s, e) => ViewModel?.ClearHistoryCommand.Execute(null);
-        headerPanel.Controls.Add(_clearHistoryButton);
-        xPos += 95;
 
         _exportHistoryButton = new SfButton
         {
             Text = "📤 Export CSV",
-            Location = new Point(xPos, 9),
-            Size = new Size(110, 28),
+            AutoSize = true,
+            Margin = new Padding(3),
             AccessibleName = "Export History to CSV",
             AccessibleDescription = "Exports sync history data to CSV file"
         };
-        _exportHistoryButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ExportHistoryCommand);
-        headerPanel.Controls.Add(_exportHistoryButton);
+        _exportHistoryButton.Click += async (s, e) =>
+        {
+            var filePath = ShowExportFilePickerDialog();
+            if (filePath != null)
+            {
+                Logger.LogInformation("Export to: {FilePath}", filePath);
+                MessageBox.Show($"Export functionality will be implemented.\nSelected: {filePath}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        };
+        buttonsFlow.Controls.Add(_exportHistoryButton);
 
-        historyPanel.Controls.Add(_syncHistoryGrid!);
-        historyPanel.Controls.Add(headerPanel);
+        _clearHistoryButton = new SfButton
+        {
+            Text = "🗑 Clear",
+            AutoSize = true,
+            Margin = new Padding(3),
+            AccessibleName = "Clear Sync History",
+            AccessibleDescription = "Removes all sync history records from the display"
+        };
+        _clearHistoryButton.Click += async (s, e) =>
+        {
+            if (await ShowClearHistoryConfirmationAsync())
+            {
+                if (ViewModel?.ClearHistoryCommand.CanExecute(null) == true)
+                {
+                    ViewModel.ClearHistoryCommand.Execute(null);
+                }
+            }
+        };
+        buttonsFlow.Controls.Add(_clearHistoryButton);
 
-        return historyPanel;
+        _refreshHistoryButton = new SfButton
+        {
+            Text = "🔄 Refresh",
+            AutoSize = true,
+            Margin = new Padding(3),
+            AccessibleName = "Refresh Sync History",
+            AccessibleDescription = "Reloads sync history from database"
+        };
+        _refreshHistoryButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.RefreshHistoryCommand);
+        buttonsFlow.Controls.Add(_refreshHistoryButton);
+
+        headerLayout.Controls.Add(buttonsFlow, 3, 0);
+        headerPanel.Controls.Add(headerLayout);
+        _historyPanel.Controls.Add(headerPanel);
+
+        // Grid
+        _historyPanel.Controls.Add(_syncHistoryGrid!);
     }
 
     /// <summary>
-    /// Creates the sync history data grid.
+    /// Creates the sync history data grid with proper column configuration.
     /// </summary>
     private void CreateSyncHistoryGrid()
     {
@@ -613,16 +682,16 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AllowFiltering = false,
             SelectionMode = GridSelectionMode.Single,
             NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-            RowHeight = 32,
-            HeaderRowHeight = 38
+            RowHeight = 30,
+            HeaderRowHeight = 36
         };
 
-        // Define columns
+        // Define columns with widths optimized for responsive layout
         _syncHistoryGrid.Columns.Add(new GridTextColumn
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.FormattedTimestamp),
             HeaderText = "Timestamp",
-            Width = 180,
+            Width = 150,
             AllowSorting = true
         });
 
@@ -630,7 +699,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.Operation),
             HeaderText = "Operation",
-            Width = 150,
+            Width = 130,
             AllowSorting = true
         });
 
@@ -638,7 +707,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.Status),
             HeaderText = "Status",
-            Width = 100,
+            Width = 80,
             AllowSorting = true
         });
 
@@ -646,7 +715,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.RecordsProcessed),
             HeaderText = "Records",
-            Width = 100,
+            Width = 75,
             Format = "N0",
             AllowSorting = true
         });
@@ -655,7 +724,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.FormattedDuration),
             HeaderText = "Duration",
-            Width = 100,
+            Width = 75,
             AllowSorting = true
         });
 
@@ -663,7 +732,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             MappingName = nameof(QuickBooksSyncHistoryRecord.Message),
             HeaderText = "Message",
-            Width = 400,
+            Width = 300,
             AllowSorting = false
         });
 
@@ -674,35 +743,51 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 ViewModel.SelectedSyncRecord = record;
             }
         };
-    }
 
-    /// <summary>
-    /// Creates the status strip at the bottom.
-    /// </summary>
-    private void CreateStatusStrip()
-    {
-        _statusStrip = new StatusStrip
+        // Double-click to show record details
+        _syncHistoryGrid.MouseDoubleClick += (s, e) =>
         {
-            Dock = DockStyle.Fill
-            // BackColor removed - let SkinManager handle theming
+            if (_syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record)
+            {
+                HandleSyncRecordDoubleClick(record);
+            }
         };
 
-        _statusLabel = new ToolStripStatusLabel
+        // Right-click context menu for record actions
+        var contextMenu = new ContextMenuStrip
         {
-            Text = "Ready",
-            Spring = true,
-            TextAlign = ContentAlignment.MiddleLeft
+            AutoClose = true,
+            ShowImageMargin = true
         };
 
-        _progressBar = new ToolStripProgressBar
+        var viewDetailsItem = new ToolStripMenuItem("View Details", null, (s, e) =>
         {
-            Size = new Size(150, 18),
-            Visible = false,
-            Style = ProgressBarStyle.Marquee
-        };
+            if (_syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record)
+            {
+                ShowSyncRecordDetailsDialog(record);
+            }
+        });
 
-        _statusStrip.Items.Add(_statusLabel);
-        _statusStrip.Items.Add(_progressBar);
+        var retryItem = new ToolStripMenuItem("Retry", null, async (s, e) =>
+        {
+            if (_syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record && record.Status == "Failed")
+            {
+                await RetryFailedSyncAsync(record);
+            }
+        });
+
+        var deleteItem = new ToolStripMenuItem("Delete Record", null, (s, e) =>
+        {
+            if (_syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record)
+            {
+                DeleteSyncRecord(record);
+            }
+        });
+
+        contextMenu.Items.AddRange(new ToolStripItem[] { viewDetailsItem, retryItem, deleteItem });
+        _syncHistoryGrid.ContextMenuStrip = contextMenu;
+
+        _syncHistoryGrid.QueryCellStyle += SyncHistoryGrid_QueryCellStyle;
     }
 
     #endregion
@@ -734,11 +819,14 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         if (InvokeRequired)
         {
-            try
+            if (IsHandleCreated && !IsDisposed)
             {
-                BeginInvoke(() => ViewModel_PropertyChanged(sender, e));
+                try
+                {
+                    BeginInvoke(() => ViewModel_PropertyChanged(sender, e));
+                }
+                catch { /* Control may be disposed */ }
             }
-            catch { /* Control may be disposed */ }
             return;
         }
 
@@ -748,11 +836,6 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             case nameof(ViewModel.IsLoading):
                 UpdateLoadingState();
-                break;
-
-            case nameof(ViewModel.StatusText):
-                if (_statusLabel != null)
-                    _statusLabel.Text = ViewModel.StatusText ?? "Ready";
                 break;
 
             case nameof(ViewModel.ErrorMessage):
@@ -804,21 +887,12 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
     }
 
-    /// <summary>
-    /// Updates the loading state and overlay visibility.
-    /// </summary>
     private void UpdateLoadingState()
     {
         if (_loadingOverlay == null || ViewModel == null) return;
-
         _loadingOverlay.Visible = ViewModel.IsLoading;
-        if (_progressBar != null)
-            _progressBar.Visible = ViewModel.IsLoading;
     }
 
-    /// <summary>
-    /// Updates connection status UI.
-    /// </summary>
     private void UpdateConnectionStatus()
     {
         if (ViewModel == null) return;
@@ -827,10 +901,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         if (_connectionStatusLabel != null)
         {
-            _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red; // Semantic status colors (allowed exception)
+            _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;
         }
 
-        // Update button states
         if (_connectButton != null)
             _connectButton.Enabled = !isConnected && !ViewModel.IsLoading;
 
@@ -847,9 +920,6 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             _importAccountsButton.Enabled = isConnected && !ViewModel.IsLoading;
     }
 
-    /// <summary>
-    /// Updates syncing state UI.
-    /// </summary>
     private void UpdateSyncingState()
     {
         if (ViewModel == null || _syncProgressBar == null) return;
@@ -859,9 +929,6 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             _syncProgressBar.Value = 0;
     }
 
-    /// <summary>
-    /// Updates the summary panel with current metrics.
-    /// </summary>
     private void UpdateSummaryPanel()
     {
         if (ViewModel == null) return;
@@ -885,20 +952,14 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             _avgDurationLabel.Text = $"{ViewModel.AverageSyncDuration:F1}s";
     }
 
-    /// <summary>
-    /// Refreshes the sync history grid display after collection changes.
-    /// </summary>
     private void RefreshSyncHistoryDisplay()
     {
-        if (_syncHistoryGrid?.DataSource != null)
+        if (_syncHistoryGrid?.View != null)
         {
-            _syncHistoryGrid.View?.Refresh();
+            _syncHistoryGrid.View.Refresh();
         }
     }
 
-    /// <summary>
-    /// Updates the no data overlay visibility.
-    /// </summary>
     private void UpdateNoDataOverlay()
     {
         if (_noDataOverlay == null || ViewModel == null) return;
@@ -913,9 +974,7 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     /// <summary>
     /// Applies Syncfusion Office2019Colorful theme to all controls.
-    /// Note: Currently uses manual Style property configuration for fine-grained control over colors.
-    /// Alternative approach: Use ThemeName property (e.g., _syncHistoryGrid.ThemeName = "Office2019Colorful")
-    /// for easier theme management, but this limits custom color overrides (success green, danger red).
+    /// Uses SfSkinManager cascade - no manual color assignments.
     /// </summary>
     private void ApplySyncfusionTheme()
     {
@@ -923,17 +982,9 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             if (_syncHistoryGrid != null)
             {
-                // Header styling
                 _syncHistoryGrid.Style.HeaderStyle.Font.Bold = true;
                 _syncHistoryGrid.Style.HeaderStyle.Font.Size = 9.5f;
-
-                // Selection styling
-
-                // Cell styling
                 _syncHistoryGrid.Style.CellStyle.Font.Size = 9f;
-
-                // Add alternate row coloring and status color coding via QueryCellStyle
-                _syncHistoryGrid.QueryCellStyle += SyncHistoryGrid_QueryCellStyle;
 
                 Logger.LogDebug("Syncfusion theme applied successfully to QuickBooksPanel");
             }
@@ -945,41 +996,36 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Handles cell styling for the sync history grid.
+    /// Handles cell styling for the sync history grid (status color coding).
     /// </summary>
     private void SyncHistoryGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
     {
         if (e.Column == null || e.DataRow == null) return;
 
-        // Alternate row coloring
-        if (e.DataRow.RowIndex % 2 == 0)
-            // Alternating row styling removed - let SkinManager handle theming
-
-            // Status column color coding
-            if (e.Column.MappingName == nameof(QuickBooksSyncHistoryRecord.Status) && e.DataRow.RowData is QuickBooksSyncHistoryRecord record)
+        // Apply semantic status indicator colors (exception to theme rule: status colors)
+        if (e.Column.MappingName == nameof(QuickBooksSyncHistoryRecord.Status) && e.DataRow.RowData is QuickBooksSyncHistoryRecord record)
+        {
+            e.Style.Font.Bold = true;
+            switch (record.Status)
             {
-                switch (record.Status)
-                {
-                    case "Success":
-                        e.Style.TextColor = Color.Green; // Semantic success color
-                        e.Style.Font.Bold = true;
-                        break;
-                    case "Failed":
-                    case "Error":
-                        e.Style.TextColor = Color.Red; // Semantic error color
-                        e.Style.Font.Bold = true;
-                        break;
-                }
+                case "Success":
+                    e.Style.TextColor = Color.Green;
+                    break;
+                case "Failed":
+                case "Error":
+                    e.Style.TextColor = Color.Red;
+                    break;
+                default:
+                    e.Style.TextColor = Color.Orange;
+                    break;
             }
+        }
     }
 
     #endregion
 
     #region Helper Methods
 
-    /// <summary>
-    /// Executes an async command safely.
-    /// </summary>
     private async Task ExecuteCommandAsync(CommunityToolkit.Mvvm.Input.IAsyncRelayCommand? command)
     {
         if (command == null || !command.CanExecute(null)) return;
@@ -995,9 +1041,280 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
     }
 
+    #endregion
+
+    #region CRUD Operations & Dialogs
+
     /// <summary>
-    /// Refreshes the panel data.
+    /// Shows disconnect confirmation dialog.
+    /// Prevents accidental disconnection from QuickBooks.
     /// </summary>
+    public async Task<bool> ShowDisconnectConfirmationAsync()
+    {
+        var result = MessageBox.Show(
+            "Are you sure you want to disconnect from QuickBooks?\n\n" +
+            "You will need to reconnect to resume data synchronization.",
+            "Confirm Disconnect",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+
+        return result == DialogResult.Yes;
+    }
+
+    /// <summary>
+    /// Shows clear history confirmation dialog.
+    /// Prevents accidental deletion of sync history.
+    /// </summary>
+    public async Task<bool> ShowClearHistoryConfirmationAsync()
+    {
+        var result = MessageBox.Show(
+            "Are you sure you want to clear all sync history?\n\n" +
+            "This action cannot be undone. All synchronization records will be permanently deleted.",
+            "Confirm Clear History",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+
+        return result == DialogResult.Yes;
+    }
+
+    /// <summary>
+    /// Shows sync confirmation dialog.
+    /// Informs user about the sync operation and allows cancellation.
+    /// </summary>
+    public async Task<bool> ShowSyncConfirmationAsync(string operation = "Sync")
+    {
+        var result = MessageBox.Show(
+            $"Start {operation} with QuickBooks?\n\n" +
+            "This operation may take several minutes depending on the amount of data.",
+            $"Confirm {operation}",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        return result == DialogResult.Yes;
+    }
+
+    /// <summary>
+    /// Shows file picker dialog for exporting sync history.
+    /// Returns the selected file path, or null if cancelled.
+    /// </summary>
+    public string? ShowExportFilePickerDialog()
+    {
+        var saveDialog = new SaveFileDialog
+        {
+            Title = "Export QuickBooks Sync History",
+            Filter = "CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            DefaultExt = "csv",
+            FileName = $"QuickBooks_SyncHistory_{DateTime.Now:yyyy-MM-dd_HHmmss}.csv",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+        };
+
+        return saveDialog.ShowDialog() == DialogResult.OK ? saveDialog.FileName : null;
+    }
+
+    /// <summary>
+    /// Shows sync record detail dialog.
+    /// Displays full details of a selected sync history record.
+    /// </summary>
+    public void ShowSyncRecordDetailsDialog(dynamic record)
+    {
+        if (record == null) return;
+
+        try
+        {
+            var timestamp = record.Timestamp?.ToString("g") ?? "Unknown";
+            var operation = record.Operation ?? "Unknown";
+            var status = record.Status ?? "Unknown";
+            var recordsProcessed = record.RecordsProcessed?.ToString("N0") ?? "0";
+            var duration = record.Duration?.ToString() ?? "Unknown";
+            var message = record.Message ?? "(No details)";
+
+            var details = $"Sync Record Details\n\n" +
+                $"Timestamp: {timestamp}\n" +
+                $"Operation: {operation}\n" +
+                $"Status: {status}\n" +
+                $"Records Processed: {recordsProcessed}\n" +
+                $"Duration: {duration}\n\n" +
+                $"Message:\n{message}";
+
+            MessageBox.Show(details, "Sync Record Details", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error displaying sync record details");
+            MessageBox.Show("Unable to display record details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Shows sync result summary dialog after sync operation completes.
+    /// Displays statistics about the completed sync.
+    /// </summary>
+    public void ShowSyncResultSummaryDialog(int recordsSynced, int successCount, int failureCount, string duration)
+    {
+        var result = MessageBox.Show(
+            $"Sync Operation Complete\n\n" +
+            $"Total Records: {recordsSynced:N0}\n" +
+            $"Successful: {successCount:N0}\n" +
+            $"Failed: {failureCount:N0}\n" +
+            $"Duration: {duration}\n\n" +
+            "Would you like to view the detailed sync history?",
+            "Sync Summary",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information);
+
+        if (result == DialogResult.Yes)
+        {
+            _syncHistoryGrid?.Focus();
+        }
+    }
+
+    /// <summary>
+    /// Shows connection settings dialog for configuring QuickBooks API credentials.
+    /// </summary>
+    public bool ShowConnectionSettingsDialog()
+    {
+        var message = "QuickBooks Connection Settings\n\n" +
+            $"Status: {(ViewModel?.IsConnected == true ? "Connected" : "Disconnected")}\n" +
+            $"Company: {ViewModel?.CompanyName ?? "Not connected"}\n" +
+            $"Last Sync: {ViewModel?.LastSyncTime ?? "Never"}\n\n" +
+            "Click OK to reconfigure connection settings.";
+
+        var result = MessageBox.Show(
+            message,
+            "Connection Settings",
+            MessageBoxButtons.OKCancel,
+            MessageBoxIcon.Information);
+
+        return result == DialogResult.OK;
+    }
+
+    /// <summary>
+    /// Retries a failed sync operation.
+    /// Allows user to retry specific failed sync records.
+    /// </summary>
+    public async Task<bool> ShowRetryFailedSyncConfirmationAsync(dynamic failedRecord)
+    {
+        try
+        {
+            var operation = failedRecord?.Operation ?? "Unknown";
+            var timestamp = failedRecord?.Timestamp?.ToString("g") ?? "Unknown";
+            var message = failedRecord?.Message ?? "Unknown";
+
+            var message_text = $"Retry Failed Sync?\n\n" +
+                $"Operation: {operation}\n" +
+                $"Last Attempt: {timestamp}\n" +
+                $"Reason: {message}\n\n" +
+                "Click Yes to retry this operation.";
+
+            var result = MessageBox.Show(
+                message_text,
+                "Retry Failed Sync",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            return result == DialogResult.Yes;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error showing retry confirmation");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Shows delete record confirmation dialog.
+    /// Allows user to delete individual sync history records.
+    /// </summary>
+    public bool ShowDeleteRecordConfirmationDialog(dynamic record)
+    {
+        try
+        {
+            var operation = record?.Operation ?? "Unknown";
+            var timestamp = record?.Timestamp?.ToString("g") ?? "Unknown";
+
+            var message = $"Delete Sync Record?\n\n" +
+                $"Operation: {operation}\n" +
+                $"Timestamp: {timestamp}\n\n" +
+                "This action cannot be undone.";
+
+            var result = MessageBox.Show(
+                message,
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            return result == DialogResult.Yes;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error showing delete confirmation");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Handles grid double-click to show sync record details.
+    /// </summary>
+    private void HandleSyncRecordDoubleClick(dynamic record)
+    {
+        if (record != null)
+        {
+            ShowSyncRecordDetailsDialog(record);
+        }
+    }
+
+    /// <summary>
+    /// Handles retry action for failed sync records.
+    /// </summary>
+    private async Task RetryFailedSyncAsync(dynamic failedRecord)
+    {
+        if (failedRecord == null) return;
+
+        var status = failedRecord?.Status;
+        if (status != "Failed") return;
+
+        if (await ShowRetryFailedSyncConfirmationAsync(failedRecord))
+        {
+            var operation = failedRecord?.Operation ?? "";
+            if (operation.Contains("Sync"))
+            {
+                await ExecuteCommandAsync(ViewModel?.SyncDataCommand);
+            }
+            else if (operation.Contains("Import"))
+            {
+                await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles delete action for individual sync records.
+    /// </summary>
+    private void DeleteSyncRecord(dynamic record)
+    {
+        if (record == null) return;
+
+        if (ShowDeleteRecordConfirmationDialog(record))
+        {
+            try
+            {
+                ViewModel?.SyncHistory?.Remove(record);
+                string? operation = record?.Operation != null ? record.Operation.ToString() : null;
+                Logger.LogInformation("Deleted sync record: {Operation}", operation);
+                MessageBox.Show("Sync record deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to delete sync record");
+                MessageBox.Show($"Failed to delete record: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
     private async Task RefreshAsync()
     {
         if (ViewModel != null)
@@ -1007,9 +1324,6 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
     }
 
-    /// <summary>
-    /// Closes the panel.
-    /// </summary>
     private void ClosePanel()
     {
         var parent = Parent;
@@ -1021,14 +1335,10 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #region Disposal
 
-    /// <summary>
-    /// Disposes panel resources.
-    /// </summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            // Unsubscribe from events
             if (ViewModel != null)
             {
                 ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -1039,7 +1349,6 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 _syncHistoryGrid.QueryCellStyle -= SyncHistoryGrid_QueryCellStyle;
             }
 
-            // Dispose Syncfusion controls using SafeDispose
             try { _syncHistoryGrid?.SafeClearDataSource(); } catch { }
             try { _syncHistoryGrid?.SafeDispose(); } catch { }
             try { _connectButton?.Dispose(); } catch { }
@@ -1051,17 +1360,14 @@ public sealed class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             try { _clearHistoryButton?.Dispose(); } catch { }
             try { _exportHistoryButton?.Dispose(); } catch { }
             try { _syncProgressBar?.Dispose(); } catch { }
-
-            // Dispose other controls
             try { _panelHeader?.Dispose(); } catch { }
             try { _loadingOverlay?.Dispose(); } catch { }
             try { _noDataOverlay?.Dispose(); } catch { }
-            try { _statusStrip?.Dispose(); } catch { }
-            try { _mainLayout?.Dispose(); } catch { }
             try { _mainSplitContainer?.Dispose(); } catch { }
             try { _connectionPanel?.Dispose(); } catch { }
             try { _operationsPanel?.Dispose(); } catch { }
             try { _summaryPanel?.Dispose(); } catch { }
+            try { _historyPanel?.Dispose(); } catch { }
 
             Logger.LogDebug("QuickBooksPanel disposed");
         }

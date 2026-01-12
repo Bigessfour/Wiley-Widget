@@ -20,6 +20,7 @@
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": false,
+  "terminal.integrated.shellIntegration.enabled": true,
   "task.autoClose": true,
 
   // ============================================================================
@@ -29,6 +30,13 @@
     "microsoft-learn": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
     },
     "csharp-mcp": {
       "command": "InfinityFlow.CSharp.Eval",
@@ -84,8 +92,8 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
+    "source.fixAll": true,
+    "source.organizeImports": true,
     "source.fixAll.powershell": "explicit"
   },
   "editor.minimap.enabled": true,
@@ -149,6 +157,7 @@
   "dotnet.server.searchSubdirectoriesForSolution": true,
   "dotnet.unitTests.runTestsInParallel": true,
   "dotnet.unitTests.showCodeLens": true,
+  "dotnet.startupProject": "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "omnisharp.projectLoadTimeout": 60000,

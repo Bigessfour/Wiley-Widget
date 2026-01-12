@@ -21,6 +21,7 @@ using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -316,11 +317,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = (int)(Width * 0.65),
-            Panel1MinSize = 300,
-            Panel2MinSize = 300,
             AccessibleName = "Audit grid and chart split container"
         };
+        // Defer setting Panel1MinSize, Panel2MinSize, and SplitterDistance until control is sized
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplit, 300, 300, (int)(Width * 0.65));
 
         // Audit grid (left)
         _auditGrid = new SfDataGrid
@@ -634,7 +634,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(() => ShowError(ex)));
+                if (IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke(new System.Action(() => ShowError(ex)));
+                }
             }
             else
             {
@@ -659,7 +662,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Thread-safe UI updates
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            }
             return;
         }
 
@@ -712,7 +718,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(UpdateUI));
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new System.Action(UpdateUI));
+            }
             return;
         }
 

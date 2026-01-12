@@ -9,6 +9,7 @@ using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using System.Windows.Forms;
 using WileyWidget.WinForms.ViewModels;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
@@ -53,6 +54,10 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         base.OnViewModelResolved(viewModel);
         InitializeControls();
         WireUpEventHandlers();
+
+        // Defer sizing validation until layout is complete
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
         Logger.LogDebug("ChatPanel initialized");
     }
 

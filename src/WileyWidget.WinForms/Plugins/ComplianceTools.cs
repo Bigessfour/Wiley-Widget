@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 
@@ -20,8 +21,7 @@ namespace WileyWidget.WinForms.Plugins
     /// </summary>
     public sealed class ComplianceTools
     {
-        private readonly IEnterpriseRepository _enterpriseRepository;
-        private readonly IBudgetRepository _budgetRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ComplianceTools>? _logger;
 
         /// <summary>
@@ -31,12 +31,10 @@ namespace WileyWidget.WinForms.Plugins
         /// <param name="budgetRepository">Repository for accessing budget data.</param>
         /// <param name="logger">Optional logger for audit and diagnostic logging.</param>
         public ComplianceTools(
-            IEnterpriseRepository enterpriseRepository,
-            IBudgetRepository budgetRepository,
+            IServiceScopeFactory scopeFactory,
             ILogger<ComplianceTools>? logger = null)
         {
-            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
-            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _logger = logger;
         }
 
@@ -121,8 +119,12 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var budgetRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IBudgetRepository>(scope.ServiceProvider);
+
                 var enterprise = enterpriseId.HasValue
-                    ? await _enterpriseRepository.GetByIdAsync(enterpriseId.Value)
+                    ? await enterpriseRepository.GetByIdAsync(enterpriseId.Value)
                     : null;
 
                 if (enterpriseId.HasValue && enterprise == null)
@@ -139,7 +141,7 @@ namespace WileyWidget.WinForms.Plugins
                 if (enterprise != null)
                 {
                     // Single enterprise compliance check
-                    var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear);
+                    var budgetEntries = await budgetRepository.GetByFiscalYearAsync(fiscalYear);
 
                     // Metric 1: Budget Variance Control
                     var budgetVariance = 0m;
@@ -267,7 +269,7 @@ namespace WileyWidget.WinForms.Plugins
                 else
                 {
                     // System-wide overview
-                    var allEnterprises = await _enterpriseRepository.GetAllAsync();
+                    var allEnterprises = await enterpriseRepository.GetAllAsync();
                     var avgScore = 0m;
 
                     if (allEnterprises.Any())
@@ -320,14 +322,18 @@ namespace WileyWidget.WinForms.Plugins
 
             try
             {
-                var enterprise = await _enterpriseRepository.GetByIdAsync(enterpriseId);
+                using var scope = _scopeFactory.CreateScope();
+                var enterpriseRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IEnterpriseRepository>(scope.ServiceProvider);
+                var budgetRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Business.Interfaces.IBudgetRepository>(scope.ServiceProvider);
+
+                var enterprise = await enterpriseRepository.GetByIdAsync(enterpriseId);
                 if (enterprise == null)
                 {
                     _logger?.LogWarning("ComplianceTools: Enterprise {EnterpriseId} not found for roasting", enterpriseId);
                     return $"🤔 Enterprise {enterpriseId} not found. Can't roast what doesn't exist. (The Mayor probably hid the budget.)";
                 }
 
-                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(DateTime.UtcNow.Year);
+                var budgetEntries = await budgetRepository.GetByFiscalYearAsync(DateTime.UtcNow.Year);
                 var monthlyBalance = enterprise.MonthlyBalance;
                 var reserveCoverageMonths = enterprise.MonthlyExpenses > 0 ? enterprise.TotalBudget / enterprise.MonthlyExpenses : 0;
 

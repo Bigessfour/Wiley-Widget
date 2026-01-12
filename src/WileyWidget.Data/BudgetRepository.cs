@@ -56,13 +56,25 @@ public class BudgetRepository : IBudgetRepository
     }
 
     /// <summary>
-    /// Safely sets a value in cache, handling disposed cache gracefully
+    /// Safely sets a value in cache, handling disposed cache gracefully and respecting SizeLimit
     /// </summary>
     private void SetInCache(string key, object value, TimeSpan expiration)
     {
         try
         {
-            _cache.Set(key, value, expiration);
+            var options = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(expiration);
+
+            // Required when SizeLimit is configured: assign logical size
+            // Use collection count if applicable, else 1
+            long size = value switch
+            {
+                System.Collections.ICollection collection => collection.Count,
+                _ => 1
+            };
+            options.SetSize(size);
+
+            _cache.Set(key, value, options);
         }
         catch (ObjectDisposedException)
         {

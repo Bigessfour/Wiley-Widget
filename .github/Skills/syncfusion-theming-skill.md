@@ -2,7 +2,9 @@
 name: syncfusion-theming
 description: Use for any theme, color, or visual style changes in the Wiley-Widget WinForms app.
 ---
+
 Strict rules (project-approved workflow):
+
 - SfSkinManager is the ONLY theme authority.
 - Apply once at form level: SfSkinManager.SetVisualStyle(form, "Office2019Colorful") or current DefaultTheme.
 - Cascade handles all children — NO manual BackColor/ForeColor on controls.

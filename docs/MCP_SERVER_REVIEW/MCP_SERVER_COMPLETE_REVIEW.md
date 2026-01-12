@@ -64,6 +64,7 @@ tools/WileyWidgetMcpServer/
 **Purpose:** Ensures forms use SfSkinManager exclusively (no manual BackColor/ForeColor)
 
 **Example:**
+
 ```
 Input:  ValidateFormTheme("WileyWidget.WinForms.Forms.AccountsForm", "Office2019Colorful")
 Output: ✅ Form Validation: WileyWidget.WinForms.Forms.AccountsForm
@@ -75,6 +76,7 @@ Output: ✅ Form Validation: WileyWidget.WinForms.Forms.AccountsForm
 ```
 
 **Use Cases:**
+
 - Pre-commit theme compliance check
 - CI/CD pipeline validation
 - Theme refactoring verification
@@ -86,6 +88,7 @@ Output: ✅ Form Validation: WileyWidget.WinForms.Forms.AccountsForm
 **Purpose:** Introspect SfDataGrid columns, data binding, and theme
 
 **Example:**
+
 ```
 Input:  InspectSfDataGrid("WileyWidget.WinForms.Forms.AccountsForm", "sfDataGridAccounts")
 Output: ✅ SfDataGrid Inspection: WileyWidget.WinForms.Forms.AccountsForm
@@ -104,6 +107,7 @@ Output: ✅ SfDataGrid Inspection: WileyWidget.WinForms.Forms.AccountsForm
 ```
 
 **Use Cases:**
+
 - Debug grid column mappings
 - Verify data binding configuration
 - Check grid theme inheritance
@@ -115,6 +119,7 @@ Output: ✅ SfDataGrid Inspection: WileyWidget.WinForms.Forms.AccountsForm
 **Purpose:** Execute .csx test scripts or inline C# code against forms
 
 **Example:**
+
 ```
 Input:  RunHeadlessFormTest(
           scriptPath: "tests/WileyWidget.UITests/Scripts/AccountsFormTest.csx"
@@ -125,6 +130,7 @@ Output: ✅ Test PASSED: AccountsFormTest.csx
 ```
 
 **Use Cases:**
+
 - Automated form initialization tests
 - Grid data binding validation
 - Dependency injection verification
@@ -136,6 +142,7 @@ Output: ✅ Test PASSED: AccountsFormTest.csx
 **Purpose:** Execute C# code snippets instantly without recompilation
 
 **Example:**
+
 ```csharp
 Input:  EvalCSharp(@"
   var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
@@ -154,12 +161,14 @@ Output: ✅ Execution Successful
 ```
 
 **Use Cases:**
+
 - Rapid prototyping
 - Interactive debugging
 - One-off form instantiation tests
 - Theme application verification
 
 **Pre-loaded References:**
+
 - System.Windows.Forms
 - Syncfusion.WinForms.Controls / DataGrid / Themes
 - WileyWidget.WinForms.Forms
@@ -173,6 +182,7 @@ Output: ✅ Execution Successful
 **Purpose:** Comprehensive dependency injection testing and validation
 
 **Example:**
+
 ```
 Input:  RunDependencyInjectionTests(testName: "All", outputFormat: "json")
 Output: {
@@ -200,6 +210,7 @@ Output: {
 ```
 
 **Available Tests:**
+
 - ServiceLifetimes
 - ConstructorInjection
 - ServiceDisposal
@@ -238,9 +249,11 @@ Verifies Syncfusion license configuration
 ## Helper Classes Review
 
 ### FormInstantiationHelper
+
 **Responsibility:** Reliable form instantiation with automatic constructor parameter injection
 
 **Key Features:**
+
 - Prioritizes constructors with MainForm parameter
 - Falls back to parameterless constructors
 - Auto-mocks ILogger<T>, IServiceProvider, repositories
@@ -253,9 +266,11 @@ Verifies Syncfusion license configuration
 ---
 
 ### FormTypeCache
+
 **Responsibility:** Thread-safe caching of reflected form types and constructors
 
 **Key Features:**
+
 - Lock-protected caching dictionary
 - GetFormType() - Finds form by fully-qualified name
 - GetMainFormConstructor() - Cached constructor lookup
@@ -270,9 +285,11 @@ Verifies Syncfusion license configuration
 ---
 
 ### MockFactory
+
 **Responsibility:** Create mocks for testing without real dependencies
 
 **Key Features:**
+
 - CreateMockMainForm() - Lightweight MainForm mock
 - CreateTestServiceProvider() - Mock.Of<T>()-based service provider
 - TestServiceProvider.GetService() - Auto-returns mocks for any interface
@@ -282,9 +299,11 @@ Verifies Syncfusion license configuration
 ---
 
 ### SyncfusionTestHelper
+
 **Responsibility:** Validation logic for Syncfusion controls and theming
 
 **Key Features:**
+
 - ValidateTheme() - Checks SfSkinManager theme application
 - GetAllSyncfusionControls() - Recursive control tree search
 - ValidateNoManualColors() - Detects manual BackColor/ForeColor assignments
@@ -309,23 +328,29 @@ Verifies Syncfusion license configuration
 ### Task Usage
 
 **1. Build the server:**
+
 ```
 Ctrl+Shift+B → Select "mcp: build-ui-server"
 ```
 
 **2. Start for Copilot (background):**
+
 ```
 Ctrl+Shift+B → Select "mcp: start-ui-server (background)"
 ```
+
 Then use tools directly in Copilot Chat.
 
 **3. Debug the server (foreground):**
+
 ```
 Ctrl+Shift+B → Select "mcp: start-ui-server (foreground)"
 ```
+
 See server logs in output panel.
 
 **4. Stop when done:**
+
 ```
 Ctrl+Shift+B → Select "mcp: stop-ui-server"
 ```
@@ -349,13 +374,13 @@ Output: tools/WileyWidgetMcpServer/bin/Debug/net10.0-windows10.0.26100.0/WileyWi
 
 ### Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| ModelContextProtocol | 0.2.0-preview.1 | Official MCP SDK |
-| Microsoft.Extensions.* | Latest | DI, hosting, configuration |
-| Microsoft.CodeAnalysis.CSharp.Scripting | Latest | Dynamic C# evaluation |
-| Syncfusion.Windows.Forms | 32.1.19 | Syncfusion control support |
-| Moq | Latest | Test mocking |
+| Package                                 | Version         | Purpose                    |
+| --------------------------------------- | --------------- | -------------------------- |
+| ModelContextProtocol                    | 0.2.0-preview.1 | Official MCP SDK           |
+| Microsoft.Extensions.\*                 | Latest          | DI, hosting, configuration |
+| Microsoft.CodeAnalysis.CSharp.Scripting | Latest          | Dynamic C# evaluation      |
+| Syncfusion.Windows.Forms                | 32.1.19         | Syncfusion control support |
+| Moq                                     | Latest          | Test mocking               |
 
 ### Warnings (Non-Critical)
 
@@ -369,6 +394,7 @@ These are code analysis warnings that don't affect functionality.
 ## Documentation Quality
 
 ### README.md (400+ lines)
+
 - ✅ Tool reference with examples
 - ✅ Best practices patterns
 - ✅ CI/CD integration examples
@@ -376,12 +402,14 @@ These are code analysis warnings that don't affect functionality.
 - ✅ Performance metrics (2.5x faster)
 
 ### QUICK_START.md
+
 - ✅ 3 usage patterns (Copilot, Tasks, CLI)
 - ✅ Real-world EvalCSharp examples
 - ✅ Common workflows
 - ✅ Error handling patterns
 
 ### QUICK_REFERENCE.md
+
 - ✅ When to use each tool
 - ✅ Example prompts for Copilot
 - ✅ Common workflows
@@ -389,6 +417,7 @@ These are code analysis warnings that don't affect functionality.
 - ✅ Performance tips
 
 ### IMPLEMENTATION_STATUS.md
+
 - ✅ Feature checklist
 - ✅ Technical implementation details
 - ✅ Build verification steps
@@ -452,12 +481,14 @@ Use insights to fix grid configuration
 ## Performance Metrics
 
 ### Before (Manual .csx + Manual Testing)
+
 - Time per iteration: **2-5 minutes**
 - Build required: **YES**
 - Feedback loop: **Slow**
 - Accuracy: **Manual (error-prone)**
 
 ### After (MCP Tools + Copilot)
+
 - Time per iteration: **10-30 seconds** ⚡
 - Build required: **NO** (for most tools)
 - Feedback loop: **Instant** 🚀
@@ -547,6 +578,7 @@ Use insights to fix grid configuration
 ## File Changes Summary
 
 ### Created
+
 - `tools/WileyWidgetMcpServer/` - Complete new folder with 4 helpers + 9 tools
 - `tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj` - Project file
 - `tools/WileyWidgetMcpServer/Program.cs` - MCP server entry point
@@ -556,6 +588,7 @@ Use insights to fix grid configuration
 - `tools/WileyWidgetMcpServer/IMPLEMENTATION_STATUS.md` - Status checklist
 
 ### Modified
+
 - `.vscode/tasks.json` - Added 4 MCP server tasks
 - `Directory.Packages.props` - Added ModelContextProtocol + Moq dependencies
 

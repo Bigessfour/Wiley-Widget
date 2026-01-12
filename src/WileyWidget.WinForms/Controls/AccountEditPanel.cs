@@ -36,25 +36,11 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public DialogResult SaveDialogResult { get; private set; } = DialogResult.None;
 
-        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtAccountNumber = null!;
-        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtName = null!;
-        private Syncfusion.Windows.Forms.Tools.TextBoxExt txtDescription = null!;
-        private SfComboBox cmbDepartment = null!;
-        private SfComboBox cmbFund = null!;
-        private SfComboBox cmbType = null!;
-        private SfNumericTextBox numBalance = null!;
-        private SfNumericTextBox numBudget = null!;
-        private Syncfusion.Windows.Forms.Tools.CheckBoxAdv chkActive = null!;
-        private SfButton btnSave = null!;
-        private SfButton btnCancel = null!;
-        // private EventHandler<AppTheme>? _themeChangedHandler; // Removed unused theme handler
-
         private readonly AccountsViewModel _viewModel;
         private readonly MunicipalAccountEditModel _editModel;
         private readonly MunicipalAccount? _existingAccount;
         private ErrorProvider? _errorProvider;
         private ErrorProviderBinding? _errorBinding;
-        private ToolTip? _toolTip;
 
         private bool _isNew;
 
@@ -81,32 +67,27 @@ namespace WileyWidget.WinForms.Controls
                 };
 
             InitializeComponent();
-            SetupUI(existingAccount);
             SetupValidation();
+
+            // Dynamic setup
+            lblTitle.Text = _isNew ? "Create New Account" : "Edit Account";
+            txtAccountNumber.Enabled = _isNew;
+            btnSave.Text = _isNew ? "&Create" : "&Save";
+            btnSave.AccessibleName = _isNew ? "Create Account" : "Save Account";
+            if (_existingAccount != null)
+            {
+                txtAccountNumber.Text = _existingAccount.AccountNumber?.Value ?? "";
+                txtName.Text = _existingAccount.Name ?? "";
+                txtDescription.Text = _existingAccount.FundDescription ?? "";
+                numBalance.Value = (double)_existingAccount.Balance;
+                numBudget.Value = (double)_existingAccount.BudgetAmount;
+                chkActive.Checked = _existingAccount.IsActive;
+            }
 
             // Theme is applied by SfSkinManager cascade from parent form
 
             // Load data asynchronously on load event
             this.Load += AccountEditPanel_Load;
-        }
-
-        private void InitializeComponent()
-        {
-            Name = "AccountEditPanel";
-            AccessibleName = _isNew ? "Create Account" : "Edit Account";
-            Dock = DockStyle.Fill;
-            AutoScaleMode = AutoScaleMode.Dpi;
-            Size = new Size(520, 580);
-            Padding = new Padding(16);
-            // BackColor removed - let SkinManager handle theming
-
-            _toolTip = new ToolTip
-            {
-                AutoPopDelay = 5000,
-                InitialDelay = 500,
-                ReshowDelay = 200,
-                ShowAlways = true
-            };
         }
 
         private async void AccountEditPanel_Load(object? sender, EventArgs e)
@@ -125,307 +106,6 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Error(ex, "AccountEditPanel_Load: unexpected error");
                 MessageBox.Show($"Error loading data: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        /// <summary>
-        /// Sets up the UI layout with all controls for account editing.
-        /// </summary>
-        /// <param name="existing">Existing account data to populate, or null for new account.</param>
-        private void SetupUI(MunicipalAccount? existing)
-        {
-            var padding = 16;
-            var labelWidth = 140;
-            var controlWidth = 320;
-            var rowHeight = 40;
-            var y = padding;
-
-            // Title label
-            var lblTitle = new Label
-            {
-                Text = _isNew ? "Create New Account" : "Edit Account",
-                Location = new Point(padding, y),
-                AutoSize = false,
-                Width = labelWidth + controlWidth,
-                Height = 30,
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            Controls.Add(lblTitle);
-            y += 40;
-
-            // Account Number
-            var lblAccountNumber = new Label
-            {
-                Text = "Account Number:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblAccountNumber);
-
-            txtAccountNumber = new Syncfusion.Windows.Forms.Tools.TextBoxExt
-            {
-                Name = "txtAccountNumber",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                MaxLength = 20,
-                BorderStyle = BorderStyle.FixedSingle,
-                AccessibleName = "Account Number",
-                AccessibleDescription = "Enter the unique account number",
-                TabIndex = 1,
-                Enabled = _isNew // Disable for editing existing accounts
-            };
-            Controls.Add(txtAccountNumber);
-            _toolTip?.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
-            y += rowHeight;
-
-            // Name
-            var lblName = new Label
-            {
-                Text = "Account Name:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblName);
-
-            txtName = new Syncfusion.Windows.Forms.Tools.TextBoxExt
-            {
-                Name = "txtName",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                MaxLength = 100,
-                BorderStyle = BorderStyle.FixedSingle,
-                AccessibleName = "Account Name",
-                AccessibleDescription = "Enter the descriptive name for this account",
-                TabIndex = 2
-            };
-            Controls.Add(txtName);
-            _toolTip?.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
-            y += rowHeight;
-
-            // Description
-            var lblDescription = new Label
-            {
-                Text = "Description:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblDescription);
-
-            txtDescription = new Syncfusion.Windows.Forms.Tools.TextBoxExt
-            {
-                Name = "txtDescription",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                Height = 60,
-                MaxLength = 500,
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                BorderStyle = BorderStyle.FixedSingle,
-                AccessibleName = "Description",
-                AccessibleDescription = "Enter optional description",
-                TabIndex = 3
-            };
-            Controls.Add(txtDescription);
-            _toolTip?.SetToolTip(txtDescription, "Optional detailed description");
-            y += 70;
-
-            // Department
-            var lblDepartment = new Label
-            {
-                Text = "Department:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblDepartment);
-
-            cmbDepartment = new SfComboBox
-            {
-                Name = "cmbDepartment",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AccessibleName = "Department",
-                AccessibleDescription = "Select the department this account belongs to",
-                TabIndex = 4
-            };
-            Controls.Add(cmbDepartment);
-            _toolTip?.SetToolTip(cmbDepartment, "Select owning department");
-            y += rowHeight;
-
-            // Fund
-            var lblFund = new Label
-            {
-                Text = "Fund:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblFund);
-
-            cmbFund = new SfComboBox
-            {
-                Name = "cmbFund",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AccessibleName = "Fund Type",
-                AccessibleDescription = "Select the municipal fund type for this account",
-                TabIndex = 5
-            };
-            Controls.Add(cmbFund);
-            _toolTip?.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
-            y += rowHeight;
-
-            // Type
-            var lblType = new Label
-            {
-                Text = "Type:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblType);
-
-            cmbType = new SfComboBox
-            {
-                Name = "cmbType",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AccessibleName = "Account Type",
-                AccessibleDescription = "Select the account type",
-                TabIndex = 6
-            };
-            Controls.Add(cmbType);
-            _toolTip?.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
-            y += rowHeight;
-
-            // Balance
-            var lblBalance = new Label
-            {
-                Text = "Current Balance:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblBalance);
-
-            numBalance = new SfNumericTextBox
-            {
-                Name = "numBalance",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                AllowNull = false,
-                MinValue = (double)decimal.MinValue,
-                MaxValue = (double)decimal.MaxValue,
-                AccessibleName = "Balance",
-                AccessibleDescription = "Enter the current account balance",
-                TabIndex = 7
-            };
-            numBalance.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
-            Controls.Add(numBalance);
-            _toolTip?.SetToolTip(numBalance, "Current account balance");
-            y += rowHeight;
-
-            // Budget
-            var lblBudget = new Label
-            {
-                Text = "Budget Amount:",
-                Location = new Point(padding, y + 6),
-                Width = labelWidth,
-                TextAlign = ContentAlignment.MiddleRight
-            };
-            Controls.Add(lblBudget);
-
-            numBudget = new SfNumericTextBox
-            {
-                Name = "numBudget",
-                Location = new Point(padding + labelWidth + 10, y),
-                Width = controlWidth,
-                AllowNull = false,
-                MinValue = 0,
-                MaxValue = (double)decimal.MaxValue,
-                AccessibleName = "Budget Amount",
-                AccessibleDescription = "Enter the budgeted amount for this account",
-                TabIndex = 8
-            };
-            numBudget.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
-            Controls.Add(numBudget);
-            _toolTip?.SetToolTip(numBudget, "Budgeted amount for this account");
-            y += rowHeight;
-
-            // Active checkbox
-            chkActive = new Syncfusion.Windows.Forms.Tools.CheckBoxAdv
-            {
-                Name = "chkActive",
-                Text = "Active",
-                Location = new Point(padding + labelWidth + 10, y),
-                AutoSize = true,
-                Checked = true,
-                AccessibleName = "Active Status",
-                AccessibleDescription = "Check to mark this account as active",
-                TabIndex = 9
-            };
-            Controls.Add(chkActive);
-            _toolTip?.SetToolTip(chkActive, "Indicates whether this account is currently active");
-            y += rowHeight + 10;
-
-            // Button panel at bottom
-            var buttonPanel = new GradientPanelExt
-            {
-                Location = new Point(padding, y),
-                Width = labelWidth + controlWidth + 10,
-                Height = 40,
-                Dock = DockStyle.None,
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                AccessibleName = "Account action buttons"
-            };
-            SfSkinManager.SetVisualStyle(buttonPanel, ThemeColors.DefaultTheme);
-
-            btnSave = new SfButton
-            {
-                Name = "btnSave",
-                Text = _isNew ? "&Create" : "&Save",
-                AutoSize = true,
-                Location = new Point(labelWidth + controlWidth - 210, 4),
-                AccessibleName = _isNew ? "Create Account" : "Save Account",
-                AccessibleDescription = "Save the account changes",
-                TabIndex = 10
-            };
-            btnSave.Click += BtnSave_Click;
-            buttonPanel.Controls.Add(btnSave);
-
-            btnCancel = new SfButton
-            {
-                Name = "btnCancel",
-                Text = "&Cancel",
-                AutoSize = true,
-                Location = new Point(labelWidth + controlWidth - 100, 4),
-                DialogResult = DialogResult.Cancel,
-                AccessibleName = "Cancel",
-                AccessibleDescription = "Cancel and discard changes",
-                TabIndex = 11
-            };
-            btnCancel.Click += (s, e) => Cancel();
-            buttonPanel.Controls.Add(btnCancel);
-
-            Controls.Add(buttonPanel);
-
-            // Populate initial values if editing existing account
-            if (existing != null)
-            {
-                txtAccountNumber.Text = existing.AccountNumber?.Value ?? "";
-                txtName.Text = existing.Name ?? "";
-                txtDescription.Text = existing.FundDescription ?? "";
-                numBalance.Value = (double)existing.Balance;
-                numBudget.Value = (double)existing.BudgetAmount;
-                chkActive.Checked = existing.IsActive;
             }
         }
 
@@ -496,7 +176,11 @@ namespace WileyWidget.WinForms.Controls
 
                 if (InvokeRequired)
                 {
-                    try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    // Check if handle exists before BeginInvoke
+                    if (IsHandleCreated)
+                    {
+                        try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
+                    }
                     return;
                 }
 
@@ -608,8 +292,7 @@ namespace WileyWidget.WinForms.Controls
                         MessageBox.Show(
                             $"Please correct the following errors:\n\n{string.Join("\n", errors)}",
                             "Validation Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -667,7 +350,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Cancels the edit operation and closes the panel.
         /// </summary>
-        private void Cancel()
+        private void Cancel(object? sender, EventArgs e)
         {
             SaveDialogResult = DialogResult.Cancel;
             var parent = this.FindForm();
@@ -676,29 +359,6 @@ namespace WileyWidget.WinForms.Controls
                 parent.DialogResult = DialogResult.Cancel;
                 parent.Close();
             }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                try { this.Load -= AccountEditPanel_Load; } catch { }
-                _errorBinding?.Dispose();
-                _errorProvider?.Dispose();
-                _toolTip?.Dispose();
-                txtAccountNumber?.Dispose();
-                txtName?.Dispose();
-                txtDescription?.Dispose();
-                cmbDepartment?.Dispose();
-                cmbFund?.Dispose();
-                cmbType?.Dispose();
-                numBalance?.Dispose();
-                numBudget?.Dispose();
-                chkActive?.Dispose();
-                btnSave?.Dispose();
-                btnCancel?.Dispose();
-            }
-            base.Dispose(disposing);
         }
     }
 }
