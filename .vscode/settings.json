@@ -96,13 +96,6 @@
     "source.organizeImports": true,
     "source.fixAll.powershell": "explicit"
   },
-
-  // Trunk extension recommended settings
-  "trunk.trunkPath": ".trunk/tools/trunk",
-  "trunk.addToolsToPath": true,
-  "trunk.trace.server": "messages",
-  "trunk.autoInit": true,
-  "trunk.numJobs": 2,
   "editor.minimap.enabled": true,
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.suggestSelection": "first",
