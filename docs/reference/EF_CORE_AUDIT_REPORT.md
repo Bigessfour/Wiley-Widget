@@ -98,6 +98,7 @@ The EF Core implementation is **solid and production-ready** with proper migrati
   - `ExecuteSql()`
 
 - ✅ All queries use safe LINQ patterns:
+
   ```csharp
   _context.UtilityCustomers
       .Where(c => c.CustomerType == customerType)  // ✓ Parameterized
@@ -174,6 +175,7 @@ public class EFCoreIntegrationTests
 ✅ **What's Good**:
 
 - **AsNoTracking() used extensively** across repositories:
+
   ```csharp
   // UtilityCustomerRepository.cs - 22 uses of AsNoTracking()
   // MunicipalAccountRepository.cs - 6 uses

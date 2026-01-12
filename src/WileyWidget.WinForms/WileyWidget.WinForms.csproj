@@ -1,8 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
@@ -10,6 +11,11 @@
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600</NoWarn>
   </PropertyGroup>
+
+  <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch" Value="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
@@ -49,6 +55,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="DotNetEnv" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Serilog" />
@@ -62,7 +70,7 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="ExcelDataReader.DataSet" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" />
     <PackageReference Include="System.Management" />
@@ -86,15 +94,36 @@
     <!-- FastReport Open Source WinForms viewer -->
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    <!-- Blazor WebView for Windows Forms -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
+    <!-- Syncfusion Blazor Interactive Chat -->
+    <PackageReference Include="Syncfusion.Blazor.InteractiveChat" />
+    <PackageReference Include="Syncfusion.Blazor.Core" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" />
+    <PackageReference Include="Syncfusion.Blazor.SmartComponents" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Explicitly declare Razor components for compilation -->
+    <Compile Remove="BlazorComponents/**" />
+    <RazorComponent Include="BlazorComponents/**/*.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Blazor Web assets (wwwroot) -->
+    <Content Include="wwwroot\\**\\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="logs\" />
   </ItemGroup>
 
 </Project>

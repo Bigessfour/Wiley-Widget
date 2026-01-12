@@ -68,7 +68,7 @@ namespace WileyWidget.Services
             {
                 var budgetData = new BudgetData
                 {
-                    EnterpriseId = targetEnterprise?.Id ?? 0,
+                    EnterpriseId = targetEnterprise.Id,
                     FiscalYear = DateTime.Now.Year,
                     TotalBudget = compliance.BudgetSummary.TotalBudgeted,
                     TotalExpenditures = compliance.BudgetSummary.TotalActual,

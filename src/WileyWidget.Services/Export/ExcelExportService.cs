@@ -68,7 +68,7 @@ namespace WileyWidget.Services.Export
                         var cell = worksheet.Range[1, i + 1];
                         cell.Text = headers[i];
                         cell.CellStyle.Font.Bold = true;
-                        cell.CellStyle.Color = System.Drawing.Color.FromArgb(0, 112, 192);
+                        cell.CellStyle.Color = System.Drawing.Color.SteelBlue;
                         cell.CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
                     }
 
@@ -132,7 +132,7 @@ namespace WileyWidget.Services.Export
                         var cell = worksheet.Range[1, i + 1];
                         cell.Text = headers[i];
                         cell.CellStyle.Font.Bold = true;
-                        cell.CellStyle.Color = System.Drawing.Color.FromArgb(0, 176, 80);
+                        cell.CellStyle.Color = System.Drawing.Color.SeaGreen;
                         cell.CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
                     }
 
@@ -215,7 +215,7 @@ namespace WileyWidget.Services.Export
                         var cell = worksheet.Range[1, i + 1];
                         cell.Text = columnNames[i];
                         cell.CellStyle.Font.Bold = true;
-                        cell.CellStyle.Color = System.Drawing.Color.FromArgb(68, 114, 196);
+                        cell.CellStyle.Color = System.Drawing.Color.SteelBlue;
                         cell.CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
                     }
 

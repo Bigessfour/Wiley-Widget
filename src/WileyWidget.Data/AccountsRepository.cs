@@ -4,7 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
@@ -19,14 +22,14 @@ public class AccountsRepository : IAccountsRepository
 {
     private static readonly ActivitySource ActivitySource = new("WileyWidget.Data.AccountsRepository");
 
-    private readonly AppDbContext _dbContext;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AccountsRepository> _logger;
 
     public AccountsRepository(
-        AppDbContext dbContext,
+        IServiceScopeFactory scopeFactory,
         ILogger<AccountsRepository> logger)
     {
-        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -39,7 +42,11 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving all municipal accounts");
 
-            var result = await _dbContext.Set<MunicipalAccount>()
+            using var scope = _scopeFactory.CreateScope();
+
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var result = await context.Set<MunicipalAccount>()
+                .AsNoTracking()
                 .OrderBy(a => a.AccountNumber_Value)
                 .ToListAsync(cancellationToken);
 
@@ -69,7 +76,11 @@ public class AccountsRepository : IAccountsRepository
         {
             _logger.LogDebug("Retrieving accounts for fund type: {FundType}", fundType);
 
-            var result = await _dbContext.Set<MunicipalAccount>()
+            using var scope = _scopeFactory.CreateScope();
+
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var result = await context.Set<MunicipalAccount>()
+                .AsNoTracking()
                 .Where(a => a.Fund == fundType)
                 .OrderBy(a => a.AccountNumber_Value)
                 .ToListAsync(cancellationToken);
@@ -94,7 +105,11 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving accounts for account type: {AccountType}", accountType);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a => a.Type == accountType)
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
@@ -108,7 +123,11 @@ public class AccountsRepository : IAccountsRepository
         _logger.LogDebug("Retrieving accounts for fund type: {FundType} and account type: {AccountType}",
             fundType, accountType);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a => a.Fund == fundType && a.Type == accountType)
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
@@ -120,7 +139,11 @@ public class AccountsRepository : IAccountsRepository
     {
         _logger.LogDebug("Retrieving account with ID: {AccountId}", accountId);
 
-        return await _dbContext.Set<MunicipalAccount>()
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
     }
 
@@ -138,11 +161,15 @@ public class AccountsRepository : IAccountsRepository
 
         var normalizedSearch = searchTerm.ToLowerInvariant();
 
-        return await _dbContext.Set<MunicipalAccount>()
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.Set<MunicipalAccount>()
+            .AsNoTracking()
             .Where(a =>
-                a.Name.ToLower().Contains(normalizedSearch) ||
-                (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower().Contains(normalizedSearch)) ||
-                (a.FundDescription != null && a.FundDescription.ToLower().Contains(normalizedSearch)))
+                a.Name.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch) ||
+                (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)) ||
+                (a.FundDescription != null && a.FundDescription.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)))
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
     }

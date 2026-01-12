@@ -14,6 +14,7 @@ using Syncfusion.Windows.Forms.Chart;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -29,7 +30,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private LoadingOverlay? _loadingOverlay;
     private LoadingOverlay? _chartLoadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private Panel? _filterPanel;
+    private GradientPanelExt? _filterPanel;
     private SfDataGrid? _auditGrid;
     private SplitContainer? _mainSplit;
     private Panel? _chartHostPanel;
@@ -59,8 +60,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private EventHandler? _btnExportCsvClickHandler;
     private EventHandler? _btnUpdateChartClickHandler;
     private EventHandler? _chkAutoRefreshCheckedChangedHandler;
-    private EventHandler? _dtpStartDateValueChangedHandler;
-    private EventHandler? _dtpEndDateValueChangedHandler;
+    private DateTimeValueChangedEventHandler? _dtpStartDateValueChangedHandler;
+    private DateTimeValueChangedEventHandler? _dtpEndDateValueChangedHandler;
     private EventHandler? _cmbActionTypeSelectedIndexChangedHandler;
     private EventHandler? _cmbUserSelectedIndexChangedHandler;
     private EventHandler? _cmbChartGroupBySelectedIndexChangedHandler;
@@ -74,14 +75,22 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
 
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         Name = "AuditLogPanel";
-        Size = new Size(1200, 800);
+        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        AutoScroll = true;
+        Padding = new Padding(8);
         Dock = DockStyle.Fill;
         AccessibleName = "Audit Log Panel";
         AccessibleDescription = "Displays audit log entries with filtering and export capabilities";
@@ -94,6 +103,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             // Fall back if DPI scaling not supported
         }
+
+        // InitializeComponent moved to AuditLogPanel.Designer.cs for designer support
+        this.ResumeLayout(false);
+
     }
 
     private void SetupUI()
@@ -114,13 +127,16 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         Controls.Add(_panelHeader);
 
         // Filter panel
-        _filterPanel = new Panel
+        _filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 120,
             Padding = new Padding(8),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Audit log filters"
         };
+        SfSkinManager.SetVisualStyle(_filterPanel, "Office2019Colorful");
 
         var filterTable = new TableLayoutPanel
         {
@@ -138,10 +154,11 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         // Row 1: Date filters
         filterTable.Controls.Add(new Label { Text = "Start Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-        _dtpStartDate = new DateTimePicker
+        _dtpStartDate = new SfDateTimeEdit
         {
             Width = 140,
-            Format = DateTimePickerFormat.Short,
+            DateTimePattern = DateTimePattern.Custom,
+            Format = "yyyy-MM-dd",
             AccessibleName = "Start date filter",
             AccessibleDescription = "Filter audit entries from this date"
         };
@@ -150,10 +167,11 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.Controls.Add(_dtpStartDate, 1, 0);
 
         filterTable.Controls.Add(new Label { Text = "End Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 2, 0);
-        _dtpEndDate = new DateTimePicker
+        _dtpEndDate = new SfDateTimeEdit
         {
             Width = 140,
-            Format = DateTimePickerFormat.Short,
+            DateTimePattern = DateTimePattern.Custom,
+            Format = "yyyy-MM-dd",
             AccessibleName = "End date filter",
             AccessibleDescription = "Filter audit entries until this date"
         };
@@ -163,7 +181,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         // Row 2: Action Type and User filters
         filterTable.Controls.Add(new Label { Text = "Action Type:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
-        _cmbActionType = new Syncfusion.WinForms.ListView.SfComboBox
+        _cmbActionType = new SfComboBox
         {
             Width = 140,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
@@ -179,7 +197,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.Controls.Add(_cmbActionType, 1, 1);
 
         filterTable.Controls.Add(new Label { Text = "User:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 2, 1);
-        _cmbUser = new Syncfusion.WinForms.ListView.SfComboBox
+        _cmbUser = new SfComboBox
         {
             Width = 140,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
@@ -195,7 +213,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.Controls.Add(_cmbUser, 3, 1);
 
         // Buttons
-        _btnRefresh = new Syncfusion.WinForms.Controls.SfButton
+        _btnRefresh = new SfButton
         {
             Text = "&Refresh",
             Width = 100,
@@ -207,7 +225,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _btnRefresh.Click += _btnRefreshClickHandler;
         filterTable.Controls.Add(_btnRefresh, 4, 0);
 
-        _chkAutoRefresh = new CheckBox
+        _chkAutoRefresh = new CheckBoxAdv
         {
             Text = "Auto-refresh",
             AutoSize = true,
@@ -215,10 +233,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleDescription = "Automatically refresh audit log every 30 seconds"
         };
         _chkAutoRefreshCheckedChangedHandler = (s, e) => ToggleAutoRefresh();
-        _chkAutoRefresh.CheckedChanged += _chkAutoRefreshCheckedChangedHandler;
+        _chkAutoRefresh.CheckStateChanged += _chkAutoRefreshCheckedChangedHandler;
         filterTable.Controls.Add(_chkAutoRefresh, 4, 1);
 
-        _btnExportCsv = new Syncfusion.WinForms.Controls.SfButton
+        _btnExportCsv = new SfButton
         {
             Text = "&Export CSV",
             Width = 100,
@@ -977,7 +995,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             // Theme is applied automatically by SkinManager cascade from parent form
             // No manual color assignments needed
-            ThemeManager.ApplyThemeToControl(this);
         }
         catch
         {
@@ -993,13 +1010,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         if (disposing)
         {
             // Unsubscribe from events
-            try
-            {
-                if (_themeChangedHandler != null)
-                    ThemeManager.ThemeChanged -= _themeChangedHandler;
-            }
-            catch { }
-
             try
             {
                 if (ViewModel != null && _viewModelPropertyChangedHandler != null)

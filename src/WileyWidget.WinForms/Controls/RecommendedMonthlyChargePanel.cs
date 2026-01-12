@@ -3,8 +3,14 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
+using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -22,9 +28,10 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     private SfDataGrid? _departmentsGrid;
     private SfDataGrid? _benchmarksGrid;
     private ChartControl? _chartControl;
-    private Button? _refreshButton;
-    private Button? _saveButton;
-    private Button? _queryGrokButton;
+    private ChartControlRegionEventWiring? _chartRegionEventWiring;
+    private SfButton? _refreshButton;
+    private SfButton? _saveButton;
+    private SfButton? _queryGrokButton;
     private Label? _totalRevenueLabel;
     private Label? _totalExpensesLabel;
     private Label? _suggestedRevenueLabel;
@@ -47,6 +54,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     {
         InitializeComponent();
 
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -62,6 +72,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     public RecommendedMonthlyChargePanel()
     {
         InitializeComponent();
+
+        // Apply theme via SfSkinManager (single source of truth)
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         _viewModel = new RecommendedMonthlyChargeViewModel();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargePanel>.Instance;
 
@@ -154,6 +167,72 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Padding = new Padding(15),
             BackColor = System.Drawing.SystemColors.Window
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
+
+        _refreshButton = new SfButton
+        {
+            Text = "&Refresh Data",
+            Location = new Point(10, 15),
+            Size = new Size(130, 35),
+            TabIndex = 1,
+            AccessibleName = "Refresh Data",
+            AccessibleDescription = "Refresh department expense data from QuickBooks"
+        };
+        _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+        var refreshTooltip = new ToolTip();
+        refreshTooltip.SetToolTip(_refreshButton, "Load latest expense data from QuickBooks (Alt+R)");
+
+        _queryGrokButton = new SfButton
+        {
+            Text = "Query &AI",
+            Location = new Point(150, 15),
+            Size = new Size(130, 35),
+            TabIndex = 2,
+            AccessibleName = "Query AI",
+            AccessibleDescription = "Get AI-driven rate recommendations from Grok"
+        };
+        _queryGrokButton.Click += async (s, e) => await QueryGrokAsync();
+        var grokTooltip = new ToolTip();
+        grokTooltip.SetToolTip(_queryGrokButton, "Query Grok AI for recommended adjustment factors (Alt+A)");
+
+        _saveButton = new SfButton
+        {
+            Text = "&Save Changes",
+            Location = new Point(290, 15),
+            Size = new Size(130, 35),
+            TabIndex = 3,
+            AccessibleName = "Save Changes",
+            AccessibleDescription = "Save current charge modifications to database"
+        };
+        _saveButton.Click += async (s, e) => await SaveChangesAsync();
+        var saveTooltip = new ToolTip();
+        saveTooltip.SetToolTip(_saveButton, "Save modified charges to database (Alt+S)");
+
+        _buttonPanel.Controls.AddRange(new Control[] { _refreshButton, _queryGrokButton, _saveButton });
+        Controls.Add(_buttonPanel);
+
+        // ============================================================================
+        // Summary Panel - Revenue, Expenses, Status Display
+        // ============================================================================
+        _summaryPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Top,
+            Height = 180,
+            Padding = new Padding(15),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+
+        var summaryTitleLabel = new Label
+        {
+            Text = "Financial Summary",
+            Location = new Point(15, 10),
+            Size = new Size(200, 25),
+            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+            // ForeColor removed - let SkinManager handle theming
+        };
+        _summaryPanel.Controls.Add(summaryTitleLabel);
 
         var summaryTitleLabel = new Label
         {
@@ -246,6 +325,40 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             SplitterDistance = 700,
             BorderStyle = BorderStyle.FixedSingle
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
+
+        // ============================================================================
+        // Left Split Container - Top (Departments) | Bottom (Benchmarks)
+        // ============================================================================
+        _leftSplitContainer = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            BorderStyle = BorderStyle.None
+        };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_leftSplitContainer, 350);
+
+        // ============================================================================
+        // Departments Grid (Top Left)
+        // ============================================================================
+        var deptGridPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(5),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(deptGridPanel, "Office2019Colorful");
+
+        var deptGridLabel = new Label
+        {
+            Text = "Department Rate Analysis",
+            Dock = DockStyle.Top,
+            Height = 25,
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+            Padding = new Padding(5, 3, 0, 0)
+        };
+        deptGridPanel.Controls.Add(deptGridLabel);
 
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
@@ -473,6 +586,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Padding = new Padding(10),
             BackColor = System.Drawing.SystemColors.Window
         };
+        SfSkinManager.SetVisualStyle(_chartPanel, "Office2019Colorful");
 
         _chartControl = new ChartControl
         {
@@ -481,6 +595,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             AccessibleName = "Department Expense Chart",
             BackColor = System.Drawing.SystemColors.Window
         };
+        _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
+
+        ChartControlDefaults.Apply(_chartControl);
 
         // Configure chart appearance
         _chartControl.Title.Text = "Expenses vs Current vs Suggested Charges";
@@ -560,7 +677,17 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _logger.LogDebug("ViewModel bound to RecommendedMonthlyChargePanel");
     }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private TextBoxExt Get_explanationTextBox1()
+    {
+        return _explanationTextBox!;
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e, TextBoxExt _explanationTextBox1)
     {
         if (InvokeRequired)
         {
@@ -904,9 +1031,14 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     /// </summary>
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         this.components = new System.ComponentModel.Container();
         this.Name = "RecommendedMonthlyChargePanel";
         this.Size = new Size(1400, 900);
+        try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
+        this.ResumeLayout(false);
+
     }
 
     #endregion

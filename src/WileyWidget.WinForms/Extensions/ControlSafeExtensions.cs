@@ -151,6 +151,28 @@ namespace WileyWidget.WinForms.Extensions
             }
         }
 
+        /// <summary>
+        /// Safely disposes any IContainer (e.g., components field in forms).
+        /// Handles Syncfusion BackStageView/BackStage NullReferenceException during container disposal.
+        /// </summary>
+        public static void SafeDispose(this IContainer? container)
+        {
+            if (container == null) return;
+
+            try
+            {
+                container.Dispose();
+            }
+            catch (Exception ex)
+            {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {container.GetType().Name}: {ex.Message}");
+#endif
+                _ = ex;
+                // Silently ignore - Syncfusion controls in container may have disposal quirks
+            }
+        }
+
         #endregion
     }
 }

@@ -8,6 +8,7 @@ using WileyWidget.Models;
 using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using WileyWidget.Services.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.Data;
 
@@ -16,7 +17,7 @@ namespace WileyWidget.Data;
 /// </summary>
 public class BudgetRepository : IBudgetRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _contextFactory;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMemoryCache _cache;
     private readonly ITelemetryService? _telemetryService;
 
@@ -25,13 +26,14 @@ public class BudgetRepository : IBudgetRepository
 
     /// <summary>
     /// Constructor with dependency injection
+    /// Uses IServiceScopeFactory to create scoped contexts per operation.
     /// </summary>
     public BudgetRepository(
-        IDbContextFactory<AppDbContext> contextFactory,
+        IServiceScopeFactory scopeFactory,
         IMemoryCache cache,
         ITelemetryService? telemetryService = null)
     {
-        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _telemetryService = telemetryService;
     }
@@ -54,13 +56,25 @@ public class BudgetRepository : IBudgetRepository
     }
 
     /// <summary>
-    /// Safely sets a value in cache, handling disposed cache gracefully
+    /// Safely sets a value in cache, handling disposed cache gracefully and respecting SizeLimit
     /// </summary>
     private void SetInCache(string key, object value, TimeSpan expiration)
     {
         try
         {
-            _cache.Set(key, value, expiration);
+            var options = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(expiration);
+
+            // Required when SizeLimit is configured: assign logical size
+            // Use collection count if applicable, else 1
+            long size = value switch
+            {
+                System.Collections.ICollection collection => collection.Count,
+                _ => 1
+            };
+            options.SetSize(size);
+
+            _cache.Set(key, value, options);
         }
         catch (ObjectDisposedException)
         {
@@ -79,7 +93,8 @@ public class BudgetRepository : IBudgetRepository
 
         try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var result = await context.GetBudgetHierarchy(fiscalYear).ToListAsync(cancellationToken);
 
             activity?.SetTag("result.count", result.Count());
@@ -120,7 +135,8 @@ public class BudgetRepository : IBudgetRepository
         activity?.SetTag("cache.hit", false);
         try
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Where(be => be.FiscalYear == fiscalYear)
                 .Include(be => be.Department)
@@ -149,7 +165,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     private async Task<IEnumerable<BudgetEntry>> GetFromDatabaseAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.BudgetEntries
             .Where(be => be.FiscalYear == fiscalYear)
             .Include(be => be.Department)
@@ -169,7 +186,8 @@ public class BudgetRepository : IBudgetRepository
         bool sortDescending = false,
         int? fiscalYear = null)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
@@ -200,14 +218,16 @@ public class BudgetRepository : IBudgetRepository
 
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
+    /// NOTE: This returns an IQueryable tied to a DbContext created here; caller is responsible for materializing results promptly.
     /// </summary>
-    public async Task<IQueryable<BudgetEntry>> GetQueryableAsync()
+    public Task<IQueryable<BudgetEntry>> GetQueryableAsync()
     {
-        var context = await _contextFactory.CreateDbContextAsync();
-        return context.BudgetEntries
+        var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return Task.FromResult(context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .AsQueryable();
+            .AsQueryable());
     }
 
     /// <summary>
@@ -215,7 +235,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<BudgetEntry?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.BudgetEntries
             .Include(be => be.Parent)
             .Include(be => be.Children)
@@ -243,7 +264,8 @@ public class BudgetRepository : IBudgetRepository
             activity?.SetTag("cache.hit", false);
             try
             {
-                await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 budgetEntries = await context.BudgetEntries
                     .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
                     .Include(be => be.Department)
@@ -281,7 +303,8 @@ public class BudgetRepository : IBudgetRepository
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
@@ -305,7 +328,8 @@ public class BudgetRepository : IBudgetRepository
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
@@ -329,7 +353,8 @@ public class BudgetRepository : IBudgetRepository
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
@@ -353,7 +378,8 @@ public class BudgetRepository : IBudgetRepository
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
@@ -379,7 +405,8 @@ public class BudgetRepository : IBudgetRepository
 
         if (!TryGetFromCache(cacheKey, out IEnumerable<BudgetEntry>? budgetEntries))
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
@@ -402,7 +429,8 @@ public class BudgetRepository : IBudgetRepository
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.BudgetEntries.Add(budgetEntry);
         await context.SaveChangesAsync(cancellationToken);
     }
@@ -415,7 +443,8 @@ public class BudgetRepository : IBudgetRepository
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.BudgetEntries.Update(budgetEntry);
         await context.SaveChangesAsync(cancellationToken);
     }
@@ -425,7 +454,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var budgetEntry = await context.BudgetEntries.FindAsync(new object[] { id }, cancellationToken);
         if (budgetEntry != null)
         {
@@ -439,7 +469,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<BudgetVarianceAnalysis> GetBudgetSummaryAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
@@ -500,7 +531,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<DepartmentSummary>> GetDepartmentBreakdownAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
@@ -527,7 +559,8 @@ public class BudgetRepository : IBudgetRepository
     /// </summary>
     public async Task<List<FundSummary>> GetFundAllocationsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
@@ -562,7 +595,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<BudgetVarianceAnalysis> GetBudgetSummaryByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // Try to filter by Department.EnterpriseId or Fund.EnterpriseId if such properties exist.
         var query = context.BudgetEntries
@@ -617,7 +651,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
@@ -641,7 +676,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var query = context.BudgetEntries
             .Include(be => be.Department)
@@ -700,7 +736,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // Debug: Check database connection and data
         string? connectionString = null;
@@ -740,7 +777,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<int> GetRevenueAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.BudgetEntries
             .Where(be => be.FiscalYear == fiscalYear && be.AccountNumber.StartsWith("4"))
             .CountAsync(cancellationToken);
@@ -748,7 +786,8 @@ public class BudgetRepository : IBudgetRepository
 
     public async Task<int> GetExpenseAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.BudgetEntries
             .Where(be => be.FiscalYear == fiscalYear && (be.AccountNumber.StartsWith("5") || be.AccountNumber.StartsWith("6")))
             .CountAsync(cancellationToken);

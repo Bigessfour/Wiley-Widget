@@ -3,16 +3,21 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Windows.Forms;
-using WileyWidget.Models;
-using WileyWidget.WinForms.Models;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.Extensions;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.Models;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Models;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.ViewModels;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using Action = System.Action;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -76,7 +81,9 @@ namespace WileyWidget.WinForms.Controls
                 };
 
             InitializeComponent();
-            SetupUI(existingAccount);
+
+            // Apply theme via SfSkinManager (single source of truth)
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
             SetupValidation();
 
             // Apply centralized theming and subscribe to theme changes
@@ -601,8 +608,7 @@ namespace WileyWidget.WinForms.Controls
                         MessageBox.Show(
                             $"Please correct the following errors:\n\n{string.Join("\n", errors)}",
                             "Validation Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -671,9 +677,15 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        protected override void Dispose(bool disposing)
+        /// <summary>
+        /// Initializes the UI components for the account edit panel.
+        /// </summary>
+        private void InitializeComponent()
         {
-            if (disposing)
+            this.SuspendLayout();
+
+            // Main layout panel
+            _mainLayout = new TableLayoutPanel
             {
                 try { if (_themeChangedHandler != null) ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
                 try { this.Load -= AccountEditPanel_Load; } catch { }
@@ -692,7 +704,240 @@ namespace WileyWidget.WinForms.Controls
                 btnSave?.Dispose();
                 btnCancel?.Dispose();
             }
-            base.Dispose(disposing);
+
+            // Title label (spans both columns)
+            lblTitle = new Label
+            {
+                Text = "Account Details",
+                Font = new Font(this.Font.FontFamily, 12F, FontStyle.Bold),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 0, 0, 12),
+                AccessibleName = "Account Details Header"
+            };
+            _mainLayout.Controls.Add(lblTitle, 0, 0);
+            _mainLayout.SetColumnSpan(lblTitle, 2);
+
+            // Account Number
+            var lblAccountNumber = new Label
+            {
+                Text = "Account Number:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Account Number Label"
+            };
+            _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
+
+            txtAccountNumber = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                AccessibleName = "Account Number",
+                AccessibleDescription = "Enter the account number"
+            };
+            _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
+
+            // Name
+            var lblName = new Label
+            {
+                Text = "Name:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Account Name Label"
+            };
+            _mainLayout.Controls.Add(lblName, 0, 2);
+
+            txtName = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                AccessibleName = "Account Name",
+                AccessibleDescription = "Enter the account name"
+            };
+            _mainLayout.Controls.Add(txtName, 1, 2);
+
+            // Description
+            var lblDescription = new Label
+            {
+                Text = "Description:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Description Label"
+            };
+            _mainLayout.Controls.Add(lblDescription, 0, 3);
+
+            txtDescription = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                AccessibleName = "Account Description",
+                AccessibleDescription = "Enter the account description"
+            };
+            _mainLayout.Controls.Add(txtDescription, 1, 3);
+
+            // Department
+            var lblDepartment = new Label
+            {
+                Text = "Department:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Department Label"
+            };
+            _mainLayout.Controls.Add(lblDepartment, 0, 4);
+
+            cmbDepartment = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                AccessibleName = "Department Selection",
+                AccessibleDescription = "Select the department for this account"
+            };
+            _mainLayout.Controls.Add(cmbDepartment, 1, 4);
+
+            // Fund
+            var lblFund = new Label
+            {
+                Text = "Fund:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Fund Label"
+            };
+            _mainLayout.Controls.Add(lblFund, 0, 5);
+
+            cmbFund = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                AccessibleName = "Fund Selection",
+                AccessibleDescription = "Select the fund type for this account"
+            };
+            _mainLayout.Controls.Add(cmbFund, 1, 5);
+
+            // Type
+            var lblType = new Label
+            {
+                Text = "Type:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Account Type Label"
+            };
+            _mainLayout.Controls.Add(lblType, 0, 6);
+
+            cmbType = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                AccessibleName = "Account Type Selection",
+                AccessibleDescription = "Select the account type"
+            };
+            _mainLayout.Controls.Add(cmbType, 1, 6);
+
+            // Balance
+            var lblBalance = new Label
+            {
+                Text = "Balance:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Balance Label"
+            };
+            _mainLayout.Controls.Add(lblBalance, 0, 7);
+
+            numBalance = new NumericUpDown
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                DecimalPlaces = 2,
+                Minimum = decimal.MinValue,
+                Maximum = decimal.MaxValue,
+                AccessibleName = "Account Balance",
+                AccessibleDescription = "Enter the current account balance"
+            };
+            _mainLayout.Controls.Add(numBalance, 1, 7);
+
+            // Budget
+            var lblBudget = new Label
+            {
+                Text = "Budget:",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 3, 6, 3),
+                AccessibleName = "Budget Label"
+            };
+            _mainLayout.Controls.Add(lblBudget, 0, 8);
+
+            numBudget = new NumericUpDown
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
+                DecimalPlaces = 2,
+                Minimum = decimal.MinValue,
+                Maximum = decimal.MaxValue,
+                AccessibleName = "Budget Amount",
+                AccessibleDescription = "Enter the budget amount for this account"
+            };
+            _mainLayout.Controls.Add(numBudget, 1, 8);
+
+            // Active checkbox and Save button (spans both columns)
+            var buttonPanel = new TableLayoutPanel
+            {
+                ColumnCount = 2,
+                RowCount = 1,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 12, 0, 0),
+                AutoSize = true
+            };
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            buttonPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            chkActive = new CheckBox
+            {
+                Text = "Active",
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 12, 3),
+                Checked = true,
+                AccessibleName = "Account Active Status",
+                AccessibleDescription = "Check to mark this account as active"
+            };
+            buttonPanel.Controls.Add(chkActive, 0, 0);
+
+            btnSave = new Button
+            {
+                Text = "Save",
+                Dock = DockStyle.Right,
+                Width = 100,
+                Margin = new Padding(0, 3, 0, 3),
+                AccessibleName = "Save Account",
+                AccessibleDescription = "Save the account changes"
+            };
+            btnSave.Click += BtnSave_Click;
+            buttonPanel.Controls.Add(btnSave, 1, 0);
+
+            _mainLayout.Controls.Add(buttonPanel, 0, 9);
+            _mainLayout.SetColumnSpan(buttonPanel, 2);
+
+            // Add main layout to the control
+            this.Controls.Add(_mainLayout);
+
+            // Configure the form
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.AutoScaleDimensions = new SizeF(96F, 96F);
+            this.MinimumSize = new Size(500, 400);
+            this.AccessibleName = "Account Edit Panel";
+            this.AccessibleDescription = "Panel for creating or editing municipal accounts";
+
+            this.ResumeLayout(false);
+            this.PerformLayout();
         }
     }
 }

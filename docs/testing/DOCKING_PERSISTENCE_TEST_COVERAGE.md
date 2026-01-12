@@ -209,7 +209,7 @@ Stress tests for memory leaks during repeated operations:
 
 ## Running the Tests
 
-### Run all persistence tests:
+### Run all persistence tests
 
 ```powershell
 dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
@@ -217,7 +217,7 @@ dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
     --verbosity minimal
 ```
 
-### Run stress tests only:
+### Run stress tests only
 
 ```powershell
 dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
@@ -225,7 +225,7 @@ dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
     --verbosity minimal
 ```
 
-### Run individual test:
+### Run individual test
 
 ```powershell
 dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `

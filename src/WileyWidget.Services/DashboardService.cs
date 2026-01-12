@@ -143,9 +143,9 @@ namespace WileyWidget.Services
             _logger.LogInformation("DashboardService: Fetching data for FY {FiscalYear} ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})",
                 currentFiscalYear, fiscalYearStart, fiscalYearEnd);
 
+            // Get budget summary
             try
             {
-                // Get budget summary
                 _logger.LogDebug("DashboardService: Calling GetBudgetSummaryAsync for date range {Start} to {End}", fiscalYearStart, fiscalYearEnd);
                 var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
                 _logger.LogInformation("DashboardService: Budget summary retrieved (IsNull={IsNull})", budgetSummary == null);
@@ -157,7 +157,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Total Budget",
-                        Value = budgetSummary.TotalBudgeted.ToString("C0"),
+                        Value = budgetSummary.TotalBudgeted.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = $"Total budgeted for FY {currentFiscalYear}",
                         Category = "Budget"
                     });
@@ -165,7 +165,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Total Actual",
-                        Value = budgetSummary.TotalActual.ToString("C0"),
+                        Value = budgetSummary.TotalActual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = "Total actual spending",
                         Category = "Budget"
                     });
@@ -173,7 +173,7 @@ namespace WileyWidget.Services
                     items.Add(new DashboardItem
                     {
                         Title = "Variance",
-                        Value = budgetSummary.TotalVariance.ToString("C0"),
+                        Value = budgetSummary.TotalVariance.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                         Description = $"{budgetSummary.TotalVariancePercentage:F1}% {(budgetSummary.TotalVariance >= 0 ? "under" : "over")} budget",
                         Category = "Budget"
                     });
@@ -184,7 +184,7 @@ namespace WileyWidget.Services
                         items.Add(new DashboardItem
                         {
                             Title = $"Fund: {fund.FundName}",
-                            Value = fund.Actual.ToString("C0"),
+                            Value = fund.Actual.ToString("C0", System.Globalization.CultureInfo.CurrentCulture),
                             Description = $"Budgeted: {fund.Budgeted:C0}, Variance: {fund.Variance:C0}",
                             Category = "Funds"
                         });
@@ -197,8 +197,15 @@ namespace WileyWidget.Services
                 {
                     _logger.LogWarning("DashboardService: Budget summary is null - no budget data available for period");
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DashboardService: Error fetching budget summary - continuing with other data sources");
+            }
 
-                // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
+            // Get account count (IMunicipalAccountRepository exposes GetAllAsync)
+            try
+            {
                 var accountList = await _accountRepository.GetAllAsync(cancellationToken);
                 var accountCount = accountList?.Count() ?? 0;
                 _logger.LogInformation("DashboardService: Retrieved {AccountCount} municipal accounts", accountCount);
@@ -206,12 +213,19 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Active Accounts",
-                    Value = accountCount.ToString(),
+                    Value = accountCount.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Total municipal accounts",
                     Category = "Accounts"
                 });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DashboardService: Error fetching account count - continuing with other data sources");
+            }
 
-                // Get recent budget entries
+            // Get budget entries and account statistics
+            try
+            {
                 var recentEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken);
                 _logger.LogInformation("DashboardService: Retrieved {EntryCount} budget entries for FY {FiscalYear}",
                     recentEntries?.Count() ?? 0, currentFiscalYear);
@@ -221,7 +235,7 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Revenue Accounts",
-                    Value = revenueAccounts.ToString(),
+                    Value = revenueAccounts.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Accounts with revenue activity",
                     Category = "Activity"
                 });
@@ -229,18 +243,17 @@ namespace WileyWidget.Services
                 items.Add(new DashboardItem
                 {
                     Title = "Expense Accounts",
-                    Value = expenseAccounts.ToString(),
+                    Value = expenseAccounts.ToString(System.Globalization.CultureInfo.CurrentCulture),
                     Description = "Accounts with expense activity",
                     Category = "Activity"
                 });
 
-                _logger.LogInformation("DashboardService: Successfully fetched {ItemCount} dashboard items (Revenue accts: {RevenueCount}, Expense accts: {ExpenseCount})",
-                    items.Count, revenueAccounts, expenseAccounts);
+                _logger.LogInformation("DashboardService: Successfully fetched dashboard items (Revenue accts: {RevenueCount}, Expense accts: {ExpenseCount})",
+                    revenueAccounts, expenseAccounts);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "DashboardService: Error fetching dashboard data from repositories");
-                throw;
+                _logger.LogError(ex, "DashboardService: Error fetching account statistics - continuing with available data");
             }
 
             return items;
@@ -260,11 +273,11 @@ namespace WileyWidget.Services
                 var (totalRecords, oldestRecord, newestRecord) = await _budgetRepository.GetDataStatisticsAsync(currentFiscalYear, cancellationToken);
 
                 stopwatch.Stop();
-                _logger.LogInformation("DashboardService: Data statistics retrieved in {ElapsedMs}ms - {Count} records, Oldest: {Oldest:yyyy-MM-dd HH:mm:ss}, Newest: {Newest:yyyy-MM-dd HH:mm:ss}",
+                _logger.LogInformation("DashboardService: Data statistics retrieved in {ElapsedMs}ms - {Count} records, Oldest: {Oldest}, Newest: {Newest}",
                     stopwatch.ElapsedMilliseconds,
                     totalRecords,
-                    oldestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A",
-                    newestRecord?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A");
+                    oldestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
+                    newestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A");
 
                 if (totalRecords == 0)
                 {

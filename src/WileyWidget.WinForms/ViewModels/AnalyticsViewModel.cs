@@ -4,55 +4,98 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.WinForms.ViewModels;
+using System; // Added for ArgumentNullException, DateTime, etc.
 
 namespace WileyWidget.WinForms.ViewModels
 {
     /// <summary>
-    /// ViewModel for analytics functionality in the dashboard
+    /// ViewModel for analytics functionality providing exploratory analysis, scenario modeling, and forecasting.
+    /// Supports budget variance analysis, rate scenario projections, and reserve forecasting with AI-driven insights.
     /// </summary>
-    public partial class AnalyticsViewModel : ObservableObject, IDisposable
+    public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether data is currently being loaded or processed.
+        /// </summary>
         [ObservableProperty]
         private bool isLoading;
 
+        /// <summary>
+        /// Gets or sets the current status text displayed to the user.
+        /// </summary>
         [ObservableProperty]
         private string statusText = "Ready";
 
+        /// <summary>
+        /// Gets or sets the collection of analytics metrics (e.g., Revenue, Expenses, Reserves).
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<AnalyticsMetric> metrics = new();
 
+        /// <summary>
+        /// Gets or sets the collection of top variance analyses for budget accounts.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<VarianceAnalysis> topVariances = new();
 
+        /// <summary>
+        /// Gets or sets the collection of monthly trend data for budget vs actual comparison.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<MonthlyTrend> trendData = new();
 
+        /// <summary>
+        /// Gets or sets the collection of yearly projections from scenario analysis.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<YearlyProjection> scenarioProjections = new();
 
+        /// <summary>
+        /// Gets or sets the collection of forecast data points for reserve predictions.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<ForecastPoint> forecastData = new();
 
+        /// <summary>
+        /// Gets or sets the collection of key insights generated from exploratory analysis.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<string> insights = new();
 
+        /// <summary>
+        /// Gets or sets the collection of recommendations from scenario and forecast analysis.
+        /// </summary>
         [ObservableProperty]
         private ObservableCollection<string> recommendations = new();
 
-        // Scenario parameters
+        /// <summary>
+        /// Gets or sets the rate increase percentage for scenario modeling (0-100).
+        /// Default is 5.0%.
+        /// </summary>
         [ObservableProperty]
         private decimal rateIncreasePercentage = 5.0m;
 
+        /// <summary>
+        /// Gets or sets the expense increase percentage for scenario modeling (0-100).
+        /// Default is 3.0%.
+        /// </summary>
         [ObservableProperty]
         private decimal expenseIncreasePercentage = 3.0m;
 
+        /// <summary>
+        /// Gets or sets the revenue target increase percentage for scenario modeling (0-100).
+        /// Default is 10.0%.
+        /// </summary>
         [ObservableProperty]
         private decimal revenueTargetPercentage = 10.0m;
 
+        /// <summary>
+        /// Gets or sets the number of years to project for forecasting (1-10).
+        /// Default is 3 years.
+        /// </summary>
         [ObservableProperty]
         private int projectionYears = 3;
 
@@ -444,7 +487,7 @@ namespace WileyWidget.WinForms.ViewModels
     }
 
     /// <summary>
-    /// Analytics metric for display
+    /// Analytics metric data model for displaying metrics in the UI.
     /// </summary>
     public class AnalyticsMetric
     {

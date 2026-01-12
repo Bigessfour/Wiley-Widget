@@ -14,6 +14,7 @@ public class ApplicationMetricsService : IDisposable
     private readonly ILogger<ApplicationMetricsService> _logger;
     private readonly Meter _meter;
     private readonly System.Threading.Timer _memoryMonitorTimer;
+    private bool _disposed;
 
     // Counters
     private readonly Counter<long> _errorCounter;
@@ -228,6 +229,12 @@ public class ApplicationMetricsService : IDisposable
 
     private void UpdateMemoryMetrics(object? state)
     {
+        // CRITICAL: Check disposal state before executing callback to prevent disposed resource access
+        if (_disposed)
+        {
+            return;
+        }
+
         try
         {
             // Update GC memory
@@ -256,6 +263,11 @@ public class ApplicationMetricsService : IDisposable
                     pressure, _lastGcMemory);
             }
         }
+        catch (ObjectDisposedException)
+        {
+            // Expected during shutdown - timer callback fired after disposal started
+            // No logging needed as this is a normal race condition during app exit
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update memory metrics");
@@ -283,6 +295,10 @@ public class ApplicationMetricsService : IDisposable
     {
         if (disposing)
         {
+            // CRITICAL: Set _disposed BEFORE disposing timer to prevent race condition
+            // Timer callbacks check this flag to avoid accessing disposed resources
+            _disposed = true;
+
             // Dispose managed resources
             _memoryMonitorTimer?.Dispose();
             _meter?.Dispose();

@@ -196,7 +196,10 @@ namespace WileyWidget.WinForms.Utilities
 
             if (control.InvokeRequired)
             {
-                try { control.BeginInvoke(action); } catch { }
+                if (control.IsHandleCreated)
+                {
+                    try { control.BeginInvoke(action); } catch { }
+                }
             }
             else
             {

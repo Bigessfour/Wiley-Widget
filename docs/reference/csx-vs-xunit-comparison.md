@@ -190,7 +190,7 @@ await harness.Fact("Initialize_Performance_ShouldCompleteUnder1Second", TestCate
 
 ## When to Use Each Approach
 
-### Use xUnit + FluentAssertions When:
+### Use xUnit + FluentAssertions When
 
 - ✅ You need code coverage reporting
 - ✅ IDE Test Explorer integration is required
@@ -198,7 +198,7 @@ await harness.Fact("Initialize_Performance_ShouldCompleteUnder1Second", TestCate
 - ✅ Team is familiar with xUnit patterns
 - ✅ You need advanced test runners (NCrunch, etc.)
 
-### Use Enhanced CSX When:
+### Use Enhanced CSX When
 
 - ✅ You want zero-compilation exploratory testing
 - ✅ Running tests in Docker containers via MCP
@@ -210,7 +210,7 @@ await harness.Fact("Initialize_Performance_ShouldCompleteUnder1Second", TestCate
 
 ## Running Enhanced CSX Tests
 
-### Via Docker (C# MCP Server):
+### Via Docker (C# MCP Server)
 
 ```bash
 docker run --rm \
@@ -221,7 +221,7 @@ docker run --rm \
   scripts/examples/csharp/52-database-initializer-fluent-test.csx
 ```
 
-### Via VS Code Task:
+### Via VS Code Task
 
 ```json
 {
@@ -241,7 +241,7 @@ docker run --rm \
 }
 ```
 
-### Direct Execution:
+### Direct Execution
 
 ```bash
 dotnet script scripts/examples/csharp/52-database-initializer-fluent-test.csx

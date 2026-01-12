@@ -11,7 +11,13 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
 
-namespace WileyWidget.WinForms.ViewModels
+namespace WileyWidget.WinForms.ViewModels;
+
+/// <summary>
+/// ViewModel for managing municipal accounts with filtering and CRUD operations.
+/// Designed to be minimal, testable, and to match the public API expected by tests.
+/// </summary>
+public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDisposable
 {
     /// <summary>
     /// ViewModel for managing municipal accounts with filtering, CRUD operations, and data aggregation.
@@ -65,12 +71,10 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public ObservableCollection<MunicipalFundType> AvailableFunds { get; } = new(new[]
         {
-            MunicipalFundType.General,
-            MunicipalFundType.Enterprise,
-            MunicipalFundType.SpecialRevenue,
-            MunicipalFundType.CapitalProjects,
-            MunicipalFundType.DebtService
-        });
+            IsLoading = true;
+            ErrorMessage = null;
+            StatusText = "Loading accounts...";
+            _typedLogger.LogInformation("Loading municipal accounts - Fund: {Fund}, Type: {Type}, Search: {Search}", SelectedFund, SelectedAccountType, SearchText);
 
         /// <summary>
         /// Gets the available account types for filtering.
@@ -242,10 +246,50 @@ namespace WileyWidget.WinForms.ViewModels
                 // Fallback to sample data for better UX
                 LoadSampleData();
             }
-            finally
+            else if (SelectedAccountType.HasValue)
             {
-                IsLoading = false;
+                accountsList = await _accountsRepository.GetAccountsByTypeAsync(SelectedAccountType.Value, token);
             }
+            else
+            {
+                accountsList = await _accountsRepository.GetAllAccountsAsync(token);
+            }
+
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var search = SearchText.Trim();
+                accountsList = accountsList
+                    .Where(a =>
+                        (a.AccountNumber?.Value?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
+                        (a.Name?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
+                        (a.FundDescription?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0)
+                    .ToList();
+            }
+
+            Accounts.Clear();
+            foreach (var account in accountsList)
+            {
+                if (token.IsCancellationRequested) return;
+
+                Accounts.Add(new MunicipalAccountDisplay
+                {
+                    Id = account.Id,
+                    AccountNumber = account.AccountNumber?.Value ?? string.Empty,
+                    AccountName = account.Name ?? string.Empty,
+                    Description = account.FundDescription ?? string.Empty,
+                    AccountType = account.Type.ToString(),
+                    FundName = account.Fund.ToString(),
+                    CurrentBalance = account.Balance,
+                    BudgetAmount = account.BudgetAmount,
+                    Department = account.Department?.Name ?? string.Empty,
+                    IsActive = account.IsActive,
+                    HasParent = account.ParentAccountId.HasValue
+                });
+            }
+
+            UpdateSummaries();
+            StatusText = $"Loaded {ActiveAccountCount} accounts successfully";
+            _typedLogger.LogInformation("Municipal accounts loaded: {Count} accounts, Total Balance: {Balance}", ActiveAccountCount, TotalBalance);
         }
 
         /// <summary>

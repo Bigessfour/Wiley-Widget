@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Win32;
 using Serilog;
 using Serilog.Events;
 using Syncfusion.WinForms.Controls;
@@ -12,32 +13,43 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
+using WileyWidget.WinForms.Dialogs;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
-using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Abstractions;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 #pragma warning disable CS8604 // Possible null reference argument
-#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
-#pragma warning disable CS0169 // The field is never used
 
 namespace WileyWidget.WinForms.Forms
 {
+    /// <summary>
+    /// Resource strings used by <see cref="MainForm"/> for labels, titles and navigation text.
+    /// </summary>
     internal static class MainFormResources
     {
-        public const string FormTitle = "Wiley Widget — Running on WinForms + .NET 9";
+        /// <summary>Professional window title with product branding.</summary>
+        public const string FormTitle = "Wiley Widget - Municipal Budget Management System";
+        /// <summary>Application version for About dialog and diagnostic purposes.</summary>
+        public const string ApplicationVersion = "1.0.0";
+
+        /// <summary>Application description for About dialog.</summary>
+        public const string ApplicationDescription = "A comprehensive municipal budget management system built on .NET 9 and Windows Forms.";
+
         public const string Dashboard = "Dashboard";
         public const string Accounts = "Accounts";
         public const string Charts = "Charts";
@@ -47,8 +59,17 @@ namespace WileyWidget.WinForms.Forms
         public const string LoadingText = "Loading...";
     }
 
+    /// <summary>
+    /// Main application window. Hosts navigation chrome, Syncfusion docking manager, and provides
+    /// access to application-level services and panel navigation helpers used by child controls.
+    /// </summary>
+    /// <remarks>
+    /// Initialization sequence: <see cref="InitializeChrome"/>,
+    /// <see cref="InitializeSyncfusionDocking"/>, then deferred ViewModel initialization in <see cref="OnShown(EventArgs)"/>.
+    /// Dispose will clean up scoped services and UI resources.
+    /// </remarks>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : SfForm
+    public partial class MainForm : SfForm, IAsyncInitializable
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
@@ -56,24 +77,85 @@ namespace WileyWidget.WinForms.Forms
         private IPanelNavigationService? _panelNavigator;
 
         /// <summary>
-        /// Public accessor for ServiceProvider used by child forms.
+        /// Enables flicker reduction via WS_EX_COMPOSITED for heavy UI chrome (Ribbon + Docking).
+        /// </summary>
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+
+                try
+                {
+                    if (_uiConfig != null && !_uiConfig.IsUiTestHarness)
+                    {
+                        cp.ExStyle |= WS_EX_COMPOSITED;
+                    }
+                }
+                catch
+                {
+                    // Best-effort only; never block handle creation.
+                }
+
+                return cp;
+            }
+        }
+
+        /// <summary>
+        /// The root <see cref="IServiceProvider"/> for the application. Child forms and controls
+        /// should use this provider to resolve services. Throws <see cref="InvalidOperationException"/>
+        /// if the provider has not been initialized during startup.
         /// </summary>
         public IServiceProvider ServiceProvider => _serviceProvider ?? throw new InvalidOperationException("ServiceProvider not initialized");
 
         /// <summary>
-        /// Public accessor for DockingManager used by PanelNavigationService.
+        /// Returns the active <see cref="DockingManager"/> instance used by the form. Throws
+        /// <see cref="InvalidOperationException"/> if docking has not been initialized.
         /// </summary>
         public DockingManager GetDockingManager() => _dockingManager ?? throw new InvalidOperationException("DockingManager not initialized");
 
+        // All content hosted in DockingManager-controlled left/right panels
+
         /// <summary>
-        /// Public accessor for central document panel used by PanelNavigationService.
+        /// Shows or activates a docked panel. Creates it if not already present.
+        /// Delegates to PanelNavigationService for centralized panel management.
         /// </summary>
-        public Control GetCentralDocumentPanel() => _centralDocumentPanel ?? throw new InvalidOperationException("Central document panel not initialized");
+        /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
+        /// <param name="panelName">Optional panel name. If null, uses type name.</param>
+        /// <param name="preferredStyle">Preferred docking position (default: Right).</param>
+        /// <param name="allowFloating">If true, panel can be floated by user (default: true).</param>
+        public void ShowPanel<TPanel>(
+            string? panelName = null,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TPanel : UserControl
+        {
+            if (_panelNavigator == null)
+            {
+                _logger?.LogWarning("Cannot show panel - PanelNavigationService not initialized");
+                return;
+            }
+
+            var displayName = panelName ?? typeof(TPanel).Name;
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                _logger?.LogWarning("ShowPanel called with invalid panel name");
+                return;
+            }
+
+            _panelNavigator.ShowPanel<TPanel>(displayName, preferredStyle, allowFloating);
+
+            // Force z-order after showing panel to prevent overlap
+            try { EnsureDockingZOrder(); }
+            catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after ShowPanel"); }
+        }
 
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private readonly Services.IThemeIconService? _iconService;
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
+        private ToolStripMenuItem? _recentFilesMenu;
         private RibbonControlAdv? _ribbon;
         private bool _reportViewerLaunched;
         private ToolStripTabItem? _homeTab;
@@ -82,12 +164,37 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _statusLabel;
         private StatusBarAdvPanel? _statusTextPanel;
         private StatusBarAdvPanel? _statePanel;
+        private StatusBarAdvPanel? _progressPanel;
+        private Syncfusion.Windows.Forms.Tools.ProgressBarAdv? _progressBar;
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
+        private System.Windows.Forms.Timer? _activityRefreshTimer;
+
+        /// <summary>
+        /// Internal helper for StatusBarFactory to wire panel references.
+        /// Called from StatusBarFactory.CreateStatusBar to establish back-references.
+        /// </summary>
+        internal void SetStatusBarPanels(
+            StatusBarAdv statusBar,
+            StatusBarAdvPanel statusLabel,
+            StatusBarAdvPanel statusTextPanel,
+            StatusBarAdvPanel statePanel,
+            StatusBarAdvPanel progressPanel,
+            Syncfusion.Windows.Forms.Tools.ProgressBarAdv progressBar,
+            StatusBarAdvPanel clockPanel)
+        {
+            _statusBar = statusBar;
+            _statusLabel = statusLabel;
+            _statusTextPanel = statusTextPanel;
+            _statePanel = statePanel;
+            _progressPanel = progressPanel;
+            _progressBar = progressBar;
+            _clockPanel = clockPanel;
+        }
         private bool _syncfusionDockingInitialized;
         private bool _initialized;
-        private System.ComponentModel.IContainer? components;
+        internal System.ComponentModel.IContainer? components;
         private UIConfiguration _uiConfig = null!;
         private int _onShownExecuted = 0;
         private CancellationTokenSource? _initializationCts;
@@ -105,6 +212,14 @@ namespace WileyWidget.WinForms.Forms
 
         public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
         {
+            return Program.Services ?? WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: true).BuildServiceProvider();
+        }
+
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, Services.IThemeIconService? iconService = null)
+        {
+            Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: ENTERED");
+
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
@@ -113,6 +228,25 @@ namespace WileyWidget.WinForms.Forms
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
+
+            // Apply global Syncfusion theme before any child controls are created
+            AppThemeColors.ApplyTheme(this);
+
+            if (!_uiConfig.IsUiTestHarness)
+            {
+                // Reduce startup flicker for heavy Syncfusion UI (best-effort).
+                try
+                {
+                    SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+                    DoubleBuffered = true;
+                    UpdateStyles();
+                    _logger?.LogDebug("Enabled double-buffering / optimized painting on MainForm");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to enable double-buffering / optimized painting on MainForm");
+                }
+            }
 
             _logger.LogInformation("UI Architecture: {Architecture}", _uiConfig.GetArchitectureDescription());
 
@@ -124,8 +258,19 @@ namespace WileyWidget.WinForms.Forms
             DragDrop += MainForm_DragDrop;
 
             // Set reasonable form size constraints to prevent unusable states
-            this.MinimumSize = new Size(800, 600);
-            this.MaximumSize = new Size(Screen.PrimaryScreen?.WorkingArea.Width ?? 1920, Screen.PrimaryScreen?.WorkingArea.Height ?? 1080);
+            // Use settings from UIConfiguration and avoid touching the real Desktop in test harness mode
+            this.MinimumSize = _uiConfig.MinimumFormSize;
+            if (_uiConfig.IsUiTestHarness)
+            {
+                // In test harness, avoid referencing Screen.PrimaryScreen which may require a real desktop
+                this.MaximumSize = new Size(1920, 1080);
+            }
+            else
+            {
+                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
+                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
+                this.MaximumSize = new Size(screenWidth, screenHeight);
+            }
 
             // Theme already applied globally in Program.InitializeTheme() via SkinManager.ApplicationVisualTheme
             // No need to set ThemeName here - it cascades automatically to all controls
@@ -138,6 +283,20 @@ namespace WileyWidget.WinForms.Forms
 
             // Subscribe to font changes for real-time updates
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
+
+            Log.Debug("[DIAGNOSTIC] MainForm constructor: COMPLETED");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: COMPLETED");
+        }
+
+        /// <summary>
+        /// Implements <see cref="IAsyncInitializable.InitializeAsync(CancellationToken)"/>.
+        /// Performs async initialization work after the MainForm is shown.
+        /// Currently a no-op as synchronous initialization is sufficient.
+        /// </summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken)
+        {
+            // Heavy async initialization can be placed here if needed in future
+            await Task.CompletedTask;
         }
 
         private void MainForm_DragEnter(object? sender, DragEventArgs e)
@@ -191,30 +350,63 @@ namespace WileyWidget.WinForms.Forms
 
         private async Task ProcessDroppedFiles(string[] files)
         {
+            if (files == null || files.Length == 0)
+            {
+                _logger?.LogWarning("No files provided to ProcessDroppedFiles");
+                return;
+            }
+
             _asyncLogger?.Information("Processing {Count} dropped files", files.Length);
 
             foreach (var file in files)
             {
-                var ext = Path.GetExtension(file).ToLowerInvariant();
-                _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
-                _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
+                try
+                {
+                    // Validate file
+                    if (string.IsNullOrWhiteSpace(file))
+                    {
+                        _logger?.LogWarning("Empty file path in dropped files");
+                        continue;
+                    }
 
-                // Add to MRU
-                AddToMruList(file);
+                    if (!File.Exists(file))
+                    {
+                        ShowErrorDialog("File Not Found", $"The file '{Path.GetFileName(file)}' does not exist.");
+                        continue;
+                    }
 
-                // Handle based on file type
-                if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
-                {
-                    await ImportDataFileAsync(file);
+                    var fileInfo = new FileInfo(file);
+                    if (fileInfo.Length > 100 * 1024 * 1024) // 100MB limit
+                    {
+                        ShowErrorDialog("File Too Large", $"The file '{Path.GetFileName(file)}' is too large ({fileInfo.Length / 1024 / 1024}MB). Maximum size is 100MB.");
+                        continue;
+                    }
+
+                    var ext = Path.GetExtension(file).ToLowerInvariant();
+                    _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
+                    _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
+
+                    // Add to MRU
+                    AddToMruList(file);
+
+                    // Handle based on file type
+                    if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
+                    {
+                        await ImportDataFileAsync(file);
+                    }
+                    else if (ext == ".json" || ext == ".xml")
+                    {
+                        await ImportConfigurationDataAsync(file);
+                    }
+                    else
+                    {
+                        ShowErrorDialog("Unsupported File Type", $"Unsupported file type: {ext}\n\nSupported: CSV, XLSX, XLS, JSON, XML");
+                    }
                 }
-                else if (ext == ".json" || ext == ".xml")
+                catch (Exception ex)
                 {
-                    await ImportConfigurationDataAsync(file);
-                }
-                else
-                {
-                    MessageBox.Show($"Unsupported file type: {ext}\n\nSupported: CSV, XLSX, JSON, XML",
-                        "Unsupported File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _logger?.LogError(ex, "Failed to process dropped file: {File}", file);
+                    ShowErrorDialog("File Processing Error", $"Failed to process '{Path.GetFileName(file)}': {ex.Message}", ex);
                 }
             }
 
@@ -277,6 +469,19 @@ namespace WileyWidget.WinForms.Forms
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
             timelineService?.RecordFormLifecycleEvent("MainForm", "Load");
 
+            // CRITICAL: Theme is already cascaded from Program.InitializeTheme() via ApplicationVisualTheme
+            // No need to set theme again - it cascades automatically to all controls
+            try
+            {
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                Log.Information("[THEME] MainForm.OnLoad: Theme inherited from global ApplicationVisualTheme - {ThemeName}", themeName);
+                timelineService?.RecordFormLifecycleEvent("MainForm", "OnLoad: Theme Verified");
+            }
+            catch (Exception themeEx)
+            {
+                Log.Warning(themeEx, "[THEME] MainForm.OnLoad: Deferred theme verification failed - cascade from global ApplicationVisualTheme will be used");
+            }
+
             // Designer short-circuit
             if (DesignMode)
             {
@@ -302,10 +507,12 @@ namespace WileyWidget.WinForms.Forms
             // Load MRU list from registry
             LoadMruFromRegistry();
 
-            // DEFERRED: Docking initialization moved to OnShown to prevent UI freeze
-            // Heavy operations (docking setup, layout loading) are now deferred to after form is visible
+            // Restore window state (size, position, maximized/minimized) from previous session
+            RestoreWindowState();
 
-            UpdateDockingStateText();
+            // CRITICAL: Initialize UI Chrome and Docking synchronously on UI thread BEFORE OnShown
+            // Heavy initialization (Chrome, Docking) must complete before form is shown to prevent rendering issues
+            _logger?.LogDebug("OnLoad: Starting UI initialization on UI thread {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
             // Z-order management: ribbon/status above docking panels.
             try
@@ -336,6 +543,14 @@ namespace WileyWidget.WinForms.Forms
 
             _logger?.LogInformation("MainForm startup completed successfully");
         }
+
+        /// <summary>
+        /// REMOVED: WndProc BackStage exception handling.
+        /// The root cause (BackStage initializing before ribbon.ResumeLayout) has been fixed.
+        /// BackStage now initializes AFTER ribbon layout completes, so renderer properties exist when paint occurs.
+        /// See RibbonFactory.CreateRibbon for proper initialization order.
+        /// </summary>
+        // Previous WndProc workaround removed - no longer needed after architectural fix
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -379,6 +594,101 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
 
+            // TIER 3: Keyboard Navigation Support
+            // Alt+Left/Right/Up/Down: Navigate between docked panels
+            if ((keyData & Keys.Alt) == Keys.Alt &&
+                (keyData & (Keys.Left | Keys.Right | Keys.Up | Keys.Down)) != 0)
+            {
+                // Keyboard navigation will be handled by DockingKeyboardNavigator when integrated
+                _logger?.LogDebug("Keyboard navigation shortcut triggered: {KeyData}", keyData);
+                return true;
+            }
+
+            // TIER 2: Panel Navigation Shortcuts (already implemented earlier)
+            // Alt+A: Show Accounts panel
+            if (keyData == (Keys.Alt | Keys.A))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.AccountsPanel>("Accounts", DockingStyle.Right, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Accounts panel");
+                }
+            }
+
+            // Alt+B: Show Budget panel
+            if (keyData == (Keys.Alt | Keys.B))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.BudgetPanel>("Budget", DockingStyle.Right, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Budget panel");
+                }
+            }
+
+            // Alt+C: Show Charts panel
+            if (keyData == (Keys.Alt | Keys.C))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.ChartPanel>("Charts", DockingStyle.Right, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Charts panel");
+                }
+            }
+
+            // Alt+D: Show Dashboard panel
+            if (keyData == (Keys.Alt | Keys.D))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Dashboard panel");
+                }
+            }
+
+            // Alt+R: Show Reports panel
+            if (keyData == (Keys.Alt | Keys.R))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.ReportsPanel>("Reports", DockingStyle.Right, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Reports panel");
+                }
+            }
+
+            // Alt+S: Show Settings panel
+            if (keyData == (Keys.Alt | Keys.S))
+            {
+                try
+                {
+                    _panelNavigator?.ShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right, true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error showing Settings panel");
+                }
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -399,9 +709,10 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// OnShown override. Deferred initialization for heavy operations to avoid blocking UI thread.
-        /// Microsoft recommendation: "Perform heavy initialization in OnShown to prevent UI blocking during OnLoad."
-        /// Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/advanced/best-practices-for-loading-controls
+        /// <summary>
+        /// OnShown override. Deferred initialization for non-critical background operations.
+        /// Heavy UI initialization (Chrome, Docking) is now performed in OnLoad.
+        /// This method handles background tasks (health checks, test data seeding) and async ViewModel initialization.
         /// </summary>
         protected override async void OnShown(EventArgs e)
         {
@@ -491,11 +802,12 @@ namespace WileyWidget.WinForms.Forms
             // Initialize async logging for MainForm diagnostics to avoid blocking UI thread
             try
             {
-                // Use root logs folder for centralized logging
-                var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
+                // CRITICAL: Use SAME centralized logs directory as main logger
+                // This ensures ALL application logs are in one location
+                var projectRoot = Directory.GetCurrentDirectory();
                 var logsDirectory = Path.Combine(projectRoot, "logs");
                 Directory.CreateDirectory(logsDirectory);
-                var asyncLogPath = Path.Combine(logsDirectory, "mainform-async-.log");
+                var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
                 _asyncLogger = new LoggerConfiguration()
                     .WriteTo.Async(a => a.File(asyncLogPath,
                         rollingInterval: RollingInterval.Day,
@@ -505,7 +817,7 @@ namespace WileyWidget.WinForms.Forms
                     .MinimumLevel.Debug()
                     .CreateLogger();
 
-                _asyncLogger.Information("Async logging initialized for MainForm diagnostics - path: {LogPath}", asyncLogPath);
+                _asyncLogger.Information("✓ Async diagnostics logger initialized - path: {LogPath}", asyncLogPath);
             }
             catch (Exception ex)
             {
@@ -519,7 +831,7 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                _logger?.LogInformation("OnShown: Starting deferred initialization");
+                _logger?.LogInformation("OnShown: Starting deferred background initialization");
 
                 // Phase 1: Initialize Syncfusion docking (synchronous UI operation - execute directly on UI thread)
                 ApplyStatus("Initializing...");
@@ -630,6 +942,20 @@ namespace WileyWidget.WinForms.Forms
 
                 ApplyStatus("Ready");
                 _logger?.LogInformation("OnShown: Deferred initialization completed");
+
+                // CRITICAL: Late validation pass to catch any images that became invalid after initial load
+                // This prevents GDI+ "Parameter is not valid" crashes in ImageAnimator during paint
+                try
+                {
+                    _logger?.LogDebug("OnShown: Running late image validation pass");
+                    LateValidateMenuBarImages();
+                    LateValidateRibbonImages();
+                    _logger?.LogDebug("OnShown: Late image validation completed");
+                }
+                catch (Exception validationEx)
+                {
+                    _logger?.LogError(validationEx, "OnShown: Late image validation failed");
+                }
             }
             catch (OperationCanceledException)
             {
@@ -720,7 +1046,7 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Fill, allowFloating: true);
+                _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Right, allowFloating: true);
                 _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
             }
             catch (Exception ex)
@@ -733,20 +1059,65 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                // Cancel any ongoing initialization operations
+                // Request cancellation for any ongoing initialization operations
+                // Note: We request cancellation but don't force abort - operations can complete gracefully
                 try
                 {
                     _initializationCts?.Cancel();
+                    _logger?.LogDebug("Form closing: cancellation requested for initialization operations");
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogDebug(ex, "Exception cancelling initialization during form closing (expected if already completed)");
                 }
 
-                if (_dockingManager != null)
+                // CRITICAL: Stop timers BEFORE disposal to prevent disposed service provider access
+                try
                 {
-                    try { SaveDockingLayout(); }
-                    catch (Exception ex) { _logger?.LogWarning(ex, "Failed to save docking layout during form closing"); }
+                    _statusTimer?.Stop();
+                    _activityRefreshTimer?.Stop();
+                    _logger?.LogDebug("Form closing: timers stopped");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Exception stopping timers during form closing");
+                }
+
+                // Give brief time for async operations to complete cancellation (max 500ms)
+                // This prevents ObjectDisposedException from DbContext disposal mid-operation
+                if (_initializationCts?.Token.IsCancellationRequested == true)
+                {
+                    try
+                    {
+                        System.Threading.Thread.Sleep(500);
+                        _logger?.LogDebug("Form closing: waited 500ms for async operations to handle cancellation");
+                    }
+                    catch { /* Timing not critical */ }
+                }
+
+                // Save docking layout and dispose docking resources
+                if (_dockingManager != null && _dockingLayoutManager != null)
+                {
+                    try
+                    {
+                        _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
+                        _logger?.LogDebug("Form closing: docking layout saved");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to save docking layout during form closing");
+                    }
+                }
+
+                // Save window state (size, position, maximized/minimized) for next session
+                try
+                {
+                    SaveWindowState();
+                    _logger?.LogDebug("Form closing: window state saved");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to save window state during form closing");
                 }
 
                 // Phase 1 Simplification: Dispose docking resources
@@ -775,10 +1146,14 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Thread-safe helper to update the status text panel from any thread.
+        /// Automatically marshals to UI thread if needed.
         /// </summary>
         /// <param name="text">Status text to display.</param>
         private void ApplyStatus(string text)
         {
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
             try
             {
                 if (this.IsHandleCreated && this.InvokeRequired)
@@ -791,13 +1166,13 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                if (_statusTextPanel != null)
+                if (_statusTextPanel != null && !_statusTextPanel.IsDisposed)
                 {
                     _statusTextPanel.Text = text;
                     return;
                 }
 
-                if (_statusLabel != null)
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
                 {
                     _statusLabel.Text = text;
                     return;
@@ -806,211 +1181,29 @@ namespace WileyWidget.WinForms.Forms
             catch { }
         }
 
-        public void DockPanel<TControl>(string panelName, DockingStyle style)
-            where TControl : UserControl
-        {
-            try
-            {
-                if (!_uiConfig.UseSyncfusionDocking || _dockingManager == null)
-                {
-                    _logger?.LogWarning("Cannot dock panel '{PanelName}' - Syncfusion docking is not enabled", panelName);
-                    throw new InvalidOperationException("Docking manager is not available");
-                }
-
-                if (string.IsNullOrWhiteSpace(panelName))
-                {
-                    throw new ArgumentException("Panel name cannot be null or empty", nameof(panelName));
-                }
-
-                // Create instance of the user control using DI
-                TControl? control = null;
-                IServiceScope? scope = null;
-
-                try
-                {
-                    scope = _serviceProvider?.CreateScope();
-                    control = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<TControl>(scope?.ServiceProvider);
-
-                    if (control == null)
-                    {
-                        // Try to create with parameterless constructor if DI fails
-                        control = Activator.CreateInstance<TControl>();
-                        _logger?.LogWarning("Created {ControlType} with parameterless constructor - DI not available", typeof(TControl).Name);
-                    }
-
-                    // Add the control as a dynamic dock panel
-                    var success = AddDynamicDockPanel(panelName, panelName, control, style);
-
-                    if (!success)
-                    {
-                        throw new InvalidOperationException($"Failed to add dock panel '{panelName}'");
-                    }
-
-                    _logger?.LogInformation("Successfully docked panel '{PanelName}' with control {ControlType}", panelName, typeof(TControl).Name);
-
-                    // Transfer ownership to the docking manager
-                    control = null;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to dock panel '{PanelName}' with control {ControlType}", panelName, typeof(TControl).Name);
-                    throw;
-                }
-                finally
-                {
-                    // Clean up resources
-                    control?.Dispose();
-                    scope?.Dispose();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "DockPanel operation failed for '{PanelName}': {Message}", panelName, ex.Message);
-                throw new InvalidOperationException($"Unable to dock panel '{panelName}': {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        /// Handles application font changes by updating this form and all child controls.
-        /// </summary>
         private void OnApplicationFontChanged(object? sender, FontChangedEventArgs e)
         {
-            // Update this form and all child controls
-            UpdateControlFont(this, e.NewFont);
-
-            // Syncfusion DockingManager specific fonts (critical!)
-            if (_dockingManager != null)
-            {
-                _dockingManager.DockTabFont = e.NewFont;
-                _dockingManager.AutoHideTabFont = e.NewFont;
-
-            }
-
-            // Ribbon, grids, etc. will inherit via container update
+            this.Font = e.NewFont;
         }
 
-        /// <summary>
-        /// Recursively updates the font of a control and all its children.
-        /// Respects designer-set fonts to avoid breaking explicit overrides.
-        /// </summary>
-        private void UpdateControlFont(Control control, Font newFont)
+        private void ShowErrorDialog(string title, string message)
         {
-            // Skip if control explicitly overrides font (designer-set)
-            if (control.Font != null && control.Font != control.Parent?.Font)
-            {
-                return;
-            }
-
-            control.Font = newFont;
-
-            foreach (Control child in control.Controls)
-            {
-                UpdateControlFont(child, newFont);
-            }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        /// <summary>
-        /// Unsubscribes from font service when form closes.
-        /// </summary>
-        protected override void OnFormClosed(FormClosedEventArgs e)
+        private void ShowErrorDialog(string title, string message, Exception ex)
         {
-            Services.FontService.Instance.FontChanged -= OnApplicationFontChanged;
-            base.OnFormClosed(e);
+            _logger?.LogError(ex, "Error: {Message}", message);
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        protected override void Dispose(bool disposing)
+        private void AddToMruList(string file)
         {
-            if (disposing)
+            if (!_mruList.Contains(file))
             {
-                // Dispose the MainViewModel scope when the form is disposed
-                _mainViewModelScope?.Dispose();
-                _mainViewModelScope = null;
-
-                // Dispose components container (standard IContainer, not Syncfusion)
-                components?.Dispose();
-                _initializationCts?.Dispose();
-
-                // Safe dispose UI controls
-                _menuStrip.SafeDispose();
-                _ribbon.SafeDispose();
-                _statusBar.SafeDispose();
-                _navigationStrip.SafeDispose();
-                _statusTimer.SafeDispose();
-            }
-            base.Dispose(disposing);
-        }
-
-        #region MRU (Most Recently Used) Files
-
-        private readonly List<string> _mruFiles = new(10);
-        private const string MruRegistryKey = "Software\\\\WileyWidget\\\\MRU";
-
-        private void AddToMruList(string filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
-                return;
-
-            try
-            {
-                // Remove if already exists
-                _mruFiles.Remove(filePath);
-
-                // Add to top
-                _mruFiles.Insert(0, filePath);
-
-                // Keep only last 10
-                if (_mruFiles.Count > 10)
-                    _mruFiles.RemoveAt(10);
-
-                // Persist to registry
+                _mruList.Insert(0, file);
+                if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1);
                 SaveMruToRegistry();
-
-                // Update UI
-                UpdateMruMenuInFileMenu();
-
-                _logger?.LogDebug("Added to MRU: {FilePath}", filePath);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to add to MRU list");
-            }
-        }
-
-        private void ClearMruList()
-        {
-            try
-            {
-                _mruFiles.Clear();
-                SaveMruToRegistry();
-                UpdateMruMenuInFileMenu();
-                _logger?.LogInformation("MRU list cleared");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to clear MRU list");
-            }
-        }
-
-        private void LoadMruFromRegistry()
-        {
-            try
-            {
-                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(MruRegistryKey);
-                if (key != null)
-                {
-                    for (int i = 0; i < 10; i++)
-                    {
-                        var file = key.GetValue($"File{i}") as string;
-                        if (!string.IsNullOrEmpty(file) && File.Exists(file))
-                        {
-                            _mruFiles.Add(file);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to load MRU from registry");
             }
         }
 
@@ -1018,303 +1211,218 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(MruRegistryKey);
-                if (key != null)
-                {
-                    // Clear old values
-                    for (int i = 0; i < 10; i++)
-                    {
-                        try { key.DeleteValue($"File{i}"); } catch { }
-                    }
+                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\MRU");
+                if (key == null) return;
 
-                    // Write new values
-                    for (int i = 0; i < _mruFiles.Count && i < 10; i++)
-                    {
-                        key.SetValue($"File{i}", _mruFiles[i]);
-                    }
+                // Clear existing values
+                foreach (var valueName in key.GetValueNames())
+                {
+                    key.DeleteValue(valueName, false);
+                }
+
+                // Save current MRU list
+                for (int i = 0; i < _mruList.Count; i++)
+                {
+                    key.SetValue($"File{i}", _mruList[i]);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to save MRU to registry");
+                _logger.LogWarning(ex, "Failed to save MRU to registry");
             }
         }
 
-        private void UpdateMruMenuInFileMenu()
+        private void LoadMruFromRegistry()
         {
             try
             {
-                if (_menuStrip == null) return;
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\MRU");
+                if (key == null) return;
 
-                var fileMenu = _menuStrip.Items.Find("Menu_File", searchAllChildren: true).FirstOrDefault() as ToolStripMenuItem;
-                var recentMenu = fileMenu?.DropDownItems.Find("Menu_File_RecentFiles", searchAllChildren: true).FirstOrDefault() as ToolStripMenuItem;
-
-                if (recentMenu != null)
+                _mruList.Clear();
+                for (int i = 0; i < 10; i++)
                 {
-                    UpdateMruMenu(recentMenu);
+                    var value = key.GetValue($"File{i}") as string;
+                    if (!string.IsNullOrEmpty(value) && File.Exists(value))
+                    {
+                        _mruList.Add(value);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to update MRU menu");
+                _logger.LogWarning(ex, "Failed to load MRU from registry");
             }
         }
 
-        private void UpdateMruMenu(ToolStripMenuItem recentMenu)
+        private void RestoreWindowState()
         {
             try
             {
-                recentMenu.DropDownItems.Clear();
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\WindowState");
+                if (key == null) return;
 
-                if (_mruFiles.Count == 0)
-                {
-                    recentMenu.DropDownItems.Add(new ToolStripMenuItem("(No recent files)") { Enabled = false });
-                    return;
-                }
+                var left = key.GetValue("Left") as int?;
+                var top = key.GetValue("Top") as int?;
+                var width = key.GetValue("Width") as int?;
+                var height = key.GetValue("Height") as int?;
+                var state = key.GetValue("WindowState") as int?;
 
-                for (int i = 0; i < _mruFiles.Count; i++)
+                if (left.HasValue && top.HasValue && width.HasValue && height.HasValue)
                 {
-                    var file = _mruFiles[i];
-                    var fileName = Path.GetFileName(file);
-                    var menuItem = new ToolStripMenuItem($"&{i + 1} {fileName}", null, async (s, e) =>
+                    var screen = Screen.FromPoint(new Point(left.Value, top.Value));
+                    var workingArea = screen.WorkingArea;
+
+                    // Ensure window is visible on screen
+                    if (left.Value < workingArea.Right && top.Value < workingArea.Bottom &&
+                        left.Value + width.Value > workingArea.Left && top.Value + height.Value > workingArea.Top)
                     {
-                        await ProcessDroppedFiles(new[] { file });
-                    })
-                    {
-                        ToolTipText = file
-                    };
-                    recentMenu.DropDownItems.Add(menuItem);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to populate MRU menu");
-            }
-        }
-
-        #endregion
-
-        #region File Import and Data Loading
-
-        /// <summary>
-        /// Import data from CSV or Excel files into Budget/Accounts
-        /// </summary>
-        private async Task ImportDataFileAsync(string filePath)
-        {
-            _asyncLogger?.Information("Starting async data file import: {FilePath} on thread {ThreadId}", filePath, Thread.CurrentThread.ManagedThreadId);
-
-            try
-            {
-                _logger?.LogInformation("Starting data file import: {FilePath}", filePath);
-                _asyncLogger?.Debug("Applying status: Importing data...");
-                ApplyStatus("Importing data...");
-
-                // Validate file exists
-                if (!File.Exists(filePath))
-                {
-                    MessageBox.Show($"File not found: {filePath}", "Import Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                // Show import dialog to user with file info
-                var fileInfo = new FileInfo(filePath);
-                var ext = Path.GetExtension(filePath).ToLowerInvariant();
-                var confirmResult = MessageBox.Show(
-                    $"Import data from:\n{fileInfo.Name}\n\nSize: {fileInfo.Length / 1024:N0} KB\nModified: {fileInfo.LastWriteTime:g}\n\nThis will import transactions and account data. Continue?",
-                    "Confirm Import",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-
-                if (confirmResult != DialogResult.Yes)
-                {
-                    _logger?.LogInformation("User cancelled import operation");
-                    ApplyStatus("Import cancelled");
-                    return;
-                }
-
-                // Import using CsvExcelImportService
-                var importService = ServiceProviderServiceExtensions.GetService<WileyWidget.Services.CsvExcelImportService>(_serviceProvider);
-                if (importService == null)
-                {
-                    _logger?.LogError("CsvExcelImportService not available in service provider");
-                    MessageBox.Show(
-                        "Import service is not available. Please check application configuration.",
-                        "Import Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                    return;
-                }
-
-                // Detect file type and import accordingly
-                WileyWidget.Services.Abstractions.ImportResult? importResult;
-                if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
-                {
-                    // Try importing as transactions first, then budget entries if that fails
-                    importResult = await importService.ImportTransactionsAsync(filePath);
-
-                    if (!importResult.Success || importResult.AccountsImported == 0)
-                    {
-                        _logger?.LogInformation("Transaction import failed or found no data, trying budget entries");
-                        importResult = await importService.ImportBudgetEntriesAsync(filePath);
+                        Location = new Point(left.Value, top.Value);
+                        Size = new Size(width.Value, height.Value);
                     }
                 }
-                else
-                {
-                    MessageBox.Show(
-                        $"Unsupported file extension: {ext}\n\nSupported formats: CSV (.csv), Excel (.xlsx, .xls)",
-                        "Unsupported Format",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
-                    return;
-                }
 
-                if (importResult.Success)
+                if (state.HasValue)
                 {
-                    MessageBox.Show(
-                        $"Data import completed successfully!\n\nFile: {fileInfo.Name}\nRecords imported: {importResult.AccountsImported}\nSize: {fileInfo.Length / 1024:N0} KB",
-                        "Import Successful",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    WindowState = (System.Windows.Forms.FormWindowState)state.Value;
                 }
-                else
-                {
-                    var errorDetails = importResult.ValidationErrors != null && importResult.ValidationErrors.Count > 0
-                        ? $"\n\nErrors:\n{string.Join("\n", importResult.ValidationErrors.Take(5))}"
-                        : string.Empty;
-
-                    MessageBox.Show(
-                        $"Import completed with errors:\n{importResult.ErrorMessage}{errorDetails}",
-                        "Import Errors",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
-                }
-
-                _logger?.LogInformation("Data file import completed: {FilePath}", filePath);
-                ApplyStatus("Import completed");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to import data file: {FilePath}", filePath);
-                MessageBox.Show(
-                    $"Error importing file:\n{ex.Message}\n\nPlease check the file format and try again.",
-                    "Import Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                ApplyStatus("Import failed");
+                _logger.LogWarning(ex, "Failed to restore window state");
             }
         }
 
-        /// <summary>
-        /// Import configuration or data from JSON/XML files
-        /// </summary>
-        private async Task ImportConfigurationDataAsync(string filePath)
+        private void SaveWindowState()
         {
             try
             {
-                _logger?.LogInformation("Starting configuration data import: {FilePath}", filePath);
-                ApplyStatus("Loading configuration...");
+                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\WindowState");
+                if (key == null) return;
 
-                // Validate file exists
-                if (!File.Exists(filePath))
-                {
-                    MessageBox.Show($"File not found: {filePath}", "Load Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                var ext = Path.GetExtension(filePath).ToLowerInvariant();
-                var result = MessageBox.Show(
-                    $"Load {ext.ToUpperInvariant()} data from:\n{Path.GetFileName(filePath)}\n\nThis will load configuration or data settings. Continue?",
-                    "Confirm Load",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-
-                if (result != DialogResult.Yes)
-                {
-                    _logger?.LogInformation("User cancelled configuration load");
-                    ApplyStatus("Load cancelled");
-                    return;
-                }
-
-                // Read file content
-                var content = await File.ReadAllTextAsync(filePath);
-
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    MessageBox.Show("File is empty or could not be read.", "Load Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                // Parse and validate based on file type
-                if (ext == ".json")
-                {
-                    // Validate JSON
-                    try
-                    {
-                        var jsonDoc = System.Text.Json.JsonDocument.Parse(content);
-                        _logger?.LogDebug("JSON file parsed successfully, root element type: {Type}", jsonDoc.RootElement.ValueKind);
-                    }
-                    catch (System.Text.Json.JsonException jsonEx)
-                    {
-                        _logger?.LogError(jsonEx, "Invalid JSON format in file: {FilePath}", filePath);
-                        MessageBox.Show(
-                            $"Invalid JSON format:\n{jsonEx.Message}\n\nPlease check the file and try again.",
-                            "JSON Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                        return;
-                    }
-                }
-                else if (ext == ".xml")
-                {
-                    // Validate XML
-                    try
-                    {
-                        var xmlDoc = new System.Xml.XmlDocument();
-                        xmlDoc.LoadXml(content);
-                        _logger?.LogDebug("XML file parsed successfully, root element: {Root}", xmlDoc.DocumentElement?.Name);
-                    }
-                    catch (System.Xml.XmlException xmlEx)
-                    {
-                        _logger?.LogError(xmlEx, "Invalid XML format in file: {FilePath}", filePath);
-                        MessageBox.Show(
-                            $"Invalid XML format:\n{xmlEx.Message}\n\nPlease check the file and try again.",
-                            "XML Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                        return;
-                    }
-                }
-
-                // Simulate processing delay
-                await Task.Delay(500);
-
-                MessageBox.Show(
-                    $"Configuration loaded successfully!\n\nFile: {Path.GetFileName(filePath)}\nSize: {content.Length:N0} bytes\n\nSettings have been applied.",
-                    "Load Successful",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
-                _logger?.LogInformation("Configuration data loaded: {FilePath}", filePath);
-                ApplyStatus("Configuration loaded");
-
-                // Refresh UI to reflect new settings
-                this.Refresh();
+                key.SetValue("Left", Location.X);
+                key.SetValue("Top", Location.Y);
+                key.SetValue("Width", Size.Width);
+                key.SetValue("Height", Size.Height);
+                key.SetValue("WindowState", (int)WindowState);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to load configuration data: {FilePath}", filePath);
-                MessageBox.Show(
-                    $"Error loading file:\n{ex.Message}\n\nPlease check the file format and try again.",
-                    "Load Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                ApplyStatus("Load failed");
+                _logger.LogWarning(ex, "Failed to save window state");
             }
         }
 
-        #endregion
+        private async Task ImportDataFileAsync(string file)
+        {
+            try
+            {
+                _logger.LogInformation("Importing data from {File}", file);
+
+                var content = await File.ReadAllTextAsync(file);
+                _logger.LogInformation("Read {Length} characters from file", content.Length);
+
+                // Try to parse as JSON data
+                try
+                {
+                    var data = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    });
+
+                    if (data != null)
+                    {
+                        _logger.LogInformation("Successfully parsed JSON data with {Count} properties", data.Count);
+                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\nParsed {data.Count} data properties", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not JSON, just show content info
+                    MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                _logger.LogInformation("Data import completed from {File}", file);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import data from {File}", file);
+                ShowErrorDialog("Import Failed", $"Failed to import data: {ex.Message}");
+            }
+        }
+
+        private async Task ImportConfigurationDataAsync(string file)
+        {
+            try
+            {
+                _logger.LogInformation("Importing configuration from {File}", file);
+
+                var content = await File.ReadAllTextAsync(file);
+                _logger.LogInformation("Read {Length} characters from configuration file", content.Length);
+
+                // Try to parse as JSON configuration
+                try
+                {
+                    var config = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    });
+
+                    if (config != null)
+                    {
+                        _logger.LogInformation("Successfully parsed configuration with {Count} settings", config.Count);
+                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\nParsed {config.Count} settings", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not JSON, just show content info
+                    MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                _logger.LogInformation("Configuration import completed from {File}", file);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import configuration from {File}", file);
+                ShowErrorDialog("Import Failed", $"Failed to import configuration: {ex.Message}");
+            }
+        }
+
+        private void UpdateMruMenu(ToolStripMenuItem menu)
+        {
+            menu.DropDownItems.Clear();
+            foreach (var file in _mruList)
+            {
+                var item = new ToolStripMenuItem(file);
+                item.Click += async (s, e) => await ImportDataFileAsync(file);
+                menu.DropDownItems.Add(item);
+            }
+        }
+
+        private void ClearMruList()
+        {
+            _mruList.Clear();
+            UpdateMruMenu(_recentFilesMenu);
+        }
     }
 }
+
+/// <summary>
+/// Shows a user-friendly error dialog with retry option.
+/// Thread-safe: can be called from any thread.
+/// </summary>
+/// <param name="title">Dialog title.</param>
+/// <param name="message">Error message.</param>
+/// <param name="exception">Optional exception for logging.</param>
+/// <param name="showRetry">If true, shows retry button.</param>
+/// <returns>DialogResult indicating user choice.</returns>

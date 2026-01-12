@@ -175,6 +175,7 @@ namespace WileyWidget.Services
             IEnumerable<Type> serviceTypes,
             string categoryName)
         {
+            ArgumentNullException.ThrowIfNull(serviceTypes);
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var result = new DiValidationResult();
 
@@ -188,18 +189,33 @@ namespace WileyWidget.Services
                     _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
                     var service = scope.ServiceProvider.GetService(serviceType);
 
-                    if (service == null)
-                    {
-                        var error = $"{serviceType.Name} is NOT registered in DI";
-                        result.Errors.Add(error);
-                        _logger.LogError("\u2717 {Error}", error);
-                    }
-                    else
-                    {
-                        var success = $"{serviceType.Name} registered successfully";
-                        result.SuccessMessages.Add(success);
-                        _logger.LogInformation("\u2713 {Success}", success);
-                    }
+                        if (service == null)
+                        {
+                            var error = $"{serviceType.Name} is NOT registered in DI";
+                            result.Errors.Add(error);
+                            _logger.LogError("\u2717 {Error}", error);
+                        }
+                        else
+                        {
+                            var success = $"{serviceType.Name} registered successfully";
+                            result.SuccessMessages.Add(success);
+                            _logger.LogInformation("\u2713 {Success}", success);
+
+                            // CRITICAL: Dispose transient/scoped instances immediately after validation
+                            // to prevent holding references that interfere with EF Core's provider cache
+                            if (service is IDisposable disposable)
+                            {
+                                try
+                                {
+                                    disposable.Dispose();
+                                }
+                                catch (Exception disposeEx)
+                                {
+                                    _logger.LogDebug(disposeEx, "Non-critical disposal exception for {ServiceType}", serviceType.Name);
+                                }
+                            }
+                        }
+                    } // Scope disposed here, isolating from app's provider
                 }
                 catch (Exception ex)
                 {
@@ -226,27 +242,42 @@ namespace WileyWidget.Services
 
             try
             {
-                // For scoped services, create a temporary scope
-                using var scope = _serviceProvider.CreateScope();
-                var scopedProvider = scope.ServiceProvider;
-
-                // Try GetService first (returns null if not registered)
-                var instance = scopedProvider.GetService(serviceType);
-
-                if (instance != null)
+                // CRITICAL FIX: Create isolated scope for validation
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    return true;
-                }
+                    var isolatedProvider = scope.ServiceProvider;
 
-                // Service returned null - not registered
-                error = new DiValidationError
-                {
-                    ServiceType = serviceType.FullName ?? serviceType.Name,
-                    ErrorMessage = "Service not registered in DI container",
-                    SuggestedFix = GenerateSuggestedFix(serviceType)
-                };
+                    // Try GetService first (returns null if not registered)
+                    var instance = isolatedProvider.GetService(serviceType);
 
-                return false;
+                    if (instance != null)
+                    {
+                        // CRITICAL: Dispose immediately after validation to prevent
+                        // holding references that poison EF Core's ServiceProviderCache
+                        if (instance is IDisposable disposable)
+                        {
+                            try
+                            {
+                                disposable.Dispose();
+                            }
+                            catch
+                            {
+                                // Ignore disposal errors during validation
+                            }
+                        }
+                        return true;
+                    }
+
+                    // Service returned null - not registered
+                    error = new DiValidationError
+                    {
+                        ServiceType = serviceType.FullName ?? serviceType.Name,
+                        ErrorMessage = "Service not registered in DI container",
+                        SuggestedFix = GenerateSuggestedFix(serviceType)
+                    };
+
+                    return false;
+                } // Scope disposed here, fully isolated
             }
             catch (InvalidOperationException ex)
             {
@@ -310,10 +341,10 @@ namespace WileyWidget.Services
                 })
                 .Where(type => type.IsInterface)
                 .Where(type => type.IsPublic)
-                .Where(type => type.Name.StartsWith("I") && type.Name.Length > 1 && char.IsUpper(type.Name[1]))
+                .Where(type => type.Name.StartsWith("I", StringComparison.Ordinal) && type.Name.Length > 1 && char.IsUpper(type.Name[1]))
                 .Where(type => !IsExcludedInterface(type))
                 .Where(type => !type.IsGenericType || includeGenerics)
-                .Where(type => type.Namespace?.StartsWith("WileyWidget") == true)
+                .Where(type => type.Namespace?.StartsWith("WileyWidget", StringComparison.Ordinal) == true)
                 .Distinct();
         }
 
@@ -338,7 +369,7 @@ namespace WileyWidget.Services
                 "ICommand"
             };
 
-            return excludedPrefixes.Any(prefix => type.Name.StartsWith(prefix));
+            return excludedPrefixes.Any(prefix => type.Name.StartsWith(prefix, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -349,14 +380,14 @@ namespace WileyWidget.Services
             var serviceName = serviceType.Name;
 
             // Try to find implementation by convention (IFooService -> FooService)
-            string implName = serviceName.StartsWith("I") && serviceName.Length > 1
+            string implName = serviceName.StartsWith("I", StringComparison.Ordinal) && serviceName.Length > 1
                 ? serviceName.Substring(1)
                 : $"{serviceName}Impl";
 
             // Determine likely lifetime
-            string lifetime = serviceName.Contains("Repository") || serviceName.Contains("DbContext")
+            string lifetime = serviceName.Contains("Repository", StringComparison.Ordinal) || serviceName.Contains("DbContext", StringComparison.Ordinal)
                 ? "Scoped"
-                : serviceName.Contains("Service") || serviceName.Contains("Client")
+                : serviceName.Contains("Service", StringComparison.Ordinal) || serviceName.Contains("Client", StringComparison.Ordinal)
                     ? "Singleton"
                     : "Transient";
 

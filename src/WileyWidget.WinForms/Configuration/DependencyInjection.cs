@@ -13,9 +13,18 @@ using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Plugins;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
+using System.Net.Http;
+using System.Linq;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;
+using Syncfusion.Blazor;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -55,7 +64,8 @@ namespace WileyWidget.WinForms.Configuration
                     .AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:DefaultConnection"] = "Data Source=:memory:",
-                        ["Logging:LogLevel:Default"] = "Information"
+                        ["Logging:LogLevel:Default"] = "Information",
+                        ["UI:IsUiTestHarness"] = "true"
                     })
                     .Build();
                 services.AddSingleton<IConfiguration>(defaultConfig);
@@ -70,31 +80,76 @@ namespace WileyWidget.WinForms.Configuration
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
+            // Named HttpClient for Grok with resilience
+            services.AddHttpClient("GrokClient")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .AddResilienceHandler("GrokResilience", builder =>
+                {
+                    builder.AddRetry(new HttpRetryStrategyOptions
+                    {
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromMilliseconds(600),
+                        BackoffType = DelayBackoffType.Linear
+                    });
+                    builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                    {
+                        FailureRatio = 0.5,
+                        SamplingDuration = TimeSpan.FromMinutes(1),
+                        MinimumThroughput = 5,
+                        BreakDuration = TimeSpan.FromMinutes(2)
+                    });
+                    builder.AddTimeout(new HttpTimeoutStrategyOptions
+                    {
+                        Timeout = TimeSpan.FromSeconds(15)
+                    });
+                });
+
             // Memory Cache (Singleton)
-            services.AddMemoryCache();
+            // Per Microsoft documentation (https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory):
+            // "Create a cache singleton for caching" - this prevents premature disposal during DI scope cleanup
+            // The framework's AddMemoryCache() was being disposed too early causing ObjectDisposedException in repositories
+            services.AddSingleton<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp =>
+            {
+                var options = new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions
+                {
+                    // SizeLimit = 1024: Prevent unbounded cache growth per Microsoft
+                    // https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory?view=aspnetcore-10.0#use-setsize-size-and-sizelimit-to-limit-cache-size
+                    // Quote: "If SizeLimit isn't set, the cache grows without bound. Apps must be architected to limit cache growth."
+                    // Units are arbitrary; 1024 allows ~200-300 typical entries (1-5 units each per MemoryCacheService.MapOptions)
+                    SizeLimit = 1024
+                };
+                return new Microsoft.Extensions.Caching.Memory.MemoryCache(options);
+            });
+
+            // Blazor WebView Services (Required for BlazorWebView controls)
+            services.AddWindowsFormsBlazorWebView();
+
+            // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
+            // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in Syncfusion.Blazor.SmartComponents
+            // The package exists but the actual components/APIs are not released yet
+            services.AddSyncfusionBlazor();
+
+            // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
+            // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
+            services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
             // For tests, register DbContext with in-memory database
-            if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
             {
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseInMemoryDatabase("TestDb"));
             }
-            if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
             {
-                // Register DbContextOptions as singleton to avoid lifetime conflicts with the factory
-                services.AddSingleton(sp =>
-                {
-                    var builder = new DbContextOptionsBuilder<AppDbContext>();
-                    builder.UseInMemoryDatabase("TestDb");
-                    return builder.Options;
-                });
-
+                // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
                 services.AddDbContextFactory<AppDbContext>((sp, options) =>
-                    options.UseInMemoryDatabase("TestDb"));
+                    options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
             }
 
             // =====================================================================
@@ -105,6 +160,11 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddScoped<IAccountsRepository, AccountsRepository>();
             services.AddScoped<Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
+            // Adapter: map legacy Services.Abstractions.IActivityLogRepository to a WinForms adapter
+            // that delegates to the canonical Business layer implementation. This preserves
+            // compatibility for consumers compiled against the Abstractions package while
+            // keeping the authoritative implementation in the Business project.
+            services.AddScoped<WileyWidget.Services.Abstractions.IActivityLogRepository, ActivityLogRepositoryAdapter>();
             services.AddScoped<IAuditRepository, AuditRepository>();
             services.AddScoped<IBudgetRepository, BudgetRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
@@ -124,8 +184,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ErrorReportingService>();
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
+            // Telemetry startup service for DB health checks
+            services.AddHostedService<TelemetryStartupService>();
+
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
-            services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            if (!services.Any(sd => sd.ServiceType == typeof(IStartupTimelineService)))
+            {
+                services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
+            }
+
+            // Startup orchestration (license, theme, DI validation)
+            services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
 
             // Startup orchestration (license, theme, DI validation)
             services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
@@ -145,6 +214,10 @@ namespace WileyWidget.WinForms.Configuration
             // Dashboard Service (Transient - short-lived data aggregation)
             services.AddTransient<IDashboardService, DashboardService>();
 
+            // Data Prefetch Service (Transient - runs once after startup)
+            // NOTE: Must not be registered as Singleton because it depends on IDashboardService (transient/scoped)
+            services.AddTransient<WileyWidget.Abstractions.IAsyncInitializable, DataPrefetchService>();
+
             // Budget Category Service (Scoped - works with DbContext)
             services.AddScoped<IBudgetCategoryService, BudgetCategoryService>();
 
@@ -153,7 +226,22 @@ namespace WileyWidget.WinForms.Configuration
 
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, XAIService>();
+
+            // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
+            services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
+
             services.AddSingleton<IAILoggingService, AILoggingService>();
+
+            // AI-Powered Search and Analysis Services
+            services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
+            services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
+            services.AddScoped<IConversationRepository, EfConversationRepository>();
+
+            // JARVIS Personality Service (Singleton - stateless personality injection)
+            services.AddSingleton<IJARVISPersonalityService, JARVISPersonalityService>();
+
+            // Telemetry Logging Service (Scoped - writes to database)
+            services.AddScoped<global::WileyWidget.Services.Abstractions.ITelemetryLogService, TelemetryLogService>();
 
             // Audit Service (Singleton - writes to repository through scopes)
             services.AddSingleton<IAuditService, AuditService>();
@@ -186,6 +274,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
             services.AddScoped<IGrokRecommendationService, Business.Services.GrokRecommendationService>();
 
+            // What-If Scenario Engine (Scoped - generates comprehensive financial scenarios)
+            services.AddScoped<IWhatIfScenarioEngine, WhatIfScenarioEngine>();
+
+            // =====================================================================
+            // SEMANTIC KERNEL PLUGINS (Scoped - Injected into Kernel via KernelPluginRegistrar)
+            // =====================================================================
+
+            // Rate Scenario Tools (Scoped - provides rate analysis and what-if scenario functions to Grok kernel)
+            // Depends on IWhatIfScenarioEngine and IChargeCalculatorService (both registered above)
+            services.AddScoped<RateScenarioTools>();
+
             // =====================================================================
             // UI SERVICES & THEME (Singleton - Application-wide state)
             // =====================================================================
@@ -203,26 +302,77 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
 
+            // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
+            services.AddSingleton<IChatBridgeService, ChatBridgeService>();
+
+            // Grok AI agent service (Singleton - reused across chat sessions)
+            // Register a lightweight GrokAgentService for tests and DI validation. Heavy initialization is deferred to InitializeAsync().
+            if (!services.Any(sd => sd.ServiceType == typeof(GrokAgentService)))
+            {
+                services.AddSingleton<GrokAgentService>(sp => Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
+            }
+
+            // Proactive Insights Background Service (Hosted Service - runs continuously)
+            // Analyzes enterprise data using Grok and publishes insights to observable collection
+            services.AddSingleton<ProactiveInsightsService>();
+            services.AddHostedService<ProactiveInsightsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<ProactiveInsightsService>(sp));
+
             // =====================================================================
-            // VIEWMODELS (Transient - New instance per form/view)
-            // Per Microsoft: ViewModels are typically Transient as they represent
-            // view-specific state and shouldn't be shared
+            // TIER 3+ ADVANCED UI SERVICES (Enterprise Features)
             // =====================================================================
 
-            services.AddTransient<ChartViewModel>();
-            services.AddTransient<SettingsViewModel>();
-            services.AddTransient<AccountsViewModel>();
-            services.AddTransient<DashboardViewModel>();
-            services.AddTransient<AnalyticsViewModel>();
-            services.AddTransient<BudgetOverviewViewModel>();
-            services.AddTransient<BudgetViewModel>();
-            services.AddTransient<CustomersViewModel>();
-            services.AddTransient<MainViewModel>();
-            services.AddTransient<ReportsViewModel>();
-            services.AddTransient<DepartmentSummaryViewModel>();
-            services.AddTransient<RevenueTrendsViewModel>();
-            services.AddTransient<AuditLogViewModel>();
-            services.AddTransient<RecommendedMonthlyChargeViewModel>();
+            // Real-time Dashboard Service (Singleton - manages live data updates)
+            services.AddSingleton<RealtimeDashboardService>();
+
+            // User Preferences Service (Singleton - manages user settings persistence)
+            services.AddSingleton<UserPreferencesService>();
+
+            // Role-Based Access Control (Singleton - manages permissions and roles)
+            services.AddSingleton<RoleBasedAccessControl>();
+
+            // Enterprise Audit Logger (Scoped - logs all user actions for compliance)
+            services.AddScoped<EnterpriseAuditLogger>();
+
+            // Advanced Search Service (Singleton - cross-grid search capability)
+            services.AddSingleton<AdvancedSearchService>();
+
+            // FloatingPanelManager and DockingKeyboardNavigator are UI-scoped helpers that depend
+            // on runtime UI objects (MainForm, Syncfusion DockingManager). Registering them at
+            // the root DI container causes ValidateOnBuild to attempt resolution of framework
+            // UI types and fail during host build. Instantiate these classes at runtime after
+            // the MainForm and DockingManager are created (for example, in MainForm.OnShown
+            // or PanelNavigationService). Do NOT register them here to avoid build-time DI validation.
+
+            // =====================================================================
+            // VIEWMODELS (Scoped - One instance per panel scope)
+            // ScopedPanelBase<T> requires ViewModels to be scoped for proper lifecycle management
+            // =====================================================================
+
+            services.AddScoped<ChartViewModel>();
+            services.AddScoped<SettingsViewModel>();
+            services.AddScoped<UtilityBillViewModel>();
+            services.AddScoped<AccountsViewModel>();
+            services.AddScoped<DashboardViewModel>();
+            services.AddScoped<AnalyticsViewModel>();
+            services.AddScoped<BudgetOverviewViewModel>();
+            services.AddScoped<BudgetViewModel>();
+            services.AddScoped<CustomersViewModel>();
+            services.AddScoped<MainViewModel>();
+            services.AddScoped<ReportsViewModel>();
+            services.AddScoped<DepartmentSummaryViewModel>();
+            services.AddScoped<RevenueTrendsViewModel>();
+            services.AddScoped<AuditLogViewModel>();
+            services.AddScoped<RecommendedMonthlyChargeViewModel>();
+            services.AddScoped<QuickBooksViewModel>();
+            services.AddScoped<ChatPanelViewModel>();
+            services.AddScoped<InsightFeedViewModel>();
+
+            // =====================================================================
+            // CONTROLS / PANELS (Scoped - One instance per panel scope)
+            // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
+            // =====================================================================
+
+            services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
@@ -230,8 +380,8 @@ namespace WileyWidget.WinForms.Configuration
             // Child Forms: Transient because they're created/disposed multiple times
             // =====================================================================
 
-            // Main Form (Singleton - Application's primary window)
-            services.AddSingleton<MainForm>();
+            // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
+            services.AddScoped<MainForm>();
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()
@@ -248,4 +398,5 @@ namespace WileyWidget.WinForms.Configuration
             // - AIChatControl: Requires IAIAssistantService implementation (not yet available)
         }
     }
+
 }

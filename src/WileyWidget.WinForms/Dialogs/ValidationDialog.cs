@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.ListView;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,9 +18,9 @@ namespace WileyWidget.WinForms.Dialogs
     {
         private System.Windows.Forms.Timer? _copyTimer;
         private readonly ILogger<ValidationDialog>? _logger;
-        private ListBox? _errorListBox;
-        private Button? _okButton;
-        private Button? _copyButton;
+        private SfListView? _errorListBox;
+        private SfButton? _okButton;
+        private SfButton? _copyButton;
         private Label? _headerLabel;
         private PictureBox? _iconPictureBox;
 
@@ -108,21 +109,14 @@ namespace WileyWidget.WinForms.Dialogs
             mainPanel.Controls.Add(_headerLabel, 1, 0);
 
             // Error list box (spans both columns)
-            _errorListBox = new ListBox
+            _errorListBox = new SfListView
             {
                 Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.FromArgb(40, Color.Red),  // Light red tint for error list
                 Font = new Font("Segoe UI", 9F),
-                SelectionMode = SelectionMode.MultiExtended,
-                IntegralHeight = false,
                 Margin = new Padding(0, 5, 0, 10)
             };
 
-            foreach (var error in errors)
-            {
-                _errorListBox.Items.Add($"- {error}");
-            }
+            _errorListBox.DataSource = errors.Select(e => $"- {e}").ToList();
 
             mainPanel.SetColumnSpan(_errorListBox, 2);
             mainPanel.Controls.Add(_errorListBox, 0, 1);
@@ -137,12 +131,11 @@ namespace WileyWidget.WinForms.Dialogs
             };
 
             // OK button
-            _okButton = new Button
+            _okButton = new SfButton
             {
                 Text = "OK",
                 Size = new Size(90, 32),
                 DialogResult = DialogResult.OK,
-                UseVisualStyleBackColor = true,
                 Font = new Font("Segoe UI", 9F),
                 Margin = new Padding(0, 0, 0, 0)
             };
@@ -150,11 +143,10 @@ namespace WileyWidget.WinForms.Dialogs
             buttonPanel.Controls.Add(_okButton);
 
             // Copy button
-            _copyButton = new Button
+            _copyButton = new SfButton
             {
                 Text = "Copy All",
                 Size = new Size(90, 32),
-                UseVisualStyleBackColor = true,
                 Font = new Font("Segoe UI", 9F),
                 Margin = new Padding(0, 0, 8, 0)
             };
@@ -168,21 +160,23 @@ namespace WileyWidget.WinForms.Dialogs
 
             // Set accept button
             AcceptButton = _okButton;
+
+            // Apply theme (cascades to all children)
+            ThemeColors.ApplyTheme(this);
         }
 
         private void CopyButton_Click(object? sender, EventArgs e)
         {
             try
             {
-                if (_errorListBox?.Items != null && _errorListBox.Items.Count > 0)
+                if (_errorListBox?.DataSource is List<string> items && items.Count > 0)
                 {
-                    var errorText = string.Join(Environment.NewLine,
-                        _errorListBox.Items.Cast<string>());
+                    var errorText = string.Join(Environment.NewLine, items);
 
                     Clipboard.SetText(errorText);
 
                     _logger?.LogDebug("Validation errors copied to clipboard ({Count} errors)",
-                        _errorListBox.Items.Count);
+                        items.Count);
 
                     // Visual feedback
                     if (_copyButton != null)

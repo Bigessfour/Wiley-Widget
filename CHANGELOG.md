@@ -26,7 +26,6 @@ All notable changes to this project will be documented in this file.
 
 - **Migration Plan**: See `docs/syncfusion-winforms-migration.md` for WinForms implementation roadmap
 
-
 **Tag:** `v1.0-winforms-relaunch`
 
 ---
@@ -108,7 +107,9 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.3.0] - 2025-11-08
+
 ### Added
+
 - AI manifest schema (`schemas/ai-manifest-schema.json`) with validation guidance
 - `.ai-manifest-config.json.example` for customizable manifest generation
 - Reference guide `docs/reference/AI_FETCHABLE_MANIFEST_ENHANCEMENTS.md`
@@ -144,6 +145,7 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [0.2.0] - 2025-10-28
+
 ### Major Architecture Cleanup & Standardization
 
 #### Removed

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -179,6 +180,8 @@ public class StartupTimelineReport
 
     /// <summary>
     /// Detects dependency violations (phase started before dependency completed).
+    /// Only reports violations where the dependency phase was actually tracked.
+    /// If dependency phase was never recorded, it's assumed to have happened before timeline tracking started.
     /// </summary>
     public List<string> GetDependencyViolations()
     {
@@ -189,16 +192,26 @@ public class StartupTimelineReport
         {
             if (!string.IsNullOrEmpty(evt.DependsOn))
             {
-                var dependency = Events.FirstOrDefault(e =>
+                // Check if dependency was ever started
+                var dependencyEverStarted = Events.Any(e =>
                     e.Type == "Phase" &&
-                    e.Name == evt.DependsOn &&
-                    e.EndTime.HasValue &&
-                    e.EndTime.Value <= evt.StartTime);
+                    e.Name == evt.DependsOn);
 
-                if (dependency == null)
+                if (dependencyEverStarted)
                 {
-                    violations.Add($"Phase '{evt.Name}' started without dependency '{evt.DependsOn}' completing first");
+                    // Dependency was tracked - verify it completed before this phase started
+                    var dependency = Events.FirstOrDefault(e =>
+                        e.Type == "Phase" &&
+                        e.Name == evt.DependsOn &&
+                        e.EndTime.HasValue &&
+                        e.EndTime.Value <= evt.StartTime);
+
+                    if (dependency == null)
+                    {
+                        violations.Add($"Phase '{evt.Name}' started without dependency '{evt.DependsOn}' completing first");
+                    }
                 }
+                // If dependency was never tracked, assume it happened before timeline tracking started (not a violation)
             }
 
             if (evt.EndTime.HasValue)
@@ -259,22 +272,22 @@ public class StartupTimelineReport
         sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
         sb.AppendLine("║         STARTUP TIMELINE ANALYSIS REPORT (Syncfusion)          ║");
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
-        sb.AppendLine($"║ Start Time:      {StartTime:HH:mm:ss.fff}                                  ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Start Time:      {StartTime:HH:mm:ss.fff}                                  ║");
         if (EndTime.HasValue)
         {
-            sb.AppendLine($"║ End Time:        {EndTime.Value:HH:mm:ss.fff}                                  ║");
-            sb.AppendLine($"║ Total Duration:  {TotalDuration.TotalMilliseconds,6:F0}ms                                     ║");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"║ End Time:        {EndTime.Value:HH:mm:ss.fff}                                  ║");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total Duration:  {TotalDuration.TotalMilliseconds,6:F0}ms                                     ║");
         }
-        sb.AppendLine($"║ UI Thread ID:    {UiThreadId,4}                                           ║");
-        sb.AppendLine($"║ Total Events:    {Events.Count,4}                                           ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ UI Thread ID:    {UiThreadId,4}                                           ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total Events:    {Events.Count,4}                                           ║");
 
         // Summary stats
         var (longestMs, longestName, totalBlocked, freezes) = GetSummaryStats();
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
         sb.AppendLine("║ SUMMARY STATISTICS:                                            ║");
-        sb.AppendLine($"║ Longest UI Phase: {TruncateString(longestName, 30),-30} {longestMs,6:F0}ms ║");
-        sb.AppendLine($"║ Total UI Blocked: {totalBlocked,6:F0}ms                                     ║");
-        sb.AppendLine($"║ Potential Freezes (>500ms): {freezes,2}                                   ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Longest UI Phase: {TruncateString(longestName, 30),-30} {longestMs,6:F0}ms ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Total UI Blocked: {totalBlocked,6:F0}ms                                     ║");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"║ Potential Freezes (>500ms): {freezes,2}                                   ║");
 
         sb.AppendLine("╠════════════════════════════════════════════════════════════════╣");
         sb.AppendLine("║ TIMELINE (chronological, 🔒=UI-critical, ⚡=async):             ║");
@@ -294,11 +307,11 @@ public class StartupTimelineReport
             string line;
             if (evt.Type == "Phase")
             {
-                line = $"║ [{offset,6:F0}ms] {asyncMarker}{criticalMarker}[{threadMarker,3}] ▶ {TruncateString(evt.Name, 26),-26} {duration,6:F0}ms ║";
+                line = string.Format(CultureInfo.InvariantCulture, "║ [{0,6:F0}ms] {1}{2}[{3,3}] ▶ {4,-26} {5,6:F0}ms ║", offset, asyncMarker, criticalMarker, threadMarker, TruncateString(evt.Name, 26), duration);
             }
             else // Operation - indent under phase
             {
-                line = $"║ [{offset,6:F0}ms] {asyncMarker}{criticalMarker}[{threadMarker,3}]   → {TruncateString(evt.Name, 24),-24} {duration,6:F0}ms ║";
+                line = string.Format(CultureInfo.InvariantCulture, "║ [{0,6:F0}ms] {1}{2}[{3,3}]   → {4,-24} {5,6:F0}ms ║", offset, asyncMarker, criticalMarker, threadMarker, TruncateString(evt.Name, 24), duration);
             }
 
             sb.AppendLine(line.Length > 68 ? line.Substring(0, 68) + "║" : line);
@@ -316,7 +329,7 @@ public class StartupTimelineReport
                 var lines = WrapText(violation, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ✗ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
                 }
             }
         }
@@ -333,7 +346,7 @@ public class StartupTimelineReport
                 var lines = WrapText(violation, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
                 }
             }
         }
@@ -350,7 +363,7 @@ public class StartupTimelineReport
                 var lines = WrapText(issue, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
                 }
             }
         }
@@ -366,7 +379,7 @@ public class StartupTimelineReport
                 var lines = WrapText(error, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ✗ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ✗ {line,-59} ║");
                 }
             }
         }
@@ -382,7 +395,7 @@ public class StartupTimelineReport
                 var lines = WrapText(warning, 60);
                 foreach (var line in lines)
                 {
-                    sb.AppendLine($"║ ⚠ {line,-59} ║");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"║ ⚠ {line,-59} ║");
                 }
             }
         }
@@ -536,14 +549,26 @@ public class StartupTimelineService : IStartupTimelineService
 
             if (dependency == null)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not completed",
-                    phaseName, config.DependsOn);
+                // Check if dependency was ever started (may have been recorded before timeline tracking enabled)
+                var dependencyEverStarted = _events.Any(e => e.Name == config.DependsOn);
+                if (dependencyEverStarted)
+                {
+                    _logger.LogWarning("[TIMELINE] ⚠ DEPENDENCY WARNING: Phase '{PhaseName}' started but dependency '{Dependency}' not yet completed",
+                        phaseName, config.DependsOn);
+                }
+                else
+                {
+                    // Dependency phase never recorded - likely happened before timeline tracking started (e.g., Theme Initialization before DI container built)
+                    _logger.LogDebug("[TIMELINE] Phase '{PhaseName}' depends on '{Dependency}' which was not tracked (likely pre-timeline initialization)",
+                        phaseName, config.DependsOn);
+                }
             }
         }
     }
 
     public void RecordPhaseEnd(string phaseName)
     {
+        ArgumentNullException.ThrowIfNull(phaseName);
         if (!_isEnabled) return;
 
         if (_activePhases.TryRemove(phaseName, out var evt))

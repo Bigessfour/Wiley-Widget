@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// Comprehensive dashboard view model with real data from repositories
     /// </summary>
 
-    public partial class DashboardViewModel : ObservableObject, IDisposable
+    public partial class DashboardViewModel : ObservableObject, IDashboardViewModel, IDisposable
     {
         private readonly IBudgetRepository? _budgetRepository;
         private readonly IMunicipalAccountRepository? _accountRepository;
@@ -125,11 +125,21 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private string statusText = "Ready";
 
+        [ObservableProperty]
+        private DateTime? lastRefreshTime;
+
         // Legacy property aliases expected by some views
         public decimal TotalBudget => TotalBudgeted;
         public decimal TotalExpenditure => TotalExpenses;
         public decimal RemainingBudget => TotalBudgeted - TotalActual;
         public DateTime LastRefreshed => LastUpdated;
+
+        // Alias for variance status color (semantic indicator)
+        [ObservableProperty]
+        private string varianceStatusColor = "Green";  // Green, Orange, Red
+
+        // Alias properties for DashboardPanel compatibility
+        public ObservableCollection<DepartmentSummary> DepartmentMetrics => DepartmentSummaries;
 
         #endregion
 
@@ -137,6 +147,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         public IAsyncRelayCommand LoadCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
+        public IAsyncRelayCommand RefreshMetricsCommand { get; }
         public IAsyncRelayCommand<int> LoadFiscalYearCommand { get; }
 
         // Legacy alias used by some views
@@ -166,6 +177,7 @@ namespace WileyWidget.WinForms.ViewModels
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
+            RefreshMetricsCommand = new AsyncRelayCommand(RefreshMetricsAsync);
             LoadFiscalYearCommand = new AsyncRelayCommand<int>(LoadFiscalYearDataAsync);
 
             // Initialize with sample data for design-time
@@ -272,16 +284,17 @@ namespace WileyWidget.WinForms.ViewModels
                                 }
                                 else
                                 {
-                                    var now = DateTime.Now;
-                                    currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
-                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                                    var startMonth = _configuration.GetValue<int>("FiscalYearStartMonth", 7);
+                                    var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now, startMonth);
+                                    currentFiscalYear = fyInfo.Year;
+                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear} (Start Month: {StartMonth})", currentFiscalYear, startMonth);
                                 }
                             }
                             else
                             {
-                                var now = DateTime.Now;
-                                currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
-                                _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear}", currentFiscalYear);
+                                var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now);
+                                currentFiscalYear = fyInfo.Year;
+                                _logger.LogInformation("Using default computed fiscal year (July 1): {FiscalYear}", currentFiscalYear);
                             }
                         }
                         catch (Exception ex)
@@ -403,8 +416,12 @@ namespace WileyWidget.WinForms.ViewModels
                     }
                     catch (OperationCanceledException)
                     {
-                        // Re-throw cancellation exceptions
-                        throw;
+                        // Handle cancellation gracefully for dashboard loads (tests expect cancellation to be swallowed)
+                        _logger.LogInformation("Dashboard load cancelled (likely due to concurrent load request)");
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Cancelled");
+                        ErrorMessage = null; // Clear error since this is expected
+                        // Stop retrying and exit method without throwing to callers
+                        break;
                     }
                     catch (ObjectDisposedException odex)
                     {
@@ -434,6 +451,7 @@ namespace WileyWidget.WinForms.ViewModels
                 _loadLock.Release();
             }
         }
+        /// <summary>
         /// Refreshes the dashboard data
         /// </summary>
         private async Task RefreshDashboardDataAsync()
@@ -607,16 +625,69 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Populates monthly revenue data for chart display
+        /// Populates monthly revenue data for chart display using real repository data
         /// </summary>
-        private void PopulateMonthlyRevenueData(int fiscalYear)
+        private async Task PopulateMonthlyRevenueDataAsync(int fiscalYear, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("PopulateMonthlyRevenueData: Starting for FY {FiscalYear}", fiscalYear);
             MonthlyRevenueData.Clear();
 
-            // Generate 12 months of data (July to June for fiscal year)
+            try
+            {
+                if (_budgetRepository == null)
+                {
+                    _logger.LogWarning("PopulateMonthlyRevenueData: Budget repository unavailable - using fallback data");
+                    PopulateMonthlyRevenueDataFallback(fiscalYear);
+                    return;
+                }
+
+                // Query actual monthly revenue data from repository
+                // Revenue accounts typically start with "4" (4000-4999 range)
+                var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1);
+                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear, cancellationToken);
+
+                var monthNames = new[] { "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
+
+                // Group revenue entries by month (July = month 0, June = month 11)
+                for (int i = 0; i < 12; i++)
+                {
+                    var monthStart = fiscalYearStart.AddMonths(i);
+                    var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+                    // Sum actual revenue for this month (account numbers starting with 4)
+                    // Use StartPeriod/EndPeriod for month assignment, not CreatedAt
+                    var monthlyAmount = budgetEntries
+                        .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal))
+                        .Where(be => be.StartPeriod >= monthStart && be.StartPeriod <= monthEnd)
+                        .Sum(be => be.ActualAmount);
+
+                    MonthlyRevenueData.Add(new MonthlyRevenue
+                    {
+                        Month = monthNames[i],
+                        MonthNumber = i + 1,
+                        Amount = monthlyAmount
+                    });
+                }
+
+                _logger.LogInformation("PopulateMonthlyRevenueData: Real data loaded - {Count} months, Total: {Total:C}",
+                    MonthlyRevenueData.Count, MonthlyRevenueData.Sum(m => m.Amount));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "PopulateMonthlyRevenueData: Failed to load real data - using fallback");
+                PopulateMonthlyRevenueDataFallback(fiscalYear);
+            }
+        }
+
+        /// <summary>
+        /// Fallback method using distributed revenue data when repository query fails
+        /// </summary>
+        private void PopulateMonthlyRevenueDataFallback(int fiscalYear)
+        {
             var monthNames = new[] { "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-            var random = new Random(fiscalYear);
+
+            // Distribute total revenue evenly across 12 months (better than random)
+            var monthlyAverage = TotalRevenue > 0 ? TotalRevenue / 12 : 0m;
 
             for (int i = 0; i < 12; i++)
             {
@@ -624,12 +695,11 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     Month = monthNames[i],
                     MonthNumber = i + 1,
-                    // Generate sample data - in production, this would come from actual data
-                    Amount = TotalRevenue > 0 ? TotalRevenue / 12 * (decimal)(0.8 + random.NextDouble() * 0.4) : 0
+                    Amount = monthlyAverage
                 });
             }
 
-            _logger.LogInformation("PopulateMonthlyRevenueData: Chart data populated with {Count} months", MonthlyRevenueData.Count);
+            _logger.LogWarning("PopulateMonthlyRevenueData: Using fallback data - {Count} months", MonthlyRevenueData.Count);
         }
 
         /// <summary>
@@ -658,7 +728,8 @@ namespace WileyWidget.WinForms.ViewModels
             StatusText = "Design Mode - Sample Data";
 
             UpdateMetricsCollection();
-            PopulateMonthlyRevenueData(2026);
+            // Use fallback for design-time (no repository available)
+            PopulateMonthlyRevenueDataFallback(2026);
         }
 
     }

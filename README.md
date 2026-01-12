@@ -2,32 +2,44 @@
 
 ## Current production UI: WinForms + .NET 9
 
-[![.NET Version](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
-[![WinForms](https://img.shields.io/badge/UI-WinForms-blue.svg)](https://docs.microsoft.com/dotnet/desktop/winforms/)
+[![.NET Version](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
+[![WinForms](https://img.shields.io/badge/UI-Windows%20Forms-blue.svg)](https://docs.microsoft.com/dotnet/desktop/winforms/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml)
 
-**Version:** 1.0.0-winforms
-**Last Updated:** November 25, 2025
-**Framework:** .NET 9.0
-**UI Framework:** Windows Forms + Syncfusion WinForms Controls
-**Architecture:** MVVM
+**Version:** 1.1.0-winforms
+**Last Updated:** January 9, 2026
+**Framework:** .NET 10.0
+**UI Framework:** Windows Forms + Syncfusion WinForms Controls v32.1.19
+**Architecture:** N-Tier Layered + MVVM
 
-Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for grids, charts, and reporting.
+Fast, stable, zero markup compilation issues. Uses Syncfusion WinForms controls for grids, charts, and data management.
+
+### Syncfusion WinForms v32.1.19
+
+- **ChartControl**: Classic WinForms charting via `Syncfusion.Chart.Windows`
+- **SfDataGrid**: Advanced data binding and reporting capabilities
+- **DockingManager**: Professional docking panel management
+- **SfSkinManager**: Single-source theming system (Office2019Colorful default)
+- **Ribbon**: Modern toolbar and menu system with full MVVM support
+
+See: [Syncfusion WinForms Documentation](https://help.syncfusion.com/windowsforms/overview) and [v32.1.19 Release Notes](https://www.nuget.org/packages/Syncfusion.Chart.Windows/32.1.19)
 
 ---
 
 ## 📑 Table of Contents
 
 - [Overview](#overview)
-- [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
 - [Configuration & Secrets](#configuration--secrets)
 - [Architecture](#architecture)
+- [Core Features](#core-features)
+- [Technology Stack](#technology-stack)
 - [Development](#development)
 - [Testing](#testing)
-- [CI/CD](#cicd)
+- [QuickBooks Integration](#quickbooks-integration)
+- [Configuration & Secrets](#configuration--secrets)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -36,42 +48,24 @@ Fast, stable, zero XAML toolchain issues. Uses Syncfusion WinForms controls for 
 
 ## Overview
 
-WileyWidget is a modern Windows desktop application built with **WinForms + .NET 9** and Syncfusion WinForms controls, designed for budget management and financial data analysis. The application features a **pure MVVM architecture** with Entity Framework Core integration, using local SQL Server Express for data storage.
-
-### Recent Updates (November 2025)
-
-**� AI Repository Intelligence:**
-
-- `generate_repo_urls.py` now builds dependency graphs, git history, security insights, and architecture summaries
-- Added JSON Schema validation (`schemas/ai-manifest-schema.json`) with sample config `.ai-manifest-config.json.example`
-- Published `docs/reference/AI_FETCHABLE_MANIFEST_ENHANCEMENTS.md` detailing the workflow and customization knobs
-
-**🔐 Platform & Security Upgrades:**
-
-- Upgraded Syncfusion suite to 31.2.5 and BoldReports WPF to 11.1.18 for latest fixes
-- Raised Microsoft.Extensions.Http.Resilience to 9.10.0 and Serilog.Sinks.File to 7.0.0
-- Adopted OpenTelemetry 1.13.x packages for runtime, hosting, and HTTP instrumentation parity
-- Bumped FluentValidation to 12.1.0 and QuickBooks SDK to 14.7.0.2
-
-**� Documentation Refresh:**
-
-- README now covers AI manifest usage and November release changes
-- Added manifest enhancement reference guide and linked schema/config assets
-- Clarified package upgrade impact and follow-up validation needs
+WileyWidget is a modern Windows desktop application for municipal budget management and financial analysis. Built with **Windows Forms + .NET 10** and **Syncfusion WinForms v32.1.19**, it features a **clean N-tier layered architecture** with pure MVVM separation, Entity Framework Core integration, and local SQL Server Express data storage.
 
 ### Key Capabilities
 
-- **Pure MVVM Architecture**: Complete framework integration with no mixed toolkits
-- **Layered Architecture**: Separate Models, Data, Business, and UI layers for maintainability
-- **Dialog Management**: dialog service for modal dialogs and user interactions
-- **Navigation**: region-based navigation with view injection
-- **Modern UI**: Syncfusion WinForms themes with Windows 11 Fluent Design integration
-- **Secure Secret Management**: DPAPI-encrypted credential storage for API keys and licenses
-- **Comprehensive Testing**: Unit tests, integration tests, and UI tests with >70% coverage
-- **CI/CD Pipeline**: Local CI/CD with Trunk integration (90% success rate target)
-- **AI Repository Manifest**: Schema-backed manifest with dependency graphs, git history, and security insights for LLM tooling
+- **Pure Layered Architecture**: Presentation → Business → Data → Domain layers with clear separation of concerns
+- **N-Tier Design**: Models, Data, Business, and UI layers for enterprise-grade maintainability
+- **Syncfusion Integration**: DockingManager panels, SfDataGrid data binding, SfSkinManager theming
+- **MVVM Pattern**: Complete Windows Forms MVVM implementation with command binding and property change notification
+- **Entity Framework Core**: Latest EF Core with SQL Server Express for local data storage
+- **Dialog Management**: Service-based dialog system for modal interactions
+- **Region-Based Navigation**: View composition and dynamic navigation with plugin architecture
+- **Secure Secrets**: DPAPI-encrypted credential storage for API keys and licenses
+- **AI Integration**: Microsoft.Extensions.AI with optional xAI Grok integration
+- **QuickBooks Online**: OAuth2 integration for financial data synchronization
+- **Comprehensive Testing**: Unit, integration, and UI tests with >70% coverage
+- **CI/CD Pipeline**: Automated build, test, and release workflows with Trunk integration
 
-### Project Status
+### Project Status (v1.1.0)
 
 **Current Phase:** Stable Release (v0.2.0)
 **Architecture:** ✅ Standardized on pure patterns
@@ -262,7 +256,7 @@ All Views and ViewModels follow consistent namespace patterns:
 ### Prerequisites
 
 - **Windows 10/11** (64-bit)
-- **.NET 9.0 SDK** (9.0.305 or later)
+- **.NET 10.0 SDK** (10.0.0 or later)
 - **SQL Server Express** (local database)
 - **Syncfusion Community License** (free for individual developers)
 
@@ -275,23 +269,30 @@ All Views and ViewModels follow consistent namespace patterns:
    cd Wiley-Widget
    ```
 
-2. **Setup Syncfusion License**
+2. **Setup Database**
 
    ```powershell
-   # Set environment variable (recommended)
-   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','YOUR_LICENSE_KEY','User')
-
-   # Or place license.key file beside the executable
+   # Run database initialization script
+   pwsh ./scripts/setup-database.ps1
    ```
 
-3. **Build and Run**
+3. **Setup Syncfusion License** (recommended)
+
+   ```powershell
+   # Set environment variable for Syncfusion license key
+   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','YOUR_LICENSE_KEY','User')
+   # Alternative: Run setup script
+   pwsh ./scripts/setup-license.ps1
+   ```
+
+4. **Build and Run**
 
    ```powershell
    # Restore dependencies and build
-   dotnet build WileyWidget.csproj
+   dotnet build WileyWidget.sln
 
    # Run the application
-   dotnet run --project WileyWidget.csproj
+   dotnet run --project src/WileyWidget/WileyWidget.csproj
    ```
 
 ### First Launch
@@ -299,7 +300,7 @@ All Views and ViewModels follow consistent namespace patterns:
 The application will:
 
 - Initialize the local SQL Server Express database (WileyWidgetDev)
-- Load default themes and settings
+- Load default Office2019Colorful theme via SfSkinManager
 - Display the main dashboard with budget management interface
 
 ---
@@ -899,54 +900,9 @@ This secure secret management system ensures WileyWidget can safely handle enter
 
 ## 🏗️ Architecture
 
-### Why Layered Architecture?
+### N-Tier Layered Design
 
-WileyWidget implements a **modern N-Tier layered architecture** with **framework integration** following Microsoft's official guidance for enterprise .NET applications. This architectural pattern provides several critical benefits:
-
-#### **🎯 Separation of Concerns**
-
-- **Presentation Layer**: Pure UI logic with MVVM pattern
-- **Business Layer**: Domain logic and validation rules
-- **Data Layer**: Database operations and persistence
-- **Domain Layer**: Core business entities and interfaces
-
-#### **🔧 Maintainability & Testability**
-
-- Each layer can be developed, tested, and deployed independently
-- Clear contracts between layers enable parallel development
-- Isolated testing prevents cascading failures
-
-#### **📈 Scalability & Performance**
-
-- Business logic can be reused across multiple presentation layers (WPF, Web API, etc.)
-- Database operations are optimized and cached at the data layer
-- UI remains responsive through proper async/await patterns
-
-#### **🛡️ Security & Reliability**
-
-- Input validation at multiple layers prevents malicious data
-- Database constraints and business rules work together
-- Comprehensive error handling and logging at each layer
-
----
-
-### How We Implemented the Layered System
-
-#### **Migration from Monolithic to Layered Architecture**
-
-Starting from a traditional project structure, we systematically migrated to a layered architecture through three phases:
-
-1. **Phase 1**: Extracted domain models into `WileyWidget.Models`
-2. **Phase 2**: Moved data access logic into `WileyWidget.Data`
-3. **Phase 3**: Created business logic layer in `WileyWidget.Business`
-
-#### **Framework Strategy**
-
-- **Presentation**: .NET 9.0-windows for modern Windows features
-- **Business/Data/Domain**: .NET 8.0 for stability and LTS support
-- **Testing**: .NET 8.0 for compatibility with data/business layers
-
-#### **Dependency Flow**
+WileyWidget follows a **modern N-tier architecture** for enterprise-grade maintainability and scalability:
 
 ```text
 WileyWidget (UI) → WileyWidget.Business → WileyWidget.Data → WileyWidget.Models
@@ -956,9 +912,9 @@ WileyWidget.UiTests                                       WileyWidget.Integratio
 WileyWidget.Tests
 ```
 
----
+### Layer Responsibilities
 
-### Layered Workspace Structure
+#### **Presentation Layer** (Windows Forms + Syncfusion)
 
 ```text
 WileyWidget/
@@ -1005,110 +961,90 @@ WileyWidget/
     └── Scenarios/                       # End-to-end test scenarios
 ```
 
----
+#### **Business Logic Layer** (Application Services)
 
-### Layer Responsibilities & Design Patterns
-
-#### **🏛️ Domain Layer (WileyWidget.Models)**
-
-**Purpose**: Core business entities and domain logic
-**Responsibilities**:
-
-- Entity Framework Core entities with data annotations
-- Domain validation rules and business constraints
-- Value objects (AccountNumber, owned entities)
-- Interfaces for cross-cutting concerns (IAuditable, ISoftDeletable)
-
-**Design Patterns**:
-
-- **Entity Framework Core Code-First**: Database schema from code
-- **Owned Entity Types**: Complex value objects within entities
-- **Table-per-Hierarchy**: Inheritance mapping for related entities
-
-#### **🗄️ Data Access Layer (WileyWidget.Data)**
-
-**Purpose**: Database operations and data persistence
-**Responsibilities**:
-
-- Entity Framework Core DbContext configuration
-- Repository pattern implementations
-- Database migrations and schema management
-- Connection management and transaction handling
-
-**Design Patterns**:
-
-- **Repository Pattern**: Abstract data access behind interfaces
-- **Unit of Work**: Transaction management across repositories
-- **Specification Pattern**: Query composition and filtering
-
-#### **💼 Business Logic Layer (WileyWidget.Business)**
-
-**Purpose**: Application business rules and workflows
-**Responsibilities**:
-
-- Business validation and rule enforcement
-- Application services coordinating multiple operations
+- Business rule enforcement
 - Cross-cutting concerns (logging, caching, security)
-- Integration with external services (QuickBooks, Azure)
+- QuickBooks integration orchestration
+- Financial calculations and analysis
+- Input validation via FluentValidation
 
-**Design Patterns**:
+#### **Data Access Layer** (Entity Framework Core)
 
-- **Service Layer Pattern**: Business operations as services
-- **Strategy Pattern**: Pluggable business rules
-- **Decorator Pattern**: Cross-cutting concerns
+- AppDbContext configuration
+- Repository pattern implementation
+- Database migrations and schema management
+- Query optimization and relationship management
+- Transaction handling
 
-#### **🖥️ Presentation Layer (WileyWidget)**
+#### **Domain Model Layer** (Core Entities)
 
-**Purpose**: User interface and interaction logic with framework
-**Responsibilities**:
+- MunicipalAccount, Budget, Department entities
+- Value objects and domain logic
+- Data annotations for validation
+- Owned entity types for composition
 
-- UI with Syncfusion controls and regions
-- Modular MVVM pattern implementation with ViewModels
-- dialog service for modal interactions
-- Navigation and state management with navigation service
+### Design Patterns Used
 
-**Design Patterns**:
-
-- **MVVM Pattern**: Enhanced MVVM with base classes
-- **Command Pattern**: UI actions and commands with DelegateCommand
-- **Observer Pattern**: Data binding and property change notifications
-- **Module Pattern**: modules for application extensibility
-
----
-
-### Testing Strategy by Layer
-
-**Official Methodology**: Two-Phase Hybrid Approach (Effective: November 8, 2025)
-
-#### **Phase 1: Exploratory Testing with Direct C# MCP** ⚡
-
-**Scope**: Rapid validation and intelligence gathering
-**Tool**: `mcp_csharp-mcp_eval_c_sharp` (AI-driven, inline execution)
-**Duration**: Seconds per test
-
-**Key Features**:
-
-- **Zero Overhead**: No script files - AI executes C# code inline
-- **Instant Feedback**: <1 second execution time
-- **Iterative**: Refine and retest immediately during conversation
-- **Mocking**: Full Moq support for dependencies
-- **Context**: Complete conversation history maintained
-
-**Use For**:
-
-- New ViewModel/Service exploration
-- Edge case validation
-- Async pattern testing
-- JSON serialization verification
-- Pre-xUnit prototyping
-
-**See**: [Direct MCP Testing Guide](docs/reference/DIRECT_MCP_TESTING_GUIDE.md)
+| Pattern                  | Where        | Purpose                        |
+| ------------------------ | ------------ | ------------------------------ |
+| **MVVM**                 | Presentation | Clean separation of UI logic   |
+| **Repository**           | Data         | Abstraction of data access     |
+| **Dependency Injection** | All layers   | Loose coupling and testability |
+| **Service Locator**      | Business     | Centralized service management |
+| **Strategy**             | Business     | Pluggable algorithms           |
+| **Command**              | UI           | Encapsulated actions           |
+| **Observer**             | MVVM         | Property change notification   |
 
 ---
 
-#### **Phase 2: Formalized Regression Testing with xUnit** 🛡️
+## Core Features
 
-#### **🧪 Integration Testing (WileyWidget.IntegrationTests)**
+### 📊 Budget Management
+
+- Multi-year budget tracking and allocation
+- Department-wise budget assignments
+- Budget variance analysis and reporting
+- Historical data comparison and trends
+- What-if scenario modeling
+
+### 🎨 Modern User Interface
+
+- **Syncfusion SfDataGrid**: Advanced data binding, sorting, filtering, grouping
+- **Syncfusion DockingManager**: Professional docking panel layout
+- **Office2019Colorful Theme**: Modern Fluent Design integration via SfSkinManager
+- **SfChart**: Interactive financial visualizations
+- **Ribbon Control**: Professional toolbar and menu system
+- **Responsive Layout**: Adapts to window resizing
+
+### 🔗 Enterprise Integration
+
+- **QuickBooks Online**: OAuth2 integration with automatic token refresh
+- **Financial Data Sync**: Real-time budget and transaction synchronization
+- **Secure Authentication**: DPAPI-encrypted credential storage
+- **API Resilience**: Polly retry policies with exponential backoff
+
+### ⚙️ System Features
+
+- **Theme Persistence**: SfSkinManager theme selection saved across sessions
+- **User Settings**: Encrypted settings in `%APPDATA%\WileyWidget\settings.json`
+- **Comprehensive Logging**: Serilog with rolling daily file output
+- **Error Handling**: Global exception handling with user-friendly dialogs
+- **Performance Monitoring**: Startup diagnostics and performance tracking
+
+### 🔐 Security Features
+
+- **DPAPI Encryption**: Windows Data Protection API for secret storage
+- **Machine-Bound Secrets**: Entropy-protected credential vault
+- **SHA-256 Filename Hashing**: Obfuscated secret file names
+- **Auto-Migration**: Environment variables automatically migrated to encrypted storage
+- **Audit Trail**: All secret operations logged securely
+
+---
+
+## 🔌 QuickBooks Integration
+
+WileyWidget integrates with **QuickBooks Online (QBO)** via OAuth2 for secure financial data synchronization with support for both sandbox and production environments.
 
 **Scope**: End-to-end data operations and relationships
 **Tools**: xUnit, TestContainers.MsSql, FluentAssertions, BenchmarkDotNet
@@ -1638,41 +1574,35 @@ private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args
 #### **Verify Build Output**
 
 ```powershell
-# Check that NuGet assemblies are copied to bin folder
-Get-ChildItem -Path ".\bin\Debug\net9.0-windows10.0.19041.0\" -Filter "Core.*.dll"
+# Set OAuth credentials (from Intuit Developer Portal)
+$env:QBO_CLIENT_ID = "your-client-id"
+$env:QBO_CLIENT_SECRET = "your-client-secret"
+$env:QBO_ENVIRONMENT = "sandbox"  # or "production"
 
-# Should see:
-# Core.dll
-# Presentation.dll
-# DryIoc.dll
-# DryIoc.dll
+# Run the application
+dotnet run --project src/WileyWidget/WileyWidget.csproj
 ```
 
-#### **Enable Assembly Load Logging**
+### Features
 
-The AssemblyResolve handler automatically logs to Serilog:
+- **OAuth2 Flow**: Complete authorization code flow with PKCE support
+- **Token Management**: Automatic refresh before expiry (1-hour access tokens)
+- **Data Sync**: Customers, invoices, budgets, and chart of accounts
+- **Error Handling**: Graceful failure with automatic retry and circuit breaking
+- **Webhook Support**: Optional real-time notifications via Cloudflare Tunnel
 
-```csharp
-// Logs appear in application logs
-[INF] Assembly resolved from app directory: Core -> bin\Core.dll
-[WRN] Failed to resolve assembly: UnknownPackage (requested by MyAssembly)
-```
+### Configuration
 
-#### **Common Issues**
+**Required Environment Variables:**
 
-| Issue                              | Cause                            | Solution                                                     |
-| ---------------------------------- | -------------------------------- | ------------------------------------------------------------ |
-| `FileNotFoundException` at runtime | Assembly not in bin folder       | Verify `CopyLocalLockFileAssemblies=true`                    |
-| tmp compilation errors             | Package references not available | Check `IncludePackageReferencesDuringMarkupCompilation=true` |
-| Wrong assembly version loaded      | Multiple versions in probe paths | Use binding redirects in App.config                          |
-| StackOverflowException             | Recursive Assembly.Load() call   | Ensure using `LoadFrom()` not `Load()`                       |
+- `QBO_CLIENT_ID` - OAuth2 client identifier
+- `QBO_CLIENT_SECRET` - OAuth2 client secret (optional for PKCE)
 
-### Performance Considerations
+**Optional Environment Variables:**
 
-- **Caching**: `ConcurrentDictionary` ensures O(1) lookups for previously resolved assemblies
-- **Early Exit**: Whitelist check prevents unnecessary file system probes
-- **Lazy Evaluation**: NuGet cache path computed only once on first use
-- **Impact**: Assembly resolution adds <1ms overhead only when normal probing fails
+- `QBO_REALM_ID` - QuickBooks company (realm) ID
+- `QBO_REDIRECT_URI` - OAuth2 callback URL (auto-configured)
+- `QBO_ENVIRONMENT` - "sandbox" or "production" (default: sandbox)
 
 ### Related Documentation
 
@@ -2149,269 +2079,250 @@ Single-user application scaffold (NET 9) using Syncfusion controls (pinned v30.2
 ### Database Setup
 
 ```powershell
-# Check database status
-pwsh ./scripts/setup-database.ps1 -CheckOnly
+# Skip interactive OAuth prompts during tests
+$env:WW_SKIP_INTERACTIVE = "1"
 
-# Setup database (SQL Server Express)
-pwsh ./scripts/setup-database.ps1
+# Run QuickBooks integration tests
+dotnet test --filter "FullyQualifiedName~QuickBooks"
 ```
 
-### Syncfusion License Setup
+See [QuickBooks Documentation](https://developer.intuit.com/app/developer/qbo/docs/get-started) for detailed setup instructions.
+
+---
+
+## 🔐 Configuration & Secrets
+
+WileyWidget implements **DPAPI-encrypted secret management** using Windows Data Protection API for enterprise-grade credential storage. All sensitive data (API keys, licenses, passwords) are automatically encrypted and machine-bound.
+
+### Secret Vault Architecture
+
+**Storage Location:** `%APPDATA%\WileyWidget\Secrets\`
+
+**Encryption:**
+
+- **Algorithm**: Windows DPAPI with AES-256
+- **Scope**: Machine-bound (cannot be copied to other computers)
+- **Entropy**: 256-bit cryptographic entropy per secret
+- **Hashing**: SHA-256 filename obfuscation
+
+**Secrets Managed:**
+
+- QuickBooks OAuth tokens (access, refresh, realm ID)
+- Syncfusion license key
+- xAI API key and configuration
+- Custom API credentials
+
+### User Interface
+
+**Access via Settings Dialog:**
+
+1. Launch WileyWidget
+2. Open Settings (Ctrl+, or gear icon)
+3. Navigate to Integration tabs:
+   - **QuickBooks**: OAuth credentials and environment
+   - **Syncfusion**: License key status
+   - **AI/xAI**: API key and model selection
+
+### Automatic Migration
+
+On first launch, environment variables are automatically migrated to encrypted storage:
 
 ```powershell
-# Check current license status
-pwsh ./scripts/setup-license.ps1 -CheckOnly
-
-# Interactive license setup
-pwsh ./scripts/setup-license.ps1
-
-# Setup with specific license key
-pwsh ./scripts/setup-license.ps1 -LicenseKey "YOUR_LICENSE_KEY"
-
-# Watch license registration (for debugging)
-pwsh ./scripts/setup-license.ps1 -Watch
-
-# Remove license setup
-pwsh ./scripts/setup-license.ps1 -Remove
+# These are auto-migrated from environment to encrypted vault:
+SYNCFUSION_LICENSE_KEY → Syncfusion-LicenseKey.secret
+QBO_CLIENT_ID → QuickBooks-ClientId.secret
+QBO_CLIENT_SECRET → QuickBooks-ClientSecret.secret
+XAI_API_KEY → XAI-ApiKey.secret
 ```
 
-Minimal enough that future-you won’t hate past-you.
+### Security Guarantees
 
-## Features
+✅ **Zero Plaintext** - Secrets never stored unencrypted
+✅ **Machine-Bound** - Secrets tied to specific computer via DPAPI
+✅ **Tamper Detection** - Integrity checks prevent secret modification
+✅ **Audit Trail** - All operations logged securely
+✅ **Memory Safety** - Sensitive data cleared immediately after use
 
-- Syncfusion DataGrid + Ribbon (add your license key)
-- MVVM
-- NUnit tests + coverage
-- CI & Release GitHub workflows
-- Central versioning (`Directory.Build.targets`)
-- Global exception logging to `%AppData%/WileyWidget/logs`
-- Theme persistence (FluentDark / FluentLight)
-- User settings stored in `%AppData%/WileyWidget/settings.json`
-- About dialog with version info
-- Window size/position + state persistence
-- External license key loader (license.key beside exe)
-- Status bar: total item count, selected widget name & price preview
-- Theme change logging (recorded via Serilog)
+### Development vs Production
 
-## Environment Configuration
-
-WileyWidget uses secure environment variable management for sensitive configuration:
-
-### Environment Variables
+**Development:**
 
 ```powershell
-# Load environment variables from .env file
-.\scripts\load-env.ps1 -Load
-
-# Check current status
-.\scripts\load-env.ps1 -Status
-
-# Test connections
-.\scripts\load-env.ps1 -TestConnections
-
-# Unload environment variables
-.\scripts\load-env.ps1 -Unload
+# Safe to use environment variables during development
+$env:SYNCFUSION_LICENSE_KEY = "community-license-key"
+$env:QBO_CLIENT_ID = "sandbox-client-id"
 ```
 
-### Configuration Hierarchy
+**Production:**
 
-1. **Configuration System** (appsettings.json + environment variables)
-2. **Environment Variables** (loaded from .env file)
-3. **User Secrets** (for development secrets)
-4. **Machine Environment Variables** (fallback)
-
-### Local Database Configuration
-
-The application uses local SQL Server Express for development and production:
-
-- **Server**: .\SQLEXPRESS (local instance)
-- **Database**: WileyWidgetDev
-- **Authentication**: Windows Authentication (Integrated Security)
-
-### Security Notes
-
-- **Database backups** are recommended for production use
-- **Use strong passwords** if switching to SQL Authentication
-- **Regular maintenance** of SQL Server Express instance
-  Pinned packages (NuGet):
-
-```pwsh
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Licensing --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfGrid.WinForms --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.SfSkinManager.WinForms --version 30.2.7
-dotnet add WileyWidget/WileyWidget.csproj package Syncfusion.Tools.WinForms --version 30.2.7
+```powershell
+# NEVER use environment variables in production
+# Always use Settings dialog to store secrets in encrypted vault
+# Backup %APPDATA%\WileyWidget\Secrets\.entropy for disaster recovery
 ```
 
-License placement (choose one):
+See [DPAPI Security Guide](docs/reference/DPAPI_SECURITY_GUIDE.md) for advanced security configuration.
 
-1. Environment variable (recommended): set `SYNCFUSION_LICENSE_KEY` (User scope) then restart shell/app
+---
 
-   ```pwsh
-   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','<your-key>','User')
-   ```
+## Technology Stack
 
-2. Provide a `license.key` file beside the executable (auto‑loaded)
-3. Hard‑code in `App.xaml.cs` register call (NOT recommended for OSS / commits)
+### Framework & Runtime
 
-**WARNING:** Never commit `license.key` or a hard‑coded key – both are ignored/avoidance reinforced via `.gitignore`.
+| Component         | Version | Purpose                               |
+| ----------------- | ------- | ------------------------------------- |
+| **.NET**          | 10.0    | Latest framework with modern features |
+| **EF Core**       | 9.0.8   | Data access and ORM                   |
+| **SQL Server**    | Express | Local database                        |
+| **Windows Forms** | .NET 10 | Desktop UI framework                  |
 
-## License Verification
+### Syncfusion Components (v32.1.19)
 
-Quick ways to confirm your Syncfusion license is actually registering:
+| Component          | Use Case                                 |
+| ------------------ | ---------------------------------------- |
+| **SfDataGrid**     | Advanced data binding and display        |
+| **ChartControl**   | Financial visualizations                 |
+| **DockingManager** | Panel-based UI layout                    |
+| **SfSkinManager**  | Centralized theming (Office2019Colorful) |
+| **Ribbon**         | Modern toolbar and menu                  |
+| **AutoComplete**   | Search and lookup                        |
 
-1. Environment variable present:
+### Infrastructure & Services
 
-   ```pwsh
-   [System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','User')
-   ```
+| Library                     | Version | Purpose                        |
+| --------------------------- | ------- | ------------------------------ |
+| **DryIoc**                  | 9.0.537 | Dependency injection container |
+| **Polly**                   | 8.6.4   | Resilience and retry policies  |
+| **Serilog**                 | 4.3.0   | Structured logging             |
+| **FluentValidation**        | 12.1.0  | Business rule validation       |
+| **Microsoft.Extensions.AI** | Latest  | AI integration framework       |
 
-   Should output a 90+ char key (don’t echo in screen recordings).
+### Testing Frameworks
 
-2. Script watch (streams detection + registration path):
+| Framework            | Version | Purpose                 |
+| -------------------- | ------- | ----------------------- |
+| **xUnit**            | 2.9.2   | Unit testing            |
+| **Moq**              | 4.20.70 | Mocking framework       |
+| **FluentAssertions** | 7.0.0   | Assertion library       |
+| **FlaUI**            | 4.0.0   | UI automation testing   |
+| **TestContainers**   | 4.2.0   | Isolated test databases |
 
-   ```pwsh
-   pwsh ./scripts/show-syncfusion-license.ps1 -Watch
-   ```
+---
 
-   Look for: `Syncfusion license registered from environment variable.`
+## Development
 
-3. Log inspection:
+### Build & Run
 
-   ```pwsh
-   explorer %AppData%/WileyWidget/logs
-   ```
-
-   Open today’s `app-*.log` and verify registration line.
-
-4. File fallback: drop a `license.key` beside the built `WileyWidget.exe` (use `license.sample.key` as format reference).
-
-If none of the above register, ensure the key hasn’t expired and you’re on a supported version (v30.2.4 here).
-
-## Raw File References (machine-consumable)
-
-| Purpose             | Raw URL (replace OWNER/REPO if forked)                                                                   |
-| ------------------- | -------------------------------------------------------------------------------------------------------- |
-| Settings Service    | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/Services/SettingsService.cs> |
-| Main Window         | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/MainWindow.xaml>             |
-| Build Script        | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/scripts/build.ps1>                       |
-| App Entry           | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs>                 |
-| About Dialog        | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/AboutWindow.xaml>            |
-| License Loader Note | <https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/WileyWidget/App.xaml.cs>                 |
-
-## Raw URLs (Machine Readability)
-
-Direct raw links to key project artifacts for automation / ingestion:
-
-- Project file: [WileyWidget.csproj](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/WileyWidget.csproj)
-- Solution file: [WileyWidget.sln](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget.sln)
-- CI workflow: [ci.yml](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/ci.yml)
-- Release workflow: [release.yml](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/.github/workflows/release.yml)
-- Settings service: [SettingsService.cs](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/Services/SettingsService.cs)
-- License sample: [LicenseKey.Private.sample.cs](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/WileyWidget/LicenseKey.Private.sample.cs)
-- Build script: [build.ps1](https://raw.githubusercontent.com/REPO_OWNER/REPO_NAME/main/scripts/build.ps1)
-
-Replace REPO_OWNER/REPO_NAME with the actual GitHub org/repo when published.
-
-## License Key (Inline Option)
-
-If you prefer inline (e.g., private fork) uncomment and set in `App.xaml.cs`:
-
-```csharp
-SyncfusionLicenseProvider.RegisterLicense("YOUR_KEY");
-```
-
-Official docs: <https://help.syncfusion.com/common/essential-studio/licensing/how-to-register-in-an-application>
-
-## Build & Run (Direct)
-
-```pwsh
+```powershell
+# Build entire solution
 dotnet build WileyWidget.sln
-dotnet run --project WileyWidget/WileyWidget.csproj
+
+# Run specific project
+dotnet run --project src/WileyWidget/WileyWidget.csproj
+
+# Build with verbose output
+dotnet build WileyWidget.sln -v diagnostic
+
+# Release build
+dotnet build WileyWidget.sln -c Release
 ```
 
-## Preferred One-Step Build Script
+### Development Scripts
 
-```pwsh
-pwsh ./scripts/build.ps1                               # restore + build + unit tests + coverage
-RUN_UI_TESTS=1 pwsh ./scripts/build.ps1                # include UI smoke tests
-TEST_FILTER='Category=UiSmokeTests' pwsh ./scripts/build.ps1 -Config Debug  # ad-hoc filtered run
-pwsh ./scripts/build.ps1 -Publish                      # publish single-file (framework-dependent)
-pwsh ./scripts/build.ps1 -Publish -SelfContained -Runtime win-x64  # self-contained executable
+```powershell
+# Comprehensive build + test + coverage
+pwsh ./scripts/build.ps1
+
+# Build with UI tests included
+RUN_UI_TESTS=1 pwsh ./scripts/build.ps1
+
+# Publish as self-contained executable
+pwsh ./scripts/build.ps1 -Publish -SelfContained -Runtime win-x64
+
+# Setup database for local development
+pwsh ./scripts/setup-database.ps1
+
+# Setup Syncfusion license
+pwsh ./scripts/setup-license.ps1
 ```
 
-Tip: For always self-contained releases use: `pwsh ./scripts/build.ps1 -Publish -SelfContained -Runtime win-x64`.
+### Code Standards
 
-## Versioning
+**Language & Style:**
 
-Edit `Directory.Build.targets` (Version / FileVersion) or use release workflow (updates automatically).
+- **C#**: Modern C# 13 features (net10.0 target)
+- **Naming**: PascalCase for public, camelCase for private
+- **Comments**: XML docs for public API, rationale comments for complex logic
+- **Formatting**: .editorconfig enforced (4 spaces, 120 char line limit)
 
-## Logging
+**Architecture Patterns:**
 
-Structured logging via Serilog writes rolling daily files at:
-`%AppData%/WileyWidget/logs/app-YYYYMMDD.log`
+- **Dependency Injection**: DryIoc for IoC container
+- **Repository Pattern**: Abstraction for data access
+- **Service Layer**: Business logic encapsulation
+- **MVVM**: Clear presentation layer separation
 
-Included enrichers: ProcessId, ThreadId, MachineName.
+**Security:**
 
-Quick access: `explorer %AppData%\WileyWidget\logs`
+- **No Secrets in Code**: Use environment variables or encrypted vault
+- **Input Validation**: Server-side business validation always
+- **SQL Injection Prevention**: Use parameterized EF Core queries
+- **DPAPI Encryption**: All sensitive data encrypted at rest
 
-- File Header (optional for tiny POCOs) kept minimal – class XML summary suffices.
-- Public classes, methods, and properties: XML doc comments (///) summarizing intent.
-- Private helpers: brief inline // comment only when intent isn't obvious from name.
-- Regions avoided; prefer small, cohesive methods.
-- No redundant comments (e.g., // sets X) – focus on rationale, edge cases, side-effects.
-- When behavior might surprise (fallbacks, error swallowing), call it out explicitly.
+---
 
-Example pattern:
+## 🧪 Testing
 
-```csharp
-/// <summary>Loads persisted user settings or creates defaults on first run.</summary>
-public void Load()
-{
- // Corruption handling: rename bad file and recreate defaults.
-}
-```
+### Testing Architecture
 
-## Settings & Theme Persistence
+WileyWidget implements a **comprehensive multi-layer testing strategy**:
 
-User settings JSON auto-created at `%AppData%/WileyWidget/settings.json`.
-Theme buttons update the stored theme immediately; applied on next launch (applied via planned `SfSkinManager` integration).
+#### **Unit Tests** (`WileyWidget.Tests/`)
 
-Environment override (tests / portable mode):
+- Framework: xUnit 2.9.2 + Moq 4.20.70
+- Coverage: Business logic, ViewModels, Services
+- Execution: <100ms per test
+- Target: 80% line coverage
 
-```pwsh
-$env:WILEYWIDGET_SETTINGS_DIR = "$PWD/.wiley_settings"
-```
+**Key Test Files:**
 
-If set, the service writes `settings.json` under that directory instead of AppData.
+- `MainViewModelTests.cs` - Main application logic
+- `AIAssistViewModelTests.cs` - AI features
+- `EnterpriseRepositoryTests.cs` - Data access
 
-Active theme button is visually indicated (✔) and disabled to prevent redundant clicks.
+#### **Integration Tests** (`WileyWidget.IntegrationTests/`)
 
-Example `settings.json`:
+- Framework: xUnit + TestContainers 4.2.0
+- Coverage: Database operations, EF Core relationships
+- Execution: <30 seconds with isolated SQL Server instances
+- Target: All critical database paths
 
-```json
-{
-  "Theme": "FluentDark",
-  "Window": { "Width": 1280, "Height": 720, "X": 100, "Y": 100, "State": "Normal" },
-  "LastWidgetSelected": "WidgetX"
-}
-```
+**Test Categories:**
 
-## About Dialog
+- Relationship tests (foreign keys, cascades)
+- Performance tests (query optimization)
+- Concurrency tests (multi-user scenarios)
+- Migration tests (schema changes)
 
-Ribbon: Home > Help > About shows version (AssemblyInformationalVersion).
+#### **UI Tests** (`WileyWidget.UiTests/`)
 
-## Release Flow
+- Framework: xUnit + FlaUI 4.0.0
+- Coverage: Form interactions, DataGrid operations, dialogs
+- Execution: 3-8 minutes with automated cleanup
+- Target: Critical user workflows
 
-1. Decide new version (e.g. 0.1.1)
-2. Run GitHub Action: Release (provide version)
-3. Download artifact from GitHub Releases page
-4. Distribute (self-contained zip includes dependencies)
+**Test Types:**
 
-Artifacts follow naming pattern: `WileyWidget-vX.Y.Z-win-x64.zip`
+- Component tests (individual controls)
+- Workflow tests (multi-step scenarios)
+- Accessibility tests (keyboard navigation)
+- Theme tests (UI consistency)
 
-Releases: [GitHub Releases](https://github.com/Bigessfour/Wiley-Widget/releases)
+### Running Tests
 
-## Project Structure
+```powershell
+# Run all tests
+dotnet test WileyWidget.sln
 
 ```text
 WileyWidget/            # App
@@ -2422,218 +2333,77 @@ scripts/                # build.ps1
 CHANGELOG.md / RELEASE_NOTES.md
 ```
 
-## Tests
-
-```pwsh
+# Run with coverage
 dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
-```
 
-Coverage report HTML produced in CI (artifact). Locally you can install ReportGenerator:
+# Run filtered tests
+dotnet test --filter "Category=Unit"
 
-```pwsh
-dotnet tool update --global dotnet-reportgenerator-globaltool
+# Run UI tests only
+RUN_UI_TESTS=1 dotnet test WileyWidget.UiTests/
+
+# Generate coverage report
+dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
 reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:Html
 ```
 
-One-liner (local quick view):
+### Coverage Target
 
-```pwsh
-dotnet test --collect:"XPlat Code Coverage" ; reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:Html ; start CoverageReport/index.html
+**Minimum Coverage:** 70% (enforced in CI/CD)
+**Target Coverage:** 85% for business-critical code
+**Measurement:** Code coverage collected via XPlat Code Coverage
+
+### Continuous Integration
+
+Tests run automatically on:
+
+- Every pull request
+- Main branch merges
+- Release builds
+- Manual CI/CD triggering
+
+See `.github/workflows/` for CI/CD pipeline configuration.
+
+---
+
+## Logging & Diagnostics
+
+### Logging System
+
+**Framework:** Serilog 4.3.0 with structured logging
+
+**Output Locations:**
+
+- **Application Logs**: `%APPDATA%\WileyWidget\logs\app-YYYYMMDD.log`
+- **Startup Logs**: `logs/startup-YYYYMMDD.txt`
+- **Critical Errors**: `logs/critical-startup-failures.log`
+
+**Log Levels:**
+
+- `DEBUG` - Detailed diagnostic information
+- `INFO` - Application lifecycle events
+- `WARNING` - Potential issues
+- `ERROR` - Recoverable errors
+- `FATAL` - Unrecoverable errors
+
+**Structured Data:**
+
+```csharp
+_logger.LogInformation("QuickBooks sync completed",
+    new { SyncedCount = 42, Duration = "5.2s", Status = "Success" });
 ```
 
-### Coverage Threshold (CI)
+### Diagnostic Tools
 
-CI enforces a minimum line coverage (default 70%). Adjust `COVERAGE_MIN` env var in `.github/workflows/ci.yml` as the test suite grows.
-
-## Next (Optional)
-
-- Integrate `SfSkinManager` for live theme switch (doc-backed pattern)
-- UI automation (FlaUI) for DataGrid + Ribbon smoke
-  - Basic smoke test already included: launches app, asserts main window title & UI children
-- Dynamic DataGrid column generation snippet (future):
-
-  ```csharp
-  dataGrid.Columns.Clear();
-  foreach (var prop in source.First().GetType().GetProperties())
-    dataGrid.Columns.Add(new GridTextColumn { MappingName = prop.Name });
-  ```
-
-- Signing + updater
-- Pre-push hook (see scripts/pre-push) to gate pushes
-
-Nullable reference types disabled intentionally for simpler interop & to reduce annotation noise at this early stage (may revisit later).
-
-## UI Tests
-
-Basic FlaUI-based smoke test ensures the app launches, main window title contains "Wiley" and a DataGrid control is present. Category: `UiSmokeTests`.
-
-Run only smoke UI tests:
-
-```pwsh
-dotnet test WileyWidget.sln --filter Category=UiSmokeTests
-```
-
-Or via build script (set optional filter):
-
-```pwsh
-$env:TEST_FILTER='Category=UiSmokeTests'
-pwsh ./scripts/build.ps1 -Config Debug
-```
-
-Enable unit + UI phases (separate runs) without manual filter:
-
-```pwsh
-RUN_UI_TESTS=1 pwsh ./scripts/build.ps1
-```
-
-Notes:
-
-- UI smoke tests optional; set RUN_UI_TESTS to include them, or filter manually.
-- Script performs pre-test process cleanup (kills lingering WileyWidget/testhost) and retries up to 3 times.
-- Automation sets `WILEYWIDGET_AUTOCLOSE_LICENSE=1` to auto-dismiss Syncfusion trial dialog when present.
-
-## Troubleshooting
-
-Diagnostics & common gotchas:
-
-- File locking (MSB3026/MSB3027/MSB3021): build script auto-cleans (kills WileyWidget/testhost/vstest.console); verify no stray processes.
-- MSB4166 (child node exited): binary log captured at `TestResults/msbuild.binlog`. Open with MSBuild Structured Log Viewer. Raw debug files (if any) archived under `TestResults/MSBuildDebug` + zip. A marker file keeps the folder non-empty for CI retention.
-- Capture fresh logs manually:
-
-  ```pwsh
-  $env:MSBUILDDEBUGPATH = "$env:TEMP/MSBuildDebug"
-  pwsh ./scripts/build.ps1
-  # Inspect TestResults/msbuild.binlog or $env:TEMP/MSBuildDebug/ for MSBuild_*.failure.txt
-  ```
-
-- No UI tests discovered: use `--filter Category=UiSmokeTests` or set `RUN_UI_TESTS=1`.
-- Syncfusion license not detected: run `pwsh ./scripts/show-syncfusion-license.ps1 -Watch`; ensure env var or `license.key` file present.
-- Syncfusion trial dialog blocks exit: set `WILEYWIDGET_AUTOCLOSE_LICENSE=1` during automation.
-- Coverage report missing: confirm `coverage.cobertura.xml` under `TestResults/`; install ReportGenerator for HTML view.
-- Coverage threshold fail: adjust `COVERAGE_MIN` env var or pass `-SkipCoverageCheck` for exploratory build.
-
-## Contributing & Workflow (Single-Dev Friendly)
-
-Even as a solo developer, a light process keeps history clean and releases reproducible.
-
-Branching (Simple)
-
-- main: always buildable; reflects latest completed work.
-- feature/short-description: optional for riskier changes; squash merge or fast-forward.
-
-Commit Messages
-
-- Imperative present tense: Add window state persistence
-- Group logically (avoid giant mixed commits). Small cohesive commits aid bisecting.
-
-Release Tags
-
-1. Run tests locally
-2. Update version via Release workflow (or adjust `Directory.Build.targets` manually for pre-release experiments)
-3. Verify artifact zip on the GitHub Release
-4. Tag follows semantic versioning (e.g., v0.1.1)
-
-Hotfix Flow
-
-1. branch: hotfix/issue
-2. fix + test
-3. bump patch version via Release workflow
-4. merge/tag
-
-Code Style & Comments
-
-- Enforced informally via `.editorconfig` (spaces, 4 indent, trim trailing whitespace)
-- XML docs for public surface, rationale comments for non-obvious private logic
-- No redundant narrations (avoid // increment i)
-
-Checklist Before Push
-
-- Build: success
-- Tests: all green
-- README: updated if feature/user-facing change
-- No secrets (ensure `license.key` not committed)
-- Logs, publish artifacts, coverage directories excluded
-
-Future (Optional Enhancements)
-
-- Add pre-push git hook to run build+tests
-- Add code coverage threshold gate in CI
-- Introduce analyzer set (.editorconfig rules) when complexity grows
-
-## QuickBooks Online (Experimental Integration)
-
-### 1. Environment Variables (set once, User scope)
-
-```pwsh
-[Environment]::SetEnvironmentVariable('QBO_CLIENT_ID','<client-id>','User')
-[Environment]::SetEnvironmentVariable('QBO_CLIENT_SECRET','<client-secret>','User')   # optional for public / PKCE-only flow
-[Environment]::SetEnvironmentVariable('QBO_REDIRECT_URI','http://localhost:8080/callback/','User')
-[Environment]::SetEnvironmentVariable('QBO_REALM_ID','<realm-id>','User')             # company (realm) id
-```
-
-Close and reopen your shell (process must inherit the variables). Redirect URI must EXACTLY match what is configured in the Intuit developer portal.
-
-### 2. Manual Test Flow
-
-1. `dotnet run --project WileyWidget/WileyWidget.csproj`
-2. Open the "QuickBooks" tab.
-3. Click "Load Customers" (or "Load Invoices").
-4. If no tokens stored, the interactive OAuth flow (external browser) should occur; complete consent.
-5. After redirect completes and tokens are stored, click the buttons again – data should populate without another consent.
-
-Expected Columns:
-
-- Customers: Name, Email, Phone (auto-generated columns from Intuit `Customer` model)
-- Invoices: Number (DocNumber), Total (TotalAmt), Customer (CustomerRef.name), Due Date (DueDate)
-
-### 3. Token Persistence
-
-Tokens are saved in `%AppData%/WileyWidget/settings.json` under:
-
-```jsonc
-// excerpt
-{
-  "QboAccessToken": "...",
-  "QboRefreshToken": "...",
-  "QboTokenExpiry": "2025-08-12T12:34:56.789Z",
-}
-```
-
-Delete this file to force a fresh OAuth flow:
-
-```pwsh
-Remove-Item "$env:AppData\WileyWidget\settings.json" -ErrorAction SilentlyContinue
-```
-
-Token considered valid if:
-
-- `QboAccessToken` not blank AND
-- `QboTokenExpiry` > `UtcNow + 60s` (early refresh safety window)
-
-### 4. Troubleshooting
-
-| Symptom                            | Likely Cause                                       | Fix                                                                   |
-| ---------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| "QBO_CLIENT_ID not set" exception  | Env var missing in new shell                       | Re-set variable (User scope) and reopen shell                         |
-| No customers/invoices and no error | Empty sandbox company                              | Add sample data in Intuit dashboard                                   |
-| Repeated auth prompt               | Tokens not written (settings file locked or crash) | Check logs, ensure `%AppData%/WileyWidget/settings.json` updates      |
-| Refresh every click                | `QboTokenExpiry` stayed default                    | Confirm refresh succeeded; inspect log for "QBO token refreshed" line |
-| Invoices empty but customers load  | Filter (future) / realm mismatch                   | Verify `QBO_REALM_ID` matches company ID                              |
-| Unhandled invalid refresh token    | Token revoked / expired                            | Delete settings file and re-authorize                                 |
-
-### 5. Logs
-
-Open the latest log file to diagnose:
-
-```pwsh
+```powershell
+# View application logs
 explorer %AppData%\WileyWidget\logs
-```
 
-Look for lines:
+# Watch logs in real-time
+Get-Content %AppData%\WileyWidget\logs\app-*.log -Wait
 
-- `QBO token refreshed (exp ...)`
-- `QBO customers fetch failed` / `QBO invoices fetch failed`
-- `Syncfusion license registered ...`
+# Check Syncfusion license registration
+pwsh ./scripts/show-syncfusion-license.ps1 -Watch
 
 ### 6. Reset / Clean
 
@@ -2742,44 +2512,84 @@ If issues persist, re-set the env var and restart your terminal:
 
 ---
 
-## 📚 Additional Documentation
+## Project Structure
 
-### Cleanup & Architecture Reports
-
-- **[LEGACY_CLEANUP_REPORT.md](LEGACY_CLEANUP_REPORT.md)** - Comprehensive code cleanup report
-  - 28 files deleted (themes, services, backups)
-  - CommunityToolkit.Mvvm removed
-  - Pure architecture established
-
-- **[SCRIPTS_CLEANUP_REPORT.md](SCRIPTS_CLEANUP_REPORT.md)** - Scripts cleanup report
-  - 60+ scripts deleted (71% reduction)
-  - 24 essential scripts remain
-  - Organized by purpose
-
-### Technical Documentation
-
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture overview
-- **[USAGE.md](docs/USAGE.md)** - framework patterns
-- **[TESTING.md](docs/TESTING.md)** - Testing strategy and guides
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-
-### CI/CD & Quality
-
-- **[CI/CD Documentation](docs/cicd-management-guide.md)** - CI/CD pipeline management
-- **[Trunk Integration](docs/cicd-quick-reference.md)** - Trunk CLI integration guide
+```text
+WileyWidget/                           # Solution root
+├── src/
+│   ├── WileyWidget/                   # 🖥️ Presentation Layer (.NET 10.0-windows)
+│   │   ├── Views/                     # Windows Forms + Syncfusion controls
+│   │   ├── ViewModels/                # MVVM ViewModels
+│   │   ├── Dialogs/                   # Service-based dialog system
+│   │   ├── App.xaml.cs                # Bootstrapper (6 partial classes)
+│   │   ├── Program.cs                 # Entry point
+│   │   └── WileyWidget.csproj
+│   ├── WileyWidget.Business/          # 💼 Business Logic Layer (.NET 8.0)
+│   │   ├── Services/                  # Application services
+│   │   ├── Validators/                # FluentValidation rules
+│   │   ├── Interfaces/                # Service contracts
+│   │   └── WileyWidget.Business.csproj
+│   ├── WileyWidget.Data/              # 🗄️ Data Access Layer (.NET 8.0)
+│   │   ├── AppDbContext.cs            # EF Core DbContext
+│   │   ├── Repositories/              # Repository implementations
+│   │   ├── Migrations/                # Schema migrations
+│   │   └── WileyWidget.Data.csproj
+│   └── WileyWidget.Models/            # 📋 Domain Models (.NET 8.0)
+│       ├── MunicipalAccount.cs        # Core entities
+│       ├── Budget.cs
+│       ├── Department.cs
+│       ├── DTOs/                      # Data transfer objects
+│       └── WileyWidget.Models.csproj
+├── tests/
+│   ├── WileyWidget.Tests/             # ✅ Unit tests (xUnit)
+│   ├── WileyWidget.IntegrationTests/  # 🔗 Integration tests
+│   ├── WileyWidget.UiTests/           # 🎭 UI tests (FlaUI)
+│   └── WileyWidget.WinForms.Tests/    # 🖼️ WinForms component tests
+├── scripts/                            # 24 essential automation scripts
+├── docs/                              # 51 technical documentation files
+├── .github/workflows/                 # CI/CD pipelines
+└── WileyWidget.sln                    # Solution file
+```
 
 ---
 
-## 🎯 Recent Achievements (October 2025)
+## 📚 Documentation
 
-✅ **88 legacy files removed** - Cleaner, more maintainable codebase
-✅ **Pure architecture** - No mixed MVVM toolkits
-✅ **Single theme source** - Consistent UI theming
-✅ **71% script reduction** - Essential automation only
-✅ **Updated documentation** - Focused and relevant
-✅ **Standardized patterns** - Easier onboarding
+### Getting Started
 
-**Version 0.2.0 represents a major milestone in code quality and architectural consistency.**
+- [Quick Start Guide](docs/QUICK_START.md)
+- [Installation Guide](docs/INSTALLATION.md)
+- [Database Setup](docs/DATABASE_SETUP.md)
+
+### Architecture & Design
+
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Layered Design Patterns](docs/LAYERED_ARCHITECTURE.md)
+- [MVVM Implementation](docs/MVVM_PATTERNS.md)
+
+### Development & Testing
+
+- [Development Guide](docs/DEVELOPMENT_GUIDE.md)
+- [Testing Strategy](docs/TESTING.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+
+### Integration & Features
+
+- [QuickBooks Integration](docs/QUICKBOOKS_INTEGRATION.md)
+- [Secret Management](docs/SECRET_MANAGEMENT.md)
+- [Syncfusion Components](docs/SYNCFUSION_COMPONENTS.md)
+
+### CI/CD & Deployment
+
+- [Build & Release](docs/BUILD_AND_RELEASE.md)
+- [CI/CD Pipeline](docs/CICD_PIPELINE.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+
+### Advanced Topics
+
+- [Performance Optimization](docs/PERFORMANCE_OPTIMIZATION.md)
+- [Security Best Practices](docs/SECURITY_BEST_PRACTICES.md)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
 
 ---
 

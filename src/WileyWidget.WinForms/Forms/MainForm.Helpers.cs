@@ -17,6 +17,8 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     public partial class MainForm
     {
+        #region Internal Methods for RibbonFactory
+
         /// <summary>
         /// Shows a panel of specified type with the given name.
         /// Delegates to PanelNavigationService for centralized panel management.

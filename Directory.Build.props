@@ -22,4 +22,34 @@
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(UserProfile)' != ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)\.nuget\packages\</NuGetPackageRoot>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'WileyWidget.Analyzers'">
+    <!-- Banned API Analyzer -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" />
+    <!-- Centralize Microsoft.NetAnalyzers across the repo to get a reproducible analyzer set -->
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Banned symbols configuration file (deprecated/removed) -->
+    <!-- <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" /> -->
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Analysis policy -->
+    <!-- Use the latest analysis set by default (explicit for clarity and reproducibility) -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <!-- Enforce IDE code-style rules during command-line builds when configured in EditorConfig -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Keep treating compiler warnings as errors for hygiene, but do not treat analyzer warnings as errors globally.
+         Use explicit EditorConfig entries or targeted escalation for specific analyzer rules. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+
+    <!-- Ensure analyzers run by default both during builds and live analysis -->
+    <RunAnalyzers>true</RunAnalyzers>
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+  </PropertyGroup>
 </Project>

@@ -9,7 +9,7 @@
     <GenerateWinMD>false</GenerateWinMD>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

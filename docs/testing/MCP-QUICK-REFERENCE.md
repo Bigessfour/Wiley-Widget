@@ -15,6 +15,7 @@
 2. **Restart VS Code** to load MCP configuration
 
 3. **Test in Copilot Chat:**
+
    ```
    List available MCP tools for wileywidget-ui-mcp
    ```

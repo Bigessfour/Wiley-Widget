@@ -571,6 +571,8 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
         decimal targetProfitMargin = 15.0m,
         CancellationToken cancellationToken = default)
     {
+        if (departmentExpenses == null)
+            throw new ArgumentNullException(nameof(departmentExpenses));
         try
         {
             _logger.LogInformation("Requesting explanation from Grok API");

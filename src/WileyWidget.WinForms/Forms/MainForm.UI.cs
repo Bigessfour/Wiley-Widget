@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Syncfusion.Drawing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
@@ -25,46 +26,35 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
 #pragma warning disable CS8604 // Possible null reference argument
 
 namespace WileyWidget.WinForms.Forms;
 
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
+/// <summary>
+/// Partial UI implementation for <see cref="MainForm"/> containing UI element initialization
+/// helpers (chrome, ribbons, navigation strip, status bar) and visual theming helpers.
+/// </summary>
 public partial class MainForm
 {
     #region UI Fields
     private DockingManager? _dockingManager;
-    private Panel? _leftDockPanel;
-    private Panel? _rightDockPanel;
-    private Panel? _centralDocumentPanel;
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
-    private System.Windows.Forms.Timer? _activityRefreshTimer;
+    private Panel? _loadingOverlay; // Full-screen loading overlay for async operations
+    private Label? _loadingLabel; // Loading message label
+
     // Phase 1 Simplification: Docking configuration now centralized in UIConfiguration
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
-    // Layout versioning for compatibility detection
-    private const string LayoutVersionAttributeName = "LayoutVersion";
-    private const string CurrentLayoutVersion = "1.0";
-    // Performance thresholds for layout loading diagnostics
+
+#if DEBUG
+    // Diagnostic constants - only compiled in debug builds
     private const int LayoutLoadTimeoutMs = 1000; // Auto-reset if load takes > 1 second
     private const int LayoutLoadWarningMs = 500;  // Log warning if load takes > 500ms
-    // Diagnostic flag to temporarily disable layout loading (set via Shift key on startup)
-    private bool _skipLayoutLoadForDiagnostics = false;
-    // Fonts used by DockingManager - keep references so we can dispose them
-    private Font? _dockAutoHideTabFont;
-    private Font? _dockTabFont;
-    // Debounce timer for auto-save to prevent I/O spam
-    private System.Windows.Forms.Timer? _dockingLayoutSaveTimer;
-    // Flag to prevent concurrent saves
-    private bool _isSavingLayout = false;
-    private readonly object _dockingSaveLock = new();
-    // Track last save time to enforce minimum interval
-    private DateTime _lastSaveTime = DateTime.MinValue;
-    private static readonly TimeSpan MinimumSaveInterval = TimeSpan.FromMilliseconds(2000); // 2 seconds minimum between saves
-    // Dictionary to track dynamically added panels
-    private Dictionary<string, Panel>? _dynamicDockPanels;
+#endif
+
     // Font family constant for UI fonts
     private const string SegoeUiFontName = "Segoe UI";
     #endregion
@@ -82,44 +72,60 @@ public partial class MainForm
             return;
         }
 
+        var chromeStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        _logger?.LogInformation("InitializeChrome start - handleCreated={HandleCreated}", IsHandleCreated);
+        Console.WriteLine($"[DIAGNOSTIC] InitializeChrome: started, handleCreated={IsHandleCreated}");
+
         try
         {
             SuspendLayout();
 
-            // NOTE: Theme is inherited from Program.InitializeTheme() which sets ApplicationVisualTheme globally.
-            // No need to call SetVisualStyle here - it cascades automatically from the global setting.
-            // var configuredTheme = _configuration?.GetValue<string>("UI:Theme", ThemeColors.DefaultTheme) ?? ThemeColors.DefaultTheme;
-            // REMOVED: Redundant theme application - theme already set globally in Program.InitializeTheme()
+            // Enable Per-Monitor V2 DPI Awareness (syncs with app.manifest)
+            AutoScaleMode = AutoScaleMode.Dpi;
 
-            // License validation removed - Program.cs startup already validates Syncfusion license
+            // Theme is inherited from Program.InitializeTheme() which sets ApplicationVisualTheme globally
 
             // Set form properties
             Text = MainFormResources.FormTitle;
             Size = new Size(1400, 900);
             MinimumSize = new Size(1024, 768);
             StartPosition = FormStartPosition.CenterScreen;
-            // REMOVED: BackColor = ThemeColors.Background; - SkinManager owns all color decisions
             Name = "MainForm";
+            Console.WriteLine($"[DIAGNOSTIC] Form properties set: Size={Width}x{Height}, MinSize={MinimumSize.Width}x{MinimumSize.Height}");
 
             // Initialize components container if needed
             components ??= new Container();
+            Console.WriteLine("[DIAGNOSTIC] Components container initialized");
 
             // Initialize Menu Bar (always available)
             InitializeMenuBar();
+            Console.WriteLine("[DIAGNOSTIC] Menu bar initialized");
 
             // Initialize Ribbon
             if (!_uiConfig.IsUiTestHarness)
             {
-                InitializeRibbon();
+                try
+                {
+                    InitializeRibbon();
+                    Console.WriteLine("[DIAGNOSTIC] Ribbon initialized");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to initialize Ribbon");
+                    Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeRibbon failed: {ex.Message}");
+                    _ribbon = null;
+                }
             }
 
             // Initialize Status Bar
             InitializeStatusBar();
+            Console.WriteLine("[DIAGNOSTIC] Status bar initialized");
 
             // Initialize Navigation Strip (alternative to Ribbon for test harness)
             if (_uiConfig.IsUiTestHarness)
             {
                 InitializeNavigationStrip();
+                Console.WriteLine("[DIAGNOSTIC] Navigation strip initialized (UI test harness mode)");
             }
 
             // Start status timer
@@ -301,17 +307,490 @@ public partial class MainForm
             _ribbon.Header.AddMainItem(_homeTab);
 
             Controls.Add(_ribbon);
-            _logger?.LogDebug("Ribbon initialized successfully");
+            _logger?.LogInformation("Ribbon initialized via factory");
+            _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
+            Console.WriteLine($"[DIAGNOSTIC] Ribbon created: Size={_ribbon.Width}x{_ribbon.Height}, HomeTab={_homeTab?.Text}");
+            if (_ribbon != null)
+            {
+                foreach (var tab in _ribbon.Header.MainItems)
+                {
+                    Console.WriteLine($"[DIAGNOSTIC] Ribbon tab: {((ToolStripTabItem)tab).Text}");
+                }
+            }
+
+            // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
+            // Syncfusion WinForms ToolStrip controls do not support animated images
+            if (_ribbon != null)
+            {
+                ValidateAndConvertRibbonImages(_ribbon);
+            }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize Ribbon");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeRibbon failed: {ex.Message}");
             _ribbon = null;
         }
     }
 
     /// <summary>
+    /// Validates all images in the ribbon and converts any animated images to static bitmaps.
+    /// This prevents ImageAnimator exceptions when Syncfusion ToolStrip controls try to paint animated images.
+    /// </summary>
+    private void ValidateAndConvertRibbonImages(RibbonControlAdv ribbon)
+    {
+        try
+        {
+            int convertedCount = 0;
+
+            // Iterate through all ribbon tabs
+            foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+            {
+                if (tab.Panel != null)
+                {
+                    // Iterate through all toolstrips in the tab panel
+                    foreach (Control control in tab.Panel.Controls)
+                    {
+                        if (control is ToolStripEx toolStrip)
+                        {
+                            // Check each item in the toolstrip
+                            foreach (ToolStripItem item in toolStrip.Items)
+                            {
+                                if (item.Image != null)
+                                {
+                                    // Check if image is animated or invalid/disposed
+                                    bool needsConversion = false;
+                                    try
+                                    {
+                                        needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Image is invalid/corrupted - needs conversion/removal
+                                        _logger?.LogWarning(ex, "Image validation failed for ribbon item {ItemName} - treating as invalid", item.Name);
+                                        needsConversion = true;
+                                    }
+
+                                    if (needsConversion)
+                                    {
+                                        // Convert animated/invalid image to static bitmap or remove it
+                                        var staticBitmap = ConvertToStaticBitmap(item.Image);
+                                        if (staticBitmap != null)
+                                        {
+                                            item.Image = staticBitmap;
+                                            convertedCount++;
+                                            _logger?.LogDebug("Converted/validated image for ribbon item: {ItemName}", item.Name);
+                                        }
+                                        else
+                                        {
+                                            // If conversion failed, remove the invalid image
+                                            item.Image = null;
+                                            _logger?.LogWarning("Removed invalid image from ribbon item: {ItemName}", item.Name);
+                                        }
+                                    }
+                                }
+
+                                // Check nested items in ToolStripPanelItem containers
+                                if (item is ToolStripPanelItem panelItem)
+                                {
+                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
+                                    {
+                                        if (panelSubItem.Image != null)
+                                        {
+                                            // Check if image is animated or invalid/disposed
+                                            bool needsConversion = false;
+                                            try
+                                            {
+                                                needsConversion = ImageAnimator.CanAnimate(panelSubItem.Image) || !IsImageValid(panelSubItem.Image);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                // Image is invalid/corrupted - needs conversion/removal
+                                                _logger?.LogWarning(ex, "Image validation failed for panel item {ItemName} - treating as invalid", panelSubItem.Name);
+                                                needsConversion = true;
+                                            }
+
+                                            if (needsConversion)
+                                            {
+                                                var staticBitmap = ConvertToStaticBitmap(panelSubItem.Image);
+                                                if (staticBitmap != null)
+                                                {
+                                                    panelSubItem.Image = staticBitmap;
+                                                    convertedCount++;
+                                                    _logger?.LogDebug("Converted/validated image for panel item: {ItemName}", panelSubItem.Name);
+                                                }
+                                                else
+                                                {
+                                                    // If conversion failed, remove the invalid image
+                                                    panelSubItem.Image = null;
+                                                    _logger?.LogWarning("Removed invalid image from panel item: {ItemName}", panelSubItem.Name);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (convertedCount > 0)
+            {
+                _logger?.LogInformation("Converted {Count} animated images to static bitmaps in ribbon to prevent ImageAnimator exceptions", convertedCount);
+                Console.WriteLine($"[DIAGNOSTIC] Converted {convertedCount} animated images to static bitmaps in ribbon");
+            }
+            else
+            {
+                _logger?.LogDebug("No animated images found in ribbon - all images are static");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to validate and convert ribbon images");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertRibbonImages failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Validates all images in the menu bar and converts any invalid images to prevent ImageAnimator exceptions.
+    /// This prevents ImageAnimator exceptions when ToolStrip controls try to paint invalid images.
+    /// </summary>
+    private void ValidateAndConvertMenuBarImages(MenuStrip menuStrip)
+    {
+        try
+        {
+            int convertedCount = 0;
+
+            // Iterate through all menu items in the menu strip
+            foreach (ToolStripItem menuItem in menuStrip.Items)
+            {
+                if (menuItem is ToolStripMenuItem toolStripMenuItem)
+                {
+                    // Check the main menu item
+                    if (menuItem.Image != null)
+                    {
+                        bool needsConversion = false;
+                        try
+                        {
+                            needsConversion = ImageAnimator.CanAnimate(menuItem.Image) || !IsImageValid(menuItem.Image);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Image is invalid/corrupted - needs conversion/removal
+                            _logger?.LogWarning(ex, "Image validation failed for menu item {ItemName} - treating as invalid", menuItem.Name);
+                            needsConversion = true;
+                        }
+
+                        if (needsConversion)
+                        {
+                            var staticBitmap = ConvertToStaticBitmap(menuItem.Image);
+                            if (staticBitmap != null)
+                            {
+                                menuItem.Image = staticBitmap;
+                                convertedCount++;
+                                _logger?.LogDebug("Converted/validated image for menu item: {ItemName}", menuItem.Name);
+                            }
+                            else
+                            {
+                                // If conversion failed, remove the invalid image
+                                menuItem.Image = null;
+                                _logger?.LogWarning("Removed invalid image from menu item: {ItemName}", menuItem.Name);
+                            }
+                        }
+                    }
+
+                    // Recursively check all dropdown items
+                    ValidateMenuItemImages(toolStripMenuItem.DropDownItems, ref convertedCount);
+                }
+            }
+
+            if (convertedCount > 0)
+            {
+                _logger?.LogInformation("Converted/validated {Count} images in menu bar to prevent ImageAnimator exceptions", convertedCount);
+                Console.WriteLine($"[DIAGNOSTIC] Converted/validated {convertedCount} images in menu bar");
+            }
+            else
+            {
+                _logger?.LogDebug("No invalid images found in menu bar - all images are valid");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to validate and convert menu bar images");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertMenuBarImages failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Recursively validates images in menu item dropdown collections.
+    /// </summary>
+    private void ValidateMenuItemImages(ToolStripItemCollection items, ref int convertedCount)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (item.Image != null)
+            {
+                bool needsConversion = false;
+                try
+                {
+                    needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
+                }
+                catch (Exception ex)
+                {
+                    // Image is invalid/corrupted - needs conversion/removal
+                    _logger?.LogWarning(ex, "Image validation failed for dropdown item {ItemName} - treating as invalid", item.Name);
+                    needsConversion = true;
+                }
+
+                if (needsConversion)
+                {
+                    var staticBitmap = ConvertToStaticBitmap(item.Image);
+                    if (staticBitmap != null)
+                    {
+                        item.Image = staticBitmap;
+                        convertedCount++;
+                        _logger?.LogDebug("Converted/validated image for dropdown item: {ItemName}", item.Name);
+                    }
+                    else
+                    {
+                        // If conversion failed, remove the invalid image
+                        item.Image = null;
+                        _logger?.LogWarning("Removed invalid image from dropdown item: {ItemName}", item.Name);
+                    }
+                }
+            }
+
+            // Recursively check nested dropdown items
+            if (item is ToolStripMenuItem subMenuItem)
+            {
+                ValidateMenuItemImages(subMenuItem.DropDownItems, ref convertedCount);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if an image is valid and not disposed.
+    /// </summary>
+    private static bool IsImageValid(Image image)
+    {
+        if (image == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Try to access image properties to check if it's valid
+            _ = image.Width;
+            _ = image.Height;
+            _ = image.PixelFormat;
+
+            // CRITICAL: Safely check if image can be animated without crashing
+            // This can throw "Parameter is not valid" if image is disposed/corrupted
+            try
+            {
+                _ = ImageAnimator.CanAnimate(image);
+            }
+            catch (ArgumentException)
+            {
+                // Image is corrupted and will crash ImageAnimator
+                return false;
+            }
+
+            return true;
+        }
+        catch
+        {
+            // Image is disposed or corrupted
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Converts an animated image to a static bitmap by drawing the first frame.
+    /// </summary>
+    private static Image? ConvertToStaticBitmap(Image animatedImage)
+    {
+        if (animatedImage == null || !ImageAnimator.CanAnimate(animatedImage))
+        {
+            return animatedImage;
+        }
+
+        try
+        {
+            // Create a new bitmap with the same dimensions
+            var staticBitmap = new Bitmap(animatedImage.Width, animatedImage.Height);
+
+            // Draw the animated image onto the static bitmap (this captures the current/first frame)
+            using (var g = Graphics.FromImage(staticBitmap))
+            {
+                g.DrawImage(animatedImage, 0, 0, animatedImage.Width, animatedImage.Height);
+            }
+
+            return staticBitmap;
+        }
+        catch (Exception ex)
+        {
+            // If conversion fails, dispose the animated image and return null to prevent ImageAnimator exceptions
+            System.Diagnostics.Debug.WriteLine($"Failed to convert animated image to static bitmap: {ex.Message}");
+            try
+            {
+                animatedImage.Dispose();
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Performs a late validation pass on all menu bar images after the form is fully loaded.
+    /// This catches any images that may have been disposed or corrupted after initial validation.
+    /// </summary>
+    private void LateValidateMenuBarImages()
+    {
+        if (_menuStrip == null)
+        {
+            return;
+        }
+
+        try
+        {
+            int invalidCount = 0;
+            int totalChecked = 0;
+
+            foreach (ToolStripItem topLevelItem in _menuStrip.Items)
+            {
+                if (topLevelItem is ToolStripMenuItem topLevelMenu)
+                {
+                    // Check top-level menu item image
+                    if (topLevelMenu.Image != null)
+                    {
+                        totalChecked++;
+                        if (!IsImageValid(topLevelMenu.Image))
+                        {
+                            _logger?.LogWarning("Late validation: Removing invalid image from top-level menu item: {ItemName}", topLevelMenu.Name);
+                            topLevelMenu.Image = null;
+                            invalidCount++;
+                        }
+                    }
+
+                    // Check all sub-menu items
+                    foreach (ToolStripItem subItem in topLevelMenu.DropDownItems)
+                    {
+                        if (subItem.Image != null)
+                        {
+                            totalChecked++;
+                            if (!IsImageValid(subItem.Image))
+                            {
+                                _logger?.LogWarning("Late validation: Removing invalid image from menu item: {ItemName}", subItem.Name);
+                                subItem.Image = null;
+                                invalidCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (invalidCount > 0)
+            {
+                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from menu bar (checked {TotalCount} images)", invalidCount, totalChecked);
+                _menuStrip.Refresh(); // Force repaint with valid images only
+            }
+            else
+            {
+                _logger?.LogDebug("Late validation: All {TotalCount} menu bar images are valid", totalChecked);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Late validation: Failed to validate menu bar images");
+        }
+    }
+
+    /// <summary>
+    /// Performs a late validation pass on all ribbon images after the form is fully loaded.
+    /// This catches any images that may have been disposed or corrupted after initial validation.
+    /// </summary>
+    private void LateValidateRibbonImages()
+    {
+        if (_ribbon == null)
+        {
+            return;
+        }
+
+        try
+        {
+            int invalidCount = 0;
+            int totalChecked = 0;
+
+            foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
+            {
+                if (tab.Panel != null)
+                {
+                    foreach (Control control in tab.Panel.Controls)
+                    {
+                        if (control is ToolStripEx toolStrip)
+                        {
+                            foreach (ToolStripItem item in toolStrip.Items)
+                            {
+                                if (item.Image != null)
+                                {
+                                    totalChecked++;
+                                    if (!IsImageValid(item.Image))
+                                    {
+                                        _logger?.LogWarning("Late validation: Removing invalid image from ribbon item: {ItemName}", item.Name);
+                                        item.Image = null;
+                                        invalidCount++;
+                                    }
+                                }
+
+                                // Check nested items in panels
+                                if (item is ToolStripPanelItem panelItem)
+                                {
+                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
+                                    {
+                                        if (panelSubItem.Image != null)
+                                        {
+                                            totalChecked++;
+                                            if (!IsImageValid(panelSubItem.Image))
+                                            {
+                                                _logger?.LogWarning("Late validation: Removing invalid image from ribbon panel item: {ItemName}", panelSubItem.Name);
+                                                panelSubItem.Image = null;
+                                                invalidCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (invalidCount > 0)
+            {
+                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from ribbon (checked {TotalCount} images)", invalidCount, totalChecked);
+                _ribbon.Refresh(); // Force repaint with valid images only
+            }
+            else
+            {
+                _logger?.LogDebug("Late validation: All {TotalCount} ribbon images are valid", totalChecked);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Late validation: Failed to validate ribbon images");
+        }
+    }
+
+    /// <summary>
     /// Initialize Syncfusion StatusBarAdv for status information.
+    /// Delegates to StatusBarFactory for centralized creation and configuration.
+    /// Wires panel references back to MainForm for status/progress management.
     /// </summary>
     private void InitializeStatusBar()
     {
@@ -375,12 +854,28 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize Status Bar");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeStatusBar failed: {ex.Message}");
             _statusBar = null;
+            return;
         }
+
+        // _statusBar is guaranteed to be non-null here
+        Controls.Add(_statusBar);
+        _logger?.LogInformation("Status bar initialized via factory with {PanelCount} panels", _statusBar.Controls.Count);
+        _logger?.LogDebug("Status bar size after init: {Width}x{Height}, HasSizingGrip={HasGrip}",
+            _statusBar.Width, _statusBar.Height, _statusBar.SizingGrip);
+        Console.WriteLine($"[DIAGNOSTIC] Status bar created: Size={_statusBar.Width}x{_statusBar.Height}, Panels={_statusBar.Controls.Count}");
     }
 
     /// <summary>
     /// Initialize simple navigation strip for test harness mode.
+    /// </summary>
+    /// <summary>
+    /// Initialize the navigation <see cref="ToolStripEx"/> with named <see cref="ToolStripButton"/>
+    /// controls used for quick navigation. Buttons are assigned deterministic <see cref="Control.Name"/>
+    /// and <see cref="Control.AccessibleName"/> values for automation and testing.
+    /// All buttons include AccessibleDescription for screen reader support.
+    /// ToolStripEx automatically handles button sizing and alignment via layout.
     /// </summary>
     private void InitializeNavigationStrip()
     {
@@ -390,49 +885,92 @@ public partial class MainForm
             {
                 Name = "NavigationStrip",
                 Dock = DockStyle.Top,
-                GripStyle = ToolStripGripStyle.Hidden
+                GripStyle = ToolStripGripStyle.Hidden,
+                AccessibleName = "Navigation Strip",
+                AccessibleDescription = "Main navigation toolbar for switching between application panels",
+                AutoSize = true // ToolStripEx handles height automatically
             };
 
-            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard" };
+            var dashboardBtn = new ToolStripButton("Dashboard")
+            {
+                Name = "Nav_Dashboard",
+                AccessibleName = "Dashboard",
+                AccessibleDescription = "Navigate to Dashboard panel with summary metrics and activity",
+                Enabled = false
+            };
             dashboardBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Dashboard clicked");
             };
 
-            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
+            var accountsBtn = new ToolStripButton("Accounts")
+            {
+                Name = "Nav_Accounts",
+                AccessibleName = "Accounts",
+                AccessibleDescription = "Navigate to Municipal Accounts panel with account management",
+                Enabled = false
+            };
             accountsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Accounts clicked");
             };
 
-            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget" };
+            var budgetBtn = new ToolStripButton("Budget")
+            {
+                Name = "Nav_Budget",
+                AccessibleName = "Budget",
+                AccessibleDescription = "Navigate to Budget Overview panel with budget allocation and tracking",
+                Enabled = false
+            };
             budgetBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Budget clicked");
             };
 
-            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
+            var chartsBtn = new ToolStripButton("Charts")
+            {
+                Name = "Nav_Charts",
+                AccessibleName = "Charts",
+                AccessibleDescription = "Navigate to Budget Analytics panel with charts and visualizations",
+                Enabled = false
+            };
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Charts clicked");
             };
 
-            var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Nav_Analytics" };
+            var analyticsBtn = new ToolStripButton("&Analytics")
+            {
+                Name = "Nav_Analytics",
+                AccessibleName = "Analytics",
+                AccessibleDescription = "Navigate to Analytics and Insights panel with advanced analytics"
+            };
             analyticsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Analytics clicked");
             };
 
-            var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Nav_AuditLog" };
+            var auditLogBtn = new ToolStripButton("&Audit Log")
+            {
+                Name = "Nav_AuditLog",
+                AccessibleName = "Audit Log",
+                AccessibleDescription = "Navigate to Audit Log panel with activity history and compliance tracking"
+            };
             auditLogBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_AuditLog clicked");
             };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
@@ -449,25 +987,43 @@ public partial class MainForm
                     _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
             };
 
-            var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
+            var aiChatBtn = new ToolStripButton("AI Chat")
+            {
+                Name = "Nav_AIChat",
+                AccessibleName = "AI Chat",
+                AccessibleDescription = "Navigate to AI Chat panel with intelligent assistant"
+            };
             aiChatBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_AIChat clicked");
             };
 
-            var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
+            var quickBooksBtn = new ToolStripButton("QuickBooks")
+            {
+                Name = "Nav_QuickBooks",
+                AccessibleName = "QuickBooks",
+                AccessibleDescription = "Navigate to QuickBooks Integration panel for accounting operations"
+            };
             quickBooksBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_QuickBooks clicked");
             };
 
-            var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
+            var settingsBtn = new ToolStripButton("Settings")
+            {
+                Name = "Nav_Settings",
+                AccessibleName = "Settings",
+                AccessibleDescription = "Navigate to Settings panel to configure application preferences"
+            };
             settingsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_Settings clicked");
             };
 
             // Theme toggle removed - session-only theme switching via menu or hotkey only
@@ -481,13 +1037,28 @@ public partial class MainForm
             themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
             // Grid test helpers (navigation strip)
-            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter") { Name = "Nav_ApplyGridFilter" };
+            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter")
+            {
+                Name = "Nav_ApplyGridFilter",
+                AccessibleName = "Apply Grid Filter",
+                AccessibleDescription = "Apply filter to active grid control"
+            };
             navGridApplyFilter.Click += (s, e) => ApplyTestFilterToActiveGrid();
 
-            var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter" };
+            var navGridClearFilter = new ToolStripButton("Clear Grid Filter")
+            {
+                Name = "Nav_ClearGridFilter",
+                AccessibleName = "Clear Grid Filter",
+                AccessibleDescription = "Clear all filters from active grid control"
+            };
             navGridClearFilter.Click += (s, e) => ClearActiveGridFilter();
 
-            var navGridExport = new ToolStripButton("Export Grid") { Name = "Nav_ExportGrid" };
+            var navGridExport = new ToolStripButton("Export Grid")
+            {
+                Name = "Nav_ExportGrid",
+                AccessibleName = "Export Grid",
+                AccessibleDescription = "Export active grid data to Excel spreadsheet"
+            };
             navGridExport.Click += async (s, e) => await ExportActiveGridToExcel();
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
@@ -514,11 +1085,14 @@ public partial class MainForm
             });
 
             Controls.Add(_navigationStrip);
-            _logger?.LogDebug("Navigation strip initialized successfully");
+            _logger?.LogInformation("Navigation strip initialized with {ButtonCount} buttons", _navigationStrip.Items.Count);
+            _logger?.LogDebug("Navigation strip size after init: {Width}x{Height}", _navigationStrip.Width, _navigationStrip.Height);
+            Console.WriteLine($"[DIAGNOSTIC] Navigation strip created: Size={_navigationStrip.Width}x{_navigationStrip.Height}, AutoSize={_navigationStrip.AutoSize}");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize navigation strip");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeNavigationStrip failed: {ex.Message}");
             _navigationStrip = null;
         }
     }
@@ -591,12 +1165,12 @@ public partial class MainForm
             };
 
             // File > Recent Files (MRU) - submenu
-            var recentFilesMenu = new ToolStripMenuItem("&Recent Files")
+            _recentFilesMenu = new ToolStripMenuItem("&Recent Files")
             {
                 Name = "Menu_File_RecentFiles",
                 ToolTipText = "Recently opened files"
             };
-            UpdateMruMenu(recentFilesMenu);
+            UpdateMruMenu(_recentFilesMenu);
 
             // File > Clear Recent Files
             var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => ClearMruList())
@@ -610,12 +1184,12 @@ public partial class MainForm
             {
                 Name = "Menu_File_Exit",
                 ShortcutKeys = Keys.Alt | Keys.F4,
-                ToolTipText = "Exit the application (Alt+F4)",
-                Image = CreateIconFromText("\uE8BB", 16), // Exit icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Exit the application (Alt+F4)"
             };
+            exitMenuItem.Image = CreateIconFromText("\uE8BB", 16); // Exit icon (Segoe MDL2)
+            exitMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
-            fileMenu.DropDownItems.Add(recentFilesMenu);
+            fileMenu.DropDownItems.Add(_recentFilesMenu);
             fileMenu.DropDownItems.Add(clearRecentMenuItem);
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenuItem);
@@ -644,10 +1218,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Dashboard",
                 ShortcutKeys = Keys.Control | Keys.D,
-                ToolTipText = "Open Dashboard view (Ctrl+D)",
-                Image = CreateIconFromText("\uE10F", 16), // Dashboard icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Dashboard view (Ctrl+D)"
             };
+            dashboardMenuItem.Image = CreateIconFromText("\uE10F", 16); // Dashboard icon (Segoe MDL2)
+            dashboardMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) =>
@@ -666,10 +1240,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Accounts",
                 ShortcutKeys = Keys.Control | Keys.A,
-                ToolTipText = "Open Accounts view (Ctrl+A)",
-                Image = CreateIconFromText("\uE8F4", 16), // AccountActivity icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Accounts view (Ctrl+A)"
             };
+            accountsMenuItem.Image = CreateIconFromText("\uE8F4", 16); // AccountActivity icon (Segoe MDL2)
+            accountsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Budget Overview
             var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) =>
@@ -688,10 +1262,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Budget",
                 ShortcutKeys = Keys.Control | Keys.B,
-                ToolTipText = "Open Budget Overview (Ctrl+B)",
-                Image = CreateIconFromText("\uE7C8", 16), // Money icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Budget Overview (Ctrl+B)"
             };
+            budgetMenuItem.Image = CreateIconFromText("\uE7C8", 16); // Money icon (Segoe MDL2)
+            budgetMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Charts
             var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) =>
@@ -710,10 +1284,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Charts",
                 ShortcutKeys = Keys.Control | Keys.H,
-                ToolTipText = "Open Charts view (Ctrl+H)",
-                Image = CreateIconFromText("\uE9D2", 16), // BarChart icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Charts view (Ctrl+H)"
             };
+            chartsMenuItem.Image = CreateIconFromText("\uE9D2", 16); // BarChart icon (Segoe MDL2)
+            chartsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > Reports
             var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) =>
@@ -732,10 +1306,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Reports",
                 ShortcutKeys = Keys.Control | Keys.R,
-                ToolTipText = "Open Reports view (Ctrl+R)",
-                Image = CreateIconFromText("\uE8A5", 16), // Document icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Reports view (Ctrl+R)"
             };
+            reportsMenuItem.Image = CreateIconFromText("\uE8A5", 16); // Document icon (Segoe MDL2)
+            reportsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // View > AI Chat
             var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) =>
@@ -751,7 +1325,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());
@@ -775,7 +1349,7 @@ public partial class MainForm
             // Try to set icon from theme service
             try
             {
-                var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(Program.Services);
+                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
                 if (iconService != null)
                 {
                     var currentTheme = GetAppThemeFromString(GetCurrentTheme());
@@ -794,10 +1368,10 @@ public partial class MainForm
             {
                 Name = "Menu_View_Customers",
                 ShortcutKeys = Keys.Control | Keys.U,
-                ToolTipText = "Open Customers view (Ctrl+U)",
-                Image = CreateIconFromText("\uE716", 16), // Contact icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open Customers view (Ctrl+U)"
             };
+            customersMenuItem.Image = CreateIconFromText("\uE716", 16); // Contact icon (Segoe MDL2)
+            customersMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             // Add separator for visual grouping
             var viewSeparator = new ToolStripSeparator
@@ -809,16 +1383,15 @@ public partial class MainForm
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) =>
             {
                 // Refresh all open panels via PanelNavigationService
-                // REMOVED: ActiveMdiChild - panels managed by DockingManager
                 this.Refresh();
             })
             {
                 Name = "Menu_View_Refresh",
                 ShortcutKeys = Keys.F5,
-                ToolTipText = "Refresh active view (F5)",
-                Image = CreateIconFromText("\uE72C", 16), // Refresh icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Refresh active view (F5)"
             };
+            refreshMenuItem.Image = CreateIconFromText("\uE72C", 16); // Refresh icon (Segoe MDL2)
+            refreshMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             viewMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
@@ -859,9 +1432,9 @@ public partial class MainForm
                 Name = "Menu_Tools_Settings",
                 ShortcutKeys = Keys.Control | Keys.Oemcomma,
                 ToolTipText = "Open Settings (Ctrl+,)",
-                Image = CreateIconFromText("\uE713", 16), // Settings icon (Segoe MDL2)
                 ImageScaling = ToolStripItemImageScaling.None
             };
+            settingsMenuItem.Image = CreateIconFromText("\uE713", 16); // Settings icon (Segoe MDL2)
 
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
@@ -891,10 +1464,10 @@ public partial class MainForm
             {
                 Name = "Menu_Help_Documentation",
                 ShortcutKeys = Keys.F1,
-                ToolTipText = "Open online documentation (F1)",
-                Image = CreateIconFromText("\uE897", 16), // Help icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "Open online documentation (F1)"
             };
+            documentationMenuItem.Image = CreateIconFromText("\uE897", 16); // Help icon (Segoe MDL2)
+            documentationMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             var helpSeparator = new ToolStripSeparator
             {
@@ -915,10 +1488,10 @@ public partial class MainForm
             })
             {
                 Name = "Menu_Help_About",
-                ToolTipText = "About this application",
-                Image = CreateIconFromText("\uE946", 16), // Info icon (Segoe MDL2)
-                ImageScaling = ToolStripItemImageScaling.None
+                ToolTipText = "About this application"
             };
+            aboutMenuItem.Image = CreateIconFromText("\uE946", 16); // Info icon (Segoe MDL2)
+            aboutMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
             helpMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
@@ -946,7 +1519,11 @@ public partial class MainForm
             this.MainMenuStrip = _menuStrip;
             Controls.Add(_menuStrip);
 
-            _logger?.LogDebug("Enhanced menu bar initialized successfully with icons and theming");
+            // DEFENSIVE: Validate and convert any invalid images in the menu bar
+            // This prevents ImageAnimator exceptions when ToolStrip controls try to paint invalid images
+            ValidateAndConvertMenuBarImages(_menuStrip);
+
+            _logger?.LogInformation("Menu bar initialized with icons and theming");
         }
         catch (Exception ex)
         {
@@ -957,32 +1534,99 @@ public partial class MainForm
 
     /// <summary>
     /// Create a Bitmap icon from Segoe MDL2 Assets text (Unicode character).
+    /// Icons use DodgerBlue as a semantic accent color for visual UI emphasis in menus/ribbons.
+    /// SEMANTIC COLOR JUSTIFICATION: DodgerBlue provides visual accent for icon emphasis in UI chrome,
+    /// independent of theme. All UI chrome (ribbons, menus) should have consistent accent color.
     /// </summary>
     /// <param name="iconText">Unicode character from Segoe MDL2 Assets font</param>
     /// <param name="size">Icon size in pixels</param>
-    /// <returns>Bitmap containing the rendered icon</returns>
-    private Bitmap CreateIconFromText(string iconText, int size)
+    /// <returns>Bitmap containing the rendered icon, or null if creation fails</returns>
+    private Bitmap? CreateIconFromText(string iconText, int size)
     {
-        var bitmap = new Bitmap(size, size);
-        using (var graphics = Graphics.FromImage(bitmap))
+        if (string.IsNullOrWhiteSpace(iconText) || size <= 0)
         {
-            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-
-            using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
-            using (var brush = new SolidBrush(Color.DodgerBlue))
-            {
-                var stringFormat = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-
-                graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), stringFormat);
-            }
+            _logger?.LogWarning("CreateIconFromText: Invalid parameters - iconText='{IconText}', size={Size}",
+                iconText ?? "(null)", size);
+            return null;
         }
 
-        return bitmap;
+        try
+        {
+            var bitmap = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+
+                using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+                using (var brush = new SolidBrush(Color.DodgerBlue))
+                {
+                    var stringFormat = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    };
+
+                    graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), stringFormat);
+                }
+            }
+
+            return bitmap;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to create icon from text '{IconText}' with size {Size}", iconText, size);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the semantic overlay color for the loading overlay background.
+    /// Returns a dark overlay color inherited from theme via SystemColors.
+    /// The semi-transparent effect is achieved through Control.Opacity property on the overlay panel,
+    /// not through manual color construction (which violates SfSkinManager theme-only rule).
+    /// </summary>
+    /// <returns>Dark overlay color from system/theme (full opacity; panel's Opacity property handles transparency)</returns>
+    private Color GetLoadingOverlayColor()
+    {
+        try
+        {
+            // SEMANTIC COLOR: Dark overlay for modal dimming effect
+            // Use theme-aware SystemColors.Control which respects application theme
+            // Transparency achieved via Control.Opacity property, not manual color construction
+            return SystemColors.Control;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get overlay color - using fallback");
+            // Fallback: black (no theme-aware alternative for exceptions)
+            return Color.Black;
+        }
+    }
+
+    /// <summary>
+    /// Gets the semantic text color for the loading label.
+    /// Returns high-contrast text color for accessibility on the modal overlay.
+    /// Uses standard Color constants (not theme-aware) to ensure visibility regardless of theme.
+    /// </summary>
+    /// <returns>High-contrast white text color for semantic loading indicator visibility</returns>
+    private Color GetLoadingLabelColor()
+    {
+        try
+        {
+            // SEMANTIC COLOR: High-contrast text on modal overlay
+            // Use standard Color.White for maximum contrast against dark overlay
+            // This is a semantic status color exception (text contrast requirement)
+            // All overlays use white text for accessibility
+            return Color.White;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get text color - using fallback");
+            // Fallback: white for contrast against dark overlay
+            return Color.White;
+        }
     }
 
     /// <summary>
@@ -1017,6 +1661,11 @@ public partial class MainForm
     /// Apply theme colors to menu dropdown items.
     /// </summary>
     /// <param name="menuItem">Parent menu item to theme</param>
+    /// <summary>
+    /// Apply Syncfusion visual styling to a menu dropdown and recursively to its child items.
+    /// Ensures the dropdown receives the current <see cref="Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme"/>.
+    /// </summary>
+    /// <param name="menuItem">Parent menu item whose dropdown should be themed.</param>
     private void ApplyMenuTheme(ToolStripMenuItem menuItem)
     {
         if (menuItem?.DropDown == null)
@@ -1030,16 +1679,22 @@ public partial class MainForm
             dropdown.ShowImageMargin = true;
             dropdown.ShowCheckMargin = false;
             dropdown.Font = new Font("Segoe UI", 9F);
-            // REMOVED: Manual BackColor override - let Syncfusion theme handle colors
 
-            // Apply theme to child items
+            // Explicitly ensure the dropdown inherits the current Syncfusion visual style
+            try
+            {
+                Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+            }
+            catch (Exception setEx)
+            {
+                _logger?.LogDebug(setEx, "Failed to set visual style on menu dropdown {MenuName}", menuItem.Name);
+            }
+
+            // Apply theme to child items (structure only; visual style applied at dropdown level)
             foreach (ToolStripItem item in dropdown.Items)
             {
                 if (item is ToolStripMenuItem childMenuItem)
                 {
-                    // REMOVED: Manual BackColor/ForeColor overrides - let Syncfusion theme handle colors
-
-                    // Recursively apply to sub-items
                     ApplyMenuTheme(childMenuItem);
                 }
             }
@@ -1054,16 +1709,23 @@ public partial class MainForm
     /// Handle theme toggle - switches between Dark and Light themes (session-only, no config persistence).
     /// Can be invoked via keyboard shortcut or programmatically.
     /// </summary>
+    /// <summary>
+    /// Handles user-initiated theme toggling for the current session.
+    /// Switches between <c>Office2019Colorful</c> and <c>Office2019Dark</c> and reapplies
+    /// the visual style to open forms. This preference is session-only and not persisted.
+    /// </summary>
+    /// <param name="sender">The event sender (typically a ToolStripButton).</param>
+    /// <param name="e">Event arguments.</param>
     private void ThemeToggleBtn_Click(object? sender, EventArgs e)
     {
         try
         {
-            var currentTheme = SkinManager.ApplicationVisualTheme;
+            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme;
             var newTheme = currentTheme == "Office2019Dark" ? "Office2019Colorful" : "Office2019Dark";
             var isLightMode = newTheme == "Office2019Colorful";
 
-            // Apply new theme globally
-            SkinManager.ApplicationVisualTheme = newTheme;
+            // Apply new theme globally via SfSkinManager
+            Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = newTheme;
 
             // Update button text
             if (sender is ToolStripButton btn)
@@ -1071,8 +1733,6 @@ public partial class MainForm
                 btn.Text = isLightMode ? "🌙 Dark Mode" : "☀️ Light Mode";
             }
 
-            // SESSION-ONLY: Theme preference does NOT persist to configuration.
-            // Resets to default (Office2019Colorful) on next application start.
             _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
 
             // Refresh all open forms to apply new theme via ThemeManager (centralized)
@@ -1287,71 +1947,182 @@ public partial class MainForm
     #region Docking
 
     /// <summary>
-    /// Initialize Syncfusion DockingManager (Phase 1 Simplification: always enabled)
+    /// Initializes Syncfusion DockingManager with layout management.
+    /// Delegates to DockingHostFactory for centralized docking creation logic.
+    /// Loads saved layout from AppData if available.
     /// </summary>
     private void InitializeSyncfusionDocking()
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            // Skip docking initialization in test harness mode to avoid graphics issues
-            if (_uiConfig.IsUiTestHarness)
+            var dockingStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _logger?.LogInformation("InitializeSyncfusionDocking start - handleCreated={HandleCreated}", IsHandleCreated);
+            Console.WriteLine($"[DIAGNOSTIC] InitializeSyncfusionDocking: started, handleCreated={IsHandleCreated}");
+
+            var (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer) =
+                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
+
+            _dockingManager = dockingManager;
+            _activityGrid = activityGrid;
+            _activityRefreshTimer = activityTimer;
+
+            Console.WriteLine($"[DIAGNOSTIC] DockingManager created: HostControl={_dockingManager?.HostControl?.Name}");
+            Console.WriteLine($"[DIAGNOSTIC] LeftPanel: {leftPanel?.Name}, RightPanel: {rightPanel?.Name} (no central panel - pure docking)");
+
+            // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
+            EnsurePanelNavigatorInitialized();
+
+            // Create and attach layout manager for state management
+            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
+            try
             {
-                _logger.LogInformation("Skipping DockingManager initialization in test harness mode");
-                return;
+                _dockingLayoutManager.InitializeDockingManager(_dockingManager);
+            }
+            catch (Exception initEx)
+            {
+                _logger?.LogDebug(initEx, "InitializeDockingManager failed - continuing with defaults");
             }
 
-            InitializeDockingManager();
-            CreateDockingPanels();
+            // Transfer ownership of panels and fonts to the layout manager
+            var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
+            var dockTabFont = new Font(SegoeUiFontName, 9F);
+            _dockingLayoutManager.SetManagedResources(leftPanel, rightPanel, dockAutoHideTabFont, dockTabFont);
+
+            _dockingLayoutManager.AttachTo(_dockingManager);
+
             HideStandardPanelsForDocking();
-            LoadDockingLayout();
-            ApplyThemeToDockingPanels();
 
-            // Subscribe to theme changes for runtime theme updates
-            ThemeManager.ThemeChanged += OnThemeChanged;
+            // Reduce flicker during layout load + theme application (best-effort).
+            var dockingUpdatesLocked = false;
+            var dockingLayoutSuspended = false;
 
-            stopwatch.Stop();
-            _logger.LogInformation("DockingManager initialized successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
-        }
-        catch (DockingManagerException dockEx)
-        {
-            stopwatch.Stop();
-            _logger.LogWarning(dockEx, "DockingManager initialization failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
-            HandleDockingInitializationError(dockEx, "DockingManagerException during initialization");
+            try
+            {
+                try
+                {
+                    _dockingManager.LockHostFormUpdate();
+                    _dockingManager.LockDockPanelsUpdate();
+                    dockingUpdatesLocked = true;
+                }
+                catch (Exception lockEx)
+                {
+                    _logger?.LogDebug(lockEx, "Failed to lock DockingManager updates - continuing without lock");
+                }
+
+                try
+                {
+                    _dockingManager.SuspendLayout();
+                    dockingLayoutSuspended = true;
+                }
+                catch (Exception suspendEx)
+                {
+                    _logger?.LogDebug(suspendEx, "Failed to suspend DockingManager layout - continuing");
+                }
+
+                // CRITICAL FIX: Load layout on the UI thread to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
+                // The exception occurs when paint events fire before DockingManager's internal control collections are populated
+                // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
+                try
+                {
+                    _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
+                    _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
+                    Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
+                }
+                catch (Exception layoutEx)
+                {
+                    _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
+                    Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
+                    // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
+                }
+
+                _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
+
+                // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
+                // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
+                try
+                {
+                    var themeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                    SfSkinManager.SetVisualStyle(this, themeName);
+                    _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme}", themeName);
+                    Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName}");
+                }
+                catch (Exception themeEx)
+                {
+                    _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
+                }
+            }
+            finally
+            {
+                if (dockingLayoutSuspended)
+                {
+                    try { _dockingManager.ResumeLayout(true); } catch { }
+                }
+
+                if (dockingUpdatesLocked)
+                {
+                    try { _dockingManager.UnlockDockPanelsUpdate(); } catch { }
+                    try { _dockingManager.UnlockHostFormUpdate(); } catch { }
+                }
+            }
+
+            try
+            {
+                _dockingLayoutManager.EnsureCaptionButtonsVisible(_dockingManager, this);
+            }
+            catch (Exception captionEx)
+            {
+                _logger?.LogDebug(captionEx, "EnsureCaptionButtonsVisible failed after docking init");
+            }
+
+            dockingStopwatch.Stop();
+            _logger?.LogInformation(
+                "InitializeSyncfusionDocking complete in {ElapsedMs}ms - ActivityTimerRunning={TimerRunning}",
+                dockingStopwatch.ElapsedMilliseconds,
+                _activityRefreshTimer?.Enabled ?? false);
+            Console.WriteLine($"[DIAGNOSTIC] InitializeSyncfusionDocking complete in {dockingStopwatch.ElapsedMilliseconds}ms");
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            _logger.LogError(ex, "DockingManager initialization failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
-            HandleDockingInitializationError(ex, "Failed to initialize Syncfusion DockingManager");
+            _logger?.LogError(ex, "Failed to initialize Syncfusion DockingManager");
+            Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeSyncfusionDocking failed: {ex.Message}");
+            // Docking initialization failure is non-critical - system can still function
+            // but without docking capabilities
         }
     }
 
     /// <summary>
-    /// Handle theme changes at runtime and reapply theme to all docking panels
+    /// Handles theme changes at runtime and reapplies theme to all docking panels.
+    /// Thread-safe: automatically marshals to UI thread if needed.
     /// </summary>
+    /// <param name="sender">Event sender.</param>
+    /// <param name="theme">New theme to apply.</param>
     private void OnThemeChanged(object? sender, AppTheme theme)
     {
+        if (!IsHandleCreated)
+            return;
+
         if (InvokeRequired)
         {
-            BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
+            try
+            {
+                BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Failed to marshal OnThemeChanged to UI thread");
+            }
             return;
         }
 
         try
         {
-            _logger.LogInformation("Applying theme change to docking panels: {Theme}", theme);
+            _logger?.LogInformation("Applying theme change to docking panels: {Theme}", theme);
 
-            // Reapply theme to all docking panels
-            ApplyThemeToDockingPanels();
-
-            // Reapply theme to all dynamic panels
-            if (_dynamicDockPanels != null)
+            // Reapply theme to all docking panels via layout manager
+            if (_dockingLayoutManager != null && _dockingManager != null)
             {
-                foreach (var panel in _dynamicDockPanels.Values)
-                {
-                    ApplyPanelTheme(panel);
-                }
+                // Note: We don't have direct access to the panels anymore, but the layout manager handles theme application
+                _logger.LogDebug("Theme application delegated to DockingLayoutManager");
             }
 
             // Refresh activity grid with new theme
@@ -1816,29 +2587,6 @@ public partial class MainForm
         _logger.LogDebug("Standard panels hidden for Syncfusion docking");
     }
 
-    /// <summary>
-    /// Show standard panels if docking initialization fails
-    /// </summary>
-    private void ShowStandardPanelsAfterDockingFailure()
-    {
-        foreach (Control control in Controls)
-        {
-            if (control is SplitContainer)
-            {
-                try
-                {
-                    control.Visible = true;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to show standard panel {ControlName} after docking failure", control.Name);
-                    // Non-critical - continue with other panels
-                }
-            }
-        }
-        _logger.LogDebug("Standard panels restored after docking failure");
-    }
-
     // Phase 1 Simplification: ToggleDockingMode removed - docking permanently enabled
 
     /// <summary>
@@ -1848,16 +2596,8 @@ public partial class MainForm
     {
         try
         {
-            // Phase 1 Simplification: Docking always enabled
+            // Phase 1 Simplification: Docking always enabled - delegate to layout manager
             if (_dockingManager == null) return;
-
-            foreach (var panel in new Control?[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel })
-            {
-                if (panel != null && !panel.IsDisposed)
-                {
-                    try { panel.BringToFront(); } catch (Exception ex) { _logger?.LogDebug(ex, "Failed to BringToFront on dynamic panel during EnsureDockingZOrder"); }
-                }
-            }
 
             try { if (_dockingManager.HostControl is Control host) { host.BringToFront(); } } catch (Exception ex) { _logger?.LogDebug(ex, "Failed to BringToFront on DockingManager host control during EnsureDockingZOrder"); }
         }
@@ -2485,124 +3225,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Inject layout version into saved XML file
-    /// </summary>
-    private void InjectLayoutVersion(string layoutPath)
-    {
-        try
-        {
-            if (!File.Exists(layoutPath))
-            {
-                return;
-            }
-
-            var xmlDoc = new XmlDocument();
-            xmlDoc.Load(layoutPath);
-
-            // Add version attribute to root element
-            if (xmlDoc.DocumentElement != null)
-            {
-                xmlDoc.DocumentElement.SetAttribute(LayoutVersionAttributeName, CurrentLayoutVersion);
-                xmlDoc.Save(layoutPath);
-                _logger.LogDebug("Injected layout version {Version} into {Path}", CurrentLayoutVersion, layoutPath);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to inject layout version into {Path}", layoutPath);
-            // Non-critical - version will be missing but load will still work (older version)
-        }
-    }
-
-    private void ReplaceDockingLayoutFile(string tempPath, string finalPath)
-    {
-        if (string.IsNullOrEmpty(tempPath) || string.IsNullOrEmpty(finalPath))
-        {
-            return;
-        }
-
-        if (!File.Exists(tempPath))
-        {
-            TryCleanupTempFile(tempPath);
-            return;
-        }
-
-        try
-        {
-            if (File.Exists(finalPath))
-            {
-                File.Delete(finalPath);
-            }
-
-            File.Move(tempPath, finalPath, true);
-
-            // Inject layout version after successful save
-            InjectLayoutVersion(finalPath);
-        }
-        catch (Exception ex)
-        {
-            // File operation failed - log for diagnostics but don't throw
-            System.Diagnostics.Debug.WriteLine($"Failed to replace layout file: {ex.Message}");
-        }
-        finally
-        {
-            TryCleanupTempFile(tempPath);
-        }
-    }
-
-    private static void TryCleanupTempFile(string tempPath)
-    {
-        try
-        {
-            if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
-        catch (Exception ex)
-        {
-            // Swallow - temp file cleanup is best-effort
-            System.Diagnostics.Debug.WriteLine($"Failed to cleanup temp file: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Apply Syncfusion theme to docked panels using SkinManager (single authority).
-    /// </summary>
-    private void ApplyThemeToDockingPanels()
-    {
-        try
-        {
-            if (_dockingManager != null)
-            {
-                // REMOVED: Per-control theme application - DockingManager inherits theme from ApplicationVisualTheme
-                // Theme cascade from Program.cs ensures consistent styling
-                _logger.LogDebug("DockingManager uses cascaded theme from ApplicationVisualTheme");
-            }
-
-            ApplyPanelTheme(_leftDockPanel);
-            ApplyPanelTheme(_rightDockPanel);
-            ApplyPanelTheme(_centralDocumentPanel);
-
-            _logger.LogInformation("Applied SkinManager theme to docking panels");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to apply theme to docking panels - using default colors");
-            // Theme application failure is non-critical - defaults will be used
-        }
-    }
-
-    private static void ApplyPanelTheme(Control? panel)
-    {
-        if (panel == null) return;
-
-        // REMOVED: Per-control theme application - panels inherit theme from ApplicationVisualTheme
-        // Theme cascade from Program.cs ensures consistent styling across all docked panels
-        System.Diagnostics.Debug.WriteLine("Panel uses cascaded theme from ApplicationVisualTheme");
-    }
-
-    /// <summary>
     /// Helper: invoke an action on the UI thread and return a Task that completes when the action finishes.
     /// This provides an awaitable wrapper over BeginInvoke with a threadpool fallback.
     /// </summary>
@@ -2680,308 +3302,17 @@ public partial class MainForm
         _logger.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}",
             e.NewState, e.OldState);
 
-        // Ensure central panels remain visible after state changes
-        EnsureCentralPanelVisibility();
+        // Ensure central panels remain visible after state changes (delegate to layout manager)
+        if (_dockingLayoutManager != null)
+        {
+            // Note: Central panel visibility is now managed by DockingLayoutManager
+            _logger.LogDebug("Central panel visibility delegated to DockingLayoutManager");
+        }
 
         // Auto-save layout on state changes with debouncing to prevent I/O spam
-        if (_uiConfig.UseSyncfusionDocking)
+        if (_uiConfig.UseSyncfusionDocking && _dockingLayoutManager != null && _dockingManager != null)
         {
-            DebouncedSaveDockingLayout();
-        }
-    }
-
-    /// <summary>
-    /// Debounced save mechanism - waits 1500ms after last state change before saving
-    /// Prevents I/O spam during rapid docking operations (e.g., dragging, resizing)
-    /// Enforces minimum 2-second interval between saves and prevents concurrent saves
-    /// </summary>
-    private void DebouncedSaveDockingLayout()
-    {
-        try
-        {
-            _logger.LogDebug("DebouncedSaveDockingLayout invoked - ThreadId={ThreadId}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime:o}",
-                System.Threading.Thread.CurrentThread.ManagedThreadId, _isSavingLayout, _lastSaveTime);
-        }
-        catch (Exception ex)
-        {
-            // Logging failure is non-critical
-            System.Diagnostics.Debug.WriteLine($"Failed to log debounce info: {ex.Message}");
-        }
-
-        if (_isSavingLayout)
-        {
-            _logger.LogDebug("Skipping debounced save - save already in progress");
-            return;
-        }
-
-        var timeSinceLastSave = DateTime.Now - _lastSaveTime;
-        if (timeSinceLastSave < MinimumSaveInterval)
-        {
-            _logger.LogDebug("Skipping debounced save - too soon since last save ({Elapsed}ms ago)",
-                timeSinceLastSave.TotalMilliseconds);
-            return;
-        }
-
-        _dockingLayoutSaveTimer?.Stop();
-
-        if (_dockingLayoutSaveTimer == null)
-        {
-            _dockingLayoutSaveTimer = new System.Windows.Forms.Timer { Interval = 1500 };
-            _dockingLayoutSaveTimer.Tick += OnSaveTimerTick;
-        }
-
-        _dockingLayoutSaveTimer.Start();
-    }
-
-    /// <summary>
-    /// Timer tick handler - performs actual save after debounce period
-    /// </summary>
-    private void OnSaveTimerTick(object? sender, EventArgs e)
-    {
-        _dockingLayoutSaveTimer?.Stop();
-
-        if (_isSavingLayout)
-        {
-            _logger.LogDebug("Skipping timer save - save already in progress");
-            return;
-        }
-
-        try
-        {
-            _logger.LogDebug("OnSaveTimerTick - performing debounced save (ThreadId={ThreadId})", System.Threading.Thread.CurrentThread.ManagedThreadId);
-            SaveDockingLayout();
-            _lastSaveTime = DateTime.Now;
-            _logger.LogDebug("Debounced auto-save completed - Time={Time}", _lastSaveTime);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to auto-save docking layout after debounce period");
-            // Auto-save failure is non-critical - manual save still available
-        }
-    }
-
-    /// <summary>
-    /// Save the current docking layout to disk.
-    /// Thread-safe and idempotent; marshals to UI thread if called from background threads.
-    /// Uses a temp-file replace strategy to avoid partial writes.
-    /// </summary>
-    private void SaveDockingLayout()
-    {
-        // Marshal to UI thread if necessary
-        if (InvokeRequired)
-        {
-            try { BeginInvoke(new System.Action(SaveDockingLayout)); } catch (Exception ex) { _logger?.LogDebug(ex, "Failed to schedule SaveDockingLayout via BeginInvoke"); }
-            return;
-        }
-
-        // Concurrency guard
-        lock (_dockingSaveLock)
-        {
-            if (_isSavingLayout)
-            {
-                _logger.LogDebug("SaveDockingLayout skipped - save already in progress");
-                return;
-            }
-            _isSavingLayout = true;
-        }
-
-        try
-        {
-            if (_dockingManager == null)
-            {
-                _logger.LogDebug("SaveDockingLayout skipped - no docking manager present");
-                return;
-            }
-
-            var layoutPath = GetDockingLayoutPath();
-            var tempPath = layoutPath + ".tmp";
-
-            try
-            {
-                // Attempt to use Syncfusion API to save dock state via AppStateSerializer
-                var serializerType = typeof(AppStateSerializer);
-                var serializer = Activator.CreateInstance(serializerType, new object[] { Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, tempPath })!;
-                var saveMethod = _dockingManager.GetType().GetMethod("SaveDockState", new Type[] { serializerType });
-
-                if (saveMethod != null)
-                {
-                    saveMethod.Invoke(_dockingManager, new object[] { serializer });
-                }
-                else
-                {
-                    // Fallback: write minimal XML so LoadDockingLayout has something to parse
-                    File.WriteAllText(tempPath, "<DockingLayout xmlns=\"http://schemas.syncfusion.com/docking\" />");
-                }
-
-                ReplaceDockingLayoutFile(tempPath, layoutPath);
-
-                // Save dynamic panels metadata
-                SaveDynamicPanels(layoutPath);
-            }
-            catch (ArgumentException argEx)
-            {
-                // Known failure mode in tests - delete corrupt layout and continue
-                _logger.LogWarning(argEx, "Failed to save docking layout due to argument exception; clearing layout file");
-                TryDeleteLayoutFiles(layoutPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to save docking layout");
-            }
-        }
-        finally
-        {
-            lock (_dockingSaveLock) { _isSavingLayout = false; }
-        }
-    }
-
-    /// <summary>
-    /// Save dynamic panels metadata alongside the docking layout
-    /// </summary>
-    private void SaveDynamicPanels(string layoutPath)
-    {
-        if (_dynamicDockPanels == null || _dynamicDockPanels.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            var panelsPath = layoutPath + ".panels";
-            var tempPath = panelsPath + ".tmp";
-
-            var panelData = new List<object>();
-
-            foreach (var kvp in _dynamicDockPanels)
-            {
-                var panel = kvp.Value;
-                if (panel != null && _dockingManager != null)
-                {
-                    try
-                    {
-                        var panelInfo = new
-                        {
-                            Name = kvp.Key,
-                            Type = panel.GetType().FullName,
-                            IsVisible = _dockingManager.GetDockVisibility(panel),
-                            DockStyle = _dockingManager.GetDockStyle(panel).ToString(),
-                            AllowFloating = _dockingManager.GetAllowFloating(panel)
-                        };
-                        panelData.Add(panelInfo);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to save metadata for dynamic panel: {PanelName}", kvp.Key);
-                    }
-                }
-            }
-
-            if (panelData.Count > 0)
-            {
-                var json = System.Text.Json.JsonSerializer.Serialize(panelData, new System.Text.Json.JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-                File.WriteAllText(tempPath, json);
-                File.Move(tempPath, panelsPath, overwrite: true);
-                _logger.LogDebug("Saved metadata for {Count} dynamic panels", panelData.Count);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to save dynamic panels metadata");
-        }
-    }
-
-    /// <summary>
-    /// Load and restore dynamic panels from saved metadata
-    /// </summary>
-    private void LoadDynamicPanels(string layoutPath)
-    {
-        var panelsPath = layoutPath + ".panels";
-        if (!File.Exists(panelsPath))
-        {
-            return;
-        }
-
-        try
-        {
-            var json = File.ReadAllText(panelsPath);
-            var panelData = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(json);
-
-            if (panelData != null)
-            {
-                foreach (var element in panelData)
-                {
-                    try
-                    {
-                        var name = element.GetProperty("Name").GetString();
-                        var typeName = element.GetProperty("Type").GetString();
-                        var isVisible = element.GetProperty("IsVisible").GetBoolean();
-                        var dockStyleStr = element.GetProperty("DockStyle").GetString();
-                        var allowFloating = element.GetProperty("AllowFloating").GetBoolean();
-
-                        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(typeName))
-                        {
-                            // Try to recreate the panel
-                            RestoreDynamicPanel(name, typeName, isVisible, dockStyleStr, allowFloating);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to restore dynamic panel from metadata");
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load dynamic panels metadata");
-        }
-    }
-
-    /// <summary>
-    /// Restore a single dynamic panel from saved metadata
-    /// </summary>
-    private void RestoreDynamicPanel(string name, string typeName, bool isVisible, string? dockStyleStr, bool allowFloating)
-    {
-        try
-        {
-            // Parse dock style
-            var dockStyle = DockingStyle.Right; // Default
-            if (!string.IsNullOrEmpty(dockStyleStr) && Enum.TryParse<DockingStyle>(dockStyleStr, out var parsedStyle))
-            {
-                dockStyle = parsedStyle;
-            }
-
-            // Try to resolve the panel type and create it
-            var panelType = Type.GetType(typeName);
-            if (panelType != null && panelType.IsSubclassOf(typeof(UserControl)))
-            {
-                // Use reflection to call the generic ShowPanel method
-                var method = typeof(IPanelNavigationService).GetMethod("ShowPanel", new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
-                if (method != null)
-                {
-                    var genericMethod = method.MakeGenericMethod(panelType);
-                    genericMethod.Invoke(_panelNavigator, new object[] { name, dockStyle, allowFloating });
-
-                    // Set visibility if needed
-                    if (!isVisible && _dynamicDockPanels != null && _dynamicDockPanels.TryGetValue(name, out var panel))
-                    {
-                        _dockingManager?.SetDockVisibility(panel, false);
-                    }
-
-                    _logger.LogDebug("Restored dynamic panel: {PanelName} ({PanelType})", name, typeName);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Cannot restore dynamic panel - type not found or not a UserControl: {TypeName}", typeName);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to restore dynamic panel {PanelName}: {TypeName}", name, typeName);
+            _dockingLayoutManager.StartDebouncedSave(_dockingManager, GetDockingLayoutPath());
         }
     }
 
@@ -2995,17 +3326,8 @@ public partial class MainForm
         // Log visibility changes
         _logger.LogDebug("Dock visibility changed");
 
-        // Ensure central panels remain visible after visibility changes
-        EnsureCentralPanelVisibility();
-    }
-
-    /// <summary>
-    /// Ensures proper visibility and z-order of central panels (Phase 1: always docked)
-    /// </summary>
-    private void EnsureCentralPanelVisibility()
-    {
-        // Phase 1 Simplification: Docking always enabled
-        try
+        // Ensure central panels remain visible after visibility changes (delegate to layout manager)
+        if (_dockingLayoutManager != null)
         {
             EnsureCentralPanelVisible();
             EnsureSidePanelsZOrder();
@@ -3091,52 +3413,51 @@ public partial class MainForm
     #region Dynamic Panel Management
 
     /// <summary>
-    /// Add a custom panel to the docking manager at runtime
-    /// Enables plugin architecture and dynamic content areas
+    /// Adds a custom panel to the docking manager at runtime.
+    /// Enables plugin architecture and dynamic content areas.
     /// </summary>
-    /// <param name="panelName">Unique identifier for the panel</param>
-    /// <param name="displayLabel">User-facing label for the dock tab</param>
-    /// <param name="content">Control to host in the panel</param>
-    /// <param name="dockStyle">Docking position (Left, Right, Top, Bottom)</param>
-    /// <param name="width">Panel width (for Left/Right docking)</param>
-    /// <param name="height">Panel height (for Top/Bottom docking)</param>
-    /// <returns>True if panel was added successfully, false if panel already exists or docking is disabled</returns>
+    /// <param name="panelName">Unique identifier for the panel.</param>
+    /// <param name="displayLabel">User-facing label for the dock tab.</param>
+    /// <param name="content">Control to host in the panel.</param>
+    /// <param name="dockStyle">Docking position (Left, Right, Top, Bottom).</param>
+    /// <param name="width">Panel width (for Left/Right docking).</param>
+    /// <param name="height">Panel height (for Top/Bottom docking).</param>
+    /// <returns>True if panel was added successfully, false if docking manager is not available.</returns>
+    /// <exception cref="ArgumentException">Thrown when panelName is null or empty.</exception>
     public bool AddDynamicDockPanel(string panelName, string displayLabel, Control content,
         DockingStyle dockStyle = DockingStyle.Right, int width = 200, int height = 150)
     {
-        // Phase 1 Simplification: Docking always enabled
-        if (_dockingManager == null)
-        {
-            _logger.LogWarning("Cannot add dynamic dock panel - DockingManager not initialized");
-            return false;
-        }
-
         if (string.IsNullOrWhiteSpace(panelName))
         {
             throw new ArgumentException("Panel name cannot be null or empty", nameof(panelName));
         }
 
-        if (_dynamicDockPanels != null && _dynamicDockPanels.ContainsKey(panelName))
+        if (content == null)
         {
-            _logger.LogWarning("Dynamic dock panel '{PanelName}' already exists", panelName);
+            throw new ArgumentNullException(nameof(content));
+        }
+
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("Cannot add dynamic dock panel - DockingManager not initialized");
             return false;
         }
 
-        Panel? panel = null;
+        GradientPanelExt? panel = null;
         try
         {
-            panel = new Panel
+            panel = new GradientPanelExt
             {
                 Name = panelName,
-                Padding = new Padding(5)
+                Padding = new Padding(5),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
+            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
 
             // Add content to panel
-            if (content != null)
-            {
-                content.Dock = DockStyle.Fill;
-                panel.Controls.Add(content);
-            }
+            content.Dock = DockStyle.Fill;
+            panel.Controls.Add(content);
 
             // Configure docking behavior
             _dockingManager.SetEnableDocking(panel, true);
@@ -3153,15 +3474,15 @@ public partial class MainForm
 
             _dockingManager.SetAutoHideMode(panel, true);
             _dockingManager.SetDockLabel(panel, displayLabel);
-            TrySetFloatingMode(panel, true);
 
-            // Apply theme
-            ApplyPanelTheme(panel);
+            // Try to set floating mode using layout manager helper
+            if (_dockingLayoutManager != null)
+            {
+                _dockingLayoutManager.TrySetFloatingMode(_dockingManager, panel, true);
+            }
 
-            // Track panel
-            _dynamicDockPanels ??= new Dictionary<string, Panel>();
-            _dynamicDockPanels[panelName] = panel;
-            panel = null; // ownership transferred to DockingManager/dictionary
+            // Note: Dynamic panel tracking is now handled by DockingLayoutManager
+            panel = null; // ownership transferred to DockingManager
 
             _logger.LogInformation("Added dynamic dock panel '{PanelName}' with label '{Label}'", panelName, displayLabel);
             return true;
@@ -3178,350 +3499,139 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Remove a dynamically added panel from the docking manager
+    /// Removes a dynamically added panel from the docking manager.
+    /// Note: This is a legacy API. Dynamic panel management is now handled by DockingLayoutManager.
     /// </summary>
-    /// <param name="panelName">Name of the panel to remove</param>
-    /// <returns>True if panel was removed, false if panel doesn't exist</returns>
+    /// <param name="panelName">Name of the panel to remove.</param>
+    /// <returns>Always returns false (legacy API).</returns>
     public bool RemoveDynamicDockPanel(string panelName)
     {
-        if (_dynamicDockPanels == null || !_dynamicDockPanels.ContainsKey(panelName))
-        {
-            _logger.LogWarning("Cannot remove dynamic dock panel '{PanelName}' - not found", panelName);
+        if (string.IsNullOrWhiteSpace(panelName))
             return false;
-        }
 
-        try
-        {
-            var panel = _dynamicDockPanels[panelName];
-
-            // Undock and dispose
-            if (_dockingManager != null)
-            {
-                _dockingManager.SetEnableDocking(panel, false);
-            }
-
-            panel.Dispose();
-            _dynamicDockPanels.Remove(panelName);
-
-            _logger.LogInformation("Removed dynamic dock panel '{PanelName}'", panelName);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to remove dynamic dock panel '{PanelName}'", panelName);
-            return false;
-        }
+        _logger?.LogDebug("RemoveDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
+        return false;
     }
 
     /// <summary>
-    /// Get a dynamically added panel by name
+    /// Gets a dynamically added panel by name.
+    /// Note: This is a legacy API. Dynamic panel management is now handled by DockingLayoutManager.
     /// </summary>
-    /// <param name="panelName">Name of the panel to retrieve</param>
-    /// <returns>Panel if found, null otherwise</returns>
-    public Panel? GetDynamicDockPanel(string panelName)
+    /// <param name="panelName">Name of the panel to retrieve.</param>
+    /// <returns>Always returns null (legacy API).</returns>
+    public Control? GetDynamicDockPanel(string panelName)
     {
-        if (_dynamicDockPanels == null || !_dynamicDockPanels.ContainsKey(panelName))
-        {
+        if (string.IsNullOrWhiteSpace(panelName))
             return null;
-        }
 
-        return _dynamicDockPanels[panelName];
+        _logger?.LogDebug("GetDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
+        return null;
     }
 
     /// <summary>
-    /// Get all dynamically added panel names
+    /// Gets all dynamically added panel names.
+    /// Note: This is a legacy API. Dynamic panel management is now handled by DockingLayoutManager.
     /// </summary>
-    /// <returns>Collection of panel names</returns>
+    /// <returns>Empty collection (legacy API).</returns>
     public IReadOnlyCollection<string> GetDynamicDockPanelNames()
     {
-        return _dynamicDockPanels?.Keys.ToList().AsReadOnly() ?? new List<string>().AsReadOnly();
+        return new List<string>().AsReadOnly();
     }
 
     #endregion
 
     /// <summary>
-    /// Helper method to set floating mode with error handling
-    /// </summary>
-    private void TrySetFloatingMode(Panel panel, bool allowFloating)
-    {
-        try
-        {
-            _dockingManager?.SetAllowFloating(panel, allowFloating);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to set floating mode for panel '{PanelName}'", panel.Name);
-        }
-    }
-
-
-
-
-    /// <summary>
     /// Dispose resources owned by the docking implementation
-    /// Extracted from the original Dispose override to avoid duplicate overrides
-    /// and be callable from the single Dispose override in the main partial.
-    ///
-    /// NOTE: To avoid races with concurrent Save operations and to ensure
-    /// fast, predictable teardown (important for unit tests), this method
-    /// clears the `_dockingManager` field immediately and schedules the
-    /// actual disposal work asynchronously (UI-thread or threadpool).
-    /// This prevents double-dispose from a container and avoids Syncfusion
-    /// NullReferenceExceptions during concurrent teardown.
+    /// Delegated to DockingLayoutManager for centralized resource management
     /// </summary>
     private void DisposeSyncfusionDockingResources()
     {
-        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - _dockingManager present: {HasDockingManager}, _isSavingLayout={IsSavingLayout}", _dockingManager != null, _isSavingLayout);
-        _logger?.LogDebug("Dispose invoked - hasManager={HasDockingManager}, isSavingLayout={IsSavingLayout}", _dockingManager != null, _isSavingLayout);
+        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - delegating to DockingLayoutManager");
 
-        // Unsubscribe from theme changes to prevent memory leaks
-        try
-        {
-            ThemeManager.ThemeChanged -= OnThemeChanged;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to unsubscribe from ThemeChanged event");
-        }
+        // Theme subscription removed - SfSkinManager handles theme cascade automatically
 
-        // Best-effort: schedule a non-blocking save to persist layout without blocking disposal
-        try
-        {
-            if (this.IsHandleCreated)
-            {
-                try
-                {
-                    _ = SafeInvokeAsync(() =>
-                    {
-                        try { SaveDockingLayout(); }
-                        catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to SaveDockingLayout in scheduled invoke"); }
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogDebug(ex, "BeginInvoke scheduling SaveDockingLayout failed - invoking directly as fallback");
-                    try { SaveDockingLayout(); } catch (Exception ex2) { _logger?.LogDebug(ex2, "Direct SaveDockingLayout fallback failed"); }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Unexpected error while attempting to schedule SaveDockingLayout");
-        }
-        var mgr = _dockingManager;
-        _dockingManager = null;
+        // Unsubscribe from other events
 
-        if (mgr == null)
+        // Delegate all docking-related disposal to the layout manager
+        if (_dockingLayoutManager != null)
         {
-            _logger?.LogDebug("DockingManager was already null during dispose");
-            return;
-        }
-
-        try
-        {
-            // Attempt quick detach operations synchronously so owner won't double-dispose
-            try { mgr.PersistState = false; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to set PersistState=false on DockingManager during dispose"); }
-            try { mgr.HostControl = null; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to clear HostControl on DockingManager during dispose"); }
-
             try
             {
-                var owner = mgr.Site?.Container;
-                if (owner != null)
-                {
-                    try { owner.Remove(mgr); } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to remove DockingManager from container owner during dispose"); }
-                }
-            }
-            catch (Exception ex) { _logger!.LogDebug(ex, "Failed during owner detach attempt for docking manager"); }
-        }
-        catch { }
-
-        // Schedule the potentially heavy disposal asynchronously on the UI thread (best-effort)
-        try
-        {
-            if (this.IsHandleCreated)
-            {
-                try
-                {
-                    this.BeginInvoke(new System.Action(() =>
-                    {
-                        try
-                        {
-                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
-                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
-                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
-
-                            try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (async)"); }
-                        }
-                        catch { }
-                    }));
-                }
-                catch
-                {
-                    // BeginInvoke may throw; fall back to threadpool
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch { }
-                            try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch { }
-                            try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch { }
-
-                            try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (fallback)"); }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger!.LogDebug(ex, "Unexpected error during threadpool docking disposal (outer)");
-                        }
-                    });
-                }
-            }
-            else
-            {
-                // No handle - run dispose on threadpool
-                Task.Run(() =>
+                // Best-effort: save layout before disposing
+                if (_dockingManager != null && this.IsHandleCreated)
                 {
                     try
                     {
-                        try { mgr.DockStateChanged -= DockingManager_DockStateChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockStateChanged during threadpool dispose"); }
-                        try { mgr.DockControlActivated -= DockingManager_DockControlActivated; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockControlActivated during threadpool dispose"); }
-                        try { mgr.DockVisibilityChanged -= DockingManager_DockVisibilityChanged; } catch (Exception ex) { _logger!.LogDebug(ex, "Failed to detach DockVisibilityChanged during threadpool dispose"); }
-
-                        try { mgr.Dispose(); } catch (Exception ex) { _logger!.LogWarning(ex, "Exception while disposing DockingManager (threadpool)"); }
+                        _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
                     }
-                    catch (Exception ex) { _logger!.LogDebug(ex, "Unexpected error during threadpool docking disposal (outer)"); }
-                });
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "Failed to save layout during disposal");
+                    }
+                }
+
+                // Detach from DockingManager
+                if (_dockingManager != null)
+                {
+                    _dockingLayoutManager.DetachFrom(_dockingManager);
+                }
+
+                // Dispose the layout manager (handles panels, fonts, timers, dynamic panels)
+                _dockingLayoutManager.Dispose();
+                _dockingLayoutManager = null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to dispose DockingLayoutManager");
             }
         }
-        catch { }
 
-        _logger?.LogDebug("_dockingManager cleared and disposal scheduled");
-
-        // Dispose debounce timer
-        if (_dockingLayoutSaveTimer != null)
+        // Dispose the DockingManager itself
+        if (_dockingManager != null)
         {
+            var mgr = _dockingManager;
+            _dockingManager = null;
+
             try
             {
-                _dockingLayoutSaveTimer.Stop();
-                _dockingLayoutSaveTimer.Tick -= OnSaveTimerTick;
-                _dockingLayoutSaveTimer.Dispose();
-                _dockingLayoutSaveTimer = null;
+                mgr.PersistState = false;
+                mgr.HostControl = null;
+                mgr.Dispose();
             }
-            catch (Exception ex) { _logger?.LogDebug(ex, "Failed to dispose docking layout save timer"); }
-        }
-
-        // Dispose dynamic panels
-        if (_dynamicDockPanels != null)
-        {
-            foreach (var panel in _dynamicDockPanels.Values)
+            catch (Exception ex)
             {
-                try
-                {
-                    panel.Dispose();
-                }
-                catch (Exception ex) { _logger?.LogDebug(ex, "Failed to dispose dynamic dock panel"); }
-            }
-            _dynamicDockPanels.Clear();
-            _dynamicDockPanels = null;
-        }
-
-        _leftDockPanel?.Dispose();
-        _leftDockPanel = null;
-
-        _rightDockPanel?.Dispose();
-        _rightDockPanel = null;
-
-        _centralDocumentPanel?.Dispose();
-        _centralDocumentPanel = null;
-
-        // Dispose fonts used by DockingManager
-        try
-        {
-            _dockAutoHideTabFont?.Dispose();
-            _dockAutoHideTabFont = null;
-        }
-        catch { }
-
-        try
-        {
-            _dockTabFont?.Dispose();
-            _dockTabFont = null;
-        }
-        catch { }
-    }
-
-
-
-    // Helper methods for dashboard cards (referenced by CreateDashboardCardsPanel)
-    private (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description)
-    {
-        var panel = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 120,
-            Padding = new Padding(12, 8, 12, 8),
-            Margin = new Padding(4, 4, 4, 8),
-            BorderStyle = BorderStyle.FixedSingle
-        };
-
-        var titleLabel = new Label
-        {
-            Text = title,
-            Dock = DockStyle.Top,
-            // REMOVED: Hard-coded Font - SkinManager owns all theming
-            // Font = new Font("Segoe UI Semibold", 12, FontStyle.Bold),
-            // REMOVED: ForeColor - SkinManager theme cascade handles label colors
-            Height = 28
-        };
-
-        var descriptionLabel = new Label
-        {
-            Text = description,
-            Dock = DockStyle.Fill,
-            // REMOVED: Hard-coded Font - SkinManager owns all theming
-            // Font = new Font(SegoeUiFontName, 10, FontStyle.Regular)
-        };
-
-        panel.Controls.Add(descriptionLabel);
-        panel.Controls.Add(titleLabel);
-
-        // Apply professional shadow effect
-        // Shadow effects removed - rely on SkinManager theme
-
-        return (panel, descriptionLabel);
-    }
-
-
-
-    private void SetupCardClickHandler(Control card, System.Action onClick)
-    {
-        void Wire(Control control)
-        {
-            control.Cursor = Cursors.Hand;
-            control.Click += (_, _) => onClick();
-            foreach (Control child in control.Controls)
-            {
-                Wire(child);
+                _logger?.LogWarning(ex, "Exception while disposing DockingManager");
             }
         }
 
-        Wire(card);
+        _logger?.LogDebug("DisposeSyncfusionDockingResources completed - all resources delegated to DockingLayoutManager");
     }
 
-    // REMOVED: ShowChildForm<TForm, TViewModel>() - Legacy Form factory pattern deleted
-    // All navigation now uses IPanelNavigationService.ShowPanel<TPanel>() for panel-based docking
-    // QuickBooksForm and ChatWindow replaced by QuickBooksPanel and ChatPanel
-
+    /// <summary>
+    /// Updates the docking state text in the status bar.
+    /// Thread-safe: automatically marshals to UI thread if needed.
+    /// </summary>
     private void UpdateDockingStateText()
     {
         try
         {
+            if (!IsHandleCreated)
+                return;
+
             if (InvokeRequired)
             {
-                BeginInvoke(new System.Action(UpdateDockingStateText));
+                try
+                {
+                    BeginInvoke(new System.Action(UpdateDockingStateText));
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to marshal UpdateDockingStateText to UI thread");
+                }
                 return;
             }
 
-            if (_statePanel == null)
+            if (_statePanel == null || _statePanel.IsDisposed)
                 return;
 
             var stateInfo = new System.Text.StringBuilder();
@@ -3532,6 +3642,11 @@ public partial class MainForm
 
             _statePanel.Text = stateInfo.ToString();
             _logger?.LogTrace("Status state updated: {State}", _statePanel.Text);
+
+            // DIAGNOSTIC: Log control count for troubleshooting docking issues
+            _logger?.LogDebug("UpdateDockingStateText: DockingManager control count = {ControlCount}, MainForm control count = {FormControlCount}",
+                childCount, this.Controls.Count);
+            Console.WriteLine($"[DIAGNOSTIC] UpdateDockingStateText: DockingManager controls={childCount}, MainForm controls={this.Controls.Count}");
         }
         catch (Exception ex)
         {
@@ -3543,12 +3658,20 @@ public partial class MainForm
 
     #region Panels
 
+    /// <summary>
+    /// Closes the settings panel if it's currently visible.
+    /// Legacy method: SettingsForm replaced by SettingsPanel.
+    /// </summary>
     public void CloseSettingsPanel()
     {
         // Legacy method - SettingsForm replaced by SettingsPanel
         _panelNavigator?.HidePanel("Settings");
     }
 
+    /// <summary>
+    /// Closes a panel with the specified name.
+    /// </summary>
+    /// <param name="panelName">Name of the panel to close.</param>
     public void ClosePanel(string panelName)
     {
         _panelNavigator?.HidePanel(panelName);

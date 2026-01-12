@@ -8,6 +8,12 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public interface IThemeIconService
     {
-        Image? GetIcon(string name, AppTheme theme, int size);
+        /// <summary>
+        /// Gets a value indicating whether this service has been disposed.
+        /// </summary>
+        bool IsDisposed { get; }
+
+        Image? GetIcon(string name, AppTheme theme, int size, bool disabled = false);
+        Task<Image?> GetIconAsync(string name, AppTheme theme, int size, bool disabled = false);
     }
 }

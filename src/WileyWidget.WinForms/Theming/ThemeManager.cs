@@ -9,7 +9,9 @@ namespace WileyWidget.WinForms.Theming
 {
     /// <summary>
     /// Lightweight theme manager that defers to SkinManager (ThemeColors) for real theming.
+    /// [OBSOLETE] This class is deprecated. Use IThemeService instead via dependency injection.
     /// </summary>
+    [Obsolete("ThemeManager is deprecated. Use IThemeService via dependency injection instead. This will be removed in a future version.", error: false)]
     public static class ThemeManager
     {
         public const string VisualTheme = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;

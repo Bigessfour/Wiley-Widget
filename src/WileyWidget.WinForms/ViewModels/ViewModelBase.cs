@@ -81,8 +81,24 @@ public abstract class ViewModelBase : ObservableObject
     {
         var derivedType = GetType();
         var nullLoggerType = typeof(NullLogger<>).MakeGenericType(derivedType);
-        var instanceProperty = nullLoggerType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 
-        return (ILogger)(instanceProperty?.GetValue(null) ?? throw new InvalidOperationException($"Failed to create NullLogger for {derivedType.Name}"));
+        // Prefer a static property named 'Instance' but fall back to a static field if necessary
+        var instanceProperty = nullLoggerType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        if (instanceProperty != null)
+        {
+            var propValue = instanceProperty.GetValue(null);
+            if (propValue is ILogger propLogger)
+                return propLogger;
+        }
+
+        var instanceField = nullLoggerType.GetField("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        if (instanceField != null)
+        {
+            var fieldValue = instanceField.GetValue(null);
+            if (fieldValue is ILogger fieldLogger)
+                return fieldLogger;
+        }
+
+        throw new InvalidOperationException($"Failed to create NullLogger for {derivedType.Name}");
     }
 }

@@ -344,7 +344,7 @@
 
 ## 📋 Testing Standards & Patterns
 
-### Required Test Categories (per repository):
+### Required Test Categories (per repository)
 
 1. **CRUD Operations** - Add, Update, Delete, GetById
 2. **Query Methods** - GetAll, filtering, searching
@@ -357,7 +357,7 @@
 9. **Integration** - Multi-operation scenarios
 10. **Performance** - Large dataset queries
 
-### Testing Framework Stack:
+### Testing Framework Stack
 
 - **xUnit** - Primary unit test framework
 - **FluentAssertions** - Readable assertions
@@ -365,7 +365,7 @@
 - **EF Core InMemory** - Database provider for tests
 - **CSX/MCP** - Integration and E2E scenarios
 
-### Code Coverage Tools:
+### Code Coverage Tools
 
 - **Coverlet** - Coverage collection
 - **ReportGenerator** - Coverage reports
@@ -375,7 +375,7 @@
 
 ## 📈 Coverage Metrics
 
-### Current State (measured on last run):
+### Current State (measured on last run)
 
 - **Total Repositories:** 7
 - **Tested Repositories:** 4 (~57%)
@@ -391,7 +391,7 @@
 - **Skipped:** 0
 - **Coverage artifact:** `TestResults/*/coverage.cobertura.xml` (line-rate: 0.1046 → ~10.46% line coverage)
 
-### Target State:
+### Target State
 
 - **Tested Repositories:** 6 (100%)
 - **Minimum Coverage per Repository:** 75%
@@ -402,13 +402,13 @@
 
 ## 🔧 Running Tests
 
-### Run All Repository Tests:
+### Run All Repository Tests
 
 ```powershell
 dotnet test WileyWidget.Tests\WileyWidget.Tests.csproj --filter "FullyQualifiedName~RepositoryTests"
 ```
 
-### Run Specific Repository Tests:
+### Run Specific Repository Tests
 
 ```powershell
 # BudgetRepository
@@ -421,13 +421,13 @@ dotnet test --filter "FullyQualifiedName~DepartmentRepositoryTests"
 dotnet test --filter "FullyQualifiedName~EnterpriseRepositoryTests"
 ```
 
-### Run with Coverage:
+### Run with Coverage
 
 ```powershell
 dotnet test --collect:"XPlat Code Coverage" --results-directory:"TestResults"
 ```
 
-### Run CSX/MCP Tests:
+### Run CSX/MCP Tests
 
 ```powershell
 # Repository tests
@@ -441,7 +441,7 @@ dotnet-csharp-repl scripts\examples\csharp\04-repository-tests.csx
 
 ## 📝 Notes
 
-### Testing Best Practices Observed:
+### Testing Best Practices Observed
 
 - ✅ Arrange-Act-Assert pattern consistently used
 - ✅ Test isolation with unique in-memory databases
@@ -450,7 +450,7 @@ dotnet-csharp-repl scripts\examples\csharp\04-repository-tests.csx
 - ✅ Documentation of known limitations
 - ✅ Mock factory pattern for DbContext
 
-### Common Patterns to Replicate:
+### Common Patterns to Replicate
 
 1. **Test Setup:** Use `IDbContextFactory<AppDbContext>` with in-memory provider
 2. **Caching:** Test both cache hit and miss scenarios
@@ -459,7 +459,7 @@ dotnet-csharp-repl scripts\examples\csharp\04-repository-tests.csx
 5. **Cleanup:** Implement IDisposable for proper resource disposal
 6. **Documentation:** Add comments explaining "bug documentation" tests
 
-### Known Issues Across Repositories:
+### Known Issues Across Repositories
 
 - Cache invalidation not implemented in write operations
 - Some repositories lack concurrency exception handling

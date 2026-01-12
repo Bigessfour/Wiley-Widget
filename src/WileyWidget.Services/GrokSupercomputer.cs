@@ -19,51 +19,41 @@ namespace WileyWidget.Services;
 /// <summary>
 /// Implementation of IGrokSupercomputer for AI-powered municipal analysis
 /// </summary>
-public class GrokSupercomputer : IGrokSupercomputer
+/// <remarks>
+/// Initializes a new instance of the GrokSupercomputer class
+/// </remarks>
+/// <param name="logger">The logger instance</param>
+/// <param name="enterpriseRepository">Repository for enterprise data</param>
+/// <param name="budgetRepository">Repository for budget data</param>
+/// <param name="auditRepository">Repository for audit data</param>
+/// <param name="aiLoggingService">AI logging service for tracking operations</param>
+/// <param name="aiService">AI service for Grok API integration</param>
+public class GrokSupercomputer(
+    ILogger<GrokSupercomputer> logger,
+    IEnterpriseRepository enterpriseRepository,
+    IBudgetRepository budgetRepository,
+    IAuditRepository auditRepository,
+    IAILoggingService aiLoggingService,
+    IAIService aiService,
+    IJARVISPersonalityService jarvismPersonality,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
+    Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> appOptions) : IGrokSupercomputer
 {
-    private readonly ILogger<GrokSupercomputer> _logger;
-    private readonly IEnterpriseRepository _enterpriseRepository;
-    private readonly IBudgetRepository _budgetRepository;
-    private readonly IAuditRepository _auditRepository;
-    private readonly IAILoggingService _aiLoggingService;
-    private readonly IAIService _aiService;
-    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
-    private readonly Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> _appOptions;
+    private readonly ILogger<GrokSupercomputer> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IEnterpriseRepository _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+    private readonly IBudgetRepository _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+    private readonly IAuditRepository _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
+    private readonly IAILoggingService _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
+    private readonly IAIService _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+    private readonly IJARVISPersonalityService _jarvismPersonality = jarvismPersonality ?? throw new ArgumentNullException(nameof(jarvismPersonality));
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+    private readonly Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
 
     // Analysis thresholds and defaults
     private decimal VarianceHighThresholdPercent => _appOptions.Value.BudgetVarianceHighThresholdPercent;
     private decimal VarianceLowThresholdPercent => _appOptions.Value.BudgetVarianceLowThresholdPercent;
     private int HighConfidence => _appOptions.Value.AIHighConfidence;
     private int LowConfidence => _appOptions.Value.AILowConfidence;
-
-    /// <summary>
-    /// Initializes a new instance of the GrokSupercomputer class
-    /// </summary>
-    /// <param name="logger">The logger instance</param>
-    /// <param name="enterpriseRepository">Repository for enterprise data</param>
-    /// <param name="budgetRepository">Repository for budget data</param>
-    /// <param name="auditRepository">Repository for audit data</param>
-    /// <param name="aiLoggingService">AI logging service for tracking operations</param>
-    /// <param name="aiService">AI service for Grok API integration</param>
-    public GrokSupercomputer(
-        ILogger<GrokSupercomputer> logger,
-        IEnterpriseRepository enterpriseRepository,
-        IBudgetRepository budgetRepository,
-        IAuditRepository auditRepository,
-        IAILoggingService aiLoggingService,
-        IAIService aiService,
-        Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
-        Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> appOptions)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
-        _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-        _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
-        _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
-        _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-        _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
-    }
 
     private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action, T fallback)
     {
@@ -267,6 +257,7 @@ public class GrokSupercomputer : IGrokSupercomputer
                 var ttlSeconds = Math.Max(5, _appOptions.Value.EnterpriseDataCacheSeconds);
                 var entryOptions = new MemoryCacheEntryOptions
                 {
+                    Size = 1,
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(ttlSeconds)
                 };
                 _cache.Set(cacheKey, reportData, entryOptions);
@@ -429,7 +420,13 @@ public class GrokSupercomputer : IGrokSupercomputer
                 var aiInsights = await GenerateBudgetInsightsWithAIAsync(budget, variancePercent);
                 if (!string.IsNullOrEmpty(aiInsights))
                 {
-                    insights.Recommendations.Add($"AI Analysis: {aiInsights}");
+                    // Apply JARVIS personality to AI insights
+                    var personalizedInsights = _jarvismPersonality.ApplyBudgetPersonality(
+                        aiInsights,
+                        variancePercent,
+                        budget.RemainingBudget,
+                        "General Budget");
+                    insights.Recommendations.Add(personalizedInsights);
                 }
             }
             catch (Exception aiEx)

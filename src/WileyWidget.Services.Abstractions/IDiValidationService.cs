@@ -74,6 +74,11 @@ namespace WileyWidget.Services.Abstractions
         public List<string> SuccessMessages { get; set; } = new();
         public System.TimeSpan ValidationDuration { get; set; }
 
+        /// <summary>
+        /// Per-category results for UI display, where key is category name and value is list of all messages (errors, warnings, successes).
+        /// </summary>
+        public Dictionary<string, List<string>> CategoryResults { get; set; } = new();
+
         public string GetSummary()
         {
             return IsValid

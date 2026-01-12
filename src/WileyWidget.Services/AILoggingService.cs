@@ -24,7 +24,9 @@ namespace WileyWidget.Services
         private readonly Logger _aiUsageLogger;
         private readonly ConcurrentBag<AILogEntry> _logEntries;
         private readonly object _metricsLock = new object();
-        private readonly ErrorReportingService _errorReportingService;
+#if !NET10_0
+        private readonly ErrorReportingService? _errorReportingService;
+#endif
         private int _todayQueryCount;
         private double _totalResponseTime;
         private int _totalResponses;
@@ -35,11 +37,19 @@ namespace WileyWidget.Services
         /// Initializes a new instance of the AILoggingService.
         /// </summary>
         /// <param name="logger">Standard logger for service operations</param>
-        /// <param name="errorReportingService">Error reporting service for telemetry</param>
-        public AILoggingService(ILogger<AILoggingService> logger, ErrorReportingService errorReportingService)
+#if !NET10_0
+        /// <param name="errorReportingService">Error reporting service for telemetry (optional)</param>
+#endif
+        public AILoggingService(ILogger<AILoggingService> logger
+#if !NET10_0
+            , ErrorReportingService? errorReportingService = null
+#endif
+            )
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorReportingService = errorReportingService ?? throw new ArgumentNullException(nameof(errorReportingService));
+#if !NET10_0
+            _errorReportingService = errorReportingService;
+#endif
             _logEntries = new ConcurrentBag<AILogEntry>();
             _lastResetDate = DateTime.UtcNow.Date;
 
@@ -95,13 +105,18 @@ namespace WileyWidget.Services
                 _logger.LogDebug("Logged AI query: Model={Model}, QueryLength={Length}", model, query?.Length ?? 0);
 
                 // Track telemetry event for AI query
-                _errorReportingService.TrackEvent("AI_Query_Logged", new Dictionary<string, object>
+#if !NET10_0
+                if (_errorReportingService != null)
                 {
-                    ["Model"] = model,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ContextLength"] = context?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
+                    _errorReportingService.TrackEvent("AI_Query_Logged", new Dictionary<string, object>
+                    {
+                        ["Model"] = model,
+                        ["QueryLength"] = query?.Length ?? 0,
+                        ["ContextLength"] = context?.Length ?? 0,
+                        ["Timestamp"] = DateTime.UtcNow
+                    });
+                }
+#endif
             }
             catch (Exception ex)
             {
@@ -143,14 +158,19 @@ namespace WileyWidget.Services
                     responseTimeMs, tokensUsed);
 
                 // Track telemetry event for AI response
-                _errorReportingService.TrackEvent("AI_Response_Logged", new Dictionary<string, object>
+#if !NET10_0
+                if (_errorReportingService != null)
                 {
-                    ["ResponseTimeMs"] = responseTimeMs,
-                    ["TokensUsed"] = tokensUsed,
-                    ["ResponseLength"] = response?.Length ?? 0,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
+                    _errorReportingService.TrackEvent("AI_Response_Logged", new Dictionary<string, object>
+                    {
+                        ["ResponseTimeMs"] = responseTimeMs,
+                        ["TokensUsed"] = tokensUsed,
+                        ["ResponseLength"] = response?.Length ?? 0,
+                        ["QueryLength"] = query?.Length ?? 0,
+                        ["Timestamp"] = DateTime.UtcNow
+                    });
+                }
+#endif
             }
             catch (Exception ex)
             {
@@ -214,13 +234,18 @@ namespace WileyWidget.Services
                 _logger.LogWarning("Logged AI error: Type={ErrorType}, Query={Query}", errorType, query);
 
                 // Track telemetry event for AI error
-                _errorReportingService.TrackEvent("AI_Error_Logged", new Dictionary<string, object>
+#if !NET10_0
+                if (_errorReportingService != null)
                 {
-                    ["ErrorType"] = errorType,
-                    ["QueryLength"] = query?.Length ?? 0,
-                    ["ErrorMessage"] = error,
-                    ["Timestamp"] = DateTime.UtcNow
-                });
+                    _errorReportingService.TrackEvent("AI_Error_Logged", new Dictionary<string, object>
+                    {
+                        ["ErrorType"] = errorType,
+                        ["QueryLength"] = query?.Length ?? 0,
+                        ["ErrorMessage"] = error,
+                        ["Timestamp"] = DateTime.UtcNow
+                    });
+                }
+#endif
             }
             catch (Exception ex)
             {

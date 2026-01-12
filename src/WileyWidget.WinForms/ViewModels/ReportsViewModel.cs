@@ -6,6 +6,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using FastReport;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 
@@ -101,6 +102,11 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// Reference to the ReportViewer control (set by the Form).
     /// Use object here to avoid tight coupling to WinForms control in the view model and ease unit testing.
     public object? ReportViewer { get; set; }
+
+    /// <summary>
+    /// Reference to the PreviewControl (set by the Form).
+    /// </summary>
+    public object? PreviewControl { get; set; }
 
     /// <summary>
     /// Path to the reports folder.
@@ -428,6 +434,19 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             // Load report into viewer
             var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
             await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
+
+            // Show the prepared report in the preview control
+            if (ReportViewer is FastReport.Report report)
+            {
+                // PreviewControl not available in Open Source
+                // previewControl.Report = report;
+                _logger.LogDebug("Report loaded (preview not available in Open Source)");
+            }
+            else
+            {
+                _logger.LogWarning("ReportViewer is not of expected type. ReportViewer: {ReportViewerType}",
+                    ReportViewer?.GetType().Name);
+            }
 
             // Honor cancellation again
             cancellationToken.ThrowIfCancellationRequested();

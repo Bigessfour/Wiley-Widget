@@ -110,7 +110,7 @@ namespace WileyWidget.Services
                                 Description = record.Description ?? "Imported Transaction",
                                 Amount = record.Amount,
                                 TransactionDate = record.Date ?? DateTime.Now,
-                                Type = record.Type?.ToLower() == "credit" ? "Credit" : "Debit",
+                                Type = record.Type?.ToLower(CultureInfo.InvariantCulture) == "credit" ? "Credit" : "Debit",
                                 BudgetEntryId = record.BudgetEntryId > 0 ? record.BudgetEntryId : 0,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
@@ -186,7 +186,7 @@ namespace WileyWidget.Services
                                 Description = description,
                                 Amount = amount,
                                 TransactionDate = transactionDate,
-                                Type = typeStr.ToLower().Contains("credit") ? "Credit" : "Debit",
+                                Type = typeStr.ToLower(System.Globalization.CultureInfo.InvariantCulture).Contains("credit", StringComparison.OrdinalIgnoreCase) ? "Credit" : "Debit",
                                 BudgetEntryId = budgetEntryId,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
@@ -314,12 +314,17 @@ namespace WileyWidget.Services
 
                         if (decimal.TryParse(budgetedStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var budgeted) &&
                             decimal.TryParse(actualStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var actual) &&
-                            int.TryParse(departmentIdStr, out var departmentId))
+                            int.TryParse(departmentIdStr, System.Globalization.NumberStyles.Integer, CultureInfo.InvariantCulture, out var departmentId))
                         {
                             int fiscalYear = DateTime.Now.Year;
                             if (!string.IsNullOrEmpty(fiscalYearStr))
                             {
-                                int.TryParse(fiscalYearStr, out fiscalYear);
+                                if (!int.TryParse(fiscalYearStr, System.Globalization.NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedYear))
+                                {
+                                    errors.Add($"Row {i + 2}: Invalid fiscal year format");
+                                    continue;
+                                }
+                                fiscalYear = parsedYear;
                             }
 
                             budgetEntries.Add(new BudgetEntry

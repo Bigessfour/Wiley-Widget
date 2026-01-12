@@ -1,14 +1,20 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Serilog.Extensions.Logging;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Core;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.DataGrid;
+using System.Security.Cryptography;
+using System.Text;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +23,6 @@ using System.Net.Http;
 using Action = System.Action;
 using System.IO;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Security.Permissions;
 using System.Windows.Forms;
@@ -29,18 +34,28 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Services.AI;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms
 {
     internal static class Program
     {
         public static IServiceProvider Services { get; private set; } = null!;
-        // Captured UI thread SynchronizationContext for marshaling UI actions
-        public static SynchronizationContext? UISynchronizationContext { get; private set; }
+        private static IServiceScope? _applicationScope; // Application-lifetime scope
         private static IStartupTimelineService? _timelineService;
 
-        [STAThread]
-        static async Task Main(string[] args)
+        /// <summary>
+        /// Global task tracking for fire-and-forget Task.Run operations.
+        /// Ensures all background tasks complete before cache disposal during shutdown.
+        /// </summary>
+        private static readonly List<Task> _pendingBackgroundTasks = new();
+        private static readonly object _pendingTasksLock = new();
+
+        /// <summary>
+        /// Registers a fire-and-forget task for tracking during shutdown.
+        /// </summary>
+        public static void RegisterBackgroundTask(Task task)
         {
             // ENHANCED EXCEPTION DIAGNOSTICS
             AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
@@ -113,8 +128,12 @@ namespace WileyWidget.WinForms
                     SplashReport(0.12, "Secrets validated");
                 }
 
-                using var uiScope = host.Services.CreateScope();
-                Services = uiScope.ServiceProvider;
+                // Get required services early
+                var getOrchestratorStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                Log.Debug("DIAGNOSTIC: About to call GetRequiredService<IStartupOrchestrator>");
+                var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
+                getOrchestratorStopwatch.Stop();
+                Log.Information("DIAGNOSTIC: GetRequiredService<IStartupOrchestrator> completed in {Elapsed}ms", getOrchestratorStopwatch.ElapsedMilliseconds);
 
                 _timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services);
                 if (_timelineService != null && _timelineService.IsEnabled)
@@ -169,7 +188,7 @@ namespace WileyWidget.WinForms
 
                 SplashReport(0.75, "Initializing main window...");
                 MainForm mainForm;
-                using (var mainFormScope = _timelineService?.BeginPhaseScope("MainForm Creation"))
+                try
                 {
                     mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
                 }
@@ -195,6 +214,57 @@ namespace WileyWidget.WinForms
                 Log.Debug("Entering UI message loop");
                 using (var uiLoopScope = _timelineService?.BeginPhaseScope("UI Message Loop"))
                 {
+                    Log.Fatal(ex, "Failed to create MainForm - likely Syncfusion license or control instantiation issue");
+                    throw;
+                }
+                SplashReport(0.70, "Main window created");
+
+                using (_timelineService?.BeginPhaseScope("Chrome Initialization"))
+                {
+                    _timelineService?.RecordOperation("Configure error reporting", "Chrome Initialization");
+                    ConfigureErrorReporting();
+                    WireGlobalExceptionHandlers();
+                }
+                Log.Debug("Exception handlers wired");
+                Log.Information("Startup milestone: Chrome Initialization complete");
+
+                SplashReport(0.90, "Finalizing startup...");
+                SplashReport(0.95, "Launching application...");
+                using (_timelineService?.BeginPhaseScope("Splash Screen Hide"))
+                {
+                    SplashComplete("Ready");
+                    Log.Information("Splash screen hidden");
+                }
+                Log.Information("Startup milestone: Ready");
+
+                // Generate comprehensive startup timeline report with dependency validation
+                Log.Debug("[DIAGNOSTIC] About to call GenerateStartupReport()");
+                startupOrchestrator.GenerateStartupReport();
+                Log.Debug("[DIAGNOSTIC] GenerateStartupReport() completed");
+
+                Log.Debug("[DIAGNOSTIC] About to call ScheduleAutoCloseIfRequested()");
+                ScheduleAutoCloseIfRequested(args, mainForm);
+                Log.Debug("[DIAGNOSTIC] ScheduleAutoCloseIfRequested() completed");
+
+                Log.Debug("[DIAGNOSTIC] About to enter UI message loop");
+                Log.Debug(
+                    """
+                    [DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
+                    Timestamp: { Timestamp}
+                    MainFormPresent: { Present}
+                    IsDisposed: { Disposed}
+                    """,
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+                    mainForm != null,
+                    mainForm?.IsDisposed);
+                Log.Debug("Entering UI message loop");
+                using (_timelineService?.BeginPhaseScope("UI Message Loop"))
+                {
+                    if (mainForm == null)
+                    {
+                        Log.Fatal("MainForm is null. Cannot start UI message loop.");
+                        throw new ArgumentNullException(nameof(args), "MainForm cannot be null when starting the UI message loop.");
+                    }
                     RunUiLoop(mainForm);
                 }
                 Log.Debug("UI message loop exited");
@@ -214,18 +284,6 @@ namespace WileyWidget.WinForms
                     nreEx.Source ?? "(unknown)",
                     nreEx.TargetSite?.ToString() ?? "(unknown)",
                     nreEx.HResult);
-
-                Console.WriteLine("\n═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine("║  CRITICAL: NullReferenceException During Startup");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine($"Type:       {nreEx.GetType().FullName}");
-                Console.WriteLine($"Message:    {nreEx.Message}");
-                Console.WriteLine($"Source:     {nreEx.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {nreEx.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{nreEx.HResult:X8}");
-                Console.WriteLine("\nStack Trace:");
-                Console.WriteLine(nreEx.StackTrace ?? "(no stack trace available)");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════\n");
 
                 HandleStartupFailure(nreEx);
                 throw;
@@ -248,74 +306,16 @@ namespace WileyWidget.WinForms
                     ex.HResult,
                     ex.InnerException?.ToString() ?? "(none)");
 
-                Console.WriteLine("\n═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine("║  CRITICAL: Unhandled Exception During Startup");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-                Console.WriteLine($"Type:       {ex.GetType().FullName}");
-                Console.WriteLine($"Message:    {ex.Message}");
-                Console.WriteLine($"Source:     {ex.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {ex.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{ex.HResult:X8}");
-                Console.WriteLine("\nStack Trace:");
-                Console.WriteLine(ex.StackTrace ?? "(no stack trace available)");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine("\nInner Exception:");
-                    Console.WriteLine($"  Type:    {ex.InnerException.GetType().FullName}");
-                    Console.WriteLine($"  Message: {ex.InnerException.Message}");
-                    Console.WriteLine($"  Stack:   {ex.InnerException.StackTrace ?? "(no stack trace)"}");
-                }
-                Console.WriteLine("═══════════════════════════════════════════════════════════════════\n");
-
                 HandleStartupFailure(ex);
                 throw;
             }
-        }
-
-        /// <summary>
-        /// FirstChanceException handler for comprehensive exception diagnostics.
-        /// Captures ALL exceptions thrown in the AppDomain BEFORE they are caught.
-        /// Provides detailed logging for NullReferenceExceptions with full stack traces.
-        /// </summary>
-        private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
-        {
-            if (e.Exception is NullReferenceException nre)
+            finally
             {
-                // Log NullReferenceExceptions with full diagnostic details
-                var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: NullReferenceException ═══");
-                Console.WriteLine($"Message:    {nre.Message}");
-                Console.WriteLine($"Source:     {nre.Source ?? "(unknown)"}");
-                Console.WriteLine($"TargetSite: {nre.TargetSite?.ToString() ?? "(unknown)"}");
-                Console.WriteLine($"HResult:    0x{nre.HResult:X8}");
-                Console.WriteLine("Stack Trace:");
-                Console.WriteLine(nre.StackTrace ?? "(no stack trace available)");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
-
-                // Also log via Serilog if available
-                try
-                {
-                    Log.Warning(nre, "[FIRST CHANCE] NullReferenceException detected at {TargetSite}",
-                        nre.TargetSite?.ToString() ?? "(unknown)");
-                }
-                catch
-                {
-                    // Serilog might not be initialized yet - ignore
-                }
-            }
-            else if (e.Exception is InvalidOperationException ioe &&
-                     (ioe.Source?.Contains("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal) == true))
-            {
-                // Log DI-related exceptions for additional diagnostics
-                var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                Console.WriteLine($"\n[{timestamp}] ═══ FIRST CHANCE: DI Exception ═══");
-                Console.WriteLine($"Message: {ioe.Message}");
-                Console.WriteLine($"Stack:   {ioe.StackTrace ?? "(no stack)"}");
-                Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+                splash?.Dispose();
             }
         }
 
-        private static void RegisterSyncfusionLicense(IConfiguration configuration)
+        private static void SetInvariantCulture()
         {
             try
             {
@@ -337,8 +337,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to register Syncfusion license.");
-                throw;
+                Log.Warning(ex, "Failed to set invariant culture; continuing with system defaults");
             }
         }
 
@@ -364,14 +363,13 @@ namespace WileyWidget.WinForms
             {
                 Log.Debug("Starting theme initialization");
 
-                // Null guard for timeline service
-                if (_timelineService != null)
-                {
-                    _timelineService.RecordOperation("Load Office2019Theme assembly", "Theme Initialization");
-                }
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                Log.Information("[THEME] Default theme name from ThemeColors: {ThemeName}", themeName);
 
-                // CRITICAL: Load theme assembly FIRST before setting ApplicationVisualTheme
-                // Reference: Syncfusion WinForms Skins documentation
+                // STEP 1: Load theme assembly - CRITICAL: must happen FIRST
+                // Records: Theme Initialization → LoadAssembly
+                _timelineService?.RecordOperation("[THEME API] SfSkinManager.LoadAssembly(Office2019Theme)", "Theme Initialization");
+
                 try
                 {
                     SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
@@ -388,13 +386,6 @@ namespace WileyWidget.WinForms
                 var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
                 Log.Debug("Setting ApplicationVisualTheme to: {ThemeName}", themeName);
 
-                if (_timelineService != null)
-                {
-                    _timelineService.RecordOperation($"Set ApplicationVisualTheme: {themeName}", "Theme Initialization");
-                }
-
-                // CRITICAL: Set ApplicationVisualTheme AFTER assembly load and BEFORE any form creation
-                // This must be set after Application.EnableVisualStyles() for proper rendering
                 try
                 {
                     SkinManager.ApplicationVisualTheme = themeName;  // Global application-wide theme
@@ -415,21 +406,108 @@ namespace WileyWidget.WinForms
 
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"[THEME FATAL] InnerException: {ex.InnerException.Message}");
-                    Console.WriteLine($"[THEME FATAL] InnerException StackTrace: {ex.InnerException.StackTrace}");
+                    Log.Error(ex.InnerException, "[THEME FATAL] InnerException: {InnerMessage}", ex.InnerException.Message);
                 }
 
-                Log.Error(ex, "Theme initialization failed; continuing with default Windows theme");
-
-                // GRACEFUL FALLBACK: Continue without theme to prevent startup failure
-                // Forms will use default Windows styling
-                Console.WriteLine("[THEME] Continuing startup with default Windows theme (no Syncfusion theming)");
+                Log.Error(ex, """
+[THEME] Theme initialization failed; continuing with default Windows theme(no Syncfusion theming)
+""");
             }
         }
 
         private static void ConfigureErrorReporting()
         {
-            // Configure error reporting service if needed
+            try
+            {
+                var errorReporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services);
+                var telemetry = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITelemetryService>(Services);
+
+                if (telemetry != null)
+                {
+                    errorReporting?.SetTelemetryService(telemetry);
+                }
+
+                _timelineService?.RecordOperation("Initialize error reporting and telemetry", "Chrome Initialization");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to fully configure error reporting and telemetry during startup");
+            }
+        }
+
+        private static void TryLoadDotNetEnv()
+        {
+            // Microsoft guidance: production secrets should come from secure stores (env vars, Key Vault, etc.).
+            // DotNetEnv-style files are dev conveniences; keep them Development-only.
+            var envName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                          ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                          ?? "Production";
+
+            if (!string.Equals(envName, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var envStopwatch = Stopwatch.StartNew();
+
+            // Load optional secrets file first (repo-root relative), then traverse for a .env.
+            // Treat parsing errors (FormatException) as non-fatal so startup can continue.
+            try
+            {
+                var secretsPath = ResolveSecretsPath();
+                if (File.Exists(secretsPath))
+                {
+                    DotNetEnv.Env.Load(secretsPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Failsafe: If logging fails (e.g., Serilog not initialized), silently continue
+                // This is early startup - logging infrastructure may not be ready
+                try { Log.Warning(ex, "Failed to load optional secrets file via DotNetEnv"); } catch { /* Intentionally empty */ }
+            }
+
+            try
+            {
+                DotNetEnv.Env.TraversePath().Load();
+            }
+            catch (Exception ex)
+            {
+                // Failsafe: If logging fails (e.g., Serilog not initialized), silently continue
+                // This is early startup - logging infrastructure may not be ready
+                try { Log.Warning(ex, "Failed to load .env via DotNetEnv"); } catch { /* Intentionally empty */ }
+            }
+
+            envStopwatch.Stop();
+            if (envStopwatch.ElapsedMilliseconds > 500)
+            {
+                Log.Information("DotNetEnv load completed in {Elapsed}ms (consider async if this grows)", envStopwatch.ElapsedMilliseconds);
+            }
+            else
+            {
+                Log.Debug("DotNetEnv load completed in {Elapsed}ms", envStopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        private static string ResolveSecretsPath()
+        {
+            var overridePath = Environment.GetEnvironmentVariable("WW_SECRETS_PATH");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                return overridePath;
+            }
+
+            return Path.Combine(Directory.GetCurrentDirectory(), "secrets", "my.secrets");
+        }
+
+        private static string ShortHash(string secret)
+        {
+            if (string.IsNullOrWhiteSpace(secret)) return string.Empty;
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(secret);
+            var hash = sha.ComputeHash(bytes);
+            var hex = BitConverter.ToString(hash).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
+            return hex.Substring(0, Math.Min(8, hex.Length));
         }
 
         /// <summary>
@@ -437,9 +515,12 @@ namespace WileyWidget.WinForms
         /// </summary>
         private static void InitializeWinForms()
         {
+            // Order matters: DPI mode -> visual styles -> text rendering
+            // Use PerMonitorV2 for best high-DPI support (Windows 10 1703+)
+            // This matches app.manifest dpiAwareness setting
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.SetHighDpiMode(HighDpiMode.SystemAware);
 
             // Set default font for all new controls
             try
@@ -455,7 +536,16 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static void CaptureSynchronizationContext()
+        /// <summary>
+        /// Detects WebView2 runtime availability and displays a prompt if missing.
+        /// Required for Blazor Hybrid JARVIS Chat component.
+        /// Runs synchronously during startup to allow graceful fallback.
+        /// </summary>
+        /// <remarks>
+        /// WebView2 runtime is bundled with Windows 11+, but may be missing on Windows 10.
+        /// If missing, user is prompted to download from Microsoft's official URL.
+        /// </remarks>
+        private static void DetectAndPromptWebView2()
         {
             // Don't manually set WindowsFormsSynchronizationContext before Application.Run
             // Application.Run will set it automatically when the message pump starts
@@ -467,6 +557,11 @@ namespace WileyWidget.WinForms
         {
             var reportViewerLaunchOptions = CreateReportViewerLaunchOptions(args);
             var builder = Host.CreateApplicationBuilder(args);
+
+            if (_timelineService != null)
+            {
+                builder.Services.AddSingleton(typeof(IStartupTimelineService), _timelineService);
+            }
 
             AddConfiguration(builder);
             ConfigureLogging(builder);
@@ -511,7 +606,14 @@ namespace WileyWidget.WinForms
                 Log.Warning(ex, "Failed to load .env file");
             }
 
-            builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly());
+            // DotNetEnv-style files are a development convenience; keep them Development-only.
+            if (builder.Environment.IsDevelopment())
+            {
+                TryLoadDotNetEnv();
+
+                // User secrets are intended for development-time only and are only loaded in Development.
+                builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly(), optional: true);
+            }
 
             // Load primary appsettings.json from project directory
             try
@@ -605,7 +707,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[WARNING] Error expanding environment variable placeholders: {ex.Message}");
+                Log.Warning(ex, "Error expanding environment variable placeholders");
             }
 
             try
@@ -613,17 +715,16 @@ namespace WileyWidget.WinForms
                 var existingConn = builder.Configuration.GetConnectionString("DefaultConnection");
                 if (string.IsNullOrWhiteSpace(existingConn))
                 {
-                    var defaultConn = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
                     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["ConnectionStrings:DefaultConnection"] = defaultConn
+                        ["ConnectionStrings:DefaultConnection"] = FallbackConnectionString
                     });
-                    Log.Warning("DefaultConnection not found; using in-memory fallback");
+                    Log.Warning("DefaultConnection not found; using development fallback connection string");
                 }
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error ensuring default connection in configuration: {ex}");
+                Log.Warning(ex, "Error ensuring default connection in configuration");
             }
         }
 
@@ -631,8 +732,29 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                // Make Serilog self-logging forward internal errors to stderr so we can diagnose sink failures
-                Serilog.Debugging.SelfLog.Enable(msg => Console.Error.WriteLine($"[SERILOG] {msg}"));
+                // Make Serilog self-logging forward internal errors to a simple debug output
+                // CRITICAL: Do NOT use Log.Warning() or any Serilog method inside SelfLog callback
+                // This creates infinite recursion if logging encounters any error.
+                // Instead, use Debug.WriteLine() which is primitive and won't trigger Serilog.
+                // NOTE: ObjectDisposedException here is expected during shutdown when file sinks
+                // are closing while async operations complete. Suppress these in output.
+                Serilog.Debugging.SelfLog.Enable(msg =>
+                {
+                    try
+                    {
+                        // Suppress disposal exceptions - they're expected during graceful shutdown
+                        // and are handled properly by the shutdown sequence in RunUiLoop
+                        if (!msg.Contains("disposed", StringComparison.OrdinalIgnoreCase) &&
+                            !msg.Contains("Cannot access a disposed object", StringComparison.OrdinalIgnoreCase))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SERILOG INTERNAL] {msg}");
+                        }
+                    }
+                    catch
+                    {
+                        // If even Debug.WriteLine fails, silently swallow to avoid cascading errors
+                    }
+                });
 
                 // CRITICAL: ALL LOGS go to project root src/logs directory
                 var projectRoot = Directory.GetCurrentDirectory();
@@ -675,8 +797,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"CRITICAL: Failed to configure logging: {ex.GetType().Name}: {ex.Message}");
-                Console.Error.WriteLine($"StackTrace: {ex.StackTrace}");
+                Log.Fatal(ex, "CRITICAL: Failed to configure logging");
 
                 // Fallback to console-only logging
                 Log.Logger = new LoggerConfiguration()
@@ -685,8 +806,7 @@ namespace WileyWidget.WinForms
                     .MinimumLevel.Information()
                     .CreateLogger();
 
-
-                Console.Error.WriteLine("Logging fallback to console-only mode");
+                Log.Warning("Logging fallback to console-only mode");
             }
         }
 
@@ -721,7 +841,7 @@ namespace WileyWidget.WinForms
                 options.UseSqlServer(connectionString, sql =>
                 {
                     sql.MigrationsAssembly("WileyWidget.Data");
-                    sql.CommandTimeout(builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 30));
+                    sql.CommandTimeout(builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 60));
                     sql.EnableRetryOnFailure(
                         maxRetryCount: builder.Configuration.GetValue("Database:MaxRetryCount", 3),
                         maxRetryDelay: TimeSpan.FromSeconds(builder.Configuration.GetValue("Database:MaxRetryDelaySeconds", 10)),
@@ -741,7 +861,7 @@ namespace WileyWidget.WinForms
             // Using Singleton would cause "Cannot resolve scoped service from root provider" errors.
             // EF Core best practice: Factory should be Scoped, DbContext is implicitly Scoped.
             builder.Services.AddDbContextFactory<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Scoped);
-            builder.Services.AddDbContext<AppDbContext>(ConfigureSqlOptions);
+            builder.Services.AddDbContext<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Transient);
         }
 
         private static void ConfigureHealthChecks(HostApplicationBuilder builder)
@@ -751,6 +871,13 @@ namespace WileyWidget.WinForms
                 var healthChecksSection = builder.Configuration.GetSection("HealthChecks");
                 var healthConfig = healthChecksSection.Get<HealthCheckConfiguration>() ?? new HealthCheckConfiguration();
                 builder.Services.AddSingleton(healthConfig);
+
+                // Register health checks
+                builder.Services.AddHealthChecks()
+                    .AddCheck<WileyWidget.Services.HealthChecks.SyncfusionLicenseHealthCheck>(
+                        "syncfusion_license",
+                        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                        tags: new[] { "license", "startup" });
             }
             catch (Exception ex)
             {
@@ -774,7 +901,7 @@ namespace WileyWidget.WinForms
 
         private static void AddDependencyInjection(HostApplicationBuilder builder)
         {
-            var diServices = WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection();
+            var diServices = WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: false);
 
             // CRITICAL: Skip IConfiguration descriptor - use the host builder's configuration instead
             // The DependencyInjection.CreateServiceCollection() adds a default IConfiguration for test scenarios
@@ -783,7 +910,7 @@ namespace WileyWidget.WinForms
             {
                 if (descriptor.ServiceType == typeof(IConfiguration))
                 {
-                    Console.WriteLine("[DI] Skipping IConfiguration from CreateServiceCollection - using host builder's configuration");
+                    Log.Information("[DI] Skipping IConfiguration from CreateServiceCollection - using host builder's configuration");
                     continue; // Skip - use host builder's configuration
                 }
 
@@ -794,7 +921,16 @@ namespace WileyWidget.WinForms
         private static void ConfigureUiServices(HostApplicationBuilder builder)
         {
             // UI configuration is now handled via UIConfiguration.FromConfiguration in DependencyInjection.cs
-            // No additional UI services needed here in Phase 1
+            // Register GrokAgentService (Semantic Kernel Grok integration)
+            try
+            {
+                builder.Services.AddSingleton<GrokAgentService>();
+                Log.Debug("Registered GrokAgentService as Singleton");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to register GrokAgentService");
+            }
         }
 
         /// <summary>
@@ -942,7 +1078,7 @@ namespace WileyWidget.WinForms
 
         private static void WireGlobalExceptionHandlers()
         {
-            _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Error Handlers");
+            _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Chrome Initialization");
             Application.ThreadException += (sender, e) =>
             {
                 try
@@ -951,7 +1087,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception fatalLogEx)
                 {
-                    Console.Error.WriteLine($"Log.Fatal failed for UI thread exception: {fatalLogEx} - original exception: {e.Exception}");
+                    Log.Error(fatalLogEx, "Log.Fatal failed for UI thread exception");
                 }
 
                 try
@@ -960,7 +1096,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception reportEx)
                 {
-                    Console.Error.WriteLine($"Failed to report UI thread exception to ErrorReportingService: {reportEx}");
+                    Log.Warning(reportEx, "Failed to report UI thread exception to ErrorReportingService");
                 }
 
                 try
@@ -973,7 +1109,7 @@ namespace WileyWidget.WinForms
                 }
             };
 
-            _timelineService?.RecordOperation("Wire AppDomain.UnhandledException handler", "Error Handlers");
+            _timelineService?.RecordOperation("Wire AppDomain.UnhandledException handler", "Chrome Initialization");
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
@@ -983,7 +1119,7 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception fatalLogEx)
                 {
-                    Console.Error.WriteLine($"Log.Fatal failed for AppDomain exception: {fatalLogEx} - original exception: {ex}");
+                    Log.Error(fatalLogEx, "Log.Fatal failed for AppDomain exception");
                 }
 
                 try
@@ -992,8 +1128,33 @@ namespace WileyWidget.WinForms
                 }
                 catch (Exception reportEx)
                 {
-                    Console.Error.WriteLine($"Failed to report AppDomain exception to ErrorReportingService: {reportEx}");
+                    Log.Warning(reportEx, "Failed to report AppDomain exception to ErrorReportingService");
                 }
+            };
+
+            _timelineService?.RecordOperation("Wire TaskScheduler.UnobservedTaskException handler", "Chrome Initialization");
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                try
+                {
+                    Log.Fatal(e.Exception, "Unobserved task exception");
+                }
+                catch (Exception fatalLogEx)
+                {
+                    Log.Error(fatalLogEx, "Log.Fatal failed for unobserved task exception");
+                }
+
+                try
+                {
+                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "Unobserved Task Exception", showToUser: false);
+                }
+                catch (Exception reportEx)
+                {
+                    Log.Warning(reportEx, "Failed to report unobserved task exception to ErrorReportingService");
+                }
+
+                // Mark as observed to prevent process termination (behavior varies by .NET version/config)
+                e.SetObserved();
             };
         }
 
@@ -1104,18 +1265,194 @@ namespace WileyWidget.WinForms
         {
             try
             {
+                Log.Debug("[DIAGNOSTIC] RunUiLoop: ENTERED - mainForm type={Type}, IsDisposed={IsDisposed}, Visible={Visible}",
+                    mainForm?.GetType().Name ?? "(null)",
+                    mainForm?.IsDisposed,
+                    mainForm?.Visible);
+                Log.Debug("""
+                [DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
+                Timestamp: { Timestamp}
+                """,
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
+
+                // CRITICAL: Explicitly ensure form is visible and properly positioned
+                // OnLoad may have completed but form visibility needs explicit enforcement
+                try
+                {
+                    // Force normal window state (not minimized/maximized)
+                    mainForm.WindowState = System.Windows.Forms.FormWindowState.Normal;
+
+                    // Ensure form is shown in taskbar
+                    mainForm.ShowInTaskbar = true;
+
+                    // Ensure proper positioning - center on primary screen
+                    mainForm.StartPosition = FormStartPosition.CenterScreen;
+
+                    // Explicitly show the form - DO NOT rely on Application.Run to show it
+                    // Some initialization patterns can prevent automatic showing
+                    if (!mainForm.Visible)
+                    {
+                        Log.Debug("Form not visible before Application.Run - calling Show()");
+                        mainForm.Show();
+                    }
+
+                    // Force form to front and activate
+                    mainForm.BringToFront();
+                    mainForm.Activate();
+
+                    // Force immediate repaint
+                    mainForm.Refresh();
+
+                    Log.Debug("mainForm visibility enforced: Visible={Visible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
+                        mainForm.Visible, mainForm.WindowState, mainForm.ShowInTaskbar);
+                    Log.Debug(
+                        """
+                        [DIAGNOSTIC] Form state before message loop
+                        Timestamp: { Timestamp}
+                        Visible: { Visible}
+                        WindowState: { WindowState}
+                        Size: { Size}
+                        Location: { Location}
+                        """,
+                        DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+                        mainForm.Visible,
+                        mainForm.WindowState,
+                        mainForm.Size,
+                        mainForm.Location);
+                }
+                catch (Exception visEx)
+                {
+                    Log.Error(visEx, "Failed to enforce form visibility");
+                    throw;
+                }
+
+                Log.Debug(
+                    """
+                    [DIAGNOSTIC] RunUiLoop: About to enter message loop
+                    Timestamp: { Timestamp}
+                    """,
+                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
                 Application.Run(mainForm);
             }
             catch (Exception ex)
             {
-                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Console.Error.WriteLine($"Failed to log Application.Run fatal during shutdown: {logEx}"); }
-                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Console.Error.WriteLine($"Failed to report Application.Run abort to ErrorReportingService: {reportEx}"); }
+                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Log.Error(logEx, "Failed to log Application.Run fatal during shutdown"); }
+                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Log.Warning(reportEx, "Failed to report Application.Run abort to ErrorReportingService"); }
                 throw new InvalidOperationException("UI message loop aborted", ex);
             }
             finally
             {
-                Log.Information("Application exited normally.");
-                Log.CloseAndFlush();
+                // CRITICAL: Graceful shutdown sequence with cache freezing
+                // Timeline:
+                // T+0ms:   Form closes, OnFormClosing fires
+                // T+500ms: Cancellation tokens cancelled, timers stopped
+                // T+800ms: MainForm.Dispose() called, cache freeze signal set
+                // T+1200ms: RunUiLoop finally block - wait for pending tasks (extended timeout)
+                // T+3200ms: Force cache disposal if tasks timeout
+                // T+4200ms: Serilog flush
+
+                // Step 1: Signal cache freeze to prevent new writes during shutdown
+                try
+                {
+                    if (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IMemoryCache>(Services) is IMemoryCache cache)
+                    {
+                        Log.Information("[SHUTDOWN] Freezing cache - blocking new writes");
+                        // If cache implements IFrozenCache, signal freeze
+                        if (cache is IFrozenCache frozenCache)
+                        {
+                            frozenCache.FreezeCacheWrites();
+                            Log.Information("[SHUTDOWN] \u2713 Cache freeze signal set");
+                        }
+                    }
+                }
+                catch (Exception freezeEx)
+                {
+                    Log.Warning(freezeEx, "[SHUTDOWN] Failed to freeze cache");
+                }
+
+                // Step 2: Wait for pending background tasks with extended timeout (2 seconds)
+                var pendingTaskWaitTimeout = TimeSpan.FromSeconds(2);
+                try
+                {
+                    lock (_pendingTasksLock)
+                    {
+                        var activeTasks = _pendingBackgroundTasks.Where(t => !t.IsCompleted).ToList();
+                        if (activeTasks.Count > 0)
+                        {
+                            Log.Information("[SHUTDOWN] Waiting for {TaskCount} pending background tasks ({TimeoutMs}ms timeout)...",
+                                activeTasks.Count, (int)pendingTaskWaitTimeout.TotalMilliseconds);
+
+                            // Wait for all tasks with timeout
+                            bool tasksCompleted = Task.WaitAll(activeTasks.ToArray(), pendingTaskWaitTimeout);
+
+                            if (tasksCompleted)
+                            {
+                                Log.Information("[SHUTDOWN] \u2713 All {TaskCount} background tasks completed", activeTasks.Count);
+                            }
+                            else
+                            {
+                                var stillRunning = activeTasks.Where(t => !t.IsCompleted).Count();
+                                Log.Warning("[SHUTDOWN] {StillRunningCount} background tasks did not complete within {TimeoutMs}ms - proceeding with shutdown",
+                                    stillRunning, (int)pendingTaskWaitTimeout.TotalMilliseconds);
+                            }
+                        }
+                    }
+                }
+                catch (Exception taskWaitEx)
+                {
+                    Log.Warning(taskWaitEx, "[SHUTDOWN] Error waiting for background tasks");
+                }
+
+                // Step 3: Log exit before disposing scope (avoids logs during disposal)
+                try
+                {
+                    Log.Information("Application exiting - beginning graceful shutdown.");
+                }
+                catch (Exception logEx)
+                {
+                    // If logging already failed, continue with shutdown
+                    System.Diagnostics.Debug.WriteLine($"Failed to log exit message: {logEx.Message}");
+                }
+
+                // Step 4: Dispose application-lifetime scope (triggers IDisposable chain)
+                // This will dispose the singleton IMemoryCache
+                try
+                {
+                    Log.Information("[SHUTDOWN] Disposing DI container and services");
+                    _applicationScope?.Dispose();
+                    Log.Information("[SHUTDOWN] \u2713 DI container disposed");
+                }
+                catch (Exception disposeEx)
+                {
+                    // Log any errors during scope disposal, but don't let them prevent shutdown
+                    try { Log.Error(disposeEx, "[SHUTDOWN FATAL] Error during DI container disposal"); } catch { /* Ignore */ }
+                }
+
+                // Step 5: CRITICAL - Allow time for pending operations per Serilog documentation
+                // Extended from 1000ms to 2000ms to account for pending tasks that may have just completed
+                // These timings are for:
+                // - Pending log writes to complete (batching, disk I/O, async sinks)
+                // - File handles to flush and release
+                // - Background threads (RollingFileSink timer, async batching) to finish
+                try
+                {
+                    System.Threading.Thread.Sleep(2000);
+                }
+                catch
+                {
+                    // Timing not critical, continue with flush
+                }
+
+                // Step 6: Graceful shutdown of Serilog per official documentation
+                try
+                {
+                    Log.CloseAndFlush();
+                }
+                catch (Exception flushEx)
+                {
+                    // Even if flush fails, the sinks should still be disposed
+                    System.Diagnostics.Debug.WriteLine($"[SHUTDOWN] Serilog.CloseAndFlush failed: {flushEx.Message}");
+                }
             }
         }
 
@@ -1201,7 +1538,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception logEx)
             {
-                Console.Error.WriteLine($"Failed to log startup fatal error: {logEx}");
+                Log.Error(logEx, "Failed to log startup fatal error");
             }
             finally
             {
@@ -1218,7 +1555,7 @@ namespace WileyWidget.WinForms
             }
             catch (Exception reportEx)
             {
-                Console.Error.WriteLine($"Failed to report startup failure to ErrorReportingService: {reportEx}");
+                Log.Warning(reportEx, "Failed to report startup failure to ErrorReportingService");
             }
 
             // Show user-friendly error dialog for startup failures
@@ -1235,8 +1572,7 @@ namespace WileyWidget.WinForms
                 }
                 else
                 {
-                    // Fallback to console output if no message loop
-                    Console.Error.WriteLine("Startup Error: " + ex.Message);
+                    Log.Fatal(ex, "Startup Error without message loop");
                 }
             }
             catch (Exception uiEx)
@@ -1267,7 +1603,13 @@ namespace WileyWidget.WinForms
 
                 // Note: The validator itself logs detailed category-by-category progress
                 // including the formatted banner output, so we don't duplicate logging here
-                var result = validationService.ValidateAll(services);
+                // Use a scoped provider for validation to allow resolving scoped services
+                DiValidationResult result;
+                using (var validationScope = services.CreateScope())
+                {
+                    var scopedServices = validationScope.ServiceProvider;
+                    result = validationService.ValidateAll(scopedServices);
+                }
 
                 var endTime = DateTime.Now;
                 var totalDuration = endTime - startTime;
@@ -1282,16 +1624,9 @@ namespace WileyWidget.WinForms
                     Log.Fatal("║ Duration:       {Duration,4:F0}ms                                    ║", totalDuration.TotalMilliseconds);
                     Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
 
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╔════════════════════════════════════════════════════════════════╗");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ║   ✗ DI VALIDATION FAILED - STARTUP CANNOT PROCEED             ║");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╠════════════════════════════════════════════════════════════════╣");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ║ Total Errors:   {result.Errors.Count,4}                                          ║");
-                    Console.WriteLine($"[{endTime:HH:mm:ss.fff}] ╚════════════════════════════════════════════════════════════════╝");
-
                     foreach (var error in result.Errors)
                     {
                         Log.Fatal("  ✗ {Error}", error);
-                        Console.WriteLine($"[{endTime:HH:mm:ss.fff}]   ✗ {error}");
                     }
 
                     throw new InvalidOperationException(
@@ -1321,8 +1656,6 @@ namespace WileyWidget.WinForms
                 Log.Fatal("║ Exception Type: {Type,-44} ║", ex.GetType().Name);
                 Log.Fatal("║ Exception Msg:  {Message,-44} ║", ex.Message.Length > 44 ? ex.Message.Substring(0, 41) + "..." : ex.Message);
                 Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
-
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✗ CRITICAL: DI validation failed: {ex.Message}");
                 throw;
             }
         }

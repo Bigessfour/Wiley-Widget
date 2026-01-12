@@ -125,6 +125,12 @@ dotnet_diagnostic.CA1064.severity = warning    # Exceptions should be public
 # MAINTAINABILITY RULES - Reasonable limits
 dotnet_diagnostic.CA1507.severity = suggestion # Use nameof to express symbol names
 
+# THEME CONSISTENCY RULES - No manual Color.FromArgb usage (enforced by custom analyzer WW0001)
+dotnet_diagnostic.WW0001.severity = warning # Avoid Color.FromArgb; prefer SkinManager/ThemeColors
+# Banned API Analyzer (RS0030) - use Syncfusion controls or wrapper extensions
+# Temporarily set to 'warning' during migration to avoid breaking CI; escalate to 'error' once replacements are completed
+dotnet_diagnostic.RS0030.severity = warning
+
 # NULLABILITY AND SAFETY RULES - Critical for preventing null reference exceptions
 dotnet_diagnostic.CA1062.severity = warning    # Validate arguments of public methods (re-enabled for null checks)
 dotnet_diagnostic.CA2208.severity = error      # Instantiate argument exceptions correctly
@@ -402,6 +408,9 @@ build_property.Nullable = disable
 # File header for new C# files (optional)
 file_header_template = Copyright (c) {year} WileyWidget. All rights reserved.\n\nAuthor: {author}
 
+# C# Language Version
+csharp_language_version = 14.0
+
 # Build properties
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
@@ -443,3 +452,10 @@ dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
 dotnet_style_prefer_auto_properties = true:suggestion
 dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
 dotnet_style_prefer_conditional_expression_over_return = true:suggestion
+
+# Enforce no manual Color.FromArgb usage (WW0001 - added by WileyWidget.Analyzers)
+dotnet_diagnostic.WW0001.severity = warning
+# Enforce Size property on MemoryCacheEntryOptions (WW0002 - added by WileyWidget.Analyzers)
+# When MemoryCache is configured with SizeLimit, all MemoryCacheEntryOptions must explicitly set Size
+# Reference: https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory#use-setsize-size-and-sizelimit-to-limit-cache-size
+dotnet_diagnostic.WW0002.severity = warning

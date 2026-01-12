@@ -25,9 +25,11 @@ _errorReportingService = errorReportingService ?? throw new ArgumentNullExceptio
 
 1. DI registration order issue - `AILoggingService` is being resolved before `ErrorReportingService`
 2. The service is registered at line 90 in `App.DependencyInjection.cs`:
+
    ```csharp
    containerRegistry.RegisterSingleton<Services.ErrorReportingService>();
    ```
+
 3. But `AILoggingService` registration happens in `RegisterLazyAIServices()` which may execute before or with incomplete dependencies
 
 ### Issue 2: NullReferenceException
@@ -183,7 +185,7 @@ protected override void RegisterTypes(IContainerRegistry containerRegistry)
 
 When you run with **"Debug Exceptions - Optimized"**, you'll see:
 
-### Break on ArgumentNullException:
+### Break on ArgumentNullException
 
 ```
 System.ArgumentNullException: Value cannot be null. (Parameter 'errorReporting')
@@ -191,7 +193,7 @@ System.ArgumentNullException: Value cannot be null. (Parameter 'errorReporting')
    at DryIoc.Container.ResolveAndCacheImplicitGenericTypeIfNotAlready(...)
 ```
 
-### Variables Panel Will Show:
+### Variables Panel Will Show
 
 ```
 ▼ Local
@@ -200,7 +202,7 @@ System.ArgumentNullException: Value cannot be null. (Parameter 'errorReporting')
   ▶ errorReportingService = null  ← THE PROBLEM
 ```
 
-### Debug Console Will Show:
+### Debug Console Will Show
 
 ```
 Exception thrown: 'System.ArgumentNullException' in WileyWidget.Services.dll
@@ -223,6 +225,7 @@ After applying Option 1 (fix registration order):
 3. **Should NOT break** - application starts normally
 
 4. **Check Debug Console** for:
+
    ```
    ✓ ErrorReportingService registered
    ✓ AILoggingService initialized with dedicated Serilog file sink
@@ -272,7 +275,7 @@ catch (Exception ex)
 
 ## Using the Optimized Debug Configuration
 
-### Quick Start:
+### Quick Start
 
 1. Press **F5**
 2. Select **"Launch WileyWidget (Debug Exceptions - Optimized)"** from dropdown
@@ -281,7 +284,7 @@ catch (Exception ex)
 5. Check **VARIABLES** to see what's null
 6. Apply fix based on root cause
 
-### What You'll See:
+### What You'll See
 
 ```
 ┌─────────────────────────────────────┐

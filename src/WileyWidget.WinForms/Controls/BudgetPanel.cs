@@ -1,10 +1,21 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.DataGrid.Events;
+using Syncfusion.WinForms.DataGrid.Styles;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Services;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.ListView;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -13,10 +24,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Features budget entry management, variance analysis, fiscal year management, and reporting.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class BudgetPanel : UserControl
+public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 {
-    private readonly BudgetViewModel _viewModel;
-    private readonly ILogger<BudgetPanel> _logger;
 
     // UI Controls
     private SfDataGrid? _budgetGrid;
@@ -41,10 +50,10 @@ public partial class BudgetPanel : UserControl
     private Label? _percentUsedLabel;
     private Label? _entriesOverBudgetLabel;
     private Label? _entriesUnderBudgetLabel;
-    private Panel? _summaryPanel;
-    private Panel? _gridPanel;
-    private Panel? _filterPanel;
-    private Panel? _buttonPanel;
+    private GradientPanelExt? _summaryPanel;
+    private GradientPanelExt? _gridPanel;
+    private GradientPanelExt? _filterPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -52,9 +61,27 @@ public partial class BudgetPanel : UserControl
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
 
+    // Navigation buttons
+    private SfButton? _navigateAccountsButton;
+    private SfButton? _navigateChartsButton;
+    private SfButton? _navigateAnalyticsButton;
+
+    // Event handlers for proper cleanup
+    private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler<AppTheme>? _themeChangedHandler;
+    private readonly Services.IThemeService? _themeService;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BudgetPanel"/> class.
+    /// </summary>
+    /// <param name="scopeFactory">Service scope factory for creating scoped dependencies.</param>
+    /// <param name="logger">Logger instance for diagnostic logging.</param>
     public BudgetPanel(
-        BudgetViewModel viewModel,
-        ILogger<BudgetPanel> logger)
+        IServiceScopeFactory scopeFactory,
+        ILogger<ScopedPanelBase<BudgetViewModel>> logger,
+        Services.IThemeService? themeService = null)
+        : base(scopeFactory, logger)
     {
         if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         if (logger == null) throw new ArgumentNullException(nameof(logger));
@@ -64,6 +91,14 @@ public partial class BudgetPanel : UserControl
 
         InitializeComponent();
         InitializeControls();
+        BindViewModel();
+        ApplySyncfusionTheme();
+        ApplyTheme(_themeService?.CurrentTheme ?? AppTheme.Office2019Colorful);
+
+        // Defer sizing validation until layout is complete
+        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
+        Logger.LogInformation("BudgetPanel initialized with ViewModel");
     }
 
     /// <summary>
@@ -114,8 +149,11 @@ public partial class BudgetPanel : UserControl
 
     private void InitializeControls()
     {
-        // Apply theme to this control - handled by parent form cascade
-        // ThemeColors.ApplyTheme(this);
+        if (ViewModel == null)
+        {
+            Logger.LogWarning("InitializeControls called with null ViewModel");
+            return;
+        }
 
         // Set up form properties
         Text = "Budget Management";
@@ -124,17 +162,19 @@ public partial class BudgetPanel : UserControl
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Management & Analysis" };
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshDataAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
+        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
         // Main split container
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 150
+            Orientation = Orientation.Vertical
         };
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 150);
 
         // Top panel - Summary and filters
         InitializeTopPanel();
@@ -157,14 +197,16 @@ public partial class BudgetPanel : UserControl
         Controls.Add(_loadingOverlay);
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No budget entries found" };
+        _noDataOverlay = new NoDataOverlay { Message = "No budget entries yet\r\nCreate a new budget to get started" };
         Controls.Add(_noDataOverlay);
 
         Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
 
-        // Wire up ViewModel events
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Subscribe to theme changes
+        _themeChangedHandler = (s, t) => ApplyTheme(t);
+        if (_themeService != null)
+            _themeService.ThemeChanged += _themeChangedHandler;
 
         // Set tab order
         SetTabOrder();
@@ -172,15 +214,24 @@ public partial class BudgetPanel : UserControl
 
     private void InitializeTopPanel()
     {
-        var topPanel = new Panel { Dock = DockStyle.Fill };
+        var topPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
         // Summary panel
-        _summaryPanel = new Panel
+        _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 80,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
 
         var summaryTable = new TableLayoutPanel
         {
@@ -251,17 +302,23 @@ public partial class BudgetPanel : UserControl
         topPanel.Controls.Add(_summaryPanel);
 
         // Filter panel
-        _filterPanel = new Panel
+        _filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_filterPanel, ThemeColors.DefaultTheme);
 
-        var filterGroup = new GroupBox
+        var filterGroup = new GradientPanelExt
         {
             Text = "Filters",
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(filterGroup, ThemeColors.DefaultTheme);
 
         var filterTable = new TableLayoutPanel
         {
@@ -281,7 +338,7 @@ public partial class BudgetPanel : UserControl
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _searchTextBox = new TextBox
+        _searchTextBox = new TextBoxExt
         {
             Dock = DockStyle.Fill,
             TabIndex = 1,
@@ -297,19 +354,22 @@ public partial class BudgetPanel : UserControl
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fiscalYearComboBox = new ComboBox
+        _fiscalYearComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 2,
             AccessibleName = "Fiscal Year Filter",
-            AccessibleDescription = "Filter budget entries by fiscal year"
+            AccessibleDescription = "Filter budget entries by fiscal year",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
 
         // Populate fiscal years
+        var years = new List<int>();
         for (int year = DateTime.Now.Year - 5; year <= DateTime.Now.Year + 5; year++)
         {
-            _fiscalYearComboBox.Items.Add(year);
+            years.Add(year);
         }
+        _fiscalYearComboBox.DataSource = years;
         _fiscalYearComboBox.SelectedItem = DateTime.Now.Year;
         _fiscalYearComboBox.SelectedIndexChanged += FiscalYearComboBox_SelectedIndexChanged;
 
@@ -321,14 +381,15 @@ public partial class BudgetPanel : UserControl
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _departmentComboBox = new ComboBox
+        _departmentComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 3,
             AccessibleName = "Department Filter",
-            AccessibleDescription = "Filter budget entries by department"
+            AccessibleDescription = "Filter budget entries by department",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
-        _departmentComboBox.Items.Add("All Departments");
+        _departmentComboBox.DataSource = new List<string> { "All Departments" };
         _departmentComboBox.SelectedIndex = 0;
         _departmentComboBox.SelectedIndexChanged += DepartmentComboBox_SelectedIndexChanged;
 
@@ -339,15 +400,17 @@ public partial class BudgetPanel : UserControl
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fundTypeComboBox = new ComboBox
+        _fundTypeComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
             TabIndex = 4,
             AccessibleName = "Fund Type Filter",
-            AccessibleDescription = "Filter budget entries by fund type"
+            AccessibleDescription = "Filter budget entries by fund type",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
-        _fundTypeComboBox.Items.AddRange(Enum.GetNames(typeof(FundType)));
-        _fundTypeComboBox.Items.Insert(0, "All Fund Types");
+        var fundTypes = Enum.GetNames(typeof(FundType)).ToList();
+        fundTypes.Insert(0, "All Fund Types");
+        _fundTypeComboBox.DataSource = fundTypes;
         _fundTypeComboBox.SelectedIndex = 0;
         _fundTypeComboBox.SelectedIndexChanged += FundTypeComboBox_SelectedIndexChanged;
 
@@ -359,7 +422,7 @@ public partial class BudgetPanel : UserControl
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _varianceThresholdTextBox = new TextBox
+        _varianceThresholdTextBox = new TextBoxExt
         {
             Text = "1000",
             Dock = DockStyle.Fill,
@@ -369,7 +432,7 @@ public partial class BudgetPanel : UserControl
         };
         _varianceThresholdTextBox.TextChanged += VarianceThresholdTextBox_TextChanged;
 
-        _overBudgetCheckBox = new CheckBox
+        _overBudgetCheckBox = new CheckBoxAdv
         {
             Text = "Over Budget Only",
             Dock = DockStyle.Fill,
@@ -377,9 +440,9 @@ public partial class BudgetPanel : UserControl
             AccessibleName = "Show Over Budget Only",
             AccessibleDescription = "Show only entries that are over budget"
         };
-        _overBudgetCheckBox.CheckedChanged += OverBudgetCheckBox_CheckedChanged;
+        _overBudgetCheckBox.CheckStateChanged += OverBudgetCheckBox_CheckedChanged;
 
-        _underBudgetCheckBox = new CheckBox
+        _underBudgetCheckBox = new CheckBoxAdv
         {
             Text = "Under Budget Only",
             Dock = DockStyle.Fill,
@@ -387,7 +450,7 @@ public partial class BudgetPanel : UserControl
             AccessibleName = "Show Under Budget Only",
             AccessibleDescription = "Show only entries that are under budget"
         };
-        _underBudgetCheckBox.CheckedChanged += UnderBudgetCheckBox_CheckedChanged;
+        _underBudgetCheckBox.CheckStateChanged += UnderBudgetCheckBox_CheckedChanged;
 
         filterTable.Controls.Add(searchLabel, 0, 0);
         filterTable.Controls.Add(_searchTextBox, 1, 0);
@@ -411,14 +474,23 @@ public partial class BudgetPanel : UserControl
 
     private void InitializeBottomPanel()
     {
-        var bottomPanel = new Panel { Dock = DockStyle.Fill };
-
-        // Budget grid
-        _gridPanel = new Panel
+        var bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(bottomPanel, ThemeColors.DefaultTheme);
+
+        // Budget grid
+        _gridPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(_gridPanel, ThemeColors.DefaultTheme);
 
         _budgetGrid = new SfDataGrid
         {
@@ -503,16 +575,23 @@ public partial class BudgetPanel : UserControl
         });
 
         _budgetGrid.CurrentCellActivated += BudgetGrid_CurrentCellActivated;
+
+        // Set AutoGenerateColumns explicitly to false
+        _budgetGrid.AutoGenerateColumns = false;
+
         _gridPanel.Controls.Add(_budgetGrid);
         bottomPanel.Controls.Add(_gridPanel);
 
         // Button panel
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 50,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
         var buttonTable = new TableLayoutPanel
         {
@@ -524,16 +603,20 @@ public partial class BudgetPanel : UserControl
         for (int i = 0; i < 8; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
 
-        _loadBudgetsButton = new Button
+        _loadBudgetsButton = new SfButton
         {
             Text = "&Load Budgets",
             TabIndex = 9,
             AccessibleName = "Load Budgets",
             AccessibleDescription = "Load budget entries for the selected fiscal year"
         };
-        _loadBudgetsButton.Click += async (s, e) => await _viewModel.LoadBudgetsCommand.ExecuteAsync(null);
+        _loadBudgetsButton.Click += async (s, e) =>
+        {
+            if (ViewModel != null)
+                await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
+        };
 
-        _addEntryButton = new Button
+        _addEntryButton = new SfButton
         {
             Text = "&Add Entry",
             TabIndex = 10,
@@ -542,7 +625,7 @@ public partial class BudgetPanel : UserControl
         };
         _addEntryButton.Click += AddEntryButton_Click;
 
-        _editEntryButton = new Button
+        _editEntryButton = new SfButton
         {
             Text = "&Edit Entry",
             TabIndex = 11,
@@ -551,7 +634,7 @@ public partial class BudgetPanel : UserControl
         };
         _editEntryButton.Click += EditEntryButton_Click;
 
-        _deleteEntryButton = new Button
+        _deleteEntryButton = new SfButton
         {
             Text = "&Delete Entry",
             TabIndex = 12,
@@ -560,7 +643,7 @@ public partial class BudgetPanel : UserControl
         };
         _deleteEntryButton.Click += async (s, e) => await DeleteEntryAsync();
 
-        _importCsvButton = new Button
+        _importCsvButton = new SfButton
         {
             Text = "&Import CSV",
             TabIndex = 13,
@@ -569,7 +652,7 @@ public partial class BudgetPanel : UserControl
         };
         _importCsvButton.Click += ImportCsvButton_Click;
 
-        _exportCsvButton = new Button
+        _exportCsvButton = new SfButton
         {
             Text = "Export &CSV",
             TabIndex = 14,
@@ -578,7 +661,7 @@ public partial class BudgetPanel : UserControl
         };
         _exportCsvButton.Click += ExportCsvButton_Click;
 
-        _exportPdfButton = new Button
+        _exportPdfButton = new SfButton
         {
             Text = "Export &PDF",
             TabIndex = 15,
@@ -587,7 +670,7 @@ public partial class BudgetPanel : UserControl
         };
         _exportPdfButton.Click += ExportPdfButton_Click;
 
-        _exportExcelButton = new Button
+        _exportExcelButton = new SfButton
         {
             Text = "Export &Excel",
             TabIndex = 16,
@@ -611,6 +694,164 @@ public partial class BudgetPanel : UserControl
         _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
     }
 
+    /// <summary>
+    /// Binds ViewModel properties to UI controls.
+    /// </summary>
+    private void BindViewModel()
+    {
+        if (ViewModel == null) return;
+
+        // Wire up ViewModel property changes
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        // Bind grid data source - ViewModel classes should implement INotifyPropertyChanged
+        // for proper ObservableCollection synchronization with SfDataGrid
+        if (_budgetGrid != null)
+        {
+            _budgetGrid.DataSource = ViewModel.FilteredBudgetEntries;
+        }
+    }
+
+    /// <summary>
+    /// Applies Syncfusion Office2019Colorful theme to SfDataGrid.
+    /// </summary>
+    private void ApplySyncfusionTheme()
+    {
+        try
+        {
+            if (_budgetGrid == null) return;
+
+            // Header styling
+            _budgetGrid.Style.HeaderStyle.Font.Bold = true;
+            _budgetGrid.Style.HeaderStyle.Font.Size = 9.5f;
+
+            // Selection styling
+
+            // Cell styling
+            _budgetGrid.Style.CellStyle.Font.Size = 9f;
+
+            // Add alternate row coloring via QueryCellStyle event
+            _budgetGrid.QueryCellStyle += BudgetGrid_QueryCellStyle;
+
+            Logger.LogDebug("Syncfusion theme applied successfully to BudgetPanel grid");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to apply Syncfusion theme to budget grid");
+        }
+    }
+
+    /// <summary>
+    /// Handles QueryCellStyle event for alternating row colors and variance color coding.
+    /// </summary>
+    private void BudgetGrid_QueryCellStyle(object? sender, QueryCellStyleEventArgs e)
+    {
+        if (e.Column != null && e.DataRow != null)
+        {
+            // Alternating row styling removed - let SkinManager handle theming
+
+            // Highlight negative variances in red
+            if (e.Column.MappingName == "VarianceAmount" && e.DisplayText != null)
+            {
+                if (decimal.TryParse(e.DisplayText.Replace("$", "", StringComparison.Ordinal).Replace(",", "", StringComparison.Ordinal), out var variance))
+                {
+                    if (variance < 0)
+                    {
+                        e.Style.TextColor = Color.Red; // Semantic over-budget
+                    }
+                    else if (variance > 0)
+                    {
+                        e.Style.TextColor = Color.Green; // Semantic under-budget
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies theme to all controls.
+    /// </summary>
+    private void ApplyTheme(AppTheme theme)
+    {
+        try
+        {
+            UpdateButtonIcons(theme);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to apply theme");
+        }
+    }
+
+    /// <summary>
+    /// Updates button icons based on current theme.
+    /// </summary>
+    private void UpdateButtonIcons(AppTheme theme)
+    {
+        var iconService = ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider) : null;
+        if (iconService == null) return;
+
+        try
+        {
+            if (_loadBudgetsButton != null)
+                _loadBudgetsButton.Image = iconService.GetIcon("refresh", theme, 16);
+
+            if (_addEntryButton != null)
+                _addEntryButton.Image = iconService.GetIcon("add", theme, 16);
+
+            if (_editEntryButton != null)
+                _editEntryButton.Image = iconService.GetIcon("edit", theme, 16);
+
+            if (_deleteEntryButton != null)
+                _deleteEntryButton.Image = iconService.GetIcon("delete", theme, 16);
+
+            if (_exportExcelButton != null)
+                _exportExcelButton.Image = iconService.GetIcon("export", theme, 16);
+
+            if (_navigateAccountsButton != null)
+                _navigateAccountsButton.Image = iconService.GetIcon("accounts", theme, 16);
+
+            if (_navigateChartsButton != null)
+                _navigateChartsButton.Image = iconService.GetIcon("chart", theme, 16);
+
+            if (_navigateAnalyticsButton != null)
+                _navigateAnalyticsButton.Image = iconService.GetIcon("analytics", theme, 16);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to update button icons");
+        }
+    }
+
+    /// <summary>
+    /// Navigates to another panel.
+    /// </summary>
+    private void NavigateToPanel<TPanel>(string panelName) where TPanel : UserControl
+    {
+        try
+        {
+            var parentForm = this.FindForm();
+            if (parentForm is Forms.MainForm mf)
+            {
+                mf.ShowPanel<TPanel>(panelName);
+                return;
+            }
+
+            // Fallback for older hosts
+            var method = parentForm?.GetType().GetMethod("DockUserControlPanel",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (method != null)
+            {
+                var genericMethod = method.MakeGenericMethod(typeof(TPanel));
+                genericMethod.Invoke(parentForm, new object[] { panelName });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Navigation to {PanelName} failed", panelName);
+        }
+    }
+
     private void SetTabOrder()
     {
         // Tab order set in control initialization
@@ -623,14 +864,15 @@ public partial class BudgetPanel : UserControl
 
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
-        _viewModel.SearchText = _searchTextBox?.Text ?? string.Empty;
+        if (ViewModel != null)
+            ViewModel.SearchText = _searchTextBox?.Text ?? string.Empty;
     }
 
     private void FiscalYearComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        if (_fiscalYearComboBox?.SelectedItem is int year)
+        if (ViewModel != null && _fiscalYearComboBox?.SelectedItem is int year)
         {
-            _viewModel.SelectedFiscalYear = year;
+            ViewModel.SelectedFiscalYear = year;
         }
     }
 
@@ -641,37 +883,39 @@ public partial class BudgetPanel : UserControl
 
     private void FundTypeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        if (_fundTypeComboBox?.SelectedItem is string fundTypeString &&
+        if (ViewModel != null && _fundTypeComboBox?.SelectedItem is string fundTypeString &&
             Enum.TryParse<FundType>(fundTypeString, out var fundType))
         {
-            _viewModel.SelectedFundType = fundType;
+            ViewModel.SelectedFundType = fundType;
         }
-        else
+        else if (ViewModel != null)
         {
-            _viewModel.SelectedFundType = null;
+            ViewModel.SelectedFundType = null;
         }
     }
 
     private void VarianceThresholdTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_varianceThresholdTextBox?.Text, out var threshold))
+        if (ViewModel != null && decimal.TryParse(_varianceThresholdTextBox?.Text, out var threshold))
         {
-            _viewModel.VarianceThreshold = threshold;
+            ViewModel.VarianceThreshold = threshold;
         }
-        else
+        else if (ViewModel != null)
         {
-            _viewModel.VarianceThreshold = null;
+            ViewModel.VarianceThreshold = null;
         }
     }
 
     private void OverBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
-        _viewModel.ShowOnlyOverBudget = _overBudgetCheckBox?.Checked ?? false;
+        if (ViewModel != null)
+            ViewModel.ShowOnlyOverBudget = _overBudgetCheckBox?.Checked ?? false;
     }
 
     private void UnderBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
-        _viewModel.ShowOnlyUnderBudget = _underBudgetCheckBox?.Checked ?? false;
+        if (ViewModel != null)
+            ViewModel.ShowOnlyUnderBudget = _underBudgetCheckBox?.Checked ?? false;
     }
 
     private void AddEntryButton_Click(object? sender, EventArgs e)
@@ -781,7 +1025,7 @@ public partial class BudgetPanel : UserControl
         }
     }
 
-    private void EditEntryButton_Click(object? sender, EventArgs e)
+    private async void EditEntryButton_Click(object? sender, EventArgs e)
     {
         try
         {
@@ -921,6 +1165,8 @@ public partial class BudgetPanel : UserControl
 
     private void ImportCsvButton_Click(object? sender, EventArgs e)
     {
+        if (ViewModel == null) return;
+
         using var openFileDialog = new OpenFileDialog
         {
             Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
@@ -929,12 +1175,14 @@ public partial class BudgetPanel : UserControl
 
         if (openFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = _viewModel.ImportFromCsvCommand.ExecuteAsync(openFileDialog.FileName);
+            _ = ViewModel.ImportFromCsvCommand.ExecuteAsync(openFileDialog.FileName);
         }
     }
 
     private void ExportCsvButton_Click(object? sender, EventArgs e)
     {
+        if (ViewModel == null) return;
+
         using var saveFileDialog = new SaveFileDialog
         {
             Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
@@ -944,12 +1192,14 @@ public partial class BudgetPanel : UserControl
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = _viewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
+            _ = ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
 
     private void ExportPdfButton_Click(object? sender, EventArgs e)
     {
+        if (ViewModel == null) return;
+
         using var saveFileDialog = new SaveFileDialog
         {
             Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
@@ -959,12 +1209,14 @@ public partial class BudgetPanel : UserControl
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = _viewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
+            _ = ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
+        if (ViewModel == null) return;
+
         using var saveFileDialog = new SaveFileDialog
         {
             Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
@@ -974,78 +1226,82 @@ public partial class BudgetPanel : UserControl
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = _viewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
+            _ = ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
         }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (ViewModel == null) return;
+
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.BudgetEntries):
-                if (_budgetGrid != null) _budgetGrid.DataSource = _viewModel.BudgetEntries;
+            case nameof(ViewModel.BudgetEntries):
+                if (_budgetGrid != null) _budgetGrid.DataSource = ViewModel.BudgetEntries;
                 break;
 
-            case nameof(_viewModel.FilteredBudgetEntries):
-                if (_budgetGrid != null) _budgetGrid.DataSource = _viewModel.FilteredBudgetEntries;
+            case nameof(ViewModel.FilteredBudgetEntries):
+                if (_budgetGrid != null) _budgetGrid.DataSource = ViewModel.FilteredBudgetEntries;
                 break;
 
-            case nameof(_viewModel.IsLoading):
-                if (_loadingOverlay != null) _loadingOverlay.Visible = _viewModel.IsLoading;
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !_viewModel.IsLoading && !_viewModel.BudgetEntries.Any();
+            case nameof(ViewModel.IsLoading):
+                if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
+                if (_noDataOverlay != null) _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.BudgetEntries.Any();
                 break;
 
-            case nameof(_viewModel.StatusText):
-                if (_statusLabel != null) _statusLabel.Text = _viewModel.StatusText;
+            case nameof(ViewModel.StatusText):
+                if (_statusLabel != null) _statusLabel.Text = ViewModel.StatusText;
                 break;
 
-            case nameof(_viewModel.TotalBudgeted):
+            case nameof(ViewModel.TotalBudgeted):
                 if (_totalBudgetedLabel != null)
-                    _totalBudgetedLabel.Text = $"Total Budgeted: {_viewModel.TotalBudgeted:C}";
+                    _totalBudgetedLabel.Text = $"Total Budgeted: {ViewModel.TotalBudgeted:C}";
                 break;
 
-            case nameof(_viewModel.TotalActual):
+            case nameof(ViewModel.TotalActual):
                 if (_totalActualLabel != null)
-                    _totalActualLabel.Text = $"Total Actual: {_viewModel.TotalActual:C}";
+                    _totalActualLabel.Text = $"Total Actual: {ViewModel.TotalActual:C}";
                 break;
 
-            case nameof(_viewModel.TotalVariance):
+            case nameof(ViewModel.TotalVariance):
                 if (_totalVarianceLabel != null)
-                    _totalVarianceLabel.Text = $"Total Variance: {_viewModel.TotalVariance:C}";
+                    _totalVarianceLabel.Text = $"Total Variance: {ViewModel.TotalVariance:C}";
                 break;
 
-            case nameof(_viewModel.PercentUsed):
+            case nameof(ViewModel.PercentUsed):
                 if (_percentUsedLabel != null)
-                    _percentUsedLabel.Text = $"Percent Used: {_viewModel.PercentUsed:P}";
+                    _percentUsedLabel.Text = $"Percent Used: {ViewModel.PercentUsed:P}";
                 break;
 
-            case nameof(_viewModel.EntriesOverBudget):
+            case nameof(ViewModel.EntriesOverBudget):
                 if (_entriesOverBudgetLabel != null)
-                    _entriesOverBudgetLabel.Text = $"Over Budget: {_viewModel.EntriesOverBudget}";
+                    _entriesOverBudgetLabel.Text = $"Over Budget: {ViewModel.EntriesOverBudget}";
                 break;
 
-            case nameof(_viewModel.EntriesUnderBudget):
+            case nameof(ViewModel.EntriesUnderBudget):
                 if (_entriesUnderBudgetLabel != null)
-                    _entriesUnderBudgetLabel.Text = $"Under Budget: {_viewModel.EntriesUnderBudget}";
+                    _entriesUnderBudgetLabel.Text = $"Under Budget: {ViewModel.EntriesUnderBudget}";
                 break;
         }
     }
 
     private async Task RefreshDataAsync()
     {
+        if (ViewModel == null) return;
+
         try
         {
-            _logger.LogInformation("Refreshing budget data");
+            Logger.LogInformation("Refreshing budget data");
             UpdateStatus("Loading budget data...");
 
-            await _viewModel.LoadBudgetsCommand.ExecuteAsync(null);
-            await _viewModel.RefreshAnalysisCommand.ExecuteAsync(null);
+            await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
+            await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
 
             UpdateStatus("Data refreshed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error refreshing data");
+            Logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
             MessageBox.Show($"Error refreshing data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -1072,13 +1328,13 @@ public partial class BudgetPanel : UserControl
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "BudgetPanel: ClosePanel failed");
+            Logger.LogWarning(ex, "BudgetPanel: ClosePanel failed");
         }
     }
 
     protected override void OnLoad(EventArgs e)
     {
-        base.OnLoad(e);
+        if (ViewModel == null) return;
 
         try
         {
@@ -1087,8 +1343,48 @@ public partial class BudgetPanel : UserControl
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading panel data");
+            Logger.LogError(ex, "Error loading panel data");
         }
+    }
+
+    /// <summary>
+    /// Handles keyboard shortcuts for common operations.
+    /// </summary>
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (ViewModel == null) return base.ProcessCmdKey(ref msg, keyData);
+
+        try
+        {
+            switch (keyData)
+            {
+                case Keys.Control | Keys.N: // Add new entry
+                    AddEntryButton_Click(null, EventArgs.Empty);
+                    return true;
+
+                case Keys.Control | Keys.S: // Save/Refresh
+                    _ = RefreshDataAsync();
+                    return true;
+
+                case Keys.Delete: // Delete entry
+                    _ = DeleteEntryAsync();
+                    return true;
+
+                case Keys.F5: // Refresh
+                    _ = RefreshDataAsync();
+                    return true;
+
+                case Keys.Escape: // Close panel
+                    ClosePanel();
+                    return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "ProcessCmdKey failed");
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     /// <summary>
@@ -1104,9 +1400,37 @@ public partial class BudgetPanel : UserControl
     {
         if (disposing)
         {
-            _viewModel?.Dispose();
+            // Unsubscribe from events
+            if (_panelHeader != null)
+            {
+                if (_panelHeaderRefreshHandler != null)
+                    _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                if (_panelHeaderCloseHandler != null)
+                    _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+            }
 
-            _budgetGrid?.Dispose();
+            if (_themeChangedHandler != null && _themeService != null)
+            {
+                try { _themeService.ThemeChanged -= _themeChangedHandler; } catch { }
+            }
+
+            if (ViewModel != null)
+            {
+                ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+
+            // Unsubscribe from grid events
+            if (_budgetGrid != null)
+            {
+                _budgetGrid.QueryCellStyle -= BudgetGrid_QueryCellStyle;
+                _budgetGrid.CurrentCellActivated -= BudgetGrid_CurrentCellActivated;
+            }
+
+            // SafeDispose for Syncfusion controls
+            try { _budgetGrid?.SafeClearDataSource(); } catch { }
+            try { _budgetGrid?.SafeDispose(); } catch { }
+
+            // Dispose other controls
             _mainSplitContainer?.Dispose();
             _statusStrip?.Dispose();
             _panelHeader?.Dispose();
@@ -1127,9 +1451,17 @@ public partial class BudgetPanel : UserControl
     /// </summary>
     private void InitializeComponent()
     {
+        this.SuspendLayout();
+
         this.components = new System.ComponentModel.Container();
         this.Name = "BudgetPanel";
         this.Size = new Size(1400, 900);
+        try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
+        this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        this.AutoScroll = true;
+        this.Padding = new Padding(8);
+        this.ResumeLayout(false);
+
     }
 
     #endregion

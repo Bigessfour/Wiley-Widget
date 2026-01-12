@@ -9,7 +9,7 @@ namespace WileyWidget.WinForms.Themes
 {
     /// <summary>
     /// Provides access to Syncfusion theme colors and brush resources.
-    /// Acts as a thin wrapper around SkinManager theme system.
+    /// Acts as a thin wrapper around SfSkinManager theme system.
     /// CRITICAL: SkinManager is the SOLE PROPRIETOR of all theme and color decisions.
     /// This class provides orchestration methods AND theme-aware color accessors.
     /// Per Syncfusion documentation: SetVisualStyle on a form automatically cascades to all child controls.
@@ -61,11 +61,11 @@ namespace WileyWidget.WinForms.Themes
         public static Color GaugeArc => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");
 
         /// <summary>
-        /// Applies the default theme to a form using Syncfusion's SkinManager.
+        /// Applies the default theme to a form using Syncfusion's SfSkinManager.
         /// Per Syncfusion documentation, calling SetVisualStyle on a form automatically
         /// cascades the theme to ALL child Syncfusion controls (SfDataGrid, RadialGauge, etc.).
         /// DO NOT call SetVisualStyle on individual child controls - the cascade handles it.
-        /// DO NOT manually set BackColor, ForeColor - SkinManager owns all color decisions.
+        /// DO NOT manually set BackColor, ForeColor - SfSkinManager owns all color decisions.
         /// Reference: Syncfusion WinForms Office2019 Theme Documentation
         /// </summary>
         /// <param name="form">The form to apply theming to.</param>
@@ -83,14 +83,14 @@ namespace WileyWidget.WinForms.Themes
 
                 // CRITICAL: This single call themes the form AND all child controls automatically
                 // Per Syncfusion: "SetVisualStyle on window applies theme to ALL controls inside it"
-                SkinManager.SetVisualStyle(form, theme);
+                SfSkinManager.SetVisualStyle(form, theme);
 
-                Serilog.Log.Debug("SkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
+                Serilog.Log.Debug("SfSkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
                     theme, form.Name);
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "SkinManager failed to apply {Theme} theme to form {FormName}",
+                Serilog.Log.Error(ex, "SfSkinManager failed to apply {Theme} theme to form {FormName}",
                     theme, form.Name);
 
                 // Minimal fallback - let form use default rendering
@@ -114,7 +114,7 @@ namespace WileyWidget.WinForms.Themes
         {
             try
             {
-                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             }
             catch (Exception ex)
             {

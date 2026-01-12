@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
 
 namespace WileyWidget.Services;
@@ -24,7 +25,7 @@ public class ErrorReportingService
     private readonly ConcurrentDictionary<string, TelemetryEvent> _telemetryEvents = new();
     private readonly ILogger<ErrorReportingService> _logger;
     private readonly Stopwatch _uptimeStopwatch;
-    private SigNozTelemetryService? _telemetryService;
+    private ITelemetryService? _telemetryService;
 
     /// <summary>
     /// When true, user dialogs are suppressed (useful for automated tests and headless runs).
@@ -63,13 +64,13 @@ public class ErrorReportingService
     }
 
     /// <summary>
-    /// Sets the SigNoz telemetry service for OpenTelemetry integration.
+    /// Sets the telemetry service for OpenTelemetry integration.
     /// Called during application startup after telemetry service is initialized.
     /// </summary>
-    public void SetTelemetryService(SigNozTelemetryService telemetryService)
+    public void SetTelemetryService(ITelemetryService telemetryService)
     {
         _telemetryService = telemetryService;
-        _logger.LogInformation("SigNoz telemetry service integrated with ErrorReportingService");
+        _logger.LogInformation("Telemetry service integrated with ErrorReportingService");
     }
 
     /// <summary>

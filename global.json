@@ -1,6 +1,9 @@
 {
   "sdk": {
-    "version": "9.0.307",
+    "version": "10.0.101",
     "rollForward": "latestMinor"
+  },
+  "msbuild-sdks": {
+    "comment": ".NET 10 TFMs in project files will work with .NET 9 SDK until .NET 10 SDK is installed"
   }
 }

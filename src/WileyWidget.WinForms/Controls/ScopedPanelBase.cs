@@ -1,5 +1,11 @@
+using System;
+using System.Reflection;
+using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -15,6 +21,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     private readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
     private IServiceScope? _scope;
     private TViewModel? _viewModel;
+    private object? _dataContext;
     private bool _disposed;
 
     /// <summary>
@@ -59,6 +66,13 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             return;
         }
 
+        // Skip initialization if the control is being disposed or disposed
+        if (Disposing || IsDisposed)
+        {
+            _logger.LogDebug("Skipping scope creation for {PanelType} - control is disposing/disposed", GetType().Name);
+            return;
+        }
+
         try
         {
             // Create scope for scoped services (DbContext, repositories, etc.)
@@ -69,8 +83,19 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(_scope.ServiceProvider);
             _logger.LogDebug("Resolved {ViewModelType} from scoped provider", typeof(TViewModel).Name);
 
+            // Populate DataContext (base + derived new DataContext via reflection)
+            TrySetDataContext(_viewModel);
+
+            // Ensure theme cascade reaches dynamically created panel and children
+            ApplyThemeCascade();
+
             // Allow derived classes to perform additional initialization with the resolved ViewModel
             OnViewModelResolved(_viewModel);
+        }
+        catch (ObjectDisposedException ex)
+        {
+            _logger.LogWarning(ex, "Service provider disposed during handle creation for {PanelType} - skipping ViewModel resolution", GetType().Name);
+            // Don't throw - allow the panel to continue without ViewModel (common in test scenarios)
         }
         catch (Exception ex)
         {
@@ -119,11 +144,66 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
                 _scope?.Dispose();
                 _scope = null;
                 _viewModel = null;
+                _dataContext = null;
             }
 
             _disposed = true;
         }
 
         base.Dispose(disposing);
+    }
+
+    private void TrySetDataContext(TViewModel? viewModel)
+    {
+        _dataContext = viewModel;
+
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dataContextProperty = GetType().GetProperty("DataContext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (dataContextProperty?.CanWrite == true)
+            {
+                dataContextProperty.SetValue(this, viewModel);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to set DataContext for {PanelType}", GetType().Name);
+        }
+    }
+
+    private void ApplyThemeCascade()
+    {
+        try
+        {
+            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
+            ApplyThemeRecursively(this, ThemeColors.DefaultTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Theme cascade skipped for {PanelType}", GetType().Name);
+        }
+    }
+
+    private static void ApplyThemeRecursively(Control control, string themeName)
+    {
+        try
+        {
+            SfSkinManager.SetVisualStyle(control, themeName);
+        }
+        catch
+        {
+            // Best-effort only; some controls may not support theming directly.
+        }
+
+        foreach (Control child in control.Controls)
+        {
+            ApplyThemeRecursively(child, themeName);
+        }
     }
 }

@@ -75,6 +75,7 @@ namespace WileyWidget.Services
         /// </summary>
         public async Task<RateScenarioResult> RunRateScenarioAsync(RateScenarioParameters parameters)
         {
+            ArgumentNullException.ThrowIfNull(parameters);
             _logger.LogInformation("Running rate scenario with {Rate}% increase, {Expense}% expense increase",
                 parameters.RateIncreasePercentage * 100, parameters.ExpenseIncreasePercentage * 100);
 

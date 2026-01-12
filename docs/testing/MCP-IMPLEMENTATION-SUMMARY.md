@@ -488,6 +488,7 @@ Fix violations before committing. Run:
    ```
 
 5. **Accessibility Validator**
+
    ```csharp
    ValidateAccessibility(Form form) → { MissingLabels, ColorContrast, TabOrder }
    ```

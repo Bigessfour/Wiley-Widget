@@ -159,10 +159,7 @@
 				"--verbosity",
 				"minimal"
 			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
+			"group": "build",
 			"presentation": {
 				"echo": true,
 				"reveal": "always",
@@ -581,6 +578,150 @@
 			},
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "ai: generate-manifest",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"${workspaceFolder}/scripts/generate-ai-manifest.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "mcp: build-ui-server",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--verbosity",
+				"minimal"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [
+				{
+					"owner": "csharp",
+					"source": "MCP Build",
+					"fileLocation": ["relative", "${workspaceFolder}"],
+					"pattern": {
+						"regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(CS\\d+):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					}
+				}
+			],
+			"group": "build"
+		},
+		{
+			"label": "mcp: start-ui-server (foreground)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--no-build"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"isBackground": false,
+			"dependsOn": [
+				"mcp: build-ui-server"
+			],
+			"group": "none"
+		},
+		{
+			"label": "mcp: start-ui-server (background)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--no-build"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"isBackground": true,
+			"dependsOn": [
+				"mcp: build-ui-server"
+			],
+			"group": "none"
+		},
+		{
+			"label": "mcp: stop-ui-server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Get-Process -Name dotnet -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'WileyWidgetMcpServer' } | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Output 'MCP UI Server stopped (if running)'"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "Clean Logs, Build & Watch",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Remove-Item -Path '${workspaceFolder}/logs' -Recurse -Force -ErrorAction SilentlyContinue; Write-Output 'Logs cleaned'; dotnet watch run --project ${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"clear": true
+			},
+			"problemMatcher": "$msCompile",
+			"isBackground": false,
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			}
 		}
 	],
 	"inputs": [

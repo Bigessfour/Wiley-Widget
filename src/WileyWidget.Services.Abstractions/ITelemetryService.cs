@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace WileyWidget.Services.Abstractions;
 
@@ -12,4 +13,9 @@ public interface ITelemetryService
     /// Record an exception with optional key/value tags for richer context.
     /// </summary>
     void RecordException(Exception exception, params (string key, object? value)[] additionalTags);
+
+    /// <summary>
+    /// Create a new Activity for tracing; callers should dispose it when finished.
+    /// </summary>
+    Activity? StartActivity(string operationName, params (string key, object? value)[] tags);
 }

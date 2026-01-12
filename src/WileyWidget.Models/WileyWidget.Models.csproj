@@ -9,6 +9,7 @@
     <GenerateWinMD>false</GenerateWinMD>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <LangVersion>14.0</LangVersion>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

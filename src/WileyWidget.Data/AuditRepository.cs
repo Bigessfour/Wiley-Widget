@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,8 @@ public class AuditRepository : IAuditRepository
     {
         using var activity = ActivitySource.StartActivity("AuditRepository.GetAuditTrail");
         activity?.SetTag("operation.type", "query");
-        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd"));
-        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd"));
+        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
         try
         {
@@ -100,6 +101,8 @@ public class AuditRepository : IAuditRepository
     /// </summary>
     public async Task AddAuditEntryAsync(AuditEntry auditEntry)
     {
+        if (auditEntry == null) throw new ArgumentNullException(nameof(auditEntry));
+
         await using var context = await _contextFactory.CreateDbContextAsync();
         context.AuditEntries.Add(auditEntry);
         await context.SaveChangesAsync();
@@ -117,6 +120,10 @@ public class AuditRepository : IAuditRepository
         DateTime? endDate = null,
         string? entityType = null)
     {
+        // Validate paging parameters
+        if (pageNumber < 1) throw new ArgumentOutOfRangeException(nameof(pageNumber));
+        if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
+
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var query = context.AuditEntries.AsQueryable();

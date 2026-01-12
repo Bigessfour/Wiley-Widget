@@ -1,0 +1,35 @@
+interface ISigNozTelemetryService
+{
+    void TrackEvent(string eventName, IDictionary<string, string> properties);
+    void TrackException(Exception exception, IDictionary<string, string> properties);
+    void TrackMetric(string metricName, double value, IDictionary<string, string> properties);
+}
+
+public class SigNozTelemetryService : ISigNozTelemetryService
+{
+    public void TrackEvent(string eventName, IDictionary<string, string> properties)
+    {
+        // Implementation here
+    }
+
+    public void TrackException(Exception exception, IDictionary<string, string> properties)
+    {
+        // Implementation here
+    }
+
+    public void TrackMetric(string metricName, double value, IDictionary<string, string> properties)
+    {
+        // Implementation here
+    }
+}
+
+using Xunit;
+
+public class SigNozTelemetryServiceTests
+{
+    [Fact]
+    public void HelloWorldTest()
+    {
+        Assert.True(true);
+    }
+}
