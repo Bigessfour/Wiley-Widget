@@ -108,9 +108,6 @@ namespace WileyWidget.WinForms.Controls
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             _iconService = iconService;
             InitializeComponent();
-
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
         }
 
         /// <summary>
@@ -211,7 +208,7 @@ namespace WileyWidget.WinForms.Controls
 
             DataContext = viewModel;
 
-            InitializeComponent();
+            SetupUI();
             ApplyCurrentTheme();
 
             // Subscribe to theme changes
@@ -224,7 +221,7 @@ namespace WileyWidget.WinForms.Controls
 
         // InitializeComponent moved to SettingsPanel.Designer.cs for designer support
 
-        private void InitializeComponent()
+        private void SetupUI()
         {
             var padding = 20;
             var y = padding;

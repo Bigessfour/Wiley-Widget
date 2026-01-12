@@ -93,16 +93,13 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         : base(scopeFactory, logger)
     {
         InitializeComponent();
-
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
-        InitializeComponent();
+        SetupUI();
         SubscribeToThemeChanges();
     }
 
     // InitializeComponent moved to RevenueTrendsPanel.Designer.cs for designer support
 
-    private void InitializeComponent()
+    private void SetupUI()
     {
         SuspendLayout();
 

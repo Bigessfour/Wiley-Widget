@@ -17,7 +17,7 @@ namespace WileyWidget.WinForms.Services
     public class RealtimeDashboardService : IDisposable
     {
         private readonly ILogger<RealtimeDashboardService> _logger;
-        private readonly Timer _updateTimer;
+        private readonly System.Threading.Timer _updateTimer;
         private readonly Dictionary<string, DashboardSubscription> _subscriptions = new();
         private volatile bool _disposed;
 
@@ -29,7 +29,7 @@ namespace WileyWidget.WinForms.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Update dashboard every 5 seconds if subscribed
-            _updateTimer = new Timer(UpdateDashboard, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+            _updateTimer = new System.Threading.Timer(UpdateDashboard, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         }
 
         /// <summary>
@@ -151,9 +151,20 @@ namespace WileyWidget.WinForms.Services
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             if (_disposed) return;
-            _updateTimer?.Dispose();
-            _subscriptions.Clear();
+
+            if (disposing)
+            {
+                _updateTimer?.Dispose();
+                _subscriptions.Clear();
+            }
+
             _disposed = true;
         }
 

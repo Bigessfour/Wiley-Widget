@@ -50,8 +50,6 @@ namespace WileyWidget.WinForms.Controls
 
             _logger = logger ?? ResolveLogger();
             _logger?.LogInformation("ProactiveInsightsPanel initializing");
-
-            InitializeUI();
             ApplyTheme();
 
             _logger?.LogInformation("ProactiveInsightsPanel initialized successfully");
@@ -60,7 +58,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Initializes the UI controls with gradient panel header and insights feed.
         /// </summary>
-        private void InitializeUI()
+        private void InitializeComponent()
         {
             // Control-level padding and minimums for breathing room (requirement 4,5)
             this.Padding = new Padding(8);
@@ -258,50 +256,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        /// <summary>
-        /// Initializes the designer component. Auto-generated code.
-        /// </summary>
-        private void InitializeComponent()
-        {
-            this.SuspendLayout();
-            this.Name = "ProactiveInsightsPanel";
-            this.Size = new System.Drawing.Size(800, 600);
-            this.ResumeLayout(false);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                try
-                {
-                    if (_btnRefresh != null)
-                    {
-                        _btnRefresh.Click -= BtnRefresh_Click;
-                    }
-
-                    if (_btnClear != null)
-                    {
-                        _btnClear.Click -= BtnClear_Click;
-                    }
-
-                    _insightFeedPanel?.Dispose();
-
-                    _toolStrip?.Dispose();
-                    _btnRefresh?.Dispose();
-                    _btnClear?.Dispose();
-                    _panelHeader?.Dispose();
-                    _topPanel?.Dispose();
-
-                    _logger?.LogDebug("ProactiveInsightsPanel disposed successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Error during ProactiveInsightsPanel disposal");
-                }
-            }
-
-            base.Dispose(disposing);
-        }
+        // InitializeComponent moved to ProactiveInsightsPanel.Designer.cs for designer support
+        // Dispose moved to ProactiveInsightsPanel.Designer.cs for designer support
     }
 }

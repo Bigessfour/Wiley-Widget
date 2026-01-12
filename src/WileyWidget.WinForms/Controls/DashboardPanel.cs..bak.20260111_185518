@@ -122,9 +122,7 @@ namespace WileyWidget.WinForms.Controls
             };
 
             InitializeComponent();
-
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            SetupUI();
 
             // Defer sizing validations until control is properly laid out to prevent "controls cut off" issues
             // Dashboard has complex nested layouts (TableLayoutPanel, SplitContainer, gauges, chart, grid)
@@ -181,7 +179,7 @@ namespace WileyWidget.WinForms.Controls
 
         // InitializeComponent moved to DashboardPanel.Designer.cs for designer support
 
-        private void InitializeComponent()
+        private void SetupUI()
         {
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)

@@ -62,10 +62,13 @@ namespace WileyWidget.WinForms.Services
         {
             try
             {
-                _preferences[key] = value;
-                _isDirty = true;
+                if (value != null)
+                {
+                    _preferences[key] = value;
+                    _isDirty = true;
 
-                PreferenceChanged?.Invoke(this, new PreferenceChangedEventArgs { Key = key, Value = value });
+                    PreferenceChanged?.Invoke(this, new PreferenceChangedEventArgs { Key = key, Value = value });
+                }
 
                 // Auto-save after each change
                 await SavePreferencesAsync();
@@ -158,8 +161,16 @@ namespace WileyWidget.WinForms.Services
 
         public void Dispose()
         {
-            _ = SavePreferencesAsync().Wait(5000);
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _ = SavePreferencesAsync().Wait(5000);
+            }
         }
     }
 

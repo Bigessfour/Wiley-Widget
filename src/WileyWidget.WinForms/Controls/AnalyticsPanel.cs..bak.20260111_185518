@@ -76,9 +76,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
-
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        InitializeControls();
     }
 
     /// <summary>
@@ -101,7 +99,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes all UI controls and sets up the layout.
     /// </summary>
-    private void InitializeComponent()
+    private void InitializeControls()
     {
         // Theme is applied automatically by SfSkinManager cascade from the parent form.
         // Avoid per-control SetTheme to prevent inconsistent/double theming.
@@ -1098,8 +1096,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _noDataOverlay.SafeDispose();
             _errorProvider.SafeDispose();
 
-            // Note: No components container used in programmatic UI
-            // components?.Dispose();
+            components?.Dispose();
         }
 
         base.Dispose(disposing);

@@ -164,7 +164,6 @@ namespace WileyWidget.WinForms.Controls
                 DataContext = viewModel;
 
                 InitializeComponent();
-                SetupUI();
                 BindViewModel();
 
                 // Explicitly bind grid data source to the view model's Accounts collection.
@@ -217,48 +216,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
-        {
-            Name = "AccountsPanel";
-            // Set AccessibleName for UI automation (E2E tests search by this)
-            AccessibleName = AccountsPanelResources.PanelTitle; // "Municipal Accounts"
-            Size = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f));
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-            AutoScroll = true;
-            Padding = new Padding(8);
-            // Prefer DPI scaling for modern displays
-            try
-            {
-                this.AutoScaleMode = AutoScaleMode.Dpi;
-            }
-            catch { }
-            // DockingManager will handle docking; do not set Dock here.
-            Serilog.Log.Debug("AccountsPanel: InitializeComponent completed");
-
-            // Add load event handler for initial data loading
-            this.Load += AccountsPanel_Load;
-
-            // Initialize ErrorProvider for data validation
-            errorProvider = new ErrorProvider()
-            {
-                BlinkStyle = ErrorBlinkStyle.BlinkIfDifferentError,
-                Icon = SystemIcons.Warning
-            };
-
-            // Create a single ToolTip instance used across the panel (disposed in Dispose)
-            try
-            {
-                Controls.Add(gridAccounts);
-                // Add overlays (loading spinner and no-data friendly message)
-                _loadingOverlay = new LoadingOverlay { Message = WileyWidget.WinForms.Forms.MainFormResources.LoadingText };
-                Controls.Add(_loadingOverlay);
-
-                _noDataOverlay = new NoDataOverlay { Message = "No accounts yet\r\nStart by adding your first municipal account" };
-                Controls.Add(_noDataOverlay);
-                _toolTip = new ToolTip() { AutoPopDelay = 10000, InitialDelay = 500, ReshowDelay = 100, ShowAlways = true };
-            }
-            catch { }
-        }
+        // InitializeComponent moved to AccountsPanel.Designer.cs for designer support
 
         /// <summary>
         /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
@@ -355,26 +313,41 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void SetupUI()
+        private void InitializeComponent()
         {
-            // Top filter panel - use theme colors instead of hardcoded values
-            // Shared consistent header (44px height, 8px padding)
-            _panelHeader = new PanelHeader
-            {
-                Dock = DockStyle.Top,
-                AccessibleName = "Accounts header"
-            };
+            // Initialize validation and tooltip components
+            errorProvider = new ErrorProvider();
+            _toolTip = new ToolTip();
 
-            // Keep existing filter panel below the header
-            topPanel = new GradientPanelExt
+            // Syncfusion best practice: Suspend layout during multi-control initialization
+            SuspendLayout();
+            try
             {
-                Dock = DockStyle.Top,
-                Height = 44, // consistent header height across panels
-                Padding = new Padding(8),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
+                // Set panel base properties with DPI awareness
+                this.Padding = new Padding(3); // Standard margin per Syncfusion guidelines
+                this.AutoScaleMode = AutoScaleMode.Dpi;
+                this.MinimumSize = new Size(
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f),
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+
+                // Top filter panel - use theme colors instead of hardcoded values
+                // Shared consistent header (44px height, 8px padding)
+                _panelHeader = new PanelHeader
+                {
+                    Dock = DockStyle.Top,
+                    AccessibleName = "Accounts header"
+                };
+
+                // Keep existing filter panel below the header
+                topPanel = new GradientPanelExt
+                {
+                    Dock = DockStyle.Top,
+                    Height = 44, // consistent header height across panels
+                    Padding = new Padding(8),
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                };
+                SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
 
             // Fund label + combo
             var fundLabel = new Label
@@ -1147,6 +1120,12 @@ namespace WileyWidget.WinForms.Controls
 
             summaryPanel.Controls.Add(summaryFlow);
             Controls.Add(summaryPanel);
+            }
+            finally
+            {
+                // Syncfusion best practice: Resume layout and perform final layout pass
+                ResumeLayout(performLayout: true);
+            }
         }
 
         private void BindViewModel()

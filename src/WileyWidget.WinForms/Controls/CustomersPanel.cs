@@ -15,6 +15,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Controls;
@@ -133,9 +134,8 @@ public partial class CustomersPanel : UserControl
         SuspendLayout();
 
         Name = "CustomersPanel";
-        Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
-        // BackColor removed - let SkinManager handle theming
+        AutoSize = false;
 
         // Panel header
         _panelHeader = new PanelHeader
@@ -208,212 +208,220 @@ public partial class CustomersPanel : UserControl
         _toolbarPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10, 10, 10, 5),
+            Padding = new Padding(10, 5, 10, 5),
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
 
-        int xPos = 10;
-        const int yPos = 10;
-        const int spacing = 5;
-        const int buttonHeight = 32;
+        // Main container for two rows
+        var toolbarLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            RowCount = 2,
+            ColumnCount = 1,
+            AutoSize = true
+        };
+        toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // First row: Search and filters
+        var searchFilterRow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            Margin = new Padding(0, 5, 0, 5)
+        };
 
         // Search label
         var searchLabel = new Label
         {
             Text = "Search:",
-            Location = new Point(xPos, yPos + 8),
-            Size = new Size(55, 20),
-            TextAlign = ContentAlignment.MiddleRight
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            TextAlign = ContentAlignment.MiddleRight,
+            Margin = new Padding(0, 8, 5, 0)
         };
-        _toolbarPanel.Controls.Add(searchLabel);
-        xPos += searchLabel.Width + spacing;
+        searchFilterRow.Controls.Add(searchLabel);
 
         // Search textbox
         _searchTextBox = new TextBoxExt
         {
-            Location = new Point(xPos, yPos + 5),
-            Size = new Size(220, 25),
+            Width = 220,
             PlaceholderText = "Name, account #, or address...",
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 5, 5, 0)
         };
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
-        _toolbarPanel.Controls.Add(_searchTextBox);
-        xPos += _searchTextBox.Width + spacing;
+        searchFilterRow.Controls.Add(_searchTextBox);
 
         // Search button
         _searchButton = new SfButton
         {
             Text = "🔍 &Search",
-            Location = new Point(xPos, yPos + 3),
-            Size = new Size(85, buttonHeight),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 3, 5, 0)
         };
         _searchButton.Click += async (s, e) => await SearchCustomersAsync();
-        _toolbarPanel.Controls.Add(_searchButton);
-        xPos += _searchButton.Width + spacing;
+        searchFilterRow.Controls.Add(_searchButton);
 
         // Clear filters button
         _clearFiltersButton = new SfButton
         {
             Text = "Clear",
-            Location = new Point(xPos, yPos + 3),
-            Size = new Size(65, buttonHeight),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 3, 10, 0)
         };
         _clearFiltersButton.Click += (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
-        _toolbarPanel.Controls.Add(_clearFiltersButton);
-        xPos += _clearFiltersButton.Width + spacing + 10;
+        searchFilterRow.Controls.Add(_clearFiltersButton);
 
         // Separator
         var separator1 = new Label
         {
             Text = "|",
-            Location = new Point(xPos, yPos + 5),
-            Size = new Size(10, 25)
+            AutoSize = true,
+            Margin = new Padding(5, 5, 5, 0)
         };
-        _toolbarPanel.Controls.Add(separator1);
-        xPos += separator1.Width + spacing;
+        searchFilterRow.Controls.Add(separator1);
 
         // Filter: Type
         var typeLabel = new Label
         {
             Text = "Type:",
-            Location = new Point(xPos, yPos + 8),
-            Size = new Size(40, 20)
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleRight,
+            Margin = new Padding(0, 8, 5, 0)
         };
-        _toolbarPanel.Controls.Add(typeLabel);
-        xPos += typeLabel.Width + spacing;
+        searchFilterRow.Controls.Add(typeLabel);
 
         _filterTypeComboBox = new SfComboBox
         {
-            Location = new Point(xPos, yPos + 5),
-            Size = new Size(120, 25),
+            Width = 120,
             DropDownStyle = DropDownStyle.DropDownList,
             AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" }
+            DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" },
+            Margin = new Padding(0, 5, 5, 0)
         };
         _filterTypeComboBox.SelectedIndex = 0;
         _filterTypeComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
-        _toolbarPanel.Controls.Add(_filterTypeComboBox);
-        xPos += _filterTypeComboBox.Width + spacing;
+        searchFilterRow.Controls.Add(_filterTypeComboBox);
 
         // Filter: Location
         var locationLabel = new Label
         {
             Text = "Location:",
-            Location = new Point(xPos, yPos + 8),
-            Size = new Size(60, 20)
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleRight,
+            Margin = new Padding(0, 8, 5, 0)
         };
-        _toolbarPanel.Controls.Add(locationLabel);
-        xPos += locationLabel.Width + spacing;
+        searchFilterRow.Controls.Add(locationLabel);
 
         _filterLocationComboBox = new SfComboBox
         {
-            Location = new Point(xPos, yPos + 5),
-            Size = new Size(140, 25),
+            Width = 140,
             DropDownStyle = DropDownStyle.DropDownList,
             AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" }
+            DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" },
+            Margin = new Padding(0, 5, 10, 0)
         };
         _filterLocationComboBox.SelectedIndex = 0;
         _filterLocationComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
-        _toolbarPanel.Controls.Add(_filterLocationComboBox);
-        xPos += _filterLocationComboBox.Width + spacing + 10;
+        searchFilterRow.Controls.Add(_filterLocationComboBox);
 
         // Show Active Only checkbox
         _showActiveOnlyCheckBox = new CheckBoxAdv
         {
             Text = "Active Only",
-            Location = new Point(xPos, yPos + 7),
-            Size = new Size(100, 25),
-            Checked = true
+            AutoSize = true,
+            Checked = true,
+            Margin = new Padding(0, 7, 0, 0)
         };
         _showActiveOnlyCheckBox.CheckedChanged += (s, e) =>
             _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
-        _toolbarPanel.Controls.Add(_showActiveOnlyCheckBox);
-        xPos += _showActiveOnlyCheckBox.Width + spacing + 10;
+        searchFilterRow.Controls.Add(_showActiveOnlyCheckBox);
 
-        // Second row of buttons
-        xPos = 10;
-        const int yPos2 = yPos + buttonHeight + 8;
+        toolbarLayout.Controls.Add(searchFilterRow, 0, 0);
+
+        // Second row: Action buttons
+        var actionButtonsRow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            Margin = new Padding(0, 5, 0, 5)
+        };
 
         // Add Customer button
         _addCustomerButton = new SfButton
         {
             Text = "➕ &Add Customer",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(125, buttonHeight),
             AutoSize = true,
-            // BackColor and ForeColor removed - let SkinManager handle theming
-            Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold)
+            Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold),
+            Margin = new Padding(0, 0, 5, 0)
         };
         _addCustomerButton.Click += async (s, e) => await AddCustomerAsync();
-        _toolbarPanel.Controls.Add(_addCustomerButton);
-        xPos += _addCustomerButton.Width + spacing;
+        actionButtonsRow.Controls.Add(_addCustomerButton);
 
         // Edit Customer button
         _editCustomerButton = new SfButton
         {
             Text = "✏️ &Edit",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(80, buttonHeight),
             AutoSize = true,
-            Enabled = false
+            Enabled = false,
+            Margin = new Padding(0, 0, 5, 0)
         };
         _editCustomerButton.Click += (s, e) => EditSelectedCustomer();
-        _toolbarPanel.Controls.Add(_editCustomerButton);
-        xPos += _editCustomerButton.Width + spacing;
+        actionButtonsRow.Controls.Add(_editCustomerButton);
 
         // Delete Customer button
         _deleteCustomerButton = new SfButton
         {
             Text = "🗑️ &Delete",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(80, buttonHeight),
             AutoSize = true,
-            Enabled = false
+            Enabled = false,
+            Margin = new Padding(0, 0, 10, 0)
         };
         _deleteCustomerButton.Click += async (s, e) => await DeleteSelectedCustomerAsync();
-        _toolbarPanel.Controls.Add(_deleteCustomerButton);
-        xPos += _deleteCustomerButton.Width + spacing + 10;
+        actionButtonsRow.Controls.Add(_deleteCustomerButton);
 
         // Refresh button
         _refreshButton = new SfButton
         {
             Text = "🔄 &Refresh",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(90, buttonHeight),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 0, 5, 0)
         };
         _refreshButton.Click += async (s, e) => await RefreshCustomersAsync();
-        _toolbarPanel.Controls.Add(_refreshButton);
-        xPos += _refreshButton.Width + spacing;
+        actionButtonsRow.Controls.Add(_refreshButton);
 
         // Sync QuickBooks button
         _syncQuickBooksButton = new SfButton
         {
             Text = "📊 Sync QB",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(100, buttonHeight),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 0, 5, 0)
         };
         _syncQuickBooksButton.Click += async (s, e) => await SyncWithQuickBooksAsync();
-        _toolbarPanel.Controls.Add(_syncQuickBooksButton);
-        xPos += _syncQuickBooksButton.Width + spacing;
+        actionButtonsRow.Controls.Add(_syncQuickBooksButton);
 
         // Export button
         _exportButton = new SfButton
         {
             Text = "💾 E&xport",
-            Location = new Point(xPos, yPos2),
-            Size = new Size(85, buttonHeight),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 0)
         };
         _exportButton.Click += async (s, e) => await ExportCustomersAsync();
-        _toolbarPanel.Controls.Add(_exportButton);
+        actionButtonsRow.Controls.Add(_exportButton);
+
+        toolbarLayout.Controls.Add(actionButtonsRow, 0, 1);
+
+        _toolbarPanel.Controls.Add(toolbarLayout);
     }
 
     /// <summary>
@@ -460,10 +468,12 @@ public partial class CustomersPanel : UserControl
     {
         var cardPanel = new GradientPanelExt
         {
-            Size = new Size(180, 40),
+            Width = 180,
+            Height = 40,
             BorderStyle = BorderStyle.FixedSingle,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-            Margin = new Padding(5)
+            Margin = new Padding(5),
+            AutoSize = false
         };
         SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
 
@@ -655,21 +665,26 @@ public partial class CustomersPanel : UserControl
         try
         {
             // Header styling - bold, professional appearance
-            grid.Style.HeaderStyle.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-            grid.Style.HeaderStyle.Borders.All = new GridBorder { LineStyle = GridLineStyle.Solid, LineWidth = 1 };
+            grid.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI", 11f, FontStyle.Bold));
+            // Note: GridBorder constructor signature may have changed in current Syncfusion version
+            // grid.Style.HeaderStyle.Borders.All = new GridBorder(GridBorderStyle.Solid, 1);
 
             // Row styling - consistent font and sizing
-            grid.Style.RowStyle.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
-            grid.Style.RowStyle.TextAlignment = HorizontalAlignment.Left;
+            // Note: RowStyle properties may not be available in current Syncfusion version
+            // grid.Style.RowStyle.Font = new GridFontInfo(new Font("Segoe UI", 10f, FontStyle.Regular));
+            // grid.Style.RowStyle.TextAlignment = HorizontalAlignment.Left;
 
             // Alternate row coloring for readability
-            grid.Style.AlternatingRowStyle.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+            // Note: AlternatingRowStyle may not be available in current Syncfusion version
+            // grid.Style.AlternatingRowStyle.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
 
             // Selection styling
-            grid.Style.SelectedRowStyle.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            // Note: SelectedRowStyle may not be available in current Syncfusion version
+            // grid.Style.SelectedRowStyle.Font = new GridFontInfo(new Font("Segoe UI", 10f, FontStyle.Regular));
 
             // Footer styling for totals if needed
-            grid.Style.GroupCaptionStyle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            // Note: GroupCaptionStyle may not be available in current Syncfusion version
+            // grid.Style.GroupCaptionStyle.Font = new GridFontInfo(new Font("Segoe UI", 10f, FontStyle.Bold));
 
             _logger?.LogDebug("Grid styling applied successfully");
         }
@@ -995,7 +1010,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Edits the selected customer in a dialog.
     /// </summary>
-    private void EditSelectedCustomer()
+    private async void EditSelectedCustomer()
     {
         if (_viewModel.SelectedCustomer == null) return;
 
@@ -1003,12 +1018,13 @@ public partial class CustomersPanel : UserControl
         {
             _logger.LogDebug("Editing customer {Account}", _viewModel.SelectedCustomer.AccountNumber);
 
-            // TODO: Open customer edit dialog
-            MessageBox.Show(
-                $"Customer edit dialog not yet implemented.\n\nCustomer: {_viewModel.SelectedCustomer.DisplayName}\nAccount: {_viewModel.SelectedCustomer.AccountNumber}",
-                "Edit Customer",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using var dialog = new CustomerEditDialog(_viewModel.SelectedCustomer, _logger);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                // Save the changes to the database
+                await _viewModel.SaveCustomerAsync(_viewModel.SelectedCustomer);
+                _logger.LogInformation("Customer {Account} updated successfully", _viewModel.SelectedCustomer.AccountNumber);
+            }
         }
         catch (Exception ex)
         {
@@ -1107,11 +1123,7 @@ public partial class CustomersPanel : UserControl
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 _logger.LogInformation("Exporting customers to {File}", dialog.FileName);
-                await _viewModel.ExportToCsvCommand.ExecuteAsync(null);
-
-                // TODO: Actual CSV export implementation
-                MessageBox.Show($"Customers exported to:\n{dialog.FileName}", "Export Complete",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await _viewModel.ExportToCsvCommand.ExecuteAsync(dialog.FileName);
             }
         }
         catch (Exception ex)

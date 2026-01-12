@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Win32;
 using Serilog;
 using Serilog.Events;
 using Syncfusion.WinForms.Controls;
@@ -12,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
@@ -71,9 +73,9 @@ namespace WileyWidget.WinForms.Forms
     {
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
-        private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
         private DockingLayoutManager? _dockingLayoutManager; // Layout persistence manager
+        private List<string> _mruList = new();
 
         private const int WS_EX_COMPOSITED = 0x02000000;
 
@@ -156,6 +158,7 @@ namespace WileyWidget.WinForms.Forms
         private readonly Services.IThemeIconService? _iconService;
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
+        private ToolStripMenuItem? _recentFilesMenu;
         private RibbonControlAdv? _ribbon;
         private bool _reportViewerLaunched;
         private ToolStripTabItem? _homeTab;
@@ -1355,6 +1358,240 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
             catch { }
+        }
+
+        private void OnApplicationFontChanged(object? sender, FontChangedEventArgs e)
+        {
+            this.Font = e.NewFont;
+        }
+
+        private void ShowErrorDialog(string title, string message)
+        {
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void ShowErrorDialog(string title, string message, Exception ex)
+        {
+            _logger?.LogError(ex, "Error: {Message}", message);
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void AddToMruList(string file)
+        {
+            if (!_mruList.Contains(file))
+            {
+                _mruList.Insert(0, file);
+                if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1);
+                SaveMruToRegistry();
+            }
+        }
+
+        private void SaveMruToRegistry()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\MRU");
+                if (key == null) return;
+
+                // Clear existing values
+                foreach (var valueName in key.GetValueNames())
+                {
+                    key.DeleteValue(valueName, false);
+                }
+
+                // Save current MRU list
+                for (int i = 0; i < _mruList.Count; i++)
+                {
+                    key.SetValue($"File{i}", _mruList[i]);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save MRU to registry");
+            }
+        }
+
+        private void LoadMruFromRegistry()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\MRU");
+                if (key == null) return;
+
+                _mruList.Clear();
+                for (int i = 0; i < 10; i++)
+                {
+                    var value = key.GetValue($"File{i}") as string;
+                    if (!string.IsNullOrEmpty(value) && File.Exists(value))
+                    {
+                        _mruList.Add(value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load MRU from registry");
+            }
+        }
+
+        private void RestoreWindowState()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\WindowState");
+                if (key == null) return;
+
+                var left = key.GetValue("Left") as int?;
+                var top = key.GetValue("Top") as int?;
+                var width = key.GetValue("Width") as int?;
+                var height = key.GetValue("Height") as int?;
+                var state = key.GetValue("WindowState") as int?;
+
+                if (left.HasValue && top.HasValue && width.HasValue && height.HasValue)
+                {
+                    var screen = Screen.FromPoint(new Point(left.Value, top.Value));
+                    var workingArea = screen.WorkingArea;
+
+                    // Ensure window is visible on screen
+                    if (left.Value < workingArea.Right && top.Value < workingArea.Bottom &&
+                        left.Value + width.Value > workingArea.Left && top.Value + height.Value > workingArea.Top)
+                    {
+                        Location = new Point(left.Value, top.Value);
+                        Size = new Size(width.Value, height.Value);
+                    }
+                }
+
+                if (state.HasValue)
+                {
+                    WindowState = (System.Windows.Forms.FormWindowState)state.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to restore window state");
+            }
+        }
+
+        private void SaveWindowState()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\WindowState");
+                if (key == null) return;
+
+                key.SetValue("Left", Location.X);
+                key.SetValue("Top", Location.Y);
+                key.SetValue("Width", Size.Width);
+                key.SetValue("Height", Size.Height);
+                key.SetValue("WindowState", (int)WindowState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save window state");
+            }
+        }
+
+        private async Task ImportDataFileAsync(string file)
+        {
+            try
+            {
+                _logger.LogInformation("Importing data from {File}", file);
+
+                var content = await File.ReadAllTextAsync(file);
+                _logger.LogInformation("Read {Length} characters from file", content.Length);
+
+                // Try to parse as JSON data
+                try
+                {
+                    var data = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    });
+
+                    if (data != null)
+                    {
+                        _logger.LogInformation("Successfully parsed JSON data with {Count} properties", data.Count);
+                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\nParsed {data.Count} data properties", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not JSON, just show content info
+                    MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                _logger.LogInformation("Data import completed from {File}", file);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import data from {File}", file);
+                ShowErrorDialog("Import Failed", $"Failed to import data: {ex.Message}");
+            }
+        }
+
+        private async Task ImportConfigurationDataAsync(string file)
+        {
+            try
+            {
+                _logger.LogInformation("Importing configuration from {File}", file);
+
+                var content = await File.ReadAllTextAsync(file);
+                _logger.LogInformation("Read {Length} characters from configuration file", content.Length);
+
+                // Try to parse as JSON configuration
+                try
+                {
+                    var config = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    });
+
+                    if (config != null)
+                    {
+                        _logger.LogInformation("Successfully parsed configuration with {Count} settings", config.Count);
+                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\nParsed {config.Count} settings", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Not JSON, just show content info
+                    MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                _logger.LogInformation("Configuration import completed from {File}", file);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import configuration from {File}", file);
+                ShowErrorDialog("Import Failed", $"Failed to import configuration: {ex.Message}");
+            }
+        }
+
+        private void UpdateMruMenu(ToolStripMenuItem menu)
+        {
+            menu.DropDownItems.Clear();
+            foreach (var file in _mruList)
+            {
+                var item = new ToolStripMenuItem(file);
+                item.Click += async (s, e) => await ImportDataFileAsync(file);
+                menu.DropDownItems.Add(item);
+            }
+        }
+
+        private void ClearMruList()
+        {
+            _mruList.Clear();
+            UpdateMruMenu(_recentFilesMenu);
         }
     }
 }

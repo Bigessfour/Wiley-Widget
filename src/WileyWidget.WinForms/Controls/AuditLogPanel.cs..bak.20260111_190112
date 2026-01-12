@@ -95,7 +95,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             this.SuspendLayout();
 
         Name = "AuditLogPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
+        Size = new Size(1200, 800);
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);

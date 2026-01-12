@@ -79,14 +79,11 @@ namespace WileyWidget.WinForms.Controls
         public WarRoomPanel(WarRoomViewModel viewModel, ILogger<WarRoomPanel>? logger = null)
         {
             InitializeComponent();
-
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
             _logger = logger;
             _vm = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             DataContext = _vm;
             _logger?.LogInformation("WarRoomPanel initializing");
-            InitializeComponent();
+            InitializeUI();
             BindViewModel();
 
             // Defer sizing validation for complex WarRoom layouts with charts and grids
@@ -99,7 +96,7 @@ namespace WileyWidget.WinForms.Controls
         /// Initializes all UI controls with proper layout and databinding.
         /// Theme is applied globally via application startup.
         /// </summary>
-        private void InitializeComponent()
+        private void InitializeUI()
         {
             try
             {

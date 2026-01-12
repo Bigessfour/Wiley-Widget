@@ -131,8 +131,16 @@ namespace WileyWidget.WinForms.Services
 
         public void Dispose()
         {
-            CloseAll();
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                CloseAll();
+            }
         }
     }
 

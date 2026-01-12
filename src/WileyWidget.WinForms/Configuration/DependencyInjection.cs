@@ -160,6 +160,11 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddScoped<IAccountsRepository, AccountsRepository>();
             services.AddScoped<Business.Interfaces.IActivityLogRepository, ActivityLogRepository>();
+            // Adapter: map legacy Services.Abstractions.IActivityLogRepository to a WinForms adapter
+            // that delegates to the canonical Business layer implementation. This preserves
+            // compatibility for consumers compiled against the Abstractions package while
+            // keeping the authoritative implementation in the Business project.
+            services.AddScoped<WileyWidget.Services.Abstractions.IActivityLogRepository, ActivityLogRepositoryAdapter>();
             services.AddScoped<IAuditRepository, AuditRepository>();
             services.AddScoped<IBudgetRepository, BudgetRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
@@ -334,11 +339,12 @@ namespace WileyWidget.WinForms.Configuration
             // Advanced Search Service (Singleton - cross-grid search capability)
             services.AddSingleton<AdvancedSearchService>();
 
-            // Floating Panel Manager (Transient - created per use)
-            services.AddTransient<FloatingPanelManager>();
-
-            // Docking Keyboard Navigator (Transient - created per docking manager)
-            services.AddTransient<DockingKeyboardNavigator>();
+            // FloatingPanelManager and DockingKeyboardNavigator are UI-scoped helpers that depend
+            // on runtime UI objects (MainForm, Syncfusion DockingManager). Registering them at
+            // the root DI container causes ValidateOnBuild to attempt resolution of framework
+            // UI types and fail during host build. Instantiate these classes at runtime after
+            // the MainForm and DockingManager are created (for example, in MainForm.OnShown
+            // or PanelNavigationService). Do NOT register them here to avoid build-time DI validation.
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)

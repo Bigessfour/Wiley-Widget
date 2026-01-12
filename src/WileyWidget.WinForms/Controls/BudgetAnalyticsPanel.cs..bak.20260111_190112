@@ -86,7 +86,7 @@ namespace WileyWidget.WinForms.Controls
             this.SuspendLayout();
 
             Name = "BudgetAnalyticsPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
+            Size = new Size(1200, 800);
             Dock = DockStyle.Fill;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
             this.ResumeLayout(false);

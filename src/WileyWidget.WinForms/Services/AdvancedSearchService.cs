@@ -109,7 +109,7 @@ namespace WileyWidget.WinForms.Services
                         foreach (var prop in row.GetType().GetProperties())
                         {
                             var value = prop.GetValue(row)?.ToString()?.ToLowerInvariant() ?? string.Empty;
-                            if (value.Contains(query) && value.Length <= 100)
+                            if (value.Contains(query, StringComparison.OrdinalIgnoreCase) && value.Length <= 100)
                             {
                                 suggestions.Add(value);
                                 if (suggestions.Count >= maxSuggestions)
@@ -147,15 +147,15 @@ namespace WileyWidget.WinForms.Services
                     // Calculate relevance score
                     foreach (var term in searchTerms)
                     {
-                        if (searchValue.Contains(term))
+                        if (searchValue.Contains(term, StringComparison.OrdinalIgnoreCase))
                         {
                             matchCount++;
 
                             // Exact match scores higher
-                            if (searchValue.Equals(term))
+                            if (searchValue.Equals(term, StringComparison.OrdinalIgnoreCase))
                                 matchScore += 10;
                             // Start match scores higher
-                            else if (searchValue.StartsWith(term))
+                            else if (searchValue.StartsWith(term, StringComparison.OrdinalIgnoreCase))
                                 matchScore += 5;
                             else
                                 matchScore += 1;

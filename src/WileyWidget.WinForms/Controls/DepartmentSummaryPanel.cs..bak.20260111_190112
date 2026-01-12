@@ -68,7 +68,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             this.SuspendLayout();
 
         Name = "DepartmentSummaryPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
+        Size = new Size(1000, 700);
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         AutoScroll = true;
         Padding = new Padding(8);

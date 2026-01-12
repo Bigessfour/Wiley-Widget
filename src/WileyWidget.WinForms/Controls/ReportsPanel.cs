@@ -188,27 +188,41 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         };
         SfSkinManager.SetVisualStyle(_parametersPanel, "Office2019Colorful");
 
+        // Use TableLayoutPanel for parameters panel layout
+        var parametersLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(0),
+            Margin = new Padding(0)
+        };
+        parametersLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        parametersLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Header
+        parametersLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Grid
+        parametersLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Buttons
+
         var parametersLabel = new Label
         {
             Text = "Report Parameters",
-            Location = new Point(10, 10),
-            Size = new Size(200, 20),
-            Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 10)
         };
-        _parametersPanel.Controls.Add(parametersLabel);
+        parametersLayout.Controls.Add(parametersLabel, 0, 0);
 
         // Parameters grid (SfDataGrid for parameter input)
         _parametersGrid = new SfDataGrid
         {
             Name = "parametersGrid",
             AccessibleName = "Report Parameters Grid",
-            Location = new Point(10, 40),
-            Size = new Size(_parametersPanel.Width - 20, _parametersPanel.Height - 90),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
+            Dock = DockStyle.Fill,
             AutoGenerateColumns = false,
             AllowEditing = true,
             EditMode = EditMode.SingleClick,
-            SelectionMode = GridSelectionMode.Single
+            SelectionMode = GridSelectionMode.Single,
+            Margin = new Padding(0, 0, 0, 10)
         };
 
         // Configure parameter grid columns
@@ -234,32 +248,45 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             AllowEditing = false
         });
 
-        _parametersPanel.Controls.Add(_parametersGrid);
+        parametersLayout.Controls.Add(_parametersGrid, 0, 1);
 
-        // Parameters panel buttons
-        _applyParametersButton = new SfButton
+        // Parameters panel buttons - use FlowLayoutPanel
+        var parametersButtonPanel = new FlowLayoutPanel
         {
-            Text = "&Apply",
-            Name = "applyParametersButton",
-            AccessibleName = "Apply Parameters",
-            Location = new Point(_parametersPanel.Width - 180, _parametersPanel.Height - 40),
-            Size = new Size(80, 30),
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
         };
-        _applyParametersButton.Click += async (s, e) => await ApplyParametersAsync();
-        _parametersPanel.Controls.Add(_applyParametersButton);
 
         _closeParametersButton = new SfButton
         {
             Text = "&Close",
             Name = "closeParametersButton",
             AccessibleName = "Close Parameters",
-            Location = new Point(_parametersPanel.Width - 90, _parametersPanel.Height - 40),
-            Size = new Size(80, 30),
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(80, 30),
+            Margin = new Padding(0)
         };
         _closeParametersButton.Click += (s, e) => ToggleParametersPanel();
-        _parametersPanel.Controls.Add(_closeParametersButton);
+        parametersButtonPanel.Controls.Add(_closeParametersButton);
+
+        _applyParametersButton = new SfButton
+        {
+            Text = "&Apply",
+            Name = "applyParametersButton",
+            AccessibleName = "Apply Parameters",
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(80, 30),
+            Margin = new Padding(0, 0, 10, 0)
+        };
+        _applyParametersButton.Click += async (s, e) => await ApplyParametersAsync();
+        parametersButtonPanel.Controls.Add(_applyParametersButton);
+
+        parametersLayout.Controls.Add(parametersButtonPanel, 0, 2);
+        _parametersPanel.Controls.Add(parametersLayout);
 
         _parametersSplitContainer.Panel1.Controls.Add(_parametersPanel);
 
@@ -275,35 +302,47 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _toolbarPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
-            Height = 60,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
 
+        // Use FlowLayoutPanel for toolbar controls
+        var toolbarFlow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(0),
+            Margin = new Padding(0)
+        };
+
         // Report selector label
         var reportLabel = new Label
         {
             Text = "Report:",
-            Location = new Point(10, 18),
-            Size = new Size(50, 25),
-            TextAlign = ContentAlignment.MiddleLeft
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 8, 5, 0)
         };
-        _toolbarPanel.Controls.Add(reportLabel);
+        toolbarFlow.Controls.Add(reportLabel);
 
         // Report selector (SfComboBox)
         _reportSelector = new SfComboBox
         {
             Name = "reportSelector",
             AccessibleName = "Report Selector",
-            Location = new Point(65, 15),
-            Size = new Size(300, 25),
+            Width = 300,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            ThemeName = "Office2019Colorful"
+            ThemeName = "Office2019Colorful",
+            Margin = new Padding(0, 5, 10, 0)
         };
         _reportSelector.SelectedIndexChanged += ReportSelector_SelectedIndexChanged;
-        _toolbarPanel.Controls.Add(_reportSelector);
+        toolbarFlow.Controls.Add(_reportSelector);
 
         // Load/Generate button
         _loadReportButton = new SfButton
@@ -311,12 +350,13 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "&Generate",
             Name = "loadReportButton",
             AccessibleName = "Generate Report",
-            Location = new Point(380, 15),
-            Size = new Size(100, 30),
-            Enabled = false
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(100, 30),
+            Enabled = false,
+            Margin = new Padding(0, 0, 10, 0)
         };
         _loadReportButton.Click += async (s, e) => await LoadSelectedReportAsync();
-        _toolbarPanel.Controls.Add(_loadReportButton);
+        toolbarFlow.Controls.Add(_loadReportButton);
 
         // Parameters button
         _parametersButton = new SfButton
@@ -324,12 +364,13 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "&Parameters",
             Name = "parametersButton",
             AccessibleName = "Toggle Parameters",
-            Location = new Point(490, 15),
-            Size = new Size(100, 30),
-            Enabled = false
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(100, 30),
+            Enabled = false,
+            Margin = new Padding(0, 0, 10, 0)
         };
         _parametersButton.Click += (s, e) => ToggleParametersPanel();
-        _toolbarPanel.Controls.Add(_parametersButton);
+        toolbarFlow.Controls.Add(_parametersButton);
 
         // Export buttons
         _exportPdfButton = new SfButton
@@ -337,24 +378,26 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "Export &PDF",
             Name = "exportPdfButton",
             AccessibleName = "Export PDF",
-            Location = new Point(600, 15),
-            Size = new Size(100, 30),
-            Enabled = false
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(100, 30),
+            Enabled = false,
+            Margin = new Padding(0, 0, 10, 0)
         };
         _exportPdfButton.Click += async (s, e) => await ExportToPdfAsync();
-        _toolbarPanel.Controls.Add(_exportPdfButton);
+        toolbarFlow.Controls.Add(_exportPdfButton);
 
         _exportExcelButton = new SfButton
         {
             Text = "Export &Excel",
             Name = "exportExcelButton",
             AccessibleName = "Export Excel",
-            Location = new Point(710, 15),
-            Size = new Size(100, 30),
-            Enabled = false
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(100, 30),
+            Enabled = false,
+            Margin = new Padding(0, 0, 10, 0)
         };
         _exportExcelButton.Click += async (s, e) => await ExportToExcelAsync();
-        _toolbarPanel.Controls.Add(_exportExcelButton);
+        toolbarFlow.Controls.Add(_exportExcelButton);
 
         // Print button
         _printButton = new SfButton
@@ -362,12 +405,15 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "P&rint",
             Name = "printButton",
             AccessibleName = "Print Report",
-            Location = new Point(820, 15),
-            Size = new Size(100, 30),
-            Enabled = false
+            AutoSize = true,
+            MinimumSize = new System.Drawing.Size(100, 30),
+            Enabled = false,
+            Margin = new Padding(0)
         };
         _printButton.Click += async (s, e) => await PrintReportAsync();
-        _toolbarPanel.Controls.Add(_printButton);
+        toolbarFlow.Controls.Add(_printButton);
+
+        _toolbarPanel.Controls.Add(toolbarFlow);
 
         _mainSplitContainer.Panel1.Controls.Add(_toolbarPanel);
 
