@@ -978,6 +978,14 @@ namespace WileyWidget.WinForms.Services.AI
                     }
                 }
 
+                // FUTURE: Consider registering an IFunctionInvocationFilter (for example, a
+                // LoggingFunctionFilter) to centrally control, observe, and optionally
+                // short-circuit function/tool invocations. This provides finer-grained
+                // control over tool call behavior than ad-hoc logging and can be used to
+                // enforce policies, timeouts, or telemetry. See
+                // docs/SEMANTIC_KERNEL_OPTIMIZATIONS.md for an example implementation.
+
+
                 // Create chat history
                 var history = new ChatHistory();
                 history.AddSystemMessage(systemPrompt);

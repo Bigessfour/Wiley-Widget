@@ -243,6 +243,7 @@ catch (Exception ex)
 **None** - Public API surface (`RunAgentAsync`) signature unchanged.
 
 ## Future Enhancements
+Future: Hook in `IFunctionInvocationFilter` for even better tool call control (as noted in docs).
 
 ### 1. IFunctionInvocationFilter for Advanced Observability
 
