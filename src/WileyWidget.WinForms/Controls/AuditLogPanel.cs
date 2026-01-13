@@ -1,21 +1,28 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.Input;
+using Syncfusion.WinForms.Input.Enums;
+using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
-using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Utils;
+using Syncfusion.Windows.Forms.Tools;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -38,12 +45,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private Syncfusion.WinForms.Controls.SfButton? _btnRefresh;
     private Syncfusion.WinForms.Controls.SfButton? _btnExportCsv;
     private Syncfusion.WinForms.Controls.SfButton? _btnUpdateChart;
-    private CheckBox? _chkAutoRefresh;
-    private DateTimePicker? _dtpStartDate;
-    private DateTimePicker? _dtpEndDate;
-    private Syncfusion.WinForms.ListView.SfComboBox? _cmbActionType;
-    private Syncfusion.WinForms.ListView.SfComboBox? _cmbUser;
-    private Syncfusion.WinForms.ListView.SfComboBox? _cmbChartGroupBy;
+    private CheckBoxAdv? _chkAutoRefresh;
+    private SfDateTimeEdit? _dtpStartDate;
+    private SfDateTimeEdit? _dtpEndDate;
+    private SfComboBox? _cmbActionType;
+    private SfComboBox? _cmbUser;
+    private SfComboBox? _cmbChartGroupBy;
     private Label? _lblChartSummary;
 
     // Auto-refresh timer
@@ -53,18 +60,20 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _entriesCollectionChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _chartDataCollectionChangedHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
     private EventHandler? _panelHeaderRefreshHandler;
+
+    // Event handler fields for proper cleanup
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _btnRefreshClickHandler;
     private EventHandler? _btnExportCsvClickHandler;
     private EventHandler? _btnUpdateChartClickHandler;
     private EventHandler? _chkAutoRefreshCheckedChangedHandler;
-    private DateTimeValueChangedEventHandler? _dtpStartDateValueChangedHandler;
-    private DateTimeValueChangedEventHandler? _dtpEndDateValueChangedHandler;
+    private Syncfusion.WinForms.Input.Events.DateTimeValueChangedEventHandler? _dtpStartDateValueChangedHandler;
+    private Syncfusion.WinForms.Input.Events.DateTimeValueChangedEventHandler? _dtpEndDateValueChangedHandler;
     private EventHandler? _cmbActionTypeSelectedIndexChangedHandler;
     private EventHandler? _cmbUserSelectedIndexChangedHandler;
     private EventHandler? _cmbChartGroupBySelectedIndexChangedHandler;
+    private EventHandler<string>? _themeChangedHandler;
 
     /// <summary>
     /// Initializes a new instance with required DI dependencies.
@@ -157,12 +166,11 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _dtpStartDate = new SfDateTimeEdit
         {
             Width = 140,
-            DateTimePattern = DateTimePattern.Custom,
-            Format = "yyyy-MM-dd",
+            DateTimePattern = DateTimePattern.ShortDate,
             AccessibleName = "Start date filter",
             AccessibleDescription = "Filter audit entries from this date"
         };
-        _dtpStartDateValueChangedHandler = (s, e) => ApplyFilters();
+        _dtpStartDateValueChangedHandler = async (s, e) => ApplyFilters();
         _dtpStartDate.ValueChanged += _dtpStartDateValueChangedHandler;
         filterTable.Controls.Add(_dtpStartDate, 1, 0);
 
@@ -170,12 +178,11 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _dtpEndDate = new SfDateTimeEdit
         {
             Width = 140,
-            DateTimePattern = DateTimePattern.Custom,
-            Format = "yyyy-MM-dd",
+            DateTimePattern = DateTimePattern.ShortDate,
             AccessibleName = "End date filter",
             AccessibleDescription = "Filter audit entries until this date"
         };
-        _dtpEndDateValueChangedHandler = (s, e) => ApplyFilters();
+        _dtpEndDateValueChangedHandler = async (s, e) => ApplyFilters();
         _dtpEndDate.ValueChanged += _dtpEndDateValueChangedHandler;
         filterTable.Controls.Add(_dtpEndDate, 3, 0);
 
@@ -192,7 +199,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "Action type filter",
             AccessibleDescription = "Filter audit entries by action type"
         };
-        _cmbActionTypeSelectedIndexChangedHandler = (s, e) => ApplyFilters();
+        _cmbActionTypeSelectedIndexChangedHandler = async (s, e) => ApplyFilters();
         _cmbActionType.SelectedIndexChanged += _cmbActionTypeSelectedIndexChangedHandler;
         filterTable.Controls.Add(_cmbActionType, 1, 1);
 
@@ -208,7 +215,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "User filter",
             AccessibleDescription = "Filter audit entries by user"
         };
-        _cmbUserSelectedIndexChangedHandler = (s, e) => ApplyFilters();
+        _cmbUserSelectedIndexChangedHandler = async (s, e) => ApplyFilters();
         _cmbUser.SelectedIndexChanged += _cmbUserSelectedIndexChangedHandler;
         filterTable.Controls.Add(_cmbUser, 3, 1);
 
@@ -233,7 +240,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleDescription = "Automatically refresh audit log every 30 seconds"
         };
         _chkAutoRefreshCheckedChangedHandler = (s, e) => ToggleAutoRefresh();
-        _chkAutoRefresh.CheckStateChanged += _chkAutoRefreshCheckedChangedHandler;
+        _chkAutoRefresh.CheckedChanged += _chkAutoRefreshCheckedChangedHandler;
         filterTable.Controls.Add(_chkAutoRefresh, 4, 1);
 
         _btnExportCsv = new SfButton
@@ -244,7 +251,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "Export to CSV",
             AccessibleDescription = "Export filtered audit entries to CSV file"
         };
-        _btnExportCsvClickHandler = (s, e) => ExportToCsv();
+        _btnExportCsvClickHandler = async (s, e) => await ExportToCsvAsync();
         _btnExportCsv.Click += _btnExportCsvClickHandler;
         filterTable.Controls.Add(_btnExportCsv, 5, 0);
 
@@ -268,7 +275,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Padding = new Padding(8, 8, 8, 8)
         };
 
-        _cmbChartGroupBy = new Syncfusion.WinForms.ListView.SfComboBox
+        _cmbChartGroupBy = new SfComboBox
         {
             Width = 120,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
@@ -278,21 +285,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleDescription = "Select chart grouping period (Day, Week, Month)"
         };
         _cmbChartGroupBy.DataSource = Enum.GetNames(typeof(AuditLogViewModel.ChartGroupingPeriod));
-        _cmbChartGroupBySelectedIndexChangedHandler = (s, e) =>
-        {
-            try
-            {
-                if (ViewModel != null && _cmbChartGroupBy?.SelectedItem?.ToString() is string sVal)
-                {
-                    if (Enum.TryParse<AuditLogViewModel.ChartGroupingPeriod>(sVal, out var group))
-                    {
-                        ViewModel.ChartGrouping = group;
-                        _ = ViewModel.LoadChartDataAsync();
-                    }
-                }
-            }
-            catch { }
-        };
+        _cmbChartGroupBySelectedIndexChangedHandler = async (s, e) => await ViewModel!.LoadChartDataAsync();
         _cmbChartGroupBy.SelectedIndexChanged += _cmbChartGroupBySelectedIndexChangedHandler;
 
         _btnUpdateChart = new Syncfusion.WinForms.Controls.SfButton
@@ -303,7 +296,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AccessibleName = "Update chart",
             AccessibleDescription = "Refresh chart with current filters"
         };
-        _btnUpdateChartClickHandler = (s, e) => _ = ViewModel?.LoadChartDataAsync();
+        _btnUpdateChartClickHandler = async (s, e) => await ViewModel!.LoadChartDataAsync();
         _btnUpdateChart.Click += _btnUpdateChartClickHandler;
 
         chartOptionsFlow.Controls.Add(lblChartGroup);
@@ -915,7 +908,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
-    private void ExportToCsv()
+    private async Task ExportToCsvAsync()
     {
         try
         {
@@ -972,21 +965,19 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
     private void SubscribeToThemeChanges()
     {
-        _themeChangedHandler = (s, theme) =>
+        // Legacy theme subscription removed - SfSkinManager handles themes automatically
+        _themeChangedHandler = null;
+    }
+
+    private void UnsubscribeFromThemeChanges()
+    {
+        // REMOVED: ThemeManager.ThemeChanged unsubscription - deprecated service
+        // Theme changes are now handled via SfSkinManager.ApplicationVisualTheme
+        if (_themeChangedHandler != null)
         {
-            if (IsDisposed) return;
-
-            if (InvokeRequired)
-            {
-                BeginInvoke(new System.Action(() => ApplyTheme()));
-            }
-            else
-            {
-                ApplyTheme();
-            }
-        };
-
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+            // Legacy cleanup - no-op since ThemeManager is deprecated
+            _themeChangedHandler = null;
+        }
     }
 
     private void ApplyTheme()
@@ -1009,50 +1000,27 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         if (disposing)
         {
-            // Unsubscribe from events
-            try
+            // Unsubscribe all event handlers
+            if (_panelHeader != null && _panelHeaderCloseHandler != null)
             {
-                if (ViewModel != null && _viewModelPropertyChangedHandler != null)
-                    ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+                _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                _panelHeaderCloseHandler = null;
             }
-            catch { }
-
-            try
+            if (_panelHeader != null && _panelHeaderRefreshHandler != null)
             {
-                if (ViewModel != null && _entriesCollectionChangedHandler != null)
-                    ViewModel.Entries.CollectionChanged -= _entriesCollectionChangedHandler;
+                _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                _panelHeaderRefreshHandler = null;
             }
-            catch { }
 
-            try
-            {
-                if (ViewModel != null && _chartDataCollectionChangedHandler != null)
-                    ViewModel.ChartData.CollectionChanged -= _chartDataCollectionChangedHandler;
-            }
-            catch { }
-
-            try
-            {
-                if (_panelHeader != null)
-                {
-                    if (_panelHeaderRefreshHandler != null)
-                        _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
-                    if (_panelHeaderCloseHandler != null)
-                        _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
-                }
-            }
-            catch { }
-
-            // Unsubscribe control events
-            try { if (_btnRefresh != null && _btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler; } catch { }
-            try { if (_btnExportCsv != null && _btnExportCsvClickHandler != null) _btnExportCsv.Click -= _btnExportCsvClickHandler; } catch { }
-            try { if (_btnUpdateChart != null && _btnUpdateChartClickHandler != null) _btnUpdateChart.Click -= _btnUpdateChartClickHandler; } catch { }
-            try { if (_chkAutoRefresh != null && _chkAutoRefreshCheckedChangedHandler != null) _chkAutoRefresh.CheckedChanged -= _chkAutoRefreshCheckedChangedHandler; } catch { }
-            try { if (_dtpStartDate != null && _dtpStartDateValueChangedHandler != null) _dtpStartDate.ValueChanged -= _dtpStartDateValueChangedHandler; } catch { }
-            try { if (_dtpEndDate != null && _dtpEndDateValueChangedHandler != null) _dtpEndDate.ValueChanged -= _dtpEndDateValueChangedHandler; } catch { }
-            try { if (_cmbActionType != null && _cmbActionTypeSelectedIndexChangedHandler != null) _cmbActionType.SelectedIndexChanged -= _cmbActionTypeSelectedIndexChangedHandler; } catch { }
-            try { if (_cmbUser != null && _cmbUserSelectedIndexChangedHandler != null) _cmbUser.SelectedIndexChanged -= _cmbUserSelectedIndexChangedHandler; } catch { }
-            try { if (_cmbChartGroupBy != null && _cmbChartGroupBySelectedIndexChangedHandler != null) _cmbChartGroupBy.SelectedIndexChanged -= _cmbChartGroupBySelectedIndexChangedHandler; } catch { }
+            if (_btnRefresh != null && _btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler;
+            if (_btnExportCsv != null && _btnExportCsvClickHandler != null) _btnExportCsv.Click -= _btnExportCsvClickHandler;
+            if (_btnUpdateChart != null && _btnUpdateChartClickHandler != null) _btnUpdateChart.Click -= _btnUpdateChartClickHandler;
+            if (_chkAutoRefresh != null && _chkAutoRefreshCheckedChangedHandler != null) _chkAutoRefresh.CheckedChanged -= _chkAutoRefreshCheckedChangedHandler;
+            if (_dtpStartDate != null && _dtpStartDateValueChangedHandler != null) _dtpStartDate.ValueChanged -= _dtpStartDateValueChangedHandler;
+            if (_dtpEndDate != null && _dtpEndDateValueChangedHandler != null) _dtpEndDate.ValueChanged -= _dtpEndDateValueChangedHandler;
+            if (_cmbActionType != null && _cmbActionTypeSelectedIndexChangedHandler != null) _cmbActionType.SelectedIndexChanged -= _cmbActionTypeSelectedIndexChangedHandler;
+            if (_cmbUser != null && _cmbUserSelectedIndexChangedHandler != null) _cmbUser.SelectedIndexChanged -= _cmbUserSelectedIndexChangedHandler;
+            if (_cmbChartGroupBy != null && _cmbChartGroupBySelectedIndexChangedHandler != null) _cmbChartGroupBy.SelectedIndexChanged -= _cmbChartGroupBySelectedIndexChangedHandler;
 
             // Stop and dispose auto-refresh timer
             try

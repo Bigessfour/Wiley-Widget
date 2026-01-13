@@ -29,9 +29,9 @@
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-      "roots": ["${workspaceFolder}"],
+      "roots": ["C:\\Users\\biges\\Desktop\\Wiley-Widget"],
       "env": {
-        "MCP_FILESYSTEM_ALLOWED_PATHS": "${workspaceFolder}"
+        "MCP_FILESYSTEM_ALLOWED_PATHS": "C:\\Users\\biges\\Desktop\\Wiley-Widget"
       }
     },
     "microsoft-learn": {

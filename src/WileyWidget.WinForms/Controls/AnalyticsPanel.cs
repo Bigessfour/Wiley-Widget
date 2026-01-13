@@ -1,15 +1,21 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.WinForms.Controls;
+using Syncfusion.Drawing;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utils;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Controls;
@@ -28,18 +34,19 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private ChartControl? _trendsChart;
     private ChartControlRegionEventWiring? _trendsChartRegionEventWiring;
     private ChartControl? _forecastChart;
-    private Button? _performAnalysisButton;
-    private Button? _runScenarioButton;
-    private Button? _generateForecastButton;
-    private Button? _refreshButton;
-    private TextBox? _rateIncreaseTextBox;
-    private TextBox? _expenseIncreaseTextBox;
-    private TextBox? _revenueTargetTextBox;
-    private TextBox? _projectionYearsTextBox;
-    private TextBox? _metricsSearchTextBox;
-    private TextBox? _variancesSearchTextBox;
-    private ListBox? _insightsListBox;
-    private ListBox? _recommendationsListBox;
+    private ChartControlRegionEventWiring? _forecastChartRegionEventWiring;
+    private SfButton? _performAnalysisButton;
+    private SfButton? _runScenarioButton;
+    private SfButton? _generateForecastButton;
+    private SfButton? _refreshButton;
+    private TextBoxExt? _rateIncreaseTextBox;
+    private TextBoxExt? _expenseIncreaseTextBox;
+    private TextBoxExt? _revenueTargetTextBox;
+    private TextBoxExt? _projectionYearsTextBox;
+    private TextBoxExt? _metricsSearchTextBox;
+    private TextBoxExt? _variancesSearchTextBox;
+    private SfListView? _insightsListBox;
+    private SfListView? _recommendationsListBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
@@ -67,10 +74,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         ILogger<ScopedPanelBase<AnalyticsViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        InitializeComponent();
-
         // Apply theme via SfSkinManager (single source of truth)
         try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+
+        // Call the actual initialization method
+        InitializeControls();
     }
 
     /// <summary>
@@ -212,9 +220,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
         buttonTable.Controls.Add(_generateForecastButton, 2, 0);
         buttonTable.Controls.Add(_refreshButton, 3, 0);
-        buttonTable.Controls.Add(_navigateToBudgetButton, 4, 0);
-        buttonTable.Controls.Add(_navigateToAccountsButton, 5, 0);
-        buttonTable.Controls.Add(_navigateToDashboardButton, 6, 0);
+        // Navigation buttons removed from UI design
+        // if (_navigateToBudgetButton != null) buttonTable.Controls.Add(_navigateToBudgetButton, 4, 0);
+        // if (_navigateToAccountsButton != null) buttonTable.Controls.Add(_navigateToAccountsButton, 5, 0);
+        // if (_navigateToDashboardButton != null) buttonTable.Controls.Add(_navigateToDashboardButton, 6, 0);
 
         _buttonPanel.Controls.Add(buttonTable);
         topPanel.Controls.Add(_buttonPanel);
@@ -402,7 +411,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(metricsPanel, ThemeColors.DefaultTheme);
 
-        // Metrics search
+        // Metrics search (deduplicated, always use TextBoxExt and GradientPanelExt)
         var metricsSearchPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
@@ -412,21 +421,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(metricsSearchPanel, ThemeColors.DefaultTheme);
         var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
-#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
         _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9 };
-#pragma warning restore RS0030
-        _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
-        metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
-        metricsSearchPanel.Controls.Add(metricsSearchLabel);
-
-        // Metrics search
-        var metricsSearchPanel = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 30
-        };
-        var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
-        _metricsSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 9 };
         _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
         metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
         metricsSearchPanel.Controls.Add(metricsSearchLabel);
@@ -461,7 +456,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(variancesPanel, "Office2019Colorful");
 
-        // Variances search
+        // Variances search (deduplicated, always use TextBoxExt and GradientPanelExt)
         var variancesSearchPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
@@ -471,21 +466,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(variancesSearchPanel, "Office2019Colorful");
         var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
-#pragma warning disable RS0030 // TextBoxExt is the approved replacement for TextBox
         _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
-#pragma warning restore RS0030
-        _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
-        variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
-        variancesSearchPanel.Controls.Add(variancesSearchLabel);
-
-        // Variances search
-        var variancesSearchPanel = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 30
-        };
-        var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
-        _variancesSearchTextBox = new TextBox { Dock = DockStyle.Fill, TabIndex = 11 };
         _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
         variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
         variancesSearchPanel.Controls.Add(variancesSearchLabel);
@@ -805,7 +786,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
             case nameof(ViewModel.IsLoading):
                 _loadingOverlay?.Visible = ViewModel.IsLoading;
-                _noDataOverlay?.Visible = !ViewModel.IsLoading && ViewModel.Metrics.IsEmpty;
+                _noDataOverlay?.Visible = !ViewModel.IsLoading && (ViewModel.Metrics == null || ViewModel.Metrics.Count == 0);
                 break;
 
             case nameof(ViewModel.StatusText):
@@ -830,26 +811,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
             case nameof(ViewModel.RecommendationExplanation):
                 if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = ViewModel.RecommendationExplanation;
-                break;
-
-            case nameof(_viewModel.TotalBudgetedAmount):
-                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {_viewModel.TotalBudgetedAmount:C}";
-                break;
-
-            case nameof(_viewModel.TotalActualAmount):
-                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {_viewModel.TotalActualAmount:C}";
-                break;
-
-            case nameof(_viewModel.TotalVarianceAmount):
-                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {_viewModel.TotalVarianceAmount:C}";
-                break;
-
-            case nameof(_viewModel.AverageVariancePercentage):
-                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {_viewModel.AverageVariancePercentage:P}";
-                break;
-
-            case nameof(_viewModel.RecommendationExplanation):
-                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = _viewModel.RecommendationExplanation;
                 break;
         }
     }
@@ -939,32 +900,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Handles the load event.
     /// </summary>
-    protected override void OnLoad(EventArgs e)
-    {
-        base.OnLoad(e);
-
-        try
-        {
-            // Initialize scenario parameters
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
-            _metricsSearchTextBox!.Text = _viewModel.MetricsSearchText;
-            _variancesSearchTextBox!.Text = _viewModel.VariancesSearchText;
-
-            // Auto-load data
-            _ = Task.Run(async () => await _viewModel.RefreshCommand.ExecuteAsync(null));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing panel");
-        }
-    }
-
-    /// <summary>
-    /// Handles the load event.
-    /// </summary>
     protected override async void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
@@ -1045,17 +980,5 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     }
 
 
-    /// <summary>
-    /// Required method for Designer support - do not modify
-    /// the contents of this method with the code editor.
-    /// </summary>
-    private void InitializeComponent()
-    {
-        this.components = new System.ComponentModel.Container();
-        this.Name = "AnalyticsPanel";
-        this.AccessibleName = "Budget Analytics"; // For UI automation
-        this.Size = new Size(1400, 900);
-    }
 
-    #endregion
 }

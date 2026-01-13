@@ -32,6 +32,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     private GradientPanelExt? _chatContainer;
     private BlazorWebView? _blazorView;
     private IChatBridgeService? _chatBridge;
+    private EventHandler<ChatPromptSubmittedEventArgs>? _promptSubmittedHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatPanel"/> class.
@@ -52,6 +53,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     protected override void OnViewModelResolved(ChatPanelViewModel viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
         InitializeControls();
         WireUpEventHandlers();
 
@@ -171,7 +173,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             }
 
             // Subscribe to PromptSubmitted event
-            _chatBridge.PromptSubmitted += async (s, e) =>
+            _promptSubmittedHandler = async (s, e) =>
             {
                 try
                 {
@@ -181,9 +183,14 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
                 catch (Exception ex)
                 {
                     Logger.LogError(ex, "Error processing prompt");
-                    await _chatBridge.SendResponseChunkAsync($"❌ Error: {ex.Message}");
+                    if (_chatBridge != null)
+                    {
+                        await _chatBridge.SendResponseChunkAsync($"❌ Error: {ex.Message}");
+                    }
                 }
             };
+
+            _chatBridge.PromptSubmitted += _promptSubmittedHandler;
 
             Logger.LogInformation("ChatBridgeService event handlers wired up successfully");
         }
@@ -278,9 +285,10 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
                 Logger.LogDebug("Disposing ChatPanel");
 
                 // Unsubscribe from events
-                if (_chatBridge != null)
+                if (_chatBridge != null && _promptSubmittedHandler != null)
                 {
-                    _chatBridge.PromptSubmitted -= null; // Clear all subscribers
+                    _chatBridge.PromptSubmitted -= _promptSubmittedHandler;
+                    _promptSubmittedHandler = null;
                 }
 
                 _blazorView?.SafeDispose();

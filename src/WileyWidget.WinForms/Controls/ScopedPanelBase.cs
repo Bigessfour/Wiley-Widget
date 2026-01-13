@@ -18,9 +18,9 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     where TViewModel : class
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
+    protected readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
     private IServiceScope? _scope;
-    private TViewModel? _viewModel;
+    protected TViewModel? _viewModel;
     private object? _dataContext;
     private bool _disposed;
 

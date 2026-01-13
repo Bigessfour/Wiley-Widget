@@ -289,9 +289,6 @@ namespace WileyWidget.WinForms.Configuration
             // UI SERVICES & THEME (Singleton - Application-wide state)
             // =====================================================================
 
-            services.AddSingleton<IThemeService, ThemeService>();
-            services.AddSingleton<IThemeIconService, ThemeIconService>();
-
             // Panel Navigation Service
             // NOTE: This service depends on MainForm's DockingManager + central document panel.
             // Those are created during MainForm deferred initialization (OnShown), so we avoid
@@ -357,7 +354,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
             services.AddScoped<CustomersViewModel>();
-            services.AddScoped<MainViewModel>();
+            services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
             services.AddScoped<ReportsViewModel>();
             services.AddScoped<DepartmentSummaryViewModel>();
             services.AddScoped<RevenueTrendsViewModel>();

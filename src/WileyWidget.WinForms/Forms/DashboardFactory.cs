@@ -1,19 +1,21 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using ServiceProviderExtensions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
+using System;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Controls.Styles;
 using Syncfusion.Drawing;
-using WileyWidget.Business.Interfaces;
-using WileyWidget.Models;
-using WileyWidget.Services.Abstractions;
+using WileyWidget.ViewModels;
+using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Forms;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using Action = System.Action;  // Disambiguate from Syncfusion.Windows.Forms.Tools.Action
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -28,13 +30,24 @@ public static class DashboardFactory
     /// <summary>
     /// Create dashboard panel with navigation cards.
     /// </summary>
-    /// <param name="panelNavigator">Panel navigation service (nullable - cards are inert until navigator is initialized)</param>
-    /// <param name="mainForm">MainForm instance for resource access</param>
-    /// <param name="logger">Logger instance</param>
-    /// <returns>Configured dashboard panel</returns>
+    /// <param name="panelNavigator">Panel navigation service for orchestration.</param>
+    /// <param name="mainForm">MainForm instance for service resolution.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <returns>Configured dashboard panel.</returns>
     public static Panel CreateDashboardPanel(IPanelNavigationService? panelNavigator, MainForm mainForm, ILogger logger)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // ViewModel integration - assume DashboardViewModel is available via DI in MainForm
+        DashboardViewModel? viewModel = null;
+        try
+        {
+            if (mainForm?.ServiceProvider != null)
+            {
+                viewModel = ServiceProviderExtensions.GetService<DashboardViewModel>(mainForm.ServiceProvider);
+            }
+        }
+        catch { /* Suppress; optional data for cards */ }
 
         try
         {
@@ -55,131 +68,41 @@ public static class DashboardFactory
                 dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
             }
 
-            // Create dashboard cards (keep description label references for later updates)
-            var (accountsCard, accountsDesc) = CreateDashboardCard("Accounts", MainFormResources.LoadingText);
-            SetupCardClickHandler(accountsCard, () =>
-            {
-                if (panelNavigator != null)
-                    panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", Syncfusion.Windows.Forms.Tools.DockingStyle.Left, allowFloating: true);
+            // Card 1: Accounts
+            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? MainFormResources.LoadingText).Panel;
+            SetupCardClickHandler(accountsCard, () => {
+                panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left);
             });
 
-            var (chartsCard, chartsDesc) = CreateDashboardCard("Charts", "Analytics Ready");
-            SetupCardClickHandler(chartsCard, () =>
-            {
-                if (panelNavigator != null)
-                    panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", Syncfusion.Windows.Forms.Tools.DockingStyle.Right, allowFloating: true);
+            // Card 2: Charts
+            var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
+            SetupCardClickHandler(chartsCard, () => {
+                panelNavigator?.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right);
             });
 
-            var (settingsCard, settingsDesc) = CreateDashboardCard("Settings", "System Config");
-            SetupCardClickHandler(settingsCard, () =>
-            {
-                if (panelNavigator != null)
-                    panelNavigator.ShowPanel<SettingsPanel>("Settings", Syncfusion.Windows.Forms.Tools.DockingStyle.Right, allowFloating: true);
+            // Card 3: Settings
+            var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
+            SetupCardClickHandler(settingsCard, () => {
+                panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
             });
 
-            var (reportsCard, reportsDesc) = CreateDashboardCard("Reports", "Generate Now");
-            SetupCardClickHandler(reportsCard, () =>
-            {
-                if (panelNavigator != null)
-                    panelNavigator.ShowPanel<ReportsPanel>("Reports", Syncfusion.Windows.Forms.Tools.DockingStyle.Right, allowFloating: true);
+            // Card 4: Reports
+            var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
+            SetupCardClickHandler(reportsCard, () => {
+                panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right);
             });
 
-            var (budgetStatusCard, budgetStatusDesc) = CreateDashboardCard("Budget Status", MainFormResources.LoadingText);
+            // Card 5: Budget Status (Static/Status Display)
+            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? MainFormResources.LoadingText).Panel;
+            SetupCardClickHandler(infoCard, () => {
+                panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom);
+            });
 
-            logger?.LogDebug("Dashboard cards created: Accounts, Charts, Settings, Reports, Budget Status");
-
-            // Add cards to panel
             dashboardPanel.Controls.Add(accountsCard, 0, 0);
             dashboardPanel.Controls.Add(chartsCard, 0, 1);
             dashboardPanel.Controls.Add(settingsCard, 0, 2);
             dashboardPanel.Controls.Add(reportsCard, 0, 3);
-            dashboardPanel.Controls.Add(budgetStatusCard, 0, 4);
-
-            // Asynchronously refresh small card summaries using IDashboardService (non-blocking)
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    if (mainForm?.ServiceProvider == null)
-                    {
-                        logger?.LogDebug("DashboardFactory: ServiceProvider unavailable - skipping card data refresh");
-                        return;
-                    }
-
-                    using var scope = mainForm.ServiceProvider.CreateScope();
-                    // Resolve dashboard service as required for dashboard summaries. If missing, outer catch will handle.
-                    var dashSvc = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDashboardService>(scope.ServiceProvider);
-
-                    var items = (await dashSvc.GetDashboardItemsAsync().ConfigureAwait(false))?.ToList() ?? new System.Collections.Generic.List<DashboardItem>();
-
-                    var accountsItem = items.FirstOrDefault(i => string.Equals(i.Category, "Accounts", System.StringComparison.OrdinalIgnoreCase) || (i.Title != null && i.Title.IndexOf("Account", System.StringComparison.OrdinalIgnoreCase) >= 0));
-                    var budgetItem = items.FirstOrDefault(i => i.Title != null && i.Title.IndexOf("Total Budget", System.StringComparison.OrdinalIgnoreCase) >= 0) ?? items.FirstOrDefault(i => string.Equals(i.Category, "Budget", System.StringComparison.OrdinalIgnoreCase));
-                    var varianceItem = items.FirstOrDefault(i => i.Title != null && i.Title.IndexOf("Variance", System.StringComparison.OrdinalIgnoreCase) >= 0);
-                    var activityCount = items.Count(i => string.Equals(i.Category, "Activity", System.StringComparison.OrdinalIgnoreCase));
-
-                    void UpdateUi()
-                    {
-                        try
-                        {
-                            if (!dashboardPanel.IsDisposed)
-                            {
-                                if (accountsDesc != null)
-                                    accountsDesc.Text = accountsItem != null ? $"{accountsItem.Value} — {accountsItem.Description}" : MainFormResources.LoadingText;
-
-                                if (chartsDesc != null)
-                                    chartsDesc.Text = budgetItem != null ? $"Updated: {System.DateTime.Now:g}" : "No chart data";
-
-                                if (settingsDesc != null)
-                                    settingsDesc.Text = "Configured";
-
-                                if (reportsDesc != null)
-                                    reportsDesc.Text = activityCount > 0 ? $"{activityCount} recent activities" : "No recent activity";
-
-                                if (budgetStatusDesc != null)
-                                    budgetStatusDesc.Text = varianceItem != null ? $"{varianceItem.Value} — {varianceItem.Description}" : (budgetItem != null ? $"{budgetItem.Value} — {budgetItem.Description}" : MainFormResources.LoadingText);
-                            }
-                        }
-                        catch (System.Exception ex)
-                        {
-                            logger?.LogDebug(ex, "DashboardFactory: Failed to update card UI");
-                        }
-                    }
-
-                    if (dashboardPanel.IsHandleCreated && dashboardPanel.InvokeRequired)
-                        dashboardPanel.BeginInvoke((System.Action)UpdateUi);
-                    else
-                        UpdateUi();
-                }
-                catch (System.Exception ex)
-                {
-                    logger?.LogDebug(ex, "DashboardFactory: Failed to refresh dashboard cards asynchronously");
-
-                    // Ensure UI doesn't remain stuck on "Loading..." - set friendly fallback text
-                    void SetUnavailable()
-                    {
-                        try
-                        {
-                            if (!dashboardPanel.IsDisposed)
-                            {
-                                accountsDesc?.Text = "Unavailable";
-                                chartsDesc?.Text = "Unavailable";
-                                settingsDesc?.Text = "Unavailable";
-                                reportsDesc?.Text = "Unavailable";
-                                budgetStatusDesc?.Text = "Unavailable";
-                            }
-                        }
-                        catch (System.Exception inner)
-                        {
-                            logger?.LogDebug(inner, "DashboardFactory: Failed to set unavailable fallback text");
-                        }
-                    }
-
-                    if (dashboardPanel.IsHandleCreated && dashboardPanel.InvokeRequired)
-                        dashboardPanel.BeginInvoke((System.Action)SetUnavailable);
-                    else
-                        SetUnavailable();
-                }
-            });
+            dashboardPanel.Controls.Add(infoCard, 0, 4);
 
             stopwatch.Stop();
             logger?.LogInformation("Dashboard panel created successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
@@ -189,7 +112,7 @@ public static class DashboardFactory
         catch (Exception ex)
         {
             stopwatch.Stop();
-            logger?.LogError(ex, "Dashboard panel creation failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+            logger?.LogError(ex, "Dashboard panel creation failed");
             throw;
         }
     }
@@ -197,12 +120,9 @@ public static class DashboardFactory
     /// <summary>
     /// Create a dashboard card with title and description.
     /// </summary>
-    /// <param name="title">Card title</param>
-    /// <param name="description">Card description</param>
-    /// <returns>Tuple of (Panel, DescriptionLabel)</returns>
     private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description)
     {
-        GradientPanelExt panel = new GradientPanelExt
+        var panel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(12, 8, 12, 8),
@@ -212,9 +132,7 @@ public static class DashboardFactory
         };
 
         // Accessibility: give controls deterministic names for UI automation
-        string safeKey = string.Concat(title.Where(c => !char.IsWhiteSpace(c)))
-            .Replace("\"", string.Empty, System.StringComparison.Ordinal)
-            .Replace("'", string.Empty, System.StringComparison.Ordinal);
+        string safeKey = string.Concat(title.Where(c => !char.IsWhiteSpace(c)));
         panel.Name = $"DashboardCard_{safeKey}";
         panel.AccessibleName = panel.Name;
 
@@ -242,22 +160,18 @@ public static class DashboardFactory
     }
 
     /// <summary>
-    /// Setup click handler for a card control and all its children.
     /// </summary>
-    /// <param name="card">Card control</param>
-    /// <param name="onClick">Click action</param>
     private static void SetupCardClickHandler(Control card, System.Action onClick)
     {
         void Wire(Control control)
         {
             control.Cursor = Cursors.Hand;
-            control.Click += (_, _) => onClick();
+            control.Click += (s, e) => onClick();
             foreach (Control child in control.Controls)
             {
                 Wire(child);
             }
         }
-
         Wire(card);
     }
 }

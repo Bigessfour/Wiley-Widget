@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -47,7 +47,15 @@ namespace WileyWidget.WinForms.ViewModels
             _logger.LogInformation("SettingsViewModel initialized with default export path: {DefaultExportPath}", DefaultExportPath);
         }
 
-        public IReadOnlyList<AppTheme> Themes { get; }
+        public IReadOnlyList<string> Themes { get; } = new List<string>
+        {
+            "Office2019Colorful",
+            "Office2019Dark",
+            "Office2019Black",
+            "Office2019DarkGray",
+            "Dark",
+            "Light"
+        };
 
         [ObservableProperty]
         private string appTitle = "Wiley Widget Settings";
@@ -367,3 +375,4 @@ namespace WileyWidget.WinForms.ViewModels
         public List<string> GetValidationSummary() => new(_validationMessages);
     }
 }
+

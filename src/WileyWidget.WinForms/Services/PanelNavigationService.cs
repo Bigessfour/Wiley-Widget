@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Services
@@ -336,8 +337,9 @@ namespace WileyWidget.WinForms.Services
         {
             try
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SfSkinManager.SetVisualStyle(panel, ThemeColors.DefaultTheme);
+                // TODO: Uncomment when SfSkinManager.LoadAssembly is available
+                // SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                // Theme cascade from parent form - no per-control SetVisualStyle needed
             }
             catch
             {

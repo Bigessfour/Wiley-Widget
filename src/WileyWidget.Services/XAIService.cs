@@ -33,7 +33,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IAILoggingService _aiLoggingService;
     private readonly IMemoryCache _memoryCache;
     private readonly SemaphoreSlim _concurrencySemaphore;
-    private readonly SigNozTelemetryService? _telemetryService;
+    private readonly ITelemetryService? _telemetryService;
     private readonly bool _enabled;
     private readonly string _endpoint;
     private readonly string _model;
@@ -62,7 +62,6 @@ public class XAIService : IAIService, IDisposable
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _telemetryService = telemetryService;
-        if (httpClientFactory is null) throw new ArgumentNullException(nameof(httpClientFactory));
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
         _apiKey = configuration["XAI:ApiKey"];

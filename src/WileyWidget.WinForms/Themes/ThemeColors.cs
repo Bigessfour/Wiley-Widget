@@ -83,7 +83,7 @@ namespace WileyWidget.WinForms.Themes
 
                 // CRITICAL: This single call themes the form AND all child controls automatically
                 // Per Syncfusion: "SetVisualStyle on window applies theme to ALL controls inside it"
-                SfSkinManager.SetVisualStyle(form, theme);
+                // Theme cascade - form already has SetVisualStyle applied in Program.cs
 
                 Serilog.Log.Debug("SfSkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
                     theme, form.Name);

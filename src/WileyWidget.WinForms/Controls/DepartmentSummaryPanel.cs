@@ -12,7 +12,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 
@@ -43,7 +43,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
     // Event handlers for cleanup
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _metricsCollectionChangedHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
+    private EventHandler? _themeChangedHandler;
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
 
@@ -579,7 +579,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         if (disposing)
         {
             // Unsubscribe from events
-            // ThemeManager.ThemeChanged is obsolete and should not be unsubscribed.
+            // No theme change handlers needed - SfSkinManager cascade handles all theming.
 
             try
             {
@@ -620,3 +620,4 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         base.Dispose(disposing);
     }
 }
+

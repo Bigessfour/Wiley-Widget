@@ -164,11 +164,9 @@ namespace WileyWidget.WinForms.Services
                 typeof(IChargeCalculatorService),
                 typeof(IAnalyticsService),
                 typeof(IAnalyticsPipeline),
-                typeof(IGrokSupercomputer),
+                typeof(IGrokSupercomputer)
 
-                // Theme Services
-                typeof(IThemeService),
-                typeof(IThemeIconService)
+                // Theme Services removed - SfSkinManager is the single source of truth for theming
             };
 
             var result = _coreValidator.ValidateServiceCategory(
@@ -193,7 +191,7 @@ namespace WileyWidget.WinForms.Services
                 typeof(BudgetOverviewViewModel),
                 typeof(BudgetViewModel),
                 typeof(CustomersViewModel),
-                typeof(MainViewModel),
+                typeof(WileyWidget.WinForms.ViewModels.MainViewModel),
                 typeof(ReportsViewModel)
             };
 

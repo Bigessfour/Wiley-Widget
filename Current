@@ -1,0 +1,91 @@
+= : The term '=' is not 
+recognized as the name of 
+a cmdlet, function, script 
+file, or operable program. 
+Check the spelling of the 
+name, or if a path was 
+included, verify that the 
+path is correct and try 
+again.
+At line:2 char:2
++  = Get-Content src/WileyW
+idget.WinForms/Forms/Ribbon
+Factory.cs -Raw
++  ~
+    + CategoryInfo         
+     : ObjectNotFound: (=  
+  :String) [], CommandNo   
+ tFoundException
+    + FullyQualifiedErrorI 
+   d : CommandNotFoundExc  
+  eption
+ 
+\ : The term '\' is not 
+recognized as the name of 
+a cmdlet, function, script 
+file, or operable program. 
+Check the spelling of the 
+name, or if a path was 
+included, verify that the 
+path is correct and try 
+again.
+At line:4 char:1
++ \ = \ -replace 
+'(?s)\s*/// 
+<summary>\s*/// Maps a 
+theme string to a n ...
++ ~
+    + CategoryInfo         
+     : ObjectNotFound: (\  
+  :String) [], CommandNo   
+ tFoundException
+    + FullyQualifiedErrorI 
+   d : CommandNotFoundExc  
+  eption
+ 
+\ : The term '\' is not 
+recognized as the name of 
+a cmdlet, function, script 
+file, or operable program. 
+Check the spelling of the 
+name, or if a path was 
+included, verify that the 
+path is correct and try 
+again.
+At line:6 char:1
++ \ = \ -replace 'theme\ 
+app theme for icon 
+generation, 
+themeString\>Cu ...
++ ~
+    + CategoryInfo         
+     : ObjectNotFound: (\  
+  :String) [], CommandNo   
+ tFoundException
+    + FullyQualifiedErrorI 
+   d : CommandNotFoundExc  
+  eption
+ 
+\ : The term '\' is not 
+recognized as the name of 
+a cmdlet, function, script 
+file, or operable program. 
+Check the spelling of the 
+name, or if a path was 
+included, verify that the 
+path is correct and try 
+again.
+At line:7 char:1
++ \ | Set-Content src/Wiley
+Widget.WinForms/Forms/Ribbo
+nFactory.cs
++ ~
+    + CategoryInfo         
+     : ObjectNotFound: (\  
+  :String) [], CommandNo   
+ tFoundException
+    + FullyQualifiedErrorI 
+   d : CommandNotFoundExc  
+  eption
+ 
+MapTheme method removed

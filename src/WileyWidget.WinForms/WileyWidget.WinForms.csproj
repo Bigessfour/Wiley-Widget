@@ -109,15 +109,11 @@
     <RazorComponent Include="BlazorComponents/**/*.razor" />
   </ItemGroup>
 
+  <!-- .NET 10 SDK automatically includes wwwroot and appsettings.json as Content items -->
+  <!-- Explicit Content includes removed to prevent NETSDK1022 duplicate items error -->
   <ItemGroup>
-    <!-- Blazor Web assets (wwwroot) -->
-    <Content Include="wwwroot\\**\\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <!-- Reports folder still needs explicit include as it's not auto-included by SDK -->
     <Content Include="Reports\\**\\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

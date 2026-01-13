@@ -17,13 +17,11 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for managing municipal accounts with filtering and CRUD operations.
 /// Designed to be minimal, testable, and to match the public API expected by tests.
 /// </summary>
-public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDisposable
+/// <summary>
+/// ViewModel for managing municipal accounts with filtering, CRUD operations, and data aggregation.
+/// </summary>
+public partial class AccountsViewModel : ObservableRecipient, IDisposable
 {
-    /// <summary>
-    /// ViewModel for managing municipal accounts with filtering, CRUD operations, and data aggregation.
-    /// </summary>
-    public partial class AccountsViewModel : ObservableRecipient, IDisposable
-    {
         private readonly ILogger<AccountsViewModel> _logger;
         private readonly IAccountsRepository _accountsRepository;
         private readonly IMunicipalAccountRepository _municipalAccountRepository;
@@ -71,10 +69,15 @@ public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDis
         /// </summary>
         public ObservableCollection<MunicipalFundType> AvailableFunds { get; } = new(new[]
         {
-            IsLoading = true;
-            ErrorMessage = null;
-            StatusText = "Loading accounts...";
-            _typedLogger.LogInformation("Loading municipal accounts - Fund: {Fund}, Type: {Type}, Search: {Search}", SelectedFund, SelectedAccountType, SearchText);
+            MunicipalFundType.General,
+            MunicipalFundType.SpecialRevenue,
+            MunicipalFundType.CapitalProjects,
+            MunicipalFundType.DebtService,
+            MunicipalFundType.Enterprise,
+            MunicipalFundType.InternalService,
+            MunicipalFundType.Trust,
+            MunicipalFundType.Agency
+        });
 
         /// <summary>
         /// Gets the available account types for filtering.
@@ -246,50 +249,10 @@ public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDis
                 // Fallback to sample data for better UX
                 LoadSampleData();
             }
-            else if (SelectedAccountType.HasValue)
+            finally
             {
-                accountsList = await _accountsRepository.GetAccountsByTypeAsync(SelectedAccountType.Value, token);
+                IsLoading = false;
             }
-            else
-            {
-                accountsList = await _accountsRepository.GetAllAccountsAsync(token);
-            }
-
-            if (!string.IsNullOrWhiteSpace(SearchText))
-            {
-                var search = SearchText.Trim();
-                accountsList = accountsList
-                    .Where(a =>
-                        (a.AccountNumber?.Value?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
-                        (a.Name?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
-                        (a.FundDescription?.IndexOf(search, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0)
-                    .ToList();
-            }
-
-            Accounts.Clear();
-            foreach (var account in accountsList)
-            {
-                if (token.IsCancellationRequested) return;
-
-                Accounts.Add(new MunicipalAccountDisplay
-                {
-                    Id = account.Id,
-                    AccountNumber = account.AccountNumber?.Value ?? string.Empty,
-                    AccountName = account.Name ?? string.Empty,
-                    Description = account.FundDescription ?? string.Empty,
-                    AccountType = account.Type.ToString(),
-                    FundName = account.Fund.ToString(),
-                    CurrentBalance = account.Balance,
-                    BudgetAmount = account.BudgetAmount,
-                    Department = account.Department?.Name ?? string.Empty,
-                    IsActive = account.IsActive,
-                    HasParent = account.ParentAccountId.HasValue
-                });
-            }
-
-            UpdateSummaries();
-            StatusText = $"Loaded {ActiveAccountCount} accounts successfully";
-            _typedLogger.LogInformation("Municipal accounts loaded: {Count} accounts, Total Balance: {Balance}", ActiveAccountCount, TotalBalance);
         }
 
         /// <summary>
@@ -626,4 +589,3 @@ public partial class AccountsViewModel : ViewModelBase, IAccountsViewModel, IDis
             }
         }
     }
-}

@@ -14,9 +14,10 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Services;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls
@@ -35,7 +36,6 @@ namespace WileyWidget.WinForms.Controls
 
         private readonly IInsightFeedViewModel? _vm;
         private readonly ILogger<InsightFeedPanel>? _logger;
-        private readonly Services.IThemeService? _themeService;
 
         private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
@@ -49,22 +49,21 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Creates a new instance of the InsightFeedPanel.
         /// </summary>
-        public InsightFeedPanel() : this(null, null, null)
+        public InsightFeedPanel() : this(null, null)
         {
         }
 
         /// <summary>
         /// Creates a new instance with explicit ViewModel and services.
+        /// Deprecated IThemeService parameter removed - SfSkinManager handles theme cascade.
         /// </summary>
         public InsightFeedPanel(
             IInsightFeedViewModel? viewModel = null,
-            Services.IThemeService? themeService = null,
             ILogger<InsightFeedPanel>? logger = null)
         {
             InitializeComponent();
 
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<InsightFeedPanel>.Instance;
-            _themeService = themeService;
             _vm = viewModel ?? new InsightFeedViewModel();
 
             DataContext = _vm;
@@ -483,3 +482,4 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+

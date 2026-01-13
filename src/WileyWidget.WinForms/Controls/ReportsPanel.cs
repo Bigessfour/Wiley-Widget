@@ -11,7 +11,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Controls.Styles;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
@@ -60,8 +60,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SplitContainer? _parametersSplitContainer;
 
     // Event handlers for proper cleanup
-    private EventHandler? _panelHeaderRefreshHandler;
-    private EventHandler? _panelHeaderCloseHandler;
+// Event handlers removed - not assigned in current design
 
 
     /// <summary>
@@ -343,7 +342,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             AccessibleName = "reportSelector",
             Location = new Point(65, 10),
             Size = new Size(300, 25),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
         _reportSelector.SelectedIndexChanged += ReportSelector_SelectedIndexChanged;
         toolbarFlow.Controls.Add(_reportSelector);
@@ -586,61 +585,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         if (_printButton != null)
             _printButton.Enabled = !isLoading && hasReport;
-    }
-
-    private void ApplyTheme(AppTheme theme)
-    {
-        try
-        {
-            // Apply theme to the panel itself
-            // ThemeManager removed. Theme is handled by SfSkinManager cascade.
-            if (_parametersGrid != null)
-            {
-                _parametersGrid.ThemeName = "Office2019Colorful";
-                _parametersGrid.CanOverrideStyle = true;
-                if (_parametersGrid.Style?.HeaderStyle?.Font != null)
-                {
-                    _parametersGrid.Style.HeaderStyle.Font.Bold = true;
-                }
-            }
-            UpdateButtonIcons(theme);
-            Logger.LogDebug("Applied {Theme} theme to ReportsPanel", theme);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to apply theme to ReportsPanel");
-        }
-    }
-
-    private void UpdateButtonIcons(AppTheme theme)
-    {
-        try
-        {
-            if (ServiceProvider == null) return;
-
-            var iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
-            if (iconService == null) return;
-
-            // Update toolbar button icons
-            if (_loadReportButton != null)
-                _loadReportButton.Image = iconService.GetIcon("play", theme, 16);
-
-            if (_parametersButton != null)
-                _parametersButton.Image = iconService.GetIcon("settings", theme, 16);
-
-            if (_exportPdfButton != null)
-                _exportPdfButton.Image = iconService.GetIcon("pdf", theme, 16);
-
-            if (_exportExcelButton != null)
-                _exportExcelButton.Image = iconService.GetIcon("excel", theme, 16);
-
-            if (_printButton != null)
-                _printButton.Image = iconService.GetIcon("print", theme, 16);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to update button icons");
-        }
     }
 
     private void LoadAvailableReports()
@@ -1053,15 +997,14 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 }
 
                 // Theme subscription removed - handled by SfSkinManager
-
-                // Unsubscribe panel header events
-                if (_panelHeader != null)
-                {
-                    if (_panelHeaderRefreshHandler != null)
-                        _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
-                    if (_panelHeaderCloseHandler != null)
-                        _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
-                }
+                // Unsubscribe panel header events - handlers removed from design
+                // if (_panelHeader != null)
+                // {
+                //     if (_panelHeaderRefreshHandler != null)
+                //         _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                //     if (_panelHeaderCloseHandler != null)
+                //         _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                // }
 
                 // Dispose FastReport
                 try { _fastReport?.Dispose(); } catch { }
@@ -1124,3 +1067,4 @@ public class ReportParameter
     public string Value { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
 }
+
