@@ -6,9 +6,6 @@ on:
     paths:
       - src/**/*.cs
       - tests/**/*.cs
-      - .github/workflows/**
-  push:
-    branches: [fix/mcp-workflow-restore]
 
 permissions:
   contents: read
@@ -24,160 +21,104 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full history for proper diff
+          fetch-depth: 0
 
       - name: Get PR diff
         id: diff
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-
-          git diff "$BASE_SHA..$HEAD_SHA" -- \
-            'src/**/*.cs' 'tests/**/*.cs' \
-            --unified=3 \
-            --diff-filter=ACMTU 2>/dev/null | head -20000 > /tmp/pr.diff
-
-          LINES_CHANGED=$(grep -c '^[+-]' /tmp/pr.diff 2>/dev/null || echo "0")
-          DIFF_SIZE=$(wc -c < /tmp/pr.diff)
-
-          echo "lines_changed=${LINES_CHANGED}" >> "$GITHUB_OUTPUT"
-          echo "diff_size=${DIFF_SIZE}" >> "$GITHUB_OUTPUT"
+          git diff "$BASE_SHA..$HEAD_SHA" -- 'src/**/*.cs' 'tests/**/*.cs' | head -20000 > /tmp/pr.diff
+          LINES=$(grep -c '^' /tmp/pr.diff || echo 0)
+          echo "lines=$LINES" >> "$GITHUB_OUTPUT"
 
       - name: Skip if no significant changes
-        if: ${{ steps.diff.outputs.lines_changed < 10 }}
-        run: |
-          echo "No significant C# changes detected (only ${{ steps.diff.outputs.lines_changed }} lines); skipping Grok review"
-          exit 0
+        if: ${{ steps.diff.outputs.lines < 10 }}
+        run: echo "No significant C# changes; skipping Grok review"
 
-      - name: Check for API key
-        id: check_key
+      - name: Check API key
+        id: key
         run: |
-          if [ -z "${{ secrets.XAI_API_KEY }}" ]; then
-            echo "has_key=false" >> "$GITHUB_OUTPUT"
-            echo "⚠️ XAI_API_KEY not found in secrets"
+          if [ -n "${{ secrets.XAI_API_KEY }}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "has_key=true" >> "$GITHUB_OUTPUT"
-            echo "✓ XAI_API_KEY found"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Notify if API key missing
-        if: steps.check_key.outputs.has_key == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '⚠️ **Grok review skipped**: `XAI_API_KEY` secret not configured in repository settings.\n\nTo enable Grok reviews, add your xAI API key at: Settings → Secrets and variables → Actions → New repository secret'
-            });
-
-      - name: Prepare review prompt
-        if: steps.check_key.outputs.has_key == 'true'
-        id: prompt
+      - name: Create request builder script
+        if: steps.key.outputs.exists == 'true'
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-
-          DIFF=$(cat /tmp/pr.diff)
-
-          if [ ${#DIFF} -gt 15000 ]; then
-            DIFF=$(echo "$DIFF" | head -c 15000)
-            DIFF="$DIFF\n\n... (diff truncated due to size)"
-          fi
-
-          # Build prompt as JSON directly without heredocs
-          SYSTEM_PROMPT="You are a senior code reviewer for the Wiley-Widget project: a .NET 10 Windows Forms municipal dashboard using Syncfusion controls (v30+), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.\n\nReview ONLY the changed code in the provided diff. Focus on:\n- Theme consistency: NO manual Color.FromArgb, BrushInfo, or per-control styling. All colors/theme must come from SfSkinManager or IThemeService.\n- Syncfusion API usage: Correct properties, events, and docking (SetDockLabel, ThemeName inheritance).\n- Testability: ViewModels should expose interfaces for mocking; avoid parameterless ctor issues in Moq.\n- WinForms best practices: Proper disposal, no blocking calls, STA-friendly.\n- Security/secrets: No hard-coded keys or paths.\n- Performance: Avoid heavy ops in UI thread.\n- General: Clean, modern C# (.NET 10 features encouraged).\n\nBe concise but specific. Use markdown. Start with overall verdict (LGTM / Needs work), then bullet points. End with approval status."
-
-          USER_PROMPT="PR Title: $PR_TITLE\nAuthor: @$PR_AUTHOR\n\nDiff:\n$DIFF"
-
-          # Build JSON request using jq with arguments
-          jq -n \
-            --arg model "grok-4-1-fast-reasoning-latest" \
-            --arg system "$SYSTEM_PROMPT" \
-            --arg user "$USER_PROMPT" \
-            '{
-              model: $model,
-              messages: [
-                {role: "system", content: $system},
-                {role: "user", content: $user}
+          cat > /tmp/build_request.py << 'EOFSCRIPT'
+          import json
+          
+          with open('/tmp/pr.diff', 'r') as f:
+              diff = f.read()[:12000]
+          
+          request = {
+              "model": "grok-4-1-fast-reasoning-latest",
+              "messages": [
+                  {"role": "system", "content": "Senior C# code reviewer for .NET 10 Windows Forms Syncfusion app. Focus: Syncfusion API correctness, SfSkinManager theme consistency, WinForms best practices."},
+                  {"role": "user", "content": "Review this PR diff:\n\n" + diff}
               ],
-              temperature: 0.5,
-              max_tokens: 2048
-            }' > /tmp/grok_request.json
-
-          echo "prompt_prepared=true" >> "$GITHUB_OUTPUT"
+              "temperature": 0.5,
+              "max_tokens": 2048
+          }
+          
+          with open('/tmp/req.json', 'w') as f:
+              json.dump(request, f)
+          EOFSCRIPT
+          
+          python3 /tmp/build_request.py
 
       - name: Call Grok API
-        if: steps.check_key.outputs.has_key == 'true'
-        id: grok
+        if: steps.key.outputs.exists == 'true'
+        id: api
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
-          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-            https://api.x.ai/v1/chat/completions \
+          curl -s https://api.x.ai/v1/chat/completions \
             -H "Authorization: Bearer $XAI_API_KEY" \
             -H "Content-Type: application/json" \
-            -d @/tmp/grok_request.json)
+            -d @/tmp/req.json > /tmp/resp.json
+          
+          python3 << 'EOFPARSE'
+          import json
+          try:
+              with open('/tmp/resp.json') as f:
+                  data = json.load(f)
+              if 'error' in data:
+                  print(f"API Error: {data['error'].get('message', 'unknown')}")
+                  exit(1)
+              review = data['choices'][0]['message']['content']
+              with open('/tmp/review.txt', 'w') as f:
+                  f.write(review)
+          except Exception as e:
+              print(f"Parse error: {e}")
+              exit(1)
+          EOFPARSE
 
-          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE" | cut -d: -f2)
-          BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE/d')
-
-          echo "HTTP status: $HTTP_CODE"
-          echo "$BODY" > /tmp/grok_response.json
-
-          if [ "$HTTP_CODE" != "200" ]; then
-            ERROR_MSG=$(echo "$BODY" | jq -r '.error.message // "Unknown API error"')
-            echo "grok_error=true" >> "$GITHUB_OUTPUT"
-            echo "grok_error_msg=${ERROR_MSG}" >> "$GITHUB_OUTPUT"
-            echo ":: error:: Grok API error: $ERROR_MSG"
-            exit 1
-          fi
-
-          REVIEW=$(echo "$BODY" | jq -r '.choices[0].message.content // "No review content returned"')
-          echo "$REVIEW" > /tmp/grok_review.txt
-          echo "grok_success=true" >> "$GITHUB_OUTPUT"
-
-      - name: Post review as PR comment
-        if: steps.grok.outputs.grok_success == 'true'
+      - name: Post review
+        if: steps.api.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const review = fs.readFileSync('/tmp/grok_review.txt', 'utf8').trim();
-            const comment = `## 🤖 Grok Code Review
-
-            ${review}
-
-            ---
-            *Generated by Grok (xAI) • Model: grok-4-1-fast-reasoning-latest • Workflow: \`grok-pr-review.yml\`*`;
-
+            const review = fs.readFileSync('/tmp/review.txt', 'utf8');
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              body: `## 🤖 Grok Code Review\n\n${review}\n\n---\n*Generated by Grok (xAI)*`
             });
 
-      - name: Handle API errors
-        if: failure() && steps.grok.outputs.grok_error == 'true'
+      - name: Post error notice
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const errMsg = '${{ steps.grok.outputs.grok_error_msg }}' || 'Unknown error during Grok review';
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `⚠️ **Grok Review Failed**
-
-            **Error**: ${errMsg}
-
-            **Troubleshooting**:
-            - Verify \`XAI_API_KEY\` is valid and not expired
-            - Check xAI API status and rate limits
-            - Review workflow logs for detailed error information
-
-            [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              body: '⚠️ Grok review failed. See workflow logs for details.'
             });
