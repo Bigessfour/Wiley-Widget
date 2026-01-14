@@ -94,6 +94,12 @@ namespace WileyWidget.WinForms.Services
             { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
         };
 
+        /// <summary>
+        /// Initializes the panel navigation service with docking infrastructure and dependency injection support.
+        /// Note: SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly) is currently commented pending
+        /// Syncfusion WinForms 23.4+ API verification. Per SfSkinManager guardrail, must NOT introduce competing theme managers.
+        /// Theme initialization is centralized in Program.InitializeTheme().
+        /// </summary>
         public PanelNavigationService(
             DockingManager dockingManager,
             Control parentControl,

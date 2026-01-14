@@ -23,6 +23,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
 {
     private readonly ILogger<QuickBooksViewModel> _logger;
     private readonly IQuickBooksService _quickBooksService;
+    private readonly WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService? _quickBooksBudgetSyncService;
     private System.Threading.Timer? _connectionPollingTimer;
     private bool _disposed;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -145,10 +146,12 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// <param name="quickBooksService">QuickBooks service for API operations.</param>
     public QuickBooksViewModel(
         ILogger<QuickBooksViewModel> logger,
-        IQuickBooksService quickBooksService)
+        IQuickBooksService quickBooksService,
+        WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService? quickBooksBudgetSyncService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
+        _quickBooksBudgetSyncService = quickBooksBudgetSyncService;
 
         // Initialize commands
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
@@ -459,7 +462,47 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
 
             if (result.Success)
             {
-                StatusText = $"Sync complete: {result.RecordsSynced} records synced in {result.Duration.TotalSeconds:F1}s";
+                int updatedCount = 0;
+
+                // Refresh connection status first
+                await CheckConnectionAsync(cancellationToken);
+
+                // Attempt to sync budget actuals for current fiscal year (best-effort)
+                try
+                {
+                    if (_quickBooksBudgetSyncService != null)
+                    {
+                        var currentFiscalYear = DateTime.Now.Month >= 7 ? DateTime.Now.Year + 1 : DateTime.Now.Year;
+                        updatedCount = await _quickBooksBudgetSyncService.SyncFiscalYearActualsAsync(currentFiscalYear, cancellationToken);
+                        if (updatedCount > 0)
+                        {
+                            AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+                            {
+                                Timestamp = DateTime.Now,
+                                Operation = "Budget Sync",
+                                Status = "Success",
+                                RecordsProcessed = updatedCount,
+                                Duration = TimeSpan.Zero,
+                                Message = $"Updated {updatedCount} budget entries for FY {currentFiscalYear}"
+                            });
+                        }
+                    }
+                }
+                catch (Exception exBudget)
+                {
+                    _logger.LogWarning(exBudget, "Budget sync after QuickBooks sync failed");
+                    AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+                    {
+                        Timestamp = DateTime.Now,
+                        Operation = "Budget Sync",
+                        Status = "Failed",
+                        RecordsProcessed = 0,
+                        Duration = TimeSpan.Zero,
+                        Message = exBudget.Message
+                    });
+                }
+
+                StatusText = $"Sync complete: {result.RecordsSynced} records synced in {result.Duration.TotalSeconds:F1}s; Budget updates: {updatedCount} rows";
 
                 AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
                 {
@@ -468,11 +511,10 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
                     Status = "Success",
                     RecordsProcessed = result.RecordsSynced,
                     Duration = result.Duration,
-                    Message = $"Synced {result.RecordsSynced} records"
+                    Message = $"Synced {result.RecordsSynced} records; Budget updates: {updatedCount} rows"
                 });
 
-                await CheckConnectionAsync(cancellationToken); // Refresh connection status
-                _logger.LogInformation("QuickBooks sync completed: {RecordCount} records", result.RecordsSynced);
+                _logger.LogInformation("QuickBooks sync completed: {RecordCount} records; budget updates {UpdatedCount}", result.RecordsSynced, updatedCount);
             }
             else
             {

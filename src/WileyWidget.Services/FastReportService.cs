@@ -1,7 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using FastReport;
@@ -24,6 +27,87 @@ namespace WileyWidget.Services
         {
             ArgumentNullException.ThrowIfNull(logger);
             _logger = logger;
+        }
+
+        private static DataSet ConvertEnumerableToDataSet(IEnumerable items, string dataSetName)
+        {
+            var table = new DataTable(dataSetName);
+
+            // Use enumerator to inspect first item and then iterate
+            var enumerator = items.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                // empty sequence -> single column placeholder
+                table.Columns.Add("Value", typeof(object));
+                var emptyDs = new DataSet(dataSetName);
+                table.TableName = dataSetName;
+                emptyDs.Tables.Add(table);
+                return emptyDs;
+            }
+
+            var first = enumerator.Current;
+
+            if (first == null)
+            {
+                table.Columns.Add("Value", typeof(object));
+                table.Rows.Add(DBNull.Value);
+            }
+            else
+            {
+                var itemType = first.GetType();
+
+                bool isPrimitiveLike = itemType.IsPrimitive || itemType == typeof(string) || itemType == typeof(decimal) || itemType == typeof(DateTime) || itemType.IsEnum || itemType == typeof(Guid);
+
+                if (isPrimitiveLike)
+                {
+                    table.Columns.Add("Value", Nullable.GetUnderlyingType(itemType) ?? itemType);
+                    table.Rows.Add(first);
+                }
+                else
+                {
+                    var props = itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                    foreach (var p in props)
+                    {
+                        var colType = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+                        table.Columns.Add(p.Name, colType);
+                    }
+
+                    var values = props.Select(p => p.GetValue(first) ?? DBNull.Value).ToArray();
+                    table.Rows.Add(values);
+                }
+            }
+
+            // Add remaining rows
+            while (enumerator.MoveNext())
+            {
+                var cur = enumerator.Current;
+                if (cur == null)
+                {
+                    var vals = new object[table.Columns.Count];
+                    for (int i = 0; i < vals.Length; i++) vals[i] = DBNull.Value;
+                    table.Rows.Add(vals);
+                    continue;
+                }
+
+                var curType = cur.GetType();
+                bool curIsPrimitiveLike = curType.IsPrimitive || curType == typeof(string) || curType == typeof(decimal) || curType == typeof(DateTime) || curType.IsEnum || curType == typeof(Guid);
+
+                if (curIsPrimitiveLike)
+                {
+                    table.Rows.Add(cur);
+                }
+                else
+                {
+                    var props = curType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                    var vals = props.Select(p => p.GetValue(cur) ?? DBNull.Value).ToArray();
+                    table.Rows.Add(vals);
+                }
+            }
+
+            table.TableName = dataSetName;
+            var ds = new DataSet(dataSetName);
+            ds.Tables.Add(table);
+            return ds;
         }
 
         /// <summary>
@@ -58,25 +142,43 @@ namespace WileyWidget.Services
                 cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report(0.1);
 
-                // Load the report template
-                await Task.Run(() => report.Load(reportPath), cancellationToken);
+                // Load the report template (must be executed on the UI thread)
+                report.Load(reportPath);
 
                 progress?.Report(0.3);
 
-                // Register data sources
-                // Note: FastReport Open Source RegisterData requires DataSet
+                // Register data sources (accept DataSet, DataTable, or IEnumerable and convert to DataSet)
                 if (dataSources != null)
                 {
                     foreach (var kvp in dataSources)
                     {
-                        // RegisterData in FastReport.OpenSource accepts object data and string name
-                        if (kvp.Value is System.Data.DataSet ds)
+                        try
                         {
-                            report.RegisterData(ds, kvp.Key);
+                            if (kvp.Value is DataSet ds)
+                            {
+                                report.RegisterData(ds, kvp.Key);
+                            }
+                            else if (kvp.Value is DataTable dt)
+                            {
+                                var newDs = new DataSet(kvp.Key);
+                                var copy = dt.Copy();
+                                copy.TableName = string.IsNullOrWhiteSpace(copy.TableName) ? kvp.Key : copy.TableName;
+                                newDs.Tables.Add(copy);
+                                report.RegisterData(newDs, kvp.Key);
+                            }
+                            else if (kvp.Value is IEnumerable enumerable)
+                            {
+                                var newDs = ConvertEnumerableToDataSet(enumerable, kvp.Key);
+                                report.RegisterData(newDs, kvp.Key);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Data source {Name} of type {Type} is not supported for automatic registration - skipping.", kvp.Key, kvp.Value?.GetType().FullName ?? "null");
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            _logger.LogWarning("Data source {Name} is not a DataSet - skipping registration. FastReport Open Source requires DataSet objects.", kvp.Key);
+                            _logger.LogError(ex, "Failed to register data source {Name}", kvp.Key);
                         }
                     }
                 }
@@ -84,7 +186,7 @@ namespace WileyWidget.Services
                 progress?.Report(0.6);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Prepare the report
+                // Prepare the report (must be called on the UI thread)
                 report.Prepare();
 
                 progress?.Report(1.0);

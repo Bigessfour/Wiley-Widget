@@ -8,7 +8,6 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
-// REMOVED: using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -287,35 +286,35 @@ public static class RibbonFactory
         var gridSortAscBtn = CreateGridButton("Grid_SortAsc", "⬆ Sort",
             () =>
             {
-                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { false }); }
+                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { false }); }
                 catch (Exception ex) { Serilog.Log.Debug(ex, "Grid sort ascending not available"); }
             });
 
         var gridSortDescBtn = CreateGridButton("Grid_SortDesc", "⬇ Sort",
             () =>
             {
-                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { true }); }
+                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { true }); }
                 catch (Exception ex) { Serilog.Log.Debug(ex, "Grid sort descending not available"); }
             });
 
         var gridFilterBtn = CreateGridButton("Grid_ApplyTestFilter", "🔍 Filter",
             () =>
             {
-                try { form.GetType().GetMethod("ApplyTestFilterToActiveGrid", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
+                try { form.GetType().GetMethod("ApplyTestFilterToActiveGrid", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
                 catch (Exception ex) { Serilog.Log.Debug(ex, "Grid filter not available"); }
             });
 
         var gridClearBtn = CreateGridButton("Grid_ClearFilter", "✖ Clear",
             () =>
             {
-                try { form.GetType().GetMethod("ClearActiveGridFilter", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
+                try { form.GetType().GetMethod("ClearActiveGridFilter", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
                 catch (Exception ex) { Serilog.Log.Debug(ex, "Grid clear filter not available"); }
             });
 
         var gridExportBtn = CreateGridButton("Grid_ExportExcel", "📊 Export",
             async () =>
             {
-                try { await (Task)(form.GetType().GetMethod("ExportActiveGridToExcel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null) ?? Task.CompletedTask); }
+                try { await (Task)(form.GetType().GetMethod("ExportActiveGridToExcel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(form, null) ?? Task.CompletedTask); }
                 catch (Exception ex) { Serilog.Log.Debug(ex, "Grid export not available"); }
             });
 

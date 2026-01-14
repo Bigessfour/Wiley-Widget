@@ -18,9 +18,16 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Updated theme name for Syncfusion v31.2.15+ (Office2019Colorful for modern professional look)
-        // Per Syncfusion documentation, use SkinManager (not SkinManager) for global theming
+        // Theme name for Syncfusion v31.2.15+ (configurable via appsettings.json UI:Theme)
+        // Per Syncfusion documentation, use SkinManager.ApplicationVisualTheme for global theming
+        // Available themes: "Office2019Colorful", "Office2019Black", "Office2019White", "FluentLight", "FluentDark", "MaterialLight", "MaterialDark"
+        // To change theme: Edit appsettings.json UI:Theme property OR set BEFORE InitializeComponent() in Program.Main()
         public const string DefaultTheme = "Office2019Colorful";
+
+        /// <summary>
+        /// Gets the currently active theme name, falling back to DefaultTheme when not set.
+        /// </summary>
+        public static string CurrentTheme => SfSkinManager.ApplicationVisualTheme ?? DefaultTheme;
 
         /// <summary>
         /// DEPRECATED: Custom color properties removed. Use SkinManager themes exclusively.
@@ -30,14 +37,23 @@ namespace WileyWidget.WinForms.Themes
         [Obsolete("Custom colors compete with SkinManager. Use SkinManager.SetVisualStyle and let theme control colors.", true)]
         public static Color PrimaryAccent => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");
 
-        [Obsolete("Custom colors compete with SkinManager. Use SkinManager.SetVisualStyle and let theme control colors.", true)]
-        public static Color Success => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");
+        /// <summary>
+        /// Semantic color for success status indicators.
+        /// API Guideline: Use explicit standard colors for semantic status.
+        /// </summary>
+        public static Color Success => Color.Green;
 
-        [Obsolete("Custom colors compete with SkinManager. Use SkinManager.SetVisualStyle and let theme control colors.", true)]
-        public static Color Error => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");
+        /// <summary>
+        /// Semantic color for error status indicators.
+        /// API Guideline: Use explicit standard colors for semantic status.
+        /// </summary>
+        public static Color Error => Color.Red;
 
-        [Obsolete("Custom colors compete with SkinManager. Use SkinManager.SetVisualStyle and let theme control colors.", true)]
-        public static Color Warning => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");
+        /// <summary>
+        /// Semantic color for warning status indicators.
+        /// API Guideline: Use explicit standard colors for semantic status.
+        /// </summary>
+        public static Color Warning => Color.Orange;
 
         [Obsolete("Custom colors compete with SkinManager. Use SkinManager.SetVisualStyle and let theme control colors.", true)]
         public static Color Background => throw new InvalidOperationException("Custom colors removed. Use SkinManager themes.");

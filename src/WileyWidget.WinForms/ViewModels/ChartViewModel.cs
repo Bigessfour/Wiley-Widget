@@ -696,6 +696,13 @@ namespace WileyWidget.WinForms.ViewModels
             public Task<BudgetVarianceAnalysis> GetVarianceAnalysisByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default) => Task.FromResult<BudgetVarianceAnalysis>(null!);
             public Task<List<DepartmentSummary>> GetDepartmentBreakdownByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default) => Task.FromResult(new List<DepartmentSummary>());
             public Task<List<FundSummary>> GetFundAllocationsByEnterpriseAsync(int enterpriseId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default) => Task.FromResult(new List<FundSummary>());
+
+            // Implement missing BulkUpdateActualsAsync for design-time fake
+            public Task<int> BulkUpdateActualsAsync(IDictionary<string, decimal> actualsByAccountNumber, int fiscalYear, CancellationToken cancellationToken = default)
+            {
+                // Fake implementation: do nothing and report zero rows updated
+                return Task.FromResult(0);
+            }
         }
 
         #endregion

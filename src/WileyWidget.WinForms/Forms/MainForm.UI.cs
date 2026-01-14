@@ -25,7 +25,6 @@ using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -37,6 +36,15 @@ namespace WileyWidget.WinForms.Forms;
 /// <summary>
 /// Partial UI implementation for <see cref="MainForm"/> containing UI element initialization
 /// helpers (chrome, ribbons, navigation strip, status bar) and visual theming helpers.
+///
+/// DOCKING SYSTEM TESTING CHECKLIST (Before uncommenting docking initialization):
+/// - [ ] DockingLayoutManager is fully implemented and handles state persistence
+/// - [ ] Docking panel drag/drop interactions work without performance regression
+/// - [ ] Layout save/restore cycle completes within 500ms (see LayoutLoadWarningMs)
+/// - [ ] No memory leaks when toggling panel visibility repeatedly
+/// - [ ] Panel count scales linearly (no exponential complexity with 15+ panels)
+/// - [ ] Undo/redo works correctly if implemented
+/// - [ ] High DPI scaling preserves docking positions and sizes
 /// </summary>
 public partial class MainForm
 {
@@ -50,7 +58,7 @@ public partial class MainForm
     private Dictionary<string, Control>? _dynamicDockPanels;
 
     // Layout state management
-    private DateTime _lastSaveTime = DateTime.MinValue;
+    private readonly DateTime _lastSaveTime = DateTime.MinValue;
     private bool _skipLayoutLoadForDiagnostics;
 
     // Layout versioning
@@ -102,11 +110,14 @@ public partial class MainForm
             MinimumSize = new Size(1024, 768);
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
+            KeyPreview = true;
             Console.WriteLine($"[DIAGNOSTIC] Form properties set: Size={Width}x{Height}, MinSize={MinimumSize.Width}x{MinimumSize.Height}");
 
             // Initialize components container if needed
             components ??= new Container();
             Console.WriteLine("[DIAGNOSTIC] Components container initialized");
+
+            EnsureDefaultActionButtons();
 
             // Initialize Menu Bar (always available)
             InitializeMenuBar();
@@ -167,180 +178,58 @@ public partial class MainForm
     {
         try
         {
-            _ribbon = new RibbonControlAdv
-            {
-                Name = "Ribbon_Main",
-                AccessibleName = "Ribbon_Main",
-                Dock = (Syncfusion.Windows.Forms.Tools.DockStyleEx)DockStyle.Top
-            };
+            var ribbonResult = RibbonFactory.CreateRibbon(this, _logger);
+            _ribbon = ribbonResult.Ribbon;
+            _homeTab = ribbonResult.HomeTab;
 
-            _homeTab = new ToolStripTabItem
-            {
-                Name = "RibbonTab_Home",
-                Text = "Home"
-            };
+            _ribbon.AccessibleName = "Ribbon_Main";
+            _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools";
+            _ribbon.TabIndex = 1;
+            _ribbon.TabStop = true;
 
-            var homePanel = new ToolStripEx
+            // Ensure theme toggle is wired to the live theme switcher
+            if (_ribbon != null)
             {
-                Name = "RibbonHomePanel",
-                GripStyle = ToolStripGripStyle.Hidden,
-                Dock = DockStyle.None
-            };
-
-            var dashboardBtn = new ToolStripButton(MainFormResources.Dashboard) { Name = "Nav_Dashboard", AccessibleName = "Nav_Dashboard" };
-            dashboardBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
-            };
-
-            var accountsBtn = new ToolStripButton(MainFormResources.Accounts) { Name = "Nav_Accounts", AccessibleName = "Nav_Accounts" };
-            accountsBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
-            };
-
-            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Nav_Budget" };
-            budgetBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
-            };
-
-            var chartsBtn = new ToolStripButton(MainFormResources.Charts) { Name = "Nav_Charts", AccessibleName = "Nav_Charts" };
-            chartsBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
-            };
-
-            var analyticsBtn = new ToolStripButton("Analytics") { Name = "Nav_Analytics", AccessibleName = "Nav_Analytics" };
-            analyticsBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true);
-            };
-
-            var auditLogBtn = new ToolStripButton("Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Nav_AuditLog" };
-            auditLogBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
-            };
-
-            var reportsBtn = new ToolStripButton(MainFormResources.Reports) { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
-            reportsBtn.Click += (s, e) =>
-            {
-                try
+                var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
+                if (themeToggle != null)
                 {
-                    _panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
+                    themeToggle.Click -= ThemeToggleFromRibbon;
+                    themeToggle.Click += ThemeToggleFromRibbon;
                 }
-                catch (Exception ex)
-                {
-                    Serilog.Log.Warning(ex, "MainForm: Reports navigation button click failed");
-                }
-            };
-
-            var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "Nav_AIChat" };
-            aiChatBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
-            };
-
-            var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "Nav_QuickBooks" };
-            quickBooksBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
-            };
-
-            var settingsBtn = new ToolStripButton(MainFormResources.Settings) { Name = "Nav_Settings", AccessibleName = "Nav_Settings" };
-            settingsBtn.Click += (s, e) =>
-            {
-                _panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
-            };
-
-            var searchLabel = new ToolStripLabel { Text = "Search:", Name = "GlobalSearch_Label" };
-            var searchBox = new ToolStripTextBox
-            {
-                Name = "GlobalSearch",
-                AccessibleName = "GlobalSearch",
-                AutoSize = false,
-                Width = 240
-            };
-            searchBox.KeyDown += SearchBox_KeyDown;
-
-            var themeToggleBtn = new ToolStripButton
-            {
-                Name = "ThemeToggle",
-                AccessibleName = "Theme_Toggle",
-                AutoSize = true
-            };
-            themeToggleBtn.Click += ThemeToggleBtn_Click;
-            themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
-
-            var gridLabel = new ToolStripLabel { Text = "Grid:", Name = "Grid_Label" };
-            var gridSortAscBtn = new ToolStripButton { Name = "Grid_SortAsc", Text = "Sort Asc", AutoSize = true };
-            var gridSortDescBtn = new ToolStripButton { Name = "Grid_SortDesc", Text = "Sort Desc", AutoSize = true };
-            var gridApplyFilterBtn = new ToolStripButton { Name = "Grid_ApplyTestFilter", Text = "Apply Filter", AutoSize = true };
-            var gridClearFilterBtn = new ToolStripButton { Name = "Grid_ClearFilter", Text = "Clear Filter", AutoSize = true };
-            var gridExportBtn = new ToolStripButton { Name = "Grid_ExportExcel", Text = "Export Grid", AutoSize = true };
-
-            gridSortAscBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: false);
-            gridSortDescBtn.Click += (s, e) => SortActiveGridByFirstSortableColumn(descending: true);
-            gridApplyFilterBtn.Click += (s, e) => ApplyTestFilterToActiveGrid();
-            gridClearFilterBtn.Click += (s, e) => ClearActiveGridFilter();
-            gridExportBtn.Click += async (s, e) => await ExportActiveGridToExcel();
-
-            homePanel.Items.AddRange(new ToolStripItem[]
-            {
-                dashboardBtn,
-                new ToolStripSeparator(),
-                accountsBtn,
-                budgetBtn,
-                chartsBtn,
-                analyticsBtn,
-                auditLogBtn,
-                reportsBtn,
-                aiChatBtn,
-                quickBooksBtn,
-                new ToolStripSeparator(),
-                settingsBtn,
-                new ToolStripSeparator(),
-                searchLabel,
-                searchBox,
-                new ToolStripSeparator(),
-                themeToggleBtn,
-                new ToolStripSeparator(),
-                gridLabel,
-                gridSortAscBtn,
-                gridSortDescBtn,
-                gridApplyFilterBtn,
-                gridClearFilterBtn,
-                gridExportBtn
-            });
-
-            _homeTab.Panel.AddToolStrip(homePanel);
-            _ribbon.Header.AddMainItem(_homeTab);
+            }
 
             Controls.Add(_ribbon);
-            _logger?.LogInformation("Ribbon initialized via factory");
+            _logger?.LogInformation("Ribbon initialized via RibbonFactory");
             _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
-            Console.WriteLine($"[DIAGNOSTIC] Ribbon created: Size={_ribbon.Width}x{_ribbon.Height}, HomeTab={_homeTab?.Text}");
-            if (_ribbon != null)
-            {
-                foreach (var tab in _ribbon.Header.MainItems)
-                {
-                    Console.WriteLine($"[DIAGNOSTIC] Ribbon tab: {((ToolStripTabItem)tab).Text}");
-                }
-            }
 
             // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
-            // Syncfusion WinForms ToolStrip controls do not support animated images
-            if (_ribbon != null)
-            {
-                ValidateAndConvertRibbonImages(_ribbon);
-            }
+            ValidateAndConvertRibbonImages(_ribbon);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize Ribbon");
             Console.WriteLine($"[DIAGNOSTIC ERROR] InitializeRibbon failed: {ex.Message}");
             _ribbon = null;
+        }
+    }
+
+    private void ThemeToggleFromRibbon(object? sender, EventArgs e)
+    {
+        try
+        {
+            ToggleTheme();
+
+            if (sender is ToolStripButton btn)
+            {
+                var nextLabel = string.Equals(SkinManager.ApplicationVisualTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase)
+                    ? "☀️ Light"
+                    : "🌙 Dark";
+                btn.Text = nextLabel;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Theme toggle failed");
         }
     }
 
@@ -807,60 +696,35 @@ public partial class MainForm
     {
         try
         {
-            _statusBar = new StatusBarAdv
+            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, SfSkinManager.ApplicationVisualTheme);
+            _statusBar = statusBar;
+
+            if (statusBar.Panels is { Length: >= 5 })
             {
-                Name = "StatusBar_Main",
-                AccessibleName = "StatusBar_Main",
-                AccessibleDescription = "Application status bar showing current operation status and information",
-                Dock = DockStyle.Bottom,
-                BeforeTouchSize = new Size(1400, 26)
-            };
+                _statusLabel = statusBar.Panels[0];
+                _statusTextPanel = statusBar.Panels[1];
+                _statePanel = statusBar.Panels[2];
+                _progressPanel = statusBar.Panels[3];
+                _clockPanel = statusBar.Panels[4];
 
-            // REMOVED: Per-control theme application - StatusBar inherits theme from ApplicationVisualTheme
-            // Theme cascade from Program.cs ensures consistent styling
+                _progressBar = _progressPanel?.Controls.OfType<Syncfusion.Windows.Forms.Tools.ProgressBarAdv>().FirstOrDefault();
 
-            // Status label (left)
-            _statusLabel = new StatusBarAdvPanel
-            {
-                Name = "StatusLabel",
-                Text = "Ready",
-                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Left
-            };
+                if (_progressBar != null && _statusLabel != null && _statusTextPanel != null && _statePanel != null && _progressPanel != null && _clockPanel != null)
+                {
+                    SetStatusBarPanels(statusBar,
+                        _statusLabel,
+                        _statusTextPanel,
+                        _statePanel,
+                        _progressPanel,
+                        _progressBar,
+                        _clockPanel);
+                }
+            }
 
-            // Status text panel (center)
-            _statusTextPanel = new StatusBarAdvPanel
-            {
-                Name = "StatusTextPanel",
-                Text = string.Empty,
-                Size = new Size(200, 27),
-                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Center
-            };
-
-            // State panel (Docking indicator)
-            _statePanel = new StatusBarAdvPanel
-            {
-                Name = "StatePanel",
-                Text = string.Empty,
-                Size = new Size(100, 27),
-                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Left
-            };
-
-            // Clock panel (right)
-            _clockPanel = new StatusBarAdvPanel
-            {
-                Name = "ClockPanel",
-                Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
-                Size = new Size(80, 27),
-                HAlign = Syncfusion.Windows.Forms.Tools.HorzFlowAlign.Right
-            };
-
-            _statusBar.Controls.Add(_statusLabel);
-            _statusBar.Controls.Add(_statusTextPanel);
-            _statusBar.Controls.Add(_statePanel);
-            _statusBar.Controls.Add(_clockPanel);
-
-            Controls.Add(_statusBar);
-            _logger?.LogDebug("Status bar initialized successfully");
+            statusBar.TabStop = false;
+            statusBar.TabIndex = 99;
+            Controls.Add(statusBar);
+            _logger?.LogDebug("Status bar initialized via StatusBarFactory");
         }
         catch (Exception ex)
         {
@@ -869,13 +733,10 @@ public partial class MainForm
             _statusBar = null;
             return;
         }
-
-        // _statusBar is guaranteed to be non-null here
-        Controls.Add(_statusBar);
-        _logger?.LogInformation("Status bar initialized via factory with {PanelCount} panels", _statusBar.Controls.Count);
+        _logger?.LogInformation("Status bar initialized via StatusBarFactory with {PanelCount} panels", _statusBar?.Panels.Length ?? 0);
         _logger?.LogDebug("Status bar size after init: {Width}x{Height}, HasSizingGrip={HasGrip}",
-            _statusBar.Width, _statusBar.Height, _statusBar.SizingGrip);
-        Console.WriteLine($"[DIAGNOSTIC] Status bar created: Size={_statusBar.Width}x{_statusBar.Height}, Panels={_statusBar.Controls.Count}");
+            _statusBar?.Width, _statusBar?.Height, _statusBar?.SizingGrip);
+        Console.WriteLine($"[DIAGNOSTIC] Status bar created: Size={_statusBar?.Width}x{_statusBar?.Height}, Panels={_statusBar?.Panels.Length}");
     }
 
     /// <summary>
@@ -896,7 +757,10 @@ public partial class MainForm
                 GripStyle = ToolStripGripStyle.Hidden,
                 AccessibleName = "Navigation Strip",
                 AccessibleDescription = "Main navigation toolbar for switching between application panels",
-                AutoSize = true // ToolStripEx handles height automatically
+                AccessibleRole = AccessibleRole.ToolBar,
+                AutoSize = true, // ToolStripEx handles height automatically
+                TabIndex = 2,
+                TabStop = true
             };
 
             var dashboardBtn = new ToolStripButton("Dashboard")
@@ -1155,8 +1019,11 @@ public partial class MainForm
                 Font = new Font("Segoe UI", 9F),
                 RenderMode = ToolStripRenderMode.Professional,
                 ShowItemToolTips = true,
-                AccessibleName = "MainMenuStrip",
-                AccessibleDescription = "Main navigation menu bar"
+                AccessibleName = "Main menu",
+                AccessibleDescription = "Main navigation menu bar",
+                AccessibleRole = AccessibleRole.MenuBar,
+                TabIndex = 0,
+                TabStop = true
             };
 
             // Apply professional color scheme with theme colors
@@ -1165,12 +1032,20 @@ public partial class MainForm
                 professionalRenderer.RoundedEdges = true;
             }
 
+            static void SetMenuAccessibility(ToolStripMenuItem item, string accessibleName, string description)
+            {
+                item.AccessibleName = accessibleName;
+                item.AccessibleDescription = description;
+                item.AccessibleRole = AccessibleRole.MenuItem;
+            }
+
             // File Menu
             var fileMenu = new ToolStripMenuItem("&File")
             {
                 Name = "Menu_File",
                 ToolTipText = "File operations"
             };
+            SetMenuAccessibility(fileMenu, "File menu", "File operations and recent files");
 
             // File > Recent Files (MRU) - submenu
             _recentFilesMenu = new ToolStripMenuItem("&Recent Files")
@@ -1178,6 +1053,7 @@ public partial class MainForm
                 Name = "Menu_File_RecentFiles",
                 ToolTipText = "Recently opened files"
             };
+            SetMenuAccessibility(_recentFilesMenu, "Recent files", "Recently opened files list");
             UpdateMruMenu(_recentFilesMenu);
 
             // File > Clear Recent Files
@@ -1186,6 +1062,7 @@ public partial class MainForm
                 Name = "Menu_File_ClearRecent",
                 ToolTipText = "Clear recent files list"
             };
+            SetMenuAccessibility(clearRecentMenuItem, "Clear recent files", "Clear the list of recently opened files");
 
             // File > Exit
             var exitMenuItem = new ToolStripMenuItem("E&xit", null, (s, e) => Close())
@@ -1194,6 +1071,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Alt | Keys.F4,
                 ToolTipText = "Exit the application (Alt+F4)"
             };
+            SetMenuAccessibility(exitMenuItem, "Exit application", "Exit the application using Alt+F4");
             exitMenuItem.Image = CreateIconFromText("\uE8BB", 16); // Exit icon (Segoe MDL2)
             exitMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1208,6 +1086,7 @@ public partial class MainForm
                 Name = "Menu_View",
                 ToolTipText = "Open application views"
             };
+            SetMenuAccessibility(viewMenu, "View menu", "Open application views and dashboards");
 
             // View > Dashboard
             var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) =>
@@ -1228,6 +1107,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.D,
                 ToolTipText = "Open Dashboard view (Ctrl+D)"
             };
+            SetMenuAccessibility(dashboardMenuItem, "Dashboard menu item", "Open dashboard view (Ctrl+D)");
             dashboardMenuItem.Image = CreateIconFromText("\uE10F", 16); // Dashboard icon (Segoe MDL2)
             dashboardMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1250,6 +1130,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.A,
                 ToolTipText = "Open Accounts view (Ctrl+A)"
             };
+            SetMenuAccessibility(accountsMenuItem, "Accounts menu item", "Open accounts view (Ctrl+A)");
             accountsMenuItem.Image = CreateIconFromText("\uE8F4", 16); // AccountActivity icon (Segoe MDL2)
             accountsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1272,6 +1153,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.B,
                 ToolTipText = "Open Budget Overview (Ctrl+B)"
             };
+            SetMenuAccessibility(budgetMenuItem, "Budget overview menu item", "Open budget overview (Ctrl+B)");
             budgetMenuItem.Image = CreateIconFromText("\uE7C8", 16); // Money icon (Segoe MDL2)
             budgetMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1294,6 +1176,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.H,
                 ToolTipText = "Open Charts view (Ctrl+H)"
             };
+            SetMenuAccessibility(chartsMenuItem, "Charts menu item", "Open charts view (Ctrl+H)");
             chartsMenuItem.Image = CreateIconFromText("\uE9D2", 16); // BarChart icon (Segoe MDL2)
             chartsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1316,6 +1199,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.R,
                 ToolTipText = "Open Reports view (Ctrl+R)"
             };
+            SetMenuAccessibility(reportsMenuItem, "Reports menu item", "Open reports view (Ctrl+R)");
             reportsMenuItem.Image = CreateIconFromText("\uE8A5", 16); // Document icon (Segoe MDL2)
             reportsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1330,6 +1214,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.I,
                 ToolTipText = "Open AI Chat Assistant (Ctrl+I)"
             };
+            SetMenuAccessibility(aiChatMenuItem, "AI chat menu item", "Open AI chat assistant (Ctrl+I)");
             // Try to set icon from DPI-aware service (preferred over deprecated theme icon service)
             try
             {
@@ -1353,6 +1238,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.Q,
                 ToolTipText = "Open QuickBooks Integration (Ctrl+Q)"
             };
+            SetMenuAccessibility(quickBooksMenuItem, "QuickBooks menu item", "Open QuickBooks integration (Ctrl+Q)");
             // Try to set icon from DPI-aware service (preferred over deprecated theme icon service)
             try
             {
@@ -1376,6 +1262,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.U,
                 ToolTipText = "Open Customers view (Ctrl+U)"
             };
+            SetMenuAccessibility(customersMenuItem, "Customers menu item", "Open customers view (Ctrl+U)");
             customersMenuItem.Image = CreateIconFromText("\uE716", 16); // Contact icon (Segoe MDL2)
             customersMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1396,6 +1283,7 @@ public partial class MainForm
                 ShortcutKeys = Keys.F5,
                 ToolTipText = "Refresh active view (F5)"
             };
+            SetMenuAccessibility(refreshMenuItem, "Refresh menu item", "Refresh the active view (F5)");
             refreshMenuItem.Image = CreateIconFromText("\uE72C", 16); // Refresh icon (Segoe MDL2)
             refreshMenuItem.ImageScaling = ToolStripItemImageScaling.None;
 
@@ -1708,36 +1596,15 @@ public partial class MainForm
     {
         try
         {
-            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme;
+            if (_themeService == null) return;
+
+            var currentTheme = _themeService.CurrentTheme;
             var newTheme = currentTheme == "Office2019Dark" ? "Office2019Colorful" : "Office2019Dark";
-            var isLightMode = newTheme == "Office2019Colorful";
 
-            // Apply new theme globally via SfSkinManager
-            Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = newTheme;
+            // Apply new theme via service (this will persist it and broadcast the event)
+            _themeService.ApplyTheme(newTheme);
 
-            // Update button text
-            if (sender is ToolStripButton btn)
-            {
-                btn.Text = isLightMode ? "🌙 Dark Mode" : "☀️ Light Mode";
-            }
-
-            _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
-
-            // Refresh all open forms to apply new theme (SfSkinManager handles cascade automatically)
-            foreach (Form form in Application.OpenForms)
-            {
-                try
-                {
-                    // REMOVED: _themeService?.ApplyThemeToControl(form); - deprecated, SfSkinManager is sole theme authority
-                    form.Refresh();
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogDebug(ex, "Failed to refresh form {FormName}", form.Name);
-                }
-            }
-
-            _logger?.LogInformation("Theme switched from {OldTheme} to {NewTheme}", currentTheme, newTheme);
+            _logger?.LogInformation("Theme toggle triggered: {OldTheme} -> {NewTheme}", currentTheme, newTheme);
         }
         catch (Exception ex)
         {
@@ -1960,6 +1827,26 @@ public partial class MainForm
         {
             _logger?.LogInformation("Applying theme change to docking panels: {Theme}", theme);
 
+            // Update button text in Ribbon if present
+            if (_ribbon != null)
+            {
+                var themeToggleBtn = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
+                if (themeToggleBtn != null)
+                {
+                    themeToggleBtn.Text = theme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+                }
+            }
+
+            // Update button text in NavigationStrip if present
+            if (_navigationStrip != null)
+            {
+                var themeToggleBtn = _navigationStrip.Items.Find("ThemeToggle", true).FirstOrDefault() as ToolStripButton;
+                if (themeToggleBtn != null)
+                {
+                    themeToggleBtn.Text = theme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+                }
+            }
+
             // Reapply theme to all docking panels via layout manager
             if (_dockingLayoutManager != null && _dockingManager != null)
             {
@@ -2176,8 +2063,12 @@ public partial class MainForm
         {
             Name = "RightDockPanel",
             AccessibleName = "RightDockPanel",
+            AccessibleDescription = "Docked panel containing recent activity",
+            AccessibleRole = AccessibleRole.Pane,
             Padding = new Padding(8, 8, 8, 8),
-            BorderStyle = BorderStyle.None
+            BorderStyle = BorderStyle.None,
+            TabIndex = 12,
+            TabStop = false
         };
 
         var activityContent = CreateActivityGridPanel();
@@ -2255,12 +2146,16 @@ public partial class MainForm
                 _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
         });
 
+        accountsCard.TabIndex = 30;
+
         var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
         SetupCardClickHandler(chartsCard, () =>
         {
             if (_panelNavigator != null)
                 _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
         });
+
+        chartsCard.TabIndex = 31;
 
         var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
         SetupCardClickHandler(settingsCard, () =>
@@ -2269,6 +2164,8 @@ public partial class MainForm
                 _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
         });
 
+        settingsCard.TabIndex = 32;
+
         var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
         SetupCardClickHandler(reportsCard, () =>
         {
@@ -2276,7 +2173,11 @@ public partial class MainForm
                 _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
         });
 
+        reportsCard.TabIndex = 33;
+
         var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText).Panel;
+
+        infoCard.TabIndex = 34;
 
         dashboardPanel.Controls.Add(accountsCard, 0, 0);
         dashboardPanel.Controls.Add(chartsCard, 0, 1);
@@ -2294,7 +2195,13 @@ public partial class MainForm
         var activityPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            Name = "ActivityPanel",
+            AccessibleName = "Activity Panel",
+            AccessibleDescription = "Container showing recent activity and live updates",
+            AccessibleRole = AccessibleRole.Pane,
+            TabIndex = 20,
+            TabStop = false
         };
 
         var activityHeader = new Label
@@ -2305,20 +2212,28 @@ public partial class MainForm
             // REMOVED: ForeColor - SkinManager theme cascade handles label colors
             Dock = DockStyle.Top,
             Height = 35,
-            Padding = new Padding(5, 8, 0, 0)
+            Padding = new Padding(5, 8, 0, 0),
+            Name = "ActivityHeader",
+            AccessibleName = "Recent Activity heading",
+            AccessibleDescription = "Heading for the recent activity section",
+            TabStop = false
         };
 
         _activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
         {
             Name = "ActivityDataGrid",
             AccessibleName = "ActivityDataGrid",
+            AccessibleDescription = "Recent activity table with columns Time, Action, Details, and User",
+            AccessibleRole = AccessibleRole.Table,
             Dock = DockStyle.Fill,
             AutoGenerateColumns = false,
             AllowEditing = false,
             ShowGroupDropArea = false,
             RowHeight = 36,
             AllowSorting = true,
-            AllowFiltering = true
+            AllowFiltering = true,
+            TabIndex = 21,
+            TabStop = true
         };
         // REMOVED: Per-control theme application - grid inherits theme from ApplicationVisualTheme
 
@@ -3555,7 +3470,12 @@ public partial class MainForm
             Size = new Size(200, 100),
             BorderStyle = BorderStyle.FixedSingle,
             Padding = new Padding(10),
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            AccessibleName = $"{title} card",
+            AccessibleDescription = description,
+            AccessibleRole = AccessibleRole.PushButton,
+            TabStop = true,
+            TabIndex = 0
         };
 
         var titleLabel = new Label
@@ -3563,7 +3483,8 @@ public partial class MainForm
             Text = title,
             Font = new Font(SegoeUiFontName, 12F, FontStyle.Bold),
             AutoSize = true,
-            Location = new Point(10, 10)
+            Location = new Point(10, 10),
+            TabStop = false
         };
 
         var descLabel = new Label
@@ -3571,7 +3492,8 @@ public partial class MainForm
             Text = description,
             Font = new Font(SegoeUiFontName, 9F),
             AutoSize = true,
-            Location = new Point(10, 40)
+            Location = new Point(10, 40),
+            TabStop = false
         };
 
         cardPanel.Controls.Add(titleLabel);
@@ -3588,6 +3510,14 @@ public partial class MainForm
     private void SetupCardClickHandler(Panel card, System.Action action)
     {
         card.Click += (s, e) => action?.Invoke();
+        card.KeyDown += (s, e) =>
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                action?.Invoke();
+                e.Handled = true;
+            }
+        };
         foreach (Control child in card.Controls)
         {
             child.Click += (s, e) => action?.Invoke();

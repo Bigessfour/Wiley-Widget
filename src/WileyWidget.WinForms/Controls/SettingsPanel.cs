@@ -8,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using WileyWidget.WinForms.ViewModels;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
@@ -40,6 +39,7 @@ namespace WileyWidget.WinForms.Controls
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class SettingsPanel : ScopedPanelBase<SettingsViewModel>
     {
+        private readonly string _themeName = ThemeColors.CurrentTheme;
         public new object? DataContext { get; private set; }
 
         // Controls
@@ -102,7 +102,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, _themeName); } catch { }
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace WileyWidget.WinForms.Controls
             var y = padding;
 
             _mainPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(padding), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
-            SfSkinManager.SetVisualStyle(_mainPanel, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(_mainPanel, _themeName);
 
             try { _error_provider = new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink }; } catch { }
 
@@ -203,10 +203,13 @@ namespace WileyWidget.WinForms.Controls
             var themeLabel = new Label { Text = SettingsPanelResources.AppearanceGroup, AutoSize = true, Location = new Point(5, 5), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             _themeGroup.Controls.Add(themeLabel);
 
+            // Theme selection label
+            var lblTheme = new Label { Text = "Application Theme:", AutoSize = true, Location = new Point(20, 15), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
+            _themeGroup.Controls.Add(lblTheme);
+
             _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox { Name = "themeCombo", Location = new Point(20, 30), Size = new Size(380, 24), DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, AllowDropDownResize = false, MaxDropDownItems = 5, AccessibleName = "themeCombo", AccessibleDescription = "Theme selection - choose application theme" }; _themeCombo.AccessibleName = "themeCombo"; // Expose as automation id for E2E tests            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try { _themeCombo.DataSource = ViewModel?.Themes?.Cast<object>().ToList(); } catch { }
-            try { _themeCombo.SelectedItem = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; } catch { }
-            _themeCombo.SelectedIndexChanged += (s, e) => { try { if (_themeCombo.SelectedItem is string sel) { try { Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = sel; var parentForm = FindForm(); if (parentForm != null) ThemeColors.ApplyTheme(parentForm, sel); } catch { } } } catch { } };
+            // Binding is handled via _settingsBinding in MapControl section
 
             // Font selection combo
             var lblFont = new Label { Text = "Application Font:", AutoSize = true, Location = new Point(20, 85), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
@@ -306,12 +309,12 @@ namespace WileyWidget.WinForms.Controls
             _numXaiTemperature.ValueChanged += (s, e) => { try { if (ViewModel != null && _numXaiTemperature.Value.HasValue) ViewModel.XaiTemperature = Convert.ToDouble(_numXaiTemperature.Value.Value); } catch { } };
 
             // Help and guidance for AI settings
-            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), ForeColor = Color.Gray, AutoEllipsis = true };
+            _lblAiHelp = new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Location = new Point(20, 186), Size = new Size(400, 32), Font = new Font("Segoe UI", 8F, FontStyle.Italic), AutoEllipsis = true };
             _lnkAiLearnMore = new LinkLabel { Text = SettingsPanelResources.AiSettingsLearnMoreLabel, Location = new Point(20, 220), AutoSize = true, Font = new Font("Segoe UI", 8F) };
             _lnkAiLearnMore.LinkClicked += (s, e) => ShowAiHelpDialog();
 
             // Cache note label
-            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), ForeColor = Color.DarkBlue, AutoEllipsis = true, AccessibleName = "AI cache note" };
+            var lblCacheNote = new Label { Text = "Note: Cached recommendations remain until their expiration. Use 'Clear AI Cache' to force refresh.", Location = new Point(20, 204), Size = new Size(400, 14), Font = new Font("Segoe UI", 8F, FontStyle.Regular), AutoEllipsis = true, AccessibleName = "AI cache note" };
 
             _aiToolTip = new ToolTip();
             _aiToolTip.SetToolTip(_chkEnableAi, "Enable or disable AI features. When disabled, the app uses rule-based recommendations.");
@@ -439,6 +442,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_settingsBinding != null)
                 {
+                    _themeCombo?.DataBindings.Add("SelectedItem", _settingsBinding, nameof(ViewModel.SelectedTheme), true, DataSourceUpdateMode.OnPropertyChanged);
                     _numXaiTemperature.DataBindings.Add("Value", _settingsBinding, "XaiTemperature", true, DataSourceUpdateMode.OnPropertyChanged);
                 }
             }
@@ -585,6 +589,14 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Warning(ex, "SettingsPanel: Font selection change failed");
             }
+        }
+
+        /// <summary>
+        /// Handles theme selection changes via ViewModel binding.
+        /// </summary>
+        private void OnThemeSelectionChanged(object? sender, EventArgs e)
+        {
+            // Logic moved to SettingsViewModel.SelectedTheme property
         }
 
         protected override void Dispose(bool disposing)

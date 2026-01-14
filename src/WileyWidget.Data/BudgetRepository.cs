@@ -792,4 +792,59 @@ public class BudgetRepository : IBudgetRepository
             .Where(be => be.FiscalYear == fiscalYear && (be.AccountNumber.StartsWith("5") || be.AccountNumber.StartsWith("6")))
             .CountAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Bulk update ActualAmount and Variance for budget entries matching account numbers for a fiscal year.
+    /// Returns the number of budget rows updated.
+    /// </summary>
+    public async Task<int> BulkUpdateActualsAsync(IDictionary<string, decimal> actualsByAccountNumber, int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("BudgetRepository.BulkUpdateActuals");
+        activity?.SetTag("fiscal_year", fiscalYear);
+        activity?.SetTag("update.count", actualsByAccountNumber?.Count ?? 0);
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            if (actualsByAccountNumber == null || !actualsByAccountNumber.Any())
+            {
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return 0;
+            }
+
+            var keys = actualsByAccountNumber.Keys.ToList();
+            var entries = await context.BudgetEntries
+                .Where(be => be.FiscalYear == fiscalYear && keys.Contains(be.AccountNumber))
+                .ToListAsync(cancellationToken);
+
+            foreach (var entry in entries)
+            {
+                if (!string.IsNullOrEmpty(entry.AccountNumber) && actualsByAccountNumber.TryGetValue(entry.AccountNumber, out var amt))
+                {
+                    entry.ActualAmount = amt;
+                    entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
+                    entry.UpdatedAt = DateTime.UtcNow;
+                    context.BudgetEntries.Update(entry);
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Invalidate common fiscal-year caches
+            try { _cache.Remove($"BudgetEntries_FiscalYear_{fiscalYear}"); } catch { }
+            try { _cache.Remove($"BudgetEntries_Sewer_Year_{fiscalYear}"); } catch { }
+
+            activity?.SetTag("rows.updated", entries.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return entries.Count;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
+            throw;
+        }
+    }
 }

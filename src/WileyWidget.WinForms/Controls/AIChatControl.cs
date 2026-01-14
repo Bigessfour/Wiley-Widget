@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
-using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Theming;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -205,8 +203,7 @@ public partial class AIChatControl : UserControl
         {
             Dock = DockStyle.Top,
             Height = 40,
-            Visible = false,
-            BackColor = Color.FromArgb(240, 240, 240)
+            Visible = false
         };
 
         _progressLabel = new Label
@@ -214,7 +211,6 @@ public partial class AIChatControl : UserControl
             Dock = DockStyle.Fill,
             Text = "Processing...",
             TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = Color.OrangeRed,
             Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
             AccessibleName = "Progress indicator"
         };
@@ -561,10 +557,7 @@ public partial class AIChatControl : UserControl
             }
             else
             {
-                if (_statusLabel != null)
-                {
-                    _statusLabel.ForeColor = SystemColors.ControlText;
-                }
+                _statusLabel?.ResetForeColor();
             }
         }
         catch (Exception ex)
@@ -645,7 +638,7 @@ public partial class AIChatControl : UserControl
 
             // Timestamp and sender header
             _messagesDisplay.SelectionFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            _messagesDisplay.SelectionColor = message.IsUser ? Color.DodgerBlue : Color.SeaGreen;
+            _messagesDisplay.SelectionColor = SystemColors.ControlText;
             var sender = message.IsUser ? "You" : "AI Assistant";
             var timestamp = message.Timestamp.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
             _messagesDisplay.AppendText($"{sender} - {timestamp}\n");
@@ -656,7 +649,7 @@ public partial class AIChatControl : UserControl
             _messagesDisplay.AppendText($"{message.Message}\n");
 
             // Separator
-            _messagesDisplay.SelectionColor = Color.LightGray;
+            _messagesDisplay.SelectionColor = SystemColors.ControlText;
             _messagesDisplay.AppendText(new string('-', 80) + "\n\n");
 
             // Auto-scroll to bottom

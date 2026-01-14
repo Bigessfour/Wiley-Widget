@@ -91,6 +91,11 @@ using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 - ✅ `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(...)`
 - ❌ DON'T use ambiguous short names
 
+**Hand-Written Panels (programmatic layouts):**
+
+- Follow the same fully qualified Syncfusion rule as designer files.
+- Avoid broad `using Syncfusion.WinForms.*;` imports; use fully qualified names or explicit per-type aliases (for example, `using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;`) so reviews remain unambiguous and Copilot generations stay consistent.
+
 **Critical Pattern 3: Theme Application**
 
 - ✅ Use `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(control, ThemeColors.DefaultTheme)`

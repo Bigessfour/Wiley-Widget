@@ -42,6 +42,13 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Selected fund type filter.</summary>
         FundType? SelectedFundType { get; set; }
 
+        /// <summary>Selected entity/fund name for scoping (e.g., "Wiley Sanitation District").
+        /// Null means no entity scoping.</summary>
+        string? SelectedEntity { get; set; }
+
+        /// <summary>List of available entities or fund names to choose from for filtering.</summary>
+        ObservableCollection<string> AvailableEntities { get; set; }
+
         /// <summary>Minimum variance threshold filter.</summary>
         decimal? VarianceThreshold { get; set; }
 

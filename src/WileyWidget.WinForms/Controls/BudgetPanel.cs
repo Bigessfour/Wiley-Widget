@@ -1,21 +1,30 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.DataGrid;
+using GridCheckBoxColumn = Syncfusion.WinForms.DataGrid.GridCheckBoxColumn;
+using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
+using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
+using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
+using SfButton = Syncfusion.WinForms.Controls.SfButton;
+using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
+using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
+using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
+using Syncfusion.Drawing;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
-using WileyWidget.WinForms.ViewModels;
+using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
+using WileyWidget.Models;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
-using WileyWidget.WinForms.Extensions;
-using WileyWidget.Models;
-// REMOVED: using WileyWidget.WinForms.Theming;
-using WileyWidget.WinForms.Services;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Drawing;
-using Syncfusion.WinForms.ListView;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -39,6 +48,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private SfButton? _exportExcelButton;
     private TextBoxExt? _searchTextBox;
     private SfComboBox? _fiscalYearComboBox;
+    private SfComboBox? _entityComboBox;
     private SfComboBox? _departmentComboBox;
     private SfComboBox? _fundTypeComboBox;
     private TextBoxExt? _varianceThresholdTextBox;
@@ -60,6 +70,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
+    // Embedded CSV mapping wizard for advanced imports
+    private CsvMappingWizardPanel? _mappingWizardPanel;
+    private Panel? _mappingContainer;
 
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
@@ -159,13 +172,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void InitializeTopPanel()
     {
+        var themeName = ThemeColors.CurrentTheme;
+
         var topPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(topPanel, themeName);
 
         // Summary panel
         _summaryPanel = new GradientPanelExt
@@ -176,7 +191,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_summaryPanel, themeName);
 
         var summaryTable = new TableLayoutPanel
         {
@@ -254,7 +269,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_filterPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_filterPanel, themeName);
 
         var filterGroup = new GradientPanelExt
         {
@@ -263,7 +278,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(filterGroup, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(filterGroup, themeName);
 
         var filterTable = new TableLayoutPanel
         {
@@ -317,6 +332,30 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _fiscalYearComboBox.DataSource = years;
         _fiscalYearComboBox.SelectedItem = DateTime.Now.Year;
         _fiscalYearComboBox.SelectedIndexChanged += FiscalYearComboBox_SelectedIndexChanged;
+
+        var entityLabel = new Label
+        {
+            Text = "Entity:",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight
+        };
+
+        _entityComboBox = new SfComboBox
+        {
+            Dock = DockStyle.Fill,
+            TabIndex = 8,
+            AccessibleName = "Entity Filter",
+            AccessibleDescription = "Filter budget entries by entity or fund",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
+        };
+
+        // Placeholder until data is loaded
+        _entityComboBox.DataSource = new List<string> { "All Entities" };
+        _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+
+        // Add entity controls to the filter table (columns 4 and 5)
+        filterTable.Controls.Add(entityLabel, 4, 0);
+        filterTable.Controls.Add(_entityComboBox, 5, 0);
 
         // Row 2: Department and Fund Type
         var departmentLabel = new Label
@@ -419,13 +458,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void InitializeBottomPanel()
     {
+        var themeName = ThemeColors.CurrentTheme;
         var bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(bottomPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(bottomPanel, themeName);
 
         // Budget grid
         _gridPanel = new GradientPanelExt
@@ -435,7 +475,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_gridPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_gridPanel, themeName);
 
         _budgetGrid = new SfDataGrid
         {
@@ -472,6 +512,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AllowEditing = true
         });
 
+        // Entity / Fund column
+        _budgetGrid.Columns.Add(new GridTextColumn
+        {
+            MappingName = "EntityName",
+            HeaderText = "Entity",
+            AllowEditing = false
+        });
+
+        // Keep fund type description for quick reference
         _budgetGrid.Columns.Add(new GridTextColumn
         {
             MappingName = "FundTypeDescription",
@@ -479,10 +528,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AllowEditing = false
         });
 
+        // Totals (combined across entities)
         _budgetGrid.Columns.Add(new GridNumericColumn
         {
             MappingName = "BudgetedAmount",
-            HeaderText = "Budgeted",
+            HeaderText = "Total Budgeted",
             Format = "C2",
             AllowEditing = true
         });
@@ -490,9 +540,52 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _budgetGrid.Columns.Add(new GridNumericColumn
         {
             MappingName = "ActualAmount",
-            HeaderText = "Actual",
+            HeaderText = "Total Actual",
             Format = "C2",
             AllowEditing = true
+        });
+
+        // Percentage of budget (Actual / Budget) - show as percent (P-format)
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "PercentOfBudgetFraction",
+            HeaderText = "% of Budget",
+            Format = "P2",
+            AllowEditing = false
+        });
+
+        // Town of Wiley specific columns (TOW)
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "TownOfWileyBudgetedAmount",
+            HeaderText = "TOW Budgeted",
+            Format = "C2",
+            AllowEditing = false
+        });
+
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "TownOfWileyActualAmount",
+            HeaderText = "TOW Actual",
+            Format = "C2",
+            AllowEditing = false
+        });
+
+        // Wiley Sanitation District specific columns (WSD)
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "WsdBudgetedAmount",
+            HeaderText = "WSD Budgeted",
+            Format = "C2",
+            AllowEditing = false
+        });
+
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "WsdActualAmount",
+            HeaderText = "WSD Actual",
+            Format = "C2",
+            AllowEditing = false
         });
 
         _budgetGrid.Columns.Add(new GridNumericColumn
@@ -518,6 +611,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Format = "P2",
             AllowEditing = false
         });
+        // Percent of Budget (fraction property) - displays as percentage
+        _budgetGrid.Columns.Add(new GridNumericColumn
+        {
+            MappingName = "PercentOfBudgetFraction",
+            HeaderText = "% of Budget",
+            Format = "P2",
+            AllowEditing = false
+        });
 
         _budgetGrid.CurrentCellActivated += BudgetGrid_CurrentCellActivated;
 
@@ -526,6 +627,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         _gridPanel.Controls.Add(_budgetGrid);
         bottomPanel.Controls.Add(_gridPanel);
+
+        // Embedded mapping wizard container (hidden by default)
+        _mappingContainer = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 260,
+            Visible = false
+        };
+
+        _mappingWizardPanel = new CsvMappingWizardPanel { Dock = DockStyle.Fill };
+        _mappingWizardPanel.MappingApplied += MappingWizardPanel_MappingApplied;
+        _mappingWizardPanel.Cancelled += MappingWizardPanel_Cancelled;
+        _mappingContainer.Controls.Add(_mappingWizardPanel);
+        bottomPanel.Controls.Add(_mappingContainer);
 
         // Button panel
         _buttonPanel = new GradientPanelExt
@@ -536,7 +651,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_buttonPanel, themeName);
 
         var buttonTable = new TableLayoutPanel
         {
@@ -655,6 +770,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             _budgetGrid.DataSource = ViewModel.FilteredBudgetEntries;
         }
+
+        // Bind entity combo list if available
+        if (_entityComboBox != null)
+        {
+            _entityComboBox.DataSource = ViewModel.AvailableEntities ?? new ObservableCollection<string>(new[] { "All Entities" });
+            // Default selection
+            if (ViewModel.SelectedEntity == null && ViewModel.AvailableEntities != null && ViewModel.AvailableEntities.Contains("All Entities"))
+                _entityComboBox.SelectedItem = "All Entities";
+            else
+                _entityComboBox.SelectedItem = ViewModel.SelectedEntity;
+
+            // Ensure handler is attached (prevent duplicate handlers)
+            _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
+            _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+        }
     }
 
     /// <summary>
@@ -695,6 +825,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             // Alternating row styling removed - let SkinManager handle theming
 
+
+
             // Highlight negative variances in red
             if (e.Column.MappingName == "VarianceAmount" && e.DisplayText != null)
             {
@@ -708,6 +840,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     {
                         e.Style.TextColor = Color.Green; // Semantic under-budget
                     }
+                }
+            }
+            // Highlight percent-of-budget >100% in red (e.g., lift-station utilities at 125%)
+            if (e.Column.MappingName == "PercentOfBudgetFraction")
+            {
+                try
+                {
+                    decimal frac = 0m;
+                    if (e.CellValue is decimal d) frac = d;
+                    else if (e.CellValue is double db) frac = (decimal)db;
+                    else if (e.DisplayText != null && decimal.TryParse(e.DisplayText.Replace("%", "", StringComparison.Ordinal).Trim(), out var parsed))
+                        frac = parsed / 100m;
+
+                    if (frac > 1.0m)
+                    {
+                        e.Style.TextColor = Color.Red;
+                    }
+                }
+                catch
+                {
+                    // Swallow exceptions to avoid disrupting UI rendering
                 }
             }
         }
@@ -725,7 +878,10 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     // UpdateButtonIcons method removed - icon management via deprecated IThemeIconService is not authorized
 
     /// <summary>
-    /// Navigates to another panel.
+    /// Navigates to another panel using PanelNavigationService. Navigation buttons (NavigateToDashboard, NavigateToAnalytics, etc.)
+    /// have been systematically removed from BudgetPanel, AnalyticsPanel, and ChartPanel as part of UX refactor.
+    /// All inter-panel navigation is now centralized through MainForm ribbon/menu via PanelNavigationService.
+    /// This consolidation improves maintainability and provides consistent navigation UX across the application.
     /// </summary>
     private void NavigateToPanel<TPanel>(string panelName) where TPanel : UserControl
     {
@@ -758,6 +914,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Tab order set in control initialization
     }
 
+    /// <summary>
+    /// Called when the ViewModel is resolved from the scoped provider so this panel can bind safely.
+    /// </summary>
+    protected override void OnViewModelResolved(BudgetViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+        BindViewModel();
+    }
+
     private void BudgetGrid_CurrentCellActivated(object? sender, EventArgs e)
     {
         // Handle grid selection if needed
@@ -774,6 +939,18 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         if (ViewModel != null && _fiscalYearComboBox?.SelectedItem is int year)
         {
             ViewModel.SelectedFiscalYear = year;
+        }
+    }
+
+    private void EntityComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (ViewModel != null && _entityComboBox?.SelectedItem is string entity && !string.Equals(entity, "All Entities", StringComparison.OrdinalIgnoreCase))
+        {
+            ViewModel.SelectedEntity = entity;
+        }
+        else if (ViewModel != null)
+        {
+            ViewModel.SelectedEntity = null;
         }
     }
 
@@ -1067,7 +1244,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private void ImportCsvButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
-
         using var openFileDialog = new OpenFileDialog
         {
             Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
@@ -1076,7 +1252,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (openFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = ViewModel.ImportFromCsvCommand.ExecuteAsync(openFileDialog.FileName);
+            var file = openFileDialog.FileName;
+
+            // Show embedded mapping wizard for user to map columns to budget fields
+            if (_mappingContainer != null && _mappingWizardPanel != null)
+            {
+                _mappingContainer.Visible = true;
+                _mappingWizardPanel.Initialize(file, ViewModel.AvailableEntities, 2025);
+                _mappingContainer.BringToFront();
+            }
+            else
+            {
+                // Fallback to existing simple import
+                _ = ViewModel.ImportFromCsvCommand.ExecuteAsync(file);
+            }
         }
     }
 
@@ -1095,6 +1284,37 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             _ = ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
         }
+    }
+
+    private async void MappingWizardPanel_MappingApplied(object? sender, MappingAppliedEventArgs e)
+    {
+        if (ViewModel == null) return;
+
+        try
+        {
+            UpdateStatus($"Importing {Path.GetFileName(e.FilePath)}...");
+            var progress = new Progress<string>(s => UpdateStatus(s));
+            var selectedEntity = string.IsNullOrWhiteSpace(e.SelectedEntity) || e.SelectedEntity == "(None)" ? null : e.SelectedEntity;
+            await ViewModel.ImportFromCsvWithMappingAsync(e.FilePath, e.ColumnMap, selectedEntity, e.FiscalYear, progress);
+            await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
+            UpdateStatus("Import completed");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Import with mapping failed");
+            UpdateStatus("Import failed");
+            MessageBox.Show($"Import failed: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            if (_mappingContainer != null) _mappingContainer.Visible = false;
+        }
+    }
+
+    private void MappingWizardPanel_Cancelled(object? sender, EventArgs e)
+    {
+        if (_mappingContainer != null) _mappingContainer.Visible = false;
+        UpdateStatus("Import cancelled");
     }
 
     private void ExportPdfButton_Click(object? sender, EventArgs e)
@@ -1143,6 +1363,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             case nameof(ViewModel.FilteredBudgetEntries):
                 if (_budgetGrid != null) _budgetGrid.DataSource = ViewModel.FilteredBudgetEntries;
+                break;
+
+            case nameof(ViewModel.AvailableEntities):
+                if (_entityComboBox != null && ViewModel.AvailableEntities != null)
+                {
+                    _entityComboBox.DataSource = ViewModel.AvailableEntities;
+                    _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(ViewModel.SelectedEntity) ? "All Entities" : ViewModel.SelectedEntity;
+                }
+                break;
+
+            case nameof(ViewModel.SelectedEntity):
+                if (_entityComboBox != null)
+                {
+                    _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(ViewModel.SelectedEntity) ? "All Entities" : ViewModel.SelectedEntity;
+                }
                 break;
 
             case nameof(ViewModel.IsLoading):

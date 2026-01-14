@@ -23,6 +23,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
 {
     private readonly RecommendedMonthlyChargeViewModel _viewModel;
     private readonly ILogger<RecommendedMonthlyChargePanel> _logger;
+    private readonly string _themeName = ThemeColors.CurrentTheme;
 
     // UI Controls
     private SfDataGrid? _departmentsGrid;
@@ -55,7 +56,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, _themeName); } catch { }
 
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -74,7 +75,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, _themeName); } catch { }
         _viewModel = new RecommendedMonthlyChargeViewModel();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<RecommendedMonthlyChargePanel>.Instance;
 
@@ -86,7 +87,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         Name = "RecommendedMonthlyChargePanel";
         Size = new Size(1400, 900);
         Dock = DockStyle.Fill;
-        BackColor = System.Drawing.SystemColors.Control;
 
         // ============================================================================
         // Panel Header
@@ -108,8 +108,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         {
             Dock = DockStyle.Top,
             Height = 60,
-            Padding = new Padding(10),
-            BackColor = System.Drawing.SystemColors.Control
+            Padding = new Padding(10)
         };
 
         _refreshButton = new SfButton
@@ -165,7 +164,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_summaryPanel, _themeName);
 
         var summaryTitleLabel = new Label
         {
@@ -183,7 +182,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 40),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            ForeColor = System.Drawing.Color.DarkBlue,
             TabIndex = 4,
             AccessibleName = "Total Current Revenue",
             AccessibleDescription = "Total monthly revenue from all departments at current rates"
@@ -195,7 +193,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 65),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            ForeColor = System.Drawing.Color.DarkGreen,
             TabIndex = 5,
             AccessibleName = "Total Suggested Revenue",
             AccessibleDescription = "Total monthly revenue at AI-suggested rates"
@@ -207,7 +204,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 90),
             Size = new Size(350, 25),
             Font = new Font("Segoe UI", 10F),
-            ForeColor = System.Drawing.Color.DarkRed,
             TabIndex = 6,
             AccessibleName = "Total Monthly Expenses",
             AccessibleDescription = "Total monthly expenses across all departments"
@@ -231,7 +227,6 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Location = new Point(15, 120),
             Size = new Size(1200, 45),
             ScrollBars = ScrollBars.Vertical,
-            BackColor = System.Drawing.Color.FromArgb(245, 245, 245),
             BorderStyle = BorderStyle.FixedSingle,
             TabIndex = 8,
             Font = new Font("Segoe UI", 9F),
@@ -292,7 +287,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(deptGridPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(deptGridPanel, _themeName);
 
         var deptGridLabel = new Label
         {
@@ -497,17 +492,15 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _chartPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
-            BackColor = System.Drawing.SystemColors.Window
+            Padding = new Padding(10)
         };
-        SfSkinManager.SetVisualStyle(_chartPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_chartPanel, _themeName);
 
         _chartControl = new ChartControl
         {
             Dock = DockStyle.Fill,
             TabIndex = 11,
-            AccessibleName = "Department Expense Chart",
-            BackColor = System.Drawing.SystemColors.Window
+            AccessibleName = "Department Expense Chart"
         };
         _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
@@ -639,9 +632,9 @@ public partial class RecommendedMonthlyChargePanel : UserControl
                     // Use semantic status colors (approved exception to SfSkinManager)
                     _overallStatusLabel.ForeColor = _viewModel.OverallStatusColor switch
                     {
-                        "Red" => System.Drawing.Color.FromArgb(192, 0, 0),
-                        "Orange" => System.Drawing.Color.FromArgb(255, 140, 0),
-                        "Green" => System.Drawing.Color.FromArgb(0, 128, 0),
+                        "Red" => System.Drawing.Color.Red,
+                        "Orange" => System.Drawing.Color.Orange,
+                        "Green" => System.Drawing.Color.Green,
                         _ => System.Drawing.Color.Gray
                     };
                 }

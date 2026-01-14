@@ -14,7 +14,6 @@ using System.Windows.Forms;
 using System.Xml;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Forms;
 

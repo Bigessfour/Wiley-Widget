@@ -50,7 +50,7 @@ This deliverable provides a **complete, production-ready process** for systemati
 
 ### Essential Rules (Must Follow)
 
-**Rule 1: Namespace Aliases**
+#### Rule 1: Namespace Aliases
 
 ```csharp
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -58,7 +58,7 @@ using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 - Prevents ambiguity between Syncfusion.Windows.Forms.ThemeColors and WileyWidget ThemeColors
 
-**Rule 2: Fully Qualified Syncfusion Types**
+#### Rule 2: Fully Qualified Syncfusion Types
 
 ```csharp
 // ✅ DO THIS
@@ -72,7 +72,7 @@ new SfButton()    // Missing namespace
 SkinManager.SetVisualStyle(...)  // Incomplete
 ```
 
-**Rule 3: ToolTip Initialization**
+#### Rule 3: ToolTip Initialization
 
 ```csharp
 // MUST be done in InitializeComponent FIRST
@@ -86,7 +86,7 @@ _toolTip.ShowAlways = true;
 _toolTip.SetToolTip(control, "Help text");
 ```
 
-**Rule 4: No Manual Color Assignments**
+#### Rule 4: No Manual Color Assignments
 
 ```csharp
 // ✅ Correct - Theme cascade from parent
@@ -97,7 +97,7 @@ control.BackColor = Color.White;
 control.ForeColor = Color.Black;
 ```
 
-**Rule 5: Theme Application**
+#### Rule 5: Theme Application
 
 ```csharp
 // Apply theme via SfSkinManager ONLY

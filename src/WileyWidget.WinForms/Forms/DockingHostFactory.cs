@@ -13,7 +13,6 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.Models;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -65,7 +64,12 @@ public static class DockingHostFactory
         {
             Dock = DockStyle.Left,
             Width = 300,
-            Name = "LeftDockPanel"
+            Name = "LeftDockPanel",
+            AccessibleName = "Navigation panel",
+            AccessibleDescription = "Left docked panel for navigation content",
+            AccessibleRole = AccessibleRole.Pane,
+            TabStop = false,
+            TabIndex = 10
         };
         dockingManager.DockControl(leftDockPanel, mainForm, DockingStyle.Left, 300);
 
@@ -74,7 +78,12 @@ public static class DockingHostFactory
         {
             Dock = DockStyle.Right,
             Width = 300,
-            Name = "RightDockPanel"
+            Name = "RightDockPanel",
+            AccessibleName = "Activity panel",
+            AccessibleDescription = "Right docked panel hosting activity and insights",
+            AccessibleRole = AccessibleRole.Pane,
+            TabStop = false,
+            TabIndex = 11
         };
         dockingManager.DockControl(rightDockPanel, mainForm, DockingStyle.Right, 300);
 
@@ -85,7 +94,12 @@ public static class DockingHostFactory
             Height = 200,
             Name = "ActivityGrid",
             AllowEditing = false,
-            AllowSorting = true
+            AllowSorting = true,
+            AccessibleName = "Activity grid",
+            AccessibleDescription = "Recent activity table with columns Time, Activity, Details, and User",
+            AccessibleRole = AccessibleRole.Table,
+            TabStop = true,
+            TabIndex = 12
         };
         dockingManager.DockControl(activityGrid, mainForm, DockingStyle.Bottom, 200);
 

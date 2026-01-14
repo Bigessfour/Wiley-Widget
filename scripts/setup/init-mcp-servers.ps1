@@ -205,46 +205,67 @@ class McpServerManager {
     }
 
     [bool] TestServerHealth([hashtable]$server) {
-        # Health check logic based on server type
+        # Health check logic based on server type (Deep validation)
         switch ($server.Name) {
             "csharp-mcp" {
-                # Test C# MCP server by attempting a simple evaluation
+                # Deep test: Evaluate a basic C# expression
                 try {
-                    $null = & dotnet tool run mcp-csharp eval "Console.WriteLine(\"MCP Health Check\");" 2>$null
-                    return $LASTEXITCODE -eq 0
+                    $result = & dotnet tool run mcp-csharp eval "1 + 1" 2>$null
+                    return $LASTEXITCODE -eq 0 -and $result -match "2"
                 }
                 catch {
                     return $false
                 }
             }
             "filesystem-mcp" {
-                # Test filesystem MCP server
-                return Test-Path ".mcp"
+                # Deep test: Verify npx can resolve the server and the process is alive
+                if ($server.Process -and -not $server.Process.HasExited) {
+                    try {
+                        $npxCheck = & npx --no-install @modelcontextprotocol/server-filesystem --version 2>$null
+                        return $LASTEXITCODE -eq 0
+                    } catch { return $false }
+                }
+                return $false
             }
             "github-mcp" {
-                # Test GitHub MCP server (if token is available)
-                return $env:GITHUB_TOKEN -and $env:GITHUB_TOKEN.Length -gt 0
+                # Deep test: Verify GitHub API connectivity and token validity
+                try {
+                    if (-not $env:GITHUB_TOKEN) { return $false }
+                    $user = & gh api user --jq ".login" 2>$null
+                    return $LASTEXITCODE -eq 0 -and $null -ne $user
+                }
+                catch {
+                    return $false
+                }
             }
             "syncfusion-winforms-assistant" {
-                # Test Syncfusion WinForms Assistant MCP server
+                # Deep test: Verify API key and connectivity to Syncfusion
                 try {
-                    # Check if npm package is available and API key is set
                     $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY")
-                    $npmCheck = & npm view @syncfusion/winforms-assistant version 2>$null
-                    return $LASTEXITCODE -eq 0 -and $apiKey
+                    if (-not $apiKey) { return $false }
+                    # Connectivity check via npm
+                    $null = & npm view @syncfusion/winforms-assistant version 2>$null
+                    return $LASTEXITCODE -eq 0
+                }
+                catch {
+                    return $false
+                }
+            }
+            "wileywidget-ui-mcp" {
+                # Deep test: Verify project can be built and run helper
+                try {
+                    $result = & dotnet run --project tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --no-build -- --run-license-check json 2>$null
+                    return $LASTEXITCODE -eq 0 -and $result -match "license"
                 }
                 catch {
                     return $false
                 }
             }
             default {
-                # Generic health check - check if process is running
+                # Generic health check - check if process is running and responding
                 return $server.Process -and -not $server.Process.HasExited
             }
         }
-
-        # Default return for unknown server types
-        return $false
     }
 
     [void] StopServers() {

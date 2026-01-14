@@ -448,7 +448,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -479,7 +479,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -508,7 +508,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],
@@ -539,7 +539,7 @@
 				"--logger",
 				"trx",
 				"--logger",
-				"console;verbosity=detailed",
+				"\"console;verbosity=detailed\"",
 				"--results-directory",
 				"${workspaceFolder}/TestResults"
 			],

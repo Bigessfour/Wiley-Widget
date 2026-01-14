@@ -74,4 +74,43 @@ public class BudgetEntry : IAuditable
     // Computed properties for compatibility
     public decimal TotalBudget => BudgetedAmount;
     public decimal ActualSpent => ActualAmount;
+    [NotMapped]
+    public decimal Remaining => BudgetedAmount - ActualAmount;
+
+    [NotMapped]
+    public decimal PercentOfBudget => BudgetedAmount > 0 ? Math.Round((ActualAmount / BudgetedAmount) * 100m, 2) : 0m;
+
+    // Fractional percent for UI bindings (0.0 .. 1.0). Use this for SfDataGrid "P" formats.
+    [NotMapped]
+    public decimal PercentOfBudgetFraction => BudgetedAmount > 0 ? Math.Round(ActualAmount / BudgetedAmount, 4) : 0m;
+
+    // Entity-specific computed helpers for UI presentation (Town of Wiley vs Wiley Sanitation District)
+    [NotMapped]
+    public string EntityName => Fund?.Name ?? MunicipalAccount?.Name ?? FundType.ToString();
+
+    [NotMapped]
+    public decimal TownOfWileyBudgetedAmount => IsTownOfWiley() ? BudgetedAmount : 0m;
+
+    [NotMapped]
+    public decimal TownOfWileyActualAmount => IsTownOfWiley() ? ActualAmount : 0m;
+
+    [NotMapped]
+    public decimal WsdBudgetedAmount => IsWsd() ? BudgetedAmount : 0m;
+
+    [NotMapped]
+    public decimal WsdActualAmount => IsWsd() ? ActualAmount : 0m;
+
+    private bool IsWsd()
+    {
+        return Fund?.Name != null && Fund.Name.IndexOf("sanitation", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool IsTownOfWiley()
+    {
+        if (Fund?.Name == null) return false;
+        // Consider funds containing 'sanitation' as WSD; treat 'town' or 'wiley' (but not sanitation) as Town of Wiley
+        if (Fund.Name.IndexOf("sanitation", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        return Fund.Name.IndexOf("town", StringComparison.OrdinalIgnoreCase) >= 0
+               || Fund.Name.IndexOf("wiley", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
 }

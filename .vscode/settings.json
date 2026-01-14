@@ -125,7 +125,8 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/bin": true,
-    "**/obj": true
+    "**/obj": true,
+    "**/tests/.archive/**": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -134,7 +135,8 @@
     "**/*.nupkg": true,
     "**/TestResults": true,
     "**/.venv": true,
-    "**/__pycache__": true
+    "**/__pycache__": true,
+    "**/tests/.archive/**": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
@@ -144,7 +146,8 @@
     "**/obj/**": true,
     "**/*.nupkg": true,
     "**/TestResults/**": true,
-    "**/.venv/**": true
+    "**/.venv/**": true,
+    "**/tests/.archive/**": true
   },
 
   // ============================================================================

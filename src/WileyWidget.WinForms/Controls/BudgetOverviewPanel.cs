@@ -17,7 +17,6 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.ViewModels;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;

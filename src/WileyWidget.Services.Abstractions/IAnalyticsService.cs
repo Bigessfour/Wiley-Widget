@@ -15,7 +15,7 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Performs exploratory data analysis on budget data
         /// </summary>
-        Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate);
+        Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null);
 
         /// <summary>
         /// Runs a what-if scenario for rate adjustments

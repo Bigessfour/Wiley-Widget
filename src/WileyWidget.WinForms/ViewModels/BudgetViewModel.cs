@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
@@ -27,6 +28,9 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly ILogger<BudgetViewModel> _logger;
         private readonly IBudgetRepository _budgetRepository;
         private readonly IReportExportService _reportExportService;
+        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly WileyWidget.Services.Abstractions.IAppEventBus? _eventBus;
+        private readonly Action<WileyWidget.Services.Abstractions.BudgetActualsUpdatedEvent>? _budgetUpdatedHandler;
 
         /// <summary>Gets or sets the collection of all budget entries.</summary>
         [ObservableProperty]
@@ -68,6 +72,14 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Gets or sets the selected fund type filter.</summary>
         [ObservableProperty]
         private FundType? selectedFundType;
+
+        /// <summary>Gets or sets the selected entity/fund name for scoping (e.g., "Wiley Sanitation District").</summary>
+        [ObservableProperty]
+        private string? selectedEntity;
+
+        /// <summary>Gets or sets the available entities/fund names to choose from.</summary>
+        [ObservableProperty]
+        private ObservableCollection<string> availableEntities = new();
 
         /// <summary>Gets or sets the minimum variance threshold filter.</summary>
         [ObservableProperty]
@@ -171,11 +183,12 @@ namespace WileyWidget.WinForms.ViewModels
         /// <param name="budgetRepository">Repository for budget entry CRUD operations.</param>
         /// <param name="reportExportService">Service for exporting reports to various formats.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required service is null.</exception>
-        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IReportExportService? reportExportService)
+        public BudgetViewModel(ILogger<BudgetViewModel>? logger, IBudgetRepository? budgetRepository, IReportExportService? reportExportService, IEnterpriseRepository? enterpriseRepository, WileyWidget.Services.Abstractions.IAppEventBus? eventBus = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
+            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
 
             // Initialize commands
             LoadBudgetsCommand = new AsyncRelayCommand(LoadBudgetsAsync);
@@ -199,13 +212,32 @@ namespace WileyWidget.WinForms.ViewModels
                     e.PropertyName == nameof(SelectedFundType) ||
                     e.PropertyName == nameof(ShowOnlyOverBudget) ||
                     e.PropertyName == nameof(ShowOnlyUnderBudget) ||
-                    e.PropertyName == nameof(VarianceThreshold))
+                    e.PropertyName == nameof(VarianceThreshold) ||
+                    e.PropertyName == nameof(SelectedEntity))
                 {
                     _ = ApplyFiltersAsync();
                 }
             };
 
             _logger.LogDebug("BudgetViewModel initialized");
+
+            // Wire application-level event subscription (optional)
+            _eventBus = eventBus;
+            if (_eventBus != null)
+            {
+                _budgetUpdatedHandler = ev =>
+                {
+                    _logger.LogInformation("BudgetViewModel: Budget actuals updated event received: FY {FiscalYear} Updated {UpdatedCount}", ev.FiscalYear, ev.UpdatedCount);
+                    if (ev.FiscalYear == SelectedFiscalYear)
+                    {
+                        _ = LoadBudgetsCommand.ExecuteAsync(null);
+                        _ = RefreshAnalysisCommand.ExecuteAsync(null);
+                        StatusText = $"Budget actuals updated: {ev.UpdatedCount} rows";
+                    }
+                };
+
+                try { _eventBus.Subscribe(_budgetUpdatedHandler); } catch { /* best-effort subscribe */ }
+            }
         }
 
         /// <summary>
@@ -228,6 +260,30 @@ namespace WileyWidget.WinForms.ViewModels
                 var entries = await _budgetRepository.GetByFiscalYearAsync(year);
                 BudgetEntries = new ObservableCollection<BudgetEntry>(entries);
                 FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(entries);
+
+                // Populate available entities/fund names and enterprise names for the entity selector
+                try
+                {
+                    var entitySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var n in entries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
+                        entitySet.Add(n);
+
+                    var enterprises = await _enterpriseRepository.GetAllAsync();
+                    foreach (var en in enterprises.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
+                        entitySet.Add(en);
+
+                    var entityList = entitySet.OrderBy(n => n).ToList();
+                    entityList.Insert(0, "All Entities");
+                    AvailableEntities = new ObservableCollection<string>(entityList);
+                }
+                catch (Exception exEnt)
+                {
+                    _logger.LogWarning(exEnt, "Failed to populate AvailableEntities. Falling back to fund names.");
+                    var entityList = entries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n).ToList();
+                    if (!entityList.Contains("All Entities"))
+                        entityList.Insert(0, "All Entities");
+                    AvailableEntities = new ObservableCollection<string>(entityList);
+                }
 
                 await RefreshAnalysisAsync();
 
@@ -467,6 +523,152 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        /// <summary>
+        /// Import CSV using a user-supplied column mapping. Mapping keys should include: "AccountNumber","Description","BudgetedAmount","ActualAmount".
+        /// Supports bulk entity assignment and fiscal year override. Reports progress via IProgress&lt;string&gt;.
+        /// </summary>
+        public async Task ImportFromCsvWithMappingAsync(string? filePath, Dictionary<string, string> columnMap, string? bulkEntity, int fiscalYearOverride, IProgress<string>? progress = null)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                ErrorMessage = "No file selected for import.";
+                return;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                ErrorMessage = "Selected file does not exist.";
+                return;
+            }
+
+            IsLoading = true;
+            var imported = new List<BudgetEntry>();
+            var errors = new List<string>();
+
+            try
+            {
+                using var stream = File.OpenRead(filePath);
+                using var reader = new StreamReader(stream);
+                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = true,
+                    MissingFieldFound = null,
+                    HeaderValidated = null,
+                    TrimOptions = TrimOptions.Trim,
+                    BadDataFound = null
+                };
+
+                using var csv = new CsvReader(reader, config);
+
+                // ensure header read
+                try { csv.Read(); csv.ReadHeader(); } catch { /* ignore */ }
+
+                int rowNumber = 0;
+                while (await csv.ReadAsync())
+                {
+                    rowNumber++;
+                    try
+                    {
+                        string GetField(string key)
+                        {
+                            if (!columnMap.TryGetValue(key, out var map) || string.IsNullOrWhiteSpace(map)) return string.Empty;
+                            // support ColumnN tokens
+                            if (map.StartsWith("Column", StringComparison.OrdinalIgnoreCase) && int.TryParse(map.Substring(6), out var idx))
+                            {
+                                try { return csv.GetField(idx) ?? string.Empty; } catch { return string.Empty; }
+                            }
+
+                            try { return csv.GetField(map) ?? string.Empty; } catch { return string.Empty; }
+                        }
+
+                        string accountRaw = GetField("AccountNumber");
+                        string descRaw = GetField("Description");
+                        string budgetRaw = GetField("BudgetedAmount");
+                        string actualRaw = GetField("ActualAmount");
+
+                        decimal ParseDecimalSafe(string s)
+                        {
+                            if (string.IsNullOrWhiteSpace(s)) return 0m;
+                            s = s.Trim();
+                            // Try current culture then invariant
+                            if (decimal.TryParse(s, NumberStyles.Number | NumberStyles.AllowCurrencySymbol, CultureInfo.CurrentCulture, out var v)) return v;
+                            if (decimal.TryParse(s, NumberStyles.Number | NumberStyles.AllowCurrencySymbol, CultureInfo.InvariantCulture, out v)) return v;
+                            // Strip common characters and retry
+                            var cleaned = s.Replace("$", string.Empty).Replace(",", string.Empty).Replace("(", "-").Replace(")", string.Empty);
+                            if (decimal.TryParse(cleaned, NumberStyles.Number | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out v)) return v;
+                            return 0m;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(accountRaw))
+                        {
+                            errors.Add($"Row {rowNumber}: Account number is required.");
+                            continue;
+                        }
+
+                        var entry = new BudgetEntry
+                        {
+                            AccountNumber = accountRaw.Trim(),
+                            Description = descRaw.Trim(),
+                            BudgetedAmount = ParseDecimalSafe(budgetRaw),
+                            ActualAmount = ParseDecimalSafe(actualRaw),
+                            FiscalYear = fiscalYearOverride > 0 ? fiscalYearOverride : (SelectedPeriod?.Year ?? DateTime.Now.Year),
+                            SourceFilePath = filePath,
+                            SourceRowNumber = rowNumber,
+                            CreatedAt = DateTime.UtcNow,
+                        };
+
+                        // Apply bulk entity as Fund name if provided
+                        if (!string.IsNullOrWhiteSpace(bulkEntity))
+                        {
+                            entry.Fund = new Fund { Name = bulkEntity! };
+                        }
+
+                        // Calculate variance
+                        entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
+
+                        // Validate
+                        var validationResults = new List<ValidationResult>();
+                        var context = new ValidationContext(entry);
+                        if (!Validator.TryValidateObject(entry, context, validationResults, true))
+                        {
+                            var msg = string.Join(';', validationResults.Select(v => v.ErrorMessage));
+                            errors.Add($"Row {rowNumber}: {msg}");
+                            continue;
+                        }
+
+                        await _budgetRepository.AddAsync(entry);
+                        BudgetEntries.Add(entry);
+                        imported.Add(entry);
+
+                        progress?.Report($"Imported {imported.Count} rows...");
+                    }
+                    catch (Exception exRow)
+                    {
+                        errors.Add($"Row {rowNumber}: {exRow.Message}");
+                    }
+                }
+
+                if (imported.Count > 0)
+                {
+                    _logger.LogInformation("Imported {Count} budget entries from {File}", imported.Count, filePath);
+                }
+                if (errors.Count > 0)
+                {
+                    ErrorMessage = string.Join("\n", errors.Take(25));
+                    _logger.LogWarning("Import had {Count} issues. Example: {Sample}", errors.Count, errors.FirstOrDefault());
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+                _logger.LogError(ex, "ImportFromCsvWithMappingAsync failed");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
         private async Task ExportToCsvAsync(string? filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -633,6 +835,18 @@ namespace WileyWidget.WinForms.ViewModels
                     filtered = filtered.Where(e => e.FundType == SelectedFundType.Value);
                 }
 
+                // Entity filter (by Fund.Name or via heuristics for Sanitation/Utility)
+                if (!string.IsNullOrWhiteSpace(SelectedEntity) && !string.Equals(SelectedEntity, "All Entities", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sel = SelectedEntity.Trim();
+                    filtered = filtered.Where(e =>
+                        (e.Fund != null && !string.IsNullOrWhiteSpace(e.Fund.Name) && string.Equals(e.Fund.Name, sel, StringComparison.OrdinalIgnoreCase))
+                        || (sel.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) >= 0 && ((e.Fund?.Name?.IndexOf("Sewer", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (e.Fund?.Name?.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
+                        || (sel.IndexOf("Utility", StringComparison.OrdinalIgnoreCase) >= 0 && ((e.Fund?.Name?.IndexOf("Water", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (e.Fund?.Name?.IndexOf("Trash", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
+                        || (e.MunicipalAccount != null && e.MunicipalAccount.Name != null && e.MunicipalAccount.Name.IndexOf(sel, StringComparison.OrdinalIgnoreCase) >= 0)
+                    );
+                }
+
                 // Variance filters - mutually exclusive
                 if (ShowOnlyOverBudget)
                 {
@@ -670,6 +884,7 @@ namespace WileyWidget.WinForms.ViewModels
             SearchText = string.Empty;
             SelectedDepartmentId = null;
             SelectedFundType = null;
+            SelectedEntity = null;
             VarianceThreshold = null;
             ShowOnlyOverBudget = false;
             ShowOnlyUnderBudget = false;
@@ -885,6 +1100,10 @@ namespace WileyWidget.WinForms.ViewModels
             if (disposing)
             {
                 // Clean up managed resources if needed
+                if (_eventBus != null && _budgetUpdatedHandler != null)
+                {
+                    try { _eventBus.Unsubscribe(_budgetUpdatedHandler); } catch { }
+                }
             }
             // Clean up unmanaged resources if any
             _logger.LogDebug("BudgetViewModel disposed");

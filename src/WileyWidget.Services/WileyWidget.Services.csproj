@@ -95,6 +95,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="WileyWidget.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Remove interface source files since they are now in the Abstractions project -->
     <Compile Remove="IAILoggingService.cs" />
     <Compile Remove="IAIService.cs" />

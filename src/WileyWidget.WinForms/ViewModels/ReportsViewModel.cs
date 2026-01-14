@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using FastReport;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using System.Data;
+using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -22,7 +25,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private readonly IReportService _reportService;
     private readonly ILogger<ReportsViewModel> _logger;
     private readonly IAuditService _auditService;
-    private readonly IReportExportService? _exportService;
+        private readonly IReportExportService? _exportService;
+        private readonly IBudgetRepository _budgetRepository;
 
     /// <summary>
     /// Available report types for the dropdown.
@@ -30,6 +34,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     public static readonly string[] AvailableReportTypes =
     [
         "Budget Summary",
+        "Budget Comparison",
         "Account List",
         "Monthly Transactions",
         "Category Breakdown",
@@ -127,16 +132,18 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// <param name="auditService">Service for audit logging.</param>
     /// <param name="exportService">Optional service for report export operations.</param>
     /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
-    public ReportsViewModel(IReportService reportService, ILogger<ReportsViewModel> logger, IAuditService auditService, IReportExportService? exportService = null)
+    public ReportsViewModel(IReportService reportService, ILogger<ReportsViewModel> logger, IAuditService auditService, IBudgetRepository budgetRepository, IReportExportService? exportService = null)
     {
         ArgumentNullException.ThrowIfNull(reportService);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(auditService);
+        ArgumentNullException.ThrowIfNull(budgetRepository);
 
         _reportService = reportService;
         _logger = logger;
         _auditService = auditService;
         _exportService = exportService;
+        _budgetRepository = budgetRepository;
 
         // Set reports folder path relative to application
         ReportsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
@@ -306,6 +313,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         var reportFileName = SelectedReportType switch
         {
             "Budget Summary" => "BudgetSummary.frx",
+            "Budget Comparison" => "BudgetComparison.frx",
             "Account List" => "AccountList.frx",
             "Monthly Transactions" => "MonthlyTransactions.frx",
             "Category Breakdown" => "CategoryBreakdown.frx",
@@ -682,36 +690,55 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         // Generate sample data based on report type
         // In production, this would come from real services
         List<ReportDataItem> previewTx = new();
-        await Task.Run(() =>
+        if (SelectedReportType == "Budget Comparison")
         {
-            switch (SelectedReportType)
+            try
             {
-                case "Budget Summary":
-                    dataSources["BudgetData"] = GenerateSampleBudgetData();
-                    break;
-                case "Account List":
-                    dataSources["AccountData"] = GenerateSampleAccountData();
-                    break;
-                case "Monthly Transactions":
-                    // Simulate large dataset and update preview with pagination
-                    var allTx = GenerateSampleTransactionData(500); // larger set for pagination
-                    dataSources["TransactionData"] = allTx;
+                var entries = (await _budgetRepository.GetByDateRangeAsync(FromDate, ToDate, cancellationToken)).ToList();
+                var bcDs = BuildBudgetComparisonDataSet(entries);
+                dataSources["BudgetComparison"] = bcDs;
 
-                    // set preview page
-                    var start = (CurrentPage - 1) * PageSize;
-                    previewTx.AddRange(allTx.Skip(start).Take(PageSize)
-                            .Select(t => new ReportDataItem(t.Date.ToShortDateString(), t.TransactionId, t.Category))
-                            .ToList());
-
-                    break;
-                case "Category Breakdown":
-                    dataSources["CategoryData"] = GenerateSampleCategoryData();
-                    break;
-                case "Variance Analysis":
-                    dataSources["VarianceData"] = GenerateSampleVarianceData();
-                    break;
+                // populate light preview rows
+                previewTx.AddRange(entries.Take(PageSize).Select(e => new ReportDataItem(e.AccountNumber ?? string.Empty, e.Description ?? string.Empty, e.FundType.ToString())).ToList());
             }
-        }, cancellationToken);
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to prepare Budget Comparison data sources");
+            }
+        }
+        else
+        {
+            await Task.Run(() =>
+            {
+                switch (SelectedReportType)
+                {
+                    case "Budget Summary":
+                        dataSources["BudgetData"] = GenerateSampleBudgetData();
+                        break;
+                    case "Account List":
+                        dataSources["AccountData"] = GenerateSampleAccountData();
+                        break;
+                    case "Monthly Transactions":
+                        // Simulate large dataset and update preview with pagination
+                        var allTx = GenerateSampleTransactionData(500); // larger set for pagination
+                        dataSources["TransactionData"] = allTx;
+
+                        // set preview page
+                        var start = (CurrentPage - 1) * PageSize;
+                        previewTx.AddRange(allTx.Skip(start).Take(PageSize)
+                                .Select(t => new ReportDataItem(t.Date.ToShortDateString(), t.TransactionId, t.Category))
+                                .ToList());
+
+                        break;
+                    case "Category Breakdown":
+                        dataSources["CategoryData"] = GenerateSampleCategoryData();
+                        break;
+                    case "Variance Analysis":
+                        dataSources["VarianceData"] = GenerateSampleVarianceData();
+                        break;
+                }
+            }, cancellationToken);
+        }
 
         // Apply preview data to UI-bound collection on the calling context (UI thread)
         try
@@ -770,6 +797,63 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     }
 
     #region Sample Data Generation (Replace with real service calls in production)
+
+    private DataSet BuildBudgetComparisonDataSet(IEnumerable<BudgetEntry> entries)
+    {
+        var revenues = new DataTable("Revenues");
+        var expenses = new DataTable("Expenses");
+
+        // Columns required by the FRX template
+        Action<DataTable> addColumns = dt =>
+        {
+            dt.Columns.Add("Account", typeof(string));
+            dt.Columns.Add("Description", typeof(string));
+            dt.Columns.Add("ProposedBudget", typeof(decimal));
+            dt.Columns.Add("Actual_11_2025", typeof(decimal));
+            dt.Columns.Add("Remaining", typeof(decimal));
+            dt.Columns.Add("PercentOfBudget", typeof(decimal)); // fractional 0..1
+        };
+
+        addColumns(revenues);
+        addColumns(expenses);
+
+        foreach (var e in entries ?? Enumerable.Empty<BudgetEntry>())
+        {
+            try
+            {
+                var account = e.AccountNumber ?? string.Empty;
+                var description = e.Description ?? string.Empty;
+                var proposed = e.BudgetedAmount;
+                var actual = e.ActualAmount;
+                var remaining = e.Remaining;
+                var percent = e.PercentOfBudgetFraction; // 0..1
+
+                // Classify revenue vs expense
+                var acctType = e.MunicipalAccount?.Type;
+                var isRevenue = acctType.HasValue
+                    ? acctType.Value == AccountType.Revenue
+                    : (!string.IsNullOrWhiteSpace(account) && account.TrimStart().StartsWith("4"));
+
+                if (isRevenue)
+                {
+                    revenues.Rows.Add(account, description, proposed, actual, remaining, percent);
+                }
+                else
+                {
+                    expenses.Rows.Add(account, description, proposed, actual, remaining, percent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Skipping budget entry while building BudgetComparison dataset");
+            }
+        }
+
+        var ds = new DataSet("BudgetComparison");
+        ds.Tables.Add(revenues);
+        ds.Tables.Add(expenses);
+        return ds;
+    }
 
     private List<BudgetSummaryItem> GenerateSampleBudgetData()
     {

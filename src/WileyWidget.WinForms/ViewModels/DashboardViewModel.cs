@@ -199,10 +199,15 @@ namespace WileyWidget.WinForms.ViewModels
         {
         }
 
-        // Stub for RefreshMetricsAsync - used in command initialization
+        /// <summary>
+        /// Refreshes dashboard metrics on demand. Currently a stub pending metrics refresh implementation.
+        /// Decision Required: Should PopulateMonthlyRevenueData() use database queries or client-side computation?
+        /// This affects caching strategy and real-time accuracy of trend data.
+        /// </summary>
         private async Task RefreshMetricsAsync()
         {
             // TODO: Implement RefreshMetricsAsync when metrics refresh logic is defined
+            // Decision Point: PopulateMonthlyRevenueData() method is undefined - awaiting DB vs client-side decision.
             await Task.CompletedTask;
         }
 

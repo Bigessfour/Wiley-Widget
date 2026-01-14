@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BudgetComparison.frx - skeleton template
+
+  Purpose: Minimal skeleton for FastReport Designer. It defines the
+  expected data source/table names and parameters. Open this file in
+  FastReport Designer (Community Edition) and adjust layout, fonts,
+  and bands to match the Sanitation District PDF.
+
+  Important: The in-app code registers a DataSet named "BudgetComparison"
+  containing two DataTables: "Revenues" and "Expenses". Table/column names
+  must match the fields used in the template (Account, Description,
+  ProposedBudget, Actual_11_2025, Remaining, PercentOfBudget).
+-->
+<Report ScriptLanguage="CSharp" ReportInfo.Created="2026-01-13T00:00:00" ReportInfo.Name="BudgetComparison" ReportInfo.Author="WileyWidget">
+  <Dictionary>
+    <!-- Parameter placeholders -->
+    <Parameters>
+      <Parameter Name="FiscalYear" DataType="System.Int32" Value="2025" />
+      <Parameter Name="Entity" DataType="System.String" Value="Sanitation District" />
+      <Parameter Name="FromDate" DataType="System.DateTime" Value="2025-01-01" />
+      <Parameter Name="ToDate" DataType="System.DateTime" Value="2025-11-30" />
+    </Parameters>
+
+    <!-- Declare expected table names for clarity. The runtime will register a DataSet named
+         BudgetComparison which contains these two tables. Designer may show them as placeholders. -->
+    <TableDataSources>
+      <TableDataSource Name="Revenues" Enabled="true">
+        <Columns>
+          <Column Name="Account" DataType="System.String" />
+          <Column Name="Description" DataType="System.String" />
+          <Column Name="ProposedBudget" DataType="System.Decimal" />
+          <Column Name="Actual_11_2025" DataType="System.Decimal" />
+          <Column Name="Remaining" DataType="System.Decimal" />
+          <Column Name="PercentOfBudget" DataType="System.Decimal" />
+        </Columns>
+      </TableDataSource>
+      <TableDataSource Name="Expenses" Enabled="true">
+        <Columns>
+          <Column Name="Account" DataType="System.String" />
+          <Column Name="Description" DataType="System.String" />
+          <Column Name="ProposedBudget" DataType="System.Decimal" />
+          <Column Name="Actual_11_2025" DataType="System.Decimal" />
+          <Column Name="Remaining" DataType="System.Decimal" />
+          <Column Name="PercentOfBudget" DataType="System.Decimal" />
+        </Columns>
+      </TableDataSource>
+    </TableDataSources>
+  </Dictionary>
+
+  <!-- Report page with placeholder bands. Use Designer to refine sizing and styling. -->
+  <ReportPage Name="Page1">
+    <ReportTitleBand Name="ReportTitle1" Height="120">
+      <TextObject Name="TitleText" Left="0" Top="0" Width="800" Height="40">Budget Comparison</TextObject>
+      <TextObject Name="SubtitleText" Left="0" Top="40" Width="800" Height="20">Wiley Sanitation District - Fiscal Year [FiscalYear]</TextObject>
+      <TextObject Name="DateRange" Left="0" Top="60" Width="800" Height="20">As of: [ToDate]</TextObject>
+    </ReportTitleBand>
+
+    <!-- Revenues section: designer should add GroupHeader/DataBand with table headers -->
+    <DataBand Name="RevenuesBand" DataSource="Revenues" Height="20" KeepTogether="true">
+      <TextObject Name="Rev_Account" Left="0" Top="0" Width="120" Height="20">[Revenues.Account]</TextObject>
+      <TextObject Name="Rev_Description" Left="120" Top="0" Width="360" Height="20">[Revenues.Description]</TextObject>
+      <TextObject Name="Rev_Proposed" Left="480" Top="0" Width="100" Height="20" Format="C2">[Revenues.ProposedBudget]</TextObject>
+      <TextObject Name="Rev_Actual" Left="580" Top="0" Width="100" Height="20" Format="C2">[Revenues.Actual_11_2025]</TextObject>
+      <TextObject Name="Rev_Remaining" Left="680" Top="0" Width="100" Height="20" Format="C2">[Revenues.Remaining]</TextObject>
+      <TextObject Name="Rev_Pct" Left="780" Top="0" Width="80" Height="20" Format="P2">[Revenues.PercentOfBudget]</TextObject>
+    </DataBand>
+
+    <!-- Expenses section: designer should add GroupHeader/DataBand with table headers -->
+    <DataBand Name="ExpensesBand" DataSource="Expenses" Height="20" KeepTogether="true">
+      <TextObject Name="Exp_Account" Left="0" Top="0" Width="120" Height="20">[Expenses.Account]</TextObject>
+      <TextObject Name="Exp_Description" Left="120" Top="0" Width="360" Height="20">[Expenses.Description]</TextObject>
+      <TextObject Name="Exp_Proposed" Left="480" Top="0" Width="100" Height="20" Format="C2">[Expenses.ProposedBudget]</TextObject>
+      <TextObject Name="Exp_Actual" Left="580" Top="0" Width="100" Height="20" Format="C2">[Expenses.Actual_11_2025]</TextObject>
+      <TextObject Name="Exp_Remaining" Left="680" Top="0" Width="100" Height="20" Format="C2">[Expenses.Remaining]</TextObject>
+      <TextObject Name="Exp_Pct" Left="780" Top="0" Width="80" Height="20" Format="P2">[Expenses.PercentOfBudget]</TextObject>
+    </DataBand>
+
+    <!-- Summary with totals (designer should implement SUM expressions) -->
+    <ReportSummaryBand Name="SummaryBand" Height="60">
+      <TextObject Name="TotalsLabel" Left="0" Top="0" Width="400" Height="20">Totals</TextObject>
+      <TextObject Name="Totals_Revenue_Proposed" Left="480" Top="0" Width="100" Height="20">[Sum(Revenues.ProposedBudget)]</TextObject>
+      <TextObject Name="Totals_Revenue_Actual" Left="580" Top="0" Width="100" Height="20">[Sum(Revenues.Actual_11_2025)]</TextObject>
+      <TextObject Name="Totals_Expense_Proposed" Left="480" Top="20" Width="100" Height="20">[Sum(Expenses.ProposedBudget)]</TextObject>
+      <TextObject Name="Totals_Expense_Actual" Left="580" Top="20" Width="100" Height="20">[Sum(Expenses.Actual_11_2025)]</TextObject>
+    </ReportSummaryBand>
+  </ReportPage>
+</Report>

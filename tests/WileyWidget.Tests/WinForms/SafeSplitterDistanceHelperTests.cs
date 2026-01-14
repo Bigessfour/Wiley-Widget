@@ -17,7 +17,6 @@ namespace WileyWidget.Tests.WinForms
     public class SafeSplitterDistanceHelperTests : IDisposable
     {
         private Form? _testForm;
-        private SplitContainer? _splitContainer;
 
         public void Dispose()
         {
@@ -39,7 +38,7 @@ namespace WileyWidget.Tests.WinForms
                 }
             }
 
-            _splitContainer = null;
+
         }
 
         /// <summary>

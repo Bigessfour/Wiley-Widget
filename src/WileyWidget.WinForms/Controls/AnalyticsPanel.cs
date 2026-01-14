@@ -1,22 +1,31 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms;
-using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.ListView;
-using Syncfusion.Windows.Forms.Chart;
+using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
+using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
+using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
+using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using SfButton = Syncfusion.WinForms.Controls.SfButton;
+using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
+using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
+using SfListView = Syncfusion.WinForms.ListView.SfListView;
+using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
+using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
+using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
+using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using Syncfusion.Drawing;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
+using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
-using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -32,9 +41,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private SfDataGrid? _metricsGrid;
     private SfDataGrid? _variancesGrid;
     private ChartControl? _trendsChart;
-    private ChartControlRegionEventWiring? _trendsChartRegionEventWiring;
     private ChartControl? _forecastChart;
-    private ChartControlRegionEventWiring? _forecastChartRegionEventWiring;
     private SfButton? _performAnalysisButton;
     private SfButton? _runScenarioButton;
     private SfButton? _generateForecastButton;
@@ -220,7 +227,30 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
         buttonTable.Controls.Add(_generateForecastButton, 2, 0);
         buttonTable.Controls.Add(_refreshButton, 3, 0);
-        // Navigation buttons removed from UI design
+
+        var entityLabel = new Label
+        {
+            Text = "Entity:",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight
+        };
+
+        _entityComboBox = new SfComboBox
+        {
+            Dock = DockStyle.Fill,
+            TabIndex = 5,
+            AccessibleName = "Entity Selector",
+            AccessibleDescription = "Filter analytics by entity or fund",
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
+        };
+        _entityComboBox.DataSource = new List<string> { "All Entities" };
+        _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+
+        buttonTable.Controls.Add(entityLabel, 4, 0);
+        buttonTable.Controls.Add(_entityComboBox, 5, 0);
+
+        // Navigation buttons removed from UI design per updated UX flow.
+        // Pragma suppression is safe here: null checks are defensive for potential future restoration of navigation buttons.
         // if (_navigateToBudgetButton != null) buttonTable.Controls.Add(_navigateToBudgetButton, 4, 0);
         // if (_navigateToAccountsButton != null) buttonTable.Controls.Add(_navigateToAccountsButton, 5, 0);
         // if (_navigateToDashboardButton != null) buttonTable.Controls.Add(_navigateToDashboardButton, 6, 0);
@@ -621,10 +651,9 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _trendsChart = new ChartControl
         {
             Dock = DockStyle.Fill,
-            TabIndex = 15,
+            TabIndex = 14,
             AccessibleName = "Trends Chart"
         };
-        _trendsChartRegionEventWiring = new ChartControlRegionEventWiring(_trendsChart);
 
         ChartControlDefaults.Apply(_trendsChart!);
 
@@ -650,7 +679,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             TabIndex = 16,
             AccessibleName = "Forecast Chart"
         };
-        _forecastChartRegionEventWiring = new ChartControlRegionEventWiring(_forecastChart);
 
         ChartControlDefaults.Apply(_forecastChart!);
 
@@ -673,6 +701,34 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private void SetTabOrder()
     {
         // Tab order set in control initialization
+    }
+
+    private SfComboBox? _entityComboBox;
+
+    /// <summary>
+    /// Called when the ViewModel is resolved from the scoped provider so panels can bind to it safely.
+    /// </summary>
+    protected override void OnViewModelResolved(AnalyticsViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+
+        // Subscribe to property changed for UI updates
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        // Initial binding for grids and lists
+        if (_metricsGrid != null) _metricsGrid.DataSource = viewModel.FilteredMetrics;
+        if (_variancesGrid != null) _variancesGrid.DataSource = viewModel.FilteredTopVariances;
+        if (_insightsListBox != null) _insightsListBox.DataSource = viewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+        if (_recommendationsListBox != null) _recommendationsListBox.DataSource = viewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+
+        // Bind entity combo if present
+        if (_entityComboBox != null)
+        {
+            _entityComboBox.DataSource = viewModel.AvailableEntities ?? new System.Collections.ObjectModel.ObservableCollection<string>(new[] { "All Entities" });
+            _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(viewModel.SelectedEntity) ? "All Entities" : viewModel.SelectedEntity;
+            _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
+            _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+        }
     }
 
     /// <summary>
@@ -735,6 +791,19 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
     }
 
+    private void EntityComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (ViewModel == null) return;
+        if (_entityComboBox?.SelectedItem is string entity && !string.Equals(entity, "All Entities", StringComparison.OrdinalIgnoreCase))
+        {
+            ViewModel.SelectedEntity = entity;
+        }
+        else
+        {
+            ViewModel.SelectedEntity = null;
+        }
+    }
+
     /// <summary>
     /// Handles view model property changed event.
     /// </summary>
@@ -760,6 +829,21 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
             case nameof(_viewModel.FilteredTopVariances):
                 if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.FilteredTopVariances;
+                break;
+
+            case nameof(ViewModel.AvailableEntities):
+                if (_entityComboBox != null && ViewModel.AvailableEntities != null)
+                {
+                    _entityComboBox.DataSource = ViewModel.AvailableEntities;
+                    _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(ViewModel.SelectedEntity) ? "All Entities" : ViewModel.SelectedEntity;
+                }
+                break;
+
+            case nameof(ViewModel.SelectedEntity):
+                if (_entityComboBox != null)
+                {
+                    _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(ViewModel.SelectedEntity) ? "All Entities" : ViewModel.SelectedEntity;
+                }
                 break;
 
             case nameof(ViewModel.TrendData):
@@ -958,10 +1042,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _metricsGrid.SafeDispose();
             _variancesGrid.SafeDispose();
 
-            try { _trendsChartRegionEventWiring?.Dispose(); } catch { }
-            _trendsChartRegionEventWiring = null;
-            try { _forecastChartRegionEventWiring?.Dispose(); } catch { }
-            _forecastChartRegionEventWiring = null;
+            // Region event wiring removed; ChartControl handles cleanup via Dispose
 
             _trendsChart.SafeDispose();
             _forecastChart.SafeDispose();

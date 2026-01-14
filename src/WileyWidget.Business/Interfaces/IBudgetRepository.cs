@@ -115,4 +115,10 @@ public interface IBudgetRepository
     /// Gets count of expense accounts for a fiscal year
     /// </summary>
     Task<int> GetExpenseAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bulk update ActualAmount and Variance for budget entries by account number for a fiscal year.
+    /// Returns the number of budget rows updated.
+    /// </summary>
+    Task<int> BulkUpdateActualsAsync(IDictionary<string, decimal> actualsByAccountNumber, int fiscalYear, CancellationToken cancellationToken = default);
 }

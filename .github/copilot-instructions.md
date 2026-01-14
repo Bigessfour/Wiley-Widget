@@ -7,7 +7,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 **CRITICAL: These rules must be consulted and applied for EVERY prompt and code generation request in this repository.**
 
-**Last Updated:** 2026-01-01 08:52:06
+**Last Updated:** 2026-01-13 11:20:00
 
 ---
 
@@ -30,19 +30,33 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 ## Tooling Rules
 
-- **Filesystem**: Only `mcp_filesystem_*` APIs. No terminal I/O. Do not use `mcp_filesystem_list_directory_with_sizes`.
+- **Filesystem**: Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Avoid terminal I/O for file reads and writes.
 - **Search**: `mcp_filesystem_search_files` for file/code discovery.
-- **Edits**: `apply_patch` for incremental changes; `mcp_filesystem_write_file` for new files. Avoid auto-generated bulk edits unless requested.
+- **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
 - **Git**: Never reset or amend without explicit approval.
 - **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy.
 
+### MCP Filesystem Command Quick Reference
+
+Use PowerShell 7.5.4 in terminals and scripts. Each example calls the MCP CLI directly so you can validate behavior locally before invoking the JSON-RPC helpers.
+
+```powershell
+PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem list-directory --params '{"path":"."}'
+PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem list-directory-with-sizes --params '{"path":"src"}'
+PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem read-text-file --params '{"path":".vscode/copilot-instructions.md","head":120}'
+PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem edit-file --params '{"path":"src/Example.cs","edits":[{"oldText":"foo","newText":"bar"}]}'
+```
+
+> Tip: Use single quotes around the JSON payload to avoid escaping double quotes in PowerShell.
+
 ## Syncfusion Windows Forms Guardrails
 
-- SkinManager is authoritative. Apply themes via `SfSkinManager.LoadAssembly` (for Office2019Theme) and `SfSkinManager.SetVisualStyle(form, "Office2019Colorful")` (or requested theme). Set `ThemeName` on Syncfusion controls/ribbons to match.
+- SkinManager is authoritative. Always load the selected theme assembly with `SkinManager.LoadAssembly(themeAssembly)` before calling `SfSkinManager.SetVisualStyle(form, themeName)`.
+- Set `ThemeName` on every Syncfusion control or ribbon to match the active theme, including controls created after form load.
 - Do not introduce competing theme managers or per-control ad-hoc themes. One theme per form, inherited by children.
-- When adding UI: prefer Office2019Colorful defaults; avoid custom palettes unless required.
-- Keep docking/ribbon/status bar theme settings consistent with the active ThemeName; avoid mixing VisualStyle enums and string ThemeName.
+- When adding UI: honor the current theme instead of hard-coded colors or palettes.
+- Keep docking/ribbon/status bar theme settings consistent with the active `ThemeName`; avoid mixing `VisualStyle` enums and string theme names.
 
 ## Testing Expectations
 
@@ -72,15 +86,13 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 **MANDATORY: Consult these instruction files for all development work (single source of truth in .vscode):**
 
-| File                                          | Applies To         | Description                                                                                                                                                          |
-| --------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.vscode/approved-workflow.md`                | `**/*`             | **AGENT-OPTIMIZED WORKFLOW** - Must be consulted on EVERY prompt. Defines hard rules, tool decision matrix, phased execution, and validation commands. Never bypass. |
-| `.vscode/copilot-instructions.md`             | `**/*`             | MCP enforcement rules, CI/CD feedback loop, daily workflow, testing strategy                                                                                         |
-| `.vscode/copilot-mcp-rules.md`                | `**/*`             | Complete MCP filesystem enforcement rules and violation examples                                                                                                     |
-| `.vscode/scripting-language-decision-tree.md` | `**/*.ps1,**/*.py` | Canonical scripting decision tree and verification policy                                                                                                            |
-| `.vscode/scripting-language-preference.md`    | `**/*.ps1,**/*.py` | Python-first preference and analyzer guidance                                                                                                                        |
-| `.vscode/python-performance.md`               | `**/*.py`          | Python performance best practices                                                                                                                                    |
-| `.vscode/c-best-practices.md`                 | `**/*.cs`          | C# best-practices rules                                                                                                                                              |
+| File                              | Applies To | Description                                                                                                                                                          |
+| --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.vscode/approved-workflow.md`    | `**/*`     | **AGENT-OPTIMIZED WORKFLOW** - Must be consulted on EVERY prompt. Defines hard rules, tool decision matrix, phased execution, and validation commands. Never bypass. |
+| `.vscode/copilot-instructions.md` | `**/*`     | MCP enforcement rules, CI/CD feedback loop, daily workflow, testing strategy                                                                                         |
+| `.vscode/copilot-mcp-rules.md`    | `**/*`     | Complete MCP filesystem enforcement rules and violation examples                                                                                                     |
+| `.vscode/python-performance.md`   | `**/*.py`  | Python performance best practices                                                                                                                                    |
+| `.vscode/c-best-practices.md`     | `**/*.cs`  | C# best-practices rules                                                                                                                                              |
 
 **Workflow Priority Order:**
 
@@ -101,51 +113,32 @@ Copilot Code Agent MUST consult `.vscode/*.md` before making or suggesting chang
 
 ---
 
-## ⚠️ FILESYSTEM MCP MANDATORY ENFORCEMENT
+## ⚠️ Filesystem MCP Workflow
 
-### CRITICAL: ALL FILE OPERATIONS MUST USE MCP FILESYSTEM TOOLS
+Keep file operations inside the MCP surface so every change remains auditable without blocking legitimate troubleshooting.
 
-**BEFORE ANY FILE OPERATION:**
+**Before touching files:**
 
-1. **Activate filesystem tools:**
+- Activate `activate_file_reading_tools()` / `activate_directory_and_file_creation_tools()` once per session via the agent tooling (no terminal command required).
+- Confirm target paths with `mcp_filesystem_list_directory` or `mcp_filesystem_list_directory_with_sizes` before issuing a read.
+- Track which files you have already opened; only re-read when new work or fresh changes require it.
 
-   ```javascript
-   activate_file_reading_tools(); // For reads
-   activate_directory_and_file_creation_tools(); // For writes/edits
-   ```
+**Prefer MCP calls instead of legacy helpers:**
 
-2. **Self-check:**
-   - Am I using `mcp_filesystem_*` function?
-   - If NO → STOP and switch to MCP tool
-   - If YES → Proceed
+- `mcp_filesystem_read_text_file` replaces `read_file`.
+- `mcp_filesystem_search_files` replaces `file_search` and `grep_search` for repository scans.
+- `mcp_filesystem_list_directory`/`with_sizes` replace shell `dir`/`ls` variants for inventory checks.
+- Use `mcp_filesystem_edit_file`/`write_file` instead of ad-hoc shell redirection when modifying content.
 
-### **PROHIBITED TOOLS (❌ NEVER USE FOR FILES):**
+> Troubleshooting commands (for example, `git status`) are still fine; just keep file reads and writes on the MCP endpoints so diffs stay clean.
 
-- `read_file` → Use `mcp_filesystem_read_text_file`
-- `grep_search` → Use `mcp_filesystem_search_files`
-- `file_search` → Use `mcp_filesystem_search_files`
-- Terminal commands for file I/O → Use MCP tools
-- `mcp_filesystem_list_directory_with_sizes` ("List Directory with Sizes") → DO NOT USE — this command is known to cause errors and often does not complete. It wastes resources and is forbidden. Instead, use `mcp_filesystem_list_directory` ("List Directory") which works reliably and provides the necessary information.
+**Loop prevention reminder:**
 
-### **Enforcement Level: STRICT - Zero Tolerance**
+1. Confirm the path through a listing command.
+2. Record the read in your session notes.
+3. Re-issue the read only when the user asks for new context or the file changes.
 
-**Why mandatory:**
-
-- ✅ Git-style diffs for all changes
-- ✅ Atomic operations with rollback
-- ✅ Audit trail for all file modifications
-- ✅ Consistent tool usage across conversations
-
-**Loop Prevention Rule (New):**
-Before any `mcp_filesystem_read_text_file` call, the agent must:
-
-1. Confirm the exact file path via a prior `mcp_filesystem_list_directory` (filtered/paginated for large repos).
-2. Track previously read files in the current session context.
-3. Never re-read the same file unless explicitly required by a new user request or detected change.
-
-This explicit tracking prevents the observed infinite re-read loops.
-
-**See `.vscode/copilot-mcp-rules.md` for complete enforcement rules and violation examples.**
+See `.vscode/copilot-mcp-rules.md` for the full policy details.
 
 ---
 
@@ -161,23 +154,48 @@ This explicit tracking prevents the observed infinite re-read loops.
 
 ```csharp
 // Program.cs - InitializeTheme() method
-SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
+var themeName = themeService.GetCurrentTheme(); // e.g., "Office2019Colorful"
+var themeAssembly = themeService.ResolveAssembly(themeName);
+SkinManager.LoadAssembly(themeAssembly);
+SfSkinManager.ApplicationVisualTheme = themeName;
 ```
 
 **2. Per-Form Theme Application:**
 
 ```csharp
 // Apply theme to form - theme cascades to ALL child controls automatically
-ThemeColors.ApplyTheme(this);  // Calls SfSkinManager.SetVisualStyle internally
+var themeName = themeService.GetCurrentTheme();
+ThemeColors.ApplyTheme(this, themeName); // Calls SfSkinManager.SetVisualStyle internally
 ```
 
 **3. Per-Control Theme Application (when needed):**
 
 ```csharp
 // Only use when control is added dynamically AFTER form load
-SfSkinManager.SetVisualStyle(myControl, ThemeColors.DefaultTheme);
+var themeName = themeService.GetCurrentTheme();
+SfSkinManager.SetVisualStyle(myControl, themeName);
 ```
+
+**Runtime Theme Switching:**
+
+```csharp
+public void ApplyTheme(string themeName)
+{
+    var themeAssembly = themeService.ResolveAssembly(themeName);
+    SkinManager.LoadAssembly(themeAssembly);
+    SfSkinManager.ApplicationVisualTheme = themeName;
+    SfSkinManager.SetVisualStyle(this, themeName);
+
+    foreach (var control in syncfusionControls)
+    {
+        control.ThemeName = themeName;
+    }
+}
+```
+
+> Syncfusion documents that each control must have the theme assembly loaded and its `ThemeName` set (`sfDataGrid.ThemeName = "HighContrastBlack"`) to mirror [SkinManager.LoadAssembly](https://help.syncfusion.com/windowsforms/overview) guidance.
+
+Track `syncfusionControls` as the set of Syncfusion controls (for example, `SfDataGrid`, `SfTreeGrid`, `SfListView`) that expose a `ThemeName` property and need to reflect the active theme.
 
 ### **VIOLATIONS - STRICTLY FORBIDDEN (❌ UNAUTHORIZED):**
 
@@ -470,7 +488,6 @@ This repository enforces MCP filesystem tool usage for all file operations. Addi
 
 - **Directory listing:**
   - Use `mcp_filesystem_list_directory` for directory listings.
-  - **Do not** use `mcp_filesystem_list_directory_with_sizes` — it is unreliable in this environment.
 
 - **When to use `apply_patch` vs MCP:**
   - `apply_patch` is a powerful git-style patch tool but is not part of the MCP filesystem API. When using it:
@@ -542,12 +559,8 @@ This file defines the enforcement policy used by the Copilot Code Agent (IDE) fo
 1. Always consult `.vscode/*.md` canonical rule files before making edits to scripts or language-specific files.
 2. All file system operations performed by the Copilot Code Agent must use the `mcp_filesystem_*` APIs. Do not use non-MCP file operations.
 
-3. DO NOT attempt to read a directory using a file-read call (for example `mcp_filesystem_read_text_file` on a directory path) — this causes EISDIR ("Is a directory") errors. Always list directories first with `mcp_filesystem_list_directory` and only call `mcp_filesystem_read_text_file` on concrete file paths. Additionally, `mcp_filesystem_list_directory_with_sizes` ("List Directory with Sizes") is unreliable and should not be used; prefer `mcp_filesystem_list_directory` which works reliably and provides the necessary information.
+3. DO NOT attempt to read a directory using a file-read call (for example `mcp_filesystem_read_text_file` on a directory path) — this causes EISDIR ("Is a directory") errors. Always list directories first with `mcp_filesystem_list_directory` and only call `mcp_filesystem_read_text_file` on concrete file paths.
 4. If an edit request would violate any `.vscode/*.md` rule, refuse or require an explicit override.
-
-Forbidden Tool Call:
-
-read_media_file is not supported by MCO, use proper tool call function
 
 ---
 
@@ -792,6 +805,6 @@ Before executing ANY code generation or file operation:
 
 ---
 
-**Version:** 2026-01-01
+**Version:** 2026-01-13
 **Status:** Active
-**Enforcement Level:** STRICT - Zero Tolerance
+**Enforcement Level:** High Priority (review violations promptly)

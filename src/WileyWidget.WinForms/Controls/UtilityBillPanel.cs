@@ -11,7 +11,6 @@ using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.Input;
 using Syncfusion.WinForms.DataGrid.Events;
 using WileyWidget.WinForms.ViewModels;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
@@ -672,6 +671,11 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         _customersGrid.CurrentCellActivated += CustomersGrid_CurrentCellActivated;
 
+        /// <summary>
+        /// HOT PATH: Grid cell activation handler for customer selection. Fires synchronously on every grid cell activation.
+        /// Type Contract: Expects grid rows to contain UtilityCustomer objects where DisplayName = CompanyName OR (FirstName + LastName).
+        /// Updates ViewModel.SelectedCustomer to trigger related bills refresh.
+        /// </summary>
         void CustomersGrid_CurrentCellActivated(object? sender, Syncfusion.WinForms.DataGrid.Events.CurrentCellActivatedEventArgs e)
         {
             try
