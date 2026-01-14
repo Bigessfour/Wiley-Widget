@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using WileyWidget.Data;
 using WileyWidget.WinForms.Models;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -18,6 +19,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
     private readonly IDepartmentExpenseService? _departmentExpenseService;
     private readonly IGrokRecommendationService? _grokRecommendationService;
+    protected IDbContextFactory<AppDbContext>? _dbContextFactory;
     private bool _disposed;
 
     #region Observable Properties

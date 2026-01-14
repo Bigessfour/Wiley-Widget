@@ -10,7 +10,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.Models;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Services;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
@@ -29,21 +29,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     // UI Controls
     private SfDataGrid? _budgetGrid;
-    private Button? _loadBudgetsButton;
-    private Button? _addEntryButton;
-    private Button? _editEntryButton;
-    private Button? _deleteEntryButton;
-    private Button? _importCsvButton;
-    private Button? _exportCsvButton;
-    private Button? _exportPdfButton;
-    private Button? _exportExcelButton;
-    private TextBox? _searchTextBox;
-    private ComboBox? _fiscalYearComboBox;
-    private ComboBox? _departmentComboBox;
-    private ComboBox? _fundTypeComboBox;
-    private TextBox? _varianceThresholdTextBox;
-    private CheckBox? _overBudgetCheckBox;
-    private CheckBox? _underBudgetCheckBox;
+    private SfButton? _loadBudgetsButton;
+    private SfButton? _addEntryButton;
+    private SfButton? _editEntryButton;
+    private SfButton? _deleteEntryButton;
+    private SfButton? _importCsvButton;
+    private SfButton? _exportCsvButton;
+    private SfButton? _exportPdfButton;
+    private SfButton? _exportExcelButton;
+    private TextBoxExt? _searchTextBox;
+    private SfComboBox? _fiscalYearComboBox;
+    private SfComboBox? _departmentComboBox;
+    private SfComboBox? _fundTypeComboBox;
+    private TextBoxExt? _varianceThresholdTextBox;
+    private CheckBoxAdv? _overBudgetCheckBox;
+    private CheckBoxAdv? _underBudgetCheckBox;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
@@ -61,16 +61,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
 
-    // Navigation buttons
-    private SfButton? _navigateAccountsButton;
-    private SfButton? _navigateChartsButton;
-    private SfButton? _navigateAnalyticsButton;
-
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
-    private EventHandler<AppTheme>? _themeChangedHandler;
-    private readonly Services.IThemeService? _themeService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPanel"/> class.
@@ -79,72 +72,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <param name="logger">Logger instance for diagnostic logging.</param>
     public BudgetPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<BudgetViewModel>> logger,
-        Services.IThemeService? themeService = null)
+        ILogger<ScopedPanelBase<BudgetViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
-        if (logger == null) throw new ArgumentNullException(nameof(logger));
-
-        _viewModel = viewModel;
-        _logger = logger;
-
         InitializeComponent();
         InitializeControls();
-        BindViewModel();
         ApplySyncfusionTheme();
-        ApplyTheme(_themeService?.CurrentTheme ?? AppTheme.Office2019Colorful);
 
         // Defer sizing validation until layout is complete
         this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
-        Logger.LogInformation("BudgetPanel initialized with ViewModel");
+        Logger.LogInformation("BudgetPanel initialized");
     }
 
     /// <summary>
-    /// Parameterless constructor for DI/designer support.
+    /// Parameterless constructor for designer support only.
+    /// DO NOT USE - use DI constructor instead.
     /// </summary>
-    public BudgetPanel() : this(ResolveBudgetViewModel(), ResolveLogger())
+    public BudgetPanel() : this(
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services),
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<BudgetViewModel>>>(Program.Services))
     {
-    }
-
-    private static BudgetViewModel ResolveBudgetViewModel()
-    {
-        if (Program.Services == null)
-        {
-            throw new InvalidOperationException("BudgetPanel: Program.Services is null - cannot resolve BudgetViewModel");
-        }
-        try
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<BudgetViewModel>(Program.Services);
-            if (vm != null)
-            {
-                return vm;
-            }
-            throw new InvalidOperationException("BudgetPanel: BudgetViewModel not registered in DI container");
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "BudgetPanel: Failed to resolve BudgetViewModel from DI");
-            throw;
-        }
-    }
-
-    private static ILogger<BudgetPanel> ResolveLogger()
-    {
-        if (Program.Services == null)
-        {
-            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
-        }
-        try
-        {
-            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<BudgetPanel>>(Program.Services)
-                ?? new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
-        }
-        catch
-        {
-            return new Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetPanel>();
-        }
     }
 
     private void InitializeControls()
@@ -203,10 +151,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
 
-        // Subscribe to theme changes
-        _themeChangedHandler = (s, t) => ApplyTheme(t);
-        if (_themeService != null)
-            _themeService.ThemeChanged += _themeChangedHandler;
+        // Theme changes handled by SfSkinManager cascade
 
         // Set tab order
         SetTabOrder();
@@ -771,57 +716,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <summary>
     /// Applies theme to all controls.
     /// </summary>
-    private void ApplyTheme(AppTheme theme)
+    private void ApplyTheme(string theme)
     {
-        try
-        {
-            UpdateButtonIcons(theme);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to apply theme");
-        }
+        // Theme application now handled by SfSkinManager cascade
+        // UpdateButtonIcons removed - icon management via deprecated IThemeIconService is not authorized
     }
 
-    /// <summary>
-    /// Updates button icons based on current theme.
-    /// </summary>
-    private void UpdateButtonIcons(AppTheme theme)
-    {
-        var iconService = ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider) : null;
-        if (iconService == null) return;
-
-        try
-        {
-            if (_loadBudgetsButton != null)
-                _loadBudgetsButton.Image = iconService.GetIcon("refresh", theme, 16);
-
-            if (_addEntryButton != null)
-                _addEntryButton.Image = iconService.GetIcon("add", theme, 16);
-
-            if (_editEntryButton != null)
-                _editEntryButton.Image = iconService.GetIcon("edit", theme, 16);
-
-            if (_deleteEntryButton != null)
-                _deleteEntryButton.Image = iconService.GetIcon("delete", theme, 16);
-
-            if (_exportExcelButton != null)
-                _exportExcelButton.Image = iconService.GetIcon("export", theme, 16);
-
-            if (_navigateAccountsButton != null)
-                _navigateAccountsButton.Image = iconService.GetIcon("accounts", theme, 16);
-
-            if (_navigateChartsButton != null)
-                _navigateChartsButton.Image = iconService.GetIcon("chart", theme, 16);
-
-            if (_navigateAnalyticsButton != null)
-                _navigateAnalyticsButton.Image = iconService.GetIcon("analytics", theme, 16);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to update button icons");
-        }
-    }
+    // UpdateButtonIcons method removed - icon management via deprecated IThemeIconService is not authorized
 
     /// <summary>
     /// Navigates to another panel.
@@ -922,7 +823,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         try
         {
-            _logger.LogInformation("Add Entry button clicked");
+            Logger.LogInformation("Add Entry button clicked");
 
             // Create a simple input form for adding new budget entry
             using var form = new Form
@@ -1006,21 +907,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     BudgetedAmount = budgeted,
                     ActualAmount = actual,
                     DepartmentId = deptId,
-                    FiscalYear = _viewModel.SelectedFiscalYear,
+                    FiscalYear = ViewModel!.SelectedFiscalYear,
                     FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund"),
                     Variance = budgeted - actual,
-                    StartPeriod = new DateTime(_viewModel.SelectedFiscalYear, 1, 1),
-                    EndPeriod = new DateTime(_viewModel.SelectedFiscalYear, 12, 31),
+                    StartPeriod = new DateTime(ViewModel.SelectedFiscalYear, 1, 1),
+                    EndPeriod = new DateTime(ViewModel.SelectedFiscalYear, 12, 31),
                     CreatedAt = DateTime.UtcNow
                 };
 
-                Task.Run(async () => await _viewModel.AddEntryAsync(entry));
+                Task.Run(async () => await ViewModel.AddEntryAsync(entry));
                 UpdateStatus("Budget entry added successfully");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in AddEntryButton_Click");
+            Logger.LogError(ex, "Error in AddEntryButton_Click");
             MessageBox.Show($"Error adding entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1038,7 +939,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
             if (selectedEntry == null) return;
 
-            _logger.LogInformation("Edit Entry button clicked for entry {Id}", selectedEntry.Id);
+            Logger.LogInformation("Edit Entry button clicked for entry {Id}", selectedEntry.Id);
 
             // Similar dialog to Add but pre-populated with existing values
             using var form = new Form
@@ -1118,13 +1019,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.Variance = budgeted - actual;
                 selectedEntry.UpdatedAt = DateTime.UtcNow;
 
-                Task.Run(async () => await _viewModel.UpdateEntryAsync(selectedEntry));
+                _ = Task.Run(async () => await ViewModel!.UpdateEntryAsync(selectedEntry));
                 UpdateStatus("Budget entry updated successfully");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in EditEntryButton_Click");
+            Logger.LogError(ex, "Error in EditEntryButton_Click");
             MessageBox.Show($"Error editing entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1150,14 +1051,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             if (result == DialogResult.Yes)
             {
-                _logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
-                Task.Run(async () => await _viewModel.DeleteEntryAsync(selectedEntry.Id));
+                Logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
+                Task.Run(async () => await ViewModel!.DeleteEntryAsync(selectedEntry.Id));
                 UpdateStatus($"Deleted budget entry {selectedEntry.AccountNumber}");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in DeleteEntryAsync");
+            Logger.LogError(ex, "Error in DeleteEntryAsync");
             MessageBox.Show($"Error deleting entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         return Task.CompletedTask;
@@ -1409,10 +1310,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
             }
 
-            if (_themeChangedHandler != null && _themeService != null)
-            {
-                try { _themeService.ThemeChanged -= _themeChangedHandler; } catch { }
-            }
+            // Theme service removed - SfSkinManager handles themes automatically
 
             if (ViewModel != null)
             {
@@ -1466,3 +1364,4 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     #endregion
 }
+

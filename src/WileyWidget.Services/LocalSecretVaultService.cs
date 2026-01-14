@@ -453,16 +453,16 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         var sb = new System.Text.StringBuilder();
         var culture = CultureInfo.InvariantCulture;
         sb.AppendLine("=== Local Secret Vault Diagnostics ===");
-        sb.AppendLine($"Secrets File Path: {_secretsPath}");
-        sb.AppendLine($"Directory Exists: {Directory.Exists(Path.GetDirectoryName(_secretsPath) ?? string.Empty).ToString(culture)}");
-        sb.AppendLine($"Secrets File Exists: {File.Exists(_secretsPath).ToString(culture)}");
+        sb.AppendLine(culture, $"Secrets File Path: {_secretsPath}");
+        sb.AppendLine(culture, $"Directory Exists: {Directory.Exists(Path.GetDirectoryName(_secretsPath) ?? string.Empty).ToString(culture)}");
+        sb.AppendLine(culture, $"Secrets File Exists: {File.Exists(_secretsPath).ToString(culture)}");
 
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var secrets = await LoadSecretsAsync().ConfigureAwait(false);
-            sb.AppendLine($"Secret Keys Count: {secrets.Count.ToString(culture)}");
-            sb.AppendLine($"Secret Keys: {string.Join(", ", secrets.Keys)}");
+            sb.AppendLine(culture, $"Secret Keys Count: {secrets.Count.ToString(culture)}");
+            sb.AppendLine(culture, $"Secret Keys: {string.Join(", ", secrets.Keys)}");
 
             // Test write permissions
             var testFile = _secretsPath + ".diag";
@@ -474,12 +474,12 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             }
             catch (Exception ex)
             {
-                sb.AppendLine($"Write Permissions: FAILED - {ex.Message}");
+                sb.AppendLine(culture, $"Write Permissions: FAILED - {ex.Message}");
             }
         }
         catch (Exception ex)
         {
-            sb.AppendLine($"Error reading secrets: {ex.Message}");
+            sb.AppendLine(culture, $"Error reading secrets: {ex.Message}");
         }
         finally
         {

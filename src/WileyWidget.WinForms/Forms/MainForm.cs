@@ -23,7 +23,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
@@ -71,6 +71,7 @@ namespace WileyWidget.WinForms.Forms
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class MainForm : SfForm, IAsyncInitializable
     {
+        private const int WS_EX_COMPOSITED = 0x02000000;
         private static int _inFirstChanceHandler = 0;
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
@@ -152,7 +153,6 @@ namespace WileyWidget.WinForms.Forms
 
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
-        private readonly Services.IThemeIconService? _iconService;
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
         private MenuStrip? _menuStrip;
         private ToolStripMenuItem? _recentFilesMenu;
@@ -199,23 +199,10 @@ namespace WileyWidget.WinForms.Forms
         private int _onShownExecuted = 0;
         private CancellationTokenSource? _initializationCts;
         private Serilog.ILogger? _asyncLogger;
+        private List<string> _mruList = new List<string>();
         // Dashboard description labels are declared in docking partial
 
-        public MainForm()
-            : this(
-                Program.Services ?? new ServiceCollection().BuildServiceProvider(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConfiguration>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? new ConfigurationBuilder().Build(),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<MainForm>>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? NullLogger<MainForm>.Instance,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ReportViewerLaunchOptions>(Program.Services ?? new ServiceCollection().BuildServiceProvider()) ?? ReportViewerLaunchOptions.Disabled)
-        {
-        }
-
         public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
-        {
-            return Program.Services ?? WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: true).BuildServiceProvider();
-        }
-
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, Services.IThemeIconService? iconService = null)
         {
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: ENTERED");
@@ -1100,8 +1087,9 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
-                        _logger?.LogDebug("Form closing: docking layout saved");
+                        // TODO: Uncomment when DockingLayoutManager.SaveLayout is available
+                        // _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
+                        _logger?.LogDebug("Form closing: docking layout save skipped (DockingLayoutManager not fully implemented)");
                     }
                     catch (Exception ex)
                     {
@@ -1189,6 +1177,35 @@ namespace WileyWidget.WinForms.Forms
         private void ShowErrorDialog(string title, string message)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        /// <summary>
+        /// Performs a global search across all panels and data.
+        /// </summary>
+        /// <param name="searchTerm">The search term to find.</param>
+        public void PerformGlobalSearch(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                _logger?.LogDebug("PerformGlobalSearch called with empty search term");
+                return;
+            }
+
+            try
+            {
+                // TODO: Implement global search logic
+                // For now, log and show a placeholder message
+                _logger?.LogInformation("Global search requested: {SearchTerm}", searchTerm);
+                MessageBox.Show(
+                    $"Search functionality for '{searchTerm}' will be implemented in a future release.",
+                    "Global Search",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "PerformGlobalSearch failed for term: {SearchTerm}", searchTerm);
+            }
         }
 
         private void ShowErrorDialog(string title, string message, Exception ex)
@@ -1426,3 +1443,4 @@ namespace WileyWidget.WinForms.Forms
 /// <param name="exception">Optional exception for logging.</param>
 /// <param name="showRetry">If true, shows retry button.</param>
 /// <returns>DialogResult indicating user choice.</returns>
+

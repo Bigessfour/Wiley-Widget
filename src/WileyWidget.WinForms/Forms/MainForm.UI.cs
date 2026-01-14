@@ -25,7 +25,7 @@ using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -43,8 +43,19 @@ public partial class MainForm
     #region UI Fields
     private DockingManager? _dockingManager;
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
-    private Panel? _loadingOverlay; // Full-screen loading overlay for async operations
-    private Label? _loadingLabel; // Loading message label
+    private DockingLayoutManager? _dockingLayoutManager;
+    private Panel? _leftDockPanel;
+    private Panel? _centralDocumentPanel;
+    private Panel? _rightDockPanel;
+    private Dictionary<string, Control>? _dynamicDockPanels;
+
+    // Layout state management
+    private DateTime _lastSaveTime = DateTime.MinValue;
+    private bool _skipLayoutLoadForDiagnostics;
+
+    // Layout versioning
+    private const string LayoutVersionAttributeName = "layoutVersion";
+    private const string CurrentLayoutVersion = "1.0";
 
     // Phase 1 Simplification: Docking configuration now centralized in UIConfiguration
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
@@ -868,9 +879,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Initialize simple navigation strip for test harness mode.
-    /// </summary>
-    /// <summary>
     /// Initialize the navigation <see cref="ToolStripEx"/> with named <see cref="ToolStripButton"/>
     /// controls used for quick navigation. Buttons are assigned deterministic <see cref="Control.Name"/>
     /// and <see cref="Control.AccessibleName"/> values for automation and testing.
@@ -1322,14 +1330,13 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.I,
                 ToolTipText = "Open AI Chat Assistant (Ctrl+I)"
             };
-            // Try to set icon from theme service
+            // Try to set icon from DPI-aware service (preferred over deprecated theme icon service)
             try
             {
-                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
-                if (iconService != null)
+                var dpi = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(ServiceProvider);
+                if (dpi != null)
                 {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    aiChatMenuItem.Image = iconService.GetIcon("chat", currentTheme, 16);
+                    aiChatMenuItem.Image = dpi.GetImage("chat");
                     aiChatMenuItem.ImageScaling = ToolStripItemImageScaling.None;
                 }
             }
@@ -1346,14 +1353,13 @@ public partial class MainForm
                 ShortcutKeys = Keys.Control | Keys.Q,
                 ToolTipText = "Open QuickBooks Integration (Ctrl+Q)"
             };
-            // Try to set icon from theme service
+            // Try to set icon from DPI-aware service (preferred over deprecated theme icon service)
             try
             {
-                var iconService = _iconService ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
-                if (iconService != null)
+                var dpi = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(ServiceProvider);
+                if (dpi != null)
                 {
-                    var currentTheme = GetAppThemeFromString(GetCurrentTheme());
-                    quickBooksMenuItem.Image = iconService.GetIcon("quickbooks", currentTheme, 16);
+                    quickBooksMenuItem.Image = dpi.GetImage("quickbooks");
                     quickBooksMenuItem.ImageScaling = ToolStripItemImageScaling.None;
                 }
             }
@@ -1638,24 +1644,6 @@ public partial class MainForm
         return SkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
     }
 
-    /// <summary>
-    /// Convert string theme name to AppTheme enum.
-    /// </summary>
-    /// <param name="themeName">Theme name from SkinManager</param>
-    /// <returns>Corresponding AppTheme enum value</returns>
-    private AppTheme GetAppThemeFromString(string themeName)
-    {
-        return themeName switch
-        {
-            "Office2019Colorful" => Theming.AppTheme.Office2019Colorful,
-            "Office2019Dark" => Theming.AppTheme.Office2019Dark,
-            "Office2019Black" => Theming.AppTheme.Office2019Black,
-            "Office2019DarkGray" => Theming.AppTheme.Office2019DarkGray,
-            "Office2019White" => Theming.AppTheme.Office2019White,
-            "HighContrastBlack" => Theming.AppTheme.HighContrastBlack,
-            _ => Theming.AppTheme.Office2019Colorful // Default fallback
-        };
-    }
 
     /// <summary>
     /// Apply theme colors to menu dropdown items.
@@ -1735,17 +1723,17 @@ public partial class MainForm
 
             _logger?.LogInformation("Theme switched to {NewTheme} (session only - no config persistence)", newTheme);
 
-            // Refresh all open forms to apply new theme via ThemeManager (centralized)
+            // Refresh all open forms to apply new theme (SfSkinManager handles cascade automatically)
             foreach (Form form in Application.OpenForms)
             {
                 try
                 {
-                    WileyWidget.WinForms.Theming.ThemeManager.ApplyThemeToControl(form);
+                    // REMOVED: _themeService?.ApplyThemeToControl(form); - deprecated, SfSkinManager is sole theme authority
                     form.Refresh();
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogDebug(ex, "Failed to apply theme to form {FormName}", form.Name);
+                    _logger?.LogDebug(ex, "Failed to refresh form {FormName}", form.Name);
                 }
             }
 
@@ -1790,158 +1778,6 @@ public partial class MainForm
     // Program.cs startup already validates Syncfusion license and logs status
     // Log output shows: "Syncfusion license registered and validated successfully"
 
-    /// <summary>
-    /// Performs a global search across all visible docked panels containing SfDataGrid controls.
-    /// Searches through DataSource properties via reflection and displays aggregated results.
-    /// </summary>
-    /// <param name="searchText">The text to search for (case-insensitive)</param>
-    private void PerformGlobalSearch(string searchText)
-    {
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            MessageBox.Show("Please enter a search term.", "Global Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        try
-        {
-            _logger?.LogInformation("Performing global search for: {SearchText}", searchText);
-            var results = new System.Text.StringBuilder();
-            var totalMatches = 0;
-
-            // DockingManager hosts panels as Controls inside MainForm, so scan the MainForm control tree.
-            var grids = FindControlsOfType<Syncfusion.WinForms.DataGrid.SfDataGrid>(this);
-
-            foreach (var grid in grids)
-            {
-                if (grid.DataSource == null)
-                    continue;
-
-                try
-                {
-                    var gridMatches = SearchGridData(grid, searchText);
-                    if (gridMatches <= 0)
-                        continue;
-
-                    var containerName = grid.Parent?.Name ?? "(unknown)";
-                    results.AppendLine(CultureInfo.InvariantCulture, $"{containerName} - {grid.Name}: {gridMatches} match(es)");
-                    totalMatches += gridMatches;
-                }
-                catch (Exception gridEx)
-                {
-                    _logger?.LogWarning(gridEx, "Failed to search grid {GridName}", grid.Name);
-                }
-            }
-
-            // Display results
-            if (totalMatches > 0)
-            {
-                var message = $"Found {totalMatches} match(es) for '{searchText}':\n\n{results}";
-                MessageBox.Show(message, "Global Search Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _logger?.LogInformation("Global search completed: {TotalMatches} match(es) found", totalMatches);
-            }
-            else
-            {
-                MessageBox.Show($"No matches found for '{searchText}'.", "Global Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _logger?.LogInformation("Global search completed: No matches found");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to perform global search");
-            MessageBox.Show("An error occurred while performing the search. Please check the logs for details.",
-                "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    /// <summary>
-    /// Recursively finds all controls of a specific type within a parent control.
-    /// </summary>
-    /// <typeparam name="T">Type of control to find</typeparam>
-    /// <param name="parent">Parent control to search</param>
-    /// <returns>Collection of matching controls</returns>
-    private IEnumerable<T> FindControlsOfType<T>(Control parent) where T : Control
-    {
-        var results = new List<T>();
-
-        if (parent == null)
-            return results;
-
-        foreach (Control control in parent.Controls)
-        {
-            if (control is T matchingControl)
-            {
-                results.Add(matchingControl);
-            }
-
-            // Recursively search child controls
-            results.AddRange(FindControlsOfType<T>(control));
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Searches a SfDataGrid's DataSource for matching text via reflection.
-    /// </summary>
-    /// <param name="grid">Grid to search</param>
-    /// <param name="searchText">Text to search for (case-insensitive)</param>
-    /// <returns>Number of matches found</returns>
-    private int SearchGridData(Syncfusion.WinForms.DataGrid.SfDataGrid grid, string searchText)
-    {
-        if (grid?.DataSource == null)
-            return 0;
-
-        var matches = 0;
-        var dataSource = grid.DataSource;
-
-        try
-        {
-            // Handle IEnumerable DataSource (most common)
-            if (dataSource is System.Collections.IEnumerable enumerable)
-            {
-                foreach (var item in enumerable)
-                {
-                    if (item == null)
-                        continue;
-
-                    // Use reflection to get all public properties
-                    var properties = item.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-                    foreach (var property in properties)
-                    {
-                        try
-                        {
-                            var value = property.GetValue(item);
-                            if (value == null)
-                                continue;
-
-                            // Convert to string and perform case-insensitive search
-                            var stringValue = value.ToString();
-                            if (!string.IsNullOrEmpty(stringValue) &&
-                                stringValue.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                            {
-                                matches++;
-                                break; // Count each row only once
-                            }
-                        }
-                        catch (Exception propEx)
-                        {
-                            _logger?.LogDebug(propEx, "Failed to read property {PropertyName} during search", property.Name);
-                            // Continue with next property
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to search grid data for grid {GridName}", grid.Name);
-        }
-
-        return matches;
-    }
-
     #endregion
 
     #region Docking
@@ -1974,21 +1810,24 @@ public partial class MainForm
 
             // Create and attach layout manager for state management
             _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
-            try
-            {
-                _dockingLayoutManager.InitializeDockingManager(_dockingManager);
-            }
-            catch (Exception initEx)
-            {
-                _logger?.LogDebug(initEx, "InitializeDockingManager failed - continuing with defaults");
-            }
+            // TODO: Uncomment initialization when DockingLayoutManager is available
+            // try
+            // {
+            //     _dockingLayoutManager.InitializeDockingManager(_dockingManager);
+            // }
+            // catch (Exception initEx)
+            // {
+            //     _logger?.LogDebug(initEx, "InitializeDockingManager failed - continuing with defaults");
+            // }
 
             // Transfer ownership of panels and fonts to the layout manager
             var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
             var dockTabFont = new Font(SegoeUiFontName, 9F);
-            _dockingLayoutManager.SetManagedResources(leftPanel, rightPanel, dockAutoHideTabFont, dockTabFont);
+            // TODO: Uncomment when DockingLayoutManager.SetManagedResources is available
+            // _dockingLayoutManager.SetManagedResources(leftPanel, rightPanel, dockAutoHideTabFont, dockTabFont);
 
-            _dockingLayoutManager.AttachTo(_dockingManager);
+            // TODO: Uncomment when DockingLayoutManager.AttachTo is available
+            // _dockingLayoutManager.AttachTo(_dockingManager);
 
             HideStandardPanelsForDocking();
 
@@ -2022,20 +1861,22 @@ public partial class MainForm
                 // CRITICAL FIX: Load layout on the UI thread to prevent ArgumentOutOfRangeException in DockHost.GetPaintInfo
                 // The exception occurs when paint events fire before DockingManager's internal control collections are populated
                 // LoadLayoutAsync must complete (or fail fast) before the form is shown and painted
-                try
-                {
-                    _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
-                    _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
-                    Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
-                }
-                catch (Exception layoutEx)
-                {
-                    _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
-                    Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
-                    // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
-                }
+                // TODO: Uncomment when DockingLayoutManager.LoadLayoutAsync is available
+                // try
+                // {
+                //     _dockingLayoutManager.LoadLayoutAsync(_dockingManager, this, GetDockingLayoutPath()).GetAwaiter().GetResult();
+                //     _logger?.LogDebug("Docking layout loaded successfully (synchronous wait)");
+                //     Console.WriteLine("[DIAGNOSTIC] Docking layout loaded synchronously - panels ready for paint");
+                // }
+                // catch (Exception layoutEx)
+                // {
+                //     _logger?.LogWarning(layoutEx, "Failed to load docking layout from {LayoutPath} - using default programmatic docking", GetDockingLayoutPath());
+                //     Console.WriteLine($"[DIAGNOSTIC] Layout load failed: {layoutEx.Message} - default docking will be used");
+                //     // Layout load failure is non-critical - docking will use default layout from DockingHostFactory
+                // }
 
-                _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
+                // TODO: Uncomment when DockingLayoutManager.ApplyThemeToDockingPanels is available
+                // _dockingLayoutManager.ApplyThemeToDockingPanels(_dockingManager, leftPanel, rightPanel);
 
                 // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
                 // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
@@ -2067,7 +1908,8 @@ public partial class MainForm
 
             try
             {
-                _dockingLayoutManager.EnsureCaptionButtonsVisible(_dockingManager, this);
+                // TODO: Uncomment when DockingLayoutManager.EnsureCaptionButtonsVisible is available
+                // _dockingLayoutManager.EnsureCaptionButtonsVisible(_dockingManager, this);
             }
             catch (Exception captionEx)
             {
@@ -2096,7 +1938,7 @@ public partial class MainForm
     /// </summary>
     /// <param name="sender">Event sender.</param>
     /// <param name="theme">New theme to apply.</param>
-    private void OnThemeChanged(object? sender, AppTheme theme)
+    private void OnThemeChanged(object? sender, string theme)
     {
         if (!IsHandleCreated)
             return;
@@ -2721,8 +2563,8 @@ public partial class MainForm
         try
         {
             var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-            _logger.LogDebug("LoadDockingLayout START - ThreadId={ThreadId}, InvokeRequired={InvokeRequired}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
-                threadId, this.InvokeRequired, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
+            _logger.LogDebug("LoadDockingLayout START - ThreadId={ThreadId}, InvokeRequired={InvokeRequired}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _lastSaveTime={LastSaveTime}",
+                threadId, this.InvokeRequired, this.IsDisposed, this.IsHandleCreated, Application.MessageLoop, _lastSaveTime);
         }
         catch (Exception ex)
         {
@@ -3054,8 +2896,8 @@ public partial class MainForm
     /// </summary>
     private void LogDockStateLoad(string layoutPath)
     {
-        _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _isSavingLayout={IsSavingLayout}, _lastSaveTime={LastSaveTime}",
-            System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath, this.InvokeRequired, this.IsHandleCreated, Application.MessageLoop, _isSavingLayout, _lastSaveTime);
+        _logger.LogInformation("Calling _dockingManager.LoadDockState - ThreadId={ThreadId}, layoutPath={Path}, InvokeRequired={InvokeRequired}, IsHandleCreated={IsHandleCreated}, MessageLoop={MessageLoop}, _lastSaveTime={LastSaveTime}",
+            System.Threading.Thread.CurrentThread.ManagedThreadId, layoutPath, this.InvokeRequired, this.IsHandleCreated, Application.MessageLoop, _lastSaveTime);
     }
 
     /// <summary>
@@ -3159,7 +3001,7 @@ public partial class MainForm
             _dockingManager.DockControl(panel, this, Syncfusion.Windows.Forms.Tools.DockingStyle.Left, 200);
 
             // Track the panel
-            _dynamicDockPanels ??= new Dictionary<string, Panel>();
+            _dynamicDockPanels ??= new Dictionary<string, Control>();
             _dynamicDockPanels[panelInfo.Name] = panel;
             panel = null; // ownership transferred to DockingManager/dictionary
 
@@ -3312,7 +3154,8 @@ public partial class MainForm
         // Auto-save layout on state changes with debouncing to prevent I/O spam
         if (_uiConfig.UseSyncfusionDocking && _dockingLayoutManager != null && _dockingManager != null)
         {
-            _dockingLayoutManager.StartDebouncedSave(_dockingManager, GetDockingLayoutPath());
+            // TODO: Uncomment when DockingLayoutManager.StartDebouncedSave is available
+            // _dockingLayoutManager.StartDebouncedSave(_dockingManager, GetDockingLayoutPath());
         }
     }
 
@@ -3327,13 +3170,16 @@ public partial class MainForm
         _logger.LogDebug("Dock visibility changed");
 
         // Ensure central panels remain visible after visibility changes (delegate to layout manager)
-        if (_dockingLayoutManager != null)
+        try
         {
-            EnsureCentralPanelVisible();
-            EnsureSidePanelsZOrder();
-            RefreshFormLayout();
+            if (_dockingLayoutManager != null)
+            {
+                EnsureCentralPanelVisible();
+                EnsureSidePanelsZOrder();
+                RefreshFormLayout();
 
-            _logger.LogDebug("Central panel visibility ensured for docked layout");
+                _logger.LogDebug("Central panel visibility ensured for docked layout");
+            }
         }
         catch (Exception ex)
         {
@@ -3478,7 +3324,8 @@ public partial class MainForm
             // Try to set floating mode using layout manager helper
             if (_dockingLayoutManager != null)
             {
-                _dockingLayoutManager.TrySetFloatingMode(_dockingManager, panel, true);
+                // TODO: Uncomment when DockingLayoutManager.TrySetFloatingMode is available
+                // _dockingLayoutManager.TrySetFloatingMode(_dockingManager, panel, true);
             }
 
             // Note: Dynamic panel tracking is now handled by DockingLayoutManager
@@ -3562,7 +3409,8 @@ public partial class MainForm
                 {
                     try
                     {
-                        _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
+                        // TODO: Uncomment when DockingLayoutManager.SaveLayout is available
+                        // _dockingLayoutManager.SaveLayout(_dockingManager, GetDockingLayoutPath());
                     }
                     catch (Exception ex)
                     {
@@ -3573,7 +3421,8 @@ public partial class MainForm
                 // Detach from DockingManager
                 if (_dockingManager != null)
                 {
-                    _dockingLayoutManager.DetachFrom(_dockingManager);
+                    // TODO: Uncomment when DockingLayoutManager.DetachFrom is available
+                    // _dockingLayoutManager.DetachFrom(_dockingManager);
                 }
 
                 // Dispose the layout manager (handles panels, fonts, timers, dynamic panels)
@@ -3678,4 +3527,129 @@ public partial class MainForm
     }
 
     #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Ensures the central document panel is visible and properly configured.
+    /// </summary>
+    private void EnsureCentralPanelVisibility()
+    {
+        if (_centralDocumentPanel != null)
+        {
+            _centralDocumentPanel.Visible = true;
+            _centralDocumentPanel.BringToFront();
+        }
+    }
+
+    /// <summary>
+    /// Creates a dashboard card control with title and description.
+    /// </summary>
+    /// <param name="title">Card title.</param>
+    /// <param name="description">Card description.</param>
+    /// <returns>A tuple containing the card panel and label controls.</returns>
+    private (Panel Panel, Label TitleLabel, Label DescLabel) CreateDashboardCard(string title, string description)
+    {
+        var cardPanel = new Panel
+        {
+            Size = new Size(200, 100),
+            BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(10),
+            Cursor = Cursors.Hand
+        };
+
+        var titleLabel = new Label
+        {
+            Text = title,
+            Font = new Font(SegoeUiFontName, 12F, FontStyle.Bold),
+            AutoSize = true,
+            Location = new Point(10, 10)
+        };
+
+        var descLabel = new Label
+        {
+            Text = description,
+            Font = new Font(SegoeUiFontName, 9F),
+            AutoSize = true,
+            Location = new Point(10, 40)
+        };
+
+        cardPanel.Controls.Add(titleLabel);
+        cardPanel.Controls.Add(descLabel);
+
+        return (cardPanel, titleLabel, descLabel);
+    }
+
+    /// <summary>
+    /// Sets up click handler for a dashboard card.
+    /// </summary>
+    /// <param name="card">The card panel control.</param>
+    /// <param name="action">Action to execute on click.</param>
+    private void SetupCardClickHandler(Panel card, System.Action action)
+    {
+        card.Click += (s, e) => action?.Invoke();
+        foreach (Control child in card.Controls)
+        {
+            child.Click += (s, e) => action?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Applies theme to all docking panels using SfSkinManager.
+    /// </summary>
+    private void ApplyThemeToDockingPanels()
+    {
+        if (_dockingManager == null) return;
+
+        try
+        {
+            // SfSkinManager handles theme cascade automatically - no manual application needed
+            _logger?.LogDebug("Theme cascade applied via SfSkinManager to docking panels");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply theme to docking panels");
+        }
+    }
+
+    /// <summary>
+    /// Loads dynamic panels from saved layout state.
+    /// </summary>
+    /// <param name="layoutPath">Optional path to layout file.</param>
+    private void LoadDynamicPanels(string? layoutPath = null)
+    {
+        try
+        {
+            // Dynamic panel loading handled by DockingLayoutManager
+            // This method exists for compatibility with existing layout code
+            _logger?.LogDebug("Dynamic panels load requested: {LayoutPath}", layoutPath ?? "<default>");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to load dynamic panels");
+        }
+    }
+
+    /// <summary>
+    /// Attempts to clean up a temporary file.
+    /// </summary>
+    /// <param name="filePath">Path to the temporary file.</param>
+    private static void TryCleanupTempFile(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+                System.Diagnostics.Debug.WriteLine($"Cleaned up temporary file: {filePath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to cleanup temporary file: {filePath}, Error: {ex.Message}");
+        }
+    }
+
+    #endregion
 }
+

@@ -189,33 +189,32 @@ namespace WileyWidget.Services
                     _logger.LogInformation("[DI_VALIDATION] Resolving {ServiceType} (Category={Category})", serviceType.FullName ?? serviceType.Name, categoryName);
                     var service = scope.ServiceProvider.GetService(serviceType);
 
-                        if (service == null)
-                        {
-                            var error = $"{serviceType.Name} is NOT registered in DI";
-                            result.Errors.Add(error);
-                            _logger.LogError("\u2717 {Error}", error);
-                        }
-                        else
-                        {
-                            var success = $"{serviceType.Name} registered successfully";
-                            result.SuccessMessages.Add(success);
-                            _logger.LogInformation("\u2713 {Success}", success);
+                    if (service == null)
+                    {
+                        var error = $"{serviceType.Name} is NOT registered in DI";
+                        result.Errors.Add(error);
+                        _logger.LogError("\u2717 {Error}", error);
+                    }
+                    else
+                    {
+                        var success = $"{serviceType.Name} registered successfully";
+                        result.SuccessMessages.Add(success);
+                        _logger.LogInformation("\u2713 {Success}", success);
 
-                            // CRITICAL: Dispose transient/scoped instances immediately after validation
-                            // to prevent holding references that interfere with EF Core's provider cache
-                            if (service is IDisposable disposable)
+                        // CRITICAL: Dispose transient/scoped instances immediately after validation
+                        // to prevent holding references that interfere with EF Core's provider cache
+                        if (service is IDisposable disposable)
+                        {
+                            try
                             {
-                                try
-                                {
-                                    disposable.Dispose();
-                                }
-                                catch (Exception disposeEx)
-                                {
-                                    _logger.LogDebug(disposeEx, "Non-critical disposal exception for {ServiceType}", serviceType.Name);
-                                }
+                                disposable.Dispose();
+                            }
+                            catch (Exception disposeEx)
+                            {
+                                _logger.LogDebug(disposeEx, "Non-critical disposal exception for {ServiceType}", serviceType.Name);
                             }
                         }
-                    } // Scope disposed here, isolating from app's provider
+                    }
                 }
                 catch (Exception ex)
                 {

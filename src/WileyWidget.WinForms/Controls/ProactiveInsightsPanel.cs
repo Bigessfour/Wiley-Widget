@@ -10,7 +10,7 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -260,3 +260,4 @@ namespace WileyWidget.WinForms.Controls
         // Dispose moved to ProactiveInsightsPanel.Designer.cs for designer support
     }
 }
+

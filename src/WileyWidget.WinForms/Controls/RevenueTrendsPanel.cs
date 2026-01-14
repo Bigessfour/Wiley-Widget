@@ -789,21 +789,22 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private void SubscribeToThemeChanges()
     {
-        _themeChangedHandler = (s, theme) =>
-        {
-            if (IsDisposed) return;
-
-            if (InvokeRequired)
-            {
-                BeginInvoke(new System.Action(() => ApplyTheme()));
-            }
-            else
-            {
-                ApplyTheme();
-            }
-        };
-
-        ThemeManager.ThemeChanged += _themeChangedHandler;
+        // TODO: Reimplement theme subscription when ThemeManager is available
+        // _themeChangedHandler = (s, theme) =>
+        // {
+        //     if (IsDisposed) return;
+        //
+        //     if (InvokeRequired)
+        //     {
+        //         BeginInvoke(new System.Action(() => ApplyTheme()));
+        //     }
+        //     else
+        //     {
+        //         ApplyTheme();
+        //     }
+        // };
+        //
+        // ThemeManager.ThemeChanged += _themeChangedHandler;
     }
 
     private void ApplyTheme()

@@ -14,9 +14,7 @@ using WileyWidget.Models;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
-using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using Action = System.Action;
 
 namespace WileyWidget.WinForms.Controls
@@ -36,6 +34,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public DialogResult SaveDialogResult { get; private set; } = DialogResult.None;
 
+        private Label? lblTitle = null;
         private TextBox txtAccountNumber = null!;
         private TextBox txtName = null!;
         private TextBox txtDescription = null!;
@@ -47,7 +46,6 @@ namespace WileyWidget.WinForms.Controls
         private CheckBox chkActive = null!;
         private Button btnSave = null!;
         private Button btnCancel = null!;
-        private EventHandler<AppTheme>? _themeChangedHandler;
 
         private readonly AccountsViewModel _viewModel;
         private readonly MunicipalAccountEditModel _editModel;
@@ -66,52 +64,40 @@ namespace WileyWidget.WinForms.Controls
         public AccountEditPanel(AccountsViewModel viewModel, MunicipalAccount? existingAccount = null)
         {
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            DataContext = viewModel;
             _existingAccount = existingAccount;
             _isNew = existingAccount == null;
-
-            // Create the edit model from existing entity or as a new model
-            _editModel = existingAccount != null
-                ? MunicipalAccountEditModel.FromEntity(existingAccount)
-                : new MunicipalAccountEditModel
-                {
-                    IsActive = true,
-                    Balance = 0m,
-                    BudgetAmount = 0m
-                };
+            _editModel = new MunicipalAccountEditModel(existingAccount);
 
             InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
-            SetupValidation();
+            // Apply theme via SfSkinManager (remove any manual colors)
+            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
 
-            // Apply centralized theming and subscribe to theme changes
-            _themeChangedHandler = OnThemeChanged;
-            ThemeManager.ThemeChanged += _themeChangedHandler;
-            ThemeManager.ApplyThemeToControl(this);
+            DataContext = _editModel;
+            BindControls();
+            SetupValidation();
 
             // Load data asynchronously on load event
             this.Load += AccountEditPanel_Load;
         }
 
-        private void InitializeComponent()
+        private void BindControls()
         {
-            Name = "AccountEditPanel";
-            AccessibleName = _isNew ? "Create Account" : "Edit Account";
-            Dock = DockStyle.Fill;
-            AutoScaleMode = AutoScaleMode.Dpi;
-            Size = new Size(520, 580);
-            Padding = new Padding(16);
-            BackColor = Color.White;
+            // Bind controls to _editModel properties (MVVM style)
+            txtAccountNumber.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.AccountNumber), true, DataSourceUpdateMode.OnPropertyChanged);
+            txtName.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Name), true, DataSourceUpdateMode.OnPropertyChanged);
+            txtDescription.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Description), true, DataSourceUpdateMode.OnPropertyChanged);
+            
+            // SfNumericTextBox uses Value property (double?)
+            numBalance.DataBindings.Add("Value", _editModel, nameof(_editModel.Balance), true, DataSourceUpdateMode.OnPropertyChanged);
+            numBudget.DataBindings.Add("Value", _editModel, nameof(_editModel.BudgetAmount), true, DataSourceUpdateMode.OnPropertyChanged);
+            
+            chkActive.DataBindings.Add(nameof(CheckBox.Checked), _editModel, nameof(_editModel.IsActive), true, DataSourceUpdateMode.OnPropertyChanged);
 
-            _toolTip = new ToolTip
-            {
-                AutoPopDelay = 5000,
-                InitialDelay = 500,
-                ReshowDelay = 200,
-                ShowAlways = true
-            };
+            // SfComboBox bindings - SelectedValue binds to model property
+            cmbDepartment.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.DepartmentId), true, DataSourceUpdateMode.OnPropertyChanged);
+            cmbFund.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.Fund), true, DataSourceUpdateMode.OnPropertyChanged);
+            cmbType.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.Type), true, DataSourceUpdateMode.OnPropertyChanged);
         }
 
         private async void AccountEditPanel_Load(object? sender, EventArgs e)
@@ -136,9 +122,9 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Sets up the UI layout with all controls for account editing.
         /// </summary>
-        /// <param name="existing">Existing account data to populate, or null for new account.</param>
-        private void SetupUI(MunicipalAccount? existing)
+        private void InitializeComponent()
         {
+            _toolTip = new ToolTip();
             var padding = 16;
             var labelWidth = 140;
             var controlWidth = 320;
@@ -146,7 +132,7 @@ namespace WileyWidget.WinForms.Controls
             var y = padding;
 
             // Title label
-            var lblTitle = new Label
+            lblTitle = new Label
             {
                 Text = _isNew ? "Create New Account" : "Edit Account",
                 Location = new Point(padding, y),
@@ -181,7 +167,7 @@ namespace WileyWidget.WinForms.Controls
                 Enabled = _isNew // Disable for editing existing accounts
             };
             Controls.Add(txtAccountNumber);
-            _toolTip?.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
+            _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
             y += rowHeight;
 
             // Name
@@ -205,7 +191,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 2
             };
             Controls.Add(txtName);
-            _toolTip?.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
+            _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
             y += rowHeight;
 
             // Description
@@ -232,7 +218,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 3
             };
             Controls.Add(txtDescription);
-            _toolTip?.SetToolTip(txtDescription, "Optional detailed description");
+            _toolTip.SetToolTip(txtDescription, "Optional detailed description");
             y += 70;
 
             // Department
@@ -256,7 +242,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 4
             };
             Controls.Add(cmbDepartment);
-            _toolTip?.SetToolTip(cmbDepartment, "Select owning department");
+            _toolTip.SetToolTip(cmbDepartment, "Select owning department");
             y += rowHeight;
 
             // Fund
@@ -280,7 +266,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 5
             };
             Controls.Add(cmbFund);
-            _toolTip?.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
+            _toolTip.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
             y += rowHeight;
 
             // Type
@@ -304,7 +290,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 6
             };
             Controls.Add(cmbType);
-            _toolTip?.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
+            _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
             y += rowHeight;
 
             // Balance
@@ -331,7 +317,7 @@ namespace WileyWidget.WinForms.Controls
             };
             numBalance.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
             Controls.Add(numBalance);
-            _toolTip?.SetToolTip(numBalance, "Current account balance");
+            _toolTip.SetToolTip(numBalance, "Current account balance");
             y += rowHeight;
 
             // Budget
@@ -358,7 +344,7 @@ namespace WileyWidget.WinForms.Controls
             };
             numBudget.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
             Controls.Add(numBudget);
-            _toolTip?.SetToolTip(numBudget, "Budgeted amount for this account");
+            _toolTip.SetToolTip(numBudget, "Budgeted amount for this account");
             y += rowHeight;
 
             // Active checkbox
@@ -374,7 +360,7 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 9
             };
             Controls.Add(chkActive);
-            _toolTip?.SetToolTip(chkActive, "Indicates whether this account is currently active");
+            _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
             y += rowHeight + 10;
 
             // Button panel at bottom
@@ -407,26 +393,19 @@ namespace WileyWidget.WinForms.Controls
                 Width = 100,
                 Height = 32,
                 Location = new Point(labelWidth + controlWidth - 100, 4),
-                DialogResult = DialogResult.Cancel,
                 AccessibleName = "Cancel",
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11
             };
-            btnCancel.Click += (s, e) => Cancel();
+            btnCancel.Click += BtnCancel_Click;
             buttonPanel.Controls.Add(btnCancel);
 
             Controls.Add(buttonPanel);
+        }
 
-            // Populate initial values if editing existing account
-            if (existing != null)
-            {
-                txtAccountNumber.Text = existing.AccountNumber?.Value ?? "";
-                txtName.Text = existing.Name ?? "";
-                txtDescription.Text = existing.FundDescription ?? "";
-                numBalance.Value = (double)existing.Balance;
-                numBudget.Value = (double)existing.BudgetAmount;
-                chkActive.Checked = existing.IsActive;
-            }
+        private void BtnCancel_Click(object? sender, EventArgs e)
+        {
+            Cancel();
         }
 
         /// <summary>
@@ -439,71 +418,17 @@ namespace WileyWidget.WinForms.Controls
                 _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
                 _errorBinding = new ErrorProviderBinding(_errorProvider, _editModel);
 
-                // Map edit model properties to their corresponding controls
+                // Map edit model properties to their corresponding controls for validation feedback
                 _errorBinding.MapControl(nameof(_editModel.AccountNumber), txtAccountNumber);
                 _errorBinding.MapControl(nameof(_editModel.Name), txtName);
                 _errorBinding.MapControl(nameof(_editModel.DepartmentId), cmbDepartment);
                 _errorBinding.MapControl(nameof(_editModel.Balance), numBalance);
                 _errorBinding.MapControl(nameof(_editModel.BudgetAmount), numBudget);
-
-                // Wire up text changed events to update the edit model
-                txtAccountNumber.TextChanged += (s, e) => _editModel.AccountNumber = txtAccountNumber.Text;
-                txtName.TextChanged += (s, e) => _editModel.Name = txtName.Text;
-                txtDescription.TextChanged += (s, e) => _editModel.Description = txtDescription.Text;
-                numBalance.ValueChanged += (s, e) => _editModel.Balance = numBalance.Value.HasValue ? (decimal)numBalance.Value.Value : 0m;
-                numBudget.ValueChanged += (s, e) => _editModel.BudgetAmount = numBudget.Value.HasValue ? (decimal)numBudget.Value.Value : 0m;
-                chkActive.CheckedChanged += (s, e) => _editModel.IsActive = chkActive.Checked;
-
-                // Department and fund/type selection
-                cmbDepartment.SelectedValueChanged += (s, e) =>
-                {
-                    if (cmbDepartment.SelectedValue is int deptId)
-                        _editModel.DepartmentId = deptId;
-                };
-
-                cmbFund.SelectedValueChanged += (s, e) =>
-                {
-                    if (cmbFund.SelectedValue is MunicipalFundType fund)
-                        _editModel.Fund = fund;
-                };
-
-                cmbType.SelectedValueChanged += (s, e) =>
-                {
-                    if (cmbType.SelectedValue is AccountType type)
-                        _editModel.Type = type;
-                };
             }
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "AccountEditPanel: Failed to setup validation");
             }
-        }
-
-        private void ApplyCurrentTheme()
-        {
-            try
-            {
-                ThemeManager.ApplyThemeToControl(this);
-            }
-            catch { }
-        }
-
-        private void OnThemeChanged(object? sender, AppTheme theme)
-        {
-            try
-            {
-                if (IsDisposed) return;
-
-                if (InvokeRequired)
-                {
-                    try { BeginInvoke(new Action(() => OnThemeChanged(sender, theme))); } catch { }
-                    return;
-                }
-
-                ApplyCurrentTheme();
-            }
-            catch (ObjectDisposedException) { }
-            catch (Exception ex) { Serilog.Log.Warning(ex, "AccountEditPanel: OnThemeChanged failed"); }
         }
 
         /// <summary>
@@ -583,32 +508,12 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Information("AccountEditPanel: Save button clicked");
 
-                // Sync all values from controls to edit model
-                _editModel.AccountNumber = txtAccountNumber.Text;
-                _editModel.Name = txtName.Text;
-                _editModel.Description = txtDescription.Text;
-                _editModel.Balance = numBalance.Value.HasValue ? (decimal)numBalance.Value.Value : 0m;
-                _editModel.BudgetAmount = numBudget.Value.HasValue ? (decimal)numBudget.Value.Value : 0m;
-                _editModel.IsActive = chkActive.Checked;
-
-                if (cmbDepartment.SelectedValue is int deptId)
-                    _editModel.DepartmentId = deptId;
-                if (cmbFund.SelectedValue is MunicipalFundType fund)
-                    _editModel.Fund = fund;
-                if (cmbType.SelectedValue is AccountType type)
-                    _editModel.Type = type;
-
-                // Validate the edit model using data annotations
-                if (!_editModel.ValidateAll())
+                if (_errorBinding != null)
                 {
-                    var errors = _editModel.GetAllErrors();
-                    if (errors.Count > 0)
+                    var errors = GetValidationErrors();
+                    if (errors.Any())
                     {
-                        _errorBinding?.RefreshAllErrors();
-                        MessageBox.Show(
-                            $"Please correct the following errors:\n\n{string.Join("\n", errors)}",
-                            "Validation Error",
-                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Please correct the following errors:\n\n{string.Join("\n", errors)}", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -641,7 +546,7 @@ namespace WileyWidget.WinForms.Controls
 
                 SaveDialogResult = DialogResult.OK;
 
-                // If hosted in a parent Form, set its DialogResult
+                // Set parent form result and close
                 var parent = this.FindForm();
                 if (parent != null)
                 {
@@ -654,13 +559,13 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "AccountEditPanel: BtnSave_Click failed");
-                try
-                {
-                    MessageBox.Show($"Error saving account: {ex.Message}", "Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch { }
+                MessageBox.Show($"Error saving account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private System.Collections.Generic.IList<string> GetValidationErrors()
+        {
+            return _editModel.GetAllErrors();
         }
 
         /// <summary>
@@ -677,267 +582,17 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        /// <summary>
-        /// Initializes the UI components for the account edit panel.
-        /// </summary>
-        private void InitializeComponent()
+        protected override void Dispose(bool disposing)
         {
-            this.SuspendLayout();
-
-            // Main layout panel
-            _mainLayout = new TableLayoutPanel
+            if (disposing)
             {
-                try { if (_themeChangedHandler != null) ThemeManager.ThemeChanged -= _themeChangedHandler; } catch { }
-                try { this.Load -= AccountEditPanel_Load; } catch { }
                 _errorBinding?.Dispose();
-                _errorProvider?.Dispose();
                 _toolTip?.Dispose();
-                txtAccountNumber?.Dispose();
-                txtName?.Dispose();
-                txtDescription?.Dispose();
-                cmbDepartment?.Dispose();
-                cmbFund?.Dispose();
-                cmbType?.Dispose();
-                numBalance?.Dispose();
-                numBudget?.Dispose();
-                chkActive?.Dispose();
-                btnSave?.Dispose();
-                btnCancel?.Dispose();
+                _errorProvider?.Dispose();
+
+                // Unbind if needed (DataBindings usually cleaned up automatically)
             }
-
-            // Title label (spans both columns)
-            lblTitle = new Label
-            {
-                Text = "Account Details",
-                Font = new Font(this.Font.FontFamily, 12F, FontStyle.Bold),
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 0, 0, 12),
-                AccessibleName = "Account Details Header"
-            };
-            _mainLayout.Controls.Add(lblTitle, 0, 0);
-            _mainLayout.SetColumnSpan(lblTitle, 2);
-
-            // Account Number
-            var lblAccountNumber = new Label
-            {
-                Text = "Account Number:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Account Number Label"
-            };
-            _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
-
-            txtAccountNumber = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                AccessibleName = "Account Number",
-                AccessibleDescription = "Enter the account number"
-            };
-            _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
-
-            // Name
-            var lblName = new Label
-            {
-                Text = "Name:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Account Name Label"
-            };
-            _mainLayout.Controls.Add(lblName, 0, 2);
-
-            txtName = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                AccessibleName = "Account Name",
-                AccessibleDescription = "Enter the account name"
-            };
-            _mainLayout.Controls.Add(txtName, 1, 2);
-
-            // Description
-            var lblDescription = new Label
-            {
-                Text = "Description:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Description Label"
-            };
-            _mainLayout.Controls.Add(lblDescription, 0, 3);
-
-            txtDescription = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                AccessibleName = "Account Description",
-                AccessibleDescription = "Enter the account description"
-            };
-            _mainLayout.Controls.Add(txtDescription, 1, 3);
-
-            // Department
-            var lblDepartment = new Label
-            {
-                Text = "Department:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Department Label"
-            };
-            _mainLayout.Controls.Add(lblDepartment, 0, 4);
-
-            cmbDepartment = new ComboBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                AccessibleName = "Department Selection",
-                AccessibleDescription = "Select the department for this account"
-            };
-            _mainLayout.Controls.Add(cmbDepartment, 1, 4);
-
-            // Fund
-            var lblFund = new Label
-            {
-                Text = "Fund:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Fund Label"
-            };
-            _mainLayout.Controls.Add(lblFund, 0, 5);
-
-            cmbFund = new ComboBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                AccessibleName = "Fund Selection",
-                AccessibleDescription = "Select the fund type for this account"
-            };
-            _mainLayout.Controls.Add(cmbFund, 1, 5);
-
-            // Type
-            var lblType = new Label
-            {
-                Text = "Type:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Account Type Label"
-            };
-            _mainLayout.Controls.Add(lblType, 0, 6);
-
-            cmbType = new ComboBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                AccessibleName = "Account Type Selection",
-                AccessibleDescription = "Select the account type"
-            };
-            _mainLayout.Controls.Add(cmbType, 1, 6);
-
-            // Balance
-            var lblBalance = new Label
-            {
-                Text = "Balance:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Balance Label"
-            };
-            _mainLayout.Controls.Add(lblBalance, 0, 7);
-
-            numBalance = new NumericUpDown
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                DecimalPlaces = 2,
-                Minimum = decimal.MinValue,
-                Maximum = decimal.MaxValue,
-                AccessibleName = "Account Balance",
-                AccessibleDescription = "Enter the current account balance"
-            };
-            _mainLayout.Controls.Add(numBalance, 1, 7);
-
-            // Budget
-            var lblBudget = new Label
-            {
-                Text = "Budget:",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 6, 3),
-                AccessibleName = "Budget Label"
-            };
-            _mainLayout.Controls.Add(lblBudget, 0, 8);
-
-            numBudget = new NumericUpDown
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                DecimalPlaces = 2,
-                Minimum = decimal.MinValue,
-                Maximum = decimal.MaxValue,
-                AccessibleName = "Budget Amount",
-                AccessibleDescription = "Enter the budget amount for this account"
-            };
-            _mainLayout.Controls.Add(numBudget, 1, 8);
-
-            // Active checkbox and Save button (spans both columns)
-            var buttonPanel = new TableLayoutPanel
-            {
-                ColumnCount = 2,
-                RowCount = 1,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 12, 0, 0),
-                AutoSize = true
-            };
-            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            buttonPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-            chkActive = new CheckBox
-            {
-                Text = "Active",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 12, 3),
-                Checked = true,
-                AccessibleName = "Account Active Status",
-                AccessibleDescription = "Check to mark this account as active"
-            };
-            buttonPanel.Controls.Add(chkActive, 0, 0);
-
-            btnSave = new Button
-            {
-                Text = "Save",
-                Dock = DockStyle.Right,
-                Width = 100,
-                Margin = new Padding(0, 3, 0, 3),
-                AccessibleName = "Save Account",
-                AccessibleDescription = "Save the account changes"
-            };
-            btnSave.Click += BtnSave_Click;
-            buttonPanel.Controls.Add(btnSave, 1, 0);
-
-            _mainLayout.Controls.Add(buttonPanel, 0, 9);
-            _mainLayout.SetColumnSpan(buttonPanel, 2);
-
-            // Add main layout to the control
-            this.Controls.Add(_mainLayout);
-
-            // Configure the form
-            this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.AutoScaleDimensions = new SizeF(96F, 96F);
-            this.MinimumSize = new Size(500, 400);
-            this.AccessibleName = "Account Edit Panel";
-            this.AccessibleDescription = "Panel for creating or editing municipal accounts";
-
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            base.Dispose(disposing);
         }
     }
 }

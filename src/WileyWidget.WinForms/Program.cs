@@ -3,914 +3,226 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.Extensions.Logging;
+using Serilog.Events;
 using Syncfusion.Licensing;
-using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Core;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
-using Syncfusion.Windows.Forms;
-using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.WinForms.DataGrid;
-using System.Security.Cryptography;
-using System.Text;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
-using System.Net.Http;
-using Action = System.Action;
 using System.IO;
 using System.Linq;
-using System.Security;
-using System.Security.Permissions;
 using System.Windows.Forms;
+using System.Runtime.ExceptionServices;
 using WileyWidget.Data;
-using WileyWidget.WinForms.Forms;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Themes;
-using WileyWidget.Models;
 using WileyWidget.Services;
-using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
-using WileyWidget.WinForms.Services.AI;
-using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms
 {
     internal static class Program
     {
         public static IServiceProvider Services { get; private set; } = null!;
-        private static IServiceScope? _applicationScope; // Application-lifetime scope
-        private static IStartupTimelineService? _timelineService;
+        private static IServiceScope? _applicationScope;
+        private static SynchronizationContext? UISynchronizationContext;
+        private const int WS_EX_COMPOSITED = 0x02000000;
 
         /// <summary>
-        /// Global task tracking for fire-and-forget Task.Run operations.
-        /// Ensures all background tasks complete before cache disposal during shutdown.
+        /// The main entry point for the application.
         /// </summary>
-        private static readonly List<Task> _pendingBackgroundTasks = new();
-        private static readonly object _pendingTasksLock = new();
-
-        /// <summary>
-        /// Registers a fire-and-forget task for tracking during shutdown.
-        /// </summary>
-        public static void RegisterBackgroundTask(Task task)
+        [STAThread]
+        private static void Main(string[] args)
         {
-            // ENHANCED EXCEPTION DIAGNOSTICS
-            AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
-            DotNetEnv.Env.Load("secrets/my.secrets");
-            DotNetEnv.Env.Load();
-            Log.Debug("Main method started");
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
-            {
-                if (resolveArgs.Name != null && resolveArgs.Name.StartsWith("Microsoft.WinForms.Utilities.Shared", StringComparison.OrdinalIgnoreCase))
-                {
-                    return null;
-                }
-                return null;
-            };
-
-            SplashForm? splash = null;
-            try
-            {
-                splash = new SplashForm();
-                void SplashReport(double progress, string message, bool isIndeterminate = false)
-                {
-                    var s = splash;
-                    if (s == null) return;
-                    s.InvokeOnUiThread(() => s.Report(progress, message, isIndeterminate));
-                }
-
-                void SplashComplete(string message)
-                {
-                    var s = splash;
-                    if (s == null) return;
-                    s.InvokeOnUiThread(() => s.Complete(message));
-                }
-
-                SplashReport(0.05, "Building dependency injection container...");
-                var hostBuildScope = System.Diagnostics.Stopwatch.StartNew();
-                IHost host = BuildHost(args);
-                hostBuildScope.Stop();
-                Log.Debug("DI Container built in {Elapsed}ms", hostBuildScope.ElapsedMilliseconds);
-                Log.Information("Startup milestone: DI Container Build complete");
-
-                // Register Syncfusion license immediately after configuration is available
-                var mainConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(host.Services);
-                var xaiKey = mainConfig["XAI:ApiKey"];
-                var syncKey = mainConfig["Syncfusion:LicenseKey"];
-                Log.Debug("[CONFIG] XAI:ApiKey present={Present}, length={Length}", xaiKey != null, xaiKey?.Length ?? 0);
-                Log.Debug("[CONFIG] Syncfusion:LicenseKey present={Present}, length={Length}", syncKey != null, syncKey?.Length ?? 0);
-                var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
-
-                using (_timelineService?.BeginPhaseScope("License Registration"))
-                {
-                    await startupOrchestrator.RegisterLicenseAsync().ConfigureAwait(false);
-                    Log.Information("Startup milestone: License Registration complete");
-                }
-
-                using (_timelineService?.BeginPhaseScope("Theme Initialization"))
-                {
-                    await startupOrchestrator.InitializeThemeAsync().ConfigureAwait(false);
-                    Log.Information("Startup milestone: Theme Initialization complete");
-                }
-
-                InitializeWinForms();
-                Log.Information("Startup milestone: WinForms Initialization complete");
-
-                SplashReport(0.10, "Validating configuration secrets...");
-                using (_timelineService?.BeginPhaseScope("Secret Validation"))
-                {
-                    var secretServices = host.Services;
-                    // Offload secret validation to background thread to avoid UI thread blocking
-                    await Task.Run(() => ValidateSecrets(secretServices)).ConfigureAwait(false);
-                    SplashReport(0.12, "Secrets validated");
-                }
-
-                // Get required services early
-                var getOrchestratorStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                Log.Debug("DIAGNOSTIC: About to call GetRequiredService<IStartupOrchestrator>");
-                var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
-                getOrchestratorStopwatch.Stop();
-                Log.Information("DIAGNOSTIC: GetRequiredService<IStartupOrchestrator> completed in {Elapsed}ms", getOrchestratorStopwatch.ElapsedMilliseconds);
-
-                _timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services);
-                if (_timelineService != null && _timelineService.IsEnabled)
-                {
-                    Log.Debug("[TIMELINE] StartupTimelineService enabled - tracking startup phases");
-                }
-
-                var mainXaiKey = mainConfig["XAI:ApiKey"];
-                Log.Debug("[MAIN CONFIG] XAI:ApiKey present={Present}, length={Length}", mainXaiKey != null, mainXaiKey?.Length ?? 0);
-
-                using (_timelineService?.BeginPhaseScope("SynchronizationContext Capture"))
-                {
-                    CaptureSynchronizationContext();
-                }
-
-                SplashReport(0.10, "Validating service registration...");
-                using (var validationScope = _timelineService?.BeginPhaseScope("DI Validation"))
-                {
-                    // Run DI validation on threadpool to keep startup UI responsive
-                    var validationTask = Task.Run(async () =>
-                        await startupOrchestrator.ValidateServicesAsync(uiScope.ServiceProvider, CancellationToken.None).ConfigureAwait(false));
-                    await validationTask.ConfigureAwait(false);
-                    SplashReport(0.18, "DI validation complete");
-                }
-
-                SplashReport(0.15, "Preparing theme system...");
-
-                SplashReport(0.40, "Configuring error reporting...");
-                _timelineService?.RecordOperation("Configure error reporting", "Error Handlers");
-                ConfigureErrorReporting();
-
-                // Verification mode: run deeper checks before exiting
-                if (IsVerifyStartup(args))
-                {
-                    Log.Information("Startup verification mode active; running verification and exiting.");
-
-                    SplashReport(0.50, "Verifying database connectivity...");
-                    using (var healthScope = host.Services.CreateScope())
-                    {
-                        using (_timelineService?.BeginPhaseScope("Database Health Check"))
-                        {
-                            SplashReport(0.60, "Checking database health...");
-                            await Task.Run(async () => await RunStartupHealthCheckAsync(healthScope.ServiceProvider).ConfigureAwait(false)).ConfigureAwait(false);
-                            SplashReport(0.65, "Database verified");
-                        }
-                    }
-
-                    SplashComplete("Startup verification complete");
-                    await RunVerifyStartup(host);
-                    return;
-                }
-
-                SplashReport(0.75, "Initializing main window...");
-                MainForm mainForm;
-                try
-                {
-                    mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
-                }
-                Log.Debug("MainForm created");
-
-                SplashReport(0.80, "Wiring global exception handlers...");
-                using (var handlerScope = _timelineService?.BeginPhaseScope("Chrome Initialization"))
-                {
-                    WireGlobalExceptionHandlers();
-                }
-                Log.Debug("Exception handlers wired");
-
-                SplashReport(0.95, "Ready");
-                using (var splashHideScope = _timelineService?.BeginPhaseScope("Splash Screen Hide"))
-                {
-                    SplashComplete("Ready");
-                    splash.Dispose();
-                }
-                Log.Information("Startup milestone: Ready");
-
-                ScheduleAutoCloseIfRequested(args, mainForm);
-
-                Log.Debug("Entering UI message loop");
-                using (var uiLoopScope = _timelineService?.BeginPhaseScope("UI Message Loop"))
-                {
-                    Log.Fatal(ex, "Failed to create MainForm - likely Syncfusion license or control instantiation issue");
-                    throw;
-                }
-                SplashReport(0.70, "Main window created");
-
-                using (_timelineService?.BeginPhaseScope("Chrome Initialization"))
-                {
-                    _timelineService?.RecordOperation("Configure error reporting", "Chrome Initialization");
-                    ConfigureErrorReporting();
-                    WireGlobalExceptionHandlers();
-                }
-                Log.Debug("Exception handlers wired");
-                Log.Information("Startup milestone: Chrome Initialization complete");
-
-                SplashReport(0.90, "Finalizing startup...");
-                SplashReport(0.95, "Launching application...");
-                using (_timelineService?.BeginPhaseScope("Splash Screen Hide"))
-                {
-                    SplashComplete("Ready");
-                    Log.Information("Splash screen hidden");
-                }
-                Log.Information("Startup milestone: Ready");
-
-                // Generate comprehensive startup timeline report with dependency validation
-                Log.Debug("[DIAGNOSTIC] About to call GenerateStartupReport()");
-                startupOrchestrator.GenerateStartupReport();
-                Log.Debug("[DIAGNOSTIC] GenerateStartupReport() completed");
-
-                Log.Debug("[DIAGNOSTIC] About to call ScheduleAutoCloseIfRequested()");
-                ScheduleAutoCloseIfRequested(args, mainForm);
-                Log.Debug("[DIAGNOSTIC] ScheduleAutoCloseIfRequested() completed");
-
-                Log.Debug("[DIAGNOSTIC] About to enter UI message loop");
-                Log.Debug(
-                    """
-                    [DIAGNOSTIC] ABOUT TO ENTER UI MESSAGE LOOP
-                    Timestamp: { Timestamp}
-                    MainFormPresent: { Present}
-                    IsDisposed: { Disposed}
-                    """,
-                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
-                    mainForm != null,
-                    mainForm?.IsDisposed);
-                Log.Debug("Entering UI message loop");
-                using (_timelineService?.BeginPhaseScope("UI Message Loop"))
-                {
-                    if (mainForm == null)
-                    {
-                        Log.Fatal("MainForm is null. Cannot start UI message loop.");
-                        throw new ArgumentNullException(nameof(args), "MainForm cannot be null when starting the UI message loop.");
-                    }
-                    RunUiLoop(mainForm);
-                }
-                Log.Debug("UI message loop exited");
-            }
-            catch (NullReferenceException nreEx)
-            {
-                Log.Fatal(nreEx, "═══ NULLREFERENCEEXCEPTION DURING STARTUP ═══\n" +
-                    "Exception Type: {ExceptionType}\n" +
-                    "Message: {Message}\n" +
-                    "StackTrace:\n{StackTrace}\n" +
-                    "Source: {Source}\n" +
-                    "TargetSite: {TargetSite}\n" +
-                    "HResult: {HResult}",
-                    nreEx.GetType().FullName,
-                    nreEx.Message,
-                    nreEx.StackTrace ?? "(no stack trace)",
-                    nreEx.Source ?? "(unknown)",
-                    nreEx.TargetSite?.ToString() ?? "(unknown)",
-                    nreEx.HResult);
-
-                HandleStartupFailure(nreEx);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "═══ UNHANDLED EXCEPTION DURING STARTUP ═══\n" +
-                    "Exception Type: {ExceptionType}\n" +
-                    "Message: {Message}\n" +
-                    "StackTrace:\n{StackTrace}\n" +
-                    "Source: {Source}\n" +
-                    "TargetSite: {TargetSite}\n" +
-                    "HResult: {HResult}\n" +
-                    "InnerException: {InnerException}",
-                    ex.GetType().FullName,
-                    ex.Message,
-                    ex.StackTrace ?? "(no stack trace)",
-                    ex.Source ?? "(unknown)",
-                    ex.TargetSite?.ToString() ?? "(unknown)",
-                    ex.HResult,
-                    ex.InnerException?.ToString() ?? "(none)");
-
-                HandleStartupFailure(ex);
-                throw;
-            }
-            finally
-            {
-                splash?.Dispose();
-            }
-        }
-
-        private static void SetInvariantCulture()
-        {
-            try
-            {
-                var licenseKey = configuration["Syncfusion:LicenseKey"];
-                if (string.IsNullOrWhiteSpace(licenseKey))
-                {
-                    throw new InvalidOperationException("Syncfusion license key not found in configuration.");
-                }
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-
-                // Validate the license key
-                // bool isValid = Syncfusion.Licensing.SyncfusionLicenseProvider.ValidateLicense(Syncfusion.Licensing.Platform.WindowsForms);
-                // if (!isValid)
-                // {
-                //     throw new InvalidOperationException("Syncfusion license key is invalid or does not match the package versions.");
-                // }
-
-                Log.Debug("Syncfusion license registered successfully.");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to set invariant culture; continuing with system defaults");
-            }
-        }
-
-        private static bool IsRunningInTestEnvironment()
-        {
-            // Check for test environment indicators
-            return Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS") == "true" ||
-                   AppDomain.CurrentDomain.GetAssemblies()
-                       .Any(asm => asm.FullName?.Contains("test", StringComparison.OrdinalIgnoreCase) == true ||
-                                   asm.FullName?.Contains("xunit", StringComparison.OrdinalIgnoreCase) == true);
-        }
-
-        /// <summary>
-        /// Initialize the Syncfusion theme system at application startup.
-        /// AUTHORITATIVE SOURCE: This is the ONLY location where theme should be set during startup.
-        /// Uses SkinManager.LoadAssembly and SkinManager.ApplicationVisualTheme (CORRECT API).
-        /// Child forms automatically inherit this theme - do NOT call SetVisualStyle in form constructors.
-        /// Reference: https://help.syncfusion.com/windowsforms/skins/getting-started
-        /// </summary>
-        private static void InitializeTheme()
-        {
-            try
-            {
-                Log.Debug("Starting theme initialization");
-
-                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                Log.Information("[THEME] Default theme name from ThemeColors: {ThemeName}", themeName);
-
-                // STEP 1: Load theme assembly - CRITICAL: must happen FIRST
-                // Records: Theme Initialization → LoadAssembly
-                _timelineService?.RecordOperation("[THEME API] SfSkinManager.LoadAssembly(Office2019Theme)", "Theme Initialization");
-
-                try
-                {
-                    SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                    Log.Debug("Office2019Theme assembly loaded successfully");
-                }
-                catch (Exception loadEx)
-                {
-
-                    Log.Error(loadEx, "Failed to load Office2019Theme assembly");
-                    throw; // Rethrow to outer catch for comprehensive handling
-                }
-
-                // Apply global theme - use default from ThemeColors (fallback to Office2019Colorful)
-                var themeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                Log.Debug("Setting ApplicationVisualTheme to: {ThemeName}", themeName);
-
-                try
-                {
-                    SkinManager.ApplicationVisualTheme = themeName;  // Global application-wide theme
-                    Log.Debug("ApplicationVisualTheme set to: {ThemeName}", themeName);
-                }
-                catch (Exception setEx)
-                {
-
-                    Log.Error(setEx, "Failed to set ApplicationVisualTheme to {ThemeName}", themeName);
-                    throw; // Rethrow to outer catch for comprehensive handling
-                }
-
-                Log.Debug("Theme initialization completed successfully");
-            }
-            catch (Exception ex)
-            {
-                // COMPREHENSIVE ERROR LOGGING
-
-                if (ex.InnerException != null)
-                {
-                    Log.Error(ex.InnerException, "[THEME FATAL] InnerException: {InnerMessage}", ex.InnerException.Message);
-                }
-
-                Log.Error(ex, """
-[THEME] Theme initialization failed; continuing with default Windows theme(no Syncfusion theming)
-""");
-            }
-        }
-
-        private static void ConfigureErrorReporting()
-        {
-            try
-            {
-                var errorReporting = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services);
-                var telemetry = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ITelemetryService>(Services);
-
-                if (telemetry != null)
-                {
-                    errorReporting?.SetTelemetryService(telemetry);
-                }
-
-                _timelineService?.RecordOperation("Initialize error reporting and telemetry", "Chrome Initialization");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to fully configure error reporting and telemetry during startup");
-            }
-        }
-
-        private static void TryLoadDotNetEnv()
-        {
-            // Microsoft guidance: production secrets should come from secure stores (env vars, Key Vault, etc.).
-            // DotNetEnv-style files are dev conveniences; keep them Development-only.
-            var envName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-                          ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-                          ?? "Production";
-
-            if (!string.Equals(envName, "Development", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            var envStopwatch = Stopwatch.StartNew();
-
-            // Load optional secrets file first (repo-root relative), then traverse for a .env.
-            // Treat parsing errors (FormatException) as non-fatal so startup can continue.
-            try
-            {
-                var secretsPath = ResolveSecretsPath();
-                if (File.Exists(secretsPath))
-                {
-                    DotNetEnv.Env.Load(secretsPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Failsafe: If logging fails (e.g., Serilog not initialized), silently continue
-                // This is early startup - logging infrastructure may not be ready
-                try { Log.Warning(ex, "Failed to load optional secrets file via DotNetEnv"); } catch { /* Intentionally empty */ }
-            }
-
-            try
-            {
-                DotNetEnv.Env.TraversePath().Load();
-            }
-            catch (Exception ex)
-            {
-                // Failsafe: If logging fails (e.g., Serilog not initialized), silently continue
-                // This is early startup - logging infrastructure may not be ready
-                try { Log.Warning(ex, "Failed to load .env via DotNetEnv"); } catch { /* Intentionally empty */ }
-            }
-
-            envStopwatch.Stop();
-            if (envStopwatch.ElapsedMilliseconds > 500)
-            {
-                Log.Information("DotNetEnv load completed in {Elapsed}ms (consider async if this grows)", envStopwatch.ElapsedMilliseconds);
-            }
-            else
-            {
-                Log.Debug("DotNetEnv load completed in {Elapsed}ms", envStopwatch.ElapsedMilliseconds);
-            }
-        }
-
-        private static string ResolveSecretsPath()
-        {
-            var overridePath = Environment.GetEnvironmentVariable("WW_SECRETS_PATH");
-            if (!string.IsNullOrWhiteSpace(overridePath))
-            {
-                return overridePath;
-            }
-
-            return Path.Combine(Directory.GetCurrentDirectory(), "secrets", "my.secrets");
-        }
-
-        private static string ShortHash(string secret)
-        {
-            if (string.IsNullOrWhiteSpace(secret)) return string.Empty;
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var bytes = System.Text.Encoding.UTF8.GetBytes(secret);
-            var hash = sha.ComputeHash(bytes);
-            var hex = BitConverter.ToString(hash).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
-            return hex.Substring(0, Math.Min(8, hex.Length));
-        }
-
-        /// <summary>
-        /// Initialize Windows Forms application settings and high-DPI support.
-        /// </summary>
-        private static void InitializeWinForms()
-        {
-            // Order matters: DPI mode -> visual styles -> text rendering
-            // Use PerMonitorV2 for best high-DPI support (Windows 10 1703+)
-            // This matches app.manifest dpiAwareness setting
+            // Set up WinForms application defaults
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Set default font for all new controls
+            // Initialize logging first
+            InitializeLogging();
+
             try
             {
-                Application.SetDefaultFont(WileyWidget.WinForms.Services.FontService.Instance.CurrentFont);
-                Log.Debug("Default font set successfully: {FontName} {FontSize}pt",
-                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Name,
-                    WileyWidget.WinForms.Services.FontService.Instance.CurrentFont.Size);
+                // Run the async startup and block until complete
+                RunApplicationAsync(args).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to set default font");
+                HandleFatalException(ex);
+            }
+            finally
+            {
+                Log.CloseAndFlush();
             }
         }
 
-        /// <summary>
-        /// Detects WebView2 runtime availability and displays a prompt if missing.
-        /// Required for Blazor Hybrid JARVIS Chat component.
-        /// Runs synchronously during startup to allow graceful fallback.
-        /// </summary>
-        /// <remarks>
-        /// WebView2 runtime is bundled with Windows 11+, but may be missing on Windows 10.
-        /// If missing, user is prompted to download from Microsoft's official URL.
-        /// </remarks>
-        private static void DetectAndPromptWebView2()
+        private static async Task RunApplicationAsync(string[] args)
         {
-            // Don't manually set WindowsFormsSynchronizationContext before Application.Run
-            // Application.Run will set it automatically when the message pump starts
-            // Just capture whatever context is current at this point
-            UISynchronizationContext = System.Threading.SynchronizationContext.Current;
+            // Build host and DI container
+            var host = BuildHost(args);
+
+            // Initialize Syncfusion licensing
+            InitializeSyncfusionLicense(host.Services);
+
+            // Initialize theme system
+            InitializeTheme();
+
+            // Capture UI synchronization context
+            CaptureSynchronizationContext();
+
+            // Create application-wide scope
+            _applicationScope = host.Services.CreateScope();
+            Services = _applicationScope.ServiceProvider;
+
+            var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(Services);
+            await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
+            await startupOrchestrator.InitializeThemeAsync(CancellationToken.None).ConfigureAwait(false);
+            startupOrchestrator.GenerateStartupReport();
+
+            // Create and show main form
+            var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
+
+            // Initialize async components after form is shown
+            mainForm.Shown += async (s, e) =>
+            {
+                try
+                {
+                    await mainForm.InitializeAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to initialize MainForm async components");
+                    MessageBox.Show($"Initialization error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            Application.Run(mainForm);
         }
 
         private static IHost BuildHost(string[] args)
         {
-            var reportViewerLaunchOptions = CreateReportViewerLaunchOptions(args);
             var builder = Host.CreateApplicationBuilder(args);
-
-            if (_timelineService != null)
-            {
-                builder.Services.AddSingleton(typeof(IStartupTimelineService), _timelineService);
-            }
 
             AddConfiguration(builder);
             ConfigureLogging(builder);
             ConfigureDatabase(builder);
-            ConfigureHealthChecks(builder);
-            CaptureDiFirstChanceExceptions();
             AddDependencyInjection(builder);
-            ConfigureUiServices(builder);
-
-            builder.Services.AddSingleton(reportViewerLaunchOptions);
-
-            // DEBUG: Check config BEFORE Build()
-            var preBuildXai = builder.Configuration["XAI:ApiKey"];
-            Log.Debug("[PRE-BUILD] XAI:ApiKey present={Present}, length={Length}", preBuildXai != null, preBuildXai?.Length ?? 0);
-
-            // Register a global HttpClient with a sensible default timeout to avoid blocking external calls during startup
-            try
-            {
-                var httpTimeoutSeconds = builder.Configuration.GetValue<int>("HttpClient:TimeoutSeconds", 30);
-                // Register a named default HttpClient with configured timeout
-                builder.Services.AddHttpClient("WileyWidgetDefault", c => c.Timeout = TimeSpan.FromSeconds(httpTimeoutSeconds));
-                Log.Debug("[CONFIG] Registered global (named) HttpClient 'WileyWidgetDefault' with {Timeout}s timeout", httpTimeoutSeconds);
-            }
-            catch (Exception httpRegEx)
-            {
-                Log.Warning(httpRegEx, "Failed to register global HttpClient");
-            }
 
             return builder.Build();
         }
 
         private static void AddConfiguration(HostApplicationBuilder builder)
         {
-            // Ensure .env is loaded before adding configuration sources
-            // DotNetEnv sets environment variables at process level
-            try
-            {
-                DotNetEnv.Env.TraversePath().Load();
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to load .env file");
-            }
-
-            // DotNetEnv-style files are a development convenience; keep them Development-only.
-            if (builder.Environment.IsDevelopment())
-            {
-                TryLoadDotNetEnv();
-
-                // User secrets are intended for development-time only and are only loaded in Development.
-                builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetExecutingAssembly(), optional: true);
-            }
-
-            // Load primary appsettings.json from project directory
-            try
-            {
-                builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to load appsettings.json");
-            }
-
-            // CRITICAL: Also load config/development/appsettings.json which has the full configuration
-            try
-            {
-                var devConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "config", "development", "appsettings.json");
-                if (File.Exists(devConfigPath))
-                {
-                    builder.Configuration.AddJsonFile(devConfigPath, optional: false, reloadOnChange: true);
-                    Log.Debug("[CONFIG] Loaded development config from: {DevConfigPath}", devConfigPath);
-                }
-                else
-                {
-                    Log.Warning("Development config not found at: {DevConfigPath}", devConfigPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to load config/development/appsettings.json");
-            }
-
+            builder.Configuration.SetBasePath(AppContext.BaseDirectory);
+            builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true);
             builder.Configuration.AddEnvironmentVariables();
 
-            // CRITICAL: Expand environment variable placeholders from appsettings.json
-            // appsettings.json uses ${VAR_NAME} syntax which .NET doesn't expand automatically
-            // Read environment variables and override config values that have ${...} placeholders
-            try
+            if (builder.Environment.IsDevelopment())
             {
-                var xaiApiKeyEnv = Environment.GetEnvironmentVariable("XAI_API_KEY");
-                Log.Debug("[ENV VAR DEBUG] XAI_API_KEY present={Present}, length={Length}", xaiApiKeyEnv != null, xaiApiKeyEnv?.Length ?? 0);
-
-                var openAiKeyEnv = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-                var syncfusionKeyEnv = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-                var qboClientIdEnv = Environment.GetEnvironmentVariable("QBO_CLIENT_ID");
-                var qboClientSecretEnv = Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET");
-
-                var overrides = new Dictionary<string, string?>();
-
-                if (!string.IsNullOrWhiteSpace(xaiApiKeyEnv))
-                {
-                    overrides["XAI:ApiKey"] = xaiApiKeyEnv;
-                    Log.Debug("[CONFIG] Overriding XAI:ApiKey from environment variable (length: {Length})", xaiApiKeyEnv.Length);
-                }
-                else
-                {
-                    Log.Warning("XAI_API_KEY environment variable is NULL or empty!");
-                }
-
-                if (!string.IsNullOrWhiteSpace(openAiKeyEnv))
-                {
-                    overrides["OpenAI:ApiKey"] = openAiKeyEnv;
-                }
-
-                if (!string.IsNullOrWhiteSpace(syncfusionKeyEnv))
-                {
-                    overrides["Syncfusion:LicenseKey"] = syncfusionKeyEnv;
-                }
-
-                if (!string.IsNullOrWhiteSpace(qboClientIdEnv))
-                {
-                    overrides["QuickBooks:ClientId"] = qboClientIdEnv;
-                }
-
-                if (!string.IsNullOrWhiteSpace(qboClientSecretEnv))
-                {
-                    overrides["QuickBooks:ClientSecret"] = qboClientSecretEnv;
-                }
-
-                if (overrides.Count > 0)
-                {
-                    builder.Configuration.AddInMemoryCollection(overrides);
-                    Log.Debug("[CONFIG] Added {Count} configuration overrides via AddInMemoryCollection", overrides.Count);
-
-                    // Verify the override was applied
-                    var verifyXai = builder.Configuration["XAI:ApiKey"];
-                    Log.Debug("[CONFIG VERIFY] After AddInMemoryCollection: XAI:ApiKey present={Present}, length={Length}", verifyXai != null, verifyXai?.Length ?? 0);
-                }
-                else
-                {
-                    Log.Debug("No configuration overrides to add");
-                }
+                builder.Configuration.AddUserSecrets<StartupOrchestrator>(optional: true);
             }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Error expanding environment variable placeholders");
-            }
+        }
 
-            try
-            {
-                var existingConn = builder.Configuration.GetConnectionString("DefaultConnection");
-                if (string.IsNullOrWhiteSpace(existingConn))
-                {
-                    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["ConnectionStrings:DefaultConnection"] = FallbackConnectionString
-                    });
-                    Log.Warning("DefaultConnection not found; using development fallback connection string");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Error ensuring default connection in configuration");
-            }
+        private static void InitializeLogging()
+        {
+            var logsPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+            Directory.CreateDirectory(logsPath);
+            var logFileTemplate = Path.Combine(logsPath, "app-.log");
+
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .WriteTo.File(logFileTemplate,
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    formatProvider: CultureInfo.InvariantCulture)
+                .CreateLogger();
         }
 
         private static void ConfigureLogging(HostApplicationBuilder builder)
         {
+            builder.Services.AddSerilog();
+        }
+
+        private static void InitializeSyncfusionLicense(IServiceProvider services)
+        {
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(services);
+            var licenseKey = configuration["Syncfusion:LicenseKey"];
+
+            if (!string.IsNullOrWhiteSpace(licenseKey))
+            {
+                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                Log.Debug("Syncfusion license registered successfully");
+            }
+            else
+            {
+                Log.Warning("Syncfusion license key not found in configuration");
+            }
+        }
+
+        private static void InitializeTheme()
+        {
             try
             {
-                // Make Serilog self-logging forward internal errors to a simple debug output
-                // CRITICAL: Do NOT use Log.Warning() or any Serilog method inside SelfLog callback
-                // This creates infinite recursion if logging encounters any error.
-                // Instead, use Debug.WriteLine() which is primitive and won't trigger Serilog.
-                // NOTE: ObjectDisposedException here is expected during shutdown when file sinks
-                // are closing while async operations complete. Suppress these in output.
-                Serilog.Debugging.SelfLog.Enable(msg =>
-                {
-                    try
-                    {
-                        // Suppress disposal exceptions - they're expected during graceful shutdown
-                        // and are handled properly by the shutdown sequence in RunUiLoop
-                        if (!msg.Contains("disposed", StringComparison.OrdinalIgnoreCase) &&
-                            !msg.Contains("Cannot access a disposed object", StringComparison.OrdinalIgnoreCase))
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[SERILOG INTERNAL] {msg}");
-                        }
-                    }
-                    catch
-                    {
-                        // If even Debug.WriteLine fails, silently swallow to avoid cascading errors
-                    }
-                });
+                // Load Syncfusion Office2019 theme assembly
+                Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
 
-                // CRITICAL: ALL LOGS go to project root src/logs directory
-                var projectRoot = Directory.GetCurrentDirectory();
-                var logsPath = Path.Combine(projectRoot, "logs");
+                // Set default application theme
+                Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
 
-                // Always use root logs folder for centralized logging
-                Log.Debug("Creating logs directory at: {LogsPath}", logsPath);
-                Directory.CreateDirectory(logsPath);
-
-                // Template used by Serilog's rolling file sink (daily rolling uses a date suffix)
-                var logFileTemplate = Path.Combine(logsPath, "app-.log");
-                Log.Debug("Log file pattern: {LogFileTemplate}", logFileTemplate);
-
-                // Resolve the current daily log file that Serilog will write to for today's date
-                // Serilog's daily rolling file uses the yyyyMMdd date format (e.g., app-20251215.log)
-                var logFileCurrent = Path.Combine(logsPath, $"app-{DateTime.Now:yyyyMMdd}.log");
-                Log.Debug("Current daily log file: {LogFileCurrent}", logFileCurrent);
-
-                // Check for SQL logging override environment variable
-                var enableSqlLogging = Environment.GetEnvironmentVariable("WILEYWIDGET_LOG_SQL");
-                var sqlLogLevel = string.Equals(enableSqlLogging, "true", StringComparison.OrdinalIgnoreCase)
-                    ? Serilog.Events.LogEventLevel.Information
-                    : Serilog.Events.LogEventLevel.Warning;
-
-                Log.Debug("SQL logging level: {SqlLogLevel} (WILEYWIDGET_LOG_SQL={EnableSqlLogging})", sqlLogLevel, enableSqlLogging ?? "not set");
-
-                Log.Logger = new LoggerConfiguration()
-                    .ReadFrom.Configuration(builder.Configuration)
-                    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.File(logFileTemplate, formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30, fileSizeLimitBytes: 10 * 1024 * 1024, rollOnFileSizeLimit: true, shared: true)
-                    .Enrich.FromLogContext()
-                    .MinimumLevel.Information()
-                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", sqlLogLevel)
-                    .CreateLogger();
-
-                Log.Debug("Logging configured successfully");
-                // Log both the resolved current file and the template used by the rolling sink so it's clear
-                Log.Debug("Logging system initialized - writing to {LogPath} (pattern: {LogPattern})", logFileCurrent, logFileTemplate);
+                Log.Debug("Theme initialization completed successfully");
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, "CRITICAL: Failed to configure logging");
-
-                // Fallback to console-only logging
-                Log.Logger = new LoggerConfiguration()
-                    .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
-                    .WriteTo.Debug(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
-                    .MinimumLevel.Information()
-                    .CreateLogger();
-
-                Log.Warning("Logging fallback to console-only mode");
+                Log.Error(ex, "Theme initialization failed; continuing with default Windows theme");
             }
+        }
+
+        private static void CaptureSynchronizationContext()
+        {
+            UISynchronizationContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(UISynchronizationContext);
         }
 
         private static void ConfigureDatabase(HostApplicationBuilder builder)
         {
-            void ConfigureSqlOptions(DbContextOptionsBuilder options)
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+
+            builder.Services.AddDbContextFactory<AppDbContext>(options =>
             {
-                // CRITICAL: Only use in-memory database when explicitly running UI tests via environment variable.
-                // Production runs should ALWAYS use SQL Server connection.
-                var isUiTestRun = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
-
-                // DO NOT use configuration UseInMemoryForTests - removed to prevent accidental in-memory usage
-                // DO NOT check WILEYWIDGET_USE_INMEMORY - this should only be set during actual test execution
-
-                if (isUiTestRun)
-                {
-                    options.UseInMemoryDatabase("WileyWidgetUiTests");
-                    Log.Debug("Using InMemory database for UI tests (WILEYWIDGET_UI_TESTS=true)");
-                    return;
-                }
-
-                // PRODUCTION PATH: Use SQL Server connection string
-                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                if (string.IsNullOrWhiteSpace(connectionString))
-                {
-                    connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-                    Log.Warning("DefaultConnection missing; using fallback SQL Server connection string");
-                }
-
-                connectionString = Environment.ExpandEnvironmentVariables(connectionString);
-
                 options.UseSqlServer(connectionString, sql =>
                 {
                     sql.MigrationsAssembly("WileyWidget.Data");
-                    sql.CommandTimeout(builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 60));
-                    sql.EnableRetryOnFailure(
-                        maxRetryCount: builder.Configuration.GetValue("Database:MaxRetryCount", 3),
-                        maxRetryDelay: TimeSpan.FromSeconds(builder.Configuration.GetValue("Database:MaxRetryDelaySeconds", 10)),
-                        errorNumbersToAdd: null);
+                    sql.CommandTimeout(60);
+                    sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
                 });
 
                 options.EnableDetailedErrors();
                 options.EnableSensitiveDataLogging(builder.Configuration.GetValue("Database:EnableSensitiveDataLogging", false));
-
-                options.UseLoggerFactory(new SerilogLoggerFactory(Log.Logger));
-
-                Log.Debug("Using SQL Server database: {Database}", connectionString.Split(';').FirstOrDefault(s => s.Contains("Database", StringComparison.OrdinalIgnoreCase)) ?? "WileyWidgetDev");
-            }
-
-            // CRITICAL: Use Scoped lifetime for DbContextFactory (NOT Singleton)
-            // Reason: DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped.
-            // Using Singleton would cause "Cannot resolve scoped service from root provider" errors.
-            // EF Core best practice: Factory should be Scoped, DbContext is implicitly Scoped.
-            builder.Services.AddDbContextFactory<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Scoped);
-            builder.Services.AddDbContext<AppDbContext>(ConfigureSqlOptions, ServiceLifetime.Transient);
-        }
-
-        private static void ConfigureHealthChecks(HostApplicationBuilder builder)
-        {
-            try
-            {
-                var healthChecksSection = builder.Configuration.GetSection("HealthChecks");
-                var healthConfig = healthChecksSection.Get<HealthCheckConfiguration>() ?? new HealthCheckConfiguration();
-                builder.Services.AddSingleton(healthConfig);
-
-                // Register health checks
-                builder.Services.AddHealthChecks()
-                    .AddCheck<WileyWidget.Services.HealthChecks.SyncfusionLicenseHealthCheck>(
-                        "syncfusion_license",
-                        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                        tags: new[] { "license", "startup" });
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to configure HealthCheckConfiguration from appsettings - using default configuration");
-                builder.Services.AddSingleton(new HealthCheckConfiguration());
-            }
-        }
-
-        private static void CaptureDiFirstChanceExceptions()
-        {
-            AppDomain.CurrentDomain.FirstChanceException += (_, eventArgs) =>
-            {
-                var ex = eventArgs.Exception;
-                if ((ex is InvalidOperationException || ex is AggregateException) &&
-                    ex.Source != null && ex.Source.Contains("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal))
-                {
-                    Log.Warning("First-chance DI exception: {Message}", ex.Message);
-                }
-            };
+            }, ServiceLifetime.Scoped);
         }
 
         private static void AddDependencyInjection(HostApplicationBuilder builder)
         {
-            var diServices = WileyWidget.WinForms.Configuration.DependencyInjection.CreateServiceCollection(includeDefaults: false);
+            // Register all application services via DependencyInjection helper
+            var diServices = DependencyInjection.CreateServiceCollection(includeDefaults: false);
 
-            // CRITICAL: Skip IConfiguration descriptor - use the host builder's configuration instead
-            // The DependencyInjection.CreateServiceCollection() adds a default IConfiguration for test scenarios
-            // but we want to use the real configuration from the host builder which includes .env and appsettings.json
+            // Skip IConfiguration descriptor - use the host builder's configuration
             foreach (var descriptor in diServices)
             {
                 if (descriptor.ServiceType == typeof(IConfiguration))
                 {
-                    Log.Information("[DI] Skipping IConfiguration from CreateServiceCollection - using host builder's configuration");
                     continue; // Skip - use host builder's configuration
                 }
 
@@ -918,785 +230,34 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static void ConfigureUiServices(HostApplicationBuilder builder)
+        public static async Task RunStartupHealthCheckAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
         {
-            // UI configuration is now handled via UIConfiguration.FromConfiguration in DependencyInjection.cs
-            // Register GrokAgentService (Semantic Kernel Grok integration)
-            try
+            // Run optional health checks at startup; log and continue on failure to avoid blocking UI
+            var healthCheckService = serviceProvider.GetService(typeof(HealthCheckService)) as HealthCheckService;
+            if (healthCheckService is null)
             {
-                builder.Services.AddSingleton<GrokAgentService>();
-                Log.Debug("Registered GrokAgentService as Singleton");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to register GrokAgentService");
-            }
-        }
-
-        /// <summary>
-        /// Runs a startup health check against the database to validate connectivity before the main UI is shown.
-        /// </summary>
-        /// <remarks>
-        /// This method is <c>internal</c> to allow automated tests to invoke the startup health check logic
-        /// without launching the full application. It should not be called directly by production code
-        /// outside of <c>Program.cs</c>.
-        /// </remarks>
-        internal static async Task RunStartupHealthCheckAsync(IServiceProvider services)
-        {
-            Log.Debug("[DIAGNOSTIC] Entered RunStartupHealthCheckAsync");
-            try
-            {
-                // Create a scope for scoped services (DbContext)
-                Log.Debug("[DIAGNOSTIC] Creating scope for health check");
-                using var scope = services.CreateScope();
-                var scopedServices = scope.ServiceProvider;
-
-                Log.Debug("[DIAGNOSTIC] Getting AppDbContext from DI");
-                var dbContext = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppDbContext>(scopedServices);
-
-                _timelineService?.RecordOperation("Test database connectivity", "Database Health Check");
-                Log.Debug("[DIAGNOSTIC] Testing database connectivity with CanConnectAsync (10s timeout)");
-                var connectTask = dbContext.Database.CanConnectAsync();
-                var connectTimeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
-                var connectCompletedTask = await Task.WhenAny(connectTask, connectTimeoutTask).ConfigureAwait(false);
-
-                if (connectCompletedTask == connectTask)
-                {
-                    await connectTask.ConfigureAwait(false); // Ensure the task completed successfully
-                    Log.Debug("Startup health check passed: Database connection successful");
-                    Log.Debug("Database CanConnectAsync succeeded");
-                }
-                else
-                {
-                    Log.Warning("Database connectivity test timed out after 10 seconds");
-                    Log.Warning("Database CanConnectAsync timed out");
-                    throw new TimeoutException("Database connectivity test timed out after 10 seconds");
-                }
-
-                // Get data statistics for diagnostic purposes — run on threadpool to avoid sync-over-async deadlock
-                Log.Debug("[DIAGNOSTIC] Starting data statistics check");
-                try
-                {
-                    using (var diagnosticScope = services.CreateScope())
-                    {
-                        var diagnosticScopedServices = diagnosticScope.ServiceProvider;
-                        Log.Debug("[DIAGNOSTIC] Getting IDashboardService from DI");
-                        var dashboardService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IDashboardService>(diagnosticScopedServices);
-                        if (dashboardService != null)
-                        {
-                            try
-                            {
-                                _timelineService?.RecordOperation("Query data statistics", "Database Health Check");
-                                // Use Task.WhenAny for proper async timeout pattern instead of blocking .Wait()
-                                Log.Debug("[DIAGNOSTIC] Calling GetDataStatisticsAsync with 30s timeout");
-                                var statsTask = dashboardService.GetDataStatisticsAsync();
-                                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
-                                var completedTask = await Task.WhenAny(statsTask, timeoutTask).ConfigureAwait(false);
-
-                                if (completedTask == statsTask)
-                                {
-                                    Log.Debug("[DIAGNOSTIC] GetDataStatisticsAsync completed, awaiting result");
-                                    var stats = await statsTask.ConfigureAwait(false);
-                                    Log.Debug("Diagnostic: Database contains {RecordCount} budget entries (Oldest: {Oldest}, Newest: {Newest})",
-                                        stats.TotalRecords,
-                                        stats.OldestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
-                                        stats.NewestRecord?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A");
-                                    Log.Debug("Stats: {TotalRecords} records", stats.TotalRecords);
-
-                                    if (stats.TotalRecords == 0)
-                                    {
-                                        Log.Warning("Diagnostic: Database has no budget entries. Dashboard will show empty data. Consider running data seeding scripts.");
-                                    }
-                                }
-                                else
-                                {
-                                    Log.Warning("Diagnostic: GetDataStatisticsAsync timed out after {TimeoutSeconds}s", 30);
-                                    Log.Warning("GetDataStatisticsAsync timed out");
-                                }
-                            }
-                            catch (Exception innerDiagEx)
-                            {
-                                Log.Warning(innerDiagEx, "Diagnostic: Failed to retrieve data statistics (threadpool execution)");
-                                Log.Warning(innerDiagEx, "GetDataStatisticsAsync exception");
-                            }
-                        }
-                        else
-                        {
-                            Log.Warning("Diagnostic: IDashboardService not available for data statistics check");
-                            Log.Debug("IDashboardService not available");
-                        }
-                    }
-                    Log.Debug("[DIAGNOSTIC] Data statistics check completed");
-                }
-                catch (Exception diagEx)
-                {
-                    Log.Warning(diagEx, "Diagnostic: Failed to retrieve data statistics");
-                    Log.Warning(diagEx, "Data statistics outer exception");
-                }
-
-                Log.Debug("Exiting RunStartupHealthCheckAsync successfully");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Startup health check failed: Database connection issue");
-                Log.Debug("[DIAGNOSTIC] RunStartupHealthCheckAsync caught exception: {Message}", ex.Message);
-                // Don't throw here, let the app start and log the issue
-            }
-
-            Log.Debug("RunStartupHealthCheckAsync method exit");
-        }
-
-        private static bool IsVerifyStartup(string[] args)
-        {
-            return args != null && Array.Exists(args, a => string.Equals(a, "--verify-startup", StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static async Task RunVerifyStartup(IHost host)
-        {
-            // Prevent indefinite startup hang by timing out the StartAsync call
-            using var startupCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
-            try
-            {
-                await host.StartAsync(startupCts.Token).ConfigureAwait(false);
-                // Immediately stop after successful start for verification mode
-                await host.StopAsync().ConfigureAwait(false);
-                Log.CloseAndFlush();
-            }
-            catch (OperationCanceledException oce)
-            {
-                Log.Fatal(oce, "Verify-startup timed out after 30 seconds");
-                Log.CloseAndFlush();
-                throw new InvalidOperationException("Verify-startup timed out", oce);
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "Verify-startup run failed");
-                Log.CloseAndFlush();
-                throw new InvalidOperationException("Verify-startup orchestration failed", ex);
-            }
-        }
-
-        private static void WireGlobalExceptionHandlers()
-        {
-            _timelineService?.RecordOperation("Wire Application.ThreadException handler", "Chrome Initialization");
-            Application.ThreadException += (sender, e) =>
-            {
-                try
-                {
-                    Log.Fatal(e.Exception, "Unhandled UI thread exception");
-                }
-                catch (Exception fatalLogEx)
-                {
-                    Log.Error(fatalLogEx, "Log.Fatal failed for UI thread exception");
-                }
-
-                try
-                {
-                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "UI Thread Exception", showToUser: false);
-                }
-                catch (Exception reportEx)
-                {
-                    Log.Warning(reportEx, "Failed to report UI thread exception to ErrorReportingService");
-                }
-
-                try
-                {
-                    MessageBox.Show($"UI Error: {e.Exception.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch
-                {
-                    // Swallow UI notification failures
-                }
-            };
-
-            _timelineService?.RecordOperation("Wire AppDomain.UnhandledException handler", "Chrome Initialization");
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            {
-                var ex = e.ExceptionObject as Exception;
-                try
-                {
-                    Log.Fatal(ex, "Unhandled AppDomain exception");
-                }
-                catch (Exception fatalLogEx)
-                {
-                    Log.Error(fatalLogEx, "Log.Fatal failed for AppDomain exception");
-                }
-
-                try
-                {
-                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex ?? new InvalidOperationException("Unhandled domain exception"), "Domain exception", showToUser: false);
-                }
-                catch (Exception reportEx)
-                {
-                    Log.Warning(reportEx, "Failed to report AppDomain exception to ErrorReportingService");
-                }
-            };
-
-            _timelineService?.RecordOperation("Wire TaskScheduler.UnobservedTaskException handler", "Chrome Initialization");
-            TaskScheduler.UnobservedTaskException += (sender, e) =>
-            {
-                try
-                {
-                    Log.Fatal(e.Exception, "Unobserved task exception");
-                }
-                catch (Exception fatalLogEx)
-                {
-                    Log.Error(fatalLogEx, "Log.Fatal failed for unobserved task exception");
-                }
-
-                try
-                {
-                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(e.Exception, "Unobserved Task Exception", showToUser: false);
-                }
-                catch (Exception reportEx)
-                {
-                    Log.Warning(reportEx, "Failed to report unobserved task exception to ErrorReportingService");
-                }
-
-                // Mark as observed to prevent process termination (behavior varies by .NET version/config)
-                e.SetObserved();
-            };
-        }
-
-
-
-        private static void ScheduleAutoCloseIfRequested(string[] args, Form mainForm)
-        {
-            var autoCloseMs = ParseAutoCloseMs(args);
-            if (autoCloseMs <= 0)
-            {
-                return;
-            }
-
-            // Keep the UI open during interactive runs unless explicitly allowed
-            if (Environment.UserInteractive && !IsAutoCloseAllowed(args))
-            {
-                Log.Information("Auto-close argument detected but ignored in interactive mode. Remove --auto-close-ms to keep the window open.");
                 return;
             }
 
             try
             {
-                ScheduleAutoClose(mainForm, autoCloseMs);
-                Log.Debug("Auto-close scheduled in {Ms}ms", autoCloseMs);
+                await healthCheckService.CheckHealthAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to schedule auto-close");
+                Log.Warning(ex, "Startup health check failed");
             }
         }
 
-        private static int ParseAutoCloseMs(string[] args)
+        private static void HandleFatalException(Exception ex)
         {
-            var autoCloseArg = args?.FirstOrDefault(a => a != null && a.StartsWith("--auto-close-ms=", StringComparison.OrdinalIgnoreCase));
-            if (string.IsNullOrWhiteSpace(autoCloseArg))
-            {
-                return -1;
-            }
+            Log.Fatal(ex, "Fatal exception during application startup");
 
-            return int.TryParse(autoCloseArg.Split('=', 2).LastOrDefault(), out var autoCloseMs) && autoCloseMs > 0
-                ? autoCloseMs
-                : -1;
+            var projectRoot = Directory.GetCurrentDirectory();
+            var logPath = Path.Combine(projectRoot, "logs");
+            var message = $"A fatal error occurred:\n\n{ex.Message}\n\nSee logs at {logPath} for details.";
+
+            MessageBox.Show(message, "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-
-        private static bool IsAutoCloseAllowed(string[] args)
-        {
-            if (IsCiEnvironment())
-            {
-                return true;
-            }
-
-            return args != null && Array.Exists(args, a => string.Equals(a, "--force-auto-close", StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static bool IsCiEnvironment()
-        {
-            return string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.OrdinalIgnoreCase)
-                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TF_BUILD"));
-        }
-
-        private static void ScheduleAutoClose(Form mainForm, int autoCloseMs)
-        {
-            try
-            {
-                if (autoCloseMs <= 0) return;
-                var timer = new System.Timers.Timer(autoCloseMs) { AutoReset = false };
-                timer.Elapsed += (sender, _) =>
-                {
-                    try
-                    {
-                        if (mainForm != null && !mainForm.IsDisposed)
-                        {
-                            mainForm.BeginInvoke(new Action(() =>
-                            {
-                                try
-                                {
-                                    if (!mainForm.IsDisposed)
-                                    {
-                                        mainForm.Close();
-                                    }
-                                }
-                                catch (Exception closeEx)
-                                {
-                                    Log.Debug(closeEx, "Auto-close failed to close main form");
-                                }
-                            }));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"Auto-close timer failed: {ex}");
-                    }
-                    finally
-                    {
-                        timer.Dispose();
-                    }
-                };
-                timer.Start();
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"Failed to schedule auto-close: {ex}");
-            }
-        }
-
-        private static void RunUiLoop(Form mainForm)
-        {
-            try
-            {
-                Log.Debug("[DIAGNOSTIC] RunUiLoop: ENTERED - mainForm type={Type}, IsDisposed={IsDisposed}, Visible={Visible}",
-                    mainForm?.GetType().Name ?? "(null)",
-                    mainForm?.IsDisposed,
-                    mainForm?.Visible);
-                Log.Debug("""
-                [DIAGNOSTIC] RunUiLoop: About to call Application.Run(mainForm)
-                Timestamp: { Timestamp}
-                """,
-                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
-
-                // CRITICAL: Explicitly ensure form is visible and properly positioned
-                // OnLoad may have completed but form visibility needs explicit enforcement
-                try
-                {
-                    // Force normal window state (not minimized/maximized)
-                    mainForm.WindowState = System.Windows.Forms.FormWindowState.Normal;
-
-                    // Ensure form is shown in taskbar
-                    mainForm.ShowInTaskbar = true;
-
-                    // Ensure proper positioning - center on primary screen
-                    mainForm.StartPosition = FormStartPosition.CenterScreen;
-
-                    // Explicitly show the form - DO NOT rely on Application.Run to show it
-                    // Some initialization patterns can prevent automatic showing
-                    if (!mainForm.Visible)
-                    {
-                        Log.Debug("Form not visible before Application.Run - calling Show()");
-                        mainForm.Show();
-                    }
-
-                    // Force form to front and activate
-                    mainForm.BringToFront();
-                    mainForm.Activate();
-
-                    // Force immediate repaint
-                    mainForm.Refresh();
-
-                    Log.Debug("mainForm visibility enforced: Visible={Visible}, WindowState={WindowState}, ShowInTaskbar={ShowInTaskbar}",
-                        mainForm.Visible, mainForm.WindowState, mainForm.ShowInTaskbar);
-                    Log.Debug(
-                        """
-                        [DIAGNOSTIC] Form state before message loop
-                        Timestamp: { Timestamp}
-                        Visible: { Visible}
-                        WindowState: { WindowState}
-                        Size: { Size}
-                        Location: { Location}
-                        """,
-                        DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
-                        mainForm.Visible,
-                        mainForm.WindowState,
-                        mainForm.Size,
-                        mainForm.Location);
-                }
-                catch (Exception visEx)
-                {
-                    Log.Error(visEx, "Failed to enforce form visibility");
-                    throw;
-                }
-
-                Log.Debug(
-                    """
-                    [DIAGNOSTIC] RunUiLoop: About to enter message loop
-                    Timestamp: { Timestamp}
-                    """,
-                    DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture));
-                Application.Run(mainForm);
-            }
-            catch (Exception ex)
-            {
-                try { Log.Fatal(ex, "Application.Run aborted with exception"); } catch (Exception logEx) { Log.Error(logEx, "Failed to log Application.Run fatal during shutdown"); }
-                try { (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "UI message loop aborted", showToUser: false); } catch (Exception reportEx) { Log.Warning(reportEx, "Failed to report Application.Run abort to ErrorReportingService"); }
-                throw new InvalidOperationException("UI message loop aborted", ex);
-            }
-            finally
-            {
-                // CRITICAL: Graceful shutdown sequence with cache freezing
-                // Timeline:
-                // T+0ms:   Form closes, OnFormClosing fires
-                // T+500ms: Cancellation tokens cancelled, timers stopped
-                // T+800ms: MainForm.Dispose() called, cache freeze signal set
-                // T+1200ms: RunUiLoop finally block - wait for pending tasks (extended timeout)
-                // T+3200ms: Force cache disposal if tasks timeout
-                // T+4200ms: Serilog flush
-
-                // Step 1: Signal cache freeze to prevent new writes during shutdown
-                try
-                {
-                    if (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IMemoryCache>(Services) is IMemoryCache cache)
-                    {
-                        Log.Information("[SHUTDOWN] Freezing cache - blocking new writes");
-                        // If cache implements IFrozenCache, signal freeze
-                        if (cache is IFrozenCache frozenCache)
-                        {
-                            frozenCache.FreezeCacheWrites();
-                            Log.Information("[SHUTDOWN] \u2713 Cache freeze signal set");
-                        }
-                    }
-                }
-                catch (Exception freezeEx)
-                {
-                    Log.Warning(freezeEx, "[SHUTDOWN] Failed to freeze cache");
-                }
-
-                // Step 2: Wait for pending background tasks with extended timeout (2 seconds)
-                var pendingTaskWaitTimeout = TimeSpan.FromSeconds(2);
-                try
-                {
-                    lock (_pendingTasksLock)
-                    {
-                        var activeTasks = _pendingBackgroundTasks.Where(t => !t.IsCompleted).ToList();
-                        if (activeTasks.Count > 0)
-                        {
-                            Log.Information("[SHUTDOWN] Waiting for {TaskCount} pending background tasks ({TimeoutMs}ms timeout)...",
-                                activeTasks.Count, (int)pendingTaskWaitTimeout.TotalMilliseconds);
-
-                            // Wait for all tasks with timeout
-                            bool tasksCompleted = Task.WaitAll(activeTasks.ToArray(), pendingTaskWaitTimeout);
-
-                            if (tasksCompleted)
-                            {
-                                Log.Information("[SHUTDOWN] \u2713 All {TaskCount} background tasks completed", activeTasks.Count);
-                            }
-                            else
-                            {
-                                var stillRunning = activeTasks.Where(t => !t.IsCompleted).Count();
-                                Log.Warning("[SHUTDOWN] {StillRunningCount} background tasks did not complete within {TimeoutMs}ms - proceeding with shutdown",
-                                    stillRunning, (int)pendingTaskWaitTimeout.TotalMilliseconds);
-                            }
-                        }
-                    }
-                }
-                catch (Exception taskWaitEx)
-                {
-                    Log.Warning(taskWaitEx, "[SHUTDOWN] Error waiting for background tasks");
-                }
-
-                // Step 3: Log exit before disposing scope (avoids logs during disposal)
-                try
-                {
-                    Log.Information("Application exiting - beginning graceful shutdown.");
-                }
-                catch (Exception logEx)
-                {
-                    // If logging already failed, continue with shutdown
-                    System.Diagnostics.Debug.WriteLine($"Failed to log exit message: {logEx.Message}");
-                }
-
-                // Step 4: Dispose application-lifetime scope (triggers IDisposable chain)
-                // This will dispose the singleton IMemoryCache
-                try
-                {
-                    Log.Information("[SHUTDOWN] Disposing DI container and services");
-                    _applicationScope?.Dispose();
-                    Log.Information("[SHUTDOWN] \u2713 DI container disposed");
-                }
-                catch (Exception disposeEx)
-                {
-                    // Log any errors during scope disposal, but don't let them prevent shutdown
-                    try { Log.Error(disposeEx, "[SHUTDOWN FATAL] Error during DI container disposal"); } catch { /* Ignore */ }
-                }
-
-                // Step 5: CRITICAL - Allow time for pending operations per Serilog documentation
-                // Extended from 1000ms to 2000ms to account for pending tasks that may have just completed
-                // These timings are for:
-                // - Pending log writes to complete (batching, disk I/O, async sinks)
-                // - File handles to flush and release
-                // - Background threads (RollingFileSink timer, async batching) to finish
-                try
-                {
-                    System.Threading.Thread.Sleep(2000);
-                }
-                catch
-                {
-                    // Timing not critical, continue with flush
-                }
-
-                // Step 6: Graceful shutdown of Serilog per official documentation
-                try
-                {
-                    Log.CloseAndFlush();
-                }
-                catch (Exception flushEx)
-                {
-                    // Even if flush fails, the sinks should still be disposed
-                    System.Diagnostics.Debug.WriteLine($"[SHUTDOWN] Serilog.CloseAndFlush failed: {flushEx.Message}");
-                }
-            }
-        }
-
-        private static ReportViewerLaunchOptions CreateReportViewerLaunchOptions(string[] args)
-        {
-            if (args == null || args.Length == 0)
-            {
-                return ReportViewerLaunchOptions.Disabled;
-            }
-
-            var requestArg = args.FirstOrDefault(arg => string.Equals(arg, "--show-report-viewer", StringComparison.OrdinalIgnoreCase));
-            if (requestArg == null)
-            {
-                return ReportViewerLaunchOptions.Disabled;
-            }
-
-            var rawPath = ExtractArgumentValue(args, "--report-path");
-            var normalized = NormalizeReportPath(rawPath);
-            if (string.IsNullOrWhiteSpace(normalized) || !File.Exists(normalized))
-            {
-                return ReportViewerLaunchOptions.Disabled;
-            }
-
-            return new ReportViewerLaunchOptions(true, normalized);
-        }
-
-        private static string? ExtractArgumentValue(string[] args, string prefix)
-        {
-            var match = args.FirstOrDefault(arg => arg.StartsWith(prefix + "=", StringComparison.OrdinalIgnoreCase));
-            if (match == null)
-            {
-                return null;
-            }
-
-            var value = match[(prefix.Length + 1)..].Trim();
-            return TrimQuotes(value);
-        }
-
-        private static string? TrimQuotes(string? value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return value;
-            }
-
-            if ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\'')))
-            {
-                return value[1..^1];
-            }
-
-            return value;
-        }
-
-        private static string? NormalizeReportPath(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return null;
-            }
-
-            try
-            {
-                var trimmed = path.Trim();
-                if (Path.IsPathRooted(trimmed))
-                {
-                    return Path.GetFullPath(trimmed);
-                }
-
-                var combined = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, trimmed));
-                return combined;
-            }
-            catch
-            {
-                return path;
-            }
-        }
-
-        private static void HandleStartupFailure(Exception ex)
-        {
-            try
-            {
-                Log.Fatal(ex, "Application failed to start");
-            }
-            catch (Exception logEx)
-            {
-                Log.Error(logEx, "Failed to log startup fatal error");
-            }
-            finally
-            {
-                Log.CloseAndFlush();
-            }
-
-            try
-            {
-                // Only try to report to ErrorReportingService if Services is available
-                if (Services != null)
-                {
-                    (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(Services))?.ReportError(ex, "Startup Failure", showToUser: false);
-                }
-            }
-            catch (Exception reportEx)
-            {
-                Log.Warning(reportEx, "Failed to report startup failure to ErrorReportingService");
-            }
-
-            // Show user-friendly error dialog for startup failures
-            try
-            {
-                var projectRoot = Directory.GetCurrentDirectory();
-                var logPath = Path.Combine(projectRoot, "logs");
-                var message = "Startup failed: Check logs at " + logPath;
-
-                // Check if we have UI initialized
-                if (Application.MessageLoop)
-                {
-                    MessageBox.Show(message, "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                else
-                {
-                    Log.Fatal(ex, "Startup Error without message loop");
-                }
-            }
-            catch (Exception uiEx)
-            {
-                // Last resort - write to console
-                Console.Error.WriteLine($"Critical startup error: {ex.Message}");
-                Console.Error.WriteLine($"UI error display failed: {uiEx.Message}");
-            }
-        }
-
-        #region Critical Service Validation
-
-        /// <summary>
-        /// Validates all critical DI registrations using the dedicated validation service.
-        /// This offloads validation logic to a testable, reusable service.
-        /// Logs comprehensive details about each validation category and service registration.
-        /// </summary>
-        private static void ValidateCriticalServices(IServiceProvider services)
-        {
-            var startTime = DateTime.Now;
-            try
-            {
-                Log.Debug("Starting DI validation at {Timestamp}", startTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
-
-                // Use the WinForms-specific validator which provides categorized validation
-                var validationService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetRequiredService<IWinFormsDiValidator>(services);
-
-                // Note: The validator itself logs detailed category-by-category progress
-                // including the formatted banner output, so we don't duplicate logging here
-                // Use a scoped provider for validation to allow resolving scoped services
-                DiValidationResult result;
-                using (var validationScope = services.CreateScope())
-                {
-                    var scopedServices = validationScope.ServiceProvider;
-                    result = validationService.ValidateAll(scopedServices);
-                }
-
-                var endTime = DateTime.Now;
-                var totalDuration = endTime - startTime;
-
-                if (!result.IsValid)
-                {
-                    Log.Fatal("╔════════════════════════════════════════════════════════════════╗");
-                    Log.Fatal("║   ✗ DI VALIDATION FAILED - STARTUP CANNOT PROCEED             ║");
-                    Log.Fatal("╠════════════════════════════════════════════════════════════════╣");
-                    Log.Fatal("║ Total Errors:   {Count,4}                                          ║", result.Errors.Count);
-                    Log.Fatal("║ Total Warnings: {Count,4}                                          ║", result.Warnings.Count);
-                    Log.Fatal("║ Duration:       {Duration,4:F0}ms                                    ║", totalDuration.TotalMilliseconds);
-                    Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
-
-                    foreach (var error in result.Errors)
-                    {
-                        Log.Fatal("  ✗ {Error}", error);
-                    }
-
-                    throw new InvalidOperationException(
-                        $"DI Validation failed with {result.Errors.Count} errors:{Environment.NewLine}" +
-                        string.Join(Environment.NewLine, result.Errors));
-                }
-
-                // SUCCESS PATH - concise summary
-                Log.Information("DI validation successful: {ServicesValidated} services validated, {Warnings} warnings, validation time: {ValidationMs}ms, total startup time: {TotalMs}ms",
-                    result.SuccessMessages.Count, result.Warnings.Count, result.ValidationDuration.TotalMilliseconds, totalDuration.TotalMilliseconds);
-
-                // Log any warnings if present
-                if (result.Warnings.Count > 0)
-                {
-                    Log.Warning("DI Validation Warnings ({Count}):", result.Warnings.Count);
-                    foreach (var warning in result.Warnings)
-                    {
-                        Log.Warning("  ⚠ {Warning}", warning);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "╔════════════════════════════════════════════════════════════════╗");
-                Log.Fatal("║   ✗ CRITICAL FAILURE DURING DI VALIDATION                      ║");
-                Log.Fatal("╠════════════════════════════════════════════════════════════════╣");
-                Log.Fatal("║ Exception Type: {Type,-44} ║", ex.GetType().Name);
-                Log.Fatal("║ Exception Msg:  {Message,-44} ║", ex.Message.Length > 44 ? ex.Message.Substring(0, 41) + "..." : ex.Message);
-                Log.Fatal("╚════════════════════════════════════════════════════════════════╝");
-                throw;
-            }
-        }
-
-        private static void ValidateSecrets(IServiceProvider services)
-        {
-            var config = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(services);
-
-            // Check database connection string
-            var connectionString = config.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                Log.Warning("No database connection string found in configuration. Ensure secrets/my.secrets or .env contains a valid 'ConnectionStrings:DefaultConnection'.");
-            }
-            else
-            {
-                Log.Debug("Database connection string configured (length: {Length})", connectionString.Length);
-            }
-
-            // Check Syncfusion license key
-            var syncfusionKey = config["Syncfusion:LicenseKey"];
-            if (string.IsNullOrEmpty(syncfusionKey))
-            {
-                Log.Warning("No Syncfusion license key found. UI controls may display evaluation nag screens or fail to initialize properly.");
-            }
-            else
-            {
-                Log.Debug("Syncfusion license key configured");
-            }
-
-            // Check xAI API key
-            var xaiKey = config["XAI:ApiKey"];
-            if (string.IsNullOrEmpty(xaiKey))
-            {
-                Log.Warning("No xAI API key found. AI recommendation services will use stub implementations.");
-            }
-            else
-            {
-                Log.Debug("xAI API key configured (length: {Length})", xaiKey.Length);
-            }
-        }
-        #endregion
     }
 }

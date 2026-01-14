@@ -17,7 +17,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.ViewModels;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;
@@ -50,7 +50,6 @@ namespace WileyWidget.WinForms.Controls
     {
         private readonly BudgetOverviewViewModel _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
-        private readonly Services.IThemeIconService? _iconService;
 
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
@@ -81,9 +80,6 @@ namespace WileyWidget.WinForms.Controls
 
         // Event handlers for cleanup
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
-
-        // private EventHandler<AppTheme>? _btnRefreshThemeChangedHandler; // Removed unused
-        // private EventHandler<AppTheme>? _btnExportCsvThemeChangedHandler; // Removed unused
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
 
@@ -96,11 +92,10 @@ namespace WileyWidget.WinForms.Controls
 
         // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
 
-        public BudgetOverviewPanel(BudgetOverviewViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Services.IThemeIconService? iconService = null)
+        public BudgetOverviewPanel(BudgetOverviewViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-            _iconService = iconService;
             DataContext = vm;
 
             InitializeComponent();
@@ -383,16 +378,11 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                var iconService = _iconService;
-                var theme = AppTheme.Office2019Colorful; // ThemeManager removed, use default
                 if (_btnRefresh != null)
                 {
-                    _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 14);
                     _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                     _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
                 }
-
-                // Theme subscription removed - handled by SfSkinManager
             }
             catch { }
         }
@@ -401,16 +391,11 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                var iconService = _iconService;
-                // Use default theme for icon selection
                 if (_btnExportCsv != null)
                 {
-                    _btnExportCsv.Image = iconService?.GetIcon("export", WileyWidget.WinForms.Theming.AppTheme.Light, 14);
                     _btnExportCsv.ImageAlign = ContentAlignment.MiddleLeft;
                     _btnExportCsv.TextImageRelation = TextImageRelation.ImageBeforeText;
                 }
-
-                // Theme subscription removed - handled by SfSkinManager
             }
             catch { }
         }
@@ -689,7 +674,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void OnThemeChanged(object? sender, AppTheme theme)
+        private void OnThemeChanged(object? sender, string theme)
         {
             try
             {
@@ -785,3 +770,4 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+

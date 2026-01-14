@@ -10,6 +10,30 @@ namespace WileyWidget.WinForms.Models
     /// </summary>
     public class MunicipalAccountEditModel
     {
+        public MunicipalAccountEditModel(MunicipalAccount? account = null)
+        {
+            if (account != null)
+            {
+                Id = account.Id;
+                AccountNumber = account.AccountNumber?.Value ?? string.Empty;
+                Name = account.Name;
+                Description = account.FundDescription;
+                Type = account.Type;
+                Fund = account.Fund;
+                DepartmentId = account.DepartmentId;
+                Balance = account.Balance;
+                BudgetAmount = account.BudgetAmount;
+                IsActive = account.IsActive;
+                ParentAccountId = account.ParentAccountId;
+            }
+            else
+            {
+                IsActive = true;
+                Balance = 0m;
+                BudgetAmount = 0m;
+            }
+        }
+
         public int Id { get; set; }
 
         [Required]

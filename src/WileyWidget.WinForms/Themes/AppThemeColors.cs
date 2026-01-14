@@ -16,3 +16,4 @@ internal static class AppThemeColors
     public static Color ChatIncomingText => ColorTranslator.FromHtml("#E3F2FD");
     public static Color ChatOutgoingText => ColorTranslator.FromHtml("#E8F5E9");
 }
+

@@ -13,10 +13,10 @@ using Syncfusion.WinForms.Controls;
 using System.ComponentModel;
 using System.Globalization;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Services;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
@@ -79,15 +79,8 @@ namespace WileyWidget.WinForms.Controls
         private RadialGauge? _expenseGauge;
         private RadialGauge? _varianceGauge;
 
-        // Theme change handlers
-        private EventHandler<AppTheme>? _themeChangedHandler;
-
         // Logger for diagnostic output (nullable - gracefully handles absence)
         private readonly Microsoft.Extensions.Logging.ILogger<DashboardPanel>? _logger;
-        private readonly Services.IThemeIconService? _iconService;
-
-        // Theme service for theme-aware operations (nullable - gracefully handles absence)
-        private readonly Services.IThemeService? _themeService;
 
         // Shared tooltip for all interactive controls (prevents memory leaks from multiple ToolTip instances)
         private ToolTip? _sharedTooltip;
@@ -99,19 +92,18 @@ namespace WileyWidget.WinForms.Controls
         }
 
         // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
+        // Deprecated services (IThemeIconService, IThemeService) removed - SfSkinManager handles theme cascade
 
         private IAsyncRelayCommand? _refreshCommand;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null, Services.IThemeService? themeService = null, Services.IThemeIconService? iconService = null)
+        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             DataContext = vm;
 
             _logger = logger;
-            _themeService = themeService;
-            _iconService = iconService;
             // Initialize shared tooltip for all interactive controls
             _sharedTooltip = new ToolTip
             {
@@ -181,15 +173,6 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
-            Name = "DashboardPanel";
-            AccessibleName = DashboardPanelResources.PanelTitle; // "Dashboard"
-            Size = new Size(1200, 800);
-            Dock = DockStyle.Fill;
-            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
-        }
-
-        private void InitializeComponent()
-        {
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
@@ -201,7 +184,15 @@ namespace WileyWidget.WinForms.Controls
                 if (dh != null && txtProp != null) txtProp.SetValue(dh, DashboardPanelResources.PanelTitle);
             }
             catch { }
-            _topPanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8) };
+            _topPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Padding = new Padding(8),
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            };
+            SfSkinManager.SetVisualStyle(_topPanel, "Office2019Colorful");
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
@@ -217,56 +208,16 @@ namespace WileyWidget.WinForms.Controls
 
             try
             {
-                var iconService = _iconService;
-                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
-                _btnRefresh.Image = iconService?.GetIcon("refresh", theme, 16);
+                // Icon removed per SfSkinManager enforcement rules
                 _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
                 _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
-
-                _btnRefreshThemeChangedHandler = (s, t) =>
-                {
-                    try
-                    {
-                        // Re-resolve icon service on theme change to avoid stale closure
-                        var svc = Program.Services != null
-                            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services)
-                            : null;
-                        if (_dispatcherHelper != null)
-                        {
-                            _ = _dispatcherHelper.InvokeAsync(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16));
-                        }
-                        else
-                        {
-                            var parent = _btnRefresh.GetCurrentParent();
-                            if (parent != null && parent.InvokeRequired)
-                            {
-                                parent.BeginInvoke(new System.Action(() => _btnRefresh.Image = svc?.GetIcon("refresh", t, 16)));
-                            }
-                            else
-                            {
-                                _btnRefresh.Image = svc?.GetIcon("refresh", t, 16);
-                            }
-                        }
-                    }
-                    catch { }
-                };
-                WileyWidget.WinForms.Theming.ThemeManager.ThemeChanged += _btnRefreshThemeChangedHandler;
             }
             catch { }
 
             _lblLastRefreshed = new Label { Name = "LastUpdatedLabel", AutoSize = true, Text = "Last: -", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
 
-            // Dashboard label with home icon
+            // Dashboard label (icon removed per SfSkinManager enforcement)
             var dashboardLabel = new ToolStripLabel("Dashboard");
-            try
-            {
-                var iconService = _iconService;
-                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
-                dashboardLabel.Image = iconService?.GetIcon("home", theme, 16);
-                dashboardLabel.ImageAlign = ContentAlignment.MiddleLeft;
-                dashboardLabel.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
             _toolStrip.Items.Add(dashboardLabel);
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(_btnRefresh);
@@ -275,7 +226,6 @@ namespace WileyWidget.WinForms.Controls
 
             // Export buttons (Excel / PDF)
             var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            try { btnExportExcel.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("excel", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportExcel.Click += async (s, e) =>
             {
                 try
@@ -290,7 +240,6 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(btnExportExcel);
 
             var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            try { btnExportPdf.Image = (Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Services.IThemeIconService>(Program.Services) : null)?.GetIcon("pdf", ThemeManager.CurrentTheme, 16); } catch { }
             btnExportPdf.Click += async (s, e) =>
             {
                 try
@@ -312,15 +261,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Navigate to Accounts panel",
                 ToolTipText = "View Municipal Accounts (Ctrl+Shift+A)"
             };
-            try
-            {
-                var iconService = _iconService;
-                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
-                btnAccounts.Image = iconService?.GetIcon("wallet", theme, 16);
-                btnAccounts.ImageAlign = ContentAlignment.MiddleLeft;
-                btnAccounts.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
+            // Icon removed per SfSkinManager enforcement rules
             btnAccounts.Click += (s, e) =>
             {
                 try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Accounts"); } catch { }
@@ -334,15 +275,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Navigate to Charts analytics panel",
                 ToolTipText = "View Budget Analytics (Ctrl+Shift+C)"
             };
-            try
-            {
-                var iconService = _iconService;
-                var theme = _themeService?.CurrentTheme ?? AppTheme.Office2019Colorful;
-                btnCharts.Image = iconService?.GetIcon("chart", theme, 16);
-                btnCharts.ImageAlign = ContentAlignment.MiddleLeft;
-                btnCharts.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
+            // Icon removed per SfSkinManager enforcement rules
             btnCharts.Click += (s, e) =>
             {
                 try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Charts"); } catch { }
@@ -595,26 +528,7 @@ namespace WileyWidget.WinForms.Controls
             // Bindings
             TryApplyViewModelBindings();
 
-            // Theme update handler - ensure UI thread marshaling
-            _themeChangedHandler = (s, t) =>
-            {
-                try
-                {
-                    if (IsDisposed) return;
-                    if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                    {
-                        try { _ = _dispatcherHelper.InvokeAsync(ApplyCurrentTheme); } catch { }
-                        return;
-                    }
-                    if (InvokeRequired)
-                    {
-                        try { BeginInvoke(new System.Action(ApplyCurrentTheme)); } catch { }
-                        return;
-                    }
-                    ApplyCurrentTheme();
-                }
-                catch { }
-            };
+            // Theme handler removed - SfSkinManager cascade handles all theme changes automatically
         }
 
         /// <summary>
@@ -1323,6 +1237,24 @@ namespace WileyWidget.WinForms.Controls
 
         }
 
+        private void UpdateNoData()
+        {
+            try
+            {
+                if (_noDataOverlay != null && _vm != null)
+                {
+                    bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
+                    _noDataOverlay.Visible = show;
+                    if (show) _noDataOverlay.BringToFront();
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Control was disposed during update
+            }
+            catch { }
+        }
+
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             try
@@ -1520,8 +1452,7 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
-                // Unsubscribe from theme events
-                try { if (_themeService != null) _themeService.ThemeChanged -= _themeChangedHandler; } catch { }
+                // Unsubscribe from ViewModel events
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
 
                 // Unsubscribe from PanelHeader events using stored named handlers (no reflection needed)
@@ -1596,3 +1527,4 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+

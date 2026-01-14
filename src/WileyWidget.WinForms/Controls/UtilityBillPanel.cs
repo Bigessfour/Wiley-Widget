@@ -11,7 +11,7 @@ using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.Input;
 using Syncfusion.WinForms.DataGrid.Events;
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
@@ -61,7 +61,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
     private ToolTip? _toolTip;
-
+    private GradientPanelExt? topPanel;
+    private GradientPanelExt? bottomPanel;
 
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
@@ -185,7 +186,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeTopPanel()
     {
-        var topPanel = new GradientPanelExt
+        topPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
@@ -440,12 +441,15 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         topPanel.Controls.Add(_gridPanel);
 
         // Button panel
-        _buttonPanel = new Panel
+        _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 50,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
+        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
 
         var buttonTable = new TableLayoutPanel
         {
@@ -457,7 +461,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         for (int i = 0; i < 6; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
 
-        _createBillButton = new Button
+        _createBillButton = new SfButton
         {
             Text = "&Create Bill",
             TabIndex = 2,
@@ -466,7 +470,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         };
         _createBillButton.Click += async (s, e) => await _viewModel.CreateBillCommand.ExecuteAsync(null);
 
-        _saveBillButton = new Button
+        _saveBillButton = new SfButton
         {
             Text = "&Save Bill",
             TabIndex = 3,
@@ -475,7 +479,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         };
         _saveBillButton.Click += async (s, e) => await _viewModel.SaveBillCommand.ExecuteAsync(null);
 
-        _deleteBillButton = new Button
+        _deleteBillButton = new SfButton
         {
             Text = "&Delete Bill",
             TabIndex = 4,
@@ -484,7 +488,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         };
         _deleteBillButton.Click += async (s, e) => await _viewModel.DeleteBillCommand.ExecuteAsync(null);
 
-        _markPaidButton = new Button
+        _markPaidButton = new SfButton
         {
             Text = "&Mark Paid",
             TabIndex = 5,
@@ -493,7 +497,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         };
         _markPaidButton.Click += async (s, e) => await _viewModel.MarkAsPaidCommand.ExecuteAsync(null);
 
-        _generateReportButton = new Button
+        _generateReportButton = new SfButton
         {
             Text = "&Generate Report",
             TabIndex = 6,
@@ -502,7 +506,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         };
         _generateReportButton.Click += async (s, e) => await _viewModel.GenerateReportCommand.ExecuteAsync(null);
 
-        _refreshButton = new Button
+        _refreshButton = new SfButton
         {
             Text = "&Refresh",
             TabIndex = 7,
@@ -526,7 +530,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeBottomPanel()
     {
-        var bottomPanel = new GradientPanelExt
+        bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
@@ -667,6 +671,29 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
 
         _customersGrid.CurrentCellActivated += CustomersGrid_CurrentCellActivated;
+
+        void CustomersGrid_CurrentCellActivated(object? sender, Syncfusion.WinForms.DataGrid.Events.CurrentCellActivatedEventArgs e)
+        {
+            try
+            {
+                var currentCell = _customersGrid?.CurrentCell;
+                if (currentCell != null && currentCell.RowIndex >= 0 && ViewModel != null)
+                {
+                    // Handle cell activation - load related utility bills for selected customer
+                    var selectedRow = _customersGrid?.View?.Records.ElementAtOrDefault(currentCell.RowIndex);
+                    if (selectedRow?.Data is UtilityCustomer customer)
+                    {
+                        Logger.LogDebug("Customer selected: {CustomerId} - {CustomerName}", customer.Id, customer.DisplayName);
+                        ViewModel.SelectedCustomer = customer;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to handle customer selection");
+            }
+        }
+
 #pragma warning disable CS8602
         customersPanel.Controls.Add(_customersGrid!);
 #pragma warning restore CS8602
@@ -1008,22 +1035,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Theme Integration
 
-    private void ApplyTheme(AppTheme theme)
+    private void ApplyTheme(string theme)
     {
         try
         {
             // Theme is automatically applied by SfSkinManager cascade from parent
-            // Update button icons based on theme
-            IThemeIconService? iconService = null;
-            if (ServiceProvider != null)
-            {
-                iconService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeIconService>(ServiceProvider);
-            }
-            if (iconService != null)
-            {
-                UpdateButtonIcons(iconService, theme);
-            }
-
+            // Button icons removed per SfSkinManager enforcement rules
             // ThemeManager subscription removed per project rules (SfSkinManager cascade only)
         }
         catch (Exception ex)
@@ -1032,36 +1049,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         }
     }
 
-    private void UpdateButtonIcons(IThemeIconService iconService, AppTheme theme)
-    {
-        try
-        {
-            var iconSize = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(16f);
-
-            if (_refreshButton != null)
-                _refreshButton.Image = iconService.GetIcon("refresh", theme, iconSize);
-
-            if (_createBillButton != null)
-                _createBillButton.Image = iconService.GetIcon("add", theme, iconSize);
-
-            if (_saveBillButton != null)
-                _saveBillButton.Image = iconService.GetIcon("save", theme, iconSize);
-
-            if (_deleteBillButton != null)
-                _deleteBillButton.Image = iconService.GetIcon("delete", theme, iconSize);
-
-            if (_exportExcelButton != null)
-                _exportExcelButton.Image = iconService.GetIcon("export", theme, iconSize);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Error updating button icons");
-        }
-    }
+    // UpdateButtonIcons method removed - icon management via deprecated IThemeIconService is not authorized
+    // SfSkinManager has sole proprietorship over all theme and color management
 
     #endregion
 
     #region Lifecycle
+    // Deprecated IThemeIconService removed - SfSkinManager handles theme cascade
 
     protected override void OnLoad(EventArgs e)
     {
@@ -1143,3 +1137,4 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #endregion
 }
+

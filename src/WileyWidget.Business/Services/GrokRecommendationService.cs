@@ -143,11 +143,11 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
 
             // Check cache first
             var cacheKey = GenerateCacheKey(departmentExpenses, targetProfitMargin);
-            if (_cache.TryGetValue(cacheKey, out RecommendationResult? cachedResult))
+            if (_cache.TryGetValue(cacheKey, out object? cachedObj) && cachedObj is RecommendationResult cachedResult && cachedResult is not null)
             {
                 _cacheHits.Add(1);
                 _logger.LogDebug("Cache hit (key hash: {CacheKeyHash})", GetCacheKeyHash(cacheKey));
-                return cachedResult!;
+                return cachedResult;
             }
 
             RecommendationResult result;
@@ -213,7 +213,10 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
                         entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
                         return new HashSet<string>();
                     });
-                    index.Add(cacheKey);
+                    if (index is not null)
+                    {
+                        index.Add(cacheKey);
+                    }
                 }
             }
             catch (Exception ex)
@@ -233,73 +236,74 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         }
     }
 
-    private async Task<RecommendationResult> QueryGrokApiAsync(
+private async Task<RecommendationResult> QueryGrokApiAsync(
         Dictionary<string, decimal> departmentExpenses,
         decimal targetProfitMargin,
         CancellationToken cancellationToken)
-    {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-
-        var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
-
-        var requestBody = new
         {
-            model = _model,
-            messages = new[]
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
+
+            var requestBody = new
             {
-                new { role = "system", content = "You are a financial analyst specializing in municipal utility rate optimization. Provide precise, data-driven recommendations based on industry standards and cost analysis." },
-                new { role = "user", content = prompt }
-            },
-            temperature = 0.3, // Lower temperature for more consistent results
-            max_tokens = 500
-        };
-
-        _logger.LogDebug("Sending request to Grok API: {Endpoint} with model {Model}", _apiEndpoint, _model);
-
-        var response = await _circuitBreaker.ExecuteAsync(() =>
-            client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken));
-
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-
-        // Extract the content from Grok's response structure in a robust way
-        if (result == null)
-            throw new InvalidOperationException("Grok API returned null response");
-
-        string? content = null;
-        try
-        {
-            var root = result.RootElement;
-            if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
-            {
-                var firstChoice = choicesEl[0];
-                if (firstChoice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
+                model = _model,
+                messages = new[]
                 {
-                    if (messageEl.TryGetProperty("content", out var contentEl))
+                    new { role = "system", content = "You are a financial analyst specializing in municipal utility rate optimization. Provide precise, data-driven recommendations based on industry standards and cost analysis." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.3, // Lower temperature for more consistent results
+                max_tokens = 500
+            };
+
+            _logger.LogDebug("Sending request to Grok API: {Endpoint} with model {Model}", _apiEndpoint, _model);
+
+            var response = await _circuitBreaker.ExecuteAsync(() =>
+                client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken));
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+
+            // Extract the content from Grok's response structure in a robust way
+            if (result == null)
+                throw new InvalidOperationException("Grok API returned null response");
+
+            string? content = null;
+            try
+            {
+                var root = result.RootElement;
+                if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
+                {
+                    var firstChoice = choicesEl[0];
+                    if (firstChoice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
                     {
-                        if (contentEl.ValueKind == JsonValueKind.String) content = contentEl.GetString();
-                        else content = contentEl.GetRawText();
+                        if (messageEl.TryGetProperty("content", out var contentEl))
+                        {
+                            if (contentEl.ValueKind == JsonValueKind.String) content = contentEl.GetString();
+                            else content = contentEl.GetRawText();
+                        }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse Grok API response content");
+                throw new InvalidOperationException("Failed to parse Grok API response", ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+                throw new InvalidOperationException("Grok API returned empty or invalid content");
+
+            // Parse response (content is non-null due to check above)
+            var safeContent = content!;
+            var recommendationResult = ParseGrokResponse(safeContent, departmentExpenses.Keys, targetProfitMargin);
+
+            _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
+            return recommendationResult;
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to parse Grok API response content");
-        }
-
-        if (string.IsNullOrWhiteSpace(content))
-            throw new InvalidOperationException("Grok API returned empty or invalid content");
-
-        // Parse response (content is non-null due to check above)
-        var safeContent = content!;
-        var recommendationResult = ParseGrokResponse(safeContent, departmentExpenses.Keys, targetProfitMargin);
-
-        _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
-        return recommendationResult;
-    }
 
     private Dictionary<string, decimal> CalculateRuleBasedRecommendations(
         Dictionary<string, decimal> departmentExpenses,
@@ -578,11 +582,11 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
             _logger.LogInformation("Requesting explanation from Grok API");
 
             var explanationCacheKey = $"rec_expl_{GenerateCacheKey(departmentExpenses, targetProfitMargin)}";
-            if (_cache.TryGetValue(explanationCacheKey, out string? cachedExplanation))
+            if (_cache.TryGetValue(explanationCacheKey, out object? cachedObj) && cachedObj is string cachedExplanation && cachedExplanation is not null)
             {
                 _cacheHits.Add(1);
                 _logger.LogDebug("Explanation cache hit (key hash: {CacheKeyHash})", GetCacheKeyHash(explanationCacheKey));
-                return cachedExplanation!;
+                return cachedExplanation;
             }
 
             string explanation;
@@ -624,7 +628,10 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
                             entry.AbsoluteExpirationRelativeToNow = _cacheDuration.Add(TimeSpan.FromDays(1));
                             return new HashSet<string>();
                         });
-                        index.Add(explanationCacheKey);
+                        if (index is not null)
+                        {
+                            index.Add(explanationCacheKey);
+                        }
                     }
                 }
                 catch (Exception ex)

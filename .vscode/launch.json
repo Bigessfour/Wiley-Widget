@@ -6,7 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build WileyWidget.WinForms",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net9.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,

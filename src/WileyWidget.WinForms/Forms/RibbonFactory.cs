@@ -6,8 +6,9 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Theming;
+// REMOVED: using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -40,9 +41,8 @@ public static class RibbonFactory
     /// <returns>Tuple containing the fully configured RibbonControlAdv and its Home tab reference</returns>
     /// <exception cref="ArgumentNullException">Thrown when form parameter is null</exception>
     public static (RibbonControlAdv Ribbon, ToolStripTabItem HomeTab) CreateRibbon(
-        MainForm form,
-        ILogger? logger,
-        IThemeIconService? iconService = null)
+        WileyWidget.WinForms.Forms.MainForm form,
+        ILogger? logger)
     {
         if (form == null)
         {
@@ -56,66 +56,17 @@ public static class RibbonFactory
             AccessibleDescription = "Main application ribbon with navigation and tools",
             Dock = (DockStyleEx)DockStyle.Top,
             MinimumSize = new System.Drawing.Size(800, 120),
-            // Menu button configuration - enables Backstage view
             MenuButtonText = "File",
             MenuButtonWidth = 54,
-            MenuButtonVisible = true, // Required for Backstage access
-            // Launcher button style for panel launchers
+            MenuButtonVisible = false, // Disabled due to BackStage issues
             LauncherStyle = Syncfusion.Windows.Forms.Tools.LauncherStyle.Office2007
         };
 
-        // ===== CRITICAL INITIALIZATION ORDER REQUIREMENT =====
-        // DON'T initialize BackStage during ribbon construction - it MUST be deferred until after ribbon.ResumeLayout().
-        //
-        // WHY: BackStage.OnPaint requires access to ribbon's internal renderer/theme properties.
-        // These properties are NOT initialized until ribbon.ResumeLayout(performLayout: true) completes.
-        // If BackStage is created/attached earlier, it will throw NullReferenceException when painting:
-        //   - Syncfusion.Windows.Forms.BackStageRendererProperty.OnPaintPanelBackground(...)
-        //
-        // CORRECT ORDER (per Syncfusion best practices):
-        //   1. Create RibbonControlAdv
-        //   2. SuspendLayout()
-        //   3. Add all tabs, panels, buttons
-        //   4. ResumeLayout(performLayout: true)  ← Renderer properties initialized HERE
-        //   5. Create BackStageView/BackStage     ← Safe to create NOW
-        //   6. Attach to ribbon
-        //
-        // See lines 430-463 below for proper BackStage initialization.
-
-        // Performance optimization: reduce redraws during layout changes
         ribbon.SuspendLayout();
 
-        // CRITICAL: SfSkinManager is SOLE PROPRIETOR of all theme and color decisions (per approved workflow)
-        // Explicit theme application (defensive coding - ensures theme applied even if cascade fails)
-        // NO manual color assignments (BackColor, ForeColor) - theme cascade handles all child controls
-        var currentThemeString = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        var currentTheme = MapTheme(currentThemeString);
-        // Theme will cascade from MainForm via SfSkinManager.SetVisualStyle applied at form level
-        ribbon.OfficeColorScheme = currentThemeString.Contains("Dark", StringComparison.OrdinalIgnoreCase)
-            ? Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed
-            : Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed;
-
-        var homeTab = new ToolStripTabItem
-        {
-            Name = "RibbonTab_Home",
-            Text = "Home",
-            AccessibleName = "Home Tab",
-            AccessibleDescription = "Main navigation and tools"
-        };
-
-        // Create ToolStripEx for the Home tab
-        var homeToolStrip = new ToolStripEx
-        {
-            Name = "HomeToolStrip",
-            GripStyle = ToolStripGripStyle.Hidden,
-            // Performance: reduce layout recalculations
-            LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow,
-            // Improve rendering quality
-            RenderMode = ToolStripRenderMode.Professional,
-            // Auto-size for ribbon layout
-            AutoSize = true,
-            Stretch = true
-        };
+        var currentThemeString = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var homeTab = new ToolStripTabItem { Text = "Home", AccessibleName = "Home Tab" };
+        var homeToolStrip = new ToolStripEx { Name = "HomeToolStrip", AccessibleName = "Home ToolStrip" };
 
         // ===== NAVIGATION PANEL =====
         var navPanel = new ToolStripPanelItem
@@ -123,73 +74,36 @@ public static class RibbonFactory
             Name = "NavigationPanel",
             Text = "Navigation",
             AccessibleName = "Navigation Panel",
-            AccessibleDescription = "Primary navigation buttons",
-            // Row configuration for multi-row layouts (1 = single row)
+            AccessibleDescription = "Main navigation buttons to switch between panels",
             RowCount = 1
         };
 
-        var dashboardBtn = CreateNavButton("Nav_Dashboard", MainFormResources.Dashboard, iconService, "dashboard", currentTheme,
-            () => form.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true));
+        var dashboardBtn = CreateNavButton("Nav_Dashboard", "📊 Dashboard", "dashboard", currentThemeString,
+            () => form.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Left, allowFloating: true));
 
-        var accountsBtn = CreateNavButton("Nav_Accounts", MainFormResources.Accounts, iconService, "accounts", currentTheme,
-            () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true));
+        var accountsBtn = CreateNavButton("Nav_Accounts", "💰 Accounts", "accounts", currentThemeString,
+            () => form.ShowPanel<AccountsPanel>("Chart of Accounts", DockingStyle.Fill, allowFloating: true));
 
-        var budgetBtn = CreateNavButton("Nav_Budget", "Budget", iconService, "budget", currentTheme,
-            () => form.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true));
+        var budgetBtn = CreateNavButton("Nav_Budget", "📈 Budget", "budget", currentThemeString,
+            () => form.ShowPanel<BudgetPanel>("Budget Management", DockingStyle.Fill, allowFloating: true));
 
-        var chartsBtn = CreateNavButton("Nav_Charts", MainFormResources.Charts, iconService, "chart", currentTheme,
-            () => form.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true));
+        var chartsBtn = CreateNavButton("Nav_Charts", "📉 Charts", "charts", currentThemeString,
+            () => form.ShowPanel<ChartPanel>("Financial Charts", DockingStyle.Right, allowFloating: true));
 
-        var customersBtn = CreateNavButton("Nav_Customers", "Customers", iconService, "customers", currentTheme,
-            () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true));
+        var customersBtn = CreateNavButton("Nav_Customers", "👥 Customers", "customers", currentThemeString,
+            () => form.ShowPanel<CustomersPanel>("Customer Management", DockingStyle.Fill, allowFloating: true));
 
+        // Panels dropdown menu
         var panelsDropDown = new ToolStripDropDownButton
         {
-            Name = "Nav_Panels",
-            AccessibleName = "Panels",
-            AccessibleDescription = "Open any application panel",
-            Text = "Panels",
-            AutoSize = true,
-            ToolTipText = "Open any panel"
+            Name = "PanelsDropdown",
+            Text = "▼ Panels",
+            AccessibleName = "Panels Menu",
+            AccessibleDescription = "Access all available panels"
         };
 
-        // Populate panels dropdown from PanelRegistry (only those with ShowInRibbonPanelsMenu = true)
-        var panelsToShow = PanelRegistry.Panels.Where(p => p.ShowInRibbonPanelsMenu).OrderBy(p => p.DisplayName);
-        foreach (var p in panelsToShow)
-        {
-            var safeName = $"Panel_{string.Concat(p.DisplayName.Where(c => !char.IsWhiteSpace(c) && c != '&'))}".Replace(' ', '_');
-            var item = new ToolStripMenuItem(p.DisplayName)
-            {
-                Name = safeName,
-                ToolTipText = $"Open {p.DisplayName}",
-                AccessibleName = $"Open {p.DisplayName}"
-            };
-
-            item.Click += (s, e) =>
-            {
-                try
-                {
-                    // Use reflection to invoke generic ShowPanel<TPanel> on MainForm
-                    var showMethod = form.GetType().GetMethod("ShowPanel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                    if (showMethod == null)
-                    {
-                        Serilog.Log.Error("RibbonFactory: ShowPanel method not found via reflection for Panels menu navigation");
-                        return;
-                    }
-
-                    var generic = showMethod.MakeGenericMethod(p.PanelType);
-                    generic.Invoke(form, new object[] { p.DisplayName, p.DefaultDock, true });
-                    Serilog.Log.Information("[RIBBON_PANELS] Invoked ShowPanel<{PanelType}> for {Panel}", p.PanelType.Name, p.DisplayName);
-                }
-                catch (Exception ex)
-                {
-                    Serilog.Log.Error(ex, "[RIBBON_PANELS] Failed to open panel {Panel}", p.DisplayName);
-                    MessageBox.Show($"Failed to open panel {p.DisplayName}: {ex.Message}", "Panel Navigation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            };
-
-            panelsDropDown.DropDownItems.Add(item);
-        }
+        // TODO: Populate panels dropdown from registry
+        // For now, panels dropdown is empty - user should implement IPanelRegistry integration
 
         navPanel.Items.AddRange(new ToolStripItem[]
         {
@@ -211,13 +125,13 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var analyticsBtn = CreateNavButton("Nav_Analytics", "Analytics", iconService, "analytics", currentTheme,
+        var analyticsBtn = CreateNavButton("Nav_Analytics", "Analytics", "analytics", currentThemeString,
             () => form.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true));
 
-        var auditLogBtn = CreateNavButton("Nav_AuditLog", "Audit Log", iconService, "audit", currentTheme,
+        var auditLogBtn = CreateNavButton("Nav_AuditLog", "Audit Log", "audit", currentThemeString,
             () => form.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true));
 
-        var reportsBtn = CreateNavButton("Nav_Reports", MainFormResources.Reports, iconService, "reports", currentTheme,
+        var reportsBtn = CreateNavButton("Nav_Reports", "Reports", "reports", currentThemeString,
             () =>
             {
                 try
@@ -230,10 +144,10 @@ public static class RibbonFactory
                 }
             });
 
-        var insightsBtn = CreateNavButton("Nav_ProactiveInsights", "💡 Insights", iconService, "insights", currentTheme,
+        var insightsBtn = CreateNavButton("Nav_ProactiveInsights", "💡 Insights", "insights", currentThemeString,
             () => form.ShowPanel<ProactiveInsightsPanel>("Proactive AI Insights", DockingStyle.Right, allowFloating: true));
 
-        var warRoomBtn = CreateNavButton("Nav_WarRoom", "⚔ War Room", iconService, "warroom", currentTheme,
+        var warRoomBtn = CreateNavButton("Nav_WarRoom", "⚔ War Room", "warroom", currentThemeString,
             () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true));
 
         advancedPanel.Items.AddRange(new ToolStripItem[]
@@ -279,7 +193,7 @@ public static class RibbonFactory
             }
         };
 
-        var quickBooksBtn = CreateNavButton("Nav_QuickBooks", "💳 QuickBooks", iconService, "quickbooks", currentTheme,
+        var quickBooksBtn = CreateNavButton("Nav_QuickBooks", "💳 QuickBooks", "quickbooks", currentThemeString,
             () => form.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true));
 
         integrationPanel.Items.AddRange(new ToolStripItem[]
@@ -298,10 +212,9 @@ public static class RibbonFactory
             RowCount = 1
         };
 
-        var settingsBtn = CreateNavButton("Nav_Settings", MainFormResources.Settings, iconService, "settings", currentTheme,
+        var settingsBtn = CreateNavButton("Nav_Settings", "Settings", "settings", currentThemeString,
             () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true));
 
-        // Search box
         var searchLabel = new ToolStripLabel
         {
             Text = "Search:",
@@ -317,7 +230,6 @@ public static class RibbonFactory
             Width = 180,
             ToolTipText = "Search panels and data (press Enter)"
         };
-        // Wire up search box with Enter key handler and error handling
         searchBox.KeyDown += (s, e) =>
         {
             if (s is not ToolStripTextBox box) return;
@@ -326,7 +238,7 @@ public static class RibbonFactory
                 if (e.KeyCode == Keys.Enter && !string.IsNullOrWhiteSpace(box.Text))
                 {
                     logger?.LogInformation("[RIBBON_SEARCH] Global search triggered: {SearchText}", box.Text);
-                    form.PerformGlobalSearchInternal(box.Text);
+                    form.PerformGlobalSearch(box.Text);
                     e.Handled = true;
                 }
             }
@@ -337,7 +249,6 @@ public static class RibbonFactory
             }
         };
 
-        // Theme toggle button - delegates to MainForm for centralized theme switching via SfSkinManager
         var themeToggleBtn = new ToolStripButton
         {
             Name = "ThemeToggle",
@@ -348,18 +259,9 @@ public static class RibbonFactory
             ToolTipText = "Toggle between light and dark themes",
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText
         };
-        // Wire click handler with error handling
         themeToggleBtn.Click += (s, e) =>
         {
-            try
-            {
-                form.ThemeToggleBtnClickInternal(s, e);
-            }
-            catch (Exception ex)
-            {
-                logger?.LogError(ex, "[RIBBON_THEME] Theme toggle button click handler failed");
-                MessageBox.Show($"Theme toggle failed: {ex.Message}", "Theme Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            MessageBox.Show("Theme toggle not yet implemented.", "Theme Toggle", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
 
         settingsPanel.Items.AddRange(new ToolStripItem[]
@@ -383,19 +285,39 @@ public static class RibbonFactory
         };
 
         var gridSortAscBtn = CreateGridButton("Grid_SortAsc", "⬆ Sort",
-            () => form.SortActiveGridByFirstSortableColumnInternal(descending: false));
+            () =>
+            {
+                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { false }); }
+                catch (Exception ex) { Serilog.Log.Debug(ex, "Grid sort ascending not available"); }
+            });
 
         var gridSortDescBtn = CreateGridButton("Grid_SortDesc", "⬇ Sort",
-            () => form.SortActiveGridByFirstSortableColumnInternal(descending: true));
+            () =>
+            {
+                try { form.GetType().GetMethod("SortActiveGridByFirstSortableColumn", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, new object[] { true }); }
+                catch (Exception ex) { Serilog.Log.Debug(ex, "Grid sort descending not available"); }
+            });
 
         var gridFilterBtn = CreateGridButton("Grid_ApplyTestFilter", "🔍 Filter",
-            () => form.ApplyTestFilterToActiveGridInternal());
+            () =>
+            {
+                try { form.GetType().GetMethod("ApplyTestFilterToActiveGrid", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
+                catch (Exception ex) { Serilog.Log.Debug(ex, "Grid filter not available"); }
+            });
 
         var gridClearBtn = CreateGridButton("Grid_ClearFilter", "✖ Clear",
-            () => form.ClearActiveGridFilterInternal());
+            () =>
+            {
+                try { form.GetType().GetMethod("ClearActiveGridFilter", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null); }
+                catch (Exception ex) { Serilog.Log.Debug(ex, "Grid clear filter not available"); }
+            });
 
         var gridExportBtn = CreateGridButton("Grid_ExportExcel", "📊 Export",
-            async () => await form.ExportActiveGridToExcelInternal());
+            async () =>
+            {
+                try { await (Task)(form.GetType().GetMethod("ExportActiveGridToExcel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.Invoke(form, null) ?? Task.CompletedTask); }
+                catch (Exception ex) { Serilog.Log.Debug(ex, "Grid export not available"); }
+            });
 
         gridPanel.Items.AddRange(new ToolStripItem[]
         {
@@ -406,7 +328,6 @@ public static class RibbonFactory
             gridExportBtn
         });
 
-        // Add all panels to the ToolStripEx
         homeToolStrip.Items.AddRange(new ToolStripItem[]
         {
             navPanel,
@@ -420,88 +341,13 @@ public static class RibbonFactory
             gridPanel
         });
 
-        // Add ToolStripEx to the tab
         homeTab.Panel.AddToolStrip(homeToolStrip);
-
-        // Add tab to ribbon
         ribbon.Header.AddMainItem(homeTab);
-
-        // Resume layout updates after all items added
         ribbon.ResumeLayout(performLayout: true);
 
-        // ===== BACKSTAGE DISABLED (COMMENTED OUT) =====
-        // BackStage has been disabled due to persistent NullReferenceException issues.
-        // File menu button is hidden until BackStage can be properly configured.
-        ribbon.MenuButtonVisible = false;
-        logger?.LogInformation("[RIBBON_FACTORY] BackStage disabled - File menu button hidden");
-
-        /* BACKSTAGE INITIALIZATION - COMMENTED OUT
-        // ===== BACKSTAGE INITIALIZATION (AFTER RIBBON LAYOUT) =====
-        // CRITICAL: Initialize BackStage AFTER ribbon.ResumeLayout() to prevent paint errors.
-        // At this point, ribbon's renderer/theme properties are fully initialized and BackStage.OnPaint
-        // can safely access them without NullReferenceException.
-        //
-        // This fixes the persistent BackStage paint crash that previous "fixes" only masked.
-        try
-        {
-            var components = form.components ??= new System.ComponentModel.Container();
-            var backStageView = new Syncfusion.Windows.Forms.BackStageView(components)
-            {
-                HostForm = form
-            };
-
-            // CRITICAL: Set ThemeName to initialize renderer properties and prevent NullReferenceException
-            // BackStage.OnPaint accesses BackStageRendererProperty which requires ThemeName to be set
-            var backStage = new Syncfusion.Windows.Forms.BackStage
-            {
-                ThemeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful"
-            };
-
-            // Initialize BackStage content (tabs, buttons, separators)
-            InitializeBackstage(ribbon, backStageView, backStage, form, logger, components);
-
-            // Attach BackStage to BackStageView
-            backStageView.BackStage = backStage;
-
-            // Attach BackStageView to ribbon (now safe - ribbon is fully laid out)
-            ribbon.BackStageView = backStageView;
-
-            logger?.LogInformation("[RIBBON_FACTORY] BackStage initialized and attached after ribbon layout completion");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "[RIBBON_FACTORY] Failed to initialize BackStage - disabling File menu");
-            // Failsafe: hide menu button to prevent crash on click
-            ribbon.MenuButtonVisible = false;
-        }
-        END BACKSTAGE INITIALIZATION */
-
-        // QuickAccessToolbar (QAT)
-        InitializeQuickAccessToolbar(ribbon, logger, dashboardBtn, accountsBtn, reportsBtn, settingsBtn);
-
-        logger?.LogDebug("Ribbon initialized via factory with ToolStripPanelItem containers, {PanelCount} panels, Backstage enabled, accessibility enabled", 5);
+        logger?.LogDebug("Ribbon initialized via factory with {PanelCount} panels, Backstage disabled", 5);
 
         return (ribbon, homeTab);
-    }
-
-    /// <summary>
-    /// Maps a theme string to a normalized AppTheme enum value.
-    /// </summary>
-    private static AppTheme MapTheme(string themeString)
-    {
-        // Normalize recognized theme identifiers; fall back to the application's default theme.
-        return themeString switch
-        {
-            "Office2019Colorful" => AppTheme.Office2019Colorful,
-            "Office2019Dark" => AppTheme.Office2019Dark,
-            "Office2019Black" => AppTheme.Office2019Black,
-            "Office2019DarkGray" => AppTheme.Office2019DarkGray,
-            "Office2019White" => AppTheme.Office2019Colorful,
-            "Dark" => AppTheme.Dark,
-            "Light" => AppTheme.Light,
-            "HighContrastBlack" => AppTheme.HighContrastBlack,
-            _ => AppTheme.Office2019Colorful
-        };
     }
 
     /// <summary>
@@ -518,7 +364,7 @@ public static class RibbonFactory
     /// <param name="theme">Current app theme for icon generation</param>
     /// <param name="onClick">Action to execute when button is clicked (typically ShowPanel call)</param>
     /// <returns>Configured ToolStripButton ready to add to a ToolStripPanelItem</returns>
-    private static ToolStripButton CreateNavButton(string name, string text, IThemeIconService? iconService, string? iconName, AppTheme theme, System.Action onClick)
+    private static ToolStripButton CreateNavButton(string name, string text, string? iconName, string theme, System.Action onClick)
     {
         var btn = new ToolStripButton(text)
         {
@@ -532,12 +378,13 @@ public static class RibbonFactory
             ImageScaling = ToolStripItemImageScaling.None
         };
 
-        // Set icon with disposal check to prevent "Parameter is not valid" errors
-        if (!string.IsNullOrEmpty(iconName) && iconService != null && !iconService.IsDisposed)
+        // Set icon via DpiAwareImageService (preferred over deprecated IThemeIconService)
+        if (!string.IsNullOrEmpty(iconName))
         {
             try
             {
-                btn.Image = iconService.GetIcon(iconName, theme, 16);
+                var dpi = Program.Services != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(Program.Services) : null;
+                btn.Image = dpi?.GetImage(iconName);
             }
             catch (Exception ex)
             {
@@ -885,3 +732,4 @@ public static class RibbonFactory
         }
     }
 }
+

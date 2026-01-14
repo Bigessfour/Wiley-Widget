@@ -29,7 +29,7 @@ public sealed class SafeSplitterDistanceHelperIntegrationTests : IDisposable
             Width = 900,
             Height = 600
         };
-        SfSkinManager.SetVisualStyle(_testForm, "Office2019Colorful");
+        // Theme set globally in test setup - no per-control SetVisualStyle needed
 
         var split = new SplitContainer
         {

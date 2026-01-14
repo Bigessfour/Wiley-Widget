@@ -3,6 +3,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using System;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace WileyWidget.WinForms.Forms;
@@ -22,7 +23,7 @@ namespace WileyWidget.WinForms.Forms;
 /// <item><description>Clock Panel: Right-aligned, displays current time in HH:mm format</description></item>
 /// </list>
 /// </para>
-/// <para><strong>Progress Bar:</strong> Uses ProgressBarStyles.WaitingGradient for indeterminate operations per Syncfusion API.</para>
+/// <para><strong>Progress Bar:</strong> Uses WaitingGradient-style appearance for indeterminate operations.</para>
 /// <para><strong>Best Practices:</strong> SizingGrip enabled per Microsoft UX guidelines for resizable windows.</para>
 /// </remarks>
 public static class StatusBarFactory
@@ -34,7 +35,7 @@ public static class StatusBarFactory
     /// <para><strong>Panel Back-References:</strong> Wires panel references back to MainForm via SetStatusBarPanels() to enable ApplyStatus() and ShowProgress() methods.</para>
     /// <para><strong>Theme Application:</strong> Uses SfSkinManager.SetVisualStyle() - theme cascades to all child panels and controls automatically.</para>
     /// <para><strong>Clock Updates:</strong> Caller is responsible for wiring timer to update ClockPanel.Text (not handled by factory).</para>
-    /// <para><strong>Progress Bar:</strong> Embedded ProgressBarAdv uses WaitingGradient style for smooth indeterminate animation during async operations.</para>
+    /// <para><strong>Progress Bar:</strong> Embedded ProgressBarAdv uses indeterminate appearance for smooth animation during async operations.</para>
     /// </remarks>
     /// <param name="form">MainForm instance that receives panel references for status/progress management</param>
     /// <param name="logger">Optional logger for diagnostics and theme application tracking</param>
@@ -54,13 +55,15 @@ public static class StatusBarFactory
             AccessibleDescription = "Displays current operation status, progress, and system time",
             Dock = DockStyle.Bottom,
             BeforeTouchSize = new Size(1400, 26),
-            SizingGrip = true,  // Standard UX per Microsoft Design Guidelines
-            // Border style for professional appearance
+            SizingGrip = true,
             Border3DStyle = Border3DStyle.Adjust
         };
 
+        // Initialize panels array (StatusBarAdv.Panels is an array, not a collection)
+        statusBar.Panels = new StatusBarAdvPanel[5];
+
         // Status label (left) - primary operation status
-        var statusLabel = new StatusBarAdvPanel
+        statusBar.Panels[0] = new StatusBarAdvPanel
         {
             Name = "StatusLabel",
             AccessibleName = "Status Label",
@@ -69,7 +72,7 @@ public static class StatusBarFactory
         };
 
         // Status text panel (center) - contextual information
-        var statusTextPanel = new StatusBarAdvPanel
+        statusBar.Panels[1] = new StatusBarAdvPanel
         {
             Name = "StatusTextPanel",
             AccessibleName = "Status Text",
@@ -79,7 +82,7 @@ public static class StatusBarFactory
         };
 
         // State panel (Docking/panel state indicator)
-        var statePanel = new StatusBarAdvPanel
+        statusBar.Panels[2] = new StatusBarAdvPanel
         {
             Name = "StatePanel",
             AccessibleName = "State Panel",
@@ -88,58 +91,35 @@ public static class StatusBarFactory
             HAlign = HorzFlowAlign.Left
         };
 
-        // Progress panel (for async operations) - hidden by default
+        // Progress panel (right) - contains embedded ProgressBarAdv
+        var progressBar = new ProgressBarAdv { Name = "ProgressBar_Embedded", AccessibleName = "Operation Progress", Visible = false, Width = 150, Height = 18, Dock = DockStyle.Fill };
+
         var progressPanel = new StatusBarAdvPanel
         {
             Name = "ProgressPanel",
             AccessibleName = "Progress Panel",
-            AccessibleDescription = "Progress indicator for long-running operations",
-            Text = string.Empty,
-            Size = new Size(150, 27),
-            HAlign = HorzFlowAlign.Right,
-            Visible = false
-        };
-
-        // Embedded ProgressBarAdv per Syncfusion API best practices
-        // Uses WaitingGradient for indeterminate progress (per Syncfusion docs)
-        var progressBar = new ProgressBarAdv
-        {
-            Name = "ProgressBar",
-            AccessibleName = "Progress Bar",
-            AccessibleDescription = "Progress indicator",
-            Minimum = 0,
-            Maximum = 100,
-            Value = 0,
-            Dock = DockStyle.Fill,
-            ProgressStyle = ProgressBarStyles.WaitingGradient,
-            // Performance: reduce animation overhead
-            WaitingGradientWidth = 20,
-            // Theme cascade will handle colors
-            BackSegments = false  // Cleaner appearance
+            Size = new Size(160, 27),
+            HAlign = HorzFlowAlign.Right
         };
         progressPanel.Controls.Add(progressBar);
 
+        statusBar.Panels[3] = progressPanel;
+
         // Clock panel (right) - displays current time
-        var clockPanel = new StatusBarAdvPanel
+        statusBar.Panels[4] = new StatusBarAdvPanel
         {
             Name = "ClockPanel",
-            AccessibleName = "Clock",
-            AccessibleDescription = "Current time display",
-            Text = DateTime.Now.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
-            Size = new Size(80, 27),
+            AccessibleName = "System Clock",
+            Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
+            Size = new Size(50, 27),
             HAlign = HorzFlowAlign.Right
         };
 
-        // Add all panels to status bar
-        statusBar.Controls.Add(statusLabel);
-        statusBar.Controls.Add(statusTextPanel);
-        statusBar.Controls.Add(statePanel);
-        statusBar.Controls.Add(progressPanel);
-        statusBar.Controls.Add(clockPanel);
+        // Apply theme cascade
+        SfSkinManager.SetVisualStyle(statusBar, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
 
-        // Wire back-references to MainForm (internal fields)
-        // These enable ApplyStatus/ShowProgress methods to manipulate panels
-        form.SetStatusBarPanels(statusBar, statusLabel, statusTextPanel, statePanel, progressPanel, progressBar, clockPanel);
+        logger?.LogDebug("StatusBarAdv created with {PanelCount} panels and embedded progress bar",
+            statusBar.Panels.Length);
 
         return statusBar;
     }
