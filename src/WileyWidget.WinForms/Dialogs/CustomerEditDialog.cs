@@ -8,7 +8,6 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.ListView;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Dialogs
 {

@@ -23,7 +23,6 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
@@ -76,6 +75,7 @@ namespace WileyWidget.WinForms.Forms
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;  // Scope for MainViewModel - kept alive for form lifetime
         private IPanelNavigationService? _panelNavigator;
+        private IThemeService? _themeService;
 
         /// <summary>
         /// Enables flicker reduction via WS_EX_COMPOSITED for heavy UI chrome (Ribbon + Docking).
@@ -170,6 +170,7 @@ namespace WileyWidget.WinForms.Forms
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
         private System.Windows.Forms.Timer? _activityRefreshTimer;
+        private Button? _defaultCancelButton;
 
         /// <summary>
         /// Internal helper for StatusBarFactory to wire panel references.
@@ -199,10 +200,10 @@ namespace WileyWidget.WinForms.Forms
         private int _onShownExecuted = 0;
         private CancellationTokenSource? _initializationCts;
         private Serilog.ILogger? _asyncLogger;
-        private List<string> _mruList = new List<string>();
+        private readonly List<string> _mruList = new List<string>();
         // Dashboard description labels are declared in docking partial
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions)
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService)
         {
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: ENTERED");
@@ -212,12 +213,16 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
             _panelNavigator = null;
+            _themeService = themeService;
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
             // Apply global Syncfusion theme before any child controls are created
             AppThemeColors.ApplyTheme(this);
+
+            // Subscribe to theme switching service
+            _themeService.ThemeChanged += OnThemeChanged;
 
             if (!_uiConfig.IsUiTestHarness)
             {
@@ -282,6 +287,12 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
+            // Align UI with persisted theme from service
+            if (_themeService != null)
+            {
+                _themeService.ApplyTheme(_themeService.CurrentTheme);
+            }
+
             // Heavy async initialization can be placed here if needed in future
             await Task.CompletedTask;
         }
@@ -541,6 +552,22 @@ namespace WileyWidget.WinForms.Forms
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (keyData == Keys.Enter)
+            {
+                if (HandleEnterShortcut())
+                {
+                    return true;
+                }
+            }
+
+            if (keyData == Keys.Escape)
+            {
+                if (HandleEscapeShortcut())
+                {
+                    return true;
+                }
+            }
+
             // Ctrl+F: Focus global search box
             if (keyData == (Keys.Control | Keys.F))
             {
@@ -679,6 +706,92 @@ namespace WileyWidget.WinForms.Forms
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        private bool HandleEnterShortcut()
+        {
+            if (ActiveControl is TextBoxBase || ActiveControl is MaskedTextBox)
+            {
+                return false;
+            }
+
+            return FocusGlobalSearchTextBox(selectAll: true);
+        }
+
+        private bool HandleEscapeShortcut()
+        {
+            if (TryClearSearchText())
+            {
+                return true;
+            }
+
+            if (_statusTextPanel != null && !_statusTextPanel.IsDisposed && !string.IsNullOrWhiteSpace(_statusTextPanel.Text))
+            {
+                _statusTextPanel.Text = string.Empty;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool FocusGlobalSearchTextBox(bool selectAll)
+        {
+            if (_ribbon == null)
+            {
+                return false;
+            }
+
+            if (FindToolStripItem(_ribbon, "GlobalSearch") is ToolStripTextBox searchBox)
+            {
+                searchBox.Focus();
+                if (selectAll)
+                {
+                    searchBox.SelectAll();
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryClearSearchText()
+        {
+            if (_ribbon == null)
+            {
+                return false;
+            }
+
+            if (FindToolStripItem(_ribbon, "GlobalSearch") is ToolStripTextBox searchBox)
+            {
+                if (!string.IsNullOrEmpty(searchBox.Text))
+                {
+                    searchBox.Clear();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void EnsureDefaultActionButtons()
+        {
+            if (_defaultCancelButton == null)
+            {
+                _defaultCancelButton = new Button
+                {
+                    Name = "DefaultCancelButton",
+                    AccessibleName = "Cancel current action",
+                    AccessibleDescription = "Press Escape to clear search or dismiss status text",
+                    TabStop = false,
+                    Visible = false,
+                    Size = new Size(1, 1),
+                    Location = new Point(-1000, -1000)
+                };
+                _defaultCancelButton.Click += (s, e) => HandleEscapeShortcut();
+                Controls.Add(_defaultCancelButton);
+            }
+
+            CancelButton = _defaultCancelButton;
+        }
+
         private ToolStripItem? FindToolStripItem(RibbonControlAdv ribbon, string name)
         {
             foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
@@ -693,6 +806,33 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
             return null;
+        }
+
+        private void ToggleTheme()
+        {
+            try
+            {
+                var currentTheme = _themeService?.CurrentTheme ?? SkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                var nextTheme = string.Equals(currentTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase)
+                    ? "Office2019Colorful"
+                    : "Office2019Dark";
+
+                if (_themeService != null)
+                {
+                    _themeService.ApplyTheme(nextTheme);
+                }
+                else
+                {
+                    SkinManager.ApplicationVisualTheme = nextTheme;
+                    SfSkinManager.SetVisualStyle(this, nextTheme);
+                }
+
+                _logger?.LogInformation("Theme toggled from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Theme toggle failed");
+            }
         }
 
         /// <summary>
@@ -1042,6 +1182,11 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Handles form closing event with graceful shutdown of initialization operations.
+        /// TODO: High Priority - Layout persistence not yet implemented. Consider saving docking positions if users expect
+        /// panels to restore to previous layout on next application start. This requires DockingLayoutManager integration.
+        /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             try
@@ -1110,6 +1255,12 @@ namespace WileyWidget.WinForms.Forms
 
                 // Phase 1 Simplification: Dispose docking resources
                 DisposeSyncfusionDockingResources();
+
+                // Unsubscribe from theme service
+                if (_themeService != null)
+                {
+                    _themeService.ThemeChanged -= OnThemeChanged;
+                }
             }
             finally
             {

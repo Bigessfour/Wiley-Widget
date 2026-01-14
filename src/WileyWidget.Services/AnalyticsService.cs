@@ -31,12 +31,24 @@ namespace WileyWidget.Services
         /// <summary>
         /// Performs exploratory data analysis on budget data
         /// </summary>
-        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate)
+        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null)
         {
-            _logger.LogInformation("Performing exploratory analysis for period {Start} to {End}", startDate, endDate);
+            _logger.LogInformation("Performing exploratory analysis for period {Start} to {End} (Entity={Entity})", startDate, endDate, entityName);
 
-            var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate);
+            var budgetEntries = (await _budgetRepository.GetByDateRangeAsync(startDate, endDate)).ToList();
             var accounts = await _accountRepository.GetAllAsync();
+
+            // If an entity name is provided, apply a lightweight heuristic filter to budget entries
+            if (!string.IsNullOrWhiteSpace(entityName))
+            {
+                var sel = entityName.Trim();
+                budgetEntries = budgetEntries.Where(be =>
+                    (be.Fund != null && !string.IsNullOrWhiteSpace(be.Fund.Name) && string.Equals(be.Fund.Name, sel, StringComparison.OrdinalIgnoreCase))
+                    || (sel.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) >= 0 && ((be.Fund?.Name?.IndexOf("Sewer", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (be.Fund?.Name?.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
+                    || (sel.IndexOf("Utility", StringComparison.OrdinalIgnoreCase) >= 0 && ((be.Fund?.Name?.IndexOf("Water", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (be.Fund?.Name?.IndexOf("Trash", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
+                    || (be.MunicipalAccount != null && be.MunicipalAccount.Name != null && be.MunicipalAccount.Name.IndexOf(sel, StringComparison.OrdinalIgnoreCase) >= 0)
+                ).ToList();
+            }
 
             var result = new BudgetAnalysisResult();
 

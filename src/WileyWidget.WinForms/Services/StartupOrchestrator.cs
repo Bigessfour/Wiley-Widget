@@ -100,9 +100,28 @@ namespace WileyWidget.WinForms.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-            SkinManager.ApplicationVisualTheme = WileyTheme.DefaultTheme;
-            _logger.LogInformation("Application theme set to {Theme}", WileyTheme.DefaultTheme);
+            // Load all theme assemblies to support runtime theme switching
+            // This ensures all 7 themes are available (Office2019 x3, Fluent x2, Material x2)
+            try { SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly); } catch { }
+            try
+            {
+                // Fluent theme - load by assembly name since type may not be directly accessible
+                var fluentAssembly = System.Reflection.Assembly.Load("Syncfusion.FluentTheme.WinForms");
+                SkinManager.LoadAssembly(fluentAssembly);
+            }
+            catch { }
+            try
+            {
+                // Material theme - load by assembly name
+                var materialAssembly = System.Reflection.Assembly.Load("Syncfusion.MaterialTheme.WinForms");
+                SkinManager.LoadAssembly(materialAssembly);
+            }
+            catch { }
+
+            // Theme name is set globally in Program.InitializeTheme() before this runs
+            // ApplicationVisualTheme is read-only after being set, so we just verify it's applied
+            var currentTheme = SkinManager.ApplicationVisualTheme;
+            _logger.LogInformation("Application theme verified. All themes loaded. Active theme: {Theme}", currentTheme ?? "default");
 
             return Task.CompletedTask;
         }

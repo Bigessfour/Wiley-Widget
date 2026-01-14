@@ -4,7 +4,6 @@ using System.Drawing;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;

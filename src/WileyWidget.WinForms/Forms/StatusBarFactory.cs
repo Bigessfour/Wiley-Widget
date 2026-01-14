@@ -33,15 +33,16 @@ public static class StatusBarFactory
     /// </summary>
     /// <remarks>
     /// <para><strong>Panel Back-References:</strong> Wires panel references back to MainForm via SetStatusBarPanels() to enable ApplyStatus() and ShowProgress() methods.</para>
-    /// <para><strong>Theme Application:</strong> Uses SfSkinManager.SetVisualStyle() - theme cascades to all child panels and controls automatically.</para>
+    /// <para><strong>Theme Application:</strong> Uses SkinManager.SetVisualStyle() - theme cascades to all child panels and controls automatically.</para>
     /// <para><strong>Clock Updates:</strong> Caller is responsible for wiring timer to update ClockPanel.Text (not handled by factory).</para>
     /// <para><strong>Progress Bar:</strong> Embedded ProgressBarAdv uses indeterminate appearance for smooth animation during async operations.</para>
     /// </remarks>
     /// <param name="form">MainForm instance that receives panel references for status/progress management</param>
     /// <param name="logger">Optional logger for diagnostics and theme application tracking</param>
+    /// <param name="themeName">Optional theme name for SkinManager. If null, uses current application theme.</param>
     /// <returns>Fully configured StatusBarAdv ready to add to form Controls collection</returns>
     /// <exception cref="ArgumentNullException">Thrown when form parameter is null</exception>
-    public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null)
+    public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null, string? themeName = null)
     {
         if (form == null)
         {
@@ -92,7 +93,7 @@ public static class StatusBarFactory
         };
 
         // Progress panel (right) - contains embedded ProgressBarAdv
-        var progressBar = new ProgressBarAdv { Name = "ProgressBar_Embedded", AccessibleName = "Operation Progress", Visible = false, Width = 150, Height = 18, Dock = DockStyle.Fill };
+        var progressBar = new ProgressBarAdv { Name = "ProgressBar_Embedded", AccessibleName = "Operation Progress", AccessibleDescription = "Indicates progress for long running operations", Visible = false, Width = 150, Height = 18, Dock = DockStyle.Fill };
 
         var progressPanel = new StatusBarAdvPanel
         {
@@ -102,6 +103,8 @@ public static class StatusBarFactory
             HAlign = HorzFlowAlign.Right
         };
         progressPanel.Controls.Add(progressBar);
+        // Note: ProgressBarAdv lifecycle managed by StatusBarAdvPanel.Controls collection
+        // panel.Dispose() will cascade to child controls
 
         statusBar.Panels[3] = progressPanel;
 

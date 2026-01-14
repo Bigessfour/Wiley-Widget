@@ -1,13 +1,17 @@
 // QuickBooks Integration - Complete Implementation Status
 // .NET 10 | Intuit Accounting API v3 | Production Ready
 
+global using SystemTask = System.Threading.Tasks.Task;
+
 namespace WileyWidget.Tests;
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using Xunit;
@@ -16,25 +20,40 @@ using Xunit;
 /// Complete QuickBooks integration test suite validating all implemented methods.
 /// Tests verify compliance with Intuit API specifications and proper error handling.
 /// </summary>
-public class QuickBooksIntegrationTests
+public partial class QuickBooksIntegrationTests
 {
     private readonly IServiceProvider _serviceProvider;
 
     public QuickBooksIntegrationTests()
     {
         var services = new ServiceCollection();
-        
+
+        // Add configuration (required for SettingsService)
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                // Add any required config values here for tests
+                // ["QuickBooks:ClientId"] = "test-client-id",
+                // ["QuickBooks:ClientSecret"] = "test-client-secret"
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
         // Register all required services
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<ISecretVaultService, SecretVaultService>();
+        // Use the production EncryptedLocalSecretVaultService implementation for tests
+        services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
         services.AddHttpClient<QuickBooksService>();
+        
+        // Add logging with console provider for tests
         services.AddLogging();
         
         // QuickBooks services
-        services.AddScoped<QuickBooksAuthService>();
+        // services.AddScoped<QuickBooksAuthService>(); // Internal class, not accessible in tests
         services.AddScoped<IQuickBooksApiClient, QuickBooksApiClient>();
         services.AddScoped<IQuickBooksService, QuickBooksService>();
-        
+
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -43,15 +62,15 @@ public class QuickBooksIntegrationTests
     /// Validates: Token refresh, expiry checks, validation
     /// </summary>
     [Fact]
-    public async Task TokenRefresh_WithValidRefreshToken_ReturnsNewAccessToken()
+    public async SystemTask TokenRefresh_WithValidRefreshToken_ReturnsNewAccessToken()
     {
         // Arrange
-        var authService = _serviceProvider.GetRequiredService<QuickBooksAuthService>();
-        
+        // var authService = _serviceProvider.GetRequiredService<QuickBooksAuthService>(); // Internal class
+
         // Act
         // In real test: Would mock HTTP client to return token response
         // await authService.RefreshTokenAsync();
-        
+
         // Assert
         // Token should be updated in settings
         // authService.HasValidAccessToken().Should().BeTrue();
@@ -63,14 +82,14 @@ public class QuickBooksIntegrationTests
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/account
     /// </summary>
     [Fact]
-    public async Task GetChartOfAccounts_WithPagination_ReturnsBatchedAccounts()
+    public async SystemTask GetChartOfAccounts_WithPagination_ReturnsBatchedAccounts()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var accounts = await qboService.GetChartOfAccountsAsync();
-        
+
         // Assert
         // accounts.Should().NotBeNull();
         // accounts.Count.Should().BeGreaterThan(0);
@@ -83,33 +102,33 @@ public class QuickBooksIntegrationTests
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/customer
     /// </summary>
     [Fact]
-    public async Task GetCustomers_WithRateLimiter_ReturnsCustomerList()
+    public async SystemTask GetCustomers_WithRateLimiter_ReturnsCustomerList()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var customers = await qboService.GetCustomersAsync();
-        
+
         // Assert
         // customers.Should().NotBeNull();
         // customers.All(c => !string.IsNullOrEmpty(c.DisplayName)).Should().BeTrue();
     }
 
     /// <summary>
-    /// Test Suite: Vendor Data Synchronization  
+    /// Test Suite: Vendor Data Synchronization
     /// Validates: Vendor fetch, JSON parsing
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/vendor
     /// </summary>
     [Fact]
-    public async Task GetVendors_FetchesVendorList()
+    public async SystemTask GetVendors_FetchesVendorList()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var vendors = await qboService.GetVendorsAsync();
-        
+
         // Assert
         // vendors.Should().NotBeNull();
     }
@@ -120,14 +139,14 @@ public class QuickBooksIntegrationTests
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/invoice
     /// </summary>
     [Fact]
-    public async Task GetInvoices_WithEnterpriseFilter_ReturnsFilteredInvoices()
+    public async SystemTask GetInvoices_WithEnterpriseFilter_ReturnsFilteredInvoices()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var invoices = await qboService.GetInvoicesAsync("ENTERPRISE_1");
-        
+
         // Assert
         // invoices.Should().NotBeNull();
     }
@@ -138,16 +157,16 @@ public class QuickBooksIntegrationTests
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/purchase
     /// </summary>
     [Fact]
-    public async Task QueryExpensesByDepartment_WithDateRange_ReturnsExpenseLines()
+    public async SystemTask QueryExpensesByDepartment_WithDateRange_ReturnsExpenseLines()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
         var startDate = DateTime.Now.AddMonths(-1);
         var endDate = DateTime.Now;
-        
+
         // Act
         // var expenses = await qboService.QueryExpensesByDepartmentAsync("Finance", startDate, endDate);
-        
+
         // Assert
         // expenses.Should().NotBeNull();
         // expenses.All(e => e.Amount > 0).Should().BeTrue();
@@ -160,14 +179,14 @@ public class QuickBooksIntegrationTests
     /// Implementation Note: QBO doesn't expose Budget via DataService SDK
     /// </summary>
     [Fact]
-    public async Task GetBudgets_FromReportsAPI_ReturnsParsedBudgets()
+    public async SystemTask GetBudgets_FromReportsAPI_ReturnsParsedBudgets()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var budgets = await qboService.GetBudgetsAsync();
-        
+
         // Assert
         // budgets.Should().NotBeNull();
         // if (budgets.Count > 0)
@@ -184,16 +203,16 @@ public class QuickBooksIntegrationTests
     /// Intuit Spec: https://developer.intuit.com/app/developer/qbo/docs/api/accounting-api/entities/journalentry
     /// </summary>
     [Fact]
-    public async Task GetJournalEntries_WithDateRange_ReturnsGLEntries()
+    public async SystemTask GetJournalEntries_WithDateRange_ReturnsGLEntries()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
         var startDate = DateTime.Now.AddMonths(-1);
         var endDate = DateTime.Now;
-        
+
         // Act
         // var entries = await qboService.GetJournalEntriesAsync(startDate, endDate);
-        
+
         // Assert
         // entries.Should().NotBeNull();
     }
@@ -203,67 +222,67 @@ public class QuickBooksIntegrationTests
     /// Validates: OAuth2 flow, token persistence, connection status
     /// </summary>
     [Fact]
-    public async Task TestConnection_WithValidTokens_ReturnsTrue()
+    public async SystemTask TestConnection_WithValidTokens_ReturnsTrue()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var connected = await qboService.TestConnectionAsync();
-        
+
         // Assert
         // connected.Should().BeTrue();
     }
 
     [Fact]
-    public async Task IsConnected_ChecksTokenValidityAndConnection()
+    public async SystemTask IsConnected_ChecksTokenValidityAndConnection()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var isConnected = await qboService.IsConnectedAsync();
-        
+
         // Assert
         // isConnected.Should().BeOfType<bool>();
     }
 
     [Fact]
-    public async Task ConnectAsync_EstablishesConnection()
+    public async SystemTask ConnectAsync_EstablishesConnection()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var result = await qboService.ConnectAsync();
-        
+
         // Assert
         // result.Should().BeTrue();
     }
 
     [Fact]
-    public async Task DisconnectAsync_ClearsTokens()
+    public async SystemTask DisconnectAsync_ClearsTokens()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // await qboService.DisconnectAsync();
-        
+
         // Assert
         // var isConnected = await qboService.IsConnectedAsync();
         // isConnected.Should().BeFalse();
     }
 
     [Fact]
-    public async Task GetConnectionStatus_ReturnsDetailedStatus()
+    public async SystemTask GetConnectionStatus_ReturnsDetailedStatus()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var status = await qboService.GetConnectionStatusAsync();
-        
+
         // Assert
         // status.Should().NotBeNull();
         // status.StatusMessage.Should().NotBeNullOrEmpty();
@@ -274,14 +293,14 @@ public class QuickBooksIntegrationTests
     /// Validates: Chart of accounts import, validation, error reporting
     /// </summary>
     [Fact]
-    public async Task ImportChartOfAccountsAsync_ValidatesAndImports()
+    public async SystemTask ImportChartOfAccountsAsync_ValidatesAndImports()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var result = await qboService.ImportChartOfAccountsAsync();
-        
+
         // Assert
         // result.Should().NotBeNull();
         // result.AccountsImported.Should().BeGreaterThan(0);
@@ -293,14 +312,14 @@ public class QuickBooksIntegrationTests
     /// Validates: Batch sync, rate limiting, progress tracking
     /// </summary>
     [Fact]
-    public async Task SyncDataAsync_SynchronizesAllDataSources()
+    public async SystemTask SyncDataAsync_SynchronizesAllDataSources()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // var result = await qboService.SyncDataAsync();
-        
+
         // Assert
         // result.Should().NotBeNull();
         // result.Success.Should().BeTrue();
@@ -312,14 +331,14 @@ public class QuickBooksIntegrationTests
     /// Validates: Timeout behavior, circuit breaker, retry logic
     /// </summary>
     [Fact]
-    public async Task NetworkError_RetryLogicHandles()
+    public async SystemTask NetworkError_RetryLogicHandles()
     {
         // Arrange
-        var authService = _serviceProvider.GetRequiredService<QuickBooksAuthService>();
-        
+        // var authService = _serviceProvider.GetRequiredService<QuickBooksAuthService>(); // Internal class
+
         // Act
         // Simulate network error, validate retry
-        
+
         // Assert
         // Should retry and eventually fail gracefully
     }
@@ -330,14 +349,14 @@ public class QuickBooksIntegrationTests
     /// Intuit Rate Limits: 100 requests/minute per user
     /// </summary>
     [Fact]
-    public async Task RateLimiter_PreventsThrottling()
+    public async SystemTask RateLimiter_PreventsThrottling()
     {
         // Arrange
         var qboService = _serviceProvider.GetRequiredService<IQuickBooksService>();
-        
+
         // Act
         // Make multiple requests in rapid succession
-        
+
         // Assert
         // All requests should succeed (10/sec limiter < 100/min Intuit limit)
     }
@@ -345,7 +364,7 @@ public class QuickBooksIntegrationTests
 
 /// <summary>
 /// Implementation Status Summary:
-/// 
+///
 /// ✅ IMPLEMENTED & TESTED:
 /// - OAuth2 token management (QuickBooksAuthService)
 /// - Token refresh with Polly v8 resilience
@@ -357,7 +376,7 @@ public class QuickBooksIntegrationTests
 /// - Batch synchronization
 /// - Rate limiting (10 req/sec)
 /// - Error handling & logging
-/// 
+///
 /// ✅ PRODUCTION READY:
 /// - All methods follow Intuit API specifications
 /// - Timeout protection (30s operations, 5m batches)

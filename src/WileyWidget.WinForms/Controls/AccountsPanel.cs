@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
@@ -19,7 +18,7 @@ public partial class AccountsPanel : UserControl
     private readonly ILogger<AccountsPanel> _logger;
 
     private PanelHeader? _header;
-    private SfDataGrid? _accountsGrid;
+    private Syncfusion.WinForms.DataGrid.SfDataGrid? _accountsGrid;
     private TableLayoutPanel? _layout;
 
     public AccountsPanel(AccountsViewModel viewModel, ILogger<AccountsPanel> logger)
@@ -37,7 +36,7 @@ public partial class AccountsPanel : UserControl
     {
         try
         {
-            if (_viewModel.LoadAccountsCommand?.CanExecute(null) == true)
+            if (_viewModel.LoadAccountsCommand?.CanExecute(null) is true)
             {
                 await _viewModel.LoadAccountsCommand.ExecuteAsync(null).ConfigureAwait(true);
             }
@@ -62,7 +61,7 @@ public partial class AccountsPanel : UserControl
             Height = 42
         };
 
-        _accountsGrid = new SfDataGrid
+        _accountsGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
         {
             Dock = DockStyle.Fill,
             AutoGenerateColumns = false,

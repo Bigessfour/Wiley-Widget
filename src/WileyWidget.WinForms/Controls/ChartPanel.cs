@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
@@ -57,6 +58,7 @@ namespace WileyWidget.WinForms.Controls
         private Panel? _lblVariancePercent;
         private ErrorProvider? _errorProvider;
         private readonly List<ToolTip> _toolTips = new();
+        private readonly string _themeName = ThemeColors.CurrentTheme;
 
         private ContextMenuStrip? _chartContextMenu;
         private bool _preserveUserChartAppearance;
@@ -85,7 +87,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, _themeName); } catch { }
         }
 
         /// <summary>
@@ -392,7 +394,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(piePanel, "Office2019Colorful");
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(piePanel, _themeName);
 
             Controls.Add(_chartControl);
             Controls.Add(piePanel);
@@ -480,7 +482,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(panel, _themeName);
 
             var lblCaption = new Label
             {
@@ -1402,8 +1404,7 @@ namespace WileyWidget.WinForms.Controls
                 series.Style.Font.Size = 8;
                 series.Style.Font.Bold = true;
 
-                // Use Syncfusion theme-aware color (Office2019Colorful accent)
-                series.Style.Interior = new Syncfusion.Drawing.BrushInfo(Color.FromArgb(0, 120, 215));
+                // Let theme manage series coloring (SkinManager cascade)
 
                 // Color individual points based on variance (reflection for compatibility)
                 try
@@ -1418,8 +1419,8 @@ namespace WileyWidget.WinForms.Controls
                         if (interiorProp != null && interiorProp.CanWrite)
                         {
                             var color = variance >= 0
-                                ? Color.FromArgb(76, 175, 80)  // Green for under budget
-                                : Color.FromArgb(244, 67, 54); // Red for over budget
+                                ? Color.Green  // Under budget
+                                : Color.Red;   // Over budget
                             interiorProp.SetValue(point, new Syncfusion.Drawing.BrushInfo(color));
                         }
                     }
@@ -1471,7 +1472,7 @@ namespace WileyWidget.WinForms.Controls
                     var varianceValueLabel = _lblTotalVariance.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (varianceValueLabel != null)
                     {
-                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                        varianceValueLabel.ForeColor = _vm.TotalVariance >= 0 ? Color.Green : Color.Red;
                     }
                 }
 
@@ -1480,7 +1481,7 @@ namespace WileyWidget.WinForms.Controls
                     var percentValueLabel = _lblVariancePercent.Controls.OfType<Label>().FirstOrDefault(l => l.Dock == DockStyle.Bottom);
                     if (percentValueLabel != null)
                     {
-                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.FromArgb(76, 175, 80) : Color.FromArgb(244, 67, 54);
+                        percentValueLabel.ForeColor = _vm.VariancePercentage >= 0 ? Color.Green : Color.Red;
                     }
                 }
 

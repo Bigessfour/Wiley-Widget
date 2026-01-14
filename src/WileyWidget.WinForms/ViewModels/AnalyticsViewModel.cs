@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Business.Interfaces;
 using System; // Added for ArgumentNullException, DateTime, etc.
 
 namespace WileyWidget.WinForms.ViewModels
@@ -16,6 +17,8 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
+        private readonly IBudgetRepository _budgetRepository;
+        private readonly IEnterpriseRepository _enterpriseRepository;
 
         /// <summary>
         /// Gets or sets a value indicating whether data is currently being loaded or processed.
@@ -129,6 +132,14 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private string variancesSearchText = string.Empty;
 
+        /// <summary>Selected entity/fund name for scoping analytics (e.g., "Wiley Sanitation District").</summary>
+        [ObservableProperty]
+        private string? selectedEntity;
+
+        /// <summary>Available entities/fund names for selection in UI.</summary>
+        [ObservableProperty]
+        private ObservableCollection<string> availableEntities = new();
+
         /// <summary>
         /// Command to perform exploratory analysis
         /// </summary>
@@ -149,15 +160,26 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
-        public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger)
+        public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IEnterpriseRepository enterpriseRepository)
         {
             _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
+            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
 
             PerformAnalysisCommand = new AsyncRelayCommand(PerformExploratoryAnalysisAsync);
             RunScenarioCommand = new AsyncRelayCommand(RunRateScenarioAsync);
             GenerateForecastCommand = new AsyncRelayCommand(GenerateReserveForecastAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshAllDataAsync);
+
+            // Re-run exploratory analysis when SelectedEntity changes
+            PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(SelectedEntity))
+                {
+                    _ = PerformExploratoryAnalysisAsync();
+                }
+            };
 
             // Auto-load data on initialization
             _ = Task.Run(async () => await RefreshCommand.ExecuteAsync(null));
@@ -176,7 +198,7 @@ namespace WileyWidget.WinForms.ViewModels
                 var startDate = new DateTime(DateTime.Now.Year - 1, 7, 1);
                 var endDate = new DateTime(DateTime.Now.Year, 6, 30);
 
-                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate);
+                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, SelectedEntity);
 
                 // Update metrics
                 Metrics.Clear();
@@ -209,6 +231,28 @@ namespace WileyWidget.WinForms.ViewModels
                 foreach (var insight in result.Insights)
                 {
                     Insights.Add(insight);
+                }
+
+                // Populate available entities from budget entries + enterprises
+                try
+                {
+                    var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate);
+                    var entitySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var n in budgetEntries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
+                        entitySet.Add(n);
+
+                    var enterprises = await _enterpriseRepository.GetAllAsync();
+                    foreach (var en in enterprises.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
+                        entitySet.Add(en);
+
+                    var entities = entitySet.OrderBy(n => n).ToList();
+                    entities.Insert(0, "All Entities");
+                    AvailableEntities = new ObservableCollection<string>(entities);
+                }
+                catch (Exception exEnt)
+                {
+                    _logger.LogWarning(exEnt, "Failed to populate AvailableEntities in AnalyticsViewModel");
                 }
 
                 UpdateSummaries();

@@ -5,7 +5,6 @@ using Syncfusion.WinForms.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
@@ -53,7 +52,8 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     protected override void OnViewModelResolved(ChatPanelViewModel viewModel)
     {
         base.OnViewModelResolved(viewModel);
-        SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(this, themeName);
         InitializeControls();
         WireUpEventHandlers();
 
@@ -97,7 +97,8 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)  // Theme cascade from SfSkinManager handles all colors
         };
-        SfSkinManager.SetVisualStyle(_chatContainer, "Office2019Colorful");
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_chatContainer, themeName);
 
         // Initialize BlazorWebView for JARVIS Chat
         try
@@ -114,7 +115,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
                 Dock = DockStyle.Fill,
                 TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
                 Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Regular),
-                ForeColor = System.Drawing.Color.DarkRed
+                ForeColor = System.Drawing.Color.Red
             };
             _chatContainer.Controls.Add(errorLabel);
         }

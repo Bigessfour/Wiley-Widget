@@ -15,7 +15,6 @@ using Syncfusion.Drawing;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Models;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;

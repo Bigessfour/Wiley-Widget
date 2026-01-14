@@ -79,5 +79,11 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>Search text for filtering variances.</summary>
         string VariancesSearchText { get; set; }
+
+        /// <summary>Selected entity/fund name for scoping analytics (e.g., "Wiley Sanitation District").</summary>
+        string? SelectedEntity { get; set; }
+
+        /// <summary>List of available entities or fund names to choose from for filtering analytics.</summary>
+        ObservableCollection<string> AvailableEntities { get; set; }
     }
 }

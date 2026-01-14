@@ -12,7 +12,6 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 

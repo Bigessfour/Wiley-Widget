@@ -187,6 +187,9 @@ namespace WileyWidget.WinForms.Configuration
             // Telemetry startup service for DB health checks
             services.AddHostedService<TelemetryStartupService>();
 
+            // Application event bus for cross-scope in-process notifications
+            services.AddSingleton<IAppEventBus, AppEventBus>();
+
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
             if (!services.Any(sd => sd.ServiceType == typeof(IStartupTimelineService)))
             {
@@ -210,6 +213,8 @@ namespace WileyWidget.WinForms.Configuration
             // QuickBooks Integration (Singleton - external API client)
             services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
             services.AddSingleton<IQuickBooksService, QuickBooksService>();
+            // Business service to sync QuickBooks actuals into BudgetEntries
+            services.AddScoped<WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService, WileyWidget.Business.Services.QuickBooksBudgetSyncService>();
 
             // Dashboard Service (Transient - short-lived data aggregation)
             services.AddTransient<IDashboardService, DashboardService>();
@@ -298,6 +303,9 @@ namespace WileyWidget.WinForms.Configuration
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
                 UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
+
+            // Theme Service (Singleton - manages global theme state and notifications)
+            services.AddSingleton<IThemeService, ThemeService>();
 
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();

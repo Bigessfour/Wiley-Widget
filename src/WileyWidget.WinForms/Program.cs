@@ -174,13 +174,35 @@ namespace WileyWidget.WinForms
         {
             try
             {
-                // Load Syncfusion Office2019 theme assembly
-                Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                // Load all Syncfusion theme assemblies to support runtime theme switching
+                // This enables: Office2019Colorful, Office2019Black, Office2019White,
+                //              FluentLight, FluentDark, MaterialLight, MaterialDark
+                try { Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly); } catch { }
+                try
+                {
+                    var fluentAssembly = System.Reflection.Assembly.Load("Syncfusion.FluentTheme.WinForms");
+                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(fluentAssembly);
+                }
+                catch { }
+                try
+                {
+                    var materialAssembly = System.Reflection.Assembly.Load("Syncfusion.MaterialTheme.WinForms");
+                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(materialAssembly);
+                }
+                catch { }
 
-                // Set default application theme
-                Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
+                // Get theme from configuration (appsettings.json UI:Theme), fallback to Office2019Colorful
+                var config = new ConfigurationBuilder()
+                    .SetBasePath(AppContext.BaseDirectory)
+                    .AddJsonFile("appsettings.json", optional: false)
+                    .Build();
 
-                Log.Debug("Theme initialization completed successfully");
+                var themeName = config["UI:Theme"] ?? "Office2019Colorful";
+
+                // Set application theme globally before MainForm is created
+                Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = themeName;
+
+                Log.Debug("Theme initialization completed successfully. Available themes loaded. Active theme: {Theme}", themeName);
             }
             catch (Exception ex)
             {

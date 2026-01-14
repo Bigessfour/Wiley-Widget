@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-// REMOVED: using WileyWidget.WinForms.Theming;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -18,11 +18,16 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly List<string> _validationMessages = new();
 
         private readonly WileyWidget.Services.Abstractions.ISettingsService? _settingsService;
+        private readonly IThemeService? _themeService;
 
-        public SettingsViewModel(ILogger<SettingsViewModel> logger, WileyWidget.Services.Abstractions.ISettingsService? settingsService = null)
+        public SettingsViewModel(
+            ILogger<SettingsViewModel> logger,
+            WileyWidget.Services.Abstractions.ISettingsService? settingsService = null,
+            IThemeService? themeService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _settingsService = settingsService; // optional for DI tests that don't register ISettingsService
+            _themeService = themeService;
 
             _logger.LogDebug("SettingsViewModel constructor started");
 
@@ -30,6 +35,12 @@ namespace WileyWidget.WinForms.ViewModels
             BrowseExportPathCommand = new RelayCommand(() => BrowseExportPathRequested?.Invoke(this, EventArgs.Empty));
             SaveCommand = new RelayCommand(Save);
             ResetAiCommand = new RelayCommand(ResetAiSettingsToDefaults);
+
+            // Initialize theme from service if available
+            if (_themeService != null)
+            {
+                selectedTheme = _themeService.CurrentTheme;
+            }
 
             // Initialize XAI properties from current settings if available
             if (_settingsService?.Current != null)
@@ -47,18 +58,33 @@ namespace WileyWidget.WinForms.ViewModels
             _logger.LogInformation("SettingsViewModel initialized with default export path: {DefaultExportPath}", DefaultExportPath);
         }
 
+        /// <summary>
+        /// Available Syncfusion WinForms themes. User selection is applied globally via SfSkinManager.ApplicationVisualTheme.
+        /// Each theme cascades to all controls in the application automatically.
+        /// </summary>
         public IReadOnlyList<string> Themes { get; } = new List<string>
         {
             "Office2019Colorful",
-            "Office2019Dark",
             "Office2019Black",
-            "Office2019DarkGray",
-            "Dark",
-            "Light"
+            "Office2019White",
+            "FluentLight",
+            "FluentDark",
+            "MaterialLight",
+            "MaterialDark"
         };
 
         [ObservableProperty]
         private string appTitle = "Wiley Widget Settings";
+
+        [ObservableProperty]
+        private string selectedTheme = "Office2019Colorful";
+
+        partial void OnSelectedThemeChanged(string value)
+        {
+            _logger.LogInformation("SelectedTheme changed to: {Theme}", value);
+            _themeService?.ApplyTheme(value);
+            MarkDirty();
+        }
 
         [ObservableProperty]
         private bool openEditFormsDocked;

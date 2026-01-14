@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Theming;
 
 namespace WileyWidget.WinForms.Dialogs
 {
@@ -36,6 +35,7 @@ namespace WileyWidget.WinForms.Dialogs
         {
             _logger = logger;
             InitializeDialog(title, message, detail);
+            ThemeColors.ApplyTheme(this);
 
             _logger?.LogDebug("DeleteConfirmationDialog created: {Message}", message);
         }

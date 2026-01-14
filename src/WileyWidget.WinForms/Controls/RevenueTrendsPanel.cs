@@ -6,13 +6,22 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.WinForms.DataGrid;
+using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
+using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
+using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
+using ChartAlignment = Syncfusion.Windows.Forms.Chart.ChartAlignment;
+using ChartDock = Syncfusion.Windows.Forms.Chart.ChartDock;
+using ChartSymbolShape = Syncfusion.Windows.Forms.Chart.ChartSymbolShape;
+using ChartValueType = Syncfusion.Windows.Forms.Chart.ChartValueType;
+using CategoryAxisDataBindModel = Syncfusion.Windows.Forms.Chart.CategoryAxisDataBindModel;
+using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
+using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
+using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
+using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
 
@@ -48,7 +57,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     private NoDataOverlay? _noDataOverlay;
     private GradientPanelExt? _summaryPanel;
     private ChartControl? _chartControl;
-    private ChartControlRegionEventWiring? _chartRegionEventWiring;
     private SfDataGrid? _metricsGrid;
     private SplitContainer? _mainSplit;
     private TableLayoutPanel? _summaryCardsPanel;
@@ -200,7 +208,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             dbProp?.SetValue(_chartControl, true);
         }
         catch { }
-        _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
         ConfigureChart();
         _mainSplit.Panel1.Controls.Add(_chartControl);
 
@@ -787,6 +794,11 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
     }
 
+    /// <summary>
+    /// Subscribes to theme changes for UI refresh. ThemeManager removed per SfSkinManager guardrail.
+    /// FOLLOW-UP: Replace with SfSkinManager.VisualStyleChanged event handler when available in Syncfusion WinForms 23.4+.
+    /// Per architecture guidelines, SfSkinManager is the single source of truth for all theming.
+    /// </summary>
     private void SubscribeToThemeChanges()
     {
         // TODO: Reimplement theme subscription when ThemeManager is available
@@ -854,8 +866,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             catch { }
 
             // Dispose controls using SafeDispose pattern
-            try { _chartRegionEventWiring?.Dispose(); } catch { }
-            _chartRegionEventWiring = null;
             try { _chartControl?.Dispose(); } catch { }
             try { _metricsGrid?.SafeClearDataSource(); } catch { }
             try { _metricsGrid?.SafeDispose(); } catch { }

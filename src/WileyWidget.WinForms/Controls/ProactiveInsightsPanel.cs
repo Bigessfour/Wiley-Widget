@@ -10,7 +10,6 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
-// REMOVED: using WileyWidget.WinForms.Theming;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
