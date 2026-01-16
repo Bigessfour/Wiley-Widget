@@ -165,6 +165,9 @@
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
+  "omnisharp.excludePaths": [
+    "**/tests/**"
+  ],
 
   "csharp.suppressDotnetRestoreNotification": true,
 
@@ -176,7 +179,7 @@
   // Testing Configuration
   // ============================================================================
   "testExplorer.useNativeTesting": true,
-  "dotnet-test-explorer.testProjectPath": "**/*Tests.csproj",
+  "dotnet-test-explorer.testProjectPath": "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj",
   "dotnet-test-explorer.autoWatch": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,

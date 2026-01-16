@@ -53,6 +53,11 @@ namespace WileyWidget.Services.Abstractions
         Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Sends a raw prompt to the AI provider and returns an asynchronous stream of response chunks.
+        /// </summary>
+        System.Collections.Generic.IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, System.Threading.CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Send a message to the AI service with conversation history context.
         /// </summary>
         Task<string> SendMessageAsync(string message, object conversationHistory);

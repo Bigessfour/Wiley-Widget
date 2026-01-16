@@ -281,7 +281,7 @@ namespace WileyWidget.WinForms.Controls
             btnCharts.Click += (s, e) =>
             {
                 try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Charts"); } catch { }
-                NavigateToPanel<ChartPanel>("Charts");
+                NavigateToPanel<BudgetAnalyticsPanel>("Charts");
             };
             _toolStrip.Items.Add(btnCharts);
 

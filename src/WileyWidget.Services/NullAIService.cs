@@ -1,47 +1,49 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
 
-/// <summary>
-/// No-op AI service used in development/testing when API keys are not configured.
-/// Prevents startup failures by providing predictable stub responses.
-/// </summary>
 public class NullAIService : IAIService
 {
     public Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default)
-        => Task.FromResult("[Dev Stub] AI insights are disabled in development. Configure XAI_API_KEY to enable.");
+        => Task.FromResult("AI services are currently unavailable.");
 
     public Task<string> AnalyzeDataAsync(string data, string analysisType, CancellationToken cancellationToken = default)
-        => Task.FromResult("[Dev Stub] Data analysis is disabled in development.");
+        => Task.FromResult("Data analysis is currently unavailable.");
 
     public Task<string> ReviewApplicationAreaAsync(string areaName, string currentState, CancellationToken cancellationToken = default)
-        => Task.FromResult("[Dev Stub] Review is disabled in development.");
+        => Task.FromResult("Application review is currently unavailable.");
 
     public Task<string> GenerateMockDataSuggestionsAsync(string dataType, string requirements, CancellationToken cancellationToken = default)
-        => Task.FromResult("[Dev Stub] Mock data generation is disabled in development.");
+        => Task.FromResult("Mock data generation is currently unavailable.");
 
     public Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
-        => Task.FromResult(new AIResponseResult("[Dev Stub] AI insights are disabled in development. Configure XAI_API_KEY to enable.", 200));
+        => Task.FromResult(new AIResponseResult("AI services are currently unavailable.", 503, "Unavailable"));
 
     public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
-        => Task.FromResult(new AIResponseResult("Dev stub: validation not available in development.", 403, "AuthFailure", null));
+        => Task.FromResult(new AIResponseResult("Live key validation is unavailable.", 503, "Unavailable"));
 
-    // Adapter overload to satisfy the Abstractions interface which declares
-    // ValidateApiKeyAsync(string) without a CancellationToken parameter.
-    public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey)
-        => ValidateApiKeyAsync(apiKey, CancellationToken.None);
+    public Task UpdateApiKeyAsync(string newApiKey) => Task.CompletedTask;
 
-    public Task UpdateApiKeyAsync(string newApiKey)
+    public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
+        => Task.FromResult(new AIResponseResult("Sent prompt failed: AI unavailable.", 503, "Unavailable"));
+
+    public async IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // No-op in dev stub
-        return Task.CompletedTask;
+        yield return "AI ";
+        yield return "services ";
+        yield return "are ";
+        yield return "currently ";
+        yield return "unavailable.";
+        await Task.CompletedTask;
     }
 
-    public Task<AIResponseResult> SendPromptAsync(string prompt, System.Threading.CancellationToken cancellationToken = default)
-        => Task.FromResult(new AIResponseResult("[Dev Stub] AI prompt sending is disabled in development. Configure XAI_API_KEY to enable.", 403, "AuthFailure", null));
-
     public Task<string> SendMessageAsync(string message, object conversationHistory)
-        => Task.FromResult("[Dev Stub] AI messaging is disabled in development. Configure XAI_API_KEY to enable.");
+        => Task.FromResult("AI services are currently unavailable.");
 }
+

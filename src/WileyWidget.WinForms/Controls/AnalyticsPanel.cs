@@ -1016,12 +1016,36 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             await ViewModel.RefreshCommand.ExecuteAsync(null);
 
             // Defer sizing validation to prevent "controls cut off" - Analytics has complex grid/chart layouts
-            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+            DeferSizeValidation();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing panel");
         }
+    }
+
+    private void DeferSizeValidation()
+    {
+        if (IsDisposed) return;
+
+        if (IsHandleCreated)
+        {
+            try { BeginInvoke(new global::System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+            return;
+        }
+
+        EventHandler? handleCreatedHandler = null;
+        handleCreatedHandler = (s, e) =>
+        {
+            HandleCreated -= handleCreatedHandler;
+            if (IsDisposed) return;
+
+            try { BeginInvoke(new global::System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+        };
+
+        HandleCreated += handleCreatedHandler;
     }
 
 
@@ -1046,6 +1070,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
             _trendsChart.SafeDispose();
             _forecastChart.SafeDispose();
+            _insightsListBox.SafeClearDataSource();
+            _insightsListBox.SafeDispose();
+            _recommendationsListBox.SafeClearDataSource();
+            _recommendationsListBox.SafeDispose();
             _mainSplitContainer.SafeDispose();
             _statusStrip.SafeDispose();
             _panelHeader.SafeDispose();

@@ -7,10 +7,10 @@ using WileyWidget.WinForms.Models;
 namespace WileyWidget.ViewModels;
 
 /// <summary>
-/// ViewModel for BudgetAnalyticsPanel providing budget variance analytics, 
+/// ViewModel for BudgetAnalyticsPanel providing budget variance analytics,
 /// department performance metrics, and financial forecasting.
 /// </summary>
-public partial class BudgetAnalyticsViewModel : ObservableObject
+public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyticsViewModel
 {
     [ObservableProperty]
     private bool isLoading;

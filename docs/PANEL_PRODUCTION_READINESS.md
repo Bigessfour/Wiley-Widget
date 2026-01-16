@@ -401,10 +401,10 @@
 **Status:** Production-ready - Architecture complete, optional enhancements available
 
 **Lines of Code:** 1,095
-**ViewModel:** [`ReportsViewModel`](src/WileyWidget.WinForms/ViewModels/ReportsViewModel.cs)
-**Source:** [`ReportsPanel.cs`](src/WileyWidget.WinForms/Controls/ReportsPanel.cs)
-**Implements:** [`IParameterizedPanel`](src/WileyWidget.Abstractions/IParameterizedPanel.cs)
-**Base Class:** [`ScopedPanelBase&lt;ReportsViewModel&gt;`](src/WileyWidget.WinForms/Controls/ScopedPanelBase.cs)
+**ViewModel:** [ReportsViewModel](src/WileyWidget.WinForms/ViewModels/ReportsViewModel.cs)
+**Source:** [ReportsPanel.cs](src/WileyWidget.WinForms/Controls/ReportsPanel.cs)
+**Implements:** [IParameterizedPanel](src/WileyWidget.Abstractions/IParameterizedPanel.cs)
+**Base Class:** [ScopedPanelBase\<ReportsViewModel\>](src/WileyWidget.WinForms/Controls/ScopedPanelBase.cs)
 
 **Features Implemented:**
 
@@ -1268,20 +1268,20 @@ Generated: 2026-01-01 12:30:45 UTC
 
 ##### Days 1-2 (16 hours): Architecture Refactoring
 
-- [ ] Convert to ScopedPanelBase<SettingsViewModel> (4 hours)
+- [ ] Convert to `ScopedPanelBase<SettingsViewModel>` (4 hours)
 - [ ] Implement change tracking with IsDirty property (4 hours)
 - [ ] Add Apply/OK/Cancel/Reset button panel (2 hours)
 - [ ] Implement validation summary panel (3 hours)
 - [ ] Add PanelHeader and status bar (3 hours)
 
-**Days 3-4 (16 hours): Tab Implementation**
+**\*Days 3-4 (16 hours): Tab Implementation**
 
 - [ ] Implement SfTabControl with 6 tabs (4 hours)
 - [ ] Create Appearance tab (Theme, Font, Window) (4 hours)
 - [ ] Create Behavior tab (Auto-save, Confirmations, Defaults) (4 hours)
 - [ ] Create Data & Export tab (Paths, Formats) (4 hours)
 
-**Day 5 (8 hours): Advanced Tabs**
+**\*Day 5 (8 hours): Advanced Tabs**
 
 - [ ] Create AI & Integration tab (xAI, QuickBooks) (4 hours)
 - [ ] Create Logging & Diagnostics tab (4 hours)
@@ -1294,7 +1294,7 @@ Generated: 2026-01-01 12:30:45 UTC
 - [ ] Add settings versioning and migration logic (5 hours)
 - [ ] Implement settings backup/restore with history (5 hours)
 
-**Days 8-9 (16 hours): Polish and Testing**
+**\*Days 8-9 (16 hours): Polish and Testing**
 
 - [ ] Add keyboard shortcuts (Ctrl+S, Esc, etc.) (3 hours)
 - [ ] Implement live preview for theme/font changes (5 hours)
@@ -1303,7 +1303,7 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 3: ReportsPanel Foundation (40 hours)
 
-**Days 10-11 (16 hours): Architecture and FastReport Integration**
+**\*Days 10-11 (16 hours): Architecture and FastReport Integration**
 
 - [ ] Convert to `ScopedPanelBase<ReportsViewModel>` (3 hours)
 - [ ] Add FastReport.OpenSource NuGet package (1 hour)
@@ -1311,14 +1311,14 @@ Generated: 2026-01-01 12:30:45 UTC
 - [ ] Add SafeDispose patterns for all controls (2 hours)
 - [ ] Add PanelHeader and navigation buttons (2 hours)
 
-**Days 12-13 (16 hours): Parameter Input and Report Gallery**
+**\*Days 12-13 (16 hours): Parameter Input and Report Gallery**
 
 - [ ] Add SfDataGrid for report parameter input (6 hours)
 - [ ] Implement parameter validation (IParameterizedPanel) (4 hours)
 - [ ] Create report thumbnail gallery with SfListView (4 hours)
 - [ ] Add LoadingOverlay + NoDataOverlay (2 hours)
 
-**Day 14 (8 hours): Export and Progress**
+**\*Day 14 (8 hours): Export and Progress**
 
 - [ ] Implement export to PDF/Excel/CSV with ProgressBarAdv (4 hours)
 - [ ] Add print preview integration (2 hours)
@@ -1326,20 +1326,20 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 4: ReportsPanel Features and Testing (48 hours)
 
-**Days 15-16 (16 hours): Report Scheduling**
+**\*Days 15-16 (16 hours): Report Scheduling**
 
 - [ ] Create ScheduleReportDialog UI (6 hours)
 - [ ] Implement scheduled report execution service (6 hours)
 - [ ] Add SfDataGrid to show scheduled reports management (4 hours)
 
-**Days 17-18 (16 hours): Report History and Accessibility**
+**\*Days 17-18 (16 hours): Report History and Accessibility**
 
 - [ ] Add History tab with SfDataGrid (4 hours)
 - [ ] Implement Rerun and View actions (4 hours)
 - [ ] Add accessibility support (AccessibleName/Description) (4 hours)
 - [ ] Add search/filter for report history (4 hours)
 
-**Days 19-20 (16 hours): Testing and Documentation**
+**\*Days 19-20 (16 hours): Testing and Documentation**
 
 - [ ] Unit tests for ReportsPanel (8 hours)
 - [ ] Integration tests with mock FastReport data (4 hours)
@@ -1361,7 +1361,7 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 5: Unit Test Framework (40 hours)
 
-**Days 21-22 (16 hours): Test Infrastructure**
+**\*Days 21-22 (16 hours): Test Infrastructure**
 
 - [ ] Create base test classes with mocked dependencies (6 hours)
 - [ ] Setup test helpers for Syncfusion controls (4 hours)
@@ -1370,7 +1370,7 @@ Generated: 2026-01-01 12:30:45 UTC
 
 <!-- trunk-ignore(markdownlint/MD036) -->
 
-**Days 23-25 (24 hours): Panel Unit Tests (Round 1)**
+**\*Days 23-25 (24 hours): Panel Unit Tests (Round 1)**
 
 - [ ] CustomersPanelTests (6 hours)
 - [ ] AccountsPanelTests (6 hours)
@@ -1379,14 +1379,14 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 6: Unit Tests (Round 2) and Integration Tests (40 hours)
 
-**Days 26-28 (24 hours): Panel Unit Tests (Round 2)**
+**\*Days 26-28 (24 hours): Panel Unit Tests (Round 2)**
 
 - [ ] AuditLogPanelTests (6 hours)
 - [ ] AnalyticsPanelTests (6 hours)
 - [ ] BudgetPanelTests (6 hours)
 - [ ] ChartPanelTests (6 hours)
 
-**Days 29-30 (16 hours): Integration Test Setup**
+**\*Days 29-30 (16 hours): Integration Test Setup**
 
 - [ ] Setup test database with seeded data (6 hours)
 - [ ] Create IntegrationTestFixture base class (4 hours)
@@ -1394,13 +1394,13 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 7: E2E Test Framework (40 hours)
 
-**Days 31-32 (16 hours): FlaUI Setup and Smoke Tests**
+**\*Days 31-32 (16 hours): FlaUI Setup and Smoke Tests**
 
 - [ ] Configure FlaUI automation framework (4 hours)
 - [ ] Create E2E test base classes and helpers (6 hours)
 - [ ] Write smoke tests (app launch, all panels open) (6 hours)
 
-**Days 33-35 (24 hours): E2E User Workflow Tests**
+**\*Days 33-35 (24 hours): E2E User Workflow Tests**
 
 - [ ] Customer management workflow (6 hours)
 - [ ] Budget management workflow (6 hours)
@@ -1409,12 +1409,12 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 8: Performance and Load Testing (40 hours)
 
-**Days 36-37 (16 hours): Performance Tests**
+**\*Days 36-37 (16 hours): Performance Tests**
 
 - [ ] Data load performance tests (1K, 10K, 100K records) (8 hours)
 - [ ] Memory leak detection tests (8 hours)
 
-**Days 38-40 (24 hours): Load Testing and Optimization**
+**\*Days 38-40 (24 hours): Load Testing and Optimization**
 
 - [ ] Concurrent panel open/close stress tests (8 hours)
 - [ ] Grid scrolling performance tests (8 hours)
@@ -1436,13 +1436,13 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 9: Telemetry and Logging (40 hours)
 
-**Days 41-42 (16 hours): Application Insights Integration**
+**\*Days 41-42 (16 hours): Application Insights Integration**
 
 - [ ] Configure Application Insights SDK (4 hours)
 - [ ] Add telemetry to all panel lifecycle events (8 hours)
 - [ ] Configure custom metrics (load time, error rate) (4 hours)
 
-**Days 43-45 (24 hours): Structured Logging and Health Checks**
+**\*Days 43-45 (24 hours): Structured Logging and Health Checks**
 
 - [ ] Implement structured logging across all panels (12 hours)
 - [ ] Create panel health check implementations (8 hours)
@@ -1450,13 +1450,13 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 10: Diagnostics and Alerts (20 hours)
 
-**Days 46-47 (16 hours): Diagnostics Panel**
+**\*Days 46-47 (16 hours): Diagnostics Panel**
 
 - [ ] Create DiagnosticsPanel UI (8 hours)
 - [ ] Implement memory/thread pool diagnostics (4 hours)
 - [ ] Add export diagnostics to ZIP functionality (4 hours)
 
-**Day 48 (4 hours): Alert Configuration**
+**\*Day 48 (4 hours): Alert Configuration**
 
 - [ ] Configure Application Insights alerts (2 hours)
 - [ ] Document alert runbooks for on-call team (2 hours)
@@ -1477,14 +1477,14 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 11: Consistency Audit (40 hours)
 
-**Days 49-50 (16 hours): UI Consistency**
+**\*Days 49-50 (16 hours): UI Consistency**
 
 - [ ] Audit all panels for theme consistency (4 hours)
 - [ ] Standardize keyboard shortcuts across panels (6 hours)
 - [ ] Verify navigation buttons follow patterns (3 hours)
 - [ ] Ensure all panels have PanelHeader (3 hours)
 
-**Days 51-53 (24 hours): Accessibility Improvements**
+**\*Days 51-53 (24 hours): Accessibility Improvements**
 
 - [ ] Add AccessibleName/Description to all buttons (8 hours)
 - [ ] Implement logical tab order for all panels (8 hours)
@@ -1493,14 +1493,14 @@ Generated: 2026-01-01 12:30:45 UTC
 
 #### Week 12: Documentation and Release (20 hours)
 
-**Days 54-55 (16 hours): Documentation**
+**\*Days 54-55 (16 hours): Documentation**
 
 - [ ] Update all panel XML documentation (6 hours)
 - [ ] Create user guide for each panel (6 hours)
 - [ ] Document keyboard shortcuts reference card (2 hours)
 - [ ] Update architecture diagrams (2 hours)
 
-**Day 56 (4 hours): Release Preparation**
+**\*Day 56 (4 hours): Release Preparation**
 
 - [ ] Final regression testing (2 hours)
 - [ ] Update CHANGELOG.md (1 hour)
@@ -1589,7 +1589,7 @@ Generated: 2026-01-01 12:30:45 UTC
 
 ### Production Readiness Score
 
-**Overall Score: 100% (11/11 panels production-ready) - ✅ PHASE 1 COMPLETE**
+**\*Overall Score: 100% (11/11 panels production-ready) - ✅ PHASE 1 COMPLETE**
 
 | Category       | Weight   | Score | Weighted   |
 | -------------- | -------- | ----- | ---------- |
@@ -1830,7 +1830,7 @@ _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.HasData;
 
 ---
 
-### ADR-008: Navigation via MainForm.ShowPanel<TPanel>()
+### ADR-008: Navigation via MainForm.ShowPanel\<TPanel\>()
 
 **Status:** Accepted
 **Date:** January 1, 2026
@@ -2267,7 +2267,7 @@ public async Task LoadLargeDataset_ShouldCompleteQuickly()
 
 ---
 
-## Monitoring and Observability
+### Monitoring and Observability
 
 - **Best Practices:** See [CustomersPanel.cs](../src/WileyWidget.WinForms/Controls/CustomersPanel.cs) (lines 1-344)
 - **SafeDispose Extensions:** See [SyncfusionExtensions.cs](../src/WileyWidget.WinForms/Extensions/SyncfusionExtensions.cs)

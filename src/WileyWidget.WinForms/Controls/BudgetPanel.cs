@@ -92,10 +92,33 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         InitializeControls();
         ApplySyncfusionTheme();
 
-        // Defer sizing validation until layout is complete
-        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+        // Defer sizing validation until handle is created
+        DeferSizeValidation();
 
         Logger.LogInformation("BudgetPanel initialized");
+    }
+
+    private void DeferSizeValidation()
+    {
+        if (IsDisposed) return;
+
+        if (IsHandleCreated)
+        {
+            try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+            return;
+        }
+
+        EventHandler? handleCreatedHandler = null;
+        handleCreatedHandler = (s, e) =>
+        {
+            HandleCreated -= handleCreatedHandler;
+            if (IsDisposed) return;
+            try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+        };
+
+        HandleCreated += handleCreatedHandler;
     }
 
     /// <summary>

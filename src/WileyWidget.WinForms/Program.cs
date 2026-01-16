@@ -119,7 +119,17 @@ namespace WileyWidget.WinForms
             Services = _applicationScope.ServiceProvider;
 
             var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(Services);
-            await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
+            var hostEnvironment = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IHostEnvironment>(Services);
+
+            if (hostEnvironment.IsDevelopment())
+            {
+                await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
+            }
+            else
+            {
+                Log.Information("DI validation skipped for environment {Environment}", hostEnvironment.EnvironmentName);
+            }
+
             await startupOrchestrator.InitializeThemeAsync(CancellationToken.None).ConfigureAwait(false);
             startupOrchestrator.GenerateStartupReport();
 
@@ -210,6 +220,27 @@ namespace WileyWidget.WinForms
             Log.Logger = new LoggerConfiguration()
                 // Set minimum level to Verbose for everything - enforced globally
                 .MinimumLevel.Verbose()
+                // Suppress expected cancellation exceptions to reduce noisy logs
+                .Filter.ByExcluding(logEvent =>
+                {
+                    var exception = logEvent.Exception;
+                    if (exception == null)
+                    {
+                        return false;
+                    }
+
+                    if (exception is OperationCanceledException)
+                    {
+                        return true;
+                    }
+
+                    if (exception is AggregateException aggregate)
+                    {
+                        return aggregate.InnerExceptions.All(inner => inner is OperationCanceledException);
+                    }
+
+                    return false;
+                })
                 // Enrich with comprehensive context information
                 .Enrich.FromLogContext()
                 .Enrich.WithMachineName()

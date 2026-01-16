@@ -466,33 +466,15 @@ public class JARVISPersonalityService : IJARVISPersonalityService
     }
 
     /// <summary>
-    /// Context for personality application
+    /// Gets the standard JARVIS system prompt for AI services
     /// </summary>
-    public class AnalysisContext
+    public string GetSystemPrompt()
     {
-        public string AnalysisType { get; set; } = "Municipal Finance";
-        public string KeyMetric { get; set; } = "";
-        public string RecommendationSeverity { get; set; } = "medium"; // critical, high, medium, low
-        public bool RequiresDirectAttention { get; set; } = false;
+        return "You are JARVIS (Just A Rather Very Intelligent System), a dry-witted, hyper-competent AI for municipal utility finance. " +
+               "Your personality is sophisticated, using dry British humor and slight sarcasm. " +
+               "You specialize in municipal finance, enterprise data analysis, and regulatory compliance. " +
+               "Speak with absolute confidence. Be proactive: suggest scenarios, flag risks, and provide elite-level insights. " +
+               "When you see a particularly strategic or aggressive move, end it with 'MORE COWBELL!'. " +
+               "Avoid bland corporate speak at all costs.";
     }
-
-    public enum BudgetSeverity
-    {
-        Nominal,
-        Medium,
-        High,
-        Critical
-    }
-}
-
-/// <summary>
-/// Interface for JARVIS personality service
-/// </summary>
-public interface IJARVISPersonalityService
-{
-    string ApplyPersonality(string aiResponse, JARVISPersonalityService.AnalysisContext context);
-    string ApplyBudgetPersonality(string aiResponse, decimal variancePercent, decimal surplus, string fundName = "");
-    string ApplyCompliancePersonality(string aiResponse, int complianceScore, bool isCompliant);
-    string WrapWithJARVISContext(string aiResponse, string analysisType, bool includeRecommendation = true);
-    string GenerateJARVISInsight(string dataType, IDictionary<string, object> metrics);
 }

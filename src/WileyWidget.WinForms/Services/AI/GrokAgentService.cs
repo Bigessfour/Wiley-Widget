@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.Services.AI
     /// - Exposes a simple HTTP fallback to exercise the Grok endpoint for basic tests.
     /// - Defers heavy Semantic Kernel initialization to async initialization phase.
     /// </summary>
-    public class GrokAgentService : IAsyncInitializable
+    public sealed class GrokAgentService : IAsyncInitializable, IDisposable
     {
         private Kernel? _kernel;
         private readonly IXaiModelDiscoveryService? _modelDiscoveryService;
@@ -41,11 +41,15 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly IConfiguration _config;
         private readonly IHttpClientFactory? _httpClientFactory;
         private readonly IChatBridgeService? _chatBridge;
+        private readonly IJARVISPersonalityService? _jarvisPersonality;
         private readonly IServiceProvider? _serviceProvider;
         private readonly double? _defaultPresencePenalty;
         private readonly double? _defaultFrequencyPenalty;
         private bool _isInitialized = false;
         private bool _initializationFailed = false;
+        private readonly CancellationTokenSource _serviceCts = new();
+        private bool _disposed = false;
+        private readonly bool _ownsHttpClient;
 
         private const string ChatCompletionSuffix = "/chat/completions";
         private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
@@ -60,7 +64,7 @@ namespace WileyWidget.WinForms.Services.AI
 
         private const string JarvisSystemPrompt = "You are JARVIS, the dry-witted, hyper-competent AI for municipal utility finance. Speak with confidence and slight British sarcasm. Be proactive: suggest scenarios, flag risks, roast bad budgets when asked. End bold recommendations with 'MORE COWBELL!' Never bland corporate speak.";
 
-        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null)
+        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null, IJARVISPersonalityService? jarvisPersonality = null)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             _logger = logger;
@@ -69,6 +73,7 @@ namespace WileyWidget.WinForms.Services.AI
             _modelDiscoveryService = modelDiscoveryService;
             _chatBridge = chatBridge;
             _serviceProvider = serviceProvider;
+            _jarvisPersonality = jarvisPersonality;
 
             // Subscribe to chat bridge events if available
             if (_chatBridge != null)
@@ -163,6 +168,7 @@ namespace WileyWidget.WinForms.Services.AI
             logger?.LogInformation("[XAI] Using model={Model}, endpoint={Endpoint}", _model, _endpoint);
 
             // Initialize HttpClient early (lightweight, non-blocking)
+            _ownsHttpClient = httpClientFactory == null;
             _httpClient = httpClientFactory?.CreateClient("WileyWidgetDefault") ?? new HttpClient();
             _httpClient.BaseAddress = _baseEndpoint;
             if (!string.IsNullOrWhiteSpace(_apiKey))
@@ -180,6 +186,9 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _serviceCts.Token);
+            var ct = linkedCts.Token;
+
             if (_isInitialized)
             {
                 _logger?.LogDebug("[XAI] GrokAgentService already initialized");
@@ -201,7 +210,7 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     try
                     {
-                        using var ctsAuto = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        using var ctsAuto = CancellationTokenSource.CreateLinkedTokenSource(ct);
                         ctsAuto.CancelAfter(TimeSpan.FromSeconds(3));
                         var selected = await AutoSelectModelAsync(ctsAuto.Token);
                         if (!string.IsNullOrWhiteSpace(selected) && !string.Equals(selected, _model, StringComparison.OrdinalIgnoreCase))
@@ -223,7 +232,7 @@ namespace WileyWidget.WinForms.Services.AI
                 // Build Semantic Kernel on background thread
                 await Task.Run(() =>
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    ct.ThrowIfCancellationRequested();
 
                     var builder = Kernel.CreateBuilder();
 
@@ -270,7 +279,7 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         _logger?.LogWarning(ex, "[XAI] Failed to auto-register kernel plugins from executing assembly.");
                     }
-                }, cancellationToken);
+                }, ct);
 
                 _isInitialized = true;
                 _logger?.LogInformation("[XAI] Grok service async initialization complete");
@@ -282,7 +291,7 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     try
                     {
-                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                         cts.CancelAfter(TimeSpan.FromSeconds(5));
                         var (success, msg) = await ValidateApiKeyAsync(cts.Token);
                         if (success)
@@ -486,41 +495,6 @@ namespace WileyWidget.WinForms.Services.AI
         /// If no API key is configured this returns a clear diagnostic string.
         /// Supports providing an optional system prompt and model override and accepts a cancellation token.
         /// </summary>
-        /// <summary>
-        /// Creates a request payload for the x.ai OpenAI-compatible /v1/chat/completions API.
-        /// Per x.ai spec: stream=true enables SSE (Server-Sent Events) format.
-        /// Tool support via tools array and tool_choice parameter (auto|required|specific tool).
-        /// </summary>
-        private object CreateChatRequestPayload(string model, object[] messages, bool stream = false, double temperature = 0.3, object? tools = null, string? toolChoice = null)
-        {
-            // CRITICAL FIX: Only include tool_choice when tools are provided
-            // Grok API rejects requests with tool_choice but no tools array
-            if (tools != null)
-            {
-                var payloadWithTools = new
-                {
-                    model,
-                    messages,
-                    stream,
-                    temperature,
-                    tools,
-                    tool_choice = toolChoice ?? "auto"
-                };
-                return payloadWithTools;
-            }
-            else
-            {
-                var payloadNoTools = new
-                {
-                    model,
-                    messages,
-                    stream,
-                    temperature
-                };
-                return payloadNoTools;
-            }
-        }
-
         public async Task<string> GetSimpleResponse(string userMessage, string? systemPrompt = null, string? modelOverride = null, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
@@ -884,16 +858,16 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         private void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(e?.Prompt))
+            if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
             {
-                _logger?.LogWarning("[XAI] Chat bridge received empty prompt");
+                _logger?.LogWarning("[XAI] Chat bridge prompt ignored: prompt empty or service disposed");
                 return;
             }
 
-            _logger?.LogInformation("[XAI] Chat bridge prompt received: {PromptLength} chars", e.Prompt.Length);
+            _logger?.LogInformation("[XAI] Chat bridge prompt received: {PromptLength} chars (ConversationId: {ConversationId})", e.Prompt.Length, e.ConversationId ?? "N/A");
 
-            // Fire-and-forget: route through agent and stream back to bridge
-            _ = RunAgentToChatBridgeAsync(e.Prompt);
+            // Fire-and-forget with linked cancellation token
+            _ = RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, _serviceCts.Token);
         }
 
         /// <summary>
@@ -901,36 +875,40 @@ namespace WileyWidget.WinForms.Services.AI
         /// Sends chunks back to Blazor as they arrive.
         /// Sends initial "JARVIS is thinking..." message.
         /// </summary>
-        private async Task RunAgentToChatBridgeAsync(string userRequest)
+        private async Task RunAgentToChatBridgeAsync(string userRequest, string? conversationId, CancellationToken ct)
         {
             try
             {
-                // Send initial thinking message via bridge
-                await _chatBridge!.SendResponseChunkAsync("JARVIS is thinking...");
-
                 // Run agent with JARVIS personality + streaming callback that sends chunks to bridge
-                await RunAgentAsync(userRequest, JarvisSystemPrompt, chunk =>
+                var systemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
+                await RunAgentAsync(userRequest, systemPrompt, chunk =>
                 {
-                    // Send each chunk back to bridge (fire-and-forget)
-                    _ = _chatBridge!.SendResponseChunkAsync(chunk);
-                });
+                    if (!ct.IsCancellationRequested)
+                    {
+                        // Send each chunk back to bridge (fire-and-forget)
+                        _ = _chatBridge!.SendResponseChunkAsync(chunk);
+                    }
+                }, conversationId).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogDebug("[XAI] Chat bridge agent operation was canceled.");
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[XAI] Error in chat bridge agent loop");
-                await _chatBridge!.SendResponseChunkAsync($"[Error: {ex.Message}]");
+                if (!ct.IsCancellationRequested)
+                {
+                    await _chatBridge!.SendResponseChunkAsync($"[Error: {ex.Message}]");
+                }
             }
         }
 
         /// <summary>
         /// Runs an agentic chat session with Grok using Semantic Kernel's native streaming and automatic function calling.
-        /// Uses ToolCallBehavior.AutoInvokeKernelFunctions (SK 1.16.0) to enable automatic plugin invocation per Microsoft Docs best practices.
-        /// The default system prompt makes the agent act as a senior Syncfusion WinForms architect
-        /// that enforces SfSkinManager theming rules, MVVM patterns, and project conventions.
-        /// If no Grok API key is configured the method returns a clear diagnostic string.
-        /// The optional onStreamingChunk callback enables UI to display streaming progress during execution.
+        /// Uses ToolCallBehavior.AutoInvokeKernelFunctions (SK 1.16.0) to enable automatic function calling.
         /// </summary>
-        public async Task<string> RunAgentAsync(string userRequest, string systemPrompt = DefaultArchitectPrompt, Action<string>? onStreamingChunk = null)
+        public async Task<string> RunAgentAsync(string userRequest, string systemPrompt = DefaultArchitectPrompt, Action<string>? onStreamingChunk = null, string? conversationId = null)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -952,7 +930,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogInformation("[XAI] RunAgentAsync invoked - User request length: {Length}", userRequest.Length);
+                _logger?.LogInformation("[XAI] RunAgentAsync invoked - User request length: {Length}, ConversationId: {ConversationId}", userRequest.Length, conversationId ?? "N/A");
 
                 // Use Semantic Kernel's native streaming with FunctionChoiceBehavior.Auto() (Microsoft Docs recommended pattern)
                 var chatService = _kernel.GetRequiredService<IChatCompletionService>();
@@ -968,27 +946,12 @@ namespace WileyWidget.WinForms.Services.AI
                 // Only add penalties for non-reasoning models
                 if (!IsReasoningModel(_model))
                 {
-                    if (_defaultPresencePenalty.HasValue)
-                    {
-                        settings.PresencePenalty = _defaultPresencePenalty.Value;
-                    }
-                    if (_defaultFrequencyPenalty.HasValue)
-                    {
-                        settings.FrequencyPenalty = _defaultFrequencyPenalty.Value;
-                    }
+                    if (_defaultPresencePenalty.HasValue) settings.PresencePenalty = _defaultPresencePenalty.Value;
+                    if (_defaultFrequencyPenalty.HasValue) settings.FrequencyPenalty = _defaultFrequencyPenalty.Value;
                 }
 
-                // FUTURE: Consider registering an IFunctionInvocationFilter (for example, a
-                // LoggingFunctionFilter) to centrally control, observe, and optionally
-                // short-circuit function/tool invocations. This provides finer-grained
-                // control over tool call behavior than ad-hoc logging and can be used to
-                // enforce policies, timeouts, or telemetry. See
-                // docs/SEMANTIC_KERNEL_OPTIMIZATIONS.md for an example implementation.
-
-
-                // Create chat history
-                var history = new ChatHistory();
-                history.AddSystemMessage(systemPrompt);
+                // Load existing conversation history if provided
+                var history = await LoadChatHistoryAsync(conversationId, systemPrompt).ConfigureAwait(false);
                 history.AddUserMessage(userRequest);
 
                 _logger?.LogDebug("[XAI] Invoking streaming chat with ToolCallBehavior.AutoInvokeKernelFunctions - Plugins: {Count}", _kernel.Plugins.Count);
@@ -1022,6 +985,13 @@ namespace WileyWidget.WinForms.Services.AI
                     return await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
                 }
 
+                // Add assistant response and persist history
+                history.AddAssistantMessage(result);
+                if (!string.IsNullOrEmpty(conversationId))
+                {
+                    await SaveChatHistoryAsync(conversationId, history).ConfigureAwait(false);
+                }
+
                 _logger?.LogInformation("[XAI] RunAgentAsync completed via Semantic Kernel streaming - Response length: {Length}", result.Length);
                 return result;
             }
@@ -1047,6 +1017,90 @@ namespace WileyWidget.WinForms.Services.AI
             }
         }
 
+        private async Task<ChatHistory> LoadChatHistoryAsync(string? conversationId, string systemPrompt)
+        {
+            var history = new ChatHistory();
+            history.AddSystemMessage(systemPrompt);
+
+            if (string.IsNullOrWhiteSpace(conversationId))
+            {
+                return history;
+            }
+
+            try
+            {
+                using var scope = _serviceProvider?.CreateScope();
+                var repo = scope != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConversationRepository>(scope.ServiceProvider) : null;
+                if (repo == null) return history;
+
+                var conversationObj = await repo.GetConversationAsync(conversationId).ConfigureAwait(false);
+                if (conversationObj is ConversationHistory legacyHistory && !string.IsNullOrWhiteSpace(legacyHistory.MessagesJson))
+                {
+                    var messages = JsonSerializer.Deserialize<List<PersistentChatMessage>>(legacyHistory.MessagesJson);
+                    if (messages != null)
+                    {
+                        foreach (var m in messages)
+                        {
+                            if (string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase))
+                                history.AddUserMessage(m.Content);
+                            else if (string.Equals(m.Role, "assistant", StringComparison.OrdinalIgnoreCase))
+                                history.AddAssistantMessage(m.Content);
+                        }
+                        _logger?.LogDebug("[XAI] Loaded {Count} messages for conversation {ConversationId}", messages.Count, conversationId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[XAI] Failed to load chat history for {ConversationId}", conversationId);
+            }
+
+            return history;
+        }
+
+        private async Task SaveChatHistoryAsync(string conversationId, ChatHistory history)
+        {
+            if (string.IsNullOrWhiteSpace(conversationId)) return;
+
+            try
+            {
+                using var scope = _serviceProvider?.CreateScope();
+                var repo = scope != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConversationRepository>(scope.ServiceProvider) : null;
+                if (repo == null) return;
+
+                var messages = history
+                    .Where(m => m.Role == AuthorRole.User || m.Role == AuthorRole.Assistant)
+                    .Select(m => new PersistentChatMessage
+                    {
+                        Role = m.Role.ToString().ToLowerInvariant(),
+                        Content = m.Content ?? ""
+                    }).ToList();
+
+                var json = JsonSerializer.Serialize(messages);
+                var conversation = new ConversationHistory
+                {
+                    ConversationId = conversationId,
+                    MessagesJson = json,
+                    MessageCount = messages.Count,
+                    UpdatedAt = DateTime.UtcNow,
+                    Title = history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Substring(0, Math.Min(50, history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Length ?? 0)) ?? "Chat Session"
+                };
+
+                await repo.SaveConversationAsync(conversation).ConfigureAwait(false);
+                _logger?.LogDebug("[XAI] Saved conversation {ConversationId} with {Count} messages", conversationId, messages.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[XAI] Failed to save chat history for {ConversationId}", conversationId);
+            }
+        }
+
+        private class PersistentChatMessage
+        {
+            public string Role { get; set; } = "";
+            public string Content { get; set; } = "";
+        }
+
         internal static (string? Value, string Source) TryGetEnvironmentScopedApiKey(Func<EnvironmentVariableTarget, string?>? getter = null)
         {
             getter ??= EnvironmentVariableGetterOverride ?? (target => Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable, target));
@@ -1068,6 +1122,35 @@ namespace WileyWidget.WinForms.Services.AI
             }
 
             return (null, "none");
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _serviceCts.Cancel();
+                    _serviceCts.Dispose();
+
+                    if (_chatBridge != null)
+                    {
+                        _chatBridge.PromptSubmitted -= OnChatPromptSubmitted;
+                    }
+
+                    if (_ownsHttpClient)
+                    {
+                        _httpClient.Dispose();
+                    }
+                }
+                _disposed = true;
+            }
         }
     }
 }

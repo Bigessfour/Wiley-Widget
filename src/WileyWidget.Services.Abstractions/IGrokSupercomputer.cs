@@ -20,5 +20,6 @@ namespace WileyWidget.Services.Abstractions
         Task<string> GenerateRecommendationsAsync(object data);
         Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> municipalAccounts, BudgetData budgetData);
         Task<string> QueryAsync(string prompt);
+        System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt);
     }
 }

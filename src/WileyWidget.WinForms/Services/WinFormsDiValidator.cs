@@ -228,13 +228,55 @@ namespace WileyWidget.WinForms.Services
                 .Distinct()
                 .ToList();
 
-            var result = _coreValidator.ValidateServiceCategory(
-                serviceProvider,
-                panelTypes,
-                "Panels");
+            var result = new DiValidationResult();
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
+            _logger.LogInformation("=== Starting Panels Validation ===");
+
+            var isService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceProviderIsService>(serviceProvider);
+            if (isService == null)
+            {
+                _logger.LogWarning("IServiceProviderIsService is not available; falling back to instance resolution for panel validation.");
+                var resolved = _coreValidator.ValidateServiceCategory(
+                    serviceProvider,
+                    panelTypes,
+                    "Panels");
+
+                resolved.CategoryResults["Panels"] = resolved.SuccessMessages.Concat(resolved.Errors).Concat(resolved.Warnings).ToList();
+                return resolved;
+            }
+
+            foreach (var panelType in panelTypes)
+            {
+                try
+                {
+                    if (isService.IsService(panelType))
+                    {
+                        var success = $"{panelType.Name} registered successfully";
+                        result.SuccessMessages.Add(success);
+                        _logger.LogInformation("OK {Success}", success);
+                    }
+                    else
+                    {
+                        var error = $"{panelType.Name} is NOT registered in DI";
+                        result.Errors.Add(error);
+                        _logger.LogError("FAIL {Error}", error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var error = $"{panelType.Name} failed to validate: {ex.Message}";
+                    result.Errors.Add(error);
+                    _logger.LogError(ex, "FAIL {Error}", error);
+                }
+            }
+
+            stopwatch.Stop();
+            result.ValidationDuration = stopwatch.Elapsed;
+            result.IsValid = result.Errors.Count == 0;
             result.CategoryResults["Panels"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
 
+            _logger.LogInformation(result.GetSummary());
             return result;
         }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
@@ -13,9 +14,29 @@ public class ChatBridgeService : IChatBridgeService
 {
     private readonly ILogger<ChatBridgeService> _logger;
 
+    public event EventHandler<ChatMessage> OnMessageReceived;
     public event EventHandler<ChatPromptSubmittedEventArgs> PromptSubmitted;
     public event EventHandler<ChatResponseChunkEventArgs> ResponseChunkReceived;
     public event EventHandler<ChatSuggestionSelectedEventArgs> SuggestionSelected;
+    public event EventHandler<ChatExternalPromptEventArgs> ExternalPromptRequested;
+
+    /// <summary>
+    /// Notify that a new message has been received.
+    /// </summary>
+    public Task NotifyMessageReceivedAsync(ChatMessage message)
+    {
+        if (message == null)
+        {
+            _logger.LogWarning("Attempted to notify null message");
+            return Task.CompletedTask;
+        }
+
+        _logger.LogInformation("Message received: {MessageLength} characters", message.Content.Length);
+
+        OnMessageReceived?.Invoke(this, message);
+
+        return Task.CompletedTask;
+    }
 
     /// <summary>
     /// Constructor with dependency injection
@@ -26,9 +47,28 @@ public class ChatBridgeService : IChatBridgeService
     }
 
     /// <summary>
+    /// Requests that a prompt be submitted from an external source (e.g. from an insight card).
+    /// </summary>
+    public Task RequestExternalPromptAsync(string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            _logger.LogWarning("Attempted to request empty external prompt");
+            return Task.CompletedTask;
+        }
+
+        _logger.LogInformation("External prompt requested: {PromptLength} characters", prompt.Length);
+
+        var args = new ChatExternalPromptEventArgs { Prompt = prompt };
+        ExternalPromptRequested?.Invoke(this, args);
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     /// Submit a prompt from the Blazor component to the backend.
     /// </summary>
-    public Task SubmitPromptAsync(string prompt)
+    public Task SubmitPromptAsync(string prompt, string? conversationId = null)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -36,9 +76,13 @@ public class ChatBridgeService : IChatBridgeService
             return Task.CompletedTask;
         }
 
-        _logger.LogInformation("Prompt submitted: {PromptLength} characters", prompt.Length);
+        _logger.LogInformation("Prompt submitted: {PromptLength} characters (ConversationId: {ConversationId})", prompt.Length, conversationId ?? "N/A");
 
-        var args = new ChatPromptSubmittedEventArgs { Prompt = prompt };
+        var args = new ChatPromptSubmittedEventArgs
+        {
+            Prompt = prompt,
+            ConversationId = conversationId
+        };
         PromptSubmitted?.Invoke(this, args);
 
         return Task.CompletedTask;

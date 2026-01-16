@@ -87,7 +87,7 @@ public static class RibbonFactory
             () => form.ShowPanel<BudgetPanel>("Budget Management", DockingStyle.Fill, allowFloating: true));
 
         var chartsBtn = CreateNavButton("Nav_Charts", "📉 Charts", "charts", currentThemeString,
-            () => form.ShowPanel<ChartPanel>("Financial Charts", DockingStyle.Right, allowFloating: true));
+            () => form.ShowPanel<BudgetAnalyticsPanel>("Financial Charts", DockingStyle.Right, allowFloating: true));
 
         var customersBtn = CreateNavButton("Nav_Customers", "👥 Customers", "customers", currentThemeString,
             () => form.ShowPanel<CustomersPanel>("Customer Management", DockingStyle.Fill, allowFloating: true));
@@ -198,12 +198,19 @@ public static class RibbonFactory
         {
             try
             {
-                form.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
-                logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat button clicked");
+                // Option B: Resolve and show the modal JARVIS Chat host from the global service provider
+                // Using Program.Services ensures we resolve from the same root scope as the MainForm
+                var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatHostForm>(Program.Services);
+                if (chatForm != null)
+                {
+                    logger?.LogInformation("[RIBBON_JARVIS] Opening JARVIS Chat modal dialog");
+                    chatForm.ShowDialog(form);
+                    logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat modal closed");
+                }
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_JARVIS] Failed to open JARVIS Chat");
+                logger?.LogError(ex, "[RIBBON_JARVIS] Failed to open JARVIS Chat modal");
                 MessageBox.Show($"Failed to open JARVIS Chat: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         };

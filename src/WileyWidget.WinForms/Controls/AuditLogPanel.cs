@@ -22,6 +22,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
@@ -311,11 +312,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            SplitterDistance = (int)(Width * 0.65),
-            Panel1MinSize = 300,
-            Panel2MinSize = 300,
             AccessibleName = "Audit grid and chart split container"
         };
+        ConfigureMainSplitContainer();
 
         // Audit grid (left)
         _auditGrid = new SfDataGrid
@@ -396,6 +395,27 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         Controls.Add(_noDataOverlay);
 
         ResumeLayout(false);
+    }
+
+    private void ConfigureMainSplitContainer()
+    {
+        if (_mainSplit == null) return;
+
+        const int panelMinSize = 300;
+        const int defaultDistance = 520; // 65% of minimum 800px width
+
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+            _mainSplit,
+            panel1MinSize: panelMinSize,
+            panel2MinSize: panelMinSize,
+            desiredDistance: defaultDistance);
+
+        _mainSplit.SizeChanged += (s, e) =>
+        {
+            if (_mainSplit.IsDisposed) return;
+            var desired = (int)(_mainSplit.Width * 0.65);
+            SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplit, desired);
+        };
     }
 
     private void ConfigureGridColumns()

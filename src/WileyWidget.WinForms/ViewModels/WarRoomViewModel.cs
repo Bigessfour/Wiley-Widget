@@ -41,7 +41,7 @@ namespace WileyWidget.WinForms.ViewModels
     /// Integrates GrokAgentService to analyze rate scenarios and financial projections.
     /// Supports multi-year "what-if" planning with voice input hints and visual analytics.
     /// </summary>
-    public partial class WarRoomViewModel : ViewModelBase
+    public partial class WarRoomViewModel : ViewModelBase, IWarRoomViewModel
     {
         private readonly GrokAgentService? _grokService;
         private readonly RateScenarioTools? _rateScenarioTools;

@@ -815,7 +815,7 @@ public partial class MainForm
             chartsBtn.Click += (s, e) =>
             {
                 if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
                 Console.WriteLine("[DIAGNOSTIC] Nav_Charts clicked");
             };
 
@@ -857,19 +857,6 @@ public partial class MainForm
             {
                 if (_panelNavigator != null)
                     _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
-            };
-
-            var aiChatBtn = new ToolStripButton("AI Chat")
-            {
-                Name = "Nav_AIChat",
-                AccessibleName = "AI Chat",
-                AccessibleDescription = "Navigate to AI Chat panel with intelligent assistant"
-            };
-            aiChatBtn.Click += (s, e) =>
-            {
-                if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
-                Console.WriteLine("[DIAGNOSTIC] Nav_AIChat clicked");
             };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks")
@@ -944,7 +931,6 @@ public partial class MainForm
                 auditLogBtn,
                 customersBtn,
                 reportsBtn,
-                aiChatBtn,
                 quickBooksBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
@@ -1163,7 +1149,7 @@ public partial class MainForm
                 try
                 {
                     if (_panelNavigator != null)
-                        _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                        _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
                 }
                 catch (Exception ex)
                 {
@@ -1202,30 +1188,6 @@ public partial class MainForm
             SetMenuAccessibility(reportsMenuItem, "Reports menu item", "Open reports view (Ctrl+R)");
             reportsMenuItem.Image = CreateIconFromText("\uE8A5", 16); // Document icon (Segoe MDL2)
             reportsMenuItem.ImageScaling = ToolStripItemImageScaling.None;
-
-            // View > AI Chat
-            var aiChatMenuItem = new ToolStripMenuItem("AI &Chat", null, (s, e) =>
-            {
-                if (_panelNavigator != null)
-                    _panelNavigator.ShowPanel<ChatPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
-            })
-            {
-                Name = "Menu_View_AIChat",
-                ShortcutKeys = Keys.Control | Keys.I,
-                ToolTipText = "Open AI Chat Assistant (Ctrl+I)"
-            };
-            SetMenuAccessibility(aiChatMenuItem, "AI chat menu item", "Open AI chat assistant (Ctrl+I)");
-            // Try to set icon from DPI-aware service (preferred over deprecated theme icon service)
-            try
-            {
-                var dpi = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(ServiceProvider);
-                if (dpi != null)
-                {
-                    aiChatMenuItem.Image = dpi.GetImage("chat");
-                    aiChatMenuItem.ImageScaling = ToolStripItemImageScaling.None;
-                }
-            }
-            catch { /* Icon loading is optional */ }
 
             // View > QuickBooks
             var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) =>
@@ -1294,7 +1256,6 @@ public partial class MainForm
                 budgetMenuItem,
                 chartsMenuItem,
                 reportsMenuItem,
-                aiChatMenuItem,
                 quickBooksMenuItem,
                 customersMenuItem,
                 viewSeparator,
@@ -2179,7 +2140,7 @@ public partial class MainForm
         SetupCardClickHandler(chartsCard, () =>
         {
             if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+                _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
         });
 
         chartsCard.TabIndex = 31;

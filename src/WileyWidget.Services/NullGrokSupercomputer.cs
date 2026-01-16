@@ -1,26 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
 
-/// <summary>
-/// No-op Grok Supercomputer service used in development/testing when AI services are not configured.
-/// Prevents startup failures by providing predictable stub responses.
-/// </summary>
 public class NullGrokSupercomputer : IGrokSupercomputer
 {
     public Task<ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "")
-        => Task.FromResult(new ReportData
-        {
-            Title = "[Dev Stub] Enterprise Data Report",
-            GeneratedAt = DateTime.Now,
-            BudgetSummary = new BudgetVarianceAnalysis(),
-            VarianceAnalysis = new BudgetVarianceAnalysis(),
-            Departments = new System.Collections.ObjectModel.ObservableCollection<DepartmentSummary>(),
-            Funds = new System.Collections.ObjectModel.ObservableCollection<FundSummary>()
-        });
+        => Task.FromResult(new ReportData());
 
     public Task<AnalyticsData> RunReportCalcsAsync(ReportData data)
         => Task.FromResult(new AnalyticsData());
@@ -32,14 +21,24 @@ public class NullGrokSupercomputer : IGrokSupercomputer
         => Task.FromResult(new ComplianceReport());
 
     public Task<string> AnalyzeMunicipalDataAsync(object data, string context)
-        => Task.FromResult("[Dev Stub] Municipal data analysis is disabled in development. Configure AI services to enable.");
+        => Task.FromResult("Municipal data analysis is currently unavailable.");
 
     public Task<string> GenerateRecommendationsAsync(object data)
-        => Task.FromResult("[Dev Stub] Recommendation generation is disabled in development.");
+        => Task.FromResult("Recommendations are currently unavailable.");
 
-    public Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> accounts, BudgetData budget)
-        => Task.FromResult("[Dev Stub] Municipal accounts analysis is disabled in development. Configure AI services to enable.");
+    public Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> municipalAccounts, BudgetData budgetData)
+        => Task.FromResult("Municipal account analysis is currently unavailable.");
 
-    public Task<string> QueryAsync(string prompt)
-        => Task.FromResult("[Dev Stub] AI query is disabled in development. Configure AI services to enable.");
+    public Task<string> QueryAsync(string prompt) => Task.FromResult("Offline: Grok is currently disconnected.");
+
+    public async IAsyncEnumerable<string> StreamQueryAsync(string prompt)
+    {
+        yield return "Offline: ";
+        yield return "Grok ";
+        yield return "is ";
+        yield return "currently ";
+        yield return "disconnected.";
+        await Task.CompletedTask;
+    }
 }
+

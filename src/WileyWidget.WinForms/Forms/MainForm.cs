@@ -78,6 +78,12 @@ namespace WileyWidget.WinForms.Forms
         private IPanelNavigationService? _panelNavigator;
         private IThemeService? _themeService;
 
+        /// <summary>
+        /// Global PanelNavigator for the application.
+        /// Created during MainForm initialization and exposed for DI resolution.
+        /// </summary>
+        public IPanelNavigationService? PanelNavigator => _panelNavigator;
+
         // Grid discovery caching
         private Syncfusion.WinForms.DataGrid.SfDataGrid? _lastActiveGrid;
         private DateTime _lastActiveGridTime = DateTime.MinValue;
@@ -281,11 +287,14 @@ namespace WileyWidget.WinForms.Forms
             _configuration = configuration;
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
-            _panelNavigator = null;
             _themeService = themeService;
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
+
+            // Initialize navigator EARLY to avoid circular dependency issues when child panels are resolved
+            // DockingManager is null initially but will be updated in InitializeSyncfusionDocking()
+            _panelNavigator = new PanelNavigationService(null, this, _serviceProvider, Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(_serviceProvider));
 
             // Apply global Syncfusion theme before any child controls are created
             AppThemeColors.ApplyTheme(this);
@@ -724,7 +733,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
-                    _panelNavigator?.ShowPanel<Controls.ChartPanel>("Charts", DockingStyle.Right, true);
+                    _panelNavigator?.ShowPanel<Controls.BudgetAnalyticsPanel>("Charts", DockingStyle.Right, true);
                     return true;
                 }
                 catch (Exception ex)
@@ -738,7 +747,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
-                    _panelNavigator?.ShowPanel<Forms.DashboardPanel>("Dashboard", DockingStyle.Top, true);
+                    _panelNavigator?.ShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top, true);
                     return true;
                 }
                 catch (Exception ex)
@@ -959,30 +968,50 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (_serviceProvider == null) return;
+
                     using var scope = _serviceProvider.CreateScope();
+                    cancellationToken.ThrowIfCancellationRequested();
                     await Program.RunStartupHealthCheckAsync(scope.ServiceProvider).ConfigureAwait(false);
                     _logger?.LogInformation("Deferred startup health check completed");
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogDebug("Deferred startup health check canceled");
+                }
+                catch (ObjectDisposedException)
+                {
+                    _logger?.LogDebug("Deferred startup health check skipped due to disposal");
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogWarning(ex, "Deferred startup health check failed (non-fatal)");
                 }
-            });
+            }, cancellationToken);
 
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (_serviceProvider == null) return;
                     await UiTestDataSeeder.SeedIfEnabledAsync(_serviceProvider).ConfigureAwait(false);
                     _logger?.LogDebug("Deferred test data seeding completed successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogDebug("Deferred test data seeding canceled");
+                }
+                catch (ObjectDisposedException)
+                {
+                    _logger?.LogDebug("Deferred test data seeding skipped due to disposal");
                 }
                 catch (Exception seedEx)
                 {
                     _logger?.LogWarning(seedEx, "Deferred test data seeding failed (non-critical)");
                 }
-            });
+            }, cancellationToken);
 
             // Track form shown event for startup timeline analysis
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -1153,7 +1182,7 @@ namespace WileyWidget.WinForms.Forms
                     try
                     {
                         _logger?.LogInformation("Showing initial dashboard panel...");
-                        ShowPanel<Forms.DashboardPanel>("Dashboard", null, DockingStyle.Fill);
+                        ShowPanel<Controls.DashboardPanel>("Dashboard", null, DockingStyle.Fill);
                         _dashboardAutoShown = true;
                         _logger?.LogInformation("Initial dashboard panel shown successfully");
                     }
@@ -1211,16 +1240,24 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                if (_panelNavigator != null) return;
                 if (_serviceProvider == null) return;
                 if (_dockingManager == null) return;
-                if (_centralDocumentPanel == null) return;
 
-                var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
+                // If it's null, create it (fallback if constructor failed for some reason)
+                if (_panelNavigator == null)
+                {
+                    var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
 
-                _panelNavigator = new PanelNavigationService(_dockingManager, _centralDocumentPanel, _serviceProvider, navLogger);
-                _logger?.LogDebug("PanelNavigationService created after docking initialization");
+                    _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
+                    _logger?.LogDebug("PanelNavigationService created after docking initialization");
+                }
+                else
+                {
+                    // Update existing navigator with the real docking manager
+                    _panelNavigator.UpdateDockingManager(_dockingManager);
+                    _logger?.LogDebug("PanelNavigationService updated with real DockingManager");
+                }
             }
             catch (Exception ex)
             {

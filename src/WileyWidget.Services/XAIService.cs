@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -32,6 +34,7 @@ public class XAIService : IAIService, IDisposable
     private readonly IWileyWidgetContextService _contextService;
     private readonly IAILoggingService _aiLoggingService;
     private readonly IMemoryCache _memoryCache;
+    private readonly IJARVISPersonalityService? _jarvisPersonality;
     private readonly SemaphoreSlim _concurrencySemaphore;
     private readonly ITelemetryService? _telemetryService;
     private readonly bool _enabled;
@@ -52,7 +55,8 @@ public class XAIService : IAIService, IDisposable
         IWileyWidgetContextService contextService,
         IAILoggingService aiLoggingService,
         IMemoryCache memoryCache,
-        ITelemetryService? telemetryService = null
+        ITelemetryService? telemetryService = null,
+        IJARVISPersonalityService? jarvisPersonality = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
@@ -62,6 +66,7 @@ public class XAIService : IAIService, IDisposable
         _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _telemetryService = telemetryService;
+        _jarvisPersonality = jarvisPersonality;
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
         _apiKey = configuration["XAI:ApiKey"];
@@ -225,13 +230,11 @@ public class XAIService : IAIService, IDisposable
             // Log the query
             _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", _model);
 
-            // Track telemetry for API call start - commented out until Azure is configured
-            // _telemetryClient?.TrackEvent("XAIServiceRequest", new Dictionary<string, string>
-            // {
-            //     ["Model"] = model,
-            //     ["QuestionLength"] = question?.Length.ToString() ?? "0",
-            //     ["ContextLength"] = context?.Length.ToString() ?? "0"
-            // });
+            // Get JARVIS system prompt and append context
+            var baseSystemPrompt = _jarvisPersonality?.GetSystemPrompt() 
+                ?? "You are a helpful AI assistant for a municipal utility management application called Wiley Widget.";
+            var finalSystemPrompt = $"{baseSystemPrompt} System Context: {systemContext}. Context: {context}";
+
             var request = new
             {
                 messages = new[]
@@ -239,7 +242,7 @@ public class XAIService : IAIService, IDisposable
                     new
                     {
                         role = "system",
-                        content = $"You are a helpful AI assistant for a municipal utility management application called Wiley Widget. System Context: {systemContext}. Context: {context}"
+                        content = finalSystemPrompt
                     },
                     new
                     {
@@ -799,6 +802,25 @@ public class XAIService : IAIService, IDisposable
     }
 
     /// <summary>
+    /// xAI API stream chunk model
+    /// </summary>
+    private class XAIStreamChunk
+    {
+        public Choice[] choices { get; set; }
+
+        public class Choice
+        {
+            public Delta delta { get; set; }
+            public string finish_reason { get; set; }
+        }
+
+        public class Delta
+        {
+            public string content { get; set; }
+        }
+    }
+
+    /// <summary>
     /// Dispose of managed resources
     /// </summary>
     public void Dispose()
@@ -901,6 +923,75 @@ public class XAIService : IAIService, IDisposable
         {
             _logger.LogError(ex, "Error sending prompt to xAI service");
             return new AIResponseResult($"Error: {ex.Message}", 500, "InternalError", ex.Message);
+        }
+    }
+
+    public async System.Collections.Generic.IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            yield break;
+
+        if (!_enabled)
+        {
+            yield return "AI service is disabled.";
+            yield break;
+        }
+
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, _endpoint);
+        
+        var messages = new System.Collections.Generic.List<object>();
+        if (!string.IsNullOrEmpty(systemMessage))
+        {
+            messages.Add(new { role = "system", content = systemMessage });
+        }
+        messages.Add(new { role = "user", content = prompt });
+
+        var requestBody = new
+        {
+            messages = messages.ToArray(),
+            model = _model,
+            stream = true,
+            temperature = _temperature,
+            max_tokens = _maxTokens
+        };
+
+        requestMessage.Content = JsonContent.Create(requestBody);
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+        using var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            yield return $"Error: {response.StatusCode}";
+            yield break;
+        }
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new System.IO.StreamReader(stream);
+
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (line.StartsWith("data: "))
+            {
+                var data = line.Substring(6).Trim();
+                if (data == "[DONE]") break;
+
+                XAIStreamChunk? chunk = null;
+                try
+                {
+                    chunk = JsonSerializer.Deserialize<XAIStreamChunk>(data);
+                }
+                catch { /* Skip malformed chunks */ }
+
+                var content = chunk?.choices?.FirstOrDefault()?.delta?.content;
+                if (!string.IsNullOrEmpty(content))
+                {
+                    yield return content;
+                }
+            }
         }
     }
 

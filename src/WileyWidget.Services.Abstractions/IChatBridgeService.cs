@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions;
 
@@ -9,6 +10,11 @@ namespace WileyWidget.Services.Abstractions;
 /// </summary>
 public interface IChatBridgeService
 {
+    /// <summary>
+    /// Raised when a new message is received.
+    /// </summary>
+    event EventHandler<ChatMessage> OnMessageReceived;
+
     /// <summary>
     /// Raised when a prompt is submitted from the Blazor chat component.
     /// </summary>
@@ -26,10 +32,22 @@ public interface IChatBridgeService
     event EventHandler<ChatSuggestionSelectedEventArgs> SuggestionSelected;
 
     /// <summary>
+    /// Raised when an external source requests a prompt to be submitted (e.g. from an insight card).
+    /// </summary>
+    event EventHandler<ChatExternalPromptEventArgs> ExternalPromptRequested;
+
+    /// <summary>
+    /// Notify that a new message has been received (e.g. from the backend).
+    /// </summary>
+    /// <param name="message">The received message</param>
+    Task NotifyMessageReceivedAsync(ChatMessage message);
+
+    /// <summary>
     /// Submit a prompt from the Blazor component to the backend.
     /// </summary>
     /// <param name="prompt">The user prompt text</param>
-    Task SubmitPromptAsync(string prompt);
+    /// <param name="conversationId">The target conversation ID for persistence</param>
+    Task SubmitPromptAsync(string prompt, string? conversationId = null);
 
     /// <summary>
     /// Send a response chunk back to the Blazor component.
@@ -42,6 +60,20 @@ public interface IChatBridgeService
     /// </summary>
     /// <param name="suggestion">The selected suggestion text</param>
     Task NotifySuggestionSelectedAsync(string suggestion);
+
+    /// <summary>
+    /// Requests that a prompt be submitted from an external source.
+    /// </summary>
+    /// <param name="prompt">The prompt to submit</param>
+    Task RequestExternalPromptAsync(string prompt);
+}
+
+/// <summary>
+/// Event arguments for external prompt requests
+/// </summary>
+public class ChatExternalPromptEventArgs : EventArgs
+{
+    public string Prompt { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -50,6 +82,7 @@ public interface IChatBridgeService
 public class ChatPromptSubmittedEventArgs : EventArgs
 {
     public string Prompt { get; set; } = string.Empty;
+    public string? ConversationId { get; set; }
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
 }
 

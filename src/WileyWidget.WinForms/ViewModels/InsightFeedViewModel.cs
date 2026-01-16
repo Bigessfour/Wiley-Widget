@@ -204,15 +204,12 @@ namespace WileyWidget.WinForms.ViewModels
         /// Command to open JARVIS AI chat with the selected insight as context.
         /// Triggered when user clicks on an insight row in the grid.
         ///
-        /// The insight context is passed to the chat panel so JARVIS can provide
+        /// The insight context is passed to the JARVIS modal form so JARVIS can provide
         /// specific recommendations related to the selected insight.
         /// Example: "Budget variance alert" → JARVIS provides investigation recommendations.
-        ///
-        /// Integration: Parent form (MainForm) must wire up navigation to AIChatViewModel
-        /// using the SourceInsight context to pre-populate the chat prompt.
         /// </summary>
         [RelayCommand]
-        public void AskJarvis(InsightCardModel? card)
+        public async Task AskJarvis(InsightCardModel? card)
         {
             if (card?.SourceInsight == null)
             {
@@ -232,7 +229,7 @@ namespace WileyWidget.WinForms.ViewModels
                     card.Category,
                     card.Priority);
 
-                // Build context for JARVIS chat using explicit Append calls
+                // Build context for JARVIS chat
                 var insightContext = new StringBuilder();
                 insightContext.Append("Regarding the ");
                 insightContext.Append(card.Category);
@@ -247,20 +244,22 @@ namespace WileyWidget.WinForms.ViewModels
                 insightContext.AppendLine();
                 insightContext.AppendLine("What additional analysis or recommendations do you have about this insight?");
 
-                // This command should be bound to a parent form/service that can:
-                // 1. Open/focus the AI Chat panel
-                // 2. Set the context using SetChatContext() or similar method
-                // 3. Pre-populate the chat input with the insight prompt
-                //
-                // Example (parent form implementation):
-                // _chatViewModel.SetContext(insightContext.ToString(), card.SourceInsight);
-                // MainForm.Instance.ShowChatPanel();
-
-                MessageBox.Show(
-                    insightContext.ToString(),
-                    "Ask JARVIS",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                // Resolve JARVIS modal and pass the context
+                var serviceProvider = WileyWidget.WinForms.Program.Services;
+                if (serviceProvider != null)
+                {
+                    var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Forms.JARVISChatHostForm>(serviceProvider);
+                    
+                    // We'll set the prompt on the form before showing it
+                    // The form will wait for the Blazor component to be ready
+                    chatForm.InitialPrompt = insightContext.ToString();
+                    chatForm.ShowDialog();
+                }
+                else
+                {
+                    _logger.LogWarning("Program.Services is null, cannot open JARVIS Chat");
+                    MessageBox.Show(insightContext.ToString(), "Ask JARVIS Context", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {

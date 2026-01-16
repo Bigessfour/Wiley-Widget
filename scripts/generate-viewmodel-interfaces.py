@@ -15,7 +15,6 @@ VIEWMODELS_TO_PROCESS = [
     "BudgetOverviewViewModel",
     "BudgetViewModel",
     "ChartViewModel",
-    "ChatPanelViewModel",
     "CustomersViewModel",
     "DashboardViewModel",
     "DepartmentSummaryViewModel",
@@ -145,13 +144,6 @@ INTERFACE_PROPERTIES = {
         "ObservableCollection<ChartDataPoint> ChartData",
         "string ChartType",
         "string Title",
-    ],
-    "ChatPanelViewModel": [
-        "ObservableCollection<ChatMessage> Messages",
-        "string InputText",
-        "bool IsLoading",
-        "string StatusText",
-        "string? ErrorMessage",
     ],
     "CustomersViewModel": [
         "ObservableCollection<Customer> Customers",

@@ -685,6 +685,11 @@ namespace WileyWidget.WinForms.Controls
                 }
                 if (InvokeRequired)
                 {
+                    if (!IsHandleCreated)
+                    {
+                        return;
+                    }
+
                     BeginInvoke(new System.Action(() => OnThemeChanged(sender, theme)));
                     return;
                 }

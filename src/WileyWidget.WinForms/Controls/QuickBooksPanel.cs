@@ -116,13 +116,37 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 UpdateNoDataOverlay();
 
                 // Defer sizing validation - QuickBooks panel has nested SplitContainers and grids
-                this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+                DeferSizeValidation();
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Failed to initialize QuickBooksPanel");
             }
         }
+    }
+
+    private void DeferSizeValidation()
+    {
+        if (IsDisposed) return;
+
+        if (IsHandleCreated)
+        {
+            try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+            return;
+        }
+
+        EventHandler? handleCreatedHandler = null;
+        handleCreatedHandler = (s, e) =>
+        {
+            HandleCreated -= handleCreatedHandler;
+            if (IsDisposed) return;
+
+            try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+            catch { }
+        };
+
+        HandleCreated += handleCreatedHandler;
     }
 
     #region Control Initialization

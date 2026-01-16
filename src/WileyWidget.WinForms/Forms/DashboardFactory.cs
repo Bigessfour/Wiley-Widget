@@ -70,31 +70,36 @@ public static class DashboardFactory
 
             // Card 1: Accounts
             var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? MainFormResources.LoadingText).Panel;
-            SetupCardClickHandler(accountsCard, () => {
+            SetupCardClickHandler(accountsCard, () =>
+            {
                 panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left);
             });
 
             // Card 2: Charts
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
-            SetupCardClickHandler(chartsCard, () => {
-                panelNavigator?.ShowPanel<ChartPanel>("Budget Analytics", DockingStyle.Right);
+            SetupCardClickHandler(chartsCard, () =>
+            {
+                panelNavigator?.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
             var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
-            SetupCardClickHandler(settingsCard, () => {
+            SetupCardClickHandler(settingsCard, () =>
+            {
                 panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
             });
 
             // Card 4: Reports
             var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
-            SetupCardClickHandler(reportsCard, () => {
+            SetupCardClickHandler(reportsCard, () =>
+            {
                 panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)
             var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? MainFormResources.LoadingText).Panel;
-            SetupCardClickHandler(infoCard, () => {
+            SetupCardClickHandler(infoCard, () =>
+            {
                 panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom);
             });
 

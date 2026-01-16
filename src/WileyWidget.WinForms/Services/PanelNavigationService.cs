@@ -65,12 +65,17 @@ namespace WileyWidget.WinForms.Services
         /// <param name="panelName">Name of the panel to hide.</param>
         /// <returns>True if panel was hidden, false if panel doesn't exist.</returns>
         bool HidePanel(string panelName);
+
+        /// <summary>
+        /// Update the docking manager after delayed initialization.
+        /// </summary>
+        void UpdateDockingManager(DockingManager dockingManager);
     }
 
     public sealed class PanelNavigationService : IPanelNavigationService, IDisposable
     {
         private readonly ILogger<PanelNavigationService> _logger;
-        private readonly DockingManager _dockingManager;
+        private DockingManager _dockingManager;
         private readonly Control _parentControl; // Usually MainForm or central document container
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
@@ -79,7 +84,7 @@ namespace WileyWidget.WinForms.Services
         {
             { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
             { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
-            { typeof(ChartPanel), new PanelSizing(new Size(560, 0), new Size(0, 460), new Size(480, 420)) },
+            { typeof(BudgetAnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 460), new Size(480, 420)) },
             { typeof(BudgetOverviewPanel), new PanelSizing(new Size(540, 0), new Size(0, 420), new Size(480, 360)) },
             { typeof(AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
             { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
@@ -96,22 +101,28 @@ namespace WileyWidget.WinForms.Services
 
         /// <summary>
         /// Initializes the panel navigation service with docking infrastructure and dependency injection support.
-        /// Note: SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly) is currently commented pending
-        /// Syncfusion WinForms 23.4+ API verification. Per SfSkinManager guardrail, must NOT introduce competing theme managers.
-        /// Theme initialization is centralized in Program.InitializeTheme().
         /// </summary>
         public PanelNavigationService(
-            DockingManager dockingManager,
+            DockingManager? dockingManager,
             Control parentControl,
             IServiceProvider serviceProvider,
             ILogger<PanelNavigationService> logger)
         {
-            _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
+            _dockingManager = dockingManager!; // Allowed to be null initially to support circular dependency fixes
             _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger;
 
             _logger.LogDebug("PanelNavigationService initialized with DI support");
+        }
+
+        /// <summary>
+        /// Update the docking manager after delayed initialization.
+        /// </summary>
+        public void UpdateDockingManager(DockingManager dockingManager)
+        {
+            _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
+            _logger.LogDebug("PanelNavigationService docking manager updated");
         }
 
         public void ShowPanel<TPanel>(
@@ -200,84 +211,6 @@ namespace WileyWidget.WinForms.Services
 
                 // Force visibility explicitly as requested for all panels
                 _dockingManager.SetDockVisibility(panel, true);
-
-                // CRITICAL FIX: For ChatPanel, apply full docking configuration to ensure proper visibility
-                // and prevent auto-hide state that causes clipping issues
-                if (typeof(TPanel).Name == "ChatPanel")
-                {
-                    try
-                    {
-                        _logger.LogDebug("Applying ChatPanel-specific docking configuration");
-
-                        // Force visible and active
-                        _dockingManager.SetDockVisibility(panel, true);
-                        try { panel.BringToFront(); } catch { }
-                        _dockingManager.ActivateControl(panel);  // Brings to front, expands if tabbed
-
-                        // Set size for ChatPanel using SetControlSize to maximize space
-                        // Use 450 width for right/left docking, 600 height for bottom/top
-                        int chatWidth = 450;
-                        int chatHeight = 600;
-                        _dockingManager.SetControlSize(panel, new Size(chatWidth, chatHeight));
-                        _logger.LogDebug("ChatPanel: Control size set to {Width}x{Height}", chatWidth, chatHeight);
-
-                        // Set minimum size to prevent collapsing below usable size (400 is ChatPanel minimum)
-                        _dockingManager.SetControlMinimumSize(panel, new Size(400, 400));
-                        _logger.LogDebug("ChatPanel: Minimum size set to 400x400");
-
-                        _logger.LogInformation("ChatPanel docking configuration applied successfully");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "ChatPanel docking configuration failed - continuing with defaults");
-                    }
-                }
-
-                // Propagate accessibility and header/dock caption so UI automation can find panels reliably
-                try
-                {
-                    panel.AccessibleName = panelName;
-                    panel.AccessibleDescription = $"Panel: {panelName}";
-                    panel.Tag = panelName;
-
-                    // If panel has a PanelHeader control, ensure its title matches and is discoverable
-                    var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
-                    if (header != null)
-                    {
-                        header.Title = panelName; // PanelHeader.Title sets headerLabel.Name and AccessibleName
-                        try { header.AccessibleName = panelName + " header"; } catch { }
-                    }
-
-                    // If Syncfusion DockHandler is present, set its Text and a stable Name if supported (via reflection)
-                    var dh = panel.GetType().GetProperty("DockHandler")?.GetValue(panel);
-                    if (dh != null)
-                    {
-                        try
-                        {
-                            var txtProp = dh.GetType().GetProperty("Text");
-                            if (txtProp != null) txtProp.SetValue(dh, panelName);
-                        }
-                        catch { }
-
-                        try
-                        {
-                            var nameProp = dh.GetType().GetProperty("Name");
-                            if (nameProp != null && nameProp.CanWrite) nameProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
-                        }
-                        catch { }
-
-                        try
-                        {
-                            var aidProp = dh.GetType().GetProperty("AutomationId");
-                            if (aidProp != null && aidProp.CanWrite) aidProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
-                        }
-                        catch { }
-                    }
-                }
-                catch { }
-
-                // Small pause to allow DockingManager to settle after ChatPanel-specific configuration
-                try { System.Threading.Thread.Sleep(250); } catch { }
 
                 // Propagate accessibility and header/dock caption so UI automation can find panels reliably
                 try

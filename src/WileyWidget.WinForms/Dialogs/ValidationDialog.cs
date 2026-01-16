@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Dialogs
@@ -241,9 +242,10 @@ namespace WileyWidget.WinForms.Dialogs
             if (disposing)
             {
                 _iconPictureBox?.Dispose();
-                _errorListBox?.Dispose();
-                _okButton?.Dispose();
-                _copyButton?.Dispose();
+                _errorListBox?.SafeClearDataSource();
+                _errorListBox?.SafeDispose();
+                _okButton?.SafeDispose();
+                _copyButton?.SafeDispose();
                 _copyTimer?.Dispose();
                 _headerLabel?.Dispose();
             }

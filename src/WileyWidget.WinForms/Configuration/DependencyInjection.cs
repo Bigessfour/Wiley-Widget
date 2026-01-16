@@ -137,6 +137,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
+            services.AddOptions<WileyWidget.Models.AppOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.Bind(opts));
+
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
@@ -276,7 +279,7 @@ namespace WileyWidget.WinForms.Configuration
 
             // Analytics Pipeline (Scoped - may aggregate data across request)
             services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
-            services.AddScoped<IGrokSupercomputer, NullGrokSupercomputer>();
+            services.AddScoped<IGrokSupercomputer, GrokSupercomputer>();
 
             // Department Expense & Recommendation Services (Scoped - may query external APIs)
             services.AddScoped<IDepartmentExpenseService, Business.Services.DepartmentExpenseService>();
@@ -302,6 +305,11 @@ namespace WileyWidget.WinForms.Configuration
             // Those are created during MainForm deferred initialization (OnShown), so we avoid
             // registering a DI factory that resolves MainForm (circular dependency).
             // MainForm creates PanelNavigationService once docking is ready.
+            services.AddScoped<IPanelNavigationService>(sp =>
+            {
+                var mainForm = DI.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(sp);
+                return mainForm.PanelNavigator ?? throw new InvalidOperationException("PanelNavigator is not yet initialized. Access it after MainForm is shown.");
+            });
 
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
@@ -356,12 +364,15 @@ namespace WileyWidget.WinForms.Configuration
             // ScopedPanelBase<T> requires ViewModels to be scoped for proper lifecycle management
             // =====================================================================
 
-            services.AddScoped<ChartViewModel>();
+            services.AddScoped<IWarRoomViewModel, WarRoomViewModel>();
+            services.AddScoped<IBudgetAnalyticsViewModel, BudgetAnalyticsViewModel>();
+            services.AddScoped<BudgetAnalyticsViewModel>();
             services.AddScoped<SettingsViewModel>();
             services.AddScoped<UtilityBillViewModel>();
             services.AddScoped<AccountsViewModel>();
             services.AddScoped<DashboardViewModel>();
             services.AddScoped<AnalyticsViewModel>();
+            services.AddScoped<ChartViewModel>();
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
             services.AddScoped<CustomersViewModel>();
@@ -372,18 +383,18 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<AuditLogViewModel>();
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
             services.AddScoped<QuickBooksViewModel>();
-            services.AddScoped<ChatPanelViewModel>();
             services.AddScoped<InsightFeedViewModel>();
+            services.AddScoped<ChatPanelViewModel>();
+            services.AddTransient<JARVISChatHostForm>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
             // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
             // =====================================================================
 
-            services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
-            services.AddScoped<WileyWidget.WinForms.Forms.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ChartPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.BudgetAnalyticsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
@@ -398,6 +409,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
@@ -420,7 +432,6 @@ namespace WileyWidget.WinForms.Configuration
             // NOTES ON OMISSIONS
             // =====================================================================
             // - DbContext: Registered in Program.cs to avoid dual provider conflict
-            // - AIChatControl: Requires IAIAssistantService implementation (not yet available)
         }
     }
 

@@ -35,7 +35,7 @@ public class GrokSupercomputer(
     IAuditRepository auditRepository,
     IAILoggingService aiLoggingService,
     IAIService aiService,
-    IJARVISPersonalityService jarvismPersonality,
+    IJARVISPersonalityService jarvisPersonality,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
     Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> appOptions) : IGrokSupercomputer
 {
@@ -45,7 +45,7 @@ public class GrokSupercomputer(
     private readonly IAuditRepository _auditRepository = auditRepository ?? throw new ArgumentNullException(nameof(auditRepository));
     private readonly IAILoggingService _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
     private readonly IAIService _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
-    private readonly IJARVISPersonalityService _jarvismPersonality = jarvismPersonality ?? throw new ArgumentNullException(nameof(jarvismPersonality));
+    private readonly IJARVISPersonalityService _jarvisPersonality = jarvisPersonality ?? throw new ArgumentNullException(nameof(jarvisPersonality));
     private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     private readonly Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
 
@@ -421,7 +421,7 @@ public class GrokSupercomputer(
                 if (!string.IsNullOrEmpty(aiInsights))
                 {
                     // Apply JARVIS personality to AI insights
-                    var personalizedInsights = _jarvismPersonality.ApplyBudgetPersonality(
+                    var personalizedInsights = _jarvisPersonality.ApplyBudgetPersonality(
                         aiInsights,
                         variancePercent,
                         budget.RemainingBudget,
@@ -737,21 +737,50 @@ Focus on municipal finance best practices and operational efficiency.";
 
             var response = await _aiService.SendPromptAsync(prompt);
 
+            var content = response.Content;
+            
+            // Apply JARVIS personality
+            if (!string.IsNullOrEmpty(content))
+            {
+                content = _jarvisPersonality.ApplyPersonality(content, new AnalysisContext 
+                { 
+                    AnalysisType = "General Query",
+                    RequiresDirectAttention = true 
+                });
+            }
+
             _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", 0, new Dictionary<string, object>
             {
                 ["PromptLength"] = prompt.Length,
-                ["ResponseLength"] = response?.Content?.Length ?? 0,
+                ["ResponseLength"] = content?.Length ?? 0,
                 ["Success"] = true
             });
 
             _logger.LogInformation("AI query completed successfully");
-            return response.Content;
+            return content;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing AI query");
             _aiLoggingService.LogError("QueryAsync", ex);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Executes a streaming AI query using the configured AI service with JARVIS personality
+    /// </summary>
+    /// <param name="prompt">The query prompt to send to the AI service</param>
+    /// <returns>An asynchronous stream of the AI response</returns>
+    public async System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt)) yield break;
+
+        var systemPrompt = _jarvisPersonality.GetSystemPrompt();
+        
+        await foreach (var chunk in _aiService.StreamResponseAsync(prompt, systemPrompt))
+        {
+            yield return chunk;
         }
     }
 }

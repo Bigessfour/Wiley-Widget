@@ -10,6 +10,11 @@ namespace WileyWidget.Models;
 public class ChatMessage
 {
     /// <summary>
+    /// Unique identifier for the message.
+    /// </summary>
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
+    /// <summary>
     /// Initializes a new message and assigns the default AI author when the sender is not the user.
     /// </summary>
     public ChatMessage()
@@ -25,6 +30,15 @@ public class ChatMessage
     /// Primary message content.
     /// </summary>
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Alias for Message, used by some Blazor components.
+    /// </summary>
+    public string Content
+    {
+        get => Message;
+        set => Message = value ?? string.Empty;
+    }
 
     /// <summary>
     /// alias for bindings that expect a Text property (e.g., Syncfusion chat controls).

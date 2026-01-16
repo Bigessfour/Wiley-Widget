@@ -641,7 +641,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Defer sizing validation until layout is complete
-                this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+                DeferSizeValidation();
 
                 if (!DesignMode && !_vm.IsLoading)
                 {
@@ -662,6 +662,30 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Error(ex, "BudgetAnalyticsPanel: OnLoad failed");
             }
+        }
+
+        private void DeferSizeValidation()
+        {
+            if (IsDisposed) return;
+
+            if (IsHandleCreated)
+            {
+                try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                catch { }
+                return;
+            }
+
+            EventHandler? handleCreatedHandler = null;
+            handleCreatedHandler = (s, e) =>
+            {
+                HandleCreated -= handleCreatedHandler;
+                if (IsDisposed) return;
+
+                try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                catch { }
+            };
+
+            HandleCreated += handleCreatedHandler;
         }
 
         protected override void Dispose(bool disposing)

@@ -86,11 +86,10 @@ namespace WileyWidget.WinForms.Controls
             _vm = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             DataContext = _vm;
             _logger?.LogInformation("WarRoomPanel initializing");
-            InitializeComponent();
             BindViewModel();
 
             // Defer sizing validation for complex WarRoom layouts with charts and grids
-            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+            DeferSizeValidation();
 
             _logger?.LogInformation("WarRoomPanel initialized successfully");
         }
@@ -112,6 +111,30 @@ namespace WileyWidget.WinForms.Controls
                 _logger?.LogError(ex, "Error initializing WarRoomPanel UI");
                 throw;
             }
+        }
+
+        private void DeferSizeValidation()
+        {
+            if (IsDisposed) return;
+
+            if (IsHandleCreated)
+            {
+                try { BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                catch { }
+                return;
+            }
+
+            EventHandler? handleCreatedHandler = null;
+            handleCreatedHandler = (s, e) =>
+            {
+                HandleCreated -= handleCreatedHandler;
+                if (IsDisposed) return;
+
+                try { BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                catch { }
+            };
+
+            HandleCreated += handleCreatedHandler;
         }
 
         private void BuildTopInputPanel()
@@ -418,39 +441,18 @@ namespace WileyWidget.WinForms.Controls
                 // "SplitterDistance must be between Panel1MinSize and Width - Panel2MinSize"
                 // Setting before control has size causes InvalidOperationException
                 SplitterWidth = 6,
-                Panel1MinSize = 220,
-                Panel2MinSize = 220,
                 Margin = new Padding(0, 0, 0, 12),
                 Name = "ChartSplitContainer",
                 AccessibleName = "Chart Splitter",
                 AccessibleDescription = "Adjusts space between revenue and department charts"
             };
 
-            // Defer SplitterDistance until after handle is created and control is sized
-            // Per Microsoft docs: "Use SplitterDistance to specify where the splitter starts on your form"
-            // Constraint: SplitterDistance must be >= Panel1MinSize and <= (Width - Panel2MinSize)
-            chartSplit.HandleCreated += (s, e) =>
-            {
-                if (chartSplit.Width > 0)
-                {
-                    int maxDistance = chartSplit.Width - chartSplit.Panel2MinSize;
-                    int desiredDistance = Math.Max(chartSplit.Panel1MinSize, Math.Min(400, maxDistance));
-                    chartSplit.SplitterDistance = desiredDistance;
-                }
-            };
-
-            // Defer SplitterDistance until after handle is created and control is sized (Microsoft-documented pattern)
-            chartSplit.HandleCreated += (s, e) =>
-            {
-                if (chartSplit.Width > 0)
-                {
-                    // Calculate valid distance respecting constraints: Panel1MinSize <= distance <= (Width - Panel2MinSize)
-                    int maxDistance = chartSplit.Width - chartSplit.Panel2MinSize - chartSplit.SplitterWidth;
-                    int desiredDistance = 520; // Original desired value
-                    int safeDistance = Math.Max(chartSplit.Panel1MinSize, Math.Min(desiredDistance, maxDistance));
-                    chartSplit.SplitterDistance = safeDistance;
-                }
-            };
+            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+                chartSplit,
+                panel1MinSize: 220,
+                panel2MinSize: 220,
+                desiredDistance: 520,
+                splitterWidth: 6);
 
             resultsLayout.Controls.Add(chartSplit, 0, 1);
 
@@ -502,12 +504,15 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
                 SplitterWidth = 6,
-                Panel1MinSize = 180,
-                Panel2MinSize = 180,
                 AccessibleName = "Grids Splitter",
                 AccessibleDescription = "Adjusts space between projections and department grids"
             };
-            SafeSplitterDistanceHelper.TrySetSplitterDistance(gridsSplit, 220);
+            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+                gridsSplit,
+                panel1MinSize: 180,
+                panel2MinSize: 180,
+                desiredDistance: 220,
+                splitterWidth: 6);
             resultsLayout.Controls.Add(gridsSplit, 0, 2);
 
             var projectionsGroup = new GroupBox
