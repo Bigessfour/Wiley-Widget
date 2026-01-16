@@ -65,7 +65,7 @@ namespace WileyWidget.WinForms.Controls
 
 ### 1.2 Key Rules
 
-**Usings Block (Fixed):**
+#### Usings Block (Fixed)
 
 ```csharp
 using Syncfusion.WinForms.Core;
@@ -78,31 +78,31 @@ using WileyWidget.WinForms.Themes;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 ```
 
-**Critical Pattern 1: No Ambiguous Namespaces**
+#### Critical Pattern 1: No Ambiguous Namespaces
 
 - ✅ Use alias: `using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;`
 - ❌ DON'T import: `Syncfusion.Windows.Forms` (causes ambiguity)
 - ❌ DON'T import: `Syncfusion.WinForms.Input` directly (use fully qualified)
 
-**Critical Pattern 2: Fully Qualified Names**
+#### Critical Pattern 2: Fully Qualified Names
 
 - ✅ `new Syncfusion.WinForms.ListView.SfComboBox()`
 - ✅ `new Syncfusion.WinForms.Input.SfNumericTextBox()`
 - ✅ `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(...)`
 - ❌ DON'T use ambiguous short names
 
-**Hand-Written Panels (programmatic layouts):**
+#### Critical Pattern 3: Hand-Written Panels (Programmatic Layouts)
 
 - Follow the same fully qualified Syncfusion rule as designer files.
 - Avoid broad `using Syncfusion.WinForms.*;` imports; use fully qualified names or explicit per-type aliases (for example, `using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;`) so reviews remain unambiguous and Copilot generations stay consistent.
 
-**Critical Pattern 3: Theme Application**
+#### Critical Pattern 4: Theme Application
 
 - ✅ Use `Syncfusion.WinForms.Core.SfSkinManager.SetVisualStyle(control, ThemeColors.DefaultTheme)`
 - ❌ DON'T manually assign colors to BackColor/ForeColor
 - ❌ DON'T set per-control themes
 
-**Critical Pattern 4: ToolTip Initialization**
+#### Critical Pattern 5: ToolTip Initialization
 
 - ✅ Create `_toolTip` in `InitializeComponent()`
 - ✅ Initialize before using: `_toolTip = new System.Windows.Forms.ToolTip(this.components);`
@@ -227,6 +227,7 @@ private System.Windows.Forms.Label lblTitle;
    - ✅ All Syncfusion types use full namespace
 
 3. **Build Check**
+
    ```powershell
    dotnet build src/WileyWidget.WinForms/WileyWidget.WinForms.csproj -v diagnostic
    # Should complete with 0 errors
@@ -238,7 +239,7 @@ private System.Windows.Forms.Label lblTitle;
 
 ### PROGRESS SUMMARY (January 9, 2026)
 
-**Group 1 Progress: 10 of 15 Designer Files Complete (67%)**
+#### Group 1 Progress: 10 of 15 Designer Files Complete (67%)
 
 | Metric                     | Status                                   |
 | -------------------------- | ---------------------------------------- |
@@ -260,7 +261,7 @@ private System.Windows.Forms.Label lblTitle;
 
 ### 3.1 Batch Processing Approach - UPDATED January 2026
 
-**Group 1: Priority Panels (15 files) - 67% COMPLETE (10 of 15)**
+#### Group 1: Priority Panels (15 files) - 67% COMPLETE (10 of 15)
 
 ✅ **COMPLETED: 10 Designer Files Generated**
 
@@ -275,7 +276,7 @@ private System.Windows.Forms.Label lblTitle;
 9. SettingsPanel.Designer.cs
 10. ReportsPanel.Designer.cs
 
-**Build Status: ✅ SUCCESSFUL - No Compilation Errors**
+### Build Status: ✅ SUCCESSFUL - No Compilation Errors
 
 ⏳ **REMAINING: 6 Designer Files (Recommended Next Phase)**
 
@@ -300,7 +301,7 @@ This guide establishes the **canonical pattern** for generating designer files a
 
 ### Current Status (January 9, 2026)
 
-**Group 1: 67% Complete**
+#### Group 1: 67% Complete
 
 - ✅ 10 of 15 designer files generated
 - ✅ Build verified (0 errors)

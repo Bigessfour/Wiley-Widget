@@ -20,7 +20,7 @@ The WileyWidget MCP Test Server provides AI-assisted UI validation tools for Win
 **Code Example:**
 
 ```csharp
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 ```
 
@@ -202,7 +202,7 @@ BatchValidateForms(
 **Usage:**
 ```csharp
 EvalCSharp(@"
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = new AccountsForm(mockMainForm);
 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
 SfSkinManager.SetTheme(form, new Theme('Office2019Colorful'));
@@ -231,7 +231,7 @@ return true;
 
 **✅ DO:**
 ```csharp
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = FormInstantiationHelper.InstantiateForm(formType, mockMainForm);
 ```
 

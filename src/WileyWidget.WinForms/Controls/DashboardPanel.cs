@@ -17,6 +17,8 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Forms; // Added for MainViewModel access
+using FormsMainViewModel = WileyWidget.WinForms.Forms.MainViewModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
@@ -39,7 +41,7 @@ namespace WileyWidget.WinForms.Controls
         /// Uses 'new' to intentionally hide Control.DataContext when present in platform versions.
         /// </summary>
         public new object? DataContext { get; private set; }
-        private readonly DashboardViewModel _vm;
+        private readonly FormsMainViewModel _vm;
 
         // controls
         private Syncfusion.Windows.Forms.Tools.GradientPanelExt _topPanel = null!;
@@ -87,7 +89,7 @@ namespace WileyWidget.WinForms.Controls
 
         // DI-friendly default constructor for container/hosting convenience.
         // Use the DI-friendly constructor at runtime; the parameterless overload is for designer/test fallback.
-        public DashboardPanel() : this(new DashboardViewModel(), null)
+        public DashboardPanel() : this(new FormsMainViewModel(WileyWidget.WinForms.Logging.NullLogger<FormsMainViewModel>.Instance, null!, null!), null)
         {
         }
 
@@ -97,7 +99,7 @@ namespace WileyWidget.WinForms.Controls
         private IAsyncRelayCommand? _refreshCommand;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public DashboardPanel(DashboardViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null)
+        public DashboardPanel(FormsMainViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null)
         {
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
@@ -140,21 +142,21 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 Serilog.Log.Debug("DashboardPanel.EnsureLoadedAsync: START - _vm={VmNotNull}, LoadCommand={CmdNotNull}, IsLoading={IsLoading}",
-                    _vm != null, _vm?.LoadDashboardCommand != null, _vm?.IsLoading ?? false);
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] EnsureLoadedAsync: START - LoadCommand={_vm?.LoadDashboardCommand != null}, IsLoading={_vm?.IsLoading ?? false}");
+                    _vm != null, _vm?.LoadDataCommand != null, _vm?.IsLoading ?? false);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] EnsureLoadedAsync: START - LoadCommand={_vm?.LoadDataCommand != null}, IsLoading={_vm?.IsLoading ?? false}");
 
-                if (_vm.LoadDashboardCommand != null && !_vm.IsLoading)
+                if (_vm.LoadDataCommand != null && !_vm.IsLoading)
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Executing LoadDashboardCommand...");
-                    await _vm.LoadDashboardCommand.ExecuteAsync(null).ConfigureAwait(true);
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] LoadDashboardCommand completed");
-                    Serilog.Log.Debug("DashboardPanel.EnsureLoadedAsync: LoadDashboardCommand completed successfully");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Executing LoadDataCommand...");
+                    await _vm.LoadDataCommand.ExecuteAsync(null).ConfigureAwait(true);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] LoadDataCommand completed");
+                    Serilog.Log.Debug("DashboardPanel.EnsureLoadedAsync: LoadDataCommand completed successfully");
                 }
                 else
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Skipping load - Command={_vm.LoadDashboardCommand != null}, IsLoading={_vm.IsLoading}");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Skipping load - Command={_vm.LoadDataCommand != null}, IsLoading={_vm.IsLoading}");
                     Serilog.Log.Warning("DashboardPanel.EnsureLoadedAsync: Skipping load - Command={CmdNotNull}, IsLoading={IsLoading}",
-                        _vm.LoadDashboardCommand != null, _vm.IsLoading);
+                        _vm.LoadDataCommand != null, _vm.IsLoading);
                 }
             }
             catch (Exception ex)
@@ -199,7 +201,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Load button (automation-friendly id)
             var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
-            btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDashboardCommand != null) await _vm.LoadDashboardCommand.ExecuteAsync(null); } catch { } };
+            btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDataCommand != null) await _vm.LoadDataCommand.ExecuteAsync(null); } catch { } };
             _refreshCommand = _vm.RefreshCommand;
             _btnRefresh.Click += (s, e) =>
             {
@@ -970,7 +972,7 @@ namespace WileyWidget.WinForms.Controls
                     foreach (var m in metricsSnapshot)
                     {
                         if (m == null) continue;
-                        ser.Points.Add(m.Name, m.Value);
+                        ser.Points.Add(m.Name, (double)m.Value);
                     }
                     _mainChart.Series.Add(ser);
 
@@ -1049,7 +1051,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         try { _loadingOverlay.DataBindings.Clear(); } catch { }
                         var bs = new BindingSource { DataSource = _vm };
-                        _loadingOverlay.DataBindings.Add(new Binding("Visible", bs, nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading), true, DataSourceUpdateMode.OnPropertyChanged));
+                        _loadingOverlay.DataBindings.Add(new Binding("Visible", bs, nameof(FormsMainViewModel.IsLoading), true, DataSourceUpdateMode.OnPropertyChanged));
                         _loadingOverlay.BringToFront();
                     }
                 }
@@ -1068,7 +1070,7 @@ namespace WileyWidget.WinForms.Controls
 
                     _vm.PropertyChanged += (s, e) =>
                     {
-                        if (e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.IsLoading) || e.PropertyName == nameof(WileyWidget.WinForms.ViewModels.DashboardViewModel.Metrics))
+                        if (e.PropertyName == nameof(FormsMainViewModel.IsLoading) || e.PropertyName == nameof(FormsMainViewModel.Metrics))
                         {
                             try
                             {
@@ -1083,7 +1085,7 @@ namespace WileyWidget.WinForms.Controls
                 catch { }
 
                 // details grid mapping
-                var prop = _vm.GetType().GetProperty("DepartmentSummaries") ?? _vm.GetType().GetProperty("Metrics");
+                var prop = _vm.GetType().GetProperty("ActivityItems") ?? _vm.GetType().GetProperty("Metrics");
                 if (prop != null)
                 {
                     var val = prop.GetValue(_vm);
@@ -1230,7 +1232,7 @@ namespace WileyWidget.WinForms.Controls
                 // Last refreshed
                 if (_lblLastRefreshed != null && !_lblLastRefreshed.IsDisposed)
                 {
-                    _lblLastRefreshed.Text = $"Last: {_vm.LastRefreshed:yyyy-MM-dd HH:mm:ss}";
+                    _lblLastRefreshed.Text = $"Last: {_vm.LastUpdateTime}";
                 }
             }
             catch { }
@@ -1289,7 +1291,7 @@ namespace WileyWidget.WinForms.Controls
                     catch { }
                 }
 
-                if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastRefreshed))
+                if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastUpdateTime))
                 {
                     TryApplyViewModelBindings();
                     try
@@ -1311,7 +1313,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_budgetUtilizationGauge != null && !_budgetUtilizationGauge.IsDisposed)
                         {
-                            _budgetUtilizationGauge.Value = _vm.TotalBudgetGauge;
+                            _budgetUtilizationGauge.Value = (float)_vm.TotalBudgetGauge;
                             var valueLabel = _budgetUtilizationGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.TotalBudgetGauge:F1}%";
                         }
@@ -1324,7 +1326,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_revenueGauge != null && !_revenueGauge.IsDisposed)
                         {
-                            _revenueGauge.Value = _vm.RevenueGauge;
+                            _revenueGauge.Value = (float)_vm.RevenueGauge;
                             var valueLabel = _revenueGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.RevenueGauge:F1}%";
                         }
@@ -1337,7 +1339,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_expenseGauge != null && !_expenseGauge.IsDisposed)
                         {
-                            _expenseGauge.Value = _vm.ExpensesGauge;
+                            _expenseGauge.Value = (float)_vm.ExpensesGauge;
                             var valueLabel = _expenseGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.ExpensesGauge:F1}%";
                         }
@@ -1350,7 +1352,7 @@ namespace WileyWidget.WinForms.Controls
                     {
                         if (_varianceGauge != null && !_varianceGauge.IsDisposed)
                         {
-                            _varianceGauge.Value = _vm.NetPositionGauge;
+                            _varianceGauge.Value = (float)_vm.NetPositionGauge;
                             var valueLabel = _varianceGauge.Parent?.Controls.OfType<GradientPanelExt>().FirstOrDefault()?.Controls.OfType<Label>().FirstOrDefault(l => l.Name.Contains("Value", StringComparison.Ordinal));
                             if (valueLabel != null) valueLabel.Text = $"{_vm.NetPositionGauge:F1}%";
                         }

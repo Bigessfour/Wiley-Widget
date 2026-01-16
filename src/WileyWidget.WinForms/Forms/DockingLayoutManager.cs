@@ -30,7 +30,6 @@ public class DockingLayoutManager : IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IPanelNavigationService? _panelNavigator;
 
-    // Layout persistence constants
     private const string LayoutVersionAttributeName = "LayoutVersion";
     private const string CurrentLayoutVersion = "1.0";
     private const int LayoutLoadWarningMs = 5000;
@@ -45,22 +44,11 @@ public class DockingLayoutManager : IDisposable
     // Dynamic panels tracking
     private Dictionary<string, Controls.GradientPanelExt>? _dynamicDockPanels = new();
 
-    // Owned resources - fonts, panels, and diagnostics
-    private Font? _dockAutoHideTabFont;
-    private Font? _dockTabFont;
-    private Controls.GradientPanelExt? _leftDockPanel;
-    private Controls.GradientPanelExt? _rightDockPanel;
-    // REMOVED: _centralDocumentPanel - Option A pure docking architecture
-
     public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
         _logger = logger;
-
-        // Initialize fonts
-        _dockAutoHideTabFont = new Font("Segoe UI", 9f);
-        _dockTabFont = new Font("Segoe UI", 10f, FontStyle.Bold);
 
         // Initialize dynamic panels dict
         _dynamicDockPanels = new Dictionary<string, Controls.GradientPanelExt>();
@@ -73,23 +61,6 @@ public class DockingLayoutManager : IDisposable
         _dockingLayoutSaveTimer.Tick += async (_, _) => await DebounceSaveDockingLayoutAsync();
 
         _logger?.LogDebug("DockingLayoutManager initialized");
-    }
-
-    /// <summary>
-    /// Transfer ownership of managed docking panels and fonts to this manager.
-    /// </summary>
-    /// <param name="leftDockPanel">Left docking panel</param>
-    /// <param name="rightDockPanel">Right docking panel</param>
-    public void TransferOwnership(Controls.GradientPanelExt leftDockPanel, Controls.GradientPanelExt rightDockPanel)
-    {
-        _leftDockPanel = leftDockPanel ?? throw new ArgumentNullException(nameof(leftDockPanel));
-        _rightDockPanel = rightDockPanel ?? throw new ArgumentNullException(nameof(rightDockPanel));
-
-        // Apply themes via SfSkinManager (no manual colors)
-        SfSkinManager.SetVisualStyle(_leftDockPanel, "Office2019Colorful");
-        SfSkinManager.SetVisualStyle(_rightDockPanel, "Office2019Colorful");
-
-        _logger?.LogDebug("Transferred ownership of docking panels");
     }
 
     /// <summary>
@@ -124,7 +95,7 @@ public class DockingLayoutManager : IDisposable
             stopwatch.Stop();
             if (stopwatch.ElapsedMilliseconds > LayoutLoadWarningMs)
             {
-                _logger?.LogWarning("Layout load took {ElapsedMs}ms - consider optimizing", stopwatch.ElapsedMilliseconds);
+                _logger?.LogWarning("Layout load took {ElapsedMs}ms - consider optimizing for slow disk I/O or large layout complexity", stopwatch.ElapsedMilliseconds);
             }
             else
             {
@@ -146,6 +117,7 @@ public class DockingLayoutManager : IDisposable
     /// <param name="layoutFilePath">Path to save layout XML</param>
     public void SaveDockingLayout(DockingManager dockingManager, string layoutFilePath)
     {
+        var sw = Stopwatch.StartNew();
         lock (_dockingSaveLock)
         {
             if (_isSavingLayout || (DateTime.UtcNow - _lastSaveTime).TotalMilliseconds < MinimumSaveIntervalMs)
@@ -167,7 +139,8 @@ public class DockingLayoutManager : IDisposable
             serializer.PersistNow();
 
             _lastSaveTime = DateTime.UtcNow;
-            _logger?.LogDebug("Docking layout saved to {Path}", binaryLayoutPath);
+            sw.Stop();
+            _logger?.LogDebug("Docking layout saved to {Path} in {ElapsedMs}ms", binaryLayoutPath, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -254,20 +227,6 @@ public class DockingLayoutManager : IDisposable
                 _dynamicDockPanels.Clear();
                 _dynamicDockPanels = null;
             }
-
-            // Dispose managed panels
-            try { _leftDockPanel?.Dispose(); } catch { }
-            _leftDockPanel = null;
-
-            try { _rightDockPanel?.Dispose(); } catch { }
-            _rightDockPanel = null;
-
-            // Dispose fonts used by DockingManager
-            try { _dockAutoHideTabFont?.Dispose(); } catch { }
-            _dockAutoHideTabFont = null;
-
-            try { _dockTabFont?.Dispose(); } catch { }
-            _dockTabFont = null;
 
             _logger?.LogDebug("DockingLayoutManager disposed all owned resources");
         }

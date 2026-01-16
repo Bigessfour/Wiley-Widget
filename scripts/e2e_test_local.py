@@ -399,7 +399,7 @@ var services = DependencyInjection.CreateServiceCollection(includeDefaults: true
 var serviceProvider = services.BuildServiceProvider();
 
 Console.WriteLine("[E2E] Creating mock MainForm...");
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 
 Console.WriteLine("[E2E] Resolving DashboardViewModel...");
 using var scope = serviceProvider.CreateScope();

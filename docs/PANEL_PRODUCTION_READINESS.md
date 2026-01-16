@@ -1943,7 +1943,7 @@ All panels MUST have corresponding unit test files in `tests/WileyWidget.WinForm
 7. **Navigation Tests**
    - [ ] Navigation buttons call ShowPanel<TPanel>() correctly
    - [ ] Keyboard shortcuts trigger navigation
-   - [ ] Navigation works from MDI child forms
+   - [ ] Navigation works from all panels
    - [ ] Close button closes panel
 
 8. **Theme Tests**

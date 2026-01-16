@@ -819,15 +819,17 @@ public class BudgetRepository : IBudgetRepository
                 .Where(be => be.FiscalYear == fiscalYear && keys.Contains(be.AccountNumber))
                 .ToListAsync(cancellationToken);
 
-            foreach (var entry in entries)
+            var updatableEntries = entries
+                .Where(e => !string.IsNullOrEmpty(e.AccountNumber) && actualsByAccountNumber.ContainsKey(e.AccountNumber))
+                .ToList();
+
+            foreach (var entry in updatableEntries)
             {
-                if (!string.IsNullOrEmpty(entry.AccountNumber) && actualsByAccountNumber.TryGetValue(entry.AccountNumber, out var amt))
-                {
-                    entry.ActualAmount = amt;
-                    entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
-                    entry.UpdatedAt = DateTime.UtcNow;
-                    context.BudgetEntries.Update(entry);
-                }
+                cancellationToken.ThrowIfCancellationRequested();
+                var amt = actualsByAccountNumber[entry.AccountNumber!];
+                entry.ActualAmount = amt;
+                entry.Variance = entry.BudgetedAmount - entry.ActualAmount;
+                entry.UpdatedAt = DateTime.UtcNow;
             }
 
             await context.SaveChangesAsync(cancellationToken);
@@ -836,9 +838,9 @@ public class BudgetRepository : IBudgetRepository
             try { _cache.Remove($"BudgetEntries_FiscalYear_{fiscalYear}"); } catch { }
             try { _cache.Remove($"BudgetEntries_Sewer_Year_{fiscalYear}"); } catch { }
 
-            activity?.SetTag("rows.updated", entries.Count);
+            activity?.SetTag("rows.updated", updatableEntries.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);
-            return entries.Count;
+            return updatableEntries.Count;
         }
         catch (Exception ex)
         {

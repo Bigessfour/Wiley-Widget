@@ -77,6 +77,9 @@ namespace WileyWidget.WinForms.Configuration
             // Health Check Configuration (Singleton)
             services.AddSingleton(new HealthCheckConfiguration());
 
+            // Register Microsoft health checks to provide HealthCheckService for custom wrapper
+            services.AddHealthChecks();
+
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
@@ -362,7 +365,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
             services.AddScoped<CustomersViewModel>();
-            services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
+            services.AddScoped<WileyWidget.WinForms.Forms.MainViewModel>();
             services.AddScoped<ReportsViewModel>();
             services.AddScoped<DepartmentSummaryViewModel>();
             services.AddScoped<RevenueTrendsViewModel>();
@@ -378,6 +381,23 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
+            services.AddScoped<WileyWidget.WinForms.Forms.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ChartPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.BudgetOverviewPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.DepartmentSummaryPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.CustomersPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

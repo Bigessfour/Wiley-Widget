@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Syncfusion.Windows.Forms.Tools;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Forms;
 
 
 namespace WileyWidget.WinForms.Services
@@ -25,8 +26,9 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(BudgetPanel), "Budget Management", DockingStyle.Right),
             new PanelEntry(typeof(BudgetOverviewPanel), "Budget Overview", DockingStyle.Bottom, false),
             new PanelEntry(typeof(ChartPanel), "Budget Analytics", DockingStyle.Right, false),
+            new PanelEntry(typeof(ChatPanel), "AI Chat", DockingStyle.Right, false),
             new PanelEntry(typeof(CustomersPanel), "Customers", DockingStyle.Right, false),
-            new PanelEntry(typeof(DashboardPanel), "Dashboard", DockingStyle.Top, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Forms.DashboardPanel), "Dashboard", DockingStyle.Top, false),
             new PanelEntry(typeof(DepartmentSummaryPanel), "Department Summary", DockingStyle.Right),
             new PanelEntry(typeof(ProactiveInsightsPanel), "Proactive AI Insights", DockingStyle.Right, false),
             new PanelEntry(typeof(QuickBooksPanel), "QuickBooks", DockingStyle.Right, false),

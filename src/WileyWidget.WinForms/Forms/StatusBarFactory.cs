@@ -60,37 +60,40 @@ public static class StatusBarFactory
             Border3DStyle = Border3DStyle.Adjust
         };
 
-        // Initialize panels array (StatusBarAdv.Panels is an array, not a collection)
-        statusBar.Panels = new StatusBarAdvPanel[5];
+        var panels = EnsurePanelBuffer(statusBar, requiredLength: 5, logger);
+        if (panels.Length < 5)
+        {
+            logger?.LogWarning("StatusBarAdv panel buffer could not be sized to 5; created with length {Length}. Optional panels will be skipped.", panels.Length);
+        }
 
         // Status label (left) - primary operation status
-        statusBar.Panels[0] = new StatusBarAdvPanel
+        TryAssignPanel(statusBar, 0, new StatusBarAdvPanel
         {
             Name = "StatusLabel",
             AccessibleName = "Status Label",
             Text = "Ready",
             HAlign = HorzFlowAlign.Left
-        };
+        }, logger, optional: false);
 
         // Status text panel (center) - contextual information
-        statusBar.Panels[1] = new StatusBarAdvPanel
+        TryAssignPanel(statusBar, 1, new StatusBarAdvPanel
         {
             Name = "StatusTextPanel",
             AccessibleName = "Status Text",
             Text = string.Empty,
             Size = new Size(200, 27),
             HAlign = HorzFlowAlign.Center
-        };
+        }, logger, optional: false);
 
         // State panel (Docking/panel state indicator)
-        statusBar.Panels[2] = new StatusBarAdvPanel
+        TryAssignPanel(statusBar, 2, new StatusBarAdvPanel
         {
             Name = "StatePanel",
             AccessibleName = "State Panel",
             Text = string.Empty,
             Size = new Size(100, 27),
             HAlign = HorzFlowAlign.Left
-        };
+        }, logger, optional: true);
 
         // Progress panel (right) - contains embedded ProgressBarAdv
         var progressBar = new ProgressBarAdv { Name = "ProgressBar_Embedded", AccessibleName = "Operation Progress", AccessibleDescription = "Indicates progress for long running operations", Visible = false, Width = 150, Height = 18, Dock = DockStyle.Fill };
@@ -106,17 +109,17 @@ public static class StatusBarFactory
         // Note: ProgressBarAdv lifecycle managed by StatusBarAdvPanel.Controls collection
         // panel.Dispose() will cascade to child controls
 
-        statusBar.Panels[3] = progressPanel;
+        TryAssignPanel(statusBar, 3, progressPanel, logger, optional: true);
 
         // Clock panel (right) - displays current time
-        statusBar.Panels[4] = new StatusBarAdvPanel
+        TryAssignPanel(statusBar, 4, new StatusBarAdvPanel
         {
             Name = "ClockPanel",
             AccessibleName = "System Clock",
             Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
             Size = new Size(50, 27),
             HAlign = HorzFlowAlign.Right
-        };
+        }, logger, optional: true);
 
         // Apply theme cascade
         SfSkinManager.SetVisualStyle(statusBar, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
@@ -125,5 +128,35 @@ public static class StatusBarFactory
             statusBar.Panels.Length);
 
         return statusBar;
+    }
+
+    private static StatusBarAdvPanel[] EnsurePanelBuffer(StatusBarAdv statusBar, int requiredLength, ILogger? logger)
+    {
+        var panels = statusBar.Panels;
+        var currentLength = panels?.Length ?? 0;
+        if (panels == null || currentLength < requiredLength)
+        {
+            var newLength = Math.Max(requiredLength, panels?.Length ?? 0);
+            panels = new StatusBarAdvPanel[newLength];
+            statusBar.Panels = panels;
+            logger?.LogWarning("StatusBarAdv panels length was {CurrentLength}; resized to {NewLength}", currentLength, newLength);
+        }
+
+        return statusBar.Panels ?? Array.Empty<StatusBarAdvPanel>();
+    }
+
+    private static bool TryAssignPanel(StatusBarAdv statusBar, int index, StatusBarAdvPanel panel, ILogger? logger, bool optional)
+    {
+        if (statusBar.Panels == null || statusBar.Panels.Length <= index)
+        {
+            logger?.LogWarning(optional
+                ? "Skipping optional StatusBarAdv panel at index {Index} due to insufficient capacity"
+                : "StatusBarAdv missing required panel index {Index}; returning without assignment",
+                index);
+            return false;
+        }
+
+        statusBar.Panels[index] = panel;
+        return true;
     }
 }

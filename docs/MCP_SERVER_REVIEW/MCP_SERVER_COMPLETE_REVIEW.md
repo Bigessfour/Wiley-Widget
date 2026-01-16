@@ -145,7 +145,7 @@ Output: ✅ Test PASSED: AccountsFormTest.csx
 
 ```csharp
 Input:  EvalCSharp(@"
-  var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+  var mockMainForm = MockFactory.CreateMockMainForm();
   var form = new AccountsForm(mockMainForm);
   SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
   SfSkinManager.SetVisualStyle(form, 'Office2019Colorful');

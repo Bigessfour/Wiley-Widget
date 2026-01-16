@@ -9,7 +9,7 @@ Comprehensive test suite covering edge cases for the Syncfusion DockingManager l
 - `tests/WileyWidget.WinForms.Tests/Unit/Forms/DockingLayoutPersistenceEdgeCaseTests.cs`
 - `tests/WileyWidget.WinForms.Tests/Unit/Forms/DockingLayoutConcurrencyStressTests.cs`
 
-**Total Tests:** 21 (all passing)  
+**Total Tests:** 21 (all passing)
 **Test Categories:** `DockingPersistence`, `DockingConcurrency`, `Stress`
 
 ## Test Coverage Summary
@@ -256,12 +256,11 @@ dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
 
 ## References
 
-- **Implementation:** [MainForm.Docking.cs](../../src/WileyWidget.WinForms/Forms/MainForm.Docking.cs)
-- **Existing Tests:** [DockingTabbedMdiIntegrationTests.cs](../../tests/WileyWidget.WinForms.Tests/Unit/Forms/DockingTabbedMdiIntegrationTests.cs)
+- **Implementation:** [MainForm.UI.cs](../../src/WileyWidget.WinForms/Forms/MainForm.UI.cs)
 - **Syncfusion Docs:** [DockingManager Layouts](https://help.syncfusion.com/windowsforms/docking-manager/layouts)
 
 ---
 
-**Last Updated:** December 13, 2025  
-**Test Pass Rate:** 21/21 (100%)  
+**Last Updated:** December 13, 2025
+**Test Pass Rate:** 21/21 (100%)
 **Coverage Status:** ✅ All identified edge cases covered

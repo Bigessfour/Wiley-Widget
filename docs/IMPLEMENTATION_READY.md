@@ -145,7 +145,7 @@
 
 ### Keyboard Shortcuts (Immediately Available)
 
-```
+```text
 Alt+A  →  Accounts panel
 Alt+B  →  Budget panel
 Alt+C  →  Charts panel
@@ -336,6 +336,6 @@ For questions about the implementation, refer to:
 
 ---
 
-**Status: ✅ READY FOR DEPLOYMENT**
+## Status: ✅ READY FOR DEPLOYMENT
 
 Estimated productivity gain from these changes: **10-15%** through faster startup, keyboard navigation, and reduced binding boilerplate.

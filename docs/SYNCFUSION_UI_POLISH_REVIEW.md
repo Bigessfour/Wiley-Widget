@@ -442,6 +442,8 @@ namespace WileyWidget.WinForms.Extensions
         /// Binds a control property to a ViewModel property with automatic marshalling to UI thread.
         /// Handles null ViewModel gracefully (binding continues to work if ViewModel is replaced).
         /// </summary>
+        /// <typeparam name="TViewModel">The ViewModel type.</typeparam>
+        /// <typeparam name="TValue">The property value type.</typeparam>
         public static Binding BindProperty<TViewModel, TValue>(
             this Control control,
             string controlProperty,

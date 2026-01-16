@@ -43,7 +43,7 @@ using WileyWidget.Models;
 /// │ │ Display: "💭 Insights:\n[AI response]"
 /// │ │
 /// │ └─ NO → Show help message with available tools
-// │ Display: "ℹ️ No tool detected.\n• read <filename>\n..."
+// │ Display: "ℹ️ No tool detected.\n• read `<filename>`\n..."
 ///
 /// CONFIGURATION:
 /// ===============
@@ -89,11 +89,11 @@ INTEGRATED AI SERVICES ARCHITECTURE
 ┌─────────────────────────────────────────────────────────────────┐
 │ AIChatControl (UI) │
 │ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Messages: ObservableCollection<ChatMessage> │ │
+│ │ Messages: ObservableCollection\<ChatMessage\> │ │
 │ │ ├─ IsUser: bool (true for user, false for AI) │ │
 │ │ ├─ Message: string (content) │ │
 │ │ ├─ Timestamp: DateTime │ │
-│ │ └─ Metadata: IDictionary<string, object> │ │
+│ │ └─ Metadata: IDictionary\<string, object\> │ │
 │ └──────────────────────────────────────────────────────────┘ │
 │ ↑ │
 │ ┌──────────────────────────────────────────────────────────┐ │
@@ -180,10 +180,10 @@ Scenario 2: Tool Command (Not Found)
 User: \"edit MainForm.cs\"
 AI: ❌ Error: 'edit' command not recognized.
 Available commands:
-• read <file>
-• grep <pattern>
-• list <directory>
-• search <query>
+• read `<file>`
+• grep `<pattern>`
+• list `<dir>`
+• search `<query>`
 
 Scenario 3: Conversational Query (Successful)
 ──────────────────────────────────────────────
@@ -284,14 +284,14 @@ services.AddScoped<IAIService, XAIService>();
 services.AddScoped<AIChatControl>();
 
 ✓ 2. MainForm Initialization (MainForm.cs)
-var aiService = GetRequiredService<IAIAssistantService>();
-var conversationalAI = GetService<IAIService>();
+var aiService = GetRequiredService\<IAIAssistantService\>();
+var conversationalAI = GetService\<IAIService\>();
 var control = new AIChatControl(aiService, logger, conversationalAI);
 
 ✓ 3. AIChatControl Constructor (AIChatControl.cs)
 public AIChatControl(
 IAIAssistantService aiService,
-ILogger<AIChatControl> logger,
+ILogger\<AIChatControl\> logger,
 IAIService? conversationalAIService = null)
 
 ✓ 4. Tool Detection Flow (AIChatControl.SendMessageAsync)
@@ -409,7 +409,7 @@ DI Container Default Registrations:
 ├─ IAIAssistantService → AIAssistantService (Scoped)
 ├─ IAIService → XAIService (Scoped)
 ├─ AIChatControl (Scoped)
-├─ ILogger<AIChatControl> (via logging)
+├─ `ILogger\<AIChatControl\>` (via logging)
 └─ IMemoryCache (for XAIService response caching)
 
 ";

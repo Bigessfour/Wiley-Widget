@@ -17,7 +17,7 @@ All Phase 1 critical blockers from the production review have been successfully 
 - Added `BlazorWebView` field and initialization method
 - Configured with scoped `ServiceProvider` (not global `Program.Services`)
 - Added `JARVISAssist` Blazor component as root component
-- Properly integrated with MDI docking layout
+- Properly integrated with docking layout
 
 **Implementation:**
 
@@ -348,7 +348,7 @@ private async Task AutoSaveConversationAsync()
 The codebase currently has two chat implementations:
 
 1. **WinForms Chat (Legacy):**
-   - `src/WileyWidget.WinForms/Controls/ChatPanel.cs` (MDI panel wrapper)
+   - `src/WileyWidget.WinForms/Controls/ChatPanel.cs` (docking panel wrapper)
    - `src/WileyWidget.WinForms/ViewModels/ChatPanelViewModel.cs` (MVVM logic)
    - Direct Syncfusion control integration
 

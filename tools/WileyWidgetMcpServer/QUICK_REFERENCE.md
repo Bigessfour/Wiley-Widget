@@ -71,7 +71,7 @@ mcp_wileywidget-u_BatchValidateForms(
 ```
 mcp_wileywidget-u_EvalCSharp(
   csx: @"
-    var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+    var mockMainForm = MockFactory.CreateMockMainForm();
     var form = new MainForm(mockMainForm);
     SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
     Console.WriteLine($\"Form created: {form.Text}\");

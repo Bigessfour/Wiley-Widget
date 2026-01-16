@@ -198,6 +198,9 @@ namespace WileyWidget.WinForms.Services
                 // Ensure theme cascade reaches the newly created panel and children
                 ApplyPanelTheme(panel);
 
+                // Force visibility explicitly as requested for all panels
+                _dockingManager.SetDockVisibility(panel, true);
+
                 // CRITICAL FIX: For ChatPanel, apply full docking configuration to ensure proper visibility
                 // and prevent auto-hide state that causes clipping issues
                 if (typeof(TPanel).Name == "ChatPanel")
@@ -322,6 +325,21 @@ namespace WileyWidget.WinForms.Services
                 // Small pause to allow DockingManager to update UI (helps FlaUI detection)
                 try { System.Threading.Thread.Sleep(250); } catch { }
 
+                // Prevent malformation in navigation - force clean rendering
+                try
+                {
+                    panel.MinimumSize = new Size(200, 200);
+                    panel.Invalidate(true);
+                    panel.Update();
+                    _dockingManager.ActivateControl(panel);
+                    _parentControl.PerformLayout();
+                    _logger.LogInformation("Panel {Name} docked (visible=true, minSize=200x200)", panelName);
+                }
+                catch (Exception navEx)
+                {
+                    _logger.LogError(navEx, "Panel navigation malformation protection failed for {Name}: {Message}", panelName, navEx.Message);
+                }
+
                 // Cache for reuse
                 _cachedPanels[panelName] = panel;
 
@@ -343,9 +361,10 @@ namespace WileyWidget.WinForms.Services
         {
             try
             {
-                // TODO: Uncomment when SfSkinManager.LoadAssembly is available
-                // SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                // Theme cascade from parent form - no per-control SetVisualStyle needed
+                // SfSkinManager is the single source of truth for theming.
+                // Theme cascade from parent form automatically applies to all child controls.
+                panel.Invalidate(true);
+                panel.Update();
             }
             catch
             {

@@ -1,9 +1,12 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using WileyWidget.Services;
@@ -98,115 +101,94 @@ namespace WileyWidget.WinForms.Services
 
         public Task InitializeThemeAsync(CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Load all theme assemblies to support runtime theme switching
-            // This ensures all 7 themes are available (Office2019 x3, Fluent x2, Material x2)
-            try { SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly); } catch { }
             try
             {
-                // Fluent theme - load by assembly name since type may not be directly accessible
-                var fluentAssembly = System.Reflection.Assembly.Load("Syncfusion.FluentTheme.WinForms");
-                SkinManager.LoadAssembly(fluentAssembly);
-            }
-            catch { }
-            try
-            {
-                // Material theme - load by assembly name
-                var materialAssembly = System.Reflection.Assembly.Load("Syncfusion.MaterialTheme.WinForms");
-                SkinManager.LoadAssembly(materialAssembly);
-            }
-            catch { }
+                // Only load the theme we actually use
+                var officeAsm = typeof(Office2019Theme).Assembly;
+                if (officeAsm != null)
+                {
+                    SfSkinManager.LoadAssembly(officeAsm);
+                    _logger.LogDebug("Loaded Office2019Theme assembly");
+                }
+                else
+                {
+                    _logger.LogWarning("Office2019Theme assembly not found");
+                }
 
-            // Theme name is set globally in Program.InitializeTheme() before this runs
-            // ApplicationVisualTheme is read-only after being set, so we just verify it's applied
-            var currentTheme = SkinManager.ApplicationVisualTheme;
-            _logger.LogInformation("Application theme verified. All themes loaded. Active theme: {Theme}", currentTheme ?? "default");
+                // Apply the active theme (from config or default)
+                var activeTheme = _configuration.GetValue<string>("UI:Theme", "Office2019Colorful");
+                SfSkinManager.ApplicationVisualTheme = activeTheme;
+
+                _logger.LogInformation("Syncfusion theme applied: {Theme}", activeTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Theme initialization failed - falling back to default");
+                SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
+            }
 
             return Task.CompletedTask;
         }
 
-        public Task ValidateServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
+        public async Task ValidateServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
         {
             if (serviceProvider == null)
             {
                 throw new ArgumentNullException(nameof(serviceProvider));
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // This method is frequently invoked from Task.Run() during startup to keep the splash responsive.
-            // Task.Run uses MTA threadpool threads by default; resolving WinForms types on MTA can hang.
-            DiValidationResult result;
-            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+            try
             {
-                result = _validator.ValidateAll(serviceProvider);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "DI validation requested on non-STA thread (apartment={Apartment}); running on a dedicated STA thread to avoid WinForms deadlocks.",
-                    Thread.CurrentThread.GetApartmentState());
+                cancellationToken.ThrowIfCancellationRequested();
 
-                DiValidationResult? staResult = null;
-                return RunOnStaThread(() =>
+                // This method is frequently invoked from Task.Run() during startup to keep the splash responsive.
+                // Task.Run uses MTA threadpool threads by default; resolving WinForms types on MTA can hang.
+                DiValidationResult result;
+                if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    staResult = _validator.ValidateAll(serviceProvider);
-                }, cancellationToken).ContinueWith(t =>
+                    result = _validator.ValidateAll(serviceProvider);
+                }
+                else
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (t.IsFaulted)
+                    _logger.LogWarning(
+                        "DI validation requested on non-STA thread (apartment={Apartment}); running on a dedicated STA thread to avoid WinForms deadlocks.",
+                        Thread.CurrentThread.GetApartmentState());
+
+                    DiValidationResult? staResult = null;
+                    await RunOnStaThread(() =>
                     {
-                        // Preserve original exception.
-                        throw t.Exception!.GetBaseException();
-                    }
-                    if (t.IsCanceled)
-                    {
-                        throw new OperationCanceledException(cancellationToken);
-                    }
+                        cancellationToken.ThrowIfCancellationRequested();
+                        staResult = _validator.ValidateAll(serviceProvider);
+                    }, cancellationToken);
 
                     result = staResult ?? throw new InvalidOperationException("DI validation did not produce a result.");
+                }
 
-                    if (!result.IsValid)
-                    {
-                        _logger.LogError("DI validation failed with {ErrorCount} errors", result.Errors.Count);
-                        throw new InvalidOperationException(
-                            $"DI validation failed with {result.Errors.Count} errors: {string.Join("; ", result.Errors)}");
-                    }
+                if (!result.IsValid)
+                {
+                    _logger.LogError("DI validation failed with {ErrorCount} errors", result.Errors.Count);
+                    throw new InvalidOperationException(
+                        $"DI validation failed with {result.Errors.Count} errors: {string.Join("; ", result.Errors)}");
+                }
 
-                    _logger.LogInformation(
-                        "DI validation succeeded: {ServicesValidated} services validated with {Warnings} warnings",
-                        result.SuccessMessages.Count,
-                        result.Warnings.Count);
+                _logger.LogInformation(
+                    "DI validation succeeded: {ServicesValidated} services validated with {Warnings} warnings",
+                    result.SuccessMessages.Count,
+                    result.Warnings.Count);
 
-                    foreach (var warning in result.Warnings)
-                    {
-                        _logger.LogWarning("DI validation warning: {Warning}", warning);
-                    }
-
-                    return Task.CompletedTask;
-                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Unwrap();
+                foreach (var warning in result.Warnings)
+                {
+                    _logger.LogWarning("DI validation warning: {Warning}", warning);
+                }
             }
-
-            if (!result.IsValid)
+            catch (TaskCanceledException)
             {
-                _logger.LogError("DI validation failed with {ErrorCount} errors", result.Errors.Count);
-                throw new InvalidOperationException(
-                    $"DI validation failed with {result.Errors.Count} errors: {string.Join("; ", result.Errors)}");
+                _logger.LogInformation("DI validation canceled");
             }
-
-            _logger.LogInformation(
-                "DI validation succeeded: {ServicesValidated} services validated with {Warnings} warnings",
-                result.SuccessMessages.Count,
-                result.Warnings.Count);
-
-            foreach (var warning in result.Warnings)
+            catch (OperationCanceledException)
             {
-                _logger.LogWarning("DI validation warning: {Warning}", warning);
+                _logger.LogInformation("DI validation operation canceled");
             }
-
-            return Task.CompletedTask;
         }
 
         /// <summary>

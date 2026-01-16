@@ -273,7 +273,7 @@ public static class InspectDockingManagerTool
         // Validate EnableDocumentMode (WileyWidget standard: should be false)
         if (dm.EnableDocumentMode)
         {
-            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false - use TabbedMDI instead)");
+            issues.Add("⚠️  POLICY VIOLATION: EnableDocumentMode=true violates WileyWidget standard (should be false - standard is Docking Panels only)");
         }
 
         // Validate PersistState is enabled (best practice - strongly recommended)

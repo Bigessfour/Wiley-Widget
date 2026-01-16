@@ -45,7 +45,7 @@ Both can be used directly in tests via `ExecuteOnStaThread<T>()` pattern.
 
 ```csharp
 // For test setup
-var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+var mockMainForm = MockFactory.CreateMockMainForm();
 var form = FormInstantiationHelper.InstantiateForm(typeof(AccountsForm), mockMainForm);
 // No need to manually inject dependencies!
 ```
@@ -157,7 +157,7 @@ Assert.True(loaded, "Form should load with theme");
 
 #### Key Methods
 
-##### `CreateMockMainForm(bool enableMdi = false) → MainForm`
+##### `CreateMockMainForm() → MainForm`
 
 **Purpose:** Creates a mock MainForm for testing without requiring full initialization.
 
@@ -171,7 +171,7 @@ Assert.True(loaded, "Form should load with theme");
 
 ```csharp
 // In test setup
-var mockMain = MockFactory.CreateMockMainForm(enableMdi: false);
+var mockMain = MockFactory.CreateMockMainForm();
 
 // Inject into form constructor
 var form = FormInstantiationHelper.InstantiateForm(typeof(AccountsForm), mockMain);
@@ -182,7 +182,7 @@ FormInstantiationHelper.SafeDispose(form, mockMain);
 
 **Parameters:**
 
-- `enableMdi` (bool): Not used currently, reserved for future MDI tests
+- `(none)`: No parameters required
 
 ---
 
@@ -458,7 +458,7 @@ public class PanelTestsWithHelpers
         var result = FormInstantiationHelper.ExecuteOnStaThread(() =>
         {
             // Step 1: Create mock MainForm
-            var mockMainForm = MockFactory.CreateMockMainForm(enableMdi: true);
+            var mockMainForm = MockFactory.CreateMockMainForm();
 
             // Step 2: Instantiate form (auto-handles dependencies)
             var form = FormInstantiationHelper.InstantiateForm(

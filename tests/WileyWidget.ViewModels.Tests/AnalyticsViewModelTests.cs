@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
-using WileyWidget.Models.Entities;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 using Xunit;
@@ -22,34 +19,29 @@ namespace WileyWidget.ViewModels.Tests
         {
             // Arrange
             var mockAnalytics = new Mock<IAnalyticsService>();
-            var mockBudgetRepo = new Mock<IBudgetRepository>();
-            var mockEnterpriseRepo = new Mock<IEnterpriseRepository>();
             var mockLogger = new Mock<ILogger<AnalyticsViewModel>>();
 
-            var start = new DateTime(DateTime.Now.Year - 1, 7, 1);
-            var end = new DateTime(DateTime.Now.Year, 6, 30);
-
-            mockAnalytics.Setup(m => m.PerformExploratoryAnalysisAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>()))
+            mockAnalytics.Setup(m => m.PerformExploratoryAnalysisAsync(
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BudgetAnalysisResult
                 {
                     CategoryBreakdown = new Dictionary<string, decimal> { { "Revenue", 1000m } },
                     TopVariances = new List<VarianceAnalysis>(),
                     TrendData = new TrendAnalysis { MonthlyTrends = new List<MonthlyTrend>() },
-                    Insights = new List<string> { "Sample insight" }
+                    Insights = new List<string> { "Sample insight" },
+                    AvailableEntities = new List<string> { "Sanitation District", "Town Utility" }
                 });
 
-            var entries = new List<BudgetEntry>
-            {
-                new BudgetEntry { Id = 1, Fund = new Fund { Name = "Sanitation District" }, StartPeriod = start, EndPeriod = end },
-                new BudgetEntry { Id = 2, Fund = new Fund { Name = "Town Utility" }, StartPeriod = start, EndPeriod = end }
-            };
+            mockAnalytics.Setup(m => m.RunRateScenarioAsync(It.IsAny<RateScenarioParameters>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new RateScenarioResult());
 
-            mockBudgetRepo.Setup(m => m.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(entries);
+            mockAnalytics.Setup(m => m.GenerateReserveForecastAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ReserveForecastResult());
 
-            mockEnterpriseRepo.Setup(m => m.GetAllAsync()).ReturnsAsync(new List<Enterprise> { new Enterprise { Name = "Town Utility" } });
-
-            var vm = new AnalyticsViewModel(mockAnalytics.Object, mockLogger.Object, mockBudgetRepo.Object, mockEnterpriseRepo.Object);
+            var vm = new AnalyticsViewModel(mockAnalytics.Object, mockLogger.Object);
 
             // Act
             await vm.PerformAnalysisCommand.ExecuteAsync(null);
@@ -66,22 +58,31 @@ namespace WileyWidget.ViewModels.Tests
         {
             // Arrange
             var mockAnalytics = new Mock<IAnalyticsService>();
-            var mockBudgetRepo = new Mock<IBudgetRepository>();
-            var mockEnterpriseRepo = new Mock<IEnterpriseRepository>();
             var mockLogger = new Mock<ILogger<AnalyticsViewModel>>();
 
             var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            mockAnalytics.Setup(m => m.PerformExploratoryAnalysisAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>()))
+            mockAnalytics.Setup(m => m.PerformExploratoryAnalysisAsync(
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BudgetAnalysisResult())
-                .Callback<DateTime, DateTime, string?>((sd, ed, ent) => tcs.TrySetResult(ent));
+                .Callback<DateTime, DateTime, string?, CancellationToken>((_, _, ent, _) =>
+                {
+                    if (!string.IsNullOrWhiteSpace(ent))
+                    {
+                        tcs.TrySetResult(ent);
+                    }
+                });
 
-            mockBudgetRepo.Setup(m => m.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<BudgetEntry>());
+            mockAnalytics.Setup(m => m.RunRateScenarioAsync(It.IsAny<RateScenarioParameters>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new RateScenarioResult());
 
-            mockEnterpriseRepo.Setup(m => m.GetAllAsync()).ReturnsAsync(new List<Enterprise>());
+            mockAnalytics.Setup(m => m.GenerateReserveForecastAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ReserveForecastResult());
 
-            var vm = new AnalyticsViewModel(mockAnalytics.Object, mockLogger.Object, mockBudgetRepo.Object, mockEnterpriseRepo.Object);
+            var vm = new AnalyticsViewModel(mockAnalytics.Object, mockLogger.Object);
 
             // Act - change the selected entity and wait for the analytics service to be called
             vm.SelectedEntity = "Sanitation District";

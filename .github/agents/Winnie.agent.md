@@ -1,5 +1,5 @@
 ---
-description: "Master-Level Syncfusion Windows Forms Control Engineer - Elite specialist in crafting pristine, production-grade views using Syncfusion Essential Studio for Windows Forms. Enforces strict adherence to official Syncfusion API documentation via MCP, MVVM architectural purity, flawless theming with SfSkinManager, and seamless integration of DockingManager + TabbedMDIManager."
+description: "Master-Level Syncfusion Windows Forms Control Engineer - Elite specialist in crafting pristine, production-grade views using Syncfusion Essential Studio for Windows Forms. Enforces strict adherence to official Syncfusion API documentation via MCP, MVVM architectural purity, flawless theming with SfSkinManager, and seamless integration of DockingManager."
 tools:
   - mcp_filesystem_list_directory
   - mcp_filesystem_read_text_file
@@ -29,7 +29,7 @@ The agent produces **production-ready views** that are:
 Invoke this agent for:
 
 - **Creating New Views**: Designing complete UserControl/Form views with Syncfusion controls (SfDataGrid, RibbonControlAdv, Chart, SfButton, DockingManager, etc.)
-- **Refactoring Existing Views**: Migrating legacy code-behind to pure MVVM, fixing theme inconsistencies, optimizing Docking/TabbedMDI layouts
+- **Refactoring Existing Views**: Migrating legacy code-behind to pure MVVM, fixing theme inconsistencies, optimizing Docking layouts
 - **Theming Mastery**: Ensuring app-wide consistent theming with SfSkinManager (Office2019Colorful, HighContrast, etc.)
 - **Complex Layouts**: Building panel-based applications with DockingManager, dock hints, persistence
 - **Control Configuration**: Precise property/event setup for any Syncfusion control (grids, charts, navigation, inputs)

@@ -98,11 +98,17 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <!-- Blazor WebView for Windows Forms -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <!-- Syncfusion Blazor Interactive Chat -->
     <PackageReference Include="Syncfusion.Blazor.InteractiveChat" />
     <PackageReference Include="Syncfusion.Blazor.Core" />
     <PackageReference Include="Syncfusion.Blazor.Themes" />
     <PackageReference Include="Syncfusion.Blazor.SmartComponents" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Remove WPF WebView2 assembly to avoid WindowsBase version conflict -->
+    <Reference Remove="Microsoft.Web.WebView2.Wpf" />
   </ItemGroup>
 
   <ItemGroup>

@@ -200,15 +200,33 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Refreshes dashboard metrics on demand. Currently a stub pending metrics refresh implementation.
-        /// Decision Required: Should PopulateMonthlyRevenueData() use database queries or client-side computation?
-        /// This affects caching strategy and real-time accuracy of trend data.
+        /// Refreshes dashboard metrics on demand by reloading budget analysis from repository.
         /// </summary>
         private async Task RefreshMetricsAsync()
         {
-            // TODO: Implement RefreshMetricsAsync when metrics refresh logic is defined
-            // Decision Point: PopulateMonthlyRevenueData() method is undefined - awaiting DB vs client-side decision.
-            await Task.CompletedTask;
+            try
+            {
+                _logger.LogInformation("Refreshing dashboard metrics on demand...");
+                var now = DateTime.Now;
+                var currentFiscalYear = (now.Month >= 7) ? now.Year + 1 : now.Year;
+                var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1);
+                var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30);
+
+                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, CancellationToken.None);
+                if (analysis != null)
+                {
+                    BudgetAnalysis = analysis;
+                    TotalBudgeted = analysis.TotalBudgeted;
+                    TotalActual = analysis.TotalActual;
+                    TotalVariance = analysis.TotalVariance;
+                    VariancePercentage = analysis.TotalVariancePercentage;
+                    _logger.LogInformation("Dashboard metrics refreshed: Budget={Budget}, Actual={Actual}", TotalBudgeted, TotalActual);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing dashboard metrics");
+            }
         }
 
         /// <summary>
@@ -302,10 +320,9 @@ namespace WileyWidget.WinForms.ViewModels
                                 else
                                 {
                                     var startMonth = _configuration.GetValue<int>("FiscalYearStartMonth", 7);
-                                    // TODO: Update FromDateTime call if it accepts startMonth parameter
-                                    var fyInfo = FiscalYearInfo.FromDateTime(DateTime.Now);
-                                    currentFiscalYear = fyInfo.Year;
-                                    _logger.LogInformation("Using computed fiscal year based on date: {FiscalYear} (Start Month: {StartMonth})", currentFiscalYear, startMonth);
+                                    var now = DateTime.Now;
+                                    currentFiscalYear = (now.Month >= startMonth) ? now.Year + 1 : now.Year;
+                                    _logger.LogInformation("Using computed fiscal year: {FiscalYear} (Start Month: {StartMonth})", currentFiscalYear, startMonth);
                                 }
                             }
                             else
@@ -405,8 +422,8 @@ namespace WileyWidget.WinForms.ViewModels
 
                             // Update metrics and revenue data
                             UpdateMetricsCollection();
-                            // TODO: Uncomment when PopulateMonthlyRevenueData is implemented
-                            // PopulateMonthlyRevenueData(currentFiscalYear);
+                            // Monthly revenue data loading deferred to async method during initialization
+                            // PopulateMonthlyRevenueDataAsync is called separately to avoid blocking UI updates
 
                             // Update metadata
                             MunicipalityName = "Town of Wiley";

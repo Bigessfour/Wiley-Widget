@@ -48,10 +48,8 @@
 14. WireGlobalExceptionHandlers
 15. Create MainForm (via DI)
     - MainForm constructor runs
-    - IsMdiContainer set based on config
     - ApplyTheme called
     - InitializeChrome (Ribbon, StatusBar, Navigation)
-    - InitializeMdiSupport (TabbedMDIManager if enabled)
 16. Close splash screen
 17. ScheduleAutoCloseIfRequested
 18. RunUiLoop (Application.Run)
@@ -176,14 +174,12 @@ Program.Main (UI thread):
 
 ```text
 MainForm ctor:
-  ├─ IsMdiContainer = false
   ├─ ApplyTheme()
   ├─ InitializeChrome() ← ribbon/status/navigation
   └─ (panels only)
 
 MainForm.OnLoad:
   ├─ Configure docking panel z-order
-  └─ (no MdiClient)
 
 MainForm.OnShown:
   └─ InitializeDocking() ← DEFERRED heavy operation
@@ -317,9 +313,6 @@ protected override void OnLoad(EventArgs e)
 {
     base.OnLoad(e);
     if (_initialized) return;
-
-    // Set docking mode
-    IsMdiContainer = false;
 
     // Apply theme
     ApplyThemeToForm();

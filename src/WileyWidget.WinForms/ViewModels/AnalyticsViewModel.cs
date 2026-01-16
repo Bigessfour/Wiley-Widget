@@ -1,11 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Services.Abstractions;
-using WileyWidget.Business.Interfaces;
-using System; // Added for ArgumentNullException, DateTime, etc.
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -17,8 +18,9 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
-        private readonly IBudgetRepository _budgetRepository;
-        private readonly IEnterpriseRepository _enterpriseRepository;
+        private readonly CancellationTokenSource _lifecycleCts = new();
+        private readonly PropertyChangedEventHandler _propertyChangedHandler;
+        private bool _disposed;
 
         /// <summary>
         /// Gets or sets a value indicating whether data is currently being loaded or processed.
@@ -160,36 +162,39 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
-        public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger, IBudgetRepository budgetRepository, IEnterpriseRepository enterpriseRepository)
+        public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger)
         {
             _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-            _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
 
-            PerformAnalysisCommand = new AsyncRelayCommand(PerformExploratoryAnalysisAsync);
-            RunScenarioCommand = new AsyncRelayCommand(RunRateScenarioAsync);
-            GenerateForecastCommand = new AsyncRelayCommand(GenerateReserveForecastAsync);
-            RefreshCommand = new AsyncRelayCommand(RefreshAllDataAsync);
+            PerformAnalysisCommand = new AsyncRelayCommand(() => PerformExploratoryAnalysisAsync(_lifecycleCts.Token));
+            RunScenarioCommand = new AsyncRelayCommand(() => RunRateScenarioAsync(_lifecycleCts.Token));
+            GenerateForecastCommand = new AsyncRelayCommand(() => GenerateReserveForecastAsync(_lifecycleCts.Token));
+            RefreshCommand = new AsyncRelayCommand(() => RefreshAllDataAsync(_lifecycleCts.Token));
 
-            // Re-run exploratory analysis when SelectedEntity changes
-            PropertyChanged += (s, e) =>
+            _propertyChangedHandler = (_, e) =>
             {
                 if (e.PropertyName == nameof(SelectedEntity))
                 {
-                    _ = PerformExploratoryAnalysisAsync();
+                    _ = PerformExploratoryAnalysisAsync(_lifecycleCts.Token);
                 }
             };
+            PropertyChanged += _propertyChangedHandler;
 
             // Auto-load data on initialization
-            _ = Task.Run(async () => await RefreshCommand.ExecuteAsync(null));
+            _ = RefreshAllDataAsync(_lifecycleCts.Token);
         }
 
         /// <summary>
         /// Performs exploratory data analysis asynchronously
         /// </summary>
-        private async Task PerformExploratoryAnalysisAsync()
+        private async Task PerformExploratoryAnalysisAsync(CancellationToken cancellationToken)
         {
+            if (_disposed || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             try
             {
                 IsLoading = true;
@@ -198,7 +203,8 @@ namespace WileyWidget.WinForms.ViewModels
                 var startDate = new DateTime(DateTime.Now.Year - 1, 7, 1);
                 var endDate = new DateTime(DateTime.Now.Year, 6, 30);
 
-                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, SelectedEntity);
+                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, SelectedEntity, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Update metrics
                 Metrics.Clear();
@@ -233,27 +239,7 @@ namespace WileyWidget.WinForms.ViewModels
                     Insights.Add(insight);
                 }
 
-                // Populate available entities from budget entries + enterprises
-                try
-                {
-                    var budgetEntries = await _budgetRepository.GetByDateRangeAsync(startDate, endDate);
-                    var entitySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                    foreach (var n in budgetEntries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
-                        entitySet.Add(n);
-
-                    var enterprises = await _enterpriseRepository.GetAllAsync();
-                    foreach (var en in enterprises.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
-                        entitySet.Add(en);
-
-                    var entities = entitySet.OrderBy(n => n).ToList();
-                    entities.Insert(0, "All Entities");
-                    AvailableEntities = new ObservableCollection<string>(entities);
-                }
-                catch (Exception exEnt)
-                {
-                    _logger.LogWarning(exEnt, "Failed to populate AvailableEntities in AnalyticsViewModel");
-                }
+                ApplyAvailableEntities(result.AvailableEntities);
 
                 UpdateSummaries();
                 UpdateFilteredCollections();
@@ -261,13 +247,17 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Analysis complete";
                 _logger.LogInformation("Exploratory analysis completed successfully");
             }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Analysis cancelled";
+            }
             catch (Exception ex)
             {
                 StatusText = $"Analysis failed: {ex.Message}";
                 _logger.LogError(ex, "Error performing exploratory analysis");
 
                 // Fallback to sample data
-                await LoadSampleDataAsync();
+                await LoadSampleDataAsync(cancellationToken);
             }
             finally
             {
@@ -278,8 +268,13 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Runs rate scenario analysis asynchronously
         /// </summary>
-        private async Task RunRateScenarioAsync()
+        private async Task RunRateScenarioAsync(CancellationToken cancellationToken)
         {
+            if (_disposed || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             try
             {
                 IsLoading = true;
@@ -293,7 +288,8 @@ namespace WileyWidget.WinForms.ViewModels
                     ProjectionYears = ProjectionYears
                 };
 
-                var result = await _analyticsService.RunRateScenarioAsync(parameters);
+                var result = await _analyticsService.RunRateScenarioAsync(parameters, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Update projections
                 ScenarioProjections.Clear();
@@ -314,13 +310,17 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Scenario analysis complete";
                 _logger.LogInformation("Rate scenario analysis completed successfully");
             }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Scenario cancelled";
+            }
             catch (Exception ex)
             {
                 StatusText = $"Scenario failed: {ex.Message}";
                 _logger.LogError(ex, "Error running rate scenario");
 
                 // Fallback to sample data
-                await LoadSampleScenarioDataAsync();
+                await LoadSampleScenarioDataAsync(cancellationToken);
             }
             finally
             {
@@ -331,14 +331,20 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Generates reserve forecast asynchronously
         /// </summary>
-        private async Task GenerateReserveForecastAsync()
+        private async Task GenerateReserveForecastAsync(CancellationToken cancellationToken)
         {
+            if (_disposed || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             try
             {
                 IsLoading = true;
                 StatusText = "Generating forecast...";
 
-                var result = await _analyticsService.GenerateReserveForecastAsync(ProjectionYears);
+                var result = await _analyticsService.GenerateReserveForecastAsync(ProjectionYears, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // Update forecast data
                 ForecastData.Clear();
@@ -352,13 +358,17 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Forecast generated";
                 _logger.LogInformation("Reserve forecast generated successfully");
             }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Forecast cancelled";
+            }
             catch (Exception ex)
             {
                 StatusText = $"Forecast failed: {ex.Message}";
                 _logger.LogError(ex, "Error generating reserve forecast");
 
                 // Fallback to sample data
-                await LoadSampleForecastDataAsync();
+                await LoadSampleForecastDataAsync(cancellationToken);
             }
             finally
             {
@@ -369,11 +379,16 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Refreshes all analytics data asynchronously
         /// </summary>
-        private async Task RefreshAllDataAsync()
+        private async Task RefreshAllDataAsync(CancellationToken cancellationToken)
         {
-            await PerformExploratoryAnalysisAsync();
-            await RunRateScenarioAsync();
-            await GenerateReserveForecastAsync();
+            if (_disposed || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await PerformExploratoryAnalysisAsync(cancellationToken);
+            await RunRateScenarioAsync(cancellationToken);
+            await GenerateReserveForecastAsync(cancellationToken);
         }
 
         /// <summary>
@@ -415,10 +430,12 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Loads sample data for design-time preview or fallback
         /// </summary>
-        private async Task LoadSampleDataAsync()
+        private async Task LoadSampleDataAsync(CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 Metrics.Clear();
                 Metrics.Add(new AnalyticsMetric { Name = "Revenue", Value = 1500000m, Unit = "$" });
                 Metrics.Add(new AnalyticsMetric { Name = "Expenses", Value = 1200000m, Unit = "$" });
@@ -453,16 +470,18 @@ namespace WileyWidget.WinForms.ViewModels
 
                 UpdateSummaries();
                 UpdateFilteredCollections();
-            });
+            }, cancellationToken);
         }
 
         /// <summary>
         /// Loads sample scenario data
         /// </summary>
-        private async Task LoadSampleScenarioDataAsync()
+        private async Task LoadSampleScenarioDataAsync(CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 ScenarioProjections.Clear();
                 for (int i = 1; i <= ProjectionYears; i++)
                 {
@@ -481,16 +500,18 @@ namespace WileyWidget.WinForms.ViewModels
                 Recommendations.Add("Monitor expense growth carefully");
 
                 RecommendationExplanation = "Sample scenario shows balanced growth with moderate risk.";
-            });
+            }, cancellationToken);
         }
 
         /// <summary>
         /// Loads sample forecast data
         /// </summary>
-        private async Task LoadSampleForecastDataAsync()
+        private async Task LoadSampleForecastDataAsync(CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 ForecastData.Clear();
                 for (int i = 0; i < ProjectionYears * 12; i++)
                 {
@@ -503,7 +524,18 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 RecommendationExplanation = "Sample forecast indicates stable reserve levels with low risk.";
-            });
+            }, cancellationToken);
+        }
+
+        private void ApplyAvailableEntities(IEnumerable<string> availableEntitiesFromResult)
+        {
+            AvailableEntities = new ObservableCollection<string>(
+                availableEntitiesFromResult
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Select(n => n.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(n => n)
+                    .Prepend("All Entities"));
         }
 
         /// <summary>
@@ -521,11 +553,23 @@ namespace WileyWidget.WinForms.ViewModels
         /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (!disposing || _disposed)
             {
-                // Clean up managed resources if needed
+                return;
             }
-            // Clean up unmanaged resources if any
+
+            _disposed = true;
+            try
+            {
+                _lifecycleCts.Cancel();
+            }
+            catch
+            {
+                // Ignore cancellation race
+            }
+
+            PropertyChanged -= _propertyChangedHandler;
+            _lifecycleCts.Dispose();
             _logger.LogDebug("AnalyticsViewModel disposed");
         }
     }

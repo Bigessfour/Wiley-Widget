@@ -6,7 +6,7 @@ This directory contains headless validation scripts run by the **WileyWidgetMcpS
 
 - **`Audits/`**: Static analysis scripts that check for theme compliance, binding errors, and configuration risks.
 - **`GoldenMasters/`**: (Future) JSON snapshots of control hierarchies for regression testing.
-- **`Integration/`**: Scripts that exercise complex interactions (e.g., Opening MDI forms).
+- **`Integration/`**: Scripts that exercise complex interactions (e.g., Panel navigation).
 - **`Snapshots/`**: Scripts to generate Golden Masters.
 
 ## How to Run Tests

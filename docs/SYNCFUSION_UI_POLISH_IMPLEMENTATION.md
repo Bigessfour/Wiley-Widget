@@ -130,7 +130,7 @@ catch (Exception ex)
 - **New:** `src/WileyWidget.WinForms/Services/DockingStateManager.cs`
 - **Update:** `src/WileyWidget.WinForms/Forms/MainForm.cs`
 
-**Step 3a: Create DockingStateManager.cs**
+#### Step 3a: Create DockingStateManager.cs
 
 ```csharp
 using System;
@@ -218,7 +218,7 @@ namespace WileyWidget.WinForms.Services
 }
 ```
 
-**Step 3b: Update MainForm.cs**
+#### Step 3b: Update MainForm.cs
 
 Add field:
 

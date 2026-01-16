@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using WileyWidget.Business.Interfaces;
+using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
@@ -11,54 +13,195 @@ namespace WileyWidget.Services
 {
     /// <summary>
     /// Service providing analytics capabilities for budget data analysis and scenario modeling
+    /// backed by fresh DbContext instances created via IDbContextFactory to avoid disposed scopes.
     /// </summary>
     public class AnalyticsService : IAnalyticsService
     {
-        private readonly IBudgetRepository _budgetRepository;
-        private readonly IMunicipalAccountRepository _accountRepository;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly ILogger<AnalyticsService> _logger;
 
         public AnalyticsService(
-            IBudgetRepository budgetRepository,
-            IMunicipalAccountRepository accountRepository,
+            IDbContextFactory<AppDbContext> contextFactory,
             ILogger<AnalyticsService> logger)
         {
-            _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
-            _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Performs exploratory data analysis on budget data
         /// </summary>
-        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null)
+        public async Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("Performing exploratory analysis for period {Start} to {End} (Entity={Entity})", startDate, endDate, entityName);
 
-            var budgetEntries = (await _budgetRepository.GetByDateRangeAsync(startDate, endDate)).ToList();
-            var accounts = await _accountRepository.GetAllAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-            // If an entity name is provided, apply a lightweight heuristic filter to budget entries
+            var budgetEntries = await context.BudgetEntries
+                .AsNoTracking()
+                .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
+                .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
+                .ToListAsync(cancellationToken);
+
+            var accounts = await context.MunicipalAccounts.AsNoTracking().ToListAsync(cancellationToken);
+            var enterprises = await context.Enterprises.AsNoTracking().ToListAsync(cancellationToken);
+            var availableEntities = BuildAvailableEntities(budgetEntries, enterprises);
+
             if (!string.IsNullOrWhiteSpace(entityName))
             {
-                var sel = entityName.Trim();
-                budgetEntries = budgetEntries.Where(be =>
-                    (be.Fund != null && !string.IsNullOrWhiteSpace(be.Fund.Name) && string.Equals(be.Fund.Name, sel, StringComparison.OrdinalIgnoreCase))
-                    || (sel.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) >= 0 && ((be.Fund?.Name?.IndexOf("Sewer", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (be.Fund?.Name?.IndexOf("Sanitation", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
-                    || (sel.IndexOf("Utility", StringComparison.OrdinalIgnoreCase) >= 0 && ((be.Fund?.Name?.IndexOf("Water", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 || (be.Fund?.Name?.IndexOf("Trash", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0))
-                    || (be.MunicipalAccount != null && be.MunicipalAccount.Name != null && be.MunicipalAccount.Name.IndexOf(sel, StringComparison.OrdinalIgnoreCase) >= 0)
-                ).ToList();
+                budgetEntries = FilterEntriesByEntityName(budgetEntries, entityName);
             }
 
-            var result = new BudgetAnalysisResult();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // Category breakdown
-            result.CategoryBreakdown = budgetEntries
-                .GroupBy(be => GetCategoryFromAccount(be.AccountNumber, accounts))
-                .ToDictionary(g => g.Key, g => g.Sum(be => be.ActualAmount));
+            var result = new BudgetAnalysisResult
+            {
+                CategoryBreakdown = budgetEntries
+                    .GroupBy(be => GetCategoryFromAccount(be.AccountNumber, accounts))
+                    .ToDictionary(g => g.Key, g => g.Sum(be => be.ActualAmount)),
+                TopVariances = BuildTopVariances(budgetEntries, accounts),
+                TrendData = AnalyzeTrends(budgetEntries),
+                Insights = new List<string>(),
+                AvailableEntities = availableEntities
+            };
 
-            // Top variances
-            result.TopVariances = budgetEntries
+            result.Insights = GenerateInsights(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Runs a what-if scenario for rate adjustments
+        /// </summary>
+        public async Task<RateScenarioResult> RunRateScenarioAsync(RateScenarioParameters parameters, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(parameters);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _logger.LogInformation("Running rate scenario with {Rate}% increase, {Expense}% expense increase",
+                parameters.RateIncreasePercentage * 100, parameters.ExpenseIncreasePercentage * 100);
+
+            var currentYear = DateTime.Now.Year;
+            var startDate = new DateTime(currentYear - 1, 7, 1);
+            var endDate = new DateTime(currentYear, 6, 30);
+
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var budgetEntries = await context.BudgetEntries
+                .AsNoTracking()
+                .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+                .ToListAsync(cancellationToken);
+
+            if (!budgetEntries.Any())
+            {
+                throw new InvalidOperationException("No budget data available for scenario analysis");
+            }
+
+            var totalActual = budgetEntries.Sum(be => be.ActualAmount);
+            var totalBudgeted = budgetEntries.Sum(be => be.BudgetedAmount);
+            var variance = totalBudgeted - totalActual;
+
+            var result = new RateScenarioResult
+            {
+                CurrentRate = 0, // Placeholder until rate source is available
+                ProjectedRate = 0,
+                RevenueImpact = totalActual * parameters.RateIncreasePercentage,
+                ReserveImpact = variance * (1 + parameters.ExpenseIncreasePercentage)
+            };
+
+            for (int i = 1; i <= parameters.ProjectionYears; i++)
+            {
+                var projection = new YearlyProjection
+                {
+                    Year = currentYear + i,
+                    ProjectedRevenue = totalActual * (1 + parameters.RateIncreasePercentage) * (decimal)Math.Pow(1.02, i),
+                    ProjectedExpenses = totalActual * (1 + parameters.ExpenseIncreasePercentage) * (decimal)Math.Pow(1.03, i),
+                    RiskLevel = CalculateRiskLevel(parameters.RateIncreasePercentage, parameters.ExpenseIncreasePercentage)
+                };
+                projection.ProjectedReserves = projection.ProjectedRevenue - projection.ProjectedExpenses;
+                result.Projections.Add(projection);
+            }
+
+            result.Recommendations = GenerateRecommendations(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Generates predictive forecast for budget reserves
+        /// </summary>
+        public async Task<ReserveForecastResult> GenerateReserveForecastAsync(int yearsAhead, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _logger.LogInformation("Generating reserve forecast for {Years} years ahead", yearsAhead);
+
+            var historicalData = await GetHistoricalReserveDataAsync(cancellationToken);
+
+            var result = new ReserveForecastResult
+            {
+                CurrentReserves = historicalData.LastOrDefault()?.Reserves ?? 0,
+                ForecastPoints = new List<ForecastPoint>(),
+                RecommendedReserveLevel = 0,
+                RiskAssessment = "Low"
+            };
+
+            if (historicalData.Count >= 2)
+            {
+                var trend = CalculateTrend(historicalData);
+                var lastDate = historicalData.Last().Date;
+                var lastReserves = historicalData.Last().Reserves;
+
+                for (int i = 1; i <= yearsAhead * 12; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var forecastDate = lastDate.AddMonths(i);
+                    var predictedReserves = lastReserves + (trend * i);
+
+                    result.ForecastPoints.Add(new ForecastPoint
+                    {
+                        Date = forecastDate,
+                        PredictedReserves = Math.Max(0, predictedReserves),
+                        ConfidenceInterval = Math.Abs(predictedReserves * 0.1m)
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        private static List<string> BuildAvailableEntities(IEnumerable<BudgetEntry> budgetEntries, IEnumerable<Enterprise> enterprises)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var fundName in budgetEntries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)))
+            {
+                names.Add(fundName!.Trim());
+            }
+
+            foreach (var enterpriseName in enterprises.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)))
+            {
+                names.Add(enterpriseName!.Trim());
+            }
+
+            return names.OrderBy(n => n).ToList();
+        }
+
+        private static List<BudgetEntry> FilterEntriesByEntityName(IEnumerable<BudgetEntry> entries, string entityName)
+        {
+            var trimmed = entityName.Trim();
+            return entries.Where(be =>
+                (!string.IsNullOrWhiteSpace(be.Fund?.Name) && string.Equals(be.Fund!.Name, trimmed, StringComparison.OrdinalIgnoreCase)) ||
+                (trimmed.Contains("Sanitation", StringComparison.OrdinalIgnoreCase) && (be.Fund?.Name?.Contains("Sewer", StringComparison.OrdinalIgnoreCase) == true || be.Fund?.Name?.Contains("Sanitation", StringComparison.OrdinalIgnoreCase) == true)) ||
+                (trimmed.Contains("Utility", StringComparison.OrdinalIgnoreCase) && (be.Fund?.Name?.Contains("Water", StringComparison.OrdinalIgnoreCase) == true || be.Fund?.Name?.Contains("Trash", StringComparison.OrdinalIgnoreCase) == true)) ||
+                (!string.IsNullOrWhiteSpace(be.MunicipalAccount?.Name) && be.MunicipalAccount!.Name!.IndexOf(trimmed, StringComparison.OrdinalIgnoreCase) >= 0)
+            ).ToList();
+        }
+
+        private static List<VarianceAnalysis> BuildTopVariances(IEnumerable<BudgetEntry> budgetEntries, IEnumerable<MunicipalAccount> accounts)
+        {
+            return budgetEntries
                 .Where(be => be.BudgetedAmount > 0)
                 .Select(be => new VarianceAnalysis
                 {
@@ -72,119 +215,9 @@ namespace WileyWidget.Services
                 .OrderByDescending(v => Math.Abs(v.VarianceAmount))
                 .Take(10)
                 .ToList();
-
-            // Trend analysis
-            result.TrendData = AnalyzeTrends(budgetEntries, startDate, endDate);
-
-            // Generate insights
-            result.Insights = GenerateInsights(result);
-
-            return result;
         }
 
-        /// <summary>
-        /// Runs a what-if scenario for rate adjustments
-        /// </summary>
-        public async Task<RateScenarioResult> RunRateScenarioAsync(RateScenarioParameters parameters)
-        {
-            ArgumentNullException.ThrowIfNull(parameters);
-            _logger.LogInformation("Running rate scenario with {Rate}% increase, {Expense}% expense increase",
-                parameters.RateIncreasePercentage * 100, parameters.ExpenseIncreasePercentage * 100);
-
-            // Get current budget data
-            var currentYear = DateTime.Now.Year;
-            var startDate = new DateTime(currentYear - 1, 7, 1);
-            var endDate = new DateTime(currentYear, 6, 30);
-
-            var budgetSummary = await _budgetRepository.GetBudgetSummaryAsync(startDate, endDate);
-            if (budgetSummary == null)
-            {
-                throw new InvalidOperationException("No budget data available for scenario analysis");
-            }
-
-            var result = new RateScenarioResult
-            {
-                CurrentRate = 0, // Would need to be retrieved from enterprise data
-                ProjectedRate = 0, // Calculate based on parameters
-                RevenueImpact = budgetSummary.TotalActual * parameters.RateIncreasePercentage,
-                ReserveImpact = budgetSummary.TotalVariance * (1 + parameters.ExpenseIncreasePercentage)
-            };
-
-            // Generate yearly projections
-            for (int i = 1; i <= parameters.ProjectionYears; i++)
-            {
-                var projection = new YearlyProjection
-                {
-                    Year = currentYear + i,
-                    ProjectedRevenue = budgetSummary.TotalActual * (1 + parameters.RateIncreasePercentage) * (decimal)Math.Pow(1.02, i), // 2% annual growth
-                    ProjectedExpenses = budgetSummary.TotalActual * (1 + parameters.ExpenseIncreasePercentage) * (decimal)Math.Pow(1.03, i), // 3% annual growth
-                    ProjectedReserves = 0, // Calculate based on revenue - expenses
-                    RiskLevel = CalculateRiskLevel(parameters.RateIncreasePercentage, parameters.ExpenseIncreasePercentage)
-                };
-                projection.ProjectedReserves = projection.ProjectedRevenue - projection.ProjectedExpenses;
-                result.Projections.Add(projection);
-            }
-
-            // Generate recommendations
-            result.Recommendations = GenerateRecommendations(result);
-
-            return result;
-        }
-
-        /// <summary>
-        /// Generates predictive forecast for budget reserves
-        /// </summary>
-        public async Task<ReserveForecastResult> GenerateReserveForecastAsync(int yearsAhead)
-        {
-            _logger.LogInformation("Generating reserve forecast for {Years} years ahead", yearsAhead);
-
-            // Simple linear regression based on historical data
-            var historicalData = await GetHistoricalReserveDataAsync();
-
-            var result = new ReserveForecastResult
-            {
-                CurrentReserves = historicalData.LastOrDefault()?.Reserves ?? 0,
-                ForecastPoints = new List<ForecastPoint>(),
-                RecommendedReserveLevel = 0, // Calculate based on expenses
-                RiskAssessment = "Low" // Would be calculated based on variance
-            };
-
-            // Generate forecast points using simple trend
-            if (historicalData.Count >= 2)
-            {
-                var trend = CalculateTrend(historicalData);
-                var lastDate = historicalData.Last().Date;
-
-                for (int i = 1; i <= yearsAhead * 12; i++)
-                {
-                    var forecastDate = lastDate.AddMonths(i);
-                    var predictedReserves = historicalData.Last().Reserves + (trend * i);
-
-                    result.ForecastPoints.Add(new ForecastPoint
-                    {
-                        Date = forecastDate,
-                        PredictedReserves = Math.Max(0, predictedReserves), // Reserves can't be negative
-                        ConfidenceInterval = Math.Abs(predictedReserves * 0.1m) // 10% confidence interval
-                    });
-                }
-            }
-
-            return result;
-        }
-
-        private string GetCategoryFromAccount(string accountNumber, IEnumerable<MunicipalAccount> accounts)
-        {
-            var account = accounts.FirstOrDefault(a => a.AccountNumber?.Value == accountNumber);
-            return account?.TypeDescription ?? "Other";
-        }
-
-        private string GetAccountName(string accountNumber, IEnumerable<MunicipalAccount> accounts)
-        {
-            var account = accounts.FirstOrDefault(a => a.AccountNumber?.Value == accountNumber);
-            return account?.Name ?? accountNumber;
-        }
-
-        private TrendAnalysis AnalyzeTrends(IEnumerable<BudgetEntry> entries, DateTime startDate, DateTime endDate)
+        private static TrendAnalysis AnalyzeTrends(IEnumerable<BudgetEntry> entries)
         {
             var monthlyData = entries
                 .GroupBy(be => new { be.StartPeriod.Year, be.StartPeriod.Month })
@@ -203,7 +236,7 @@ namespace WileyWidget.Services
             {
                 var first = monthlyData.First().Actual;
                 var last = monthlyData.Last().Actual;
-                if (first > 0)
+                if (first != 0)
                 {
                     growthRate = ((last - first) / first) / monthlyData.Count * 12; // Annualized
                 }
@@ -217,7 +250,7 @@ namespace WileyWidget.Services
             };
         }
 
-        private List<string> GenerateInsights(BudgetAnalysisResult result)
+        private static List<string> GenerateInsights(BudgetAnalysisResult result)
         {
             var insights = new List<string>();
 
@@ -241,13 +274,9 @@ namespace WileyWidget.Services
             return insights;
         }
 
-        private decimal CalculateRiskLevel(decimal rateIncrease, decimal expenseIncrease)
-        {
-            // Simple risk calculation
-            return (rateIncrease + expenseIncrease) / 2;
-        }
+        private static decimal CalculateRiskLevel(decimal rateIncrease, decimal expenseIncrease) => (rateIncrease + expenseIncrease) / 2;
 
-        private List<string> GenerateRecommendations(RateScenarioResult result)
+        private static List<string> GenerateRecommendations(RateScenarioResult result)
         {
             var recommendations = new List<string>();
 
@@ -268,10 +297,26 @@ namespace WileyWidget.Services
             return recommendations;
         }
 
-        private Task<List<ReserveDataPoint>> GetHistoricalReserveDataAsync()
+        private static string GetCategoryFromAccount(string accountNumber, IEnumerable<MunicipalAccount> accounts)
         {
-            // This would query historical reserve data
-            // For now, return sample data
+            var account = accounts.FirstOrDefault(a => a.AccountNumber?.Value == accountNumber);
+            return account?.TypeDescription ?? "Other";
+        }
+
+        private static string GetAccountName(string accountNumber, IEnumerable<MunicipalAccount> accounts)
+        {
+            var account = accounts.FirstOrDefault(a => a.AccountNumber?.Value == accountNumber);
+            return account?.Name ?? accountNumber;
+        }
+
+        private Task<List<ReserveDataPoint>> GetHistoricalReserveDataAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(CalculateDefaultReservePoints());
+        }
+
+        private static List<ReserveDataPoint> CalculateDefaultReservePoints()
+        {
             var data = new List<ReserveDataPoint>();
             var currentDate = DateTime.Now.AddYears(-2);
 
@@ -284,17 +329,16 @@ namespace WileyWidget.Services
                 });
             }
 
-            return Task.FromResult(data);
+            return data;
         }
 
-        private decimal CalculateTrend(List<ReserveDataPoint> data)
+        private static decimal CalculateTrend(IReadOnlyList<ReserveDataPoint> data)
         {
             if (data.Count < 2) return 0;
 
             var first = data.First();
             var last = data.Last();
-            var monthsDouble = (last.Date - first.Date).TotalDays / 30.44;
-            var months = (decimal)monthsDouble;
+            var months = (decimal)((last.Date - first.Date).TotalDays / 30.44);
             if (months == 0) return 0;
 
             return (last.Reserves - first.Reserves) / months;

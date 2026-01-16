@@ -45,11 +45,14 @@ public class HealthCheckService
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Run Microsoft health checks. Resolve the Microsoft HealthCheckService from a
             // newly-created scope so any scoped dependencies it needs are available.
             Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport microsoftReport;
             using (var scope = _scopeFactory.CreateScope())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var microsoftHealth = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
                 microsoftReport = await microsoftHealth.CheckHealthAsync(cancellationToken);
             }
@@ -78,6 +81,16 @@ public class HealthCheckService
                 stopwatch.ElapsedMilliseconds, report.OverallStatus);
 
             return report;
+        }
+        catch (TaskCanceledException tce)
+        {
+            _logger.LogInformation(tce, "Health check canceled");
+            return new Models.HealthCheckReport { OverallStatus = Models.HealthStatus.Degraded };
+        }
+        catch (OperationCanceledException oce)
+        {
+            _logger.LogInformation(oce, "Health check operation canceled");
+            return new Models.HealthCheckReport { OverallStatus = Models.HealthStatus.Degraded };
         }
         catch (Exception ex)
         {

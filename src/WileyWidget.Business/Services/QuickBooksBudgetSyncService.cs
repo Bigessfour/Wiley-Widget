@@ -38,7 +38,7 @@ namespace WileyWidget.Business.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1);
+            var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1, 0, 0, 0, DateTimeKind.Utc);
             var fiscalYearEnd = DateTime.UtcNow; // YTD up to now
 
             _logger.LogInformation("QuickBooksBudgetSync: Syncing FY {FiscalYear} actuals from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", fiscalYear, fiscalYearStart, fiscalYearEnd);
@@ -47,14 +47,28 @@ namespace WileyWidget.Business.Services
             {
                 // Fetch chart of accounts once for mapping account id -> account number
                 var chart = await _quickBooksService.GetChartOfAccountsAsync();
-                var acctIdToNum = chart
-                    .Where(a => !string.IsNullOrEmpty(a.Id))
-                    .ToDictionary(a => a.Id, a => (a.AcctNum ?? a.Name ?? a.Id), StringComparer.OrdinalIgnoreCase);
+                var acctIdToNum = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var acctNameToNum = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-                var acctNameToNum = chart
-                    .Where(a => !string.IsNullOrEmpty(a.Name))
-                    .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First().AcctNum ?? g.First().Name, StringComparer.OrdinalIgnoreCase);
+                foreach (var account in chart)
+                {
+                    var canonical = account.AcctNum ?? account.Name;
+                    if (string.IsNullOrWhiteSpace(canonical))
+                    {
+                        _logger.LogWarning("QuickBooksBudgetSync: Skipping account with missing number/name (Id: {Id})", account.Id);
+                        continue;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(account.Id))
+                    {
+                        acctIdToNum[account.Id] = canonical;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(account.Name) && !acctNameToNum.ContainsKey(account.Name))
+                    {
+                        acctNameToNum[account.Name] = canonical;
+                    }
+                }
 
                 // Fetch journal entries for fiscal year-to-date
                 var journals = await _quickBooksService.GetJournalEntriesAsync(fiscalYearStart, fiscalYearEnd);
@@ -63,44 +77,51 @@ namespace WileyWidget.Business.Services
 
                 foreach (var je in journals)
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (je?.Line == null) continue;
 
                     foreach (var line in je.Line)
                     {
-                        if (cancellationToken.IsCancellationRequested) break;
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                        decimal amount = 0m;
-                        try { amount = Convert.ToDecimal(line.Amount); } catch { continue; }
+                        if (line == null) continue;
 
-                        // Try to resolve account number from journal line detail
+                        var amount = line.Amount;
+                        if (amount == 0m) continue;
+
+                        // Try to resolve account number from journal line detail using strongly typed accessors
+                        if (line.AnyIntuitObject is not JournalEntryLineDetail detail || detail.AccountRef is null)
+                        {
+                            continue;
+                        }
+
+                        var qbAcctId = detail.AccountRef.Value;
+                        var qbAcctName = detail.AccountRef.name;
+
                         string? acctNum = null;
-
-                        try
+                        if (!string.IsNullOrEmpty(qbAcctId) && acctIdToNum.TryGetValue(qbAcctId, out var num1))
                         {
-                            var detail = line.GetType().GetProperty("JournalEntryLineDetail")?.GetValue(line);
-                            var accountRef = detail?.GetType().GetProperty("AccountRef")?.GetValue(detail);
-                            var qbAcctId = accountRef?.GetType().GetProperty("Value")?.GetValue(accountRef) as string;
-                            var qbAcctName = accountRef?.GetType().GetProperty("name")?.GetValue(accountRef) as string;
-
-                            if (!string.IsNullOrEmpty(qbAcctId) && acctIdToNum.TryGetValue(qbAcctId, out var num1))
-                            {
-                                acctNum = num1;
-                            }
-                            else if (!string.IsNullOrEmpty(qbAcctName) && acctNameToNum.TryGetValue(qbAcctName, out var num2))
-                            {
-                                acctNum = num2;
-                            }
+                            acctNum = num1;
                         }
-                        catch
+                        else if (!string.IsNullOrEmpty(qbAcctName) && acctNameToNum.TryGetValue(qbAcctName, out var num2))
                         {
-                            // best-effort mapping; skip if we can't resolve
+                            acctNum = num2;
                         }
 
-                        if (string.IsNullOrWhiteSpace(acctNum)) continue;
+                        if (string.IsNullOrWhiteSpace(acctNum))
+                        {
+                            continue;
+                        }
 
-                        if (!totals.TryGetValue(acctNum, out var existing)) totals[acctNum] = amount;
-                        else totals[acctNum] = existing + amount;
+                        // Only expense accounts (5xxx/6xxx) contribute to budget actuals
+                        if (!acctNum.StartsWith("5", StringComparison.OrdinalIgnoreCase) && !acctNum.StartsWith("6", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var postingType = detail.PostingType;
+                        var delta = postingType == Intuit.Ipp.Data.PostingTypeEnum.Credit ? -amount : amount;
+                        totals[acctNum] = totals.TryGetValue(acctNum, out var existing) ? existing + delta : delta;
                     }
                 }
 

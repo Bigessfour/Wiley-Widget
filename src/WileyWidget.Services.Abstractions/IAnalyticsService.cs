@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
@@ -15,17 +15,17 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Performs exploratory data analysis on budget data
         /// </summary>
-        Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null);
+        Task<BudgetAnalysisResult> PerformExploratoryAnalysisAsync(DateTime startDate, DateTime endDate, string? entityName = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Runs a what-if scenario for rate adjustments
         /// </summary>
-        Task<RateScenarioResult> RunRateScenarioAsync(RateScenarioParameters parameters);
+        Task<RateScenarioResult> RunRateScenarioAsync(RateScenarioParameters parameters, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Generates predictive forecast for budget reserves
         /// </summary>
-        Task<ReserveForecastResult> GenerateReserveForecastAsync(int yearsAhead);
+        Task<ReserveForecastResult> GenerateReserveForecastAsync(int yearsAhead, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -48,6 +48,7 @@ namespace WileyWidget.Services.Abstractions
         public List<VarianceAnalysis> TopVariances { get; set; } = new();
         public TrendAnalysis TrendData { get; set; } = new();
         public List<string> Insights { get; set; } = new();
+        public List<string> AvailableEntities { get; set; } = new();
     }
 
     /// <summary>

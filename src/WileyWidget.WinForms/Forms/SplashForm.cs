@@ -1,6 +1,7 @@
 using Serilog;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Action = System.Action;
 
@@ -71,8 +72,12 @@ namespace WileyWidget.WinForms.Forms
 
             if (_isHeadless)
             {
-                try { action(); }
-                catch (Exception ex) { Log.Debug(ex, "[SPLASH] Headless action failed (non-critical)"); }
+                // Offload to thread pool in headless mode to simulate non-blocking BeginInvoke
+                _ = Task.Run(() =>
+                {
+                    try { action(); }
+                    catch (Exception ex) { Log.Debug(ex, "[SPLASH] Headless action failed (non-critical)"); }
+                });
                 return;
             }
 
@@ -109,17 +114,21 @@ namespace WileyWidget.WinForms.Forms
 
             if (_isHeadless)
             {
-                try
+                // Offload logging to thread pool in headless mode
+                _ = Task.Run(() =>
                 {
-                    if (isIndeterminate)
-                        Log.Debug("{Message} (indeterminate)", message);
-                    else
-                        Log.Debug("{Message} ({Percent}%)", message, (int)(progress * 100));
-                }
-                catch (Exception ex)
-                {
-                    Log.Debug(ex, "[SPLASH] Headless logging failed");
-                }
+                    try
+                    {
+                        if (isIndeterminate)
+                            Log.Debug("{Message} (indeterminate)", message);
+                        else
+                            Log.Debug("{Message} ({Percent}%)", message, (int)(progress * 100));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "[SPLASH] Headless logging failed");
+                    }
+                });
                 return;
             }
 
@@ -200,15 +209,19 @@ namespace WileyWidget.WinForms.Forms
 
             if (_isHeadless)
             {
-                try
+                // Offload completion log to thread pool in headless mode
+                _ = Task.Run(() =>
                 {
-                    if (!string.IsNullOrEmpty(finalMessage))
-                        Log.Debug("[SPLASH] Complete: {Message}", finalMessage);
-                }
-                catch (Exception ex)
-                {
-                    Log.Debug(ex, "[SPLASH] Headless Complete logging failed");
-                }
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(finalMessage))
+                            Log.Debug("[SPLASH] Complete: {Message}", finalMessage);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "[SPLASH] Headless Complete logging failed");
+                    }
+                });
                 return;
             }
 

@@ -314,7 +314,7 @@ statusLabel.ForeColor = ThemeColors.Error;  // Use Color.Red instead
 
 Before committing code, verify:
 
-- [ ] No `BackColor` assignments except on form-level for MDI/Docking configuration
+- [ ] No `BackColor` assignments except on form-level for docking configuration
 - [ ] No `ForeColor` assignments except semantic status colors (Color.Red/Green/Orange)
 - [ ] No custom color properties (all marked `[Obsolete(..., error: true)]`)
 - [ ] No custom color dictionaries or getter methods
@@ -530,24 +530,6 @@ This repository enforces MCP filesystem tool usage for all file operations. Addi
 
 ---
 
-## WinForms MDI Child Form Design Requirements
-
-This repository uses Windows Forms with MDI (Multiple Document Interface) and Syncfusion controls (TabbedMDIManager, DockingManager). All child forms must follow defensive programming patterns to work correctly in both production and test scenarios.
-
-### MANDATORY Pattern for All Child Forms
-
-**Constructor Signature:** All child forms MUST accept `MainForm` as a constructor parameter:
-
-```csharp
-public MyChildForm(MainForm mainForm)
-{
-    InitializeComponent();
-
-    // CRITICAL: Check IsMdiContainer before setting MdiParent
-
-
----
-
 # 3. copilot-mcp-rules
 
 **Source:** `.vscode\copilot-mcp-rules.md`
@@ -569,10 +551,12 @@ This file defines the enforcement policy used by the Copilot Code Agent (IDE) fo
 **Source:** `.vscode\rules\agentic-behavior.md`
 
 ---
-applyTo: '**'
+
+applyTo: '\*\*'
 description: Agentic behavior guidelines - Act autonomously, use tools proactively, solve problems end-to-end
 alwaysApply: true
 priority: 1
+
 ---
 
 # Agentic Behavior Guidelines
@@ -584,6 +568,7 @@ priority: 1
 ## ✅ ENCOURAGED Behaviors
 
 ### 1. **Proactive Tool Use**
+
 - **Read files immediately** when you need context (don't ask "should I read X?")
 - **Search the codebase** when you need to understand patterns or find examples
 - **Run tests** automatically after making changes
@@ -595,6 +580,7 @@ priority: 1
 - **Use any available tool** if it helps complete the task better/faster
 
 ### 2. **Autonomous Decision-Making**
+
 - **Infer intent** from incomplete requests - use codebase patterns as guide
 - **Choose appropriate patterns** based on existing code (don't ask "which pattern?")
 - **Fix related issues** you discover while working on a task
@@ -602,6 +588,7 @@ priority: 1
 - **Make reasonable assumptions** and document them in code comments
 
 ### 3. **End-to-End Completion**
+
 - **Implement complete features**, not just stubs or TODOs
 - **Write tests alongside code** (not as a separate step requiring prompting)
 - **Update documentation** when you change behavior
@@ -609,6 +596,7 @@ priority: 1
 - **Fix errors immediately** if tools report issues
 
 ### 4. **Intelligent Exploration**
+
 - **Search broadly first**, then dive deep (semantic search → read relevant files)
 - **Learn from codebase** - if you see a pattern used 10 times, use it
 - **Cross-reference implementations** - check tests, docs, similar features
@@ -617,6 +605,7 @@ priority: 1
 ## ⚠️ When to Pause for Confirmation
 
 Only ask for human input when:
+
 1. **Destructive operations** - Deleting files, dropping databases, removing large code sections
 2. **Ambiguous requirements** - Multiple valid interpretations with significantly different outcomes
 3. **Architecture changes** - Introducing new dependencies, changing core patterns, refactoring across many files
@@ -635,7 +624,7 @@ Only ask for human input when:
 
 ## 📋 Workflow Pattern
 
-```
+````
 
 1. Understand Request
    ↓
@@ -689,7 +678,7 @@ When you hit an error:
 ## 💡 Examples
 
 ### ❌ Non-Agentic
-```
+````
 
 User: "Add error logging to the payment processor"
 Agent: "I can help with that. Should I: 1. Read the PaymentProcessor.cs file first? 2. Look at existing logging patterns? 3. Add using statements for logging?

@@ -46,35 +46,69 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Gets the currently active or focused SfDataGrid control.
-        /// Searches through the control hierarchy to find a visible grid.
+        /// Searches through the control hierarchy with caching and specialized docking support.
         /// </summary>
         /// <returns>The active SfDataGrid, or null if none found</returns>
         private SfDataGrid? GetActiveGrid()
         {
             try
             {
-                // Defensive: check for null and disposed state
-                if (IsDisposed || Controls == null) return null;
+                // Defensive: check for null/disposed state and empty collections
+                if (IsDisposed || Controls == null || Controls.Count == 0) return null;
 
-                // Check if active control is a grid
-                if (ActiveControl is SfDataGrid ac && !ac.IsDisposed)
-                    return ac;
-
-                // Find focused control recursively
-                Control? focused = FindFocusedControl(Controls);
-                if (focused is SfDataGrid fg && !fg.IsDisposed)
-                    return fg;
-
-                // Find first visible SfDataGrid in controls
-                foreach (Control c in Controls)
+                // 1. Check Cache (TTL 500ms)
+                if (_lastActiveGrid != null && !_lastActiveGrid.IsDisposed && _lastActiveGrid.Visible &&
+                    (DateTime.Now - _lastActiveGridTime) < _activeGridCacheTtl)
                 {
-                    if (c == null || c.IsDisposed) continue;
-                    var grid = c.Controls.OfType<SfDataGrid>()
-                        .FirstOrDefault(g => g != null && !g.IsDisposed && g.Visible);
-                    if (grid != null) return grid;
+                    return _lastActiveGrid;
                 }
 
-                return null;
+                SfDataGrid? foundGrid = null;
+
+                // 2. Check Form ActiveControl
+                if (ActiveControl is SfDataGrid ac && !ac.IsDisposed)
+                {
+                    foundGrid = ac;
+                }
+
+                // 3. Check DockingManager ActiveControl (high priority in docking apps)
+                if (foundGrid == null && _dockingManager?.ActiveControl != null)
+                {
+                    var activeDoc = _dockingManager.ActiveControl;
+                    if (activeDoc is SfDataGrid dg && !dg.IsDisposed)
+                    {
+                        foundGrid = dg;
+                    }
+                    else
+                    {
+                        foundGrid = FindVisibleGridRecursive(activeDoc.Controls);
+                    }
+                }
+
+                // 4. Recursive search for focused control
+                if (foundGrid == null)
+                {
+                    Control? focused = FindFocusedControl(Controls);
+                    if (focused is SfDataGrid fg && !fg.IsDisposed)
+                    {
+                        foundGrid = fg;
+                    }
+                }
+
+                // 5. Deep recursive search for first visible grid (fallback)
+                if (foundGrid == null)
+                {
+                    foundGrid = FindVisibleGridRecursive(Controls);
+                }
+
+                // Update Cache
+                if (foundGrid != null)
+                {
+                    _lastActiveGrid = foundGrid;
+                    _lastActiveGridTime = DateTime.Now;
+                }
+
+                return foundGrid;
             }
             catch (Exception ex)
             {
@@ -84,23 +118,59 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
+        /// Invalidates the active grid discovery cache. Called on focus or docking changes.
+        /// </summary>
+        private void InvalidateActiveGridCache()
+        {
+            _lastActiveGrid = null;
+            _lastActiveGridTime = DateTime.MinValue;
+        }
+
+        /// <summary>
+        /// Recursively searches for the first visible SfDataGrid in a control collection.
+        /// </summary>
+        /// <param name="controls">Collection to search</param>
+        /// <param name="depth">Current recursion depth (limit: 10)</param>
+        /// <returns>The first visible SfDataGrid found, or null</returns>
+        private SfDataGrid? FindVisibleGridRecursive(Control.ControlCollection? controls, int depth = 0)
+        {
+            if (controls == null || controls.Count == 0 || depth > 10) return null;
+
+            foreach (Control c in controls)
+            {
+                if (c == null || c.IsDisposed) continue;
+
+                if (c is SfDataGrid grid && grid.Visible)
+                    return grid;
+
+                if (c.Controls != null && c.Controls.Count > 0)
+                {
+                    var nested = FindVisibleGridRecursive(c.Controls, depth + 1);
+                    if (nested != null) return nested;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Recursively searches for the currently focused control in a control collection.
         /// </summary>
         /// <param name="controls">Collection of controls to search</param>
+        /// <param name="depth">Current recursion depth (limit: 10)</param>
         /// <returns>The focused control, or null if none found</returns>
-        private Control? FindFocusedControl(Control.ControlCollection? controls)
+        private Control? FindFocusedControl(Control.ControlCollection? controls, int depth = 0)
         {
-            if (controls == null) return null;
+            if (controls == null || controls.Count == 0 || depth > 10) return null;
 
             foreach (Control c in controls)
             {
                 try
                 {
-                    // Defensive: check for null and disposed state
                     if (c == null || c.IsDisposed) continue;
                     if (c.Focused) return c;
 
-                    var nested = FindFocusedControl(c.Controls);
+                    var nested = FindFocusedControl(c.Controls, depth + 1);
                     if (nested != null) return nested;
                 }
                 catch (Exception ex)

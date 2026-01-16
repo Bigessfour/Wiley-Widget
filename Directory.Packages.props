@@ -120,8 +120,7 @@
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.FluentTheme.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.MaterialTheme.WinForms" Version="32.1.19" />
+    <!-- FluentTheme and MaterialTheme removed - NOT supported in Windows Forms per Syncfusion docs -->
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
     <PackageVersion Include="FastReport.OpenSource" Version="2024.2.0" />
@@ -142,7 +141,7 @@
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
     <!-- Blazor WebView and Interactive Chat for Windows Forms -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3701.9" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
     <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.1.19" />
     <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.1.19" />

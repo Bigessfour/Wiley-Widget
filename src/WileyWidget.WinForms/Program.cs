@@ -45,8 +45,26 @@ namespace WileyWidget.WinForms
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Initialize logging first
+            // CRITICAL: Initialize logging VERY first, before any other operations
             InitializeLogging();
+
+            // CRITICAL: Register Syncfusion license VERY early - before any Syncfusion control or theme is used
+            // Per Syncfusion docs: RegisterLicense must be called before any Syncfusion component instantiation
+            var config = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
+
+            var licenseKey = config["Syncfusion:LicenseKey"];
+            if (!string.IsNullOrWhiteSpace(licenseKey))
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                Log.Debug("Syncfusion license registered successfully");
+            }
+            else
+            {
+                Log.Warning("Syncfusion license key not found in configuration");
+            }
 
             try
             {
@@ -59,7 +77,27 @@ namespace WileyWidget.WinForms
             }
             finally
             {
-                Log.CloseAndFlush();
+                try
+                {
+                    // Explicit Serilog shutdown: flush pending logs and dispose static logger
+                    Serilog.Log.Information("Application shutdown initiated");
+                    Serilog.Log.CloseAndFlush();
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    // Safe to ignore during shutdown; log to console if needed
+                    Console.WriteLine($"Serilog shutdown ignored: {ex.Message}");
+                }
+                catch (OperationCanceledException ex)
+                {
+                    // Async sink background worker may throw OperationCanceledException during flush
+                    // when draining queue with a signaled cancellation token. This is expected during shutdown.
+                    Console.WriteLine($"Serilog async sink cancellation during shutdown (expected): {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Serilog shutdown failed: {ex}");
+                }
             }
         }
 
@@ -68,8 +106,7 @@ namespace WileyWidget.WinForms
             // Build host and DI container
             var host = BuildHost(args);
 
-            // Initialize Syncfusion licensing
-            InitializeSyncfusionLicense(host.Services);
+            // Syncfusion license already registered in Main() - do not call again
 
             // Initialize theme system
             InitializeTheme();
@@ -113,6 +150,10 @@ namespace WileyWidget.WinForms
             AddConfiguration(builder);
             ConfigureLogging(builder);
             ConfigureDatabase(builder);
+
+            // Register ReportViewerLaunchOptions before general DI
+            AddReportViewerOptions(builder, args);
+
             AddDependencyInjection(builder);
 
             return builder.Build();
@@ -131,22 +172,75 @@ namespace WileyWidget.WinForms
             }
         }
 
+        private static void AddReportViewerOptions(HostApplicationBuilder builder, string[] args)
+        {
+            var showReportViewer = false;
+            string? reportPath = null;
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i].Equals("--ShowReportViewer", StringComparison.OrdinalIgnoreCase))
+                {
+                    showReportViewer = true;
+                }
+                else if (args[i].Equals("--ReportPath", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    reportPath = args[i + 1];
+                    i++; // Skip the next argument as it is the value
+                }
+            }
+
+            var options = new ReportViewerLaunchOptions(showReportViewer, reportPath);
+            builder.Services.AddSingleton(options);
+
+            Log.Debug("ReportViewerLaunchOptions registered: ShowReportViewer={ShowReportViewer}, ReportPath={ReportPath}", showReportViewer, reportPath ?? "(none)");
+        }
+
         private static void InitializeLogging()
         {
-            var logsPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-            Directory.CreateDirectory(logsPath);
-            var logFileTemplate = Path.Combine(logsPath, "app-.log");
+            // Create logs folder in application root if it doesn't exist
+            var projectRoot = Directory.GetCurrentDirectory();
+            var logsDirectory = Path.Combine(projectRoot, "logs");
+            Directory.CreateDirectory(logsDirectory);
 
+            var logFileTemplate = Path.Combine(logsDirectory, "wiley-widget-{Date}.log");
+
+            // Configure Serilog with maximum verbosity (Verbose level) for comprehensive debugging
+            // NO MinimumLevel overrides - all levels honored everywhere
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                // Set minimum level to Verbose for everything - enforced globally
+                .MinimumLevel.Verbose()
+                // Enrich with comprehensive context information
                 .Enrich.FromLogContext()
-                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                .WriteTo.File(logFileTemplate,
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30,
-                    formatProvider: CultureInfo.InvariantCulture)
+                .Enrich.WithMachineName()
+                .Enrich.WithThreadId()
+                .Enrich.WithProcessId()
+                .Enrich.WithEnvironmentName()
+                // Write to Console with compact ANSI theme + full exception details
+                .WriteTo.Console(
+                    theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code,
+                    formatProvider: CultureInfo.InvariantCulture,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
+                // Write to file sink wrapped in async queue to prevent blocking
+                .WriteTo.Async(
+                    a => a.File(
+                        logFileTemplate,
+                        rollingInterval: RollingInterval.Day,
+                        retainedFileCountLimit: 31, // Keep last month of logs
+                        fileSizeLimitBytes: 52428800, // 50MB per file
+                        rollOnFileSizeLimit: true,
+                        buffered: false, // Force immediate writes for debugging
+                        shared: true, // Allow multiple processes to write
+                        formatProvider: CultureInfo.InvariantCulture,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {MachineName} {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}"),
+                    bufferSize: 10000,        // Configure queue size to prevent blocking on file I/O
+                    blockWhenFull: false)     // Do not block producer if queue is full; drop if necessary
                 .CreateLogger();
+
+            // Test logs to verify configuration - these should appear immediately in logs/wiley-widget-{Date}.log
+            Log.Verbose("Serilog VERBOSE test - should appear in file");
+            Log.Debug("Serilog DEBUG test");
+            Log.Information("Serilog INFO test - logs folder should now have a file at {LogPath}", logFileTemplate);
         }
 
         private static void ConfigureLogging(HostApplicationBuilder builder)
@@ -154,42 +248,24 @@ namespace WileyWidget.WinForms
             builder.Services.AddSerilog();
         }
 
-        private static void InitializeSyncfusionLicense(IServiceProvider services)
-        {
-            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(services);
-            var licenseKey = configuration["Syncfusion:LicenseKey"];
-
-            if (!string.IsNullOrWhiteSpace(licenseKey))
-            {
-                SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                Log.Debug("Syncfusion license registered successfully");
-            }
-            else
-            {
-                Log.Warning("Syncfusion license key not found in configuration");
-            }
-        }
-
         private static void InitializeTheme()
         {
             try
             {
-                // Load all Syncfusion theme assemblies to support runtime theme switching
-                // This enables: Office2019Colorful, Office2019Black, Office2019White,
-                //              FluentLight, FluentDark, MaterialLight, MaterialDark
-                try { Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly); } catch { }
+                // Load Syncfusion theme assemblies to support runtime theme switching
+                // Per Syncfusion docs (https://help.syncfusion.com/windowsforms/skins/getting-started):
+                // Only Office2016Theme, Office2019Theme, and HighContrastTheme require separate assemblies.
+                // FluentTheme and MaterialTheme are NOT supported in Windows Forms.
+
                 try
                 {
-                    var fluentAssembly = System.Reflection.Assembly.Load("Syncfusion.FluentTheme.WinForms");
-                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(fluentAssembly);
+                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                    Log.Debug("Successfully loaded Office2019Theme assembly");
                 }
-                catch { }
-                try
+                catch (Exception ex)
                 {
-                    var materialAssembly = System.Reflection.Assembly.Load("Syncfusion.MaterialTheme.WinForms");
-                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(materialAssembly);
+                    Log.Warning(ex, "Failed to load Office2019Theme assembly - Office2019 themes will not be available");
                 }
-                catch { }
 
                 // Get theme from configuration (appsettings.json UI:Theme), fallback to Office2019Colorful
                 var config = new ConfigurationBuilder()
@@ -202,7 +278,7 @@ namespace WileyWidget.WinForms
                 // Set application theme globally before MainForm is created
                 Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = themeName;
 
-                Log.Debug("Theme initialization completed successfully. Available themes loaded. Active theme: {Theme}", themeName);
+                Log.Information("Theme initialization completed. Active theme: {Theme}", themeName);
             }
             catch (Exception ex)
             {

@@ -52,9 +52,9 @@ namespace WileyWidget.WinForms.Services
         DiValidationResult ValidateForms(IServiceProvider serviceProvider);
 
         /// <summary>
-        /// Validates all panels registered with IPanelNavigationService.
+        /// Validates all panels defined in the PanelRegistry are correctly registered in DI.
         /// </summary>
-        DiValidationResult ValidatePanels(IServiceProvider serviceProvider);
+        DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates that all ScopedPanelBase<T> generic arguments are registered as scoped.
@@ -191,7 +191,7 @@ namespace WileyWidget.WinForms.Services
                 typeof(BudgetOverviewViewModel),
                 typeof(BudgetViewModel),
                 typeof(CustomersViewModel),
-                typeof(WileyWidget.WinForms.ViewModels.MainViewModel),
+                typeof(WileyWidget.WinForms.Forms.MainViewModel),
                 typeof(ReportsViewModel)
             };
 
@@ -221,43 +221,17 @@ namespace WileyWidget.WinForms.Services
             return result;
         }
 
-        public DiValidationResult ValidatePanels(IServiceProvider serviceProvider)
+        public DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider)
         {
-            var result = new DiValidationResult();
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var panelTypes = PanelRegistry.Panels
+                .Select(p => p.PanelType)
+                .Distinct()
+                .ToList();
 
-            // Known panel types that can be shown via IPanelNavigationService
-            var panelTypes = new[]
-            {
-                typeof(DashboardPanel),
-                typeof(AccountsPanel),
-                typeof(BudgetOverviewPanel),
-                typeof(ChartPanel),
-                typeof(AnalyticsPanel),
-                typeof(AuditLogPanel),
-                typeof(CustomersPanel),
-                typeof(ReportsPanel),
-                typeof(QuickBooksPanel),
-                typeof(SettingsPanel)
-                // ChatPanel excluded - wrapper panel without ViewModel
-            };
-
-            foreach (var panelType in panelTypes)
-            {
-                try
-                {
-                    // Panels are not registered as DI services, so assume they are available
-                    result.SuccessMessages.Add($"✓ {panelType.Name} is available");
-                }
-                catch (Exception ex)
-                {
-                    result.Errors.Add($"✗ Failed to validate {panelType.Name}: {ex.Message}");
-                }
-            }
-
-            stopwatch.Stop();
-            result.ValidationDuration = stopwatch.Elapsed;
-            result.IsValid = result.Errors.Count == 0;
+            var result = _coreValidator.ValidateServiceCategory(
+                serviceProvider,
+                panelTypes,
+                "Panels");
 
             result.CategoryResults["Panels"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
 
@@ -358,7 +332,7 @@ namespace WileyWidget.WinForms.Services
                 ValidateServices(serviceProvider),
                 ValidateViewModels(serviceProvider),
                 ValidateForms(serviceProvider),
-                ValidatePanels(serviceProvider),
+                ValidatePanelsFromRegistry(serviceProvider),
                 ValidateScopedPanels(serviceProvider)
             };
 
