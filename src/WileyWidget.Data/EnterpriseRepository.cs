@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -34,7 +35,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets all enterprises
     /// </summary>
-    public async Task<IEnumerable<Enterprise>> GetAllAsync()
+    public async Task<IEnumerable<Enterprise>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("EnterpriseRepository.GetAll");
         activity?.SetTag("operation.type", "query");
@@ -87,11 +88,10 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets paged enterprises with sorting support
     /// </summary>
-    public async Task<(IEnumerable<Enterprise> Items, int TotalCount)> GetPagedAsync(
-        int pageNumber = 1,
+    public async Task<(IEnumerable<Enterprise> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1,
         int pageSize = 50,
         string? sortBy = null,
-        bool sortDescending = false)
+        bool sortDescending = false, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -116,7 +116,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
     /// </summary>
-    public async Task<IQueryable<Enterprise>> GetQueryableAsync()
+    public async Task<IQueryable<Enterprise>> GetQueryableAsync(CancellationToken cancellationToken = default)
     {
         var context = await _contextFactory.CreateDbContextAsync();
         return context.Enterprises.Where(e => !e.IsDeleted).AsQueryable();
@@ -125,7 +125,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets all enterprises including soft-deleted ones
     /// </summary>
-    public async Task<IEnumerable<Enterprise>> GetAllIncludingDeletedAsync()
+    public async Task<IEnumerable<Enterprise>> GetAllIncludingDeletedAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -137,7 +137,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets an enterprise by ID
     /// </summary>
-    public async Task<Enterprise?> GetByIdAsync(int id)
+    public async Task<Enterprise?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -148,7 +148,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets enterprises by type
     /// </summary>
-    public async Task<IEnumerable<Enterprise>> GetByTypeAsync(string type)
+    public async Task<IEnumerable<Enterprise>> GetByTypeAsync(string type, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -160,7 +160,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Adds a new enterprise
     /// </summary>
-    public async Task<Enterprise> AddAsync(Enterprise enterprise)
+    public async Task<Enterprise> AddAsync(Enterprise enterprise, CancellationToken cancellationToken = default)
     {
         var context = await _contextFactory.CreateDbContextAsync();
         context.Enterprises.Add(enterprise);
@@ -171,7 +171,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Updates an enterprise
     /// </summary>
-    public async Task<Enterprise> UpdateAsync(Enterprise enterprise)
+    public async Task<Enterprise> UpdateAsync(Enterprise enterprise, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(enterprise);
 
@@ -203,7 +203,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Deletes an enterprise by ID
     /// </summary>
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var enterprise = await context.Enterprises.FindAsync(id);
@@ -232,7 +232,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets the total count of enterprises
     /// </summary>
-    public async Task<int> GetCountAsync()
+    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises.Where(e => !e.IsDeleted).CountAsync();
@@ -297,7 +297,7 @@ public class EnterpriseRepository : IEnterpriseRepository
 
         return enterprise;
     }
-    public async Task<Enterprise?> GetByNameAsync(string name)
+    public async Task<Enterprise?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             return null;
@@ -313,7 +313,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Checks if an enterprise exists by name
     /// </summary>
-    public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null)
+    public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var query = context.Enterprises.AsQueryable();
@@ -334,7 +334,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Soft deletes an enterprise
     /// </summary>
-    public async Task<bool> SoftDeleteAsync(int id)
+    public async Task<bool> SoftDeleteAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var enterprise = await context.Enterprises.FindAsync(id);
@@ -351,7 +351,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets all enterprises with their budget interactions
     /// </summary>
-    public async Task<IEnumerable<Enterprise>> GetWithInteractionsAsync()
+    public async Task<IEnumerable<Enterprise>> GetWithInteractionsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -365,7 +365,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets enterprise summaries
     /// </summary>
-    public async Task<IEnumerable<EnterpriseSummary>> GetSummariesAsync()
+    public async Task<IEnumerable<EnterpriseSummary>> GetSummariesAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -389,7 +389,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Gets active enterprise summaries
     /// </summary>
-    public async Task<IEnumerable<EnterpriseSummary>> GetActiveSummariesAsync()
+    public async Task<IEnumerable<EnterpriseSummary>> GetActiveSummariesAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
@@ -413,7 +413,7 @@ public class EnterpriseRepository : IEnterpriseRepository
     /// <summary>
     /// Restores a soft-deleted enterprise
     /// </summary>
-    public async Task<bool> RestoreAsync(int id)
+    public async Task<bool> RestoreAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var enterprise = await context.Enterprises.FindAsync(id);

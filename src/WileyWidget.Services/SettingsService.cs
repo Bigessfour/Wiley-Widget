@@ -1,4 +1,5 @@
 #nullable enable
+using System.Threading;
 using System;
 using System.Globalization;
 using System.IO;
@@ -266,7 +267,7 @@ namespace WileyWidget.Services
         /// This method wraps the synchronous <see cref="Load"/> operation in a Task
         /// to support asynchronous initialization patterns. The actual file I/O is still synchronous.
         /// </remarks>
-        public async Task LoadAsync()
+        public async Task LoadAsync(CancellationToken cancellationToken = default)
         {
             await Task.Run(() => Load()).ConfigureAwait(false);
         }

@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -142,7 +143,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Refreshes all data from QuickBooks and recalculates recommendations
     /// </summary>
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -202,7 +203,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Saves user-edited current charges to database
     /// </summary>
-    private async Task SaveCurrentChargesAsync()
+    private async Task SaveCurrentChargesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -278,7 +279,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Queries xAI Grok API for AI-driven recommendations
     /// </summary>
-    private async Task QueryGrokForRecommendationsAsync()
+    private async Task QueryGrokForRecommendationsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -387,7 +388,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Applies suggested charge for a specific department
     /// </summary>
-    private async Task ApplyRecommendationAsync(string? departmentName)
+    private async Task ApplyRecommendationAsync(string? departmentName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(departmentName))
             return;
@@ -416,7 +417,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     /// <summary>
     /// Loads department expense data from QuickBooks using real service
     /// </summary>
-    private async Task LoadRealDepartmentDataAsync()
+    private async Task LoadRealDepartmentDataAsync(CancellationToken cancellationToken = default)
     {
         if (_departmentExpenseService == null)
         {

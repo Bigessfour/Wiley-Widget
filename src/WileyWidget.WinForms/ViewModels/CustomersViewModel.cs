@@ -478,7 +478,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         /// <param name="customer">The customer to save.</param>
         /// <returns>True if save succeeded, false otherwise.</returns>
-        public async Task<bool> SaveCustomerAsync(UtilityCustomer customer)
+        public async Task<bool> SaveCustomerAsync(UtilityCustomer customer, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(customer);
 
@@ -542,7 +542,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         /// <param name="id">Customer ID.</param>
         /// <returns>True if delete succeeded, false otherwise.</returns>
-        public async Task<bool> DeleteCustomerAsync(int id)
+        public async Task<bool> DeleteCustomerAsync(int id, CancellationToken cancellationToken = default)
         {
             IsLoading = true;
             StatusText = "Deleting customer...";
@@ -721,7 +721,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Exports filtered customers to CSV format.
         /// </summary>
-        private async Task ExportToCsvAsync(string? filePath)
+        private async Task ExportToCsvAsync(string? filePath, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(filePath))
             {

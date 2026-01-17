@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,7 +48,7 @@ namespace WileyWidget.Services
             return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
         }
 
-        public async Task<List<Customer>> GetCustomersAsync()
+        public async Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -62,7 +63,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<List<Invoice>> GetInvoicesAsync()
+        public async Task<List<Invoice>> GetInvoicesAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -77,7 +78,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<List<Account>> GetChartOfAccountsAsync()
+        public async Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -134,7 +135,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -152,7 +153,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync()
+        public async Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -181,7 +182,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<bool> TestConnectionAsync()
+        public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
         {
             try
             {

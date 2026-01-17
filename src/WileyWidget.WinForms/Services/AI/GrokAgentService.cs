@@ -908,7 +908,7 @@ namespace WileyWidget.WinForms.Services.AI
         /// Runs an agentic chat session with Grok using Semantic Kernel's native streaming and automatic function calling.
         /// Uses ToolCallBehavior.AutoInvokeKernelFunctions (SK 1.16.0) to enable automatic function calling.
         /// </summary>
-        public async Task<string> RunAgentAsync(string userRequest, string systemPrompt = DefaultArchitectPrompt, Action<string>? onStreamingChunk = null, string? conversationId = null)
+        public async Task<string> RunAgentAsync(string userRequest, string systemPrompt = DefaultArchitectPrompt, Action<string>? onStreamingChunk = null, string? conversationId = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -1017,7 +1017,7 @@ namespace WileyWidget.WinForms.Services.AI
             }
         }
 
-        private async Task<ChatHistory> LoadChatHistoryAsync(string? conversationId, string systemPrompt)
+        private async Task<ChatHistory> LoadChatHistoryAsync(string? conversationId, string systemPrompt, CancellationToken cancellationToken = default)
         {
             var history = new ChatHistory();
             history.AddSystemMessage(systemPrompt);
@@ -1058,7 +1058,7 @@ namespace WileyWidget.WinForms.Services.AI
             return history;
         }
 
-        private async Task SaveChatHistoryAsync(string conversationId, ChatHistory history)
+        private async Task SaveChatHistoryAsync(string conversationId, ChatHistory history, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(conversationId)) return;
 

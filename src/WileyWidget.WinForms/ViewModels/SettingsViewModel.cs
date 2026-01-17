@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -264,7 +265,7 @@ namespace WileyWidget.WinForms.ViewModels
             MarkDirty();
         }
 
-        private async Task LoadAsync()
+        private async Task LoadAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Loading settings");
 

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -45,7 +46,7 @@ public partial class ChatPanelViewModel : ViewModelBase, IDisposable
     /// Processes a manual prompt request from WinForms code.
     /// Useful for "Ask JARVIS about this" context menus.
     /// </summary>
-    public async Task RequestExternalPromptAsync(string prompt)
+    public async Task RequestExternalPromptAsync(string prompt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt)) return;
         

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
@@ -88,7 +89,7 @@ namespace WileyWidget.Services
             return Task.CompletedTask;
         }
 
-        public Task RemoveAsync(string key)
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
             var removed = _store.TryRemove(key, out _);
@@ -96,7 +97,7 @@ namespace WileyWidget.Services
             return Task.CompletedTask;
         }
 
-        public Task<bool> ExistsAsync(string key)
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return Task.FromResult(false);
             var exists = _store.TryGetValue(key, out var entry) && (!entry.Expires.HasValue || entry.Expires.Value >= DateTime.UtcNow);
@@ -104,7 +105,7 @@ namespace WileyWidget.Services
             return Task.FromResult(exists);
         }
 
-        public Task ClearAllAsync()
+        public Task ClearAllAsync(CancellationToken cancellationToken = default)
         {
             var count = _store.Count;
             _store.Clear();

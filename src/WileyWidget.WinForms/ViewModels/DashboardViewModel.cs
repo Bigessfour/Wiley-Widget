@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -202,7 +203,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Refreshes dashboard metrics on demand by reloading budget analysis from repository.
         /// </summary>
-        private async Task RefreshMetricsAsync()
+        private async Task RefreshMetricsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -232,7 +233,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Loads complete dashboard data from repositories
         /// </summary>
-        private async Task LoadDashboardDataAsync()
+        private async Task LoadDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("=== LoadDashboardDataAsync STARTED ===");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: ENTRY");
@@ -252,7 +253,7 @@ namespace WileyWidget.WinForms.ViewModels
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Dependencies validated successfully");
 
             var cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = cancellationTokenSource.Token;
+            var localCancellationToken = cancellationTokenSource.Token;
 
             _logger.LogDebug("Acquiring load lock...");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Acquiring semaphore");
@@ -286,7 +287,7 @@ namespace WileyWidget.WinForms.ViewModels
                         if (retryCount > 0)
                         {
                             _logger.LogInformation("Retrying dashboard data load (attempt {Attempt} of {Max})...", retryCount + 1, MaxRetryAttempts);
-                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), localCancellationToken);
                         }
                         else
                         {
@@ -342,10 +343,10 @@ namespace WileyWidget.WinForms.ViewModels
                         var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30); // June 30
 
                         // Check for cancellation before expensive operations
-                        cancellationToken.ThrowIfCancellationRequested();
+                        localCancellationToken.ThrowIfCancellationRequested();
 
                         // Load budget analysis from repository
-                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, cancellationToken);
+                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, localCancellationToken);
 
                         if (analysis != null)
                         {
@@ -384,10 +385,10 @@ namespace WileyWidget.WinForms.ViewModels
                         }
 
                         // Load account count
-                        var accountCount = await _accountRepository.GetCountAsync(cancellationToken);
+                        var accountCount = await _accountRepository.GetCountAsync(localCancellationToken);
 
                         // Calculate revenue and expenses from budget entries
-                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, cancellationToken);
+                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, localCancellationToken);
                         var totalRevenue = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
                             .Sum(be => be.ActualAmount);
@@ -490,7 +491,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Refreshes the dashboard data
         /// </summary>
-        private async Task RefreshDashboardDataAsync()
+        private async Task RefreshDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             await LoadDashboardDataAsync();
         }
@@ -498,7 +499,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Loads dashboard data for a specific fiscal year
         /// </summary>
-        private async Task LoadFiscalYearDataAsync(int fiscalYear)
+        private async Task LoadFiscalYearDataAsync(int fiscalYear, CancellationToken cancellationToken = default)
         {
             try
             {

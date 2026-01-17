@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -78,7 +79,7 @@ public class GrokSupercomputer(
     /// <param name="endDate">Optional end date for data filtering. If null, no end date filter applied.</param>
     /// <param name="filter">Optional string filter for additional data filtering criteria.</param>
     /// <returns>A Task containing ReportData with enterprise operational information for municipal utilities.</returns>
-    public async Task<WileyWidget.Models.ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "")
+    public async Task<WileyWidget.Models.ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "", CancellationToken cancellationToken = default)
     {
         try
         {
@@ -280,7 +281,7 @@ public class GrokSupercomputer(
     /// </summary>
     /// <param name="data">The ReportData containing enterprise information to analyze.</param>
     /// <returns>A Task containing AnalyticsData with calculated metrics and performance indicators.</returns>
-    public async Task<AnalyticsData> RunReportCalcsAsync(ReportData data)
+    public async Task<AnalyticsData> RunReportCalcsAsync(ReportData data, CancellationToken cancellationToken = default)
     {
         if (data == null) throw new ArgumentNullException(nameof(data));
 
@@ -360,7 +361,7 @@ public class GrokSupercomputer(
     /// </summary>
     /// <param name="budget">The BudgetData containing financial information to analyze.</param>
     /// <returns>A Task containing BudgetInsights with recommendations and analysis results.</returns>
-    public async Task<BudgetInsights> AnalyzeBudgetDataAsync(BudgetData budget)
+    public async Task<BudgetInsights> AnalyzeBudgetDataAsync(BudgetData budget, CancellationToken cancellationToken = default)
     {
         if (budget == null) throw new ArgumentNullException(nameof(budget));
 
@@ -450,7 +451,7 @@ public class GrokSupercomputer(
          /// </summary>
          /// <param name="enterprise">The Enterprise object containing information about the municipal utility to evaluate.</param>
          /// <returns>A Task containing ComplianceReport with regulatory compliance status and recommendations.</returns>
-    public Task<WileyWidget.Models.ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise)
+    public Task<WileyWidget.Models.ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise, CancellationToken cancellationToken = default)
     {
         if (enterprise == null) throw new ArgumentNullException(nameof(enterprise));
 
@@ -564,7 +565,7 @@ public class GrokSupercomputer(
     /// <param name="data">The data to analyze.</param>
     /// <param name="context">Additional context for the analysis.</param>
     /// <returns>A Task containing the analysis results as a string.</returns>
-    public async Task<string> AnalyzeMunicipalDataAsync(object data, string context)
+    public async Task<string> AnalyzeMunicipalDataAsync(object data, string context, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -600,7 +601,7 @@ public class GrokSupercomputer(
     /// <param name="budget">The budget data to analyze</param>
     /// <param name="variancePercent">The calculated variance percentage</param>
     /// <returns>AI-generated insights as a string</returns>
-    private async Task<string> GenerateBudgetInsightsWithAIAsync(BudgetData budget, decimal variancePercent)
+    private async Task<string> GenerateBudgetInsightsWithAIAsync(BudgetData budget, decimal variancePercent, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -639,7 +640,7 @@ Focus on municipal utility operations and provide actionable insights.";
     /// <param name="municipalAccounts">Collection of municipal accounts to analyze</param>
     /// <param name="budgetData">Associated budget data for context</param>
     /// <returns>AI-powered analysis of municipal accounts</returns>
-    public async Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<WileyWidget.Models.MunicipalAccount> municipalAccounts, BudgetData budgetData)
+    public async Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<WileyWidget.Models.MunicipalAccount> municipalAccounts, BudgetData budgetData, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -688,7 +689,7 @@ Focus on municipal finance best practices and operational efficiency.";
     /// </summary>
     /// <param name="data">The data to generate recommendations for.</param>
     /// <returns>A Task containing the recommendations as a string.</returns>
-    public async Task<string> GenerateRecommendationsAsync(object data)
+    public async Task<string> GenerateRecommendationsAsync(object data, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -726,7 +727,7 @@ Focus on municipal finance best practices and operational efficiency.";
     /// </summary>
     /// <param name="prompt">The query prompt to send to the AI service</param>
     /// <returns>The AI response as a string</returns>
-    public async Task<string> QueryAsync(string prompt)
+    public async Task<string> QueryAsync(string prompt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt))
             throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));

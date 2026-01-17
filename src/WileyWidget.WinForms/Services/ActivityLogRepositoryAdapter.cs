@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -22,7 +23,7 @@ namespace WileyWidget.WinForms.Services
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogRepositoryAdapter>.Instance;
         }
 
-        public async Task LogActivityAsync(string activity, string details)
+        public async Task LogActivityAsync(string activity, string details, CancellationToken cancellationToken = default)
         {
             var model = new ActivityLog
             {
@@ -34,7 +35,7 @@ namespace WileyWidget.WinForms.Services
             await _businessRepository.LogActivityAsync(model).ConfigureAwait(false);
         }
 
-        public async Task LogActivityAsync(WileyWidget.Services.Abstractions.ActivityLog activityLog)
+        public async Task LogActivityAsync(WileyWidget.Services.Abstractions.ActivityLog activityLog, CancellationToken cancellationToken = default)
         {
             if (activityLog == null) throw new ArgumentNullException(nameof(activityLog));
 

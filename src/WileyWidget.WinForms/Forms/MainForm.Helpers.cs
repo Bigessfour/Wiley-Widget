@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections;
 using System.IO;
@@ -315,7 +316,7 @@ namespace WileyWidget.WinForms.Forms
         /// In UI test harness mode, creates a fake Excel file for testing.
         /// </summary>
         /// <returns>Task representing the async export operation</returns>
-        private async Task ExportActiveGridToExcel()
+        private async Task ExportActiveGridToExcel(CancellationToken cancellationToken = default)
         {
             try
             {

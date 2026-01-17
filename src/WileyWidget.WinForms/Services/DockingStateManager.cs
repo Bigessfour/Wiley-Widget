@@ -31,10 +31,10 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
-        /// Non-blocking layout load with 1-second timeout and automatic fallback to defaults.
-        /// Returns immediately; layout load happens on background thread with telemetry.
+        /// Non-blocking layout load with 2-second timeout and automatic fallback to defaults.
+        /// Performs I/O on background thread and applies layout to UI thread via HostControl.
         /// </summary>
-        public void TryLoadLayout(DockingManager dockingManager)
+        public async Task TryLoadLayoutAsync(DockingManager dockingManager, CancellationToken cancellationToken = default)
         {
             if (_layoutLoaded) return;
 
@@ -81,21 +81,30 @@ namespace WileyWidget.WinForms.Services
                             }
                         }
 
-                        // 3. Apply layout via MemoryStream
+                        // 3. Apply layout via MemoryStream on UI Thread
                         if (layoutData != null && layoutData.Length > 0)
                         {
                             var applySw = Stopwatch.StartNew();
                             using (var ms = new MemoryStream(layoutData))
                             {
                                 var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
-                                dockingManager.LoadDockState(serializer);
+
+                                // LoadDockState touches controls and MUST be invoked on the UI thread
+                                if (dockingManager.HostControl != null && dockingManager.HostControl.InvokeRequired)
+                                {
+                                    dockingManager.HostControl.Invoke(() => dockingManager.LoadDockState(serializer));
+                                }
+                                else
+                                {
+                                    dockingManager.LoadDockState(serializer);
+                                }
                             }
                             applySw.Stop();
                             applyLayoutMs = applySw.ElapsedMilliseconds;
                         }
 
                         totalSw.Stop();
-                        _logger.LogInformation("✓ Docking layout restored. Total: {TotalMs}ms (DiskRead: {DiskMs}ms, ApplyLayout: {ApplyMs}ms, CacheHit: {CacheHit})", 
+                        _logger.LogInformation("✓ Docking layout restored. Total: {TotalMs}ms (DiskRead: {DiskMs}ms, ApplyLayout: {ApplyMs}ms, CacheHit: {CacheHit})",
                             totalSw.ElapsedMilliseconds, diskReadMs, applyLayoutMs, diskReadMs == 0);
 
                         if (diskReadMs > 500)
@@ -107,14 +116,18 @@ namespace WileyWidget.WinForms.Services
                     {
                         _logger.LogWarning(ex, "Failed to load cached docking layout - using defaults instead");
                     }
-                });
+                }, cancellationToken);
 
-                // Wait max 1 second for layout load (non-blocking timeout)
-                bool completed = loadTask.Wait(TimeSpan.FromSeconds(1));
-                if (!completed)
-                {
-                    _logger.LogWarning("Docking layout load timed out after 1 second - using defaults. (Layout initialization will continue in background)");
-                }
+                // Wait max 2 seconds for layout load (non-blocking timeout)
+                await loadTask.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("Docking layout load timed out after 2 seconds - using defaults. (Layout initialization will continue in background)");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Unexpected error during layout load");
             }
             finally
             {
@@ -132,7 +145,7 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 var sw = Stopwatch.StartNew();
-                
+
                 using (var ms = new MemoryStream())
                 {
                     var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
@@ -140,7 +153,7 @@ namespace WileyWidget.WinForms.Services
                     serializer.PersistNow();
 
                     var layoutData = ms.ToArray();
-                    
+
                     // Update in-memory cache
                     lock (_cacheLock)
                     {

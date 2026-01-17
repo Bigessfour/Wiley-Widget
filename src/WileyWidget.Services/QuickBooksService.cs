@@ -110,7 +110,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch { /* best effort */ }
     }
 
-    private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger)
+    private static async System.Threading.Tasks.Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService, string secretName, ILogger logger, CancellationToken cancellationToken = default)
     {
         if (keyVaultService == null)
         {
@@ -165,7 +165,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch { return null; }
     }
 
-    private async System.Threading.Tasks.Task EnsureInitializedAsync()
+    private async System.Threading.Tasks.Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized) return;
         await _initSemaphore.WaitAsync().ConfigureAwait(false);
@@ -280,7 +280,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     public bool HasValidAccessToken() => _authService.HasValidAccessToken();
 
-    public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync()
+    public async System.Threading.Tasks.Task RefreshTokenIfNeededAsync(CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = EnsureSettingsLoaded();
@@ -299,7 +299,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         await _authService.RefreshTokenAsync();
     }
 
-    public async System.Threading.Tasks.Task RefreshTokenAsync() => await _authService.RefreshTokenAsync();
+    public async System.Threading.Tasks.Task RefreshTokenAsync(CancellationToken cancellationToken = default) => await _authService.RefreshTokenAsync();
 
     private (ServiceContext Ctx, DataService Ds) GetDataService()
     {
@@ -320,7 +320,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// Returns the injected test double when present; otherwise constructs
     /// an IntuitDataServiceAdapter after ensuring auth when requested.
     /// </summary>
-    private async System.Threading.Tasks.Task<IQuickBooksDataService> ResolveDataServiceAsync(bool requireAuth = true)
+    private async System.Threading.Tasks.Task<IQuickBooksDataService> ResolveDataServiceAsync(bool requireAuth = true, CancellationToken cancellationToken = default)
     {
         // Use injected test double if provided (tests can inject a fake implementation)
         if (_injectedDataService != null) return _injectedDataService;
@@ -337,7 +337,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
 
 
-    public async System.Threading.Tasks.Task<bool> TestConnectionAsync()
+    public async System.Threading.Tasks.Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -354,7 +354,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null)
+    public async System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null, CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var prefix = redirectUri ?? _redirectUri;
@@ -441,7 +441,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync()
+    public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -456,7 +456,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<List<Vendor>> GetVendorsAsync()
+    public async System.Threading.Tasks.Task<List<Vendor>> GetVendorsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -471,7 +471,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null)
+    public async System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -546,7 +546,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync()
+    public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -607,7 +607,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public async System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate)
+    public async System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -623,7 +623,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
 
 
-    public async System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync()
+    public async System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -834,7 +834,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     }
 
     // Legacy method using Intuit Budget type (kept for backward compatibility with tests)
-    private async System.Threading.Tasks.Task<List<Budget>> GetIntuitBudgetsAsync()
+    private async System.Threading.Tasks.Task<List<Budget>> GetIntuitBudgetsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1107,7 +1107,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
 
 
-    public System.Threading.Tasks.Task<bool> AuthorizeAsync()
+    public System.Threading.Tasks.Task<bool> AuthorizeAsync(CancellationToken cancellationToken = default)
     {
         // Expose the interactive OAuth flow to the UI
         return AcquireTokensInteractiveAsync();
@@ -1123,7 +1123,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         return _settings.Current;
     }
 
-    private async System.Threading.Tasks.Task<bool> AcquireTokensInteractiveAsync()
+    private async System.Threading.Tasks.Task<bool> AcquireTokensInteractiveAsync(CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         // Test harness / CI: support two related environment flags:
@@ -1349,7 +1349,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
 
-    private async System.Threading.Tasks.Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code)
+    private async System.Threading.Tasks.Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code, CancellationToken cancellationToken = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
@@ -1378,7 +1378,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         return new TokenResult(access, refresh, expires, refreshExpires);
     }
 
-    private async System.Threading.Tasks.Task<TokenResult> RefreshAccessTokenAsync(string refreshToken)
+    private async System.Threading.Tasks.Task<TokenResult> RefreshAccessTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         const int maxRetries = 3;
         var lastException = (Exception?)null;
@@ -1472,7 +1472,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         throw new InvalidOperationException($"Token refresh failed after {maxRetries} attempts", lastException);
     }
 
-    private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message)
+    private static async System.Threading.Tasks.Task WriteCallbackResponseAsync(HttpListenerResponse response, string message, CancellationToken cancellationToken = default)
     {
         var html = $"<html><body><h2>Wiley Widget - QuickBooks</h2><p>{WebUtility.HtmlEncode(message)}</p></body></html>";
         var payload = Encoding.UTF8.GetBytes(html);
@@ -1616,7 +1616,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    private async System.Threading.Tasks.Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null)
+    private async System.Threading.Tasks.Task<bool> TryEnsureUrlAclAsync(string? redirectUri = null, CancellationToken cancellationToken = default)
     {
         var prefix = redirectUri ?? _redirectUri;
         if (!prefix.EndsWith("/", StringComparison.Ordinal))
@@ -1698,7 +1698,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     /// <summary>
     /// Checks if the service is currently connected to QuickBooks.
     /// </summary>
-    public async System.Threading.Tasks.Task<bool> IsConnectedAsync()
+    public async System.Threading.Tasks.Task<bool> IsConnectedAsync(CancellationToken cancellationToken = default)
     {
         try
         {

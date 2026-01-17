@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace WileyWidget.Services.Abstractions
         /// <param name="startDate">Start date for statistics</param>
         /// <param name="endDate">End date for statistics</param>
         /// <returns>Dictionary containing usage statistics</returns>
-        Task<Dictionary<string, object>> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate);
+        Task<Dictionary<string, object>> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the count of queries made today.
@@ -83,6 +84,6 @@ namespace WileyWidget.Services.Abstractions
         /// <param name="startDate">Start date for export</param>
         /// <param name="endDate">End date for export</param>
         /// <returns>Task representing the export operation</returns>
-        Task ExportLogsAsync(string filePath, DateTime startDate, DateTime endDate);
+        Task ExportLogsAsync(string filePath, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     }
 }

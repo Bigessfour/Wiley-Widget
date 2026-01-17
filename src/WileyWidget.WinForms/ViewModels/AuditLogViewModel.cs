@@ -21,8 +21,32 @@ namespace WileyWidget.WinForms.ViewModels;
 /// ViewModel for the Audit Log panel, providing data binding and commands for audit entry management.
 /// Supports filtering, pagination, charting, and async data loading.
 /// </summary>
-public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
+public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadViewModel
 {
+    private bool _isDataLoaded;
+    public bool IsDataLoaded
+    {
+        get => _isDataLoaded;
+        private set
+        {
+            if (_isDataLoaded != value)
+            {
+                _isDataLoaded = value;
+                OnPropertyChanged(nameof(IsDataLoaded));
+            }
+        }
+    }
+
+    public async Task OnVisibilityChangedAsync(bool isVisible)
+    {
+        if (isVisible && !IsDataLoaded && !IsLoading)
+        {
+            await LoadEntriesAsync();
+            await LoadChartDataAsync();
+            IsDataLoaded = true;
+        }
+    }
+
     private readonly ILogger<AuditLogViewModel> _logger;
     private readonly IAuditService _auditService;
 
@@ -313,7 +337,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Loads audit entries asynchronously with current filters and pagination.
     /// </summary>
-    public async Task LoadEntriesAsync()
+    public async Task LoadEntriesAsync(CancellationToken cancellationToken = default)
     {
         if (IsLoading) return;
 
@@ -360,7 +384,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// Loads aggregated chart data based on the selected period grouping (Day/Week/Month).
     /// Fetches audit entries for the current filter range and groups them into <see cref="ChartData"/>.
     /// </summary>
-    public async Task LoadChartDataAsync()
+    public async Task LoadChartDataAsync(CancellationToken cancellationToken = default)
     {
         // Prevent concurrent chart loads
         if (IsChartLoading) return;
@@ -481,7 +505,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Gets distinct users from current entries for filter population.
     /// </summary>
-    public async Task<List<string>> GetDistinctUsersAsync()
+    public async Task<List<string>> GetDistinctUsersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -511,7 +535,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Gets distinct action types from current entries for filter population.
     /// </summary>
-    public async Task<List<string>> GetDistinctActionTypesAsync()
+    public async Task<List<string>> GetDistinctActionTypesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -553,7 +577,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Checks if there are more entries available for pagination.
     /// </summary>
-    public async Task<bool> HasMoreEntriesAsync()
+    public async Task<bool> HasMoreEntriesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -575,7 +599,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Loads the next page of entries.
     /// </summary>
-    public async Task LoadNextPageAsync()
+    public async Task LoadNextPageAsync(CancellationToken cancellationToken = default)
     {
         if (await HasMoreEntriesAsync())
         {
@@ -587,7 +611,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// Loads the previous page of entries.
     /// </summary>
-    public async Task LoadPreviousPageAsync()
+    public async Task LoadPreviousPageAsync(CancellationToken cancellationToken = default)
     {
         if (Skip > 0)
         {
@@ -730,9 +754,9 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
     /// </summary>
     private class FallbackAuditService : IAuditService
     {
-        public Task AuditAsync(string eventName, object payload) => Task.CompletedTask;
+        public Task AuditAsync(string eventName, object payload, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<IEnumerable<AuditEntry>> GetAuditEntriesAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null, int? skip = null, int? take = null)
+        public Task<IEnumerable<AuditEntry>> GetAuditEntriesAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null, int? skip = null, int? take = null, CancellationToken cancellationToken = default)
         {
             var end = endDate ?? DateTime.Now;
             var start = startDate ?? end.AddDays(-14);
@@ -764,7 +788,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable
             return Task.FromResult(result);
         }
 
-        public Task<int> GetAuditEntriesCountAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null)
+        public Task<int> GetAuditEntriesCountAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null, CancellationToken cancellationToken = default)
         {
             return GetAuditEntriesAsync(startDate, endDate, actionType, user, null, null)
                 .ContinueWith(t => t.Result.Count());

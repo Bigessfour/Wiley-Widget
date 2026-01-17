@@ -67,7 +67,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Forces an immediate dashboard update.
         /// </summary>
-        public async Task UpdateNowAsync()
+        public async Task UpdateNowAsync(CancellationToken cancellationToken = default)
         {
             await UpdateDashboardAsync();
         }
@@ -91,7 +91,7 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
-        private async Task UpdateDashboardAsync()
+        private async Task UpdateDashboardAsync(CancellationToken cancellationToken = default)
         {
             // Simulate fetching updated data
             await Task.Delay(100);

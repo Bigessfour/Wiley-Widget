@@ -28,7 +28,7 @@ public class NullAIService : IAIService
     public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("Live key validation is unavailable.", 503, "Unavailable"));
 
-    public Task UpdateApiKeyAsync(string newApiKey) => Task.CompletedTask;
+    public Task UpdateApiKeyAsync(string newApiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("Sent prompt failed: AI unavailable.", 503, "Unavailable"));
@@ -43,7 +43,7 @@ public class NullAIService : IAIService
         await Task.CompletedTask;
     }
 
-    public Task<string> SendMessageAsync(string message, object conversationHistory)
+    public Task<string> SendMessageAsync(string message, object conversationHistory, CancellationToken cancellationToken = default)
         => Task.FromResult("AI services are currently unavailable.");
 }
 

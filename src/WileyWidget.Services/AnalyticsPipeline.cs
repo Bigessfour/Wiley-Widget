@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace WileyWidget.Services
         /// <param name="start">Optional start date for data filtering.</param>
         /// <param name="end">Optional end date for data filtering.</param>
         /// <returns>The compliance report with full analytics and AI insights.</returns>
-        public async Task<ComplianceReport> ExecuteFullPipelineAsync(int? enterpriseId = null, DateTime? start = null, DateTime? end = null)
+        public async Task<ComplianceReport> ExecuteFullPipelineAsync(int? enterpriseId = null, DateTime? start = null, DateTime? end = null, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Pipeline start: Enterprise {Id}", enterpriseId);
 

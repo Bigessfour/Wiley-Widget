@@ -2,7 +2,7 @@
 
 ## Overview
 
-Convert repositories from direct AppDbContext injection to IDbContextFactory<AppDbContext> pattern to prevent ObjectDisposedException.
+Convert repositories from direct `AppDbContext` injection to `IDbContextFactory<AppDbContext>` pattern to prevent ObjectDisposedException.
 
 ## Files to Update
 

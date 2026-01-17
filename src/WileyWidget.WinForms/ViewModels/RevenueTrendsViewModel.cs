@@ -121,14 +121,15 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
     /// Loads monthly revenue data asynchronously with proper cancellation support.
     /// Thread-safe and UI-friendly (updates collections on UI thread context).
     /// </summary>
-    public async Task LoadDataAsync()
+    public async Task LoadDataAsync(CancellationToken cancellationToken = default)
     {
         // Cancel any previous load operation
         _loadCancellationTokenSource?.Cancel();
         _loadCancellationTokenSource?.Dispose();
         _loadCancellationTokenSource = new CancellationTokenSource();
 
-        var cancellationToken = _loadCancellationTokenSource.Token;
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _loadCancellationTokenSource.Token);
+        var effectiveToken = linkedCts.Token;
 
         try
         {
@@ -139,9 +140,9 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
                 StartDate, EndDate);
 
             // Fetch revenue data grouped by month
-            var revenueData = await LoadMonthlyRevenueAsync(StartDate, EndDate, cancellationToken);
+            var revenueData = await LoadMonthlyRevenueAsync(StartDate, EndDate, effectiveToken);
 
-            if (cancellationToken.IsCancellationRequested)
+            if (effectiveToken.IsCancellationRequested)
             {
                 Logger.LogDebug("Revenue trends data load was cancelled");
                 return;

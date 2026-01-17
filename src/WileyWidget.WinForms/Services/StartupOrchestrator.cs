@@ -101,6 +101,7 @@ namespace WileyWidget.WinForms.Services
 
         public Task InitializeThemeAsync(CancellationToken cancellationToken = default)
         {
+            using var phase = _timelineService?.BeginPhaseScope("Initialize Theme");
             try
             {
                 // Only load the theme we actually use
@@ -132,6 +133,7 @@ namespace WileyWidget.WinForms.Services
 
         public async Task ValidateServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
         {
+            using var phase = _timelineService?.BeginPhaseScope("Validate Services");
             if (serviceProvider == null)
             {
                 throw new ArgumentNullException(nameof(serviceProvider));

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -497,7 +498,7 @@ namespace WileyWidget.WinForms.Controls
             // Syncfusion per-form skinning is handled by SfSkinManager above
         }
 
-        private async Task LoadViewDataAsync()
+        private async Task LoadViewDataAsync(CancellationToken cancellationToken = default)
         {
             try { Serilog.Log.Debug("SettingsPanel: LoadViewDataAsync starting"); if (ViewModel != null) { await (ViewModel.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask); Serilog.Log.Information("SettingsPanel: settings loaded successfully"); } }
             catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: LoadViewDataAsync failed"); }

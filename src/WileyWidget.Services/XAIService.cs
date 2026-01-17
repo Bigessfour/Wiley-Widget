@@ -738,11 +738,6 @@ public class XAIService : IAIService, IDisposable
         }
     }
 
-    // Adapter overload to satisfy the Abstractions interface which declares
-    // ValidateApiKeyAsync(string) without a CancellationToken parameter.
-    public Task<AIResponseResult> ValidateApiKeyAsync(string apiKey)
-        => ValidateApiKeyAsync(apiKey, CancellationToken.None);
-
     /// <summary>
     /// Review application areas and provide recommendations
     /// </summary>
@@ -849,7 +844,7 @@ public class XAIService : IAIService, IDisposable
     /// Update the runtime API key used by the HttpClient for subsequent requests.
     /// This is used after rotating/persisting a new key so the live service reflects the change.
     /// </summary>
-    public Task UpdateApiKeyAsync(string newApiKey)
+    public Task UpdateApiKeyAsync(string newApiKey, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(newApiKey))
             throw new ArgumentException("newApiKey cannot be null or empty", nameof(newApiKey));
@@ -998,7 +993,7 @@ public class XAIService : IAIService, IDisposable
     /// <summary>
     /// Send a message to the AI service with conversation history context.
     /// </summary>
-    public async Task<string> SendMessageAsync(string message, object conversationHistory)
+    public async Task<string> SendMessageAsync(string message, object conversationHistory, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(message))
             throw new ArgumentException("Message cannot be null or empty", nameof(message));

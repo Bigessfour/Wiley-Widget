@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -358,10 +359,9 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>What-if scenario result as JSON.</returns>
         [KernelFunction("run_what_if_scenario")]
         [Description("Run a what-if scenario with rate increase and multi-year projections. Returns structured JSON.")]
-        public async Task<WhatIfScenarioResult> RunWhatIfScenario(
-            [Description("Scenario description (e.g., '5% rate increase with 3% expense growth')")] string scenarioDescription,
+        public async Task<WhatIfScenarioResult> RunWhatIfScenario([Description("Scenario description (e.g., '5% rate increase with 3% expense growth')")] string scenarioDescription,
             [Description("Rate increase percentage (e.g., 5 for 5%)")] decimal rateIncreasePct,
-            [Description("Number of years to project (default: 5)")] int years = 5)
+            [Description("Number of years to project (default: 5)")] int years = 5, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(scenarioDescription))
             {
@@ -476,9 +476,8 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Reserve forecast result as JSON.</returns>
         [KernelFunction("project_reserves_impact")]
         [Description("Project the impact of annual reserve contributions over multiple years. Returns structured JSON.")]
-        public async Task<ReserveForecastResult> ProjectReservesImpact(
-            [Description("Enterprise ID")] int enterpriseId,
-            [Description("Annual dollar contribution to reserves")] decimal annualContribution)
+        public async Task<ReserveForecastResult> ProjectReservesImpact([Description("Enterprise ID")] int enterpriseId,
+            [Description("Annual dollar contribution to reserves")] decimal annualContribution, CancellationToken cancellationToken = default)
         {
             if (enterpriseId <= 0)
             {

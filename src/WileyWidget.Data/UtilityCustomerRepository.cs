@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,7 +36,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets all utility customers
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetAllAsync()
+    public async Task<IEnumerable<UtilityCustomer>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("UtilityCustomerRepository.GetAll");
         activity?.SetTag("operation.type", "query");
@@ -102,11 +103,10 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets paged utility customers with sorting support
     /// </summary>
-    public async Task<(IEnumerable<UtilityCustomer> Items, int TotalCount)> GetPagedAsync(
-        int pageNumber = 1,
+    public async Task<(IEnumerable<UtilityCustomer> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1,
         int pageSize = 50,
         string? sortBy = null,
-        bool sortDescending = false)
+        bool sortDescending = false, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -131,7 +131,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
     /// </summary>
-    public async Task<IQueryable<UtilityCustomer>> GetQueryableAsync()
+    public async Task<IQueryable<UtilityCustomer>> GetQueryableAsync(CancellationToken cancellationToken = default)
     {
         var context = await _contextFactory.CreateDbContextAsync();
         return context.UtilityCustomers.AsQueryable();
@@ -140,7 +140,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets a utility customer by ID
     /// </summary>
-    public async Task<UtilityCustomer?> GetByIdAsync(int id)
+    public async Task<UtilityCustomer?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -151,7 +151,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets a utility customer by account number
     /// </summary>
-    public async Task<UtilityCustomer?> GetByAccountNumberAsync(string accountNumber)
+    public async Task<UtilityCustomer?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -162,7 +162,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets customers by customer type
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetByCustomerTypeAsync(CustomerType customerType)
+    public async Task<IEnumerable<UtilityCustomer>> GetByCustomerTypeAsync(CustomerType customerType, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -174,7 +174,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets customers by service location
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetByServiceLocationAsync(ServiceLocation serviceLocation)
+    public async Task<IEnumerable<UtilityCustomer>> GetByServiceLocationAsync(ServiceLocation serviceLocation, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -186,7 +186,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets all active customers
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetActiveCustomersAsync()
+    public async Task<IEnumerable<UtilityCustomer>> GetActiveCustomersAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -198,7 +198,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets customers with outstanding balances
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetCustomersWithBalanceAsync()
+    public async Task<IEnumerable<UtilityCustomer>> GetCustomersWithBalanceAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
@@ -210,7 +210,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Searches customers by name or account number
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm)
+    public async Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -233,7 +233,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Adds a new utility customer
     /// </summary>
-    public async Task<UtilityCustomer> AddAsync(UtilityCustomer customer)
+    public async Task<UtilityCustomer> AddAsync(UtilityCustomer customer, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(customer);
 
@@ -261,7 +261,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Updates an existing utility customer
     /// </summary>
-    public async Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer)
+    public async Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(customer);
 
@@ -287,7 +287,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Deletes a utility customer by ID
     /// </summary>
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var customer = await context.UtilityCustomers.FindAsync(id);
@@ -317,7 +317,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Checks if a customer exists by account number
     /// </summary>
-    public async Task<bool> ExistsByAccountNumberAsync(string accountNumber, int? excludeId = null)
+    public async Task<bool> ExistsByAccountNumberAsync(string accountNumber, int? excludeId = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var query = context.UtilityCustomers.Where(c => c.AccountNumber == accountNumber);
@@ -330,7 +330,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets the total number of customers
     /// </summary>
-    public async Task<int> GetCountAsync()
+    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers.CountAsync();
@@ -339,7 +339,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
     /// <summary>
     /// Gets customers outside city limits
     /// </summary>
-    public async Task<IEnumerable<UtilityCustomer>> GetCustomersOutsideCityLimitsAsync()
+    public async Task<IEnumerable<UtilityCustomer>> GetCustomersOutsideCityLimitsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers

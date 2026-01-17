@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -32,7 +33,7 @@ public class ReportExportService : IReportExportService
     /// <summary>
     /// Exports data to PDF format using Syncfusion.Pdf
     /// </summary>
-    public async Task ExportToPdfAsync(object data, string filePath)
+    public async Task ExportToPdfAsync(object data, string filePath, CancellationToken cancellationToken = default)
     {
         _logger.Information("Exporting data to PDF: {FilePath}", filePath);
 
@@ -129,7 +130,7 @@ public class ReportExportService : IReportExportService
     /// <summary>
     /// Exports data to Excel format using Syncfusion.XlsIO
     /// </summary>
-    public async Task ExportToExcelAsync(object data, string filePath)
+    public async Task ExportToExcelAsync(object data, string filePath, CancellationToken cancellationToken = default)
     {
         _logger.Information("Exporting data to Excel: {FilePath}", filePath);
         await Task.Run(() =>
@@ -216,7 +217,7 @@ public class ReportExportService : IReportExportService
     /// <summary>
     /// Exports data to CSV format
     /// </summary>
-    public async Task ExportToCsvAsync(IEnumerable<object> data, string filePath)
+    public async Task ExportToCsvAsync(IEnumerable<object> data, string filePath, CancellationToken cancellationToken = default)
     {
         _logger.Information("Exporting data to CSV: {FilePath}", filePath);
         await Task.Run(() =>
@@ -263,7 +264,7 @@ public class ReportExportService : IReportExportService
     /// <summary>
     /// Exports a ComplianceReport to a well-formatted PDF document using Syncfusion.Pdf.
     /// </summary>
-    public async Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath)
+    public async Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default)
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
         if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
@@ -375,7 +376,7 @@ public class ReportExportService : IReportExportService
     /// <summary>
     /// Exports a ComplianceReport to an Excel workbook using Syncfusion.XlsIO.
     /// </summary>
-    public async Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath)
+    public async Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default)
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
         if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));

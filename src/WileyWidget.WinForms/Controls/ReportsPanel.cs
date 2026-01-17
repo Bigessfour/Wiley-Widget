@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -149,7 +150,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         }
     }
 
-    private async Task LoadInitialReportAsync()
+    private async Task LoadInitialReportAsync(CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrWhiteSpace(_initialReportPath) && File.Exists(_initialReportPath) && ViewModel != null)
         {
@@ -707,7 +708,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         }
     }
 
-    private Task ApplyParametersAsync()
+    private Task ApplyParametersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -744,7 +745,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         return Task.CompletedTask;
     }
 
-    private async Task LoadSelectedReportAsync()
+    private async Task LoadSelectedReportAsync(CancellationToken cancellationToken = default)
     {
         if (_reportSelector?.SelectedItem is not string selectedReport || ViewModel == null)
             return;
@@ -777,7 +778,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         }
     }
 
-    private Task ExportToPdfAsync()
+    private Task ExportToPdfAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null) return Task.CompletedTask;
 
@@ -831,7 +832,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         return Task.CompletedTask;
     }
 
-    private Task ExportToExcelAsync()
+    private Task ExportToExcelAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null) return Task.CompletedTask;
 
@@ -884,7 +885,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         return Task.CompletedTask;
     }
 
-    private async Task PrintReportAsync()
+    private async Task PrintReportAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null) return;
 
@@ -936,7 +937,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         }
     }
 
-    private Task RefreshReportsAsync()
+    private Task RefreshReportsAsync(CancellationToken cancellationToken = default)
     {
         LoadAvailableReports();
         UpdateStatus("Reports list refreshed");

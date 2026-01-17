@@ -984,7 +984,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Handles the load event.
     /// </summary>
-    protected override async void OnLoad(EventArgs e)
+    protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
@@ -1010,10 +1010,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             if (_variancesSearchTextBox != null)
                 _variancesSearchTextBox.Text = ViewModel.VariancesSearchText;
 
-            // Auto-load data using async/await (per Microsoft async pattern for WinForms)
-            // This allows PropertyChanged events to be marshaled on UI thread automatically
-            // Reference: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls-to-windows-forms-controls
-            await ViewModel.RefreshCommand.ExecuteAsync(null);
+            // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
 
             // Defer sizing validation to prevent "controls cut off" - Analytics has complex grid/chart layouts
             DeferSizeValidation();

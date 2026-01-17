@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ public sealed class StubConversationRepository : IConversationRepository
         _logger = logger;
     }
 
-    public Task SaveConversationAsync(object conversation)
+    public Task SaveConversationAsync(object conversation, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -38,7 +39,7 @@ public sealed class StubConversationRepository : IConversationRepository
         }
     }
 
-    public Task<object?> GetConversationAsync(string id)
+    public Task<object?> GetConversationAsync(string id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -55,7 +56,7 @@ public sealed class StubConversationRepository : IConversationRepository
         }
     }
 
-    public Task<List<object>> GetConversationsAsync(int skip, int limit)
+    public Task<List<object>> GetConversationsAsync(int skip, int limit, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -73,7 +74,7 @@ public sealed class StubConversationRepository : IConversationRepository
         }
     }
 
-    public Task DeleteConversationAsync(string conversationId)
+    public Task DeleteConversationAsync(string conversationId, CancellationToken cancellationToken = default)
     {
         try
         {

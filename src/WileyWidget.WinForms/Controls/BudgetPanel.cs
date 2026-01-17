@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -1230,7 +1231,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private Task DeleteEntryAsync()
+    private Task DeleteEntryAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1444,7 +1445,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null) return;
 

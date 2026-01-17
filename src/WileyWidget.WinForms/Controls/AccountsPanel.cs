@@ -32,19 +32,9 @@ public partial class AccountsPanel : UserControl
         Load += AccountsPanel_Load;
     }
 
-    private async void AccountsPanel_Load(object? sender, EventArgs e)
+    private void AccountsPanel_Load(object? sender, EventArgs e)
     {
-        try
-        {
-            if (_viewModel.LoadAccountsCommand?.CanExecute(null) is true)
-            {
-                await _viewModel.LoadAccountsCommand.ExecuteAsync(null).ConfigureAwait(true);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "AccountsPanel load failed");
-        }
+        // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
     }
 
     private void InitializeControls()

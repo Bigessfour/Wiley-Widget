@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -110,8 +111,7 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Compliance report as JSON.</returns>
         [KernelFunction("generate_full_compliance_report")]
         [Description("Generate comprehensive compliance report for an enterprise or all enterprises. Returns structured JSON.")]
-        public async Task<ComplianceReport> GenerateFullComplianceReport(
-            [Description("Optional enterprise ID (omit for system-wide report)")] int? enterpriseId = null)
+        public async Task<ComplianceReport> GenerateFullComplianceReport([Description("Optional enterprise ID (omit for system-wide report)")] int? enterpriseId = null, CancellationToken cancellationToken = default)
         {
             _logger?.LogInformation(
                 "ComplianceTools: GenerateFullComplianceReport invoked - enterpriseId={EnterpriseId}",
@@ -310,8 +310,7 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Roast analysis as a humorous string.</returns>
         [KernelFunction("roast_budget")]
         [Description("Generate a witty, honest budget analysis. Blame the Mayor, sympathize with the Clerk. Returns humorous but constructive feedback.")]
-        public async Task<string> RoastBudget(
-            [Description("Enterprise ID to analyze")] int enterpriseId)
+        public async Task<string> RoastBudget([Description("Enterprise ID to analyze")] int enterpriseId, CancellationToken cancellationToken = default)
         {
             if (enterpriseId <= 0)
             {

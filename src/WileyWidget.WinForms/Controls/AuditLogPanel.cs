@@ -556,9 +556,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             try { _cmbChartGroupBy.SelectedItem = viewModel.ChartGrouping.ToString(); } catch { }
         }
 
-        // Load data asynchronously
-        _ = LoadDataSafeAsync();
-        _ = viewModel.LoadChartDataAsync();
+        // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
     }
 
     private void InitializeFilters()
@@ -588,7 +586,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     /// <summary>
     /// Populates action type filter from ViewModel data.
     /// </summary>
-    private async Task PopulateActionTypesAsync()
+    private async Task PopulateActionTypesAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null || _cmbActionType == null) return;
 
@@ -618,7 +616,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     /// <summary>
     /// Populates user filter from ViewModel data.
     /// </summary>
-    private async Task PopulateUsersAsync()
+    private async Task PopulateUsersAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel == null || _cmbUser == null) return;
 
@@ -645,7 +643,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
-    private async Task LoadDataSafeAsync()
+    private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -852,7 +850,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -928,7 +926,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
-    private async Task ExportToCsvAsync()
+    private async Task ExportToCsvAsync(CancellationToken cancellationToken = default)
     {
         try
         {

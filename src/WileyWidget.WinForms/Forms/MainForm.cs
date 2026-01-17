@@ -226,6 +226,43 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Adds an existing panel instance to the docking manager asynchronously.
+        /// Useful for panels pre-initialized with specific ViewModels or state.
+        /// </summary>
+        /// <param name="panel">The UserControl panel instance to add.</param>
+        /// <param name="panelName">The display name used for caption and identification.</param>
+        /// <param name="preferredStyle">The preferred docking style (default: Right).</param>
+        /// <returns>A task that completes when the panel is added.</returns>
+        public async Task AddPanelAsync(
+            UserControl panel,
+            string panelName,
+            DockingStyle preferredStyle = DockingStyle.Right)
+        {
+            if (_panelNavigator == null)
+            {
+                _logger?.LogWarning("Cannot add panel - PanelNavigationService not initialized");
+                return;
+            }
+
+            try
+            {
+                await _panelNavigator.AddPanelAsync(panel, panelName, preferredStyle);
+
+                // Force z-order after showing panel to prevent layout issues
+                try { EnsureDockingZOrder(); }
+                catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after AddPanelAsync"); }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to add panel {PanelName} async in MainForm", panelName);
+                if (!IsDisposed && IsHandleCreated)
+                {
+                    try { MessageBox.Show("Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); } catch { }
+                }
+            }
+        }
+
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
         private readonly ReportViewerLaunchOptions _reportViewerLaunchOptions;
@@ -359,18 +396,57 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Implements <see cref="IAsyncInitializable.InitializeAsync(CancellationToken)"/>.
         /// Performs async initialization work after the MainForm is shown.
-        /// Currently a no-op as synchronous initialization is sufficient.
+        /// Optimized for non-blocking docking layout restoration and component setup.
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
+            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
+            using var phase = timelineService?.BeginPhaseScope("MainForm Async Initialization");
+
+            _asyncLogger?.Information("MainForm.InitializeAsync started - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+
             // Align UI with persisted theme from service
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
             }
 
-            // Heavy async initialization can be placed here if needed in future
-            await Task.CompletedTask;
+            // Phase 1: Async Docking Layout Restoration
+            // Separation of concerns: We restore layout asynchronously to prevent UI freeze during startup
+            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
+            {
+                _logger?.LogInformation("Starting asynchronous docking layout restoration");
+                try
+                {
+                    var layoutPath = GetDockingLayoutPath();
+                    if (!string.IsNullOrEmpty(layoutPath))
+                    {
+                        await LoadAndApplyDockingLayout(layoutPath, cancellationToken).ConfigureAwait(true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to restore docking layout in InitializeAsync");
+                }
+            }
+
+            // Phase 2: Notify ViewModels of initial visibility for lazy loading
+            // This ensures panels visible on startup (e.g. Dashboard) trigger their data loads.
+            if (_dockingManager != null)
+            {
+                _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
+                foreach (Control control in this.Controls)
+                {
+                    // Syncfusion check: Is control managed by DockingManager?
+                    if (_dockingManager.GetEnableDocking(control))
+                    {
+                        await NotifyPanelVisibilityChangedAsync(control);
+                    }
+                }
+            }
+
+            _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
         }
 
         private void MainForm_DragEnter(object? sender, DragEventArgs e)
@@ -422,7 +498,7 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private async Task ProcessDroppedFiles(string[] files)
+        private async Task ProcessDroppedFiles(string[] files, CancellationToken cancellationToken = default)
         {
             if (files == null || files.Length == 0)
             {
@@ -1699,7 +1775,7 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private async Task ImportDataFileAsync(string file)
+        private async Task ImportDataFileAsync(string file, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -1742,7 +1818,7 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private async Task ImportConfigurationDataAsync(string file)
+        private async Task ImportConfigurationDataAsync(string file, CancellationToken cancellationToken = default)
         {
             try
             {

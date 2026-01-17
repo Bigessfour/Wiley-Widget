@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -310,7 +311,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Gets usage statistics for a specified time period.
         /// </summary>
-        public Task<Dictionary<string, object>> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate)
+        public Task<Dictionary<string, object>> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -387,7 +388,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Exports usage logs to a file for analysis.
         /// </summary>
-        public async Task ExportLogsAsync(string filePath, DateTime startDate, DateTime endDate)
+        public async Task ExportLogsAsync(string filePath, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             try
             {

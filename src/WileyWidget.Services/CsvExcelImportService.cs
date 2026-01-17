@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -37,7 +38,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Imports transaction data from CSV or Excel file
         /// </summary>
-        public async Task<ImportResult> ImportTransactionsAsync(string filePath)
+        public async Task<ImportResult> ImportTransactionsAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -60,7 +61,7 @@ namespace WileyWidget.Services
         /// <summary>
         /// Imports budget entries from CSV or Excel file
         /// </summary>
-        public async Task<ImportResult> ImportBudgetEntriesAsync(string filePath)
+        public async Task<ImportResult> ImportBudgetEntriesAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -80,7 +81,7 @@ namespace WileyWidget.Services
             }
         }
 
-        private async Task<ImportResult> ImportTransactionsFromCsvAsync(string filePath)
+        private async Task<ImportResult> ImportTransactionsFromCsvAsync(string filePath, CancellationToken cancellationToken = default)
         {
             var transactions = new List<Transaction>();
             var errors = new List<string>();
@@ -140,7 +141,7 @@ namespace WileyWidget.Services
             };
         }
 
-        private async Task<ImportResult> ImportTransactionsFromExcelAsync(string filePath)
+        private async Task<ImportResult> ImportTransactionsFromExcelAsync(string filePath, CancellationToken cancellationToken = default)
         {
             var transactions = new List<Transaction>();
             var errors = new List<string>();
@@ -216,7 +217,7 @@ namespace WileyWidget.Services
             };
         }
 
-        private async Task<ImportResult> ImportBudgetEntriesFromCsvAsync(string filePath)
+        private async Task<ImportResult> ImportBudgetEntriesFromCsvAsync(string filePath, CancellationToken cancellationToken = default)
         {
             var budgetEntries = new List<BudgetEntry>();
             var errors = new List<string>();
@@ -278,7 +279,7 @@ namespace WileyWidget.Services
             };
         }
 
-        private async Task<ImportResult> ImportBudgetEntriesFromExcelAsync(string filePath)
+        private async Task<ImportResult> ImportBudgetEntriesFromExcelAsync(string filePath, CancellationToken cancellationToken = default)
         {
             var budgetEntries = new List<BudgetEntry>();
             var errors = new List<string>();

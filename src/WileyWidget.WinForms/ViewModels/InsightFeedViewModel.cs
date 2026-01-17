@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -209,7 +210,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Example: "Budget variance alert" → JARVIS provides investigation recommendations.
         /// </summary>
         [RelayCommand]
-        public async Task AskJarvis(InsightCardModel? card)
+        public async Task AskJarvis(InsightCardModel? card, CancellationToken cancellationToken = default)
         {
             if (card?.SourceInsight == null)
             {

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -30,7 +31,7 @@ namespace WileyWidget.Services
             _auditPath = Path.Combine(logs, "audit.log");
         }
 
-        public Task AuditAsync(string eventName, object details)
+        public Task AuditAsync(string eventName, object details, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(eventName)) throw new ArgumentNullException(nameof(eventName));
 
@@ -71,13 +72,12 @@ namespace WileyWidget.Services
             return Task.CompletedTask;
         }
 
-        public async Task<IEnumerable<AuditEntry>> GetAuditEntriesAsync(
-            DateTime? startDate = null,
+        public async Task<IEnumerable<AuditEntry>> GetAuditEntriesAsync(DateTime? startDate = null,
             DateTime? endDate = null,
             string? actionType = null,
             string? user = null,
             int? skip = null,
-            int? take = null)
+            int? take = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -145,11 +145,10 @@ namespace WileyWidget.Services
             }
         }
 
-        public async Task<int> GetAuditEntriesCountAsync(
-            DateTime? startDate = null,
+        public async Task<int> GetAuditEntriesCountAsync(DateTime? startDate = null,
             DateTime? endDate = null,
             string? actionType = null,
-            string? user = null)
+            string? user = null, CancellationToken cancellationToken = default)
         {
             var entries = await GetAuditEntriesAsync(startDate, endDate, actionType, user, null, null);
             return entries.Count();

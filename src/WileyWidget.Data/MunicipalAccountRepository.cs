@@ -207,7 +207,7 @@ namespace WileyWidget.Data
         /// Gets an IQueryable for flexible querying and paging
         /// NOTE: This returns an IQueryable tied to a DbContext created here; caller is responsible for materializing results promptly.
         /// </summary>
-        public Task<IQueryable<MunicipalAccount>> GetQueryableAsync()
+        public Task<IQueryable<MunicipalAccount>> GetQueryableAsync(CancellationToken cancellationToken = default)
         {
             var context = _contextFactory.CreateDbContext();
             return Task.FromResult(context.MunicipalAccounts.AsQueryable());
@@ -224,7 +224,7 @@ namespace WileyWidget.Data
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter)
+        public async Task<IEnumerable<MunicipalAccount>> GetAllAsync(string typeFilter, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             return await context.MunicipalAccounts
@@ -234,7 +234,7 @@ namespace WileyWidget.Data
                 .ToListAsync();
         }
 
-        public Task<IEnumerable<MunicipalAccount>> GetActiveAsync()
+        public Task<IEnumerable<MunicipalAccount>> GetActiveAsync(CancellationToken cancellationToken = default)
         {
             var context = _contextFactory.CreateDbContext();
             var list = CQ_GetAllActiveFlag(context, true);
@@ -279,7 +279,7 @@ namespace WileyWidget.Data
             return Task.FromResult<IEnumerable<MunicipalAccount>>(list.OrderBy(ma => ma.AccountNumber?.Value).ToList());
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetByFundClassAsync(FundClass fundClass)
+        public async Task<IEnumerable<MunicipalAccount>> GetByFundClassAsync(FundClass fundClass, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
 
@@ -306,7 +306,7 @@ namespace WileyWidget.Data
             return accounts.OrderBy(ma => ma.AccountNumber?.Value).ToList();
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetByAccountTypeAsync(AccountType accountType)
+        public async Task<IEnumerable<MunicipalAccount>> GetByAccountTypeAsync(AccountType accountType, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             var accounts = await context.MunicipalAccounts
@@ -317,14 +317,14 @@ namespace WileyWidget.Data
             return accounts.OrderBy(ma => ma.AccountNumber?.Value).ToList();
         }
 
-        public Task<IEnumerable<MunicipalAccount>> GetChildAccountsAsync(int parentAccountId)
+        public Task<IEnumerable<MunicipalAccount>> GetChildAccountsAsync(int parentAccountId, CancellationToken cancellationToken = default)
         {
             var context = _contextFactory.CreateDbContext();
             var list = CQ_GetChildren(context, parentAccountId);
             return Task.FromResult<IEnumerable<MunicipalAccount>>(list.OrderBy(ma => ma.AccountNumber?.Value).ToList());
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> GetAccountHierarchyAsync(int rootAccountId)
+        public async Task<IEnumerable<MunicipalAccount>> GetAccountHierarchyAsync(int rootAccountId, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
 
@@ -339,7 +339,7 @@ namespace WileyWidget.Data
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<MunicipalAccount>> SearchByNameAsync(string searchTerm)
+        public async Task<IEnumerable<MunicipalAccount>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             return await context.MunicipalAccounts
@@ -349,7 +349,7 @@ namespace WileyWidget.Data
                 .ToListAsync();
         }
 
-        public async Task<bool> AccountNumberExistsAsync(string accountNumber, int? excludeId = null)
+        public async Task<bool> AccountNumberExistsAsync(string accountNumber, int? excludeId = null, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             var query = context.MunicipalAccounts.Where(ma => ma.AccountNumber!.Value == accountNumber);
@@ -494,7 +494,7 @@ namespace WileyWidget.Data
         /// <summary>
         /// Get account balance at fiscal year start
         /// </summary>
-        public async Task<decimal> GetBalanceAtFiscalYearStartAsync(int accountId, DateTime fiscalYearStart)
+        public async Task<decimal> GetBalanceAtFiscalYearStartAsync(int accountId, DateTime fiscalYearStart, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             var account = await context.MunicipalAccounts.FindAsync(accountId);
@@ -509,7 +509,7 @@ namespace WileyWidget.Data
         /// <summary>
         /// Get accounts with budget data for specific fiscal year
         /// </summary>
-        public async Task<IEnumerable<MunicipalAccount>> GetBudgetAccountsAsync()
+        public async Task<IEnumerable<MunicipalAccount>> GetBudgetAccountsAsync(CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
 
@@ -533,7 +533,7 @@ namespace WileyWidget.Data
             return accounts;
         }
 
-        public async Task<List<MunicipalAccount>> GetBudgetAnalysisAsync()
+        public async Task<List<MunicipalAccount>> GetBudgetAnalysisAsync(CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
             return await context.MunicipalAccounts
@@ -619,7 +619,7 @@ namespace WileyWidget.Data
         /// <summary>
         /// Validates the chart of accounts structure before import
         /// </summary>
-        private async Task<ChartValidationResult> ValidateChartStructureAsync(List<Intuit.Ipp.Data.Account> chartAccounts)
+        private async Task<ChartValidationResult> ValidateChartStructureAsync(List<Intuit.Ipp.Data.Account> chartAccounts, CancellationToken cancellationToken = default)
         {
             var errors = new List<string>();
             var accountNumbers = new HashSet<string>();
@@ -655,10 +655,9 @@ namespace WileyWidget.Data
         /// <summary>
         /// Processes a single QuickBooks account into a MunicipalAccount
         /// </summary>
-        private async Task<MunicipalAccount?> ProcessQuickBooksAccountAsync(
-            Intuit.Ipp.Data.Account qbAccount,
+        private async Task<MunicipalAccount?> ProcessQuickBooksAccountAsync(Intuit.Ipp.Data.Account qbAccount,
             Dictionary<string, MunicipalAccount> processedAccounts,
-            AppDbContext context)
+            AppDbContext context, CancellationToken cancellationToken = default)
         {
             var accountNumber = qbAccount.AcctNum ?? "";
             if (string.IsNullOrEmpty(accountNumber))
@@ -720,9 +719,8 @@ namespace WileyWidget.Data
         /// <summary>
         /// Updates account hierarchies after all accounts are processed
         /// </summary>
-        private async Task UpdateAccountHierarchiesAsync(
-            Dictionary<string, MunicipalAccount> processedAccounts,
-            AppDbContext context)
+        private async Task UpdateAccountHierarchiesAsync(Dictionary<string, MunicipalAccount> processedAccounts,
+            AppDbContext context, CancellationToken cancellationToken = default)
         {
             foreach (var account in processedAccounts.Values)
             {
@@ -740,9 +738,8 @@ namespace WileyWidget.Data
         /// <summary>
         /// Validates the imported account structure
         /// </summary>
-        private async Task ValidateImportedStructureAsync(
-            IEnumerable<MunicipalAccount> accounts,
-            AppDbContext context)
+        private async Task ValidateImportedStructureAsync(IEnumerable<MunicipalAccount> accounts,
+            AppDbContext context, CancellationToken cancellationToken = default)
         {
             var accountNumbers = accounts.Select(a => a.AccountNumber!.Value).ToHashSet();
             var orphanedAccounts = accounts.Where(a =>
@@ -761,7 +758,7 @@ namespace WileyWidget.Data
         /// <summary>
         /// Clears all account-related caches
         /// </summary>
-        private async Task ClearAccountCachesAsync()
+        private async Task ClearAccountCachesAsync(CancellationToken cancellationToken = default)
         {
             _cache.Remove("municipal_accounts_all");
             await Task.CompletedTask; // Make method properly async

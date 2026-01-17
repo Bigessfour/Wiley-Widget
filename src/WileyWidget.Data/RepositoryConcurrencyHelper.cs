@@ -1,3 +1,4 @@
+using System.Threading;
 using WileyWidget.Models;
 #nullable enable
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace WileyWidget.Data;
 /// </summary>
 internal static class RepositoryConcurrencyHelper
 {
-    public static async Task HandleAsync(DbUpdateConcurrencyException exception, string entityName)
+    public static async Task HandleAsync(DbUpdateConcurrencyException exception, string entityName, CancellationToken cancellationToken = default)
     {
         EntityEntry? entry = exception.Entries.FirstOrDefault();
         IReadOnlyDictionary<string, object?>? databaseValues = null;

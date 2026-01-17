@@ -12,7 +12,7 @@ namespace WileyWidget.Services.Abstractions
     public interface IAIAssistantService
     {
         ToolCall? ParseInputForTool(string input);
-        Task<ToolCallResult> ExecuteToolAsync(ToolCall toolCall);
+        Task<ToolCallResult> ExecuteToolAsync(ToolCall toolCall, CancellationToken cancellationToken = default);
         ToolDefinition[] GetAvailableTools();
     }
 
@@ -68,10 +68,9 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IAccountService
     {
-        Task<MunicipalAccount?> GetAccountAsync(int id);
-        Task<MunicipalAccount[]> GetAllAccountsAsync();
-        Task SaveAccountAsync(MunicipalAccount account);
-        Task<SaveAccountResult> SaveAccountAsync(MunicipalAccount account, CancellationToken cancellationToken);
+        Task<MunicipalAccount?> GetAccountAsync(int id, CancellationToken cancellationToken = default);
+        Task<MunicipalAccount[]> GetAllAccountsAsync(CancellationToken cancellationToken = default);
+        Task<SaveAccountResult> SaveAccountAsync(MunicipalAccount account, CancellationToken cancellationToken = default);
         IEnumerable<string> ValidateAccount(MunicipalAccount account);
     }
 
@@ -86,10 +85,10 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IConversationRepository
     {
-        Task SaveConversationAsync(object conversation);
-        Task<object?> GetConversationAsync(string id);
-        Task<List<object>> GetConversationsAsync(int skip, int limit);
-        Task DeleteConversationAsync(string conversationId);
+        Task SaveConversationAsync(object conversation, CancellationToken cancellationToken = default);
+        Task<object?> GetConversationAsync(string id, CancellationToken cancellationToken = default);
+        Task<List<object>> GetConversationsAsync(int skip, int limit, CancellationToken cancellationToken = default);
+        Task DeleteConversationAsync(string conversationId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -97,8 +96,8 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IAIContextExtractionService
     {
-        Task<string> ExtractContextAsync(string input);
-        Task ExtractEntitiesAsync(string message, string conversationId);
+        Task<string> ExtractContextAsync(string input, CancellationToken cancellationToken = default);
+        Task ExtractEntitiesAsync(string message, string conversationId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -106,8 +105,8 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IActivityLogRepository
     {
-        Task LogActivityAsync(string activity, string details);
-        Task LogActivityAsync(ActivityLog activityLog);
+        Task LogActivityAsync(string activity, string details, CancellationToken cancellationToken = default);
+        Task LogActivityAsync(ActivityLog activityLog, CancellationToken cancellationToken = default);
     }
 
     public class ActivityLog
@@ -128,7 +127,7 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IPdfExportService
     {
-        Task ExportToPdfAsync(object data, string filePath);
+        Task ExportToPdfAsync(object data, string filePath, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

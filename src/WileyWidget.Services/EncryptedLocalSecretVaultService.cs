@@ -181,7 +181,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task<string?> GetSecretAsync(string secretName)
+    public async Task<string?> GetSecretAsync(string secretName, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
@@ -359,7 +359,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task SetSecretAsync(string secretName, string value)
+    public async Task SetSecretAsync(string secretName, string value, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
@@ -483,7 +483,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task<bool> TestConnectionAsync()
+    public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
@@ -549,7 +549,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task MigrateSecretsFromEnvironmentAsync()
+    public async Task MigrateSecretsFromEnvironmentAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
@@ -602,7 +602,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task PopulateProductionSecretsAsync()
+    public async Task PopulateProductionSecretsAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
@@ -612,7 +612,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         await Task.CompletedTask;
     }
 
-    public async Task<string> ExportSecretsAsync()
+    public async Task<string> ExportSecretsAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
@@ -649,7 +649,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task ImportSecretsAsync(string jsonSecrets)
+    public async Task ImportSecretsAsync(string jsonSecrets, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(jsonSecrets)) throw new ArgumentNullException(nameof(jsonSecrets));
@@ -676,7 +676,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task<IEnumerable<string>> ListSecretKeysAsync()
+    public async Task<IEnumerable<string>> ListSecretKeysAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 
@@ -698,7 +698,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task DeleteSecretAsync(string secretName)
+    public async Task DeleteSecretAsync(string secretName, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
@@ -719,7 +719,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
         }
     }
 
-    public async Task RotateSecretAsync(string secretName, string newValue)
+    public async Task RotateSecretAsync(string secretName, string newValue, CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
         if (string.IsNullOrEmpty(secretName)) throw new ArgumentNullException(nameof(secretName));
@@ -837,7 +837,7 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
     /// <summary>
     /// Get diagnostic information about the secret vault.
     /// </summary>
-    public async Task<string> GetDiagnosticsAsync()
+    public async Task<string> GetDiagnosticsAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptedLocalSecretVaultService));
 

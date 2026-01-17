@@ -1,3 +1,4 @@
+using System.Threading;
 namespace WileyWidget.Services.Abstractions
 {
     public interface ISecretVaultService
@@ -7,55 +8,55 @@ namespace WileyWidget.Services.Abstractions
         void StoreSecret(string key, string value);
 
         // Async APIs used by services that perform IO or network access
-        System.Threading.Tasks.Task<string?> GetSecretAsync(string key);
-        System.Threading.Tasks.Task SetSecretAsync(string key, string value);
-        System.Threading.Tasks.Task RotateSecretAsync(string secretName, string newValue);
+        System.Threading.Tasks.Task<string?> GetSecretAsync(string key, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task SetSecretAsync(string key, string value, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task RotateSecretAsync(string secretName, string newValue, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Migrate any secrets present in environment variables into the configured vault.
         /// This is used at startup to move developer-supplied environment secrets into the
         /// local encrypted vault so runtime code can uniformly read from the vault.
         /// </summary>
-        System.Threading.Tasks.Task MigrateSecretsFromEnvironmentAsync();
+        System.Threading.Tasks.Task MigrateSecretsFromEnvironmentAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Populate production-only secrets into the vault when running in Production environment.
         /// Implementations may be a no-op for local file-based vaults.
         /// </summary>
-        System.Threading.Tasks.Task PopulateProductionSecretsAsync();
+        System.Threading.Tasks.Task PopulateProductionSecretsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Test whether the secret vault is available and operational.
         /// Returns true when accessible; false when not.
         /// </summary>
-        System.Threading.Tasks.Task<bool> TestConnectionAsync();
+        System.Threading.Tasks.Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Export all secrets to a JSON string for backup purposes.
         /// WARNING: This contains sensitive data - handle with care.
         /// </summary>
-        System.Threading.Tasks.Task<string> ExportSecretsAsync();
+        System.Threading.Tasks.Task<string> ExportSecretsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Import secrets from a JSON string.
         /// WARNING: This will overwrite existing secrets with the same keys.
         /// </summary>
-        System.Threading.Tasks.Task ImportSecretsAsync(string jsonSecrets);
+        System.Threading.Tasks.Task ImportSecretsAsync(string jsonSecrets, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// List all secret keys (without values) for inventory purposes.
         /// </summary>
-        System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<string>> ListSecretKeysAsync();
+        System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<string>> ListSecretKeysAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Delete a secret from the vault.
         /// </summary>
-        System.Threading.Tasks.Task DeleteSecretAsync(string secretName);
+        System.Threading.Tasks.Task DeleteSecretAsync(string secretName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get diagnostic information about the secret vault status.
         /// Returns formatted diagnostic report including vault health, permissions, and stored secrets count.
         /// </summary>
-        System.Threading.Tasks.Task<string> GetDiagnosticsAsync();
+        System.Threading.Tasks.Task<string> GetDiagnosticsAsync(CancellationToken cancellationToken = default);
     }
 }

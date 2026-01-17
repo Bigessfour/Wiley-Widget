@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 
@@ -76,17 +77,17 @@ namespace WileyWidget.Abstractions
         /// <summary>
         /// Remove a cached entry by key.
         /// </summary>
-        Task RemoveAsync(string key);
+        Task RemoveAsync(string key, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Determines whether a key exists in the cache.
         /// </summary>
-        Task<bool> ExistsAsync(string key);
+        Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Clear all entries from the cache. Implementations that cannot support a global clear
         /// (for example, some distributed caches) may throw NotSupportedException.
         /// </summary>
-        Task ClearAllAsync();
+        Task ClearAllAsync(CancellationToken cancellationToken = default);
     }
 }

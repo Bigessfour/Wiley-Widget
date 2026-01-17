@@ -1,3 +1,4 @@
+using System.Threading;
 using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
@@ -32,6 +33,6 @@ namespace WileyWidget.Services.Abstractions
         /// Loads application settings asynchronously
         /// </summary>
         /// <returns>A task representing the asynchronous operation</returns>
-        System.Threading.Tasks.Task LoadAsync();
+        System.Threading.Tasks.Task LoadAsync(CancellationToken cancellationToken = default);
     }
 }

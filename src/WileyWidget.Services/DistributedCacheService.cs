@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -75,20 +76,20 @@ namespace WileyWidget.Services
             await _distributedCache.SetAsync(key, bytes, cacheOptions);
         }
 
-        public Task RemoveAsync(string key)
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
             return _distributedCache.RemoveAsync(key);
         }
 
-        public async Task<bool> ExistsAsync(string key)
+        public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return false;
             var val = await _distributedCache.GetAsync(key);
             return val != null && val.Length > 0;
         }
 
-        public Task ClearAllAsync()
+        public Task ClearAllAsync(CancellationToken cancellationToken = default)
         {
             _logger?.LogWarning("DistributedCacheService: ClearAllAsync called but is not supported for distributed caches in a generic way.");
             throw new NotSupportedException("ClearAllAsync is not supported for DistributedCacheService. Use provider-specific flush or key-prefixing.");

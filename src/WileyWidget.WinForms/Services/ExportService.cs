@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace WileyWidget.WinForms.Services
         /// <param name="grid">The SfDataGrid to export.</param>
         /// <param name="filePath">Output file path for the Excel file.</param>
         /// <returns>Task representing the async export operation.</returns>
-        public static Task ExportGridToExcelAsync(SfDataGrid grid, string filePath)
+        public static Task ExportGridToExcelAsync(SfDataGrid grid, string filePath, CancellationToken cancellationToken = default)
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
@@ -57,7 +58,7 @@ namespace WileyWidget.WinForms.Services
         /// <param name="grid">The SfDataGrid to export.</param>
         /// <param name="filePath">Output file path for the PDF file.</param>
         /// <returns>Task representing the async export operation.</returns>
-        public static Task ExportGridToPdfAsync(SfDataGrid grid, string filePath)
+        public static Task ExportGridToPdfAsync(SfDataGrid grid, string filePath, CancellationToken cancellationToken = default)
         {
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
@@ -94,7 +95,7 @@ namespace WileyWidget.WinForms.Services
         /// <param name="chart">The chart object to export (must be Syncfusion chart control).</param>
         /// <param name="filePath">Output file path for the PDF file.</param>
         /// <returns>Task representing the async export operation.</returns>
-        public static Task ExportChartToPdfAsync(object chart, string filePath)
+        public static Task ExportChartToPdfAsync(object chart, string filePath, CancellationToken cancellationToken = default)
         {
             if (chart == null)
                 throw new ArgumentNullException(nameof(chart));

@@ -1,8 +1,10 @@
+using System.Threading;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WileyWidget.WinForms.Models;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.ViewModels;
 
@@ -10,8 +12,23 @@ namespace WileyWidget.ViewModels;
 /// ViewModel for BudgetAnalyticsPanel providing budget variance analytics,
 /// department performance metrics, and financial forecasting.
 /// </summary>
-public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyticsViewModel
+public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyticsViewModel, ILazyLoadViewModel
 {
+    private bool _isDataLoaded;
+    public bool IsDataLoaded
+    {
+        get => _isDataLoaded;
+        private set => SetProperty(ref _isDataLoaded, value);
+    }
+
+    public async Task OnVisibilityChangedAsync(bool isVisible)
+    {
+        if (isVisible && !IsDataLoaded && !IsLoading)
+        {
+            await LoadDataCommand.ExecuteAsync(null);
+            IsDataLoaded = true;
+        }
+    }
     [ObservableProperty]
     private bool isLoading;
 
@@ -55,7 +72,7 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
     }
 
     [RelayCommand(CanExecute = nameof(CanLoadData))]
-    public async Task LoadData()
+    public async Task LoadData(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -83,7 +100,7 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
     }
 
     [RelayCommand(CanExecute = nameof(CanRefresh))]
-    public async Task Refresh()
+    public async Task Refresh(CancellationToken cancellationToken = default)
     {
         await LoadData();
     }

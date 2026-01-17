@@ -67,6 +67,16 @@ namespace WileyWidget.WinForms.Services
         bool HidePanel(string panelName);
 
         /// <summary>
+        /// Adds an existing panel instance to the docking manager asynchronously.
+        /// </summary>
+        /// <param name="panel">The panel instance to add.</param>
+        /// <param name="panelName">The name/title of the panel.</param>
+        /// <param name="preferredStyle">The preferred docking style.</param>
+        /// <param name="allowFloating">Whether the panel can be floated.</param>
+        /// <returns>A task that completes when the panel is added.</returns>
+        Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true);
+
+        /// <summary>
         /// Update the docking manager after delayed initialization.
         /// </summary>
         void UpdateDockingManager(DockingManager dockingManager);
@@ -155,139 +165,180 @@ namespace WileyWidget.WinForms.Services
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
                 {
-                    ApplyCaptionSettings(existingPanel, panelName, allowFloating);
-                    _dockingManager.SetDockVisibility(existingPanel, true);
-                    try { existingPanel.BringToFront(); } catch { }
-                    _dockingManager.ActivateControl(existingPanel);
-                    ApplyPanelTheme(existingPanel);
-                    _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
+                    ActivateExistingPanel(existingPanel, panelName, allowFloating);
                     return;
                 }
 
                 // Create new instance via DI (supports constructor injection)
-                Console.WriteLine($"[PanelNavigationService] Creating panel: {panelName} ({typeof(TPanel).Name})");
+                _logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
-                panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
-
-                // Apply sensible defaults so charts/grids have usable space on first show
-                ApplyDefaultPanelSizing(panel, preferredStyle, typeof(TPanel));
-
+                
                 // If panel supports parameter initialization, pass the parameters
                 if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
                 {
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
 
-                // Enable docking features and caption buttons (required for headers and buttons to appear)
-                ApplyCaptionSettings(panel, panelName, allowFloating);
-
-                // Dock the panel
-                // Determine a sensible initial size rather than using magic numbers.
-                var effectiveStyle = preferredStyle;
-                if (effectiveStyle == DockingStyle.Fill)
-                {
-                    _logger.LogWarning(
-                        "DockingStyle.Fill is not supported when docking to the DockingManager host. Falling back to DockingStyle.Right for panel: {PanelName}",
-                        panelName);
-                    effectiveStyle = DockingStyle.Right;
-                }
-
-                int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
-
-                // Respect desired default dimension when we have one
-                var (desiredSize, _) = GetDefaultPanelSizes(typeof(TPanel), effectiveStyle);
-                if (effectiveStyle is DockingStyle.Left or DockingStyle.Right && desiredSize.Width > 0)
-                {
-                    dockSize = desiredSize.Width;
-                }
-                else if (effectiveStyle is DockingStyle.Top or DockingStyle.Bottom && desiredSize.Height > 0)
-                {
-                    dockSize = desiredSize.Height;
-                }
-                _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
-
-                // Ensure theme cascade reaches the newly created panel and children
-                ApplyPanelTheme(panel);
-
-                // Force visibility explicitly as requested for all panels
-                _dockingManager.SetDockVisibility(panel, true);
-
-                // Propagate accessibility and header/dock caption so UI automation can find panels reliably
-                try
-                {
-                    panel.AccessibleName = panelName;
-                    panel.AccessibleDescription = $"Panel: {panelName}";
-                    panel.Tag = panelName;
-
-                    // If panel has a PanelHeader control, ensure its title matches and is discoverable
-                    var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
-                    if (header != null)
-                    {
-                        header.Title = panelName; // PanelHeader.Title sets headerLabel.Name and AccessibleName
-                        try { header.AccessibleName = panelName + " header"; } catch { }
-                    }
-
-                    // If Syncfusion DockHandler is present, set its Text and a stable Name if supported (via reflection)
-                    var dh = panel.GetType().GetProperty("DockHandler")?.GetValue(panel);
-                    if (dh != null)
-                    {
-                        try
-                        {
-                            var txtProp = dh.GetType().GetProperty("Text");
-                            if (txtProp != null) txtProp.SetValue(dh, panelName);
-                        }
-                        catch { }
-
-                        try
-                        {
-                            var nameProp = dh.GetType().GetProperty("Name");
-                            if (nameProp != null && nameProp.CanWrite) nameProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
-                        }
-                        catch { }
-
-                        try
-                        {
-                            var aidProp = dh.GetType().GetProperty("AutomationId");
-                            if (aidProp != null && aidProp.CanWrite) aidProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
-                        }
-                        catch { }
-                    }
-                }
-                catch { }
-
-                // Small pause to allow DockingManager to update UI (helps FlaUI detection)
-                try { System.Threading.Thread.Sleep(250); } catch { }
-
-                // Prevent malformation in navigation - force clean rendering
-                try
-                {
-                    panel.MinimumSize = new Size(200, 200);
-                    panel.Invalidate(true);
-                    panel.Update();
-                    _dockingManager.ActivateControl(panel);
-                    _parentControl.PerformLayout();
-                    _logger.LogInformation("Panel {Name} docked (visible=true, minSize=200x200)", panelName);
-                }
-                catch (Exception navEx)
-                {
-                    _logger.LogError(navEx, "Panel navigation malformation protection failed for {Name}: {Message}", panelName, navEx.Message);
-                }
-
-                // Cache for reuse
-                _cachedPanels[panelName] = panel;
-
-                Console.WriteLine($"[PanelNavigationService] Docked and activated panel: {panelName} ({typeof(TPanel).Name})");
-                _logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
+                DockPanelInternal(panel, panelName, preferredStyle, allowFloating);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to show panel: {PanelName}", panelName);
-                MessageBox.Show(
-                    $"Unable to open {panelName}. See log for details.",
-                    "Navigation Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                ShowErrorMessage(panelName);
             }
+        }
+
+        public async Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+        {
+            if (panel == null) throw new ArgumentNullException(nameof(panel));
+            if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            if (_parentControl.InvokeRequired)
+            {
+                await (Task)_parentControl.Invoke(new Func<Task>(() => AddPanelAsync(panel, panelName, preferredStyle, allowFloating)));
+                return;
+            }
+
+            try
+            {
+                // Reuse existing panel if already created
+                if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
+                {
+                    ActivateExistingPanel(existingPanel, panelName, allowFloating);
+                    return;
+                }
+
+                DockPanelInternal(panel, panelName, preferredStyle, allowFloating);
+                await Task.Yield(); // Allow UI to breathe
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add panel async: {PanelName}", panelName);
+                ShowErrorMessage(panelName);
+            }
+        }
+
+        private void ActivateExistingPanel(UserControl existingPanel, string panelName, bool allowFloating)
+        {
+            ApplyCaptionSettings(existingPanel, panelName, allowFloating);
+            _dockingManager.SetDockVisibility(existingPanel, true);
+            try { existingPanel.BringToFront(); } catch { }
+            _dockingManager.ActivateControl(existingPanel);
+            ApplyPanelTheme(existingPanel);
+            _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
+        }
+
+        private void ShowErrorMessage(string panelName)
+        {
+            MessageBox.Show(
+                $"Unable to open {panelName}. See log for details.",
+                "Navigation Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+
+        private void DockPanelInternal(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
+        {
+            panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
+
+            // Apply sensible defaults so charts/grids have usable space on first show
+            ApplyDefaultPanelSizing(panel, preferredStyle, panel.GetType());
+
+            // Enable docking features and caption buttons (required for headers and buttons to appear)
+            ApplyCaptionSettings(panel, panelName, allowFloating);
+
+            // Dock the panel
+            var effectiveStyle = preferredStyle;
+            if (effectiveStyle == DockingStyle.Fill)
+            {
+                _logger.LogWarning(
+                    "DockingStyle.Fill is not supported when docking to the DockingManager host. Falling back to DockingStyle.Right for panel: {PanelName}",
+                    panelName);
+                effectiveStyle = DockingStyle.Right;
+            }
+
+            int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
+
+            // Respect desired default dimension when we have one
+            var (desiredSize, _) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
+            if (effectiveStyle is DockingStyle.Left or DockingStyle.Right && desiredSize.Width > 0)
+            {
+                dockSize = desiredSize.Width;
+            }
+            else if (effectiveStyle is DockingStyle.Top or DockingStyle.Bottom && desiredSize.Height > 0)
+            {
+                dockSize = desiredSize.Height;
+            }
+            _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
+
+            // Ensure theme cascade reaches the newly created panel and children
+            ApplyPanelTheme(panel);
+
+            // Force visibility explicitly as requested for all panels
+            _dockingManager.SetDockVisibility(panel, true);
+
+            // Propagate accessibility and header/dock caption so UI automation can find panels reliably
+            try
+            {
+                panel.AccessibleName = panelName;
+                panel.AccessibleDescription = $"Panel: {panelName}";
+                panel.Tag = panelName;
+
+                // If panel has a PanelHeader control, ensure its title matches and is discoverable
+                var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
+                if (header != null)
+                {
+                    header.Title = panelName;
+                    try { header.AccessibleName = panelName + " header"; } catch { }
+                }
+
+                // If Syncfusion DockHandler is present, set its Text and a stable Name if supported (via reflection)
+                var dh = panel.GetType().GetProperty("DockHandler")?.GetValue(panel);
+                if (dh != null)
+                {
+                    UpdateDockHandler(dh, panelName);
+                }
+            }
+            catch { }
+
+            // Small pause to allow DockingManager to update UI
+            try { System.Threading.Thread.Sleep(250); } catch { }
+
+            // Prevent malformation in navigation - force clean rendering
+            try
+            {
+                panel.MinimumSize = new Size(200, 200);
+                panel.Invalidate(true);
+                panel.Update();
+                _dockingManager.ActivateControl(panel);
+                _parentControl.PerformLayout();
+                _logger.LogInformation("Panel {Name} docked (visible=true, minSize=200x200)", panelName);
+            }
+            catch (Exception navEx)
+            {
+                _logger.LogError(navEx, "Panel navigation malformation protection failed for {Name}: {Message}", panelName, navEx.Message);
+            }
+
+            // Cache for reuse
+            _cachedPanels[panelName] = panel;
+
+            _logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
+        }
+
+        private void UpdateDockHandler(object dh, string panelName)
+        {
+            try
+            {
+                var txtProp = dh.GetType().GetProperty("Text");
+                if (txtProp != null) txtProp.SetValue(dh, panelName);
+
+                var nameProp = dh.GetType().GetProperty("Name");
+                if (nameProp != null && nameProp.CanWrite) nameProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
+
+                var aidProp = dh.GetType().GetProperty("AutomationId");
+                if (aidProp != null && aidProp.CanWrite) aidProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
+            }
+            catch { }
         }
 
         private static void ApplyPanelTheme(Control panel)

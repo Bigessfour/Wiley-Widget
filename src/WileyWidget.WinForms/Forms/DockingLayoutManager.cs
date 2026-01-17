@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Runtime.Serialization;
 using Syncfusion.Windows.Forms.Tools;
@@ -68,7 +69,7 @@ public class DockingLayoutManager : IDisposable
     /// </summary>
     /// <param name="dockingManager">DockingManager instance</param>
     /// <param name="layoutFilePath">Path to layout XML file</param>
-    public async Task LoadDockingLayoutAsync(DockingManager dockingManager, string layoutFilePath)
+    public async Task LoadDockingLayoutAsync(DockingManager dockingManager, string layoutFilePath, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -155,7 +156,7 @@ public class DockingLayoutManager : IDisposable
     /// <summary>
     /// Debounced save handler.
     /// </summary>
-    private async Task DebounceSaveDockingLayoutAsync()
+    private async Task DebounceSaveDockingLayoutAsync(CancellationToken cancellationToken = default)
     {
         _dockingLayoutSaveTimer?.Stop();
         // Assuming dockingManager and path are accessible; pass if needed

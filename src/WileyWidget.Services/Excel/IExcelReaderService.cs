@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using WileyWidget.Models;
@@ -14,12 +15,12 @@ public interface IExcelReaderService
     /// </summary>
     /// <param name="filePath">Path to the Excel file</param>
     /// <returns>Collection of budget entries</returns>
-    Task<IEnumerable<BudgetEntry>> ReadBudgetDataAsync(string filePath);
+    Task<IEnumerable<BudgetEntry>> ReadBudgetDataAsync(string filePath, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Validates the structure of an Excel file for budget import
     /// </summary>
     /// <param name="filePath">Path to the Excel file</param>
     /// <returns>True if the file structure is valid</returns>
-    Task<bool> ValidateExcelStructureAsync(string filePath);
+    Task<bool> ValidateExcelStructureAsync(string filePath, CancellationToken cancellationToken = default);
 }

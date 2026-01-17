@@ -20,8 +20,24 @@ namespace WileyWidget.WinForms.ViewModels;
 /// <summary>
 /// ViewModel for managing municipal accounts with filtering, CRUD operations, and data aggregation.
 /// </summary>
-public partial class AccountsViewModel : ObservableRecipient, IDisposable
+public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazyLoadViewModel
 {
+    private bool _isDataLoaded;
+    public bool IsDataLoaded
+    {
+        get => _isDataLoaded;
+        private set => SetProperty(ref _isDataLoaded, value);
+    }
+
+    public async Task OnVisibilityChangedAsync(bool isVisible)
+    {
+        if (isVisible && !IsDataLoaded && !IsLoading)
+        {
+            await LoadAccountsAsync();
+            IsDataLoaded = true;
+        }
+    }
+
         private readonly ILogger<AccountsViewModel> _logger;
         private readonly IAccountsRepository _accountsRepository;
         private readonly IMunicipalAccountRepository _municipalAccountRepository;
@@ -136,26 +152,15 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
             _accountsRepository = accountsRepository ?? throw new ArgumentNullException(nameof(accountsRepository));
             _municipalAccountRepository = municipalAccountRepository ?? throw new ArgumentNullException(nameof(municipalAccountRepository));
 
-            // Auto-load data on initialization
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(100); // Brief delay to allow UI to initialize
-                    await LoadAccountsAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during auto-load in AccountsViewModel constructor");
-                }
-            });
+            // Optimization: Defer data loading until the associated panel becomes visible.
+            // This is handled by ILazyLoadViewModel via OnVisibilityChangedAsync.
         }
 
         /// <summary>
         /// Gets the command to load accounts from the repository.
         /// </summary>
         [RelayCommand]
-        private async Task LoadAccountsAsync()
+        private async Task LoadAccountsAsync(CancellationToken cancellationToken = default)
         {
             // Cancel any ongoing load operation
             _loadCancellationSource?.Cancel();
@@ -259,7 +264,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets the command to apply filters and reload data.
         /// </summary>
         [RelayCommand]
-        private async Task FilterAccountsAsync()
+        private async Task FilterAccountsAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Applying filters - Fund: {Fund}, Type: {Type}, Search: {Search}",
                 SelectedFund, SelectedAccountType, SearchText);
@@ -270,7 +275,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets the command to clear all filters.
         /// </summary>
         [RelayCommand]
-        private async Task ClearFiltersAsync()
+        private async Task ClearFiltersAsync(CancellationToken cancellationToken = default)
         {
             SelectedFund = null;
             SelectedAccountType = null;
@@ -283,7 +288,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets the command to create a new account.
         /// </summary>
         [RelayCommand]
-        private async Task CreateAccountAsync(MunicipalAccount newAccount)
+        private async Task CreateAccountAsync(MunicipalAccount newAccount, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -325,7 +330,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets the command to update an existing account.
         /// </summary>
         [RelayCommand]
-        private async Task UpdateAccountAsync(MunicipalAccount updatedAccount)
+        private async Task UpdateAccountAsync(MunicipalAccount updatedAccount, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -357,7 +362,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets the command to delete an account.
         /// </summary>
         [RelayCommand(CanExecute = nameof(CanDeleteAccount))]
-        private async Task DeleteAccountAsync()
+        private async Task DeleteAccountAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -399,7 +404,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable
         /// Gets all departments for dropdown/filtering purposes.
         /// </summary>
         /// <returns>List of all departments.</returns>
-        public async Task<List<Department>> GetDepartmentsAsync()
+        public async Task<List<Department>> GetDepartmentsAsync(CancellationToken cancellationToken = default)
         {
             try
             {

@@ -117,14 +117,20 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
     /// Loads department summary data asynchronously with proper cancellation support.
     /// Thread-safe and UI-friendly (updates collections on UI thread context).
     /// </summary>
-    public async Task LoadDataAsync()
+    public async Task LoadDataAsync(CancellationToken cancellationToken = default)
     {
+
         // Cancel any previous load operation
-        _loadCancellationTokenSource?.Cancel();
-        _loadCancellationTokenSource?.Dispose();
+        if (_loadCancellationTokenSource != null)
+        {
+            await _loadCancellationTokenSource.CancelAsync();
+            _loadCancellationTokenSource.Dispose();
+        }
         _loadCancellationTokenSource = new CancellationTokenSource();
 
-        var cancellationToken = _loadCancellationTokenSource.Token;
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _loadCancellationTokenSource.Token);
+        CancellationToken effectiveCancellationToken = linkedCts.Token;
+
 
         try
         {
@@ -134,9 +140,9 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
             Logger.LogInformation("Loading department summary data");
 
             // Fetch departments from repository
-            var departments = await _departmentRepository.GetAllAsync();
+            var departments = await _departmentRepository.GetAllAsync(effectiveCancellationToken);
 
-            if (cancellationToken.IsCancellationRequested)
+            if (effectiveCancellationToken.IsCancellationRequested)
             {
                 Logger.LogDebug("Department summary data load was cancelled");
                 return;
@@ -256,7 +262,7 @@ public class DepartmentMetric
 /// </summary>
 internal class FallbackDepartmentRepository : IDepartmentRepository
 {
-    public Task<IEnumerable<Department>> GetAllAsync()
+    public Task<IEnumerable<Department>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         // Return sample data for design-time preview
         var sampleDepartments = new List<Department>
@@ -269,30 +275,30 @@ internal class FallbackDepartmentRepository : IDepartmentRepository
         return Task.FromResult<IEnumerable<Department>>(sampleDepartments);
     }
 
-    public Task<Department?> GetByIdAsync(int id)
+    public Task<Department?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         => Task.FromResult<Department?>(null);
 
-    public Task<Department?> GetByCodeAsync(string code)
+    public Task<Department?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
         => Task.FromResult<Department?>(null);
 
-    public Task AddAsync(Department department)
+    public Task AddAsync(Department department, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
-    public Task UpdateAsync(Department department)
+    public Task UpdateAsync(Department department, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
-    public Task<bool> DeleteAsync(int id)
+    public Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
         => Task.FromResult(false);
 
-    public Task<bool> ExistsByCodeAsync(string code)
+    public Task<bool> ExistsByCodeAsync(string code, CancellationToken cancellationToken = default)
         => Task.FromResult(false);
 
-    public Task<IEnumerable<Department>> GetRootDepartmentsAsync()
+    public Task<IEnumerable<Department>> GetRootDepartmentsAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<IEnumerable<Department>>(new List<Department>());
 
-    public Task<IEnumerable<Department>> GetChildDepartmentsAsync(int parentId)
+    public Task<IEnumerable<Department>> GetChildDepartmentsAsync(int parentId, CancellationToken cancellationToken = default)
         => Task.FromResult<IEnumerable<Department>>(new List<Department>());
 
-    public Task<(IEnumerable<Department> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1, int pageSize = 50, string? sortBy = null, bool sortDescending = false)
+    public Task<(IEnumerable<Department> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1, int pageSize = 50, string? sortBy = null, bool sortDescending = false, CancellationToken cancellationToken = default)
         => Task.FromResult((Items: Enumerable.Empty<Department>(), TotalCount: 0));
 }

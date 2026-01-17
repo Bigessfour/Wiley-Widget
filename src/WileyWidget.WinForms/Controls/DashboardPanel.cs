@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Drawing;
 using System.Linq;
@@ -132,12 +133,11 @@ namespace WileyWidget.WinForms.Controls
             try { Serilog.Log.Debug("DashboardPanel initialized"); } catch { }
 
             // Wire initial load
-#pragma warning disable CS4014
-            EnsureLoadedAsync();
-#pragma warning restore CS4014
+            // Defer load until visibility notification via ILazyLoadViewModel
+            // EnsureLoadedAsync();
         }
 
-        private async Task EnsureLoadedAsync()
+        private async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
         {
             try
             {

@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 using Syncfusion.Drawing;
 using System.Collections.Generic;
@@ -942,7 +943,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Loads customers from the repository.
     /// </summary>
-    private async Task LoadCustomersAsync()
+    private async Task LoadCustomersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -960,7 +961,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Refreshes the customer list.
     /// </summary>
-    private async Task RefreshCustomersAsync()
+    private async Task RefreshCustomersAsync(CancellationToken cancellationToken = default)
     {
         await LoadCustomersAsync();
     }
@@ -968,7 +969,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Searches customers based on current search text.
     /// </summary>
-    private async Task SearchCustomersAsync()
+    private async Task SearchCustomersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -986,7 +987,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Adds a new customer.
     /// </summary>
-    private async Task AddCustomerAsync()
+    private async Task AddCustomerAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1037,7 +1038,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Deletes the selected customer after confirmation.
     /// </summary>
-    private async Task DeleteSelectedCustomerAsync()
+    private async Task DeleteSelectedCustomerAsync(CancellationToken cancellationToken = default)
     {
         if (_viewModel.SelectedCustomer == null) return;
 
@@ -1075,7 +1076,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Synchronizes customers with QuickBooks.
     /// </summary>
-    private async Task SyncWithQuickBooksAsync()
+    private async Task SyncWithQuickBooksAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1108,7 +1109,7 @@ public partial class CustomersPanel : UserControl
     /// <summary>
     /// Exports customers to CSV file.
     /// </summary>
-    private async Task ExportCustomersAsync()
+    private async Task ExportCustomersAsync(CancellationToken cancellationToken = default)
     {
         try
         {

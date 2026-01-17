@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -18,12 +19,15 @@ namespace WileyWidget.WinForms.Forms
     /// Provides metric summaries, recent activity grid data, loading/error state,
     /// and derived analytics for rich UI presentation (cards, conditional formatting).
     /// </summary>
-    public sealed partial class MainViewModel : ObservableObject, IDisposable
+    public sealed partial class MainViewModel : ObservableObject, IDisposable, ILazyLoadViewModel
     {
         private readonly ILogger<MainViewModel> _logger;
         private readonly IDashboardService _dashboardService;
         private readonly IAILoggingService _aiLoggingService;
         private bool _disposed;
+
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         [ObservableProperty]
         private string title = "Wiley Widget — WinForms + .NET 9";
@@ -268,8 +272,24 @@ namespace WileyWidget.WinForms.Forms
 
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("InitializeAsync called");
-            await LoadDataAsync(cancellationToken);
+            _logger.LogInformation("InitializeAsync called - deferring heavy load to lazy transition");
+            // Do not call LoadDataAsync here to support lazy loading
+            // Only perform lightweight initialization if needed
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Triggered by the UI when the panel becomes visible.
+        /// Performs the heavy data load if it hasn't been done yet.
+        /// </summary>
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            if (isVisible && !IsDataLoaded && !IsLoading)
+            {
+                _logger.LogInformation("Panel visible for first time; triggering lazy load");
+                await LoadDataAsync(CancellationToken.None);
+                IsDataLoaded = true;
+            }
         }
 
         public void ProcessDashboard(IEnumerable<DashboardItem> dashboardItems)

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -144,7 +145,7 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     /// <summary>
     /// Flushes buffered telemetry logs to the database using a fresh context.
     /// </summary>
-    private async Task FlushTelemetryLogsAsync()
+    private async Task FlushTelemetryLogsAsync(CancellationToken cancellationToken = default)
     {
         if (_telemetryQueue.IsEmpty)
             return;

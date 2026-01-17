@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using WileyWidget.Models;
 using WileyWidget.Business;
 
@@ -14,36 +15,36 @@ public interface IEnterpriseRepository
     /// <summary>
     /// Gets all enterprises.
     /// </summary>
-    Task<IEnumerable<Enterprise>> GetAllAsync();
+    Task<IEnumerable<Enterprise>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets an enterprise by ID.
     /// </summary>
-    Task<Enterprise?> GetByIdAsync(int id);
+    Task<Enterprise?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets enterprises by type.
     /// </summary>
-    Task<IEnumerable<Enterprise>> GetByTypeAsync(string type);
+    Task<IEnumerable<Enterprise>> GetByTypeAsync(string type, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a new enterprise.
     /// </summary>
-    Task<Enterprise> AddAsync(Enterprise enterprise);
+    Task<Enterprise> AddAsync(Enterprise enterprise, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing enterprise.
     /// </summary>
-    Task<Enterprise> UpdateAsync(Enterprise enterprise);
+    Task<Enterprise> UpdateAsync(Enterprise enterprise, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes an enterprise by ID.
     /// </summary>
-    Task<bool> DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the total count of enterprises.
     /// </summary>
-    Task<int> GetCountAsync();
+    Task<int> GetCountAsync(CancellationToken cancellationToken = default);
 }
 

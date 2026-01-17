@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System.Diagnostics;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +39,7 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Gets audit trail entries within a date range
     /// </summary>
-    public async Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(DateTime startDate, DateTime endDate)
+    public async Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("AuditRepository.GetAuditTrail");
         activity?.SetTag("operation.type", "query");
@@ -73,7 +74,7 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Gets audit trail entries for a specific entity type
     /// </summary>
-    public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, DateTime startDate, DateTime endDate)
+    public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.AuditEntries
@@ -86,7 +87,7 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Gets audit trail entries for a specific entity
     /// </summary>
-    public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, int entityId, DateTime startDate, DateTime endDate)
+    public async Task<IEnumerable<AuditEntry>> GetAuditTrailForEntityAsync(string entityType, int entityId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.AuditEntries
@@ -99,7 +100,7 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Adds a new audit entry
     /// </summary>
-    public async Task AddAuditEntryAsync(AuditEntry auditEntry)
+    public async Task AddAuditEntryAsync(AuditEntry auditEntry, CancellationToken cancellationToken = default)
     {
         if (auditEntry == null) throw new ArgumentNullException(nameof(auditEntry));
 
@@ -111,14 +112,13 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Gets paged audit entries with sorting support
     /// </summary>
-    public async Task<(IEnumerable<AuditEntry> Items, int TotalCount)> GetPagedAsync(
-        int pageNumber = 1,
+    public async Task<(IEnumerable<AuditEntry> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1,
         int pageSize = 50,
         string? sortBy = null,
         bool sortDescending = false,
         DateTime? startDate = null,
         DateTime? endDate = null,
-        string? entityType = null)
+        string? entityType = null, CancellationToken cancellationToken = default)
     {
         // Validate paging parameters
         if (pageNumber < 1) throw new ArgumentOutOfRangeException(nameof(pageNumber));
@@ -155,7 +155,7 @@ public class AuditRepository : IAuditRepository
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
     /// </summary>
-    public async Task<IQueryable<AuditEntry>> GetQueryableAsync()
+    public async Task<IQueryable<AuditEntry>> GetQueryableAsync(CancellationToken cancellationToken = default)
     {
         var context = await _contextFactory.CreateDbContextAsync();
         return context.AuditEntries.AsQueryable();

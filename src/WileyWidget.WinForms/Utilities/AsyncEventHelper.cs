@@ -132,11 +132,10 @@ namespace WileyWidget.WinForms.Utilities
         /// <param name="logger">Logger instance for timeout warnings</param>
         /// <param name="dialogName">Human-readable dialog name for logging</param>
         /// <returns>DialogResult if completed, DialogResult.Cancel if timed out</returns>
-        public static async Task<DialogResult> ExecuteDialogWithTimeoutAsync(
-            Func<DialogResult> showDialogAction,
+        public static async Task<DialogResult> ExecuteDialogWithTimeoutAsync(Func<DialogResult> showDialogAction,
             TimeSpan? timeout = null,
             ILogger? logger = null,
-            string dialogName = "Dialog")
+            string dialogName = "Dialog", CancellationToken cancellationToken = default)
         {
             if (showDialogAction == null) throw new ArgumentNullException(nameof(showDialogAction));
 

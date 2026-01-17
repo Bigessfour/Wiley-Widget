@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -554,7 +555,7 @@ namespace WileyWidget.WinForms.Controls
             catch { }
         }
 
-        private async Task RefreshDataAsync()
+        private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -567,7 +568,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private async Task ExportReportAsync()
+        private async Task ExportReportAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -643,20 +644,7 @@ namespace WileyWidget.WinForms.Controls
                 // Defer sizing validation until layout is complete
                 DeferSizeValidation();
 
-                if (!DesignMode && !_vm.IsLoading)
-                {
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await _vm.LoadDataCommand.ExecuteAsync(null);
-                        }
-                        catch (Exception ex)
-                        {
-                            Serilog.Log.Error(ex, "BudgetAnalyticsPanel: OnLoad data fetch failed");
-                        }
-                    });
-                }
+                // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
             }
             catch (Exception ex)
             {

@@ -101,7 +101,7 @@ namespace WileyWidget.WinForms
             }
         }
 
-        private static async Task RunApplicationAsync(string[] args)
+        private static async Task RunApplicationAsync(string[] args, CancellationToken cancellationToken = default)
         {
             // Build host and DI container
             var host = BuildHost(args);
@@ -117,6 +117,9 @@ namespace WileyWidget.WinForms
             // Create application-wide scope
             _applicationScope = host.Services.CreateScope();
             Services = _applicationScope.ServiceProvider;
+
+            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services);
+            using var phase = timelineService?.BeginPhaseScope("Application Startup Orchestration");
 
             var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(Services);
             var hostEnvironment = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IHostEnvironment>(Services);

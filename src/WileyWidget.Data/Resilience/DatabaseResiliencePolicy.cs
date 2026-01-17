@@ -1,3 +1,4 @@
+using System.Threading;
 using WileyWidget.Models;
 #nullable enable
 using Microsoft.Data.SqlClient;
@@ -173,6 +174,42 @@ public static class DatabaseResiliencePolicy
     }
 
     /// <summary>
+    /// Executes a database operation with combined resilience policy (synchronous)
+    /// </summary>
+    public static TResult Execute<TResult>(Func<TResult> operation)
+    {
+        return Policy.Handle<SqlException>(ex => IsTransientError(ex))
+            .Or<TimeoutException>()
+            .WaitAndRetry(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)),
+                onRetry: (exception, timeSpan, retryCount, context) =>
+                {
+                    Log.Warning(exception, "Database operation failed (attempt {RetryCount}). Retrying in {RetryDelayMs}ms",
+                        retryCount, timeSpan.TotalMilliseconds);
+                })
+            .Execute(operation);
+    }
+
+    /// <summary>
+    /// Executes a void database operation with combined resilience policy (synchronous)
+    /// </summary>
+    public static void Execute(Action operation)
+    {
+        Policy.Handle<SqlException>(ex => IsTransientError(ex))
+            .Or<TimeoutException>()
+            .WaitAndRetry(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(500 * Math.Pow(2, retryAttempt - 1)),
+                onRetry: (exception, timeSpan, retryCount, context) =>
+                {
+                    Log.Warning(exception, "Database operation failed (attempt {RetryCount}). Retrying in {RetryDelayMs}ms",
+                        retryCount, timeSpan.TotalMilliseconds);
+                })
+            .Execute(operation);
+    }
+
+    /// <summary>
     /// Executes a database operation with combined resilience policy
     /// </summary>
     public static Task<TResult> ExecuteAsync<TResult>(Func<Task<TResult>> operation)
@@ -183,7 +220,7 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Executes a void database operation with combined resilience policy
     /// </summary>
-    public static Task ExecuteAsync(Func<Task> operation)
+    public static Task ExecuteAsync(Func<Task> operation, CancellationToken cancellationToken = default)
     {
         return CombinedDatabasePolicy.ExecuteAsync(operation);
     }
@@ -207,7 +244,7 @@ public static class DatabaseResiliencePolicy
     /// <summary>
     /// Executes a void write operation with stricter resilience policy
     /// </summary>
-    public static Task ExecuteWriteAsync(Func<Task> operation)
+    public static Task ExecuteWriteAsync(Func<Task> operation, CancellationToken cancellationToken = default)
     {
         return WriteOperationPolicy.ExecuteAsync(operation);
     }

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,7 +25,7 @@ public class ExcelReaderService : IExcelReaderService
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<BudgetEntry>> ReadBudgetDataAsync(string filePath)
+    public async Task<IEnumerable<BudgetEntry>> ReadBudgetDataAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
@@ -122,7 +123,7 @@ public class ExcelReaderService : IExcelReaderService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> ValidateExcelStructureAsync(string filePath)
+    public async Task<bool> ValidateExcelStructureAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));

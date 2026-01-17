@@ -33,13 +33,13 @@ See: [Syncfusion WinForms Documentation](https://help.syncfusion.com/windowsform
 - [Quick Start](#quick-start)
 - [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
 - [Configuration & Secrets](#configuration--secrets)
-- [Architecture](#architecture)
+- [Configuration & Secrets](#configuration--secret-management)
+- [Architecture](#%EF%B8%8F-architecture)
 - [Core Features](#core-features)
 - [Technology Stack](#technology-stack)
 - [Development](#development)
 - [Testing](#testing)
 - [QuickBooks Integration](#quickbooks-integration)
-- [Configuration & Secrets](#configuration--secrets)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -251,7 +251,7 @@ All Views and ViewModels follow consistent namespace patterns:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -637,7 +637,7 @@ private string GetSecretFileName(string secretName)
 
 Additional entropy layer bound to the specific machine using DPAPI:
 
-```csharp
+````csharp
 // Entropy is machine-bound and protected by DPAPI
 private byte[] LoadOrCreateEntropy()
 {
@@ -649,21 +649,20 @@ private byte[] LoadOrCreateEntropy()
         byte[] encryptedEntropy = File.ReadAllBytes(entropyFile);
         return ProtectedData.Unprotect(
             encryptedEntropy,
-            null,
-            DataProtectionScope.CurrentUser
-        );
-    }
 
-    // Generate new entropy and protect with DPAPI
-    byte[] entropy = new byte[32];
-    RandomNumberGenerator.Fill(entropy);
-    File.WriteAllBytes(
-        entropyFile,
-        ProtectedData.Protect(entropy, null, DataProtectionScope.CurrentUser)
-    );
-    return entropy;
-}
-```
+             - [Overview](#overview)
+             - [Quick Start](#quick-start)
+             - [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
+             - [Configuration & Secret Management](#configuration--secret-management)
+             - [Architecture](#architecture)
+             - [Core Features](#core-features)
+             - [Technology Stack](#technology-stack)
+             - [Development](#development)
+             - [Testing](#testing)
+             - [QuickBooks Integration](#quickbooks-integration)
+             - [Documentation](#documentation)
+             - [Contributing](#contributing)
+             - [License](#license)
 
 **Protection Layers:**
 
@@ -710,7 +709,7 @@ public async Task MigrateEnvironmentVariablesAsync()
         }
     }
 }
-```
+````
 
 **Security Benefits:**
 
@@ -1062,7 +1061,7 @@ WileyWidget integrates with **QuickBooks Online (QBO)** via OAuth2 for secure fi
 - **Database Seeding**: Consistent test data across runs
 - **Performance Benchmarking**: Automated performance regression detection
 
-#### **✅ Unit Testing (WileyWidget.Tests)**
+### **✅ Unit Testing (WileyWidget.Tests)**
 
 **Scope**: Individual components and business logic
 **Tools**: xUnit, Moq, FluentAssertions, AutoFixture
@@ -2320,7 +2319,7 @@ WileyWidget implements a **comprehensive multi-layer testing strategy**:
 
 ### Running Tests
 
-```powershell
+````powershell
 # Run all tests
 dotnet test WileyWidget.sln
 
@@ -2334,18 +2333,23 @@ CHANGELOG.md / RELEASE_NOTES.md
 ```
 
 # Run with coverage
+
 dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
 
 # Run filtered tests
+
 dotnet test --filter "Category=Unit"
 
 # Run UI tests only
+
 RUN_UI_TESTS=1 dotnet test WileyWidget.UiTests/
 
 # Generate coverage report
+
 dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
-reportgenerator -reports:**/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:Html
-```
+reportgenerator -reports:\*\*/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:Html
+
+````
 
 ### Coverage Target
 
@@ -2393,9 +2397,9 @@ _logger.LogInformation("QuickBooks sync completed",
     new { SyncedCount = 42, Duration = "5.2s", Status = "Success" });
 ```
 
-### Diagnostic Tools
+## Diagnostic Tools
 
-```powershell
+````powershell
 # View application logs
 explorer %AppData%\WileyWidget\logs
 
@@ -2405,8 +2409,13 @@ Get-Content %AppData%\WileyWidget\logs\app-*.log -Wait
 # Check Syncfusion license registration
 pwsh ./scripts/show-syncfusion-license.ps1 -Watch
 
-### 6. Reset / Clean
+## Reset / Clean
 
+```pwsh
+taskkill /IM WileyWidget.exe /F 2>$null
+taskkill /IM testhost.exe /F 2>$null
+dotnet build WileyWidget.sln
+`
 ```pwsh
 taskkill /IM WileyWidget.exe /F 2>$null
 taskkill /IM testhost.exe /F 2>$null
@@ -2423,7 +2432,7 @@ Just delete the settings file or manually blank the Qbo\* entries; a new auth wi
 
 Daily minimal:
 
-```pwsh
+```powershell
 git status
 git add .
 git commit -m "feat: describe change"
@@ -2433,7 +2442,7 @@ git push
 
 Feature (risky) change:
 
-```pwsh
+```powershell
 git checkout -b feature/thing
 # edits
 git commit -m "feat: add thing"
@@ -2452,7 +2461,7 @@ Undo helpers:
 
 Tag release:
 
-```pwsh
+```powershell
 git tag -a v0.1.0 -m "v0.1.0"
 git push --tags
 ```
@@ -2463,7 +2472,7 @@ Moved to `CONTRIBUTING.md` to keep this lean.
 
 ## Syncfusion License Verification
 
-To verify your Syncfusion Community License (v30.2.7) is correctly set up:
+To verify your Syncfusion Community License (v32.1.19) is correctly set up:
 
 1. **Check Environment Variable**:
 
@@ -2471,12 +2480,16 @@ To verify your Syncfusion Community License (v30.2.7) is correctly set up:
    [System.Environment]::GetEnvironmentVariable('SYNCFUSION_LICENSE_KEY', 'User')
    ```
 
-   Should return a ~96+ character key (do NOT paste it in issues). If null/empty, it's not registered.
+   Should return a valid key string (v32+ keys are long and JWT-like). If null/empty, it's not registered.
 
-2. **Run Inspection Script (live watch)**:
+2. **Run Setup/Verification**:
 
    ```pwsh
-   pwsh ./scripts/show-syncfusion-license.ps1 -Watch
+   # Configure new key
+   pwsh ./scripts/setup-license.ps1
+
+   # Verify setup
+   pwsh ./scripts/maintenance/verify-license-setup.ps1
    ```
 
    Confirms detection source (env var vs file) and registration status in real-time.
@@ -2596,3 +2609,4 @@ WileyWidget/                           # Solution root
 ```text
 # Test commit for manifest generation
 ```
+````

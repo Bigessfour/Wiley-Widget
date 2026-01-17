@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 
@@ -35,7 +36,7 @@ namespace WileyWidget.Services.Threading
         /// </summary>
         /// <param name="action">The action to execute</param>
         /// <returns>A task representing the async operation</returns>
-        Task InvokeAsync(Action action);
+        Task InvokeAsync(Action action, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Executes a function on the UI thread asynchronously and returns the result

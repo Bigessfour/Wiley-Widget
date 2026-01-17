@@ -1,3 +1,4 @@
+using System.Threading;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
@@ -1058,7 +1059,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #region Helper Methods
 
-    private async Task ExecuteCommandAsync(CommunityToolkit.Mvvm.Input.IAsyncRelayCommand? command)
+    private async Task ExecuteCommandAsync(CommunityToolkit.Mvvm.Input.IAsyncRelayCommand? command, CancellationToken cancellationToken = default)
     {
         if (command == null || !command.CanExecute(null)) return;
 
@@ -1081,7 +1082,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Shows disconnect confirmation dialog.
     /// Prevents accidental disconnection from QuickBooks.
     /// </summary>
-    public async Task<bool> ShowDisconnectConfirmationAsync()
+    public async Task<bool> ShowDisconnectConfirmationAsync(CancellationToken cancellationToken = default)
     {
         var result = MessageBox.Show(
             "Are you sure you want to disconnect from QuickBooks?\n\n" +
@@ -1097,7 +1098,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Shows clear history confirmation dialog.
     /// Prevents accidental deletion of sync history.
     /// </summary>
-    public async Task<bool> ShowClearHistoryConfirmationAsync()
+    public async Task<bool> ShowClearHistoryConfirmationAsync(CancellationToken cancellationToken = default)
     {
         var result = MessageBox.Show(
             "Are you sure you want to clear all sync history?\n\n" +
@@ -1113,7 +1114,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Shows sync confirmation dialog.
     /// Informs user about the sync operation and allows cancellation.
     /// </summary>
-    public async Task<bool> ShowSyncConfirmationAsync(string operation = "Sync")
+    public async Task<bool> ShowSyncConfirmationAsync(string operation = "Sync", CancellationToken cancellationToken = default)
     {
         var result = MessageBox.Show(
             $"Start {operation} with QuickBooks?\n\n" +
@@ -1224,7 +1225,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Retries a failed sync operation.
     /// Allows user to retry specific failed sync records.
     /// </summary>
-    public async Task<bool> ShowRetryFailedSyncConfirmationAsync(dynamic failedRecord)
+    public async Task<bool> ShowRetryFailedSyncConfirmationAsync(dynamic failedRecord, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1298,7 +1299,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Handles retry action for failed sync records.
     /// </summary>
-    private async Task RetryFailedSyncAsync(dynamic failedRecord)
+    private async Task RetryFailedSyncAsync(dynamic failedRecord, CancellationToken cancellationToken = default)
     {
         if (failedRecord == null) return;
 
@@ -1347,7 +1348,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #region Helper Methods
 
-    private async Task RefreshAsync()
+    private async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         if (ViewModel != null)
         {

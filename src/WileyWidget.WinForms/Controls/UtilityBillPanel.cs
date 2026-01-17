@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -957,7 +958,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Helper Methods
 
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -985,7 +986,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         }
     }
 
-    private async Task ExecuteCommandAsync(IAsyncRelayCommand command)
+    private async Task ExecuteCommandAsync(IAsyncRelayCommand command, CancellationToken cancellationToken = default)
     {
         try
         {

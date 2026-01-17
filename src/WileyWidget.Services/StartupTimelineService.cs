@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -452,6 +453,13 @@ public class StartupTimelineReport
 /// </summary>
 public class StartupTimelineService : IStartupTimelineService
 {
+    private static readonly Meter StartupMeter = new("WileyWidget.Startup", "1.0.0");
+    private static readonly Histogram<double> PhaseDurationHistogram = StartupMeter.CreateHistogram<double>("startup.phase.duration", "ms", "Duration of startup phases in milliseconds");
+    private static readonly Histogram<double> OperationDurationHistogram = StartupMeter.CreateHistogram<double>("startup.operation.duration", "ms", "Duration of startup operations in milliseconds");
+    private static readonly Counter<long> SlowPhaseCounter = StartupMeter.CreateCounter<long>("startup.phase.slow", "count", "Number of slow startup phases (>500ms)");
+    private static readonly Counter<long> SlowOperationCounter = StartupMeter.CreateCounter<long>("startup.operation.slow", "count", "Number of slow startup operations (>500ms)");
+    private static readonly Counter<long> TotalStartupEventCounter = StartupMeter.CreateCounter<long>("startup.events.total", "count", "Total number of startup events recorded");
+
     private readonly ConcurrentBag<StartupEvent> _events = new();
     private readonly ConcurrentDictionary<string, StartupEvent> _activePhases = new();
     private readonly ILogger<StartupTimelineService> _logger;
@@ -574,16 +582,35 @@ public class StartupTimelineService : IStartupTimelineService
         if (_activePhases.TryRemove(phaseName, out var evt))
         {
             evt.EndTime = DateTime.Now;
+            var duration = evt.Duration?.TotalMilliseconds ?? 0;
+
+            // Log if slow (>500ms) to Trace for diagnostic tracking (from trace requirement)
+            if (duration > 500)
+            {
+                System.Diagnostics.Trace.WriteLine($"[PERF] Slow Startup Phase: {phaseName} took {duration:F0}ms");
+            }
+
+            // Record duration in performance counters (metrics)
+            PhaseDurationHistogram.Record(duration, new KeyValuePair<string, object?>("phase.name", phaseName));
+            TotalStartupEventCounter.Add(1, new KeyValuePair<string, object?>("event.type", "Phase"), new KeyValuePair<string, object?>("phase.name", phaseName));
 
             var threadMarker = evt.ThreadId == _uiThreadId ? "UI" : $"T{evt.ThreadId}";
             _logger.LogInformation("[TIMELINE] Phase END [{ThreadMarker}]: {PhaseName} (duration: {Duration}ms)",
-                threadMarker, phaseName, evt.Duration?.TotalMilliseconds ?? 0);
+                threadMarker, phaseName, duration);
+
+            // Warn about long-running phases (perf counter threshold)
+            if (duration > 500)
+            {
+                SlowPhaseCounter.Add(1, new KeyValuePair<string, object?>("phase.name", phaseName));
+                _logger.LogWarning("[TIMELINE] ⚠ SLOW PHASE: '{PhaseName}' took {Duration}ms (>500ms threshold) - performance counter 'startup.phase.slow' incremented",
+                    phaseName, duration);
+            }
 
             // Warn about long-running phases on UI thread (>300ms = potential freeze)
-            if (evt.ThreadId == _uiThreadId && evt.Duration?.TotalMilliseconds > 300)
+            if (evt.ThreadId == _uiThreadId && duration > 300)
             {
                 _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>300ms threshold)",
-                    phaseName, evt.Duration?.TotalMilliseconds);
+                    phaseName, duration);
             }
 
             // Special warning for Syncfusion theme if too late (must be order ≤4)
@@ -622,10 +649,38 @@ public class StartupTimelineService : IStartupTimelineService
 
         _events.Add(evt);
 
+        // Record metrics for operations with duration
+        if (durationMs.HasValue)
+        {
+            OperationDurationHistogram.Record(durationMs.Value,
+                new KeyValuePair<string, object?>("operation.name", operationName),
+                new KeyValuePair<string, object?>("phase.name", phaseName));
+        }
+        TotalStartupEventCounter.Add(1,
+            new KeyValuePair<string, object?>("event.type", "Operation"),
+            new KeyValuePair<string, object?>("operation.name", operationName),
+            new KeyValuePair<string, object?>("phase.name", phaseName));
+
         var threadMarker = evt.ThreadId == _uiThreadId ? "UI" : $"T{evt.ThreadId}";
         var durationText = durationMs.HasValue ? $" ({durationMs.Value:F0}ms)" : "";
         _logger.LogDebug("[TIMELINE] Operation [{ThreadMarker}]: {OperationName} in '{PhaseName}'{Duration}",
             threadMarker, operationName, phaseName, durationText);
+
+        // Log if slow (>500ms) to Trace for diagnostic tracking (from trace requirement)
+        if (durationMs > 500)
+        {
+            System.Diagnostics.Trace.WriteLine($"[PERF] Slow Startup Operation: {operationName} in phase {phaseName} took {durationMs:F0}ms");
+        }
+
+        // Warn about slow operations (>500ms threshold)
+        if (durationMs > 500)
+        {
+            SlowOperationCounter.Add(1,
+                new KeyValuePair<string, object?>("operation.name", operationName),
+                new KeyValuePair<string, object?>("phase.name", phaseName));
+            _logger.LogWarning("[TIMELINE] ⚠ SLOW OPERATION: '{OperationName}' in phase '{PhaseName}' took {Duration}ms (>500ms threshold) - performance counter 'startup.operation.slow' incremented",
+                operationName, phaseName, durationMs);
+        }
     }
 
     /// <summary>

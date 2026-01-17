@@ -25,10 +25,16 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     private bool _disposed;
 
     /// <summary>
-    /// Gets the ViewModel instance resolved from the scoped service provider.
-    /// Available after the panel handle is created.
+    /// Gets or sets the ViewModel instance.
+    /// If not set manually, it is resolved from the scoped service provider after the panel handle is created.
     /// </summary>
-    protected TViewModel? ViewModel => _viewModel;
+    [System.ComponentModel.Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public TViewModel? ViewModel
+    {
+        get => _viewModel;
+        set => _viewModel = value;
+    }
 
     /// <summary>
     /// Gets the logger instance for diagnostic logging.
@@ -79,9 +85,16 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             _scope = _scopeFactory.CreateScope();
             _logger.LogDebug("Created service scope for {PanelType}", GetType().Name);
 
-            // Resolve ViewModel from scoped provider
-            _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(_scope.ServiceProvider);
-            _logger.LogDebug("Resolved {ViewModelType} from scoped provider", typeof(TViewModel).Name);
+            // Resolve ViewModel from scoped provider if not already set
+            if (_viewModel == null)
+            {
+                _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(_scope.ServiceProvider);
+                _logger.LogDebug("Resolved {ViewModelType} from scoped provider", typeof(TViewModel).Name);
+            }
+            else
+            {
+                _logger.LogDebug("Using manually assigned {ViewModelType} for {PanelType}", typeof(TViewModel).Name, GetType().Name);
+            }
 
             // Populate DataContext (base + derived new DataContext via reflection)
             TrySetDataContext(_viewModel);

@@ -316,27 +316,27 @@
 
 ### Phase 2: High Priority (Week 2)
 
-2. **UtilityBillRepository** - Create test suite (30-40 tests)
+1. **UtilityBillRepository** - Create test suite (30-40 tests)
    - Estimated effort: 6-8 hours
    - Target coverage: 80%+
 
-3. **UtilityCustomerRepository** - Create test suite (25-30 tests)
+2. **UtilityCustomerRepository** - Create test suite (25-30 tests)
    - Estimated effort: 5-7 hours
    - Target coverage: 80%+
 
 ### Phase 3: Coverage Analysis (Week 3)
 
-4. **DepartmentRepository** - Analyze existing tests, fill gaps
+1. **DepartmentRepository** - Analyze existing tests, fill gaps
    - Estimated effort: 2-4 hours
    - Target coverage: 85%+
 
-5. **EnterpriseRepository** - Analyze existing tests, fill gaps
+2. **EnterpriseRepository** - Analyze existing tests, fill gaps
    - Estimated effort: 2-4 hours
    - Target coverage: 85%+
 
 ### Phase 4: Medium Priority (Week 4)
 
-6. **AuditRepository** - Create test suite (15-20 tests)
+1. **AuditRepository** - Create test suite (15-20 tests)
    - Estimated effort: 4-6 hours
    - Target coverage: 75%+
 

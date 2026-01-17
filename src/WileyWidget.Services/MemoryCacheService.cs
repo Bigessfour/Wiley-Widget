@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -122,7 +123,7 @@ namespace WileyWidget.Services
             return Task.CompletedTask;
         }
 
-        public Task RemoveAsync(string key)
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return Task.CompletedTask;
 
@@ -143,7 +144,7 @@ namespace WileyWidget.Services
             return Task.CompletedTask;
         }
 
-        public Task<bool> ExistsAsync(string key)
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key)) return Task.FromResult(false);
 
@@ -165,7 +166,7 @@ namespace WileyWidget.Services
             }
         }
 
-        public Task ClearAllAsync()
+        public Task ClearAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {

@@ -44,7 +44,7 @@ namespace WileyWidget.Services.Abstractions
         /// Update the runtime API key used by the service (updates internal HttpClient headers).
         /// Useful after rotating/persisting a new key so the running service uses it immediately.
         /// </summary>
-        Task UpdateApiKeyAsync(string newApiKey);
+        Task UpdateApiKeyAsync(string newApiKey, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sends a raw prompt to the AI provider and returns a structured response result.
@@ -60,7 +60,7 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Send a message to the AI service with conversation history context.
         /// </summary>
-        Task<string> SendMessageAsync(string message, object conversationHistory);
+        Task<string> SendMessageAsync(string message, object conversationHistory, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

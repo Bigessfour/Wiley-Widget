@@ -336,7 +336,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Loads chart data using current filter settings.
         /// </summary>
-        public async Task LoadChartDataAsync()
+        public async Task LoadChartDataAsync(CancellationToken cancellationToken = default)
         {
             await LoadChartsAsync(SelectedYear, SelectedCategory);
         }

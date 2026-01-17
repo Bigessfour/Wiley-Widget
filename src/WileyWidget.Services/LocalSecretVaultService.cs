@@ -34,7 +34,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         _secretsPath = Path.Combine(baseDirectory, "secrets.json");
     }
 
-    public async Task<string?> GetSecretAsync(string secretName)
+    public async Task<string?> GetSecretAsync(string secretName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(secretName))
         {
@@ -108,7 +108,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
-    public async Task SetSecretAsync(string secretName, string value)
+    public async Task SetSecretAsync(string secretName, string value, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(secretName))
         {
@@ -134,7 +134,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
-    public async Task<bool> TestConnectionAsync()
+    public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
@@ -153,7 +153,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
-    private async Task<Dictionary<string, string>> LoadSecretsAsync()
+    private async Task<Dictionary<string, string>> LoadSecretsAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(_secretsPath))
         {
@@ -177,7 +177,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
                ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
-    private async Task SaveSecretsAsync(Dictionary<string, string> secrets)
+    private async Task SaveSecretsAsync(Dictionary<string, string> secrets, CancellationToken cancellationToken = default)
     {
         // Write atomically: write to temp file then replace
         var tmp = _secretsPath + ".tmp";
@@ -228,7 +228,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// Migrates secrets from environment variables and .env file to the local vault.
     /// This method is called automatically on service initialization for production convenience.
     /// </summary>
-    public async Task MigrateSecretsFromEnvironmentAsync()
+    public async Task MigrateSecretsFromEnvironmentAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -282,7 +282,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// Production utility method to populate all required secrets.
     /// Call this method during application setup or from admin tools.
     /// </summary>
-    public async Task PopulateProductionSecretsAsync()
+    public async Task PopulateProductionSecretsAsync(CancellationToken cancellationToken = default)
     {
         var productionSecrets = new Dictionary<string, string>
         {
@@ -322,7 +322,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// Exports all secrets to a JSON string for backup purposes.
     /// WARNING: This contains sensitive data - handle with care.
     /// </summary>
-    public async Task<string> ExportSecretsAsync()
+    public async Task<string> ExportSecretsAsync(CancellationToken cancellationToken = default)
     {
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
@@ -345,7 +345,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// Imports secrets from a JSON string.
     /// WARNING: This will overwrite existing secrets with the same keys.
     /// </summary>
-    public async Task ImportSecretsAsync(string jsonSecrets)
+    public async Task ImportSecretsAsync(string jsonSecrets, CancellationToken cancellationToken = default)
     {
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
@@ -376,7 +376,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// <summary>
     /// Lists all secret keys (without values) for inventory purposes.
     /// </summary>
-    public async Task<IEnumerable<string>> ListSecretKeysAsync()
+    public async Task<IEnumerable<string>> ListSecretKeysAsync(CancellationToken cancellationToken = default)
     {
         await _fileLock.WaitAsync().ConfigureAwait(false);
         try
@@ -395,7 +395,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
-    public async Task DeleteSecretAsync(string secretName)
+    public async Task DeleteSecretAsync(string secretName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(secretName)) throw new ArgumentException("Secret name is required", nameof(secretName));
 
@@ -415,7 +415,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
         }
     }
 
-    public async Task RotateSecretAsync(string secretName, string newValue)
+    public async Task RotateSecretAsync(string secretName, string newValue, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(secretName)) throw new ArgumentException("Secret name is required", nameof(secretName));
 
@@ -448,7 +448,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
     /// <summary>
     /// Get diagnostic information about the local secret vault.
     /// </summary>
-    public async Task<string> GetDiagnosticsAsync()
+    public async Task<string> GetDiagnosticsAsync(CancellationToken cancellationToken = default)
     {
         var sb = new System.Text.StringBuilder();
         var culture = CultureInfo.InvariantCulture;

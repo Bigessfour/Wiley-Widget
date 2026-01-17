@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,7 +36,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Performs a global search across all registered grids.
         /// </summary>
-        public async Task<List<SearchResult>> SearchAsync(string query, SearchOptions? options = null)
+        public async Task<List<SearchResult>> SearchAsync(string query, SearchOptions? options = null, CancellationToken cancellationToken = default)
         {
             options ??= new SearchOptions();
             var results = new List<SearchResult>();

@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
@@ -771,7 +772,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         }
     }
 
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -793,7 +794,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         }
     }
 
-    private async Task QueryGrokAsync()
+    private async Task QueryGrokAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -815,7 +816,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         }
     }
 
-    private async Task SaveChangesAsync()
+    private async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         try
         {

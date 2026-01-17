@@ -9,26 +9,26 @@ namespace WileyWidget.Services.Abstractions
 {
     public interface IQuickBooksService
     {
-        System.Threading.Tasks.Task<bool> AuthorizeAsync();
+        System.Threading.Tasks.Task<bool> AuthorizeAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Tests the QuickBooks API connection
         /// </summary>
         /// <returns>True if the connection test succeeds, false otherwise</returns>
-        System.Threading.Tasks.Task<bool> TestConnectionAsync();
+        System.Threading.Tasks.Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks if the service is currently connected
         /// </summary>
         /// <returns>True if connected, false otherwise</returns>
-        System.Threading.Tasks.Task<bool> IsConnectedAsync();
+        System.Threading.Tasks.Task<bool> IsConnectedAsync(CancellationToken cancellationToken = default);
 
-        System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null);
-        System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync();
-        System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null);
-        System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync();
-        System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate);
-        System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync();
+        System.Threading.Tasks.Task<UrlAclCheckResult> CheckUrlAclAsync(string? redirectUri = null, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<WileyWidget.Models.QuickBooksBudget> budgets, CancellationToken cancellationToken = default);
 
         /// <summary>

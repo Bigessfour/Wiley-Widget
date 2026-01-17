@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
@@ -34,10 +35,9 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Professional, empathetic rate increase letter as formatted text.</returns>
         [KernelFunction("draft_rate_increase_letter")]
         [Description("Draft a professional, empathetic rate increase notification letter with clear financial justification and typical customer impact.")]
-        public Task<string> DraftRateIncreaseLetter(
-            [Description("Percentage rate increase (e.g., 8.5 for 8.5%)")] decimal increasePct,
+        public Task<string> DraftRateIncreaseLetter([Description("Percentage rate increase (e.g., 8.5 for 8.5%)")] decimal increasePct,
             [Description("Department or fund name (e.g., Water, Sewer, Solid Waste)")] string department,
-            [Description("Average monthly customer impact in dollars")] decimal avgMonthlyImpact)
+            [Description("Average monthly customer impact in dollars")] decimal avgMonthlyImpact, CancellationToken cancellationToken = default)
         {
             if (increasePct < 0)
                 throw new ArgumentException("Increase percentage must be non-negative.", nameof(increasePct));
@@ -59,8 +59,7 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Professional, empathetic response addressing the complaint.</returns>
         [KernelFunction("respond_to_complaint")]
         [Description("Draft a professional, de-escalating response to a citizen complaint that acknowledges concerns and provides constructive resolution.")]
-        public Task<string> RespondToComplaint(
-            [Description("The original complaint text or concern from the citizen")] string complaintText)
+        public Task<string> RespondToComplaint([Description("The original complaint text or concern from the citizen")] string complaintText, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(complaintText))
                 throw new ArgumentException("Complaint text is required.", nameof(complaintText));

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,14 +13,14 @@ namespace WileyWidget.Services.Abstractions
     /// </summary>
     public interface IGrokSupercomputer
     {
-        Task<ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "");
-        Task<AnalyticsData> RunReportCalcsAsync(ReportData data);
-        Task<BudgetInsights> AnalyzeBudgetDataAsync(BudgetData budget);
-        Task<ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise);
-        Task<string> AnalyzeMunicipalDataAsync(object data, string context);
-        Task<string> GenerateRecommendationsAsync(object data);
-        Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> municipalAccounts, BudgetData budgetData);
-        Task<string> QueryAsync(string prompt);
+        Task<ReportData> FetchEnterpriseDataAsync(int? enterpriseId = null, DateTime? startDate = null, DateTime? endDate = null, string filter = "", CancellationToken cancellationToken = default);
+        Task<AnalyticsData> RunReportCalcsAsync(ReportData data, CancellationToken cancellationToken = default);
+        Task<BudgetInsights> AnalyzeBudgetDataAsync(BudgetData budget, CancellationToken cancellationToken = default);
+        Task<ComplianceReport> GenerateComplianceReportAsync(Enterprise enterprise, CancellationToken cancellationToken = default);
+        Task<string> AnalyzeMunicipalDataAsync(object data, string context, CancellationToken cancellationToken = default);
+        Task<string> GenerateRecommendationsAsync(object data, CancellationToken cancellationToken = default);
+        Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> municipalAccounts, BudgetData budgetData, CancellationToken cancellationToken = default);
+        Task<string> QueryAsync(string prompt, CancellationToken cancellationToken = default);
         System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt);
     }
 }

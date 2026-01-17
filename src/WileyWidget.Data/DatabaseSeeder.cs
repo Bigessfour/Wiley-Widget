@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 
@@ -12,7 +13,7 @@ namespace WileyWidget.Data
             _context = context;
         }
 
-        public async Task SeedAsync()
+        public async Task SeedAsync(CancellationToken cancellationToken = default)
         {
             // Database seeding is now handled in AppDbContext.OnModelCreating
             // This method is kept for compatibility with existing code

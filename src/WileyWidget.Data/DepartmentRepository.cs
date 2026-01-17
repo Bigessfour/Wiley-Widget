@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -37,7 +38,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets all departments
     /// </summary>
-    public async Task<IEnumerable<Department>> GetAllAsync()
+    public async Task<IEnumerable<Department>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("DepartmentRepository.GetAll");
         activity?.SetTag("operation.type", "query");
@@ -84,11 +85,10 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets paged departments with sorting support
     /// </summary>
-    public async Task<(IEnumerable<Department> Items, int TotalCount)> GetPagedAsync(
-        int pageNumber = 1,
+    public async Task<(IEnumerable<Department> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1,
         int pageSize = 50,
         string? sortBy = null,
-        bool sortDescending = false)
+        bool sortDescending = false, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -113,7 +113,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets an IQueryable for flexible querying and paging
     /// </summary>
-    public async Task<IQueryable<Department>> GetQueryableAsync()
+    public async Task<IQueryable<Department>> GetQueryableAsync(CancellationToken cancellationToken = default)
     {
         var context = await _contextFactory.CreateDbContextAsync();
         return context.Departments.AsQueryable();
@@ -122,7 +122,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets a department by ID
     /// </summary>
-    public async Task<Department?> GetByIdAsync(int id)
+    public async Task<Department?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Departments
@@ -133,7 +133,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets a department by name
     /// </summary>
-    public async Task<Department?> GetByCodeAsync(string code)
+    public async Task<Department?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("Department code cannot be null or empty", nameof(code));
@@ -147,7 +147,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Adds a new department
     /// </summary>
-    public async Task AddAsync(Department department)
+    public async Task AddAsync(Department department, CancellationToken cancellationToken = default)
     {
         if (department == null)
             throw new ArgumentNullException(nameof(department));
@@ -160,7 +160,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Updates an existing department
     /// </summary>
-    public async Task UpdateAsync(Department department)
+    public async Task UpdateAsync(Department department, CancellationToken cancellationToken = default)
     {
         if (department == null)
             throw new ArgumentNullException(nameof(department));
@@ -174,7 +174,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// Deletes a department by ID
     /// Returns true when an entity was removed, false when not found
     /// </summary>
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var department = await context.Departments.FindAsync(id);
@@ -191,7 +191,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Checks existence of a department by code
     /// </summary>
-    public async Task<bool> ExistsByCodeAsync(string code)
+    public async Task<bool> ExistsByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
             return false;
@@ -203,7 +203,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets departments that have no parent (root nodes)
     /// </summary>
-    public async Task<IEnumerable<Department>> GetRootDepartmentsAsync()
+    public async Task<IEnumerable<Department>> GetRootDepartmentsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Departments
@@ -216,7 +216,7 @@ public class DepartmentRepository : IDepartmentRepository
     /// <summary>
     /// Gets children departments for a given parent id
     /// </summary>
-    public async Task<IEnumerable<Department>> GetChildDepartmentsAsync(int parentId)
+    public async Task<IEnumerable<Department>> GetChildDepartmentsAsync(int parentId, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Departments

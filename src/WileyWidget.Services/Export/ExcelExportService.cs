@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,12 +19,12 @@ namespace WileyWidget.Services.Export
         /// <summary>
         /// Exports budget entries to Excel format.
         /// </summary>
-        Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath);
+        Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exports municipal accounts to Excel format.
         /// </summary>
-        Task<string> ExportMunicipalAccountsAsync(IEnumerable<MunicipalAccount> accounts, string filePath);
+        Task<string> ExportMunicipalAccountsAsync(IEnumerable<MunicipalAccount> accounts, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exports generic enterprise data to Excel format.
@@ -48,7 +49,7 @@ namespace WileyWidget.Services.Export
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath)
+        public async Task<string> ExportBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string filePath, CancellationToken cancellationToken = default)
         {
             return await Task.Run(() =>
             {
@@ -112,7 +113,7 @@ namespace WileyWidget.Services.Export
             });
         }
 
-        public async Task<string> ExportMunicipalAccountsAsync(IEnumerable<MunicipalAccount> accounts, string filePath)
+        public async Task<string> ExportMunicipalAccountsAsync(IEnumerable<MunicipalAccount> accounts, string filePath, CancellationToken cancellationToken = default)
         {
             return await Task.Run(() =>
             {

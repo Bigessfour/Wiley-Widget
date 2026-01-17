@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ public class ChatBridgeService : IChatBridgeService
     /// <summary>
     /// Notify that a new message has been received.
     /// </summary>
-    public Task NotifyMessageReceivedAsync(ChatMessage message)
+    public Task NotifyMessageReceivedAsync(ChatMessage message, CancellationToken cancellationToken = default)
     {
         if (message == null)
         {
@@ -49,7 +50,7 @@ public class ChatBridgeService : IChatBridgeService
     /// <summary>
     /// Requests that a prompt be submitted from an external source (e.g. from an insight card).
     /// </summary>
-    public Task RequestExternalPromptAsync(string prompt)
+    public Task RequestExternalPromptAsync(string prompt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -68,7 +69,7 @@ public class ChatBridgeService : IChatBridgeService
     /// <summary>
     /// Submit a prompt from the Blazor component to the backend.
     /// </summary>
-    public Task SubmitPromptAsync(string prompt, string? conversationId = null)
+    public Task SubmitPromptAsync(string prompt, string? conversationId = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -91,7 +92,7 @@ public class ChatBridgeService : IChatBridgeService
     /// <summary>
     /// Send a response chunk back to the Blazor component.
     /// </summary>
-    public Task SendResponseChunkAsync(string chunk)
+    public Task SendResponseChunkAsync(string chunk, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(chunk))
         {
@@ -110,7 +111,7 @@ public class ChatBridgeService : IChatBridgeService
     /// <summary>
     /// Notify that a suggestion has been selected.
     /// </summary>
-    public Task NotifySuggestionSelectedAsync(string suggestion)
+    public Task NotifySuggestionSelectedAsync(string suggestion, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(suggestion))
         {

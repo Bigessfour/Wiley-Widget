@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -108,7 +109,7 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>List of enterprise summaries.</returns>
         [KernelFunction("get_all_enterprises")]
         [Description("Retrieve a list of all municipal enterprises with their current financial metrics.")]
-        public async Task<List<EnterpriseSummary>> GetAllEnterprises()
+        public async Task<List<EnterpriseSummary>> GetAllEnterprises(CancellationToken cancellationToken = default)
         {
             _logger?.LogInformation("EnterpriseDataTools: GetAllEnterprises invoked");
 
@@ -140,8 +141,7 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Dictionary mapping department names to their total expenses.</returns>
         [KernelFunction("get_department_expenses")]
         [Description("Get department-level expense breakdown for a specific enterprise by name.")]
-        public async Task<Dictionary<string, decimal>> GetDepartmentExpenses(
-            [Description("Enterprise name (e.g., 'Water', 'Sewer')")] string enterpriseName)
+        public async Task<Dictionary<string, decimal>> GetDepartmentExpenses([Description("Enterprise name (e.g., 'Water', 'Sewer')")] string enterpriseName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(enterpriseName))
             {
@@ -196,9 +196,8 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>Budget variance analysis object.</returns>
         [KernelFunction("get_budget_variance")]
         [Description("Get budget variance analysis for an enterprise for a specific fiscal year.")]
-        public async Task<BudgetVarianceAnalysis> GetBudgetVariance(
-            [Description("Enterprise ID")] int enterpriseId,
-            [Description("Fiscal year (optional, defaults to current year)")] int? year = null)
+        public async Task<BudgetVarianceAnalysis> GetBudgetVariance([Description("Enterprise ID")] int enterpriseId,
+            [Description("Fiscal year (optional, defaults to current year)")] int? year = null, CancellationToken cancellationToken = default)
         {
             if (enterpriseId <= 0)
             {
@@ -262,9 +261,8 @@ namespace WileyWidget.WinForms.Plugins
         /// <returns>List of monthly trend objects.</returns>
         [KernelFunction("get_monthly_revenue_trends")]
         [Description("Get historical monthly revenue and expense trends for an enterprise over multiple years.")]
-        public async Task<List<MonthlyTrend>> GetMonthlyRevenueTrends(
-            [Description("Enterprise ID")] int enterpriseId,
-            [Description("Number of years to retrieve (default: 2)")] int years = 2)
+        public async Task<List<MonthlyTrend>> GetMonthlyRevenueTrends([Description("Enterprise ID")] int enterpriseId,
+            [Description("Number of years to retrieve (default: 2)")] int years = 2, CancellationToken cancellationToken = default)
         {
             if (enterpriseId <= 0)
             {

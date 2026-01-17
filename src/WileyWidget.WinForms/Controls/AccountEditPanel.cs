@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Drawing;
 using System.Linq;
@@ -434,7 +435,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Load supporting data like departments and populate dropdowns.
         /// </summary>
-        private async Task LoadDataAsync()
+        private async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
             try
             {

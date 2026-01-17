@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -117,7 +118,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Executes the scenario analysis.
         /// Calls GrokAgentService with ScenarioInput, expects RateScenarioTools results.
         /// </summary>
-        private async Task RunScenarioAsync()
+        private async Task RunScenarioAsync(CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(ScenarioInput))
             {

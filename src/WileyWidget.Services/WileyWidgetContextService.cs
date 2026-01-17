@@ -107,7 +107,7 @@ namespace WileyWidget.Services
         /// </summary>
         /// <param name="enterpriseId">The ID of the enterprise within the municipal finance system.</param>
         /// <returns>A string representing the enterprise context for the specified ID.</returns>
-        public async Task<string> GetEnterpriseContextAsync(int enterpriseId)
+        public async Task<string> GetEnterpriseContextAsync(int enterpriseId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Getting enterprise context for ID: {EnterpriseId}", enterpriseId);
 
@@ -145,7 +145,7 @@ namespace WileyWidget.Services
         /// <param name="startDate">The start date of the budget period (optional).</param>
         /// <param name="endDate">The end date of the budget period (optional).</param>
         /// <returns>A string representing the budget context for the specified date range.</returns>
-        public async Task<string> GetBudgetContextAsync(DateTime? startDate, DateTime? endDate)
+        public async Task<string> GetBudgetContextAsync(DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Getting budget context for date range: {StartDate} to {EndDate}", startDate, endDate);
 
@@ -186,7 +186,7 @@ namespace WileyWidget.Services
         /// Includes current operational status, active processes, and system performance metrics.
         /// </summary>
         /// <returns>A string representing the operational context for municipal finance systems.</returns>
-        public async Task<string> GetOperationalContextAsync()
+        public async Task<string> GetOperationalContextAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Getting operational context.");
 

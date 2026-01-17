@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -136,7 +137,7 @@ public class CorrelationIdService
     /// </summary>
     /// <param name="func">Async action to execute</param>
     /// <param name="correlationId">Optional correlation ID (generates new if not provided)</param>
-    public async Task ExecuteInContextAsync(Func<Task> func, string? correlationId = null)
+    public async Task ExecuteInContextAsync(Func<Task> func, string? correlationId = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(func);
 

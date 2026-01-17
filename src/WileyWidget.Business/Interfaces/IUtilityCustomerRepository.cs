@@ -1,3 +1,4 @@
+using System.Threading;
 using WileyWidget.Models;
 
 namespace WileyWidget.Business.Interfaces;
@@ -10,70 +11,70 @@ public interface IUtilityCustomerRepository
     /// <summary>
     /// Gets all utility customers
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetAllAsync();
+    Task<IEnumerable<UtilityCustomer>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a utility customer by ID
     /// </summary>
-    Task<UtilityCustomer?> GetByIdAsync(int id);
+    Task<UtilityCustomer?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a utility customer by account number
     /// </summary>
-    Task<UtilityCustomer?> GetByAccountNumberAsync(string accountNumber);
+    Task<UtilityCustomer?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets customers by customer type
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetByCustomerTypeAsync(CustomerType customerType);
+    Task<IEnumerable<UtilityCustomer>> GetByCustomerTypeAsync(CustomerType customerType, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets customers by service location
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetByServiceLocationAsync(ServiceLocation serviceLocation);
+    Task<IEnumerable<UtilityCustomer>> GetByServiceLocationAsync(ServiceLocation serviceLocation, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets active customers only
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetActiveCustomersAsync();
+    Task<IEnumerable<UtilityCustomer>> GetActiveCustomersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets customers with outstanding balances
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetCustomersWithBalanceAsync();
+    Task<IEnumerable<UtilityCustomer>> GetCustomersWithBalanceAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Searches customers by name or account number
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm);
+    Task<IEnumerable<UtilityCustomer>> SearchAsync(string searchTerm, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a new utility customer
     /// </summary>
-    Task<UtilityCustomer> AddAsync(UtilityCustomer customer);
+    Task<UtilityCustomer> AddAsync(UtilityCustomer customer, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing utility customer
     /// </summary>
-    Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer);
+    Task<UtilityCustomer> UpdateAsync(UtilityCustomer customer, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a utility customer by ID
     /// </summary>
-    Task<bool> DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a customer exists by account number
     /// </summary>
-    Task<bool> ExistsByAccountNumberAsync(string accountNumber, int? excludeId = null);
+    Task<bool> ExistsByAccountNumberAsync(string accountNumber, int? excludeId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the total number of customers
     /// </summary>
-    Task<int> GetCountAsync();
+    Task<int> GetCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets customers outside city limits
     /// </summary>
-    Task<IEnumerable<UtilityCustomer>> GetCustomersOutsideCityLimitsAsync();
+    Task<IEnumerable<UtilityCustomer>> GetCustomersOutsideCityLimitsAsync(CancellationToken cancellationToken = default);
 }

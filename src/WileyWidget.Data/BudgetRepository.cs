@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -179,12 +180,11 @@ public class BudgetRepository : IBudgetRepository
     /// <summary>
     /// Gets paged budget entries with sorting support
     /// </summary>
-    public async Task<(IEnumerable<BudgetEntry> Items, int TotalCount)> GetPagedAsync(
-        int pageNumber = 1,
+    public async Task<(IEnumerable<BudgetEntry> Items, int TotalCount)> GetPagedAsync(int pageNumber = 1,
         int pageSize = 50,
         string? sortBy = null,
         bool sortDescending = false,
-        int? fiscalYear = null)
+        int? fiscalYear = null, CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -220,7 +220,7 @@ public class BudgetRepository : IBudgetRepository
     /// Gets an IQueryable for flexible querying and paging
     /// NOTE: This returns an IQueryable tied to a DbContext created here; caller is responsible for materializing results promptly.
     /// </summary>
-    public Task<IQueryable<BudgetEntry>> GetQueryableAsync()
+    public Task<IQueryable<BudgetEntry>> GetQueryableAsync(CancellationToken cancellationToken = default)
     {
         var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();

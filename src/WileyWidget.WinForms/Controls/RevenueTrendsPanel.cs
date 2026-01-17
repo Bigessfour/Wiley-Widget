@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.ComponentModel;
 using System.Drawing;
@@ -494,7 +495,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _ = LoadDataSafeAsync();
     }
 
-    private async Task LoadDataSafeAsync()
+    private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -755,7 +756,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
     }
 
-    private async Task RefreshDataAsync()
+    private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {

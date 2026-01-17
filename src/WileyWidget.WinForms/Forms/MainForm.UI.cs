@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Syncfusion.Drawing;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,11 +21,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Serialization;
-using WileyWidget.Business.Interfaces;
+using WileyWidget.Services;
 using WileyWidget.ViewModels;
+using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -68,11 +71,9 @@ public partial class MainForm
     // Phase 1 Simplification: Docking configuration now centralized in UIConfiguration
     private const string DockingLayoutFileName = "wiley_widget_docking_layout.xml";
 
-#if DEBUG
-    // Diagnostic constants - only compiled in debug builds
-    private const int LayoutLoadTimeoutMs = 1000; // Auto-reset if load takes > 1 second
-    private const int LayoutLoadWarningMs = 500;  // Log warning if load takes > 500ms
-#endif
+    // Layout load performance thresholds
+    private const int LayoutLoadTimeoutMs = 2000; // Auto-reset if load takes > 2 seconds
+    private const int LayoutLoadWarningMs = 1000; // Log warning if load takes > 1 second
 
     // Font family constant for UI fonts
     private const string SegoeUiFontName = "Segoe UI";
@@ -90,6 +91,10 @@ public partial class MainForm
         {
             return;
         }
+
+        var timelineService = _serviceProvider != null ?
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(_serviceProvider) : null;
+        using var phase = timelineService?.BeginPhaseScope("Chrome Initialization");
 
         var chromeStopwatch = System.Diagnostics.Stopwatch.StartNew();
         _logger?.LogInformation("InitializeChrome start - handleCreated={HandleCreated}", IsHandleCreated);
@@ -1617,6 +1622,10 @@ public partial class MainForm
     /// </summary>
     private void InitializeSyncfusionDocking()
     {
+        var timelineService = _serviceProvider != null ?
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(_serviceProvider) : null;
+        using var phase = timelineService?.BeginPhaseScope("Syncfusion Docking Initialization");
+
         try
         {
             _logger?.LogInformation("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}",
@@ -1734,17 +1743,10 @@ public partial class MainForm
                     _logger?.LogDebug(suspendEx, "Failed to suspend DockingManager layout - continuing");
                 }
 
-                // CRITICAL: Start asynchronous layout load
-                LoadDockingLayout();
-                _logger?.LogDebug("DockingManager initialized - LoadDockingLayout() invoked");
-
-                // CRITICAL: Layout loading deferred to LoadDockingLayout() async method
-                // LoadDockingLayout() is invoked in OnShown() to avoid blocking form show with I/O
-                // This prevents ArgumentOutOfRangeException in DockHost.GetPaintInfo that occurs if
-                // paint events fire before DockingManager's control collections are populated
-                // The async method validates layout file, applies defaults if corrupt, and handles errors gracefully
-                _logger?.LogDebug("DockingManager initialized - layout loading deferred to LoadDockingLayout()");
-                Console.WriteLine("[DIAGNOSTIC] DockingManager ready - layout will load asynchronously in OnShown()");
+                // CRITICAL: Layout loading is now deferred to InitializeAsync() via LoadAndApplyDockingLayout()
+                // This ensures the form is fully rendered before we start heavy docking restoration.
+                _logger?.LogDebug("DockingManager infrastructure initialized. Layout restoration will follow in InitializeAsync().");
+                Console.WriteLine("[DIAGNOSTIC] DockingManager ready - infrastructure set up.");
 
                 // Theme application deferred: Applied after DockingManager.ResumeLayout() to avoid conflicts
 
@@ -2251,7 +2253,7 @@ public partial class MainForm
     /// <summary>
     /// Load activity data from database asynchronously.
     /// </summary>
-    private async Task LoadActivityDataAsync()
+    private async Task LoadActivityDataAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -2637,15 +2639,20 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Load and apply docking layout from file with performance monitoring and timeout
+    /// Load and apply docking layout from file with performance monitoring and timeout.
+    /// Implements separation of concerns: I/O happens on background thread, layout application on UI thread.
     /// </summary>
-    private async Task LoadAndApplyDockingLayout(string layoutPath)
+    private async Task LoadAndApplyDockingLayout(string layoutPath, CancellationToken cancellationToken = default)
     {
         if (_dockingManager == null)
         {
             _logger.LogWarning("Cannot load docking layout - DockingManager is null");
             return;
         }
+
+        var timelineService = _serviceProvider != null ?
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(_serviceProvider) : null;
+        using var phase = timelineService?.BeginPhaseScope("Docking Layout Restoration");
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -2657,14 +2664,36 @@ public partial class MainForm
             // Load additional dynamic panels from JSON metadata
             LoadDynamicPanels(layoutPath);
 
-            var serializer = new AppStateSerializer(
-                Syncfusion.Runtime.Serialization.SerializeMode.XMLFile, layoutPath);
+            // PRE-FLIGHT: Separation of Concerns - Perform Disk I/O on background thread
+            // This prevents the UI thread from blocking while waiting for a slow disk or network share.
+            byte[] layoutData;
+            try
+            {
+                layoutData = await Task.Run(() => File.ReadAllBytes(layoutPath), cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileNotFoundException)
+            {
+                _logger.LogInformation("No docking layout found at {Path} - using default layout", layoutPath);
+                return;
+            }
+
+            if (layoutData == null || layoutData.Length == 0)
+            {
+                _logger.LogWarning("Docking layout file is empty or missing: {Path}", layoutPath);
+                return;
+            }
+
+            // APPLICATION: Apply state via MemoryStream
+            // We use SerializeMode.XMLFmtStream to process the data we've already loaded.
+            using var ms = new MemoryStream(layoutData);
+            var serializer = new AppStateSerializer(SerializeMode.XMLFmtStream, ms);
 
             try
             {
                 LogDockStateLoad(layoutPath);
 
-                // Use Task.Run with timeout to detect slow/hung layout loads
+                // Use Task.Run with Task.WaitAsync to detect slow/hung UI layout application.
+                // LoadDockState MUST run on the UI thread via Invoke as it touches controls.
                 var loadTask = Task.Run(() =>
                 {
                     if (this.InvokeRequired)
@@ -2675,32 +2704,34 @@ public partial class MainForm
                     {
                         _dockingManager?.LoadDockState(serializer);
                     }
-                });
+                }, cancellationToken);
 
-                var timeoutTask = Task.Delay(LayoutLoadTimeoutMs);
-                var completedTask = await Task.WhenAny(loadTask, timeoutTask);
-
-                if (completedTask == timeoutTask)
-                {
-                    stopwatch.Stop();
-                    _logger.LogError("Layout load exceeded timeout of {TimeoutMs}ms - layout is too complex or corrupted. Auto-resetting to defaults.", LayoutLoadTimeoutMs);
-                    HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
-                    return;
-                }
-
-                await loadTask.ConfigureAwait(false);
+                // .WaitAsync ensures we don't block the actual caller indefinitely if the UI thread hangs.
+                await loadTask.WaitAsync(TimeSpan.FromMilliseconds(LayoutLoadTimeoutMs), cancellationToken).ConfigureAwait(true);
 
                 stopwatch.Stop();
                 var elapsedMs = stopwatch.ElapsedMilliseconds;
 
+                if (timelineService != null)
+                {
+                    timelineService.RecordOperation("LoadDockState (UI)", "Docking Layout Restoration", elapsedMs);
+                }
+
                 if (elapsedMs > LayoutLoadWarningMs)
                 {
-                    _logger.LogWarning("Layout load took {ElapsedMs}ms (threshold: {ThresholdMs}ms) - consider simplifying layout", elapsedMs, LayoutLoadWarningMs);
+                    _logger.LogWarning("Layout application took {ElapsedMs}ms (threshold: {ThresholdMs}ms) - consider simplifying layout", elapsedMs, LayoutLoadWarningMs);
                 }
                 else
                 {
-                    _logger.LogInformation("Docking layout loaded from {Path} in {ElapsedMs}ms", layoutPath, elapsedMs);
+                    _logger.LogInformation("Docking layout loaded and applied from {Path} in {ElapsedMs}ms", layoutPath, elapsedMs);
                 }
+            }
+            catch (TimeoutException)
+            {
+                stopwatch.Stop();
+                _logger.LogError("Layout application exceeded timeout of {TimeoutMs}ms - layout is too complex or corrupted. Auto-resetting to defaults.", LayoutLoadTimeoutMs);
+                HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
+                return;
             }
             catch (Exception loadEx)
             {
@@ -2715,10 +2746,14 @@ public partial class MainForm
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Docking layout restoration was cancelled");
+        }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Unexpected error during layout load - resetting to defaults");
+            _logger.LogError(ex, "Unexpected error during layout restoration - resetting to defaults");
             HandleSlowLayoutLoad(layoutPath, stopwatch.ElapsedMilliseconds);
         }
     }
@@ -2975,7 +3010,7 @@ public partial class MainForm
     /// Helper: invoke an action on the UI thread and return a Task that completes when the action finishes.
     /// This provides an awaitable wrapper over BeginInvoke with a threadpool fallback.
     /// </summary>
-    private Task SafeInvokeAsync(System.Action action)
+    private Task SafeInvokeAsync(System.Action action, CancellationToken cancellationToken = default)
     {
         if (action == null) throw new ArgumentNullException(nameof(action));
 
@@ -3043,32 +3078,90 @@ public partial class MainForm
 
     #region Docking Event Handlers
 
-    private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
+    /// <summary>
+    /// Notifies the ViewModel associated with a control about its visibility status.
+    /// Supports lazy loading via ILazyLoadViewModel interface.
+    /// </summary>
+    /// <param name="control">The control whose visibility changed.</param>
+    private async Task NotifyPanelVisibilityChangedAsync(Control control)
     {
-        // Log docking state changes
-        _logger.LogDebug("Dock state changed: NewState={NewState}, OldState={OldState}",
-            e.NewState, e.OldState);
+        ArgumentNullException.ThrowIfNull(control);
+        if (_dockingManager == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Determine if the control is effectively visible to the user
+            bool isVisible = _dockingManager.GetDockVisibility(control);
+
+            _logger?.LogDebug("Notifying visibility change for {Control}: isVisible={IsVisible}", control.Name, isVisible);
+
+            // Try to find ILazyLoadViewModel in DataContext
+            // Some panels (like DashboardPanel) have a DataContext property
+            object? dataContext = null;
+
+            // 1. Try explicit DataContext property (common in our ScopedPanelBase and DashboardPanel)
+            var dcProp = control.GetType().GetProperty("DataContext");
+            if (dcProp != null)
+            {
+                dataContext = dcProp.GetValue(control);
+            }
+
+            // 2. If it inherits from ScopedPanelBase<T>, it has a ViewModel property
+            if (dataContext == null)
+            {
+                var vmProp = control.GetType().GetProperty("ViewModel");
+                if (vmProp != null)
+                {
+                    dataContext = vmProp.GetValue(control);
+                }
+            }
+
+            if (dataContext is ILazyLoadViewModel lazyVm)
+            {
+                await lazyVm.OnVisibilityChangedAsync(isVisible);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to notify visibility change for panel {Control}", control.Name);
+        }
+    }
+
+    private async void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
+    {
+        if (e.Controls == null) return;
+
+        foreach (Control control in e.Controls)
+        {
+            if (control == null) continue;
+
+            // Log docking state changes using structural logging
+            _logger.LogDebug("Dock state changed: Control={Control}, NewState={NewState}, OldState={OldState}",
+                control.Name, e.NewState, e.OldState);
+
+            // Notify ViewModel of visibility change for lazy loading
+            await NotifyPanelVisibilityChangedAsync(control);
+        }
 
         // Ensure central panels remain visible after state changes (delegate to layout manager)
         if (_dockingLayoutManager != null)
         {
-            // Note: Central panel visibility is now managed by DockingLayoutManager
             _logger.LogDebug("Central panel visibility delegated to DockingLayoutManager");
         }
 
-        // Auto-save layout on state changes with debouncing to prevent I/O spam
+        // Auto-save layout on state changes with debouncing
         if (_uiConfig.UseSyncfusionDocking && _dockingLayoutManager != null && _dockingManager != null)
         {
-            // Debounced layout save: Prevents rapid I/O when user drags/resizes multiple panels
-            // DockingLayoutManager will batch saves and write to disk after 2-3 seconds of inactivity
-            // This keeps the app responsive while preserving user's layout choices
             try
             {
-                _logger?.LogDebug("Dock state changed - layout save deferred to DockingLayoutManager");
+                _logger.LogDebug("Dock state changed - layout save deferred to DockingLayoutManager");
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "Error during debounced layout save");
+                _logger.LogDebug(ex, "Error during debounced layout save");
             }
         }
     }
@@ -3078,10 +3171,16 @@ public partial class MainForm
         _logger.LogDebug("Dock control activated: {Control}", e.Control.Name);
     }
 
-    private void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
+    private async void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
     {
         // Log visibility changes
-        _logger.LogDebug("Dock visibility changed");
+        _logger.LogDebug("Dock visibility changed: Control={Control}", e.Control?.Name);
+
+        // Notify ViewModel of visibility change for lazy loading
+        if (e.Control != null)
+        {
+            await NotifyPanelVisibilityChangedAsync(e.Control);
+        }
 
         // Ensure central panels remain visible after visibility changes (delegate to layout manager)
         try

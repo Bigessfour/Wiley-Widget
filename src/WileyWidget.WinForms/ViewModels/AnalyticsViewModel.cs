@@ -14,8 +14,24 @@ namespace WileyWidget.WinForms.ViewModels
     /// ViewModel for analytics functionality providing exploratory analysis, scenario modeling, and forecasting.
     /// Supports budget variance analysis, rate scenario projections, and reserve forecasting with AI-driven insights.
     /// </summary>
-    public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable
+    public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable, ILazyLoadViewModel
     {
+        private bool _isDataLoaded;
+        public bool IsDataLoaded
+        {
+            get => _isDataLoaded;
+            private set => SetProperty(ref _isDataLoaded, value);
+        }
+
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            if (isVisible && !IsDataLoaded && !IsLoading)
+            {
+                await RefreshAllDataAsync(_lifecycleCts.Token);
+                IsDataLoaded = true;
+            }
+        }
+
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsViewModel> _logger;
         private readonly CancellationTokenSource _lifecycleCts = new();
@@ -181,8 +197,8 @@ namespace WileyWidget.WinForms.ViewModels
             };
             PropertyChanged += _propertyChangedHandler;
 
-            // Auto-load data on initialization
-            _ = RefreshAllDataAsync(_lifecycleCts.Token);
+            // Optimization: Defer data loading until the associated panel becomes visible.
+            // This is handled by ILazyLoadViewModel via OnVisibilityChangedAsync.
         }
 
         /// <summary>

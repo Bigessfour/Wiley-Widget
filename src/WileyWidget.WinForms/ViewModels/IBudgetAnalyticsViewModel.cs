@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Threading;
 using System;
 using System.Collections.ObjectModel;
 using WileyWidget.WinForms.Models;
@@ -36,10 +37,10 @@ public interface IBudgetAnalyticsViewModel : System.ComponentModel.INotifyProper
     DateTime LastRefreshTime { get; set; }
 
     /// <summary>Loads analytics data asynchronously.</summary>
-    Task LoadData();
+    Task LoadData(CancellationToken cancellationToken = default);
 
     /// <summary>Refreshes analytics data asynchronously.</summary>
-    Task Refresh();
+    Task Refresh(CancellationToken cancellationToken = default);
 
     /// <summary>Filters analytics data based on selected criteria.</summary>
     void FilterData();

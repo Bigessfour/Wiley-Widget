@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WileyWidget.WinForms.Exporters
@@ -7,8 +8,8 @@ namespace WileyWidget.WinForms.Exporters
     /// </summary>
     public interface IDataExporter
     {
-        Task ExportToCsvAsync(object data, string filePath);
-        Task ExportToExcelAsync(object data, string filePath);
-        Task ExportToPdfAsync(object data, string filePath);
+        Task ExportToCsvAsync(object data, string filePath, CancellationToken cancellationToken = default);
+        Task ExportToExcelAsync(object data, string filePath, CancellationToken cancellationToken = default);
+        Task ExportToPdfAsync(object data, string filePath, CancellationToken cancellationToken = default);
     }
 }

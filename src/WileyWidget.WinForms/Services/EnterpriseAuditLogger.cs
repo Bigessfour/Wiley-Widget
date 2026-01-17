@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Logs a user action.
         /// </summary>
-        public async Task LogActionAsync(AuditLogEntry entry)
+        public async Task LogActionAsync(AuditLogEntry entry, CancellationToken cancellationToken = default)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -56,7 +57,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Logs data access.
         /// </summary>
-        public async Task LogAccessAsync(string user, string resource, string action, bool allowed)
+        public async Task LogAccessAsync(string user, string resource, string action, bool allowed, CancellationToken cancellationToken = default)
         {
             await LogActionAsync(new AuditLogEntry
             {
@@ -74,7 +75,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Logs data modification.
         /// </summary>
-        public async Task LogModificationAsync(string user, string entityType, string entityId, string changeDetails)
+        public async Task LogModificationAsync(string user, string entityType, string entityId, string changeDetails, CancellationToken cancellationToken = default)
         {
             await LogActionAsync(new AuditLogEntry
             {
@@ -92,7 +93,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Logs security events.
         /// </summary>
-        public async Task LogSecurityEventAsync(string eventType, string details, string severity = "Warning")
+        public async Task LogSecurityEventAsync(string eventType, string details, string severity = "Warning", CancellationToken cancellationToken = default)
         {
             await LogActionAsync(new AuditLogEntry
             {

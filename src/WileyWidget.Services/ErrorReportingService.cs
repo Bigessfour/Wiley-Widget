@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Threading.Tasks;
 using Serilog;
@@ -343,7 +344,7 @@ public class ErrorReportingService
     /// <summary>
     /// Attempts to recover from an error using registered strategies.
     /// </summary>
-    public async Task<bool> TryRecoverAsync(Exception exception, string context, Func<Task<bool>> recoveryAction)
+    public async Task<bool> TryRecoverAsync(Exception exception, string context, Func<Task<bool>> recoveryAction, CancellationToken cancellationToken = default)
     {
         var correlationId = Guid.NewGuid().ToString();
 
@@ -443,7 +444,7 @@ public class ErrorReportingService
     /// <summary>
     /// Safely executes an async action that should not throw exceptions.
     /// </summary>
-    public async Task SafeExecuteAsync(Func<Task> action, string context = null, bool logErrors = true)
+    public async Task SafeExecuteAsync(Func<Task> action, string context = null, bool logErrors = true, CancellationToken cancellationToken = default)
     {
         if (action is null) throw new ArgumentNullException(nameof(action));
 
@@ -472,7 +473,7 @@ public class ErrorReportingService
 /// </summary>
 public abstract class ErrorRecoveryStrategy
 {
-    public abstract Task<bool> ExecuteAsync(Func<Task<bool>> action);
+    public abstract Task<bool> ExecuteAsync(Func<Task<bool>> action, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -509,7 +510,7 @@ public class RetryWithDelayStrategy : ErrorRecoveryStrategy
         _initialDelayMs = initialDelayMs;
     }
 
-    public override async Task<bool> ExecuteAsync(Func<Task<bool>> action)
+    public override async Task<bool> ExecuteAsync(Func<Task<bool>> action, CancellationToken cancellationToken = default)
     {
         if (action == null) throw new ArgumentNullException(nameof(action));
 

@@ -144,10 +144,9 @@ internal sealed class QuickBooksAuthService : IDisposable
             .Build();
     }
 
-    private static async Task<string?> TryGetFromSecretVaultAsync(
-        ISecretVaultService? keyVaultService,
+    private static async Task<string?> TryGetFromSecretVaultAsync(ISecretVaultService? keyVaultService,
         string secretName,
-        ILogger logger)
+        ILogger logger, CancellationToken cancellationToken = default)
     {
         if (keyVaultService == null)
         {
@@ -198,7 +197,7 @@ internal sealed class QuickBooksAuthService : IDisposable
         catch { return null; }
     }
 
-    private async Task EnsureInitializedAsync()
+    private async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized) return;
         await _initSemaphore.WaitAsync().ConfigureAwait(false);
@@ -278,7 +277,7 @@ internal sealed class QuickBooksAuthService : IDisposable
         return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(TokenExpiryBufferSeconds);
     }
 
-    public async Task RefreshTokenIfNeededAsync()
+    public async Task RefreshTokenIfNeededAsync(CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = _settings.Current;
@@ -297,7 +296,7 @@ internal sealed class QuickBooksAuthService : IDisposable
     /// Refreshes the access token using the refresh token.
     /// Applies Polly resilience pipeline for timeout, circuit breaker, and retry.
     /// </summary>
-    public async Task RefreshTokenAsync()
+    public async Task RefreshTokenAsync(CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
         var s = _settings.Current;
@@ -375,7 +374,7 @@ internal sealed class QuickBooksAuthService : IDisposable
     /// Performs the actual HTTP token refresh against Intuit API.
     /// Called within the resilience pipeline context.
     /// </summary>
-    private async Task<TokenResult> PerformTokenRefreshAsync(string refreshToken)
+    private async Task<TokenResult> PerformTokenRefreshAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));

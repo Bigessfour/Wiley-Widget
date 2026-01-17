@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using WileyWidget.Models;
@@ -12,17 +13,17 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Exports data to PDF format
         /// </summary>
-        Task ExportToPdfAsync(object data, string filePath);
+        Task ExportToPdfAsync(object data, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exports data to Excel format
         /// </summary>
-        Task ExportToExcelAsync(object data, string filePath);
+        Task ExportToExcelAsync(object data, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exports data to CSV format
         /// </summary>
-        Task ExportToCsvAsync(IEnumerable<object> data, string filePath);
+        Task ExportToCsvAsync(IEnumerable<object> data, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets supported export formats
@@ -32,11 +33,11 @@ namespace WileyWidget.Services.Abstractions
         /// <summary>
         /// Exports a compliance report to PDF
         /// </summary>
-        Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath);
+        Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Exports a compliance report to Excel
         /// </summary>
-        Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath);
+        Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default);
     }
 }

@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,7 +36,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all utility bills
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetAllAsync()
+    public async Task<IEnumerable<UtilityBill>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var activity = ActivitySource.StartActivity("UtilityBillRepository.GetAll");
         activity?.SetTag("operation.type", "query");
@@ -84,7 +85,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets a utility bill by ID
     /// </summary>
-    public async Task<UtilityBill?> GetByIdAsync(int id)
+    public async Task<UtilityBill?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityBills
@@ -97,7 +98,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets a utility bill by bill number
     /// </summary>
-    public async Task<UtilityBill?> GetByBillNumberAsync(string billNumber)
+    public async Task<UtilityBill?> GetByBillNumberAsync(string billNumber, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityBills
@@ -110,7 +111,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all bills for a specific customer
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetByCustomerIdAsync(int customerId)
+    public async Task<IEnumerable<UtilityBill>> GetByCustomerIdAsync(int customerId, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"UtilityBills_Customer_{customerId}";
 
@@ -135,7 +136,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets bills by status
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetByStatusAsync(BillStatus status)
+    public async Task<IEnumerable<UtilityBill>> GetByStatusAsync(BillStatus status, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityBills
@@ -150,7 +151,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all overdue bills
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetOverdueBillsAsync()
+    public async Task<IEnumerable<UtilityBill>> GetOverdueBillsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         var today = DateTime.Today;
@@ -168,7 +169,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets bills due within a date range
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetBillsDueInRangeAsync(DateTime startDate, DateTime endDate)
+    public async Task<IEnumerable<UtilityBill>> GetBillsDueInRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -184,7 +185,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all unpaid bills for a specific customer
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetUnpaidBillsByCustomerIdAsync(int customerId)
+    public async Task<IEnumerable<UtilityBill>> GetUnpaidBillsByCustomerIdAsync(int customerId, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -201,7 +202,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets the total outstanding balance for a customer
     /// </summary>
-    public async Task<decimal> GetCustomerBalanceAsync(int customerId)
+    public async Task<decimal> GetCustomerBalanceAsync(int customerId, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -217,7 +218,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all charges for a specific bill
     /// </summary>
-    public async Task<IEnumerable<Charge>> GetChargesByBillIdAsync(int billId)
+    public async Task<IEnumerable<Charge>> GetChargesByBillIdAsync(int billId, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -230,7 +231,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets all charges for a customer's bills
     /// </summary>
-    public async Task<IEnumerable<Charge>> GetChargesByCustomerIdAsync(int customerId)
+    public async Task<IEnumerable<Charge>> GetChargesByCustomerIdAsync(int customerId, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -245,7 +246,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Adds a new utility bill
     /// </summary>
-    public async Task<UtilityBill> AddAsync(UtilityBill bill)
+    public async Task<UtilityBill> AddAsync(UtilityBill bill, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(bill);
 
@@ -277,7 +278,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Adds a charge to a bill
     /// </summary>
-    public async Task<Charge> AddChargeAsync(Charge charge)
+    public async Task<Charge> AddChargeAsync(Charge charge, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(charge);
 
@@ -313,7 +314,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Updates an existing utility bill
     /// </summary>
-    public async Task<UtilityBill> UpdateAsync(UtilityBill bill)
+    public async Task<UtilityBill> UpdateAsync(UtilityBill bill, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(bill);
 
@@ -343,7 +344,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Deletes a utility bill by ID
     /// </summary>
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -378,7 +379,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Records a payment against a bill
     /// </summary>
-    public async Task<bool> RecordPaymentAsync(int billId, decimal paymentAmount, DateTime paymentDate)
+    public async Task<bool> RecordPaymentAsync(int billId, decimal paymentAmount, DateTime paymentDate, CancellationToken cancellationToken = default)
     {
         if (paymentAmount <= 0)
         {
@@ -425,7 +426,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Checks if a bill number exists
     /// </summary>
-    public async Task<bool> BillNumberExistsAsync(string billNumber, int? excludeId = null)
+    public async Task<bool> BillNumberExistsAsync(string billNumber, int? excludeId = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -442,7 +443,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets the total number of bills
     /// </summary>
-    public async Task<int> GetCountAsync()
+    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityBills.CountAsync();
@@ -451,7 +452,7 @@ public class UtilityBillRepository : IUtilityBillRepository
     /// <summary>
     /// Gets bills created within a date range
     /// </summary>
-    public async Task<IEnumerable<UtilityBill>> GetBillsByDateRangeAsync(DateTime startDate, DateTime endDate)
+    public async Task<IEnumerable<UtilityBill>> GetBillsByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 

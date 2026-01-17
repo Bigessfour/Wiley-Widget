@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
@@ -18,7 +19,7 @@ public sealed class EfConversationRepository : IConversationRepository
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task SaveConversationAsync(object conversation)
+    public async Task SaveConversationAsync(object conversation, CancellationToken cancellationToken = default)
     {
         if (conversation is not ConversationHistory history)
         {
@@ -60,7 +61,7 @@ public sealed class EfConversationRepository : IConversationRepository
         await context.SaveChangesAsync().ConfigureAwait(false);
     }
 
-    public async Task<object?> GetConversationAsync(string id)
+    public async Task<object?> GetConversationAsync(string id, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -77,7 +78,7 @@ public sealed class EfConversationRepository : IConversationRepository
         return conversation;
     }
 
-    public async Task<List<object>> GetConversationsAsync(int skip, int limit)
+    public async Task<List<object>> GetConversationsAsync(int skip, int limit, CancellationToken cancellationToken = default)
     {
         if (skip < 0) skip = 0;
         if (limit <= 0) limit = 50;
@@ -95,7 +96,7 @@ public sealed class EfConversationRepository : IConversationRepository
         return conversations.Cast<object>().ToList();
     }
 
-    public async Task DeleteConversationAsync(string conversationId)
+    public async Task DeleteConversationAsync(string conversationId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(conversationId))
         {

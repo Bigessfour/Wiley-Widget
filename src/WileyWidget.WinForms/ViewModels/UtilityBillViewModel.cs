@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -126,7 +127,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         #region Command Implementations
 
-        private async Task LoadBillsAsync()
+        private async Task LoadBillsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -162,7 +163,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task LoadCustomersAsync()
+        private async Task LoadCustomersAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -194,7 +195,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task CreateBillAsync()
+        private async Task CreateBillAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -249,7 +250,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task SaveBillAsync()
+        private async Task SaveBillAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -299,7 +300,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task DeleteBillAsync()
+        private async Task DeleteBillAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -357,7 +358,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task MarkAsPaidAsync()
+        private async Task MarkAsPaidAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -465,7 +466,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task GenerateReportAsync()
+        private async Task GenerateReportAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -534,7 +535,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Generates a unique bill number with timestamp.
         /// </summary>
-        private async Task<string> GenerateUniqueBillNumberAsync()
+        private async Task<string> GenerateUniqueBillNumberAsync(CancellationToken cancellationToken = default)
         {
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             var billNumber = $"UB-{timestamp}";

@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -89,7 +90,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Loads preferences from disk.
         /// </summary>
-        public async Task LoadPreferencesAsync()
+        public async Task LoadPreferencesAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -114,7 +115,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Saves preferences to disk.
         /// </summary>
-        public async Task SavePreferencesAsync()
+        public async Task SavePreferencesAsync(CancellationToken cancellationToken = default)
         {
             if (!_isDirty) return;
 
@@ -135,7 +136,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Resets all preferences to defaults.
         /// </summary>
-        public async Task ResetAsync()
+        public async Task ResetAsync(CancellationToken cancellationToken = default)
         {
             LoadDefaults();
             await SavePreferencesAsync();

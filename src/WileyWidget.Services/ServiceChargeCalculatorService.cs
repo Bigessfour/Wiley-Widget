@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,7 +53,7 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
     /// <summary>
     /// Calculate recommended monthly service charge for an enterprise with rate validation
     /// </summary>
-    public async Task<ServiceChargeRecommendation> CalculateRecommendedChargeAsync(int enterpriseId)
+    public async Task<ServiceChargeRecommendation> CalculateRecommendedChargeAsync(int enterpriseId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -183,8 +184,7 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
         };
     }
 
-    private async Task<RateValidationResult> ValidateRateAgainstBudgetAsync(
-        int enterpriseId, decimal proposedRate, IEnumerable<BudgetEntry> budgets, decimal totalMonthlyExpenses, MunicipalFundType fundType)
+    private async Task<RateValidationResult> ValidateRateAgainstBudgetAsync(int enterpriseId, decimal proposedRate, IEnumerable<BudgetEntry> budgets, decimal totalMonthlyExpenses, MunicipalFundType fundType, CancellationToken cancellationToken = default)
     {
         var validationResult = new RateValidationResult { IsValid = true };
 
@@ -310,7 +310,7 @@ public class ServiceChargeCalculatorService : IChargeCalculatorService
     /// <summary>
     /// Generate what-if scenario for service charge changes
     /// </summary>
-    public async Task<WhatIfScenario> GenerateChargeScenarioAsync(int enterpriseId, decimal proposedRateIncrease, decimal proposedExpenseChange = 0)
+    public async Task<WhatIfScenario> GenerateChargeScenarioAsync(int enterpriseId, decimal proposedRateIncrease, decimal proposedExpenseChange = 0, CancellationToken cancellationToken = default)
     {
         var currentRecommendation = await CalculateRecommendedChargeAsync(enterpriseId);
 

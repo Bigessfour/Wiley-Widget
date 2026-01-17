@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.ViewModels
 {
@@ -35,8 +36,24 @@ namespace WileyWidget.ViewModels
     /// ViewModel for Budget Overview panel displaying fiscal year budget vs actual analysis,
     /// variance tracking, and summary metrics with CSV export capabilities.
     /// </summary>
-    public partial class BudgetOverviewViewModel : ObservableObject
+    public partial class BudgetOverviewViewModel : ObservableObject, ILazyLoadViewModel
     {
+        private bool _isDataLoaded;
+        public bool IsDataLoaded
+        {
+            get => _isDataLoaded;
+            private set => SetProperty(ref _isDataLoaded, value);
+        }
+
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            if (isVisible && !IsDataLoaded && !IsLoading)
+            {
+                await LoadDataCommand.ExecuteAsync(null);
+                IsDataLoaded = true;
+            }
+        }
+
         private readonly ILogger<BudgetOverviewViewModel> _logger;
         private readonly IBudgetCategoryService _budgetCategoryService;
 

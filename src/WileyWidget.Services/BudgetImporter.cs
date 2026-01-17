@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -37,7 +38,7 @@ public class BudgetImporter : IBudgetImporter
     public string Description => "Excel and CSV budget data importer supporting hierarchical account structures";
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<BudgetEntry>> ImportBudgetAsync(string filePath)
+    public async Task<IEnumerable<BudgetEntry>> ImportBudgetAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
@@ -75,7 +76,7 @@ public class BudgetImporter : IBudgetImporter
     }
 
     /// <inheritdoc/>
-    public async Task<List<string>> ValidateImportFileAsync(string filePath)
+    public async Task<List<string>> ValidateImportFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
         var errors = new List<string>();
 
@@ -122,7 +123,7 @@ public class BudgetImporter : IBudgetImporter
     /// <summary>
     /// Validates and enriches budget entries with additional data
     /// </summary>
-    private Task<IEnumerable<BudgetEntry>> ValidateAndEnrichBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string sourceFilePath)
+    private Task<IEnumerable<BudgetEntry>> ValidateAndEnrichBudgetEntriesAsync(IEnumerable<BudgetEntry> entries, string sourceFilePath, CancellationToken cancellationToken = default)
     {
         var validatedEntries = new List<BudgetEntry>();
 

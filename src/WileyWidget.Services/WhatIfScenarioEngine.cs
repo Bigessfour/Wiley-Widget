@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using WileyWidget.Services.Abstractions;
@@ -33,9 +34,8 @@ public class WhatIfScenarioEngine : IWhatIfScenarioEngine
     /// <summary>
     /// Generate comprehensive what-if scenario for multiple changes
     /// </summary>
-    public async Task<ComprehensiveScenario> GenerateComprehensiveScenarioAsync(
-        int enterpriseId,
-        ScenarioParameters parameters)
+    public async Task<ComprehensiveScenario> GenerateComprehensiveScenarioAsync(int enterpriseId,
+        ScenarioParameters parameters, CancellationToken cancellationToken = default)
     {
         if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 

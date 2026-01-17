@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CsvHelper;
@@ -248,7 +249,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Loads all budget entries for the selected fiscal year asynchronously.
         /// </summary>
         /// <returns>A task representing the async load operation.</returns>
-        private async Task LoadBudgetsAsync()
+        private async Task LoadBudgetsAsync(CancellationToken cancellationToken = default)
         {
             IsLoading = true;
             StatusText = "Loading budget entries...";
@@ -419,7 +420,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task ImportFromCsvAsync(string? filePath)
+        private async Task ImportFromCsvAsync(string? filePath, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -527,7 +528,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Import CSV using a user-supplied column mapping. Mapping keys should include: "AccountNumber","Description","BudgetedAmount","ActualAmount".
         /// Supports bulk entity assignment and fiscal year override. Reports progress via IProgress&lt;string&gt;.
         /// </summary>
-        public async Task ImportFromCsvWithMappingAsync(string? filePath, Dictionary<string, string> columnMap, string? bulkEntity, int fiscalYearOverride, IProgress<string>? progress = null)
+        public async Task ImportFromCsvWithMappingAsync(string? filePath, Dictionary<string, string> columnMap, string? bulkEntity, int fiscalYearOverride, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -669,7 +670,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task ExportToCsvAsync(string? filePath)
+        private async Task ExportToCsvAsync(string? filePath, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -725,7 +726,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task ExportToPdfAsync(string? filePath)
+        private async Task ExportToPdfAsync(string? filePath, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -750,7 +751,7 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        private async Task ExportToExcelAsync(string? filePath)
+        private async Task ExportToExcelAsync(string? filePath, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -808,7 +809,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Updates the FilteredBudgetEntries collection and refreshes analysis.
         /// </summary>
         /// <returns>A task representing the async filter operation.</returns>
-        private async Task ApplyFiltersAsync()
+        private async Task ApplyFiltersAsync(CancellationToken cancellationToken = default)
         {
             var filteredList = await Task.Run(() =>
             {
@@ -877,7 +878,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Clears all active filters and resets the filtered collection.
         /// </summary>
         /// <returns>A task representing the async clear operation.</returns>
-        private Task ClearFiltersAsync()
+        private Task ClearFiltersAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Clearing all filters");
 
@@ -906,7 +907,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Refreshes all analysis totals and counts based on current filtered entries.
         /// </summary>
         /// <returns>A task representing the async refresh operation.</returns>
-        private async Task RefreshAnalysisAsync()
+        private async Task RefreshAnalysisAsync(CancellationToken cancellationToken = default)
         {
             var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
 
@@ -946,7 +947,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Calculates and updates variance for all budget entries.
         /// </summary>
         /// <returns>A task representing the async calculation operation.</returns>
-        private async Task CalculateVariancesAsync()
+        private async Task CalculateVariancesAsync(CancellationToken cancellationToken = default)
         {
             IsLoading = true;
             StatusText = "Calculating variances...";
@@ -989,7 +990,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         /// <param name="entry">The entry to copy.</param>
         /// <returns>A task representing the async copy operation.</returns>
-        private async Task CopyToNextYearAsync(BudgetEntry? entry)
+        private async Task CopyToNextYearAsync(BudgetEntry? entry, CancellationToken cancellationToken = default)
         {
             if (entry == null) return;
 
@@ -1043,7 +1044,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         /// <param name="adjustmentPercent">The percentage adjustment (e.g., 5.0 for +5%, -3.0 for -3%).</param>
         /// <returns>A task representing the async adjustment operation.</returns>
-        private async Task BulkAdjustAsync(decimal adjustmentPercent)
+        private async Task BulkAdjustAsync(decimal adjustmentPercent, CancellationToken cancellationToken = default)
         {
             if (adjustmentPercent == 0) return;
 
