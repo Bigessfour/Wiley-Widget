@@ -126,6 +126,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         };
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeader.HelpClicked += (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
@@ -262,21 +263,29 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading revenue data...",
+            Dock = DockStyle.Fill,
             AccessibleName = "Loading overlay",
             AccessibleDescription = "Loading indicator displayed while data is being fetched"
         };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         // No-data overlay
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No revenue data for this period\r\nAdd transactions to see trends over time",
+            Dock = DockStyle.Fill,
             AccessibleName = "No data overlay",
             AccessibleDescription = "Message displayed when no revenue data is available for the selected period"
         };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
+        this.PerformLayout();
+        this.Refresh();
+
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
@@ -340,13 +349,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         // CHANGE 19: Rely on global SfSkinManager theme cascade - no per-control overrides
         // Chart area configuration - colors inherited from theme
-        ChartControlDefaults.Apply(_chartControl);
-
-        // Configure X-axis for date values per Syncfusion datetime axis documentation
-        _chartControl.PrimaryXAxis.ValueType = ChartValueType.DateTime;
-        _chartControl.PrimaryXAxis.Title = "Month";
-        _chartControl.PrimaryXAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-        _chartControl.PrimaryXAxis.Font = new Font("Segoe UI", 9F);
+            ChartControlDefaults.Apply(_chartControl, logger: _logger);
         _chartControl.PrimaryXAxis.LabelRotate = true;
         _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
         _chartControl.PrimaryXAxis.DrawGrid = true;

@@ -7,11 +7,14 @@ namespace WileyWidget.Tests;
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using Xunit;
@@ -44,11 +47,37 @@ public partial class QuickBooksIntegrationTests
         services.AddSingleton<ISettingsService, SettingsService>();
         // Use the production EncryptedLocalSecretVaultService implementation for tests
         services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
-        services.AddHttpClient<QuickBooksService>();
-        
+        // Register QuickBooksClient with resilience handler via DependencyInjection
+        services.AddHttpClient("QuickBooksClient")
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+            .AddResilienceHandler("QuickBooksResilience", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = 5,
+                    Delay = TimeSpan.FromMilliseconds(1000),
+                    BackoffType = DelayBackoffType.Linear,
+                    ShouldHandle = args => new ValueTask<bool>(
+                        args.Outcome.Exception is HttpRequestException ||
+                        (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests || // 429
+                         (int?)args.Outcome.Result?.StatusCode >= 500)) // 5xx
+                });
+                builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                {
+                    FailureRatio = 0.5,
+                    SamplingDuration = TimeSpan.FromMinutes(1),
+                    MinimumThroughput = 5,
+                    BreakDuration = TimeSpan.FromMinutes(2)
+                });
+                builder.AddTimeout(new HttpTimeoutStrategyOptions
+                {
+                    Timeout = TimeSpan.FromSeconds(10)
+                });
+            });
+
         // Add logging with console provider for tests
         services.AddLogging();
-        
+
         // QuickBooks services
         // services.AddScoped<QuickBooksAuthService>(); // Internal class, not accessible in tests
         services.AddScoped<IQuickBooksApiClient, QuickBooksApiClient>();

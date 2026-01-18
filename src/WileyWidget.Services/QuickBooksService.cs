@@ -65,15 +65,19 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly IQuickBooksDataService? _injectedDataService;
     private readonly RateLimiter _rateLimiter;
 
-    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, HttpClient httpClient, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
+    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _secretVault = keyVaultService; // may be null in some test contexts
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _injectedDataService = dataService;
+
+        // Get named QuickBooksClient with resilience handler (retry 5x, circuit breaker, 10s timeout)
+        // Falls back to generic HttpClient factory if named client not available
+        _httpClient = httpClientFactory.CreateClient("QuickBooksClient") ?? httpClientFactory.CreateClient();
 
         // Initialize rate limiter: 10 requests per second to avoid QuickBooks API throttling
         _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -86,8 +90,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             AutoReplenishment = true
         });
 
-        // Initialize auth service
-        _authService = new QuickBooksAuthService(settings, keyVaultService, logger, httpClient, serviceProvider);
+        // Initialize auth service with resilient HttpClient
+        _authService = new QuickBooksAuthService(settings, keyVaultService, logger, _httpClient, serviceProvider);
 
         // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
         EnsureSettingsLoaded();

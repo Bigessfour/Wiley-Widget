@@ -53,61 +53,64 @@ public static class DashboardFactory
         {
             logger?.LogInformation("Dashboard panel creation started");
 
-            var dashboardPanel = new TableLayoutPanel
+            // Use FlowLayoutPanel for centered, responsive card layout
+            var dashboardPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 5,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = true,
+                AutoScroll = true,
                 Padding = new Padding(12, 12, 12, 12),
-                CellBorderStyle = TableLayoutPanelCellBorderStyle.None,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                // Center items horizontally
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
 
-            for (int i = 0; i < 5; i++)
-            {
-                dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-            }
+            // Create cards with fixed width for centering
+            const int cardWidth = 280;
+            const int cardHeight = 80;
 
             // Card 1: Accounts
-            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? MainFormResources.LoadingText).Panel;
+            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? MainFormResources.LoadingText, cardWidth, cardHeight).Panel;
             SetupCardClickHandler(accountsCard, () =>
             {
                 panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left);
             });
 
             // Card 2: Charts
-            var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
+            var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", cardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
                 panelNavigator?.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
-            var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
+            var settingsCard = CreateDashboardCard("Settings", "System Config", cardWidth, cardHeight).Panel;
             SetupCardClickHandler(settingsCard, () =>
             {
                 panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
             });
 
             // Card 4: Reports
-            var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
+            var reportsCard = CreateDashboardCard("Reports", "Generate Now", cardWidth, cardHeight).Panel;
             SetupCardClickHandler(reportsCard, () =>
             {
                 panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)
-            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? MainFormResources.LoadingText).Panel;
+            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? MainFormResources.LoadingText, cardWidth, cardHeight).Panel;
             SetupCardClickHandler(infoCard, () =>
             {
                 panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom);
             });
 
-            dashboardPanel.Controls.Add(accountsCard, 0, 0);
-            dashboardPanel.Controls.Add(chartsCard, 0, 1);
-            dashboardPanel.Controls.Add(settingsCard, 0, 2);
-            dashboardPanel.Controls.Add(reportsCard, 0, 3);
-            dashboardPanel.Controls.Add(infoCard, 0, 4);
+            // Add cards to flow layout
+            dashboardPanel.Controls.Add(accountsCard);
+            dashboardPanel.Controls.Add(chartsCard);
+            dashboardPanel.Controls.Add(settingsCard);
+            dashboardPanel.Controls.Add(reportsCard);
+            dashboardPanel.Controls.Add(infoCard);
 
             stopwatch.Stop();
             logger?.LogInformation("Dashboard panel created successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
@@ -125,15 +128,18 @@ public static class DashboardFactory
     /// <summary>
     /// Create a dashboard card with title and description.
     /// </summary>
-    private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description)
+    private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
     {
         var panel = new GradientPanelExt
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.None,
+            Width = width,
+            Height = height,
             Padding = new Padding(12, 8, 12, 8),
             Margin = new Padding(4, 4, 4, 8),
             BorderStyle = BorderStyle.FixedSingle,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            AutoSize = false
         };
 
         // Accessibility: give controls deterministic names for UI automation

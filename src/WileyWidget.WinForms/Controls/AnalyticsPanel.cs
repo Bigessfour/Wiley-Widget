@@ -132,12 +132,24 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _statusStrip.Items.Add(_statusLabel);
 
         // Loading overlay
-        _loadingOverlay = new LoadingOverlay { Message = "Running analytics..." };
+        _loadingOverlay = new LoadingOverlay
+        {
+            Message = "Running analytics...",
+            Dock = DockStyle.Fill,
+            Visible = false
+        };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No analytics data available\r\nPerform budget operations to generate insights" };
+        _noDataOverlay = new NoDataOverlay
+        {
+            Message = "No analytics data available\r\nPerform budget operations to generate insights",
+            Dock = DockStyle.Fill,
+            Visible = false
+        };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
@@ -151,6 +163,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Set tab order
         SetTabOrder();
+
+        this.PerformLayout();
+        this.Refresh();
+
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     /// <summary>
@@ -655,7 +672,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Trends Chart"
         };
 
-        ChartControlDefaults.Apply(_trendsChart!);
+        ChartControlDefaults.Apply(_trendsChart!, logger: _logger);
 
         _trendsChart.Title.Text = "Monthly Budget Trends";
         _trendsChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
@@ -680,7 +697,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Forecast Chart"
         };
 
-        ChartControlDefaults.Apply(_forecastChart!);
+        ChartControlDefaults.Apply(_forecastChart!, logger: _logger);
 
         _forecastChart.Title.Text = "Reserve Forecast";
         _forecastChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);

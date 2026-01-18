@@ -18,6 +18,7 @@ namespace WileyWidget.WinForms.Controls;
 /// </summary>
 public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
 {
+    private PanelHeader? _panelHeader;
     private BlazorWebView? _blazorWebView;
     private Panel? _containerPanel;
 
@@ -32,6 +33,17 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         this.Name = "ChatPanel";
         this.Size = new Size(400, 600);
 
+        // Panel header (JARVIS title and close button)
+        _panelHeader = new PanelHeader
+        {
+            Dock = DockStyle.Top,
+            Title = "JARVIS AI Assistant",
+            ShowRefreshButton = false,
+            ShowHelpButton = false
+        };
+        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        this.Controls.Add(_panelHeader);
+
         _containerPanel = new Panel
         {
             Dock = DockStyle.Fill,
@@ -39,6 +51,11 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         };
 
         this.Controls.Add(_containerPanel);
+        
+        this.PerformLayout();
+        this.Refresh();
+        
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     protected override void OnViewModelResolved(ChatPanelViewModel viewModel)
@@ -90,5 +107,24 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             _blazorWebView?.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    private void ClosePanel()
+    {
+        try
+        {
+            var parentForm = FindForm();
+            if (parentForm == null) return;
+
+            var closePanelMethod = parentForm.GetType().GetMethod(
+                "ClosePanel",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+            closePanelMethod?.Invoke(parentForm, new object[] { Name });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "ChatPanel: Failed to close panel via parent form");
+        }
     }
 }

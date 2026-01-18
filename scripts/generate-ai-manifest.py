@@ -11,22 +11,17 @@ Usage:
 Requirements:
     - Python 3.14+
     - git (for repository information)
-    - Optional: gitpython for better git integration
+    - gitpython (required)
 """
 
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-try:
-    from git import Repo  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    Repo = None
+from git import Repo
 
 
 class AIManifestGenerator:
@@ -46,13 +41,11 @@ class AIManifestGenerator:
         self.repo_info = self._get_repo_info()
 
     def _load_repo(self):
-        """Load git repository using gitpython when available."""
-        if Repo is None:
-            return None
+        """Load git repository using gitpython."""
         try:
             return Repo(self.repo_root)
-        except Exception:
-            return None
+        except Exception as exc:
+            raise RuntimeError("GitPython failed to load the repository.") from exc
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from .ai-manifest-config.json."""
@@ -97,13 +90,11 @@ class AIManifestGenerator:
 
     def _is_tracked(self, relative_path: Path) -> bool:
         """Determine if a file is tracked by git (best-effort)."""
-        if self.repo:
-            try:
-                tracked = self.repo.git.ls_files(str(relative_path))
-                return bool(tracked.strip())
-            except Exception:
-                return False
-        return True
+        try:
+            tracked = self.repo.git.ls_files(str(relative_path))
+            return bool(tracked.strip())
+        except Exception:
+            return False
 
     def _get_repo_info(self) -> Dict[str, Any]:
         """Get repository information using git."""
@@ -111,37 +102,14 @@ class AIManifestGenerator:
             return self._repo_info_cache  # type: ignore[attr-defined]
 
         try:
-            if self.repo:
-                remote_url = next(self.repo.remote().urls)
-                branch = (
-                    self.repo.active_branch.name
-                    if not self.repo.head.is_detached
-                    else "(detached)"
-                )
-                commit_hash = self.repo.head.commit.hexsha
-                is_dirty = self.repo.is_dirty(untracked_files=True)
-            else:
-                remote_url = subprocess.check_output(
-                    ["git", "config", "--get", "remote.origin.url"],
-                    cwd=self.repo_root,
-                    text=True,
-                ).strip()
-
-                branch = subprocess.check_output(
-                    ["git", "branch", "--show-current"], cwd=self.repo_root, text=True
-                ).strip()
-
-                commit_hash = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], cwd=self.repo_root, text=True
-                ).strip()
-
-                status = subprocess.run(
-                    ["git", "status", "--porcelain"],
-                    cwd=self.repo_root,
-                    capture_output=True,
-                    text=True,
-                )
-                is_dirty = bool(status.stdout.strip())
+            remote_url = next(self.repo.remote().urls)
+            branch = (
+                self.repo.active_branch.name
+                if not self.repo.head.is_detached
+                else "(detached)"
+            )
+            commit_hash = self.repo.head.commit.hexsha
+            is_dirty = self.repo.is_dirty(untracked_files=True)
 
             # Extract owner/repo from URL
             owner_repo = self._extract_owner_repo(remote_url)
@@ -160,7 +128,7 @@ class AIManifestGenerator:
             }
             return self._repo_info_cache
 
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             raise RuntimeError(f"Failed to get git info: {e}") from e
 
     def _extract_owner_repo(self, remote_url: str) -> str:

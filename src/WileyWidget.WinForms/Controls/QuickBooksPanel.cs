@@ -214,6 +214,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading QuickBooks data...",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_loadingOverlay);
@@ -222,13 +223,17 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No sync history yet\r\nConnect and sync data with QuickBooks to get started",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
-        PerformLayout();
+        this.PerformLayout();
+        this.Refresh();
+
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     /// <summary>

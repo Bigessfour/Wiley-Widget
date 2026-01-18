@@ -88,11 +88,11 @@ namespace WileyWidget.WinForms.Controls
             txtAccountNumber.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.AccountNumber), true, DataSourceUpdateMode.OnPropertyChanged);
             txtName.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Name), true, DataSourceUpdateMode.OnPropertyChanged);
             txtDescription.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Description), true, DataSourceUpdateMode.OnPropertyChanged);
-            
+
             // SfNumericTextBox uses Value property (double?)
             numBalance.DataBindings.Add("Value", _editModel, nameof(_editModel.Balance), true, DataSourceUpdateMode.OnPropertyChanged);
             numBudget.DataBindings.Add("Value", _editModel, nameof(_editModel.BudgetAmount), true, DataSourceUpdateMode.OnPropertyChanged);
-            
+
             chkActive.DataBindings.Add(nameof(CheckBox.Checked), _editModel, nameof(_editModel.IsActive), true, DataSourceUpdateMode.OnPropertyChanged);
 
             // SfComboBox bindings - SelectedValue binds to model property
@@ -125,6 +125,8 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private void InitializeComponent()
         {
+            SuspendLayout();
+
             _toolTip = new ToolTip();
             var padding = 16;
             var labelWidth = 140;
@@ -402,6 +404,10 @@ namespace WileyWidget.WinForms.Controls
             buttonPanel.Controls.Add(btnCancel);
 
             Controls.Add(buttonPanel);
+
+            ResumeLayout(false);
+            PerformLayout();
+            Refresh();
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -514,7 +520,7 @@ namespace WileyWidget.WinForms.Controls
                     var errors = GetValidationErrors();
                     if (errors.Any())
                     {
-                        MessageBox.Show($"Please correct the following errors:\n\n{string.Join("\n", errors)}", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        Dialogs.ValidationDialog.Show(this, "Validation Error", "Account data validation failed:", errors, null);
                         return;
                     }
                 }

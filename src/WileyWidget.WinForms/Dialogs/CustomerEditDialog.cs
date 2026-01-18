@@ -58,7 +58,9 @@ namespace WileyWidget.WinForms.Dialogs
             InitializeDialog();
             LoadCustomerData();
 
-            _logger?.LogDebug("CustomerEditDialog created for customer {Account}", customer.AccountNumber);
+            this.PerformLayout();
+            this.Refresh();
+            _logger?.LogDebug("[DIALOG] {DialogName} content anchored and refreshed", this.Name);
         }
 
         private void InitializeDialog()
@@ -308,9 +310,8 @@ namespace WileyWidget.WinForms.Dialogs
                 var validationResults = _customer.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(_customer));
                 if (validationResults.Any())
                 {
-                    var errors = string.Join("\n", validationResults.Select(vr => vr.ErrorMessage));
-                    MessageBox.Show($"Please correct the following errors:\n\n{errors}", "Validation Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    var errors = validationResults.Select(vr => vr.ErrorMessage ?? "Unknown error").ToList();
+                    ValidationDialog.Show(this, "Validation Error", "Customer data validation failed:", errors, _logger);
                     return;
                 }
 

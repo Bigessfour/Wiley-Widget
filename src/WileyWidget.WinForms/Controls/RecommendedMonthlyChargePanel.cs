@@ -71,7 +71,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
     /// <summary>
     /// Parameterless constructor for design-time support
     /// </summary>
-    public RecommendedMonthlyChargePanel()
+    internal RecommendedMonthlyChargePanel()
     {
         InitializeComponent();
 
@@ -99,6 +99,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
             Height = 50
         };
         _panelHeader.RefreshClicked += async (s, e) => await RefreshDataAsync();
+        _panelHeader.HelpClicked += (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
         _panelHeader.CloseClicked += (s, e) => ClosePanel();
         Controls.Add(_panelHeader);
 
@@ -505,7 +506,7 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         };
         _chartRegionEventWiring = new ChartControlRegionEventWiring(_chartControl);
 
-        ChartControlDefaults.Apply(_chartControl);
+        ChartControlDefaults.Apply(_chartControl, logger: _logger);
 
         // Configure chart appearance
         _chartControl.Title.Text = "Expenses vs Current vs Suggested Charges";
@@ -543,18 +544,25 @@ public partial class RecommendedMonthlyChargePanel : UserControl
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading charge data...",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No charge data available",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
-        _logger.LogDebug("RecommendedMonthlyChargePanel controls initialized with enhanced layout");
+        this.PerformLayout();
+        this.Refresh();
+
+        _logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private void BindViewModel()

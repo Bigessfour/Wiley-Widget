@@ -86,7 +86,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Parameterless constructor for DI/designer support.
         /// </summary>
-        public BudgetOverviewPanel() : this(new BudgetOverviewViewModel(), null)
+        internal BudgetOverviewPanel() : this(new BudgetOverviewViewModel(), null)
         {
         }
 
@@ -299,11 +299,26 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_lblLastUpdated);
 
             // Loading and no-data overlays
-            _loadingOverlay = new LoadingOverlay { Message = "Loading budget data..." };
+            _loadingOverlay = new LoadingOverlay
+            {
+                Message = "Loading budget data...",
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
             Controls.Add(_loadingOverlay);
+            _loadingOverlay.BringToFront();
 
-            _noDataOverlay = new NoDataOverlay { Message = "No budget data available\r\nAdd budget entries and accounts to see analysis" };
+            _noDataOverlay = new NoDataOverlay
+            {
+                Message = "No budget data available\r\nAdd budget entries and accounts to see analysis",
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
             Controls.Add(_noDataOverlay);
+            _noDataOverlay.BringToFront();
+
+            this.PerformLayout();
+            this.Refresh();
         }
 
         private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)

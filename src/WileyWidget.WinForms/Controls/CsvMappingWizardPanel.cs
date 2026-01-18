@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
 using CsvHelper;
 using CsvHelper.Configuration;
 
@@ -29,6 +30,7 @@ namespace WileyWidget.WinForms.Controls
 
     public partial class CsvMappingWizardPanel : UserControl
     {
+        private readonly ILogger? _logger;
         private readonly DataGridView _previewGrid;
         private readonly ComboBox _cbAccount;
         private readonly ComboBox _cbDescription;
@@ -47,8 +49,9 @@ namespace WileyWidget.WinForms.Controls
         public event EventHandler<MappingAppliedEventArgs>? MappingApplied;
         public event EventHandler? Cancelled;
 
-        public CsvMappingWizardPanel()
+        public CsvMappingWizardPanel(ILogger? logger = null)
         {
+            _logger = logger;
             // Build a lightweight UI programmatically so no designer changes required
             Dock = DockStyle.Fill;
 
@@ -91,6 +94,11 @@ namespace WileyWidget.WinForms.Controls
             main.Controls.Add(rightContainer, 1, 0);
 
             Controls.Add(main);
+            
+            this.PerformLayout();
+            this.Refresh();
+            
+            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
 
         public void Initialize(string filePath, IEnumerable<string>? availableEntities = null, int defaultFiscalYear = 2025)

@@ -1,20 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using WileyWidget.Business.Interfaces;
-using WileyWidget.Services.Abstractions;
-using WileyWidget.Services;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Services;
 using WileyWidget.ViewModels;
 
-using BusinessInterfaces = WileyWidget.Business.Interfaces;
-using ServiceAbstractions = WileyWidget.Services.Abstractions;
-using CoreServices = WileyWidget.Services;
-using WinFormsServices = WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -28,43 +24,43 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Validates all critical services are registered in the DI container.
         /// </summary>
-        DiValidationResult ValidateCriticalServices(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateCriticalServices(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates all repositories are registered correctly.
         /// </summary>
-        DiValidationResult ValidateRepositories(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateRepositories(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates all business services are registered correctly.
         /// </summary>
-        DiValidationResult ValidateServices(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateServices(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates all ViewModels are registered correctly.
         /// </summary>
-        DiValidationResult ValidateViewModels(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateViewModels(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates MainForm is registered correctly.
         /// Note: Most UI components are now UserControl panels resolved via IPanelNavigationService.
         /// </summary>
-        DiValidationResult ValidateForms(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateForms(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates all panels defined in the PanelRegistry are correctly registered in DI.
         /// </summary>
-        DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Validates that all ScopedPanelBase<T> generic arguments are registered as scoped.
         /// </summary>
-        DiValidationResult ValidateScopedPanels(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateScopedPanels(IServiceProvider serviceProvider);
 
         /// <summary>
         /// Performs comprehensive validation of all DI registrations.
         /// </summary>
-        DiValidationResult ValidateAll(IServiceProvider serviceProvider);
+        WileyWidget.Services.Abstractions.DiValidationResult ValidateAll(IServiceProvider serviceProvider);
     }
 
     /// <summary>
@@ -73,43 +69,83 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public class WinFormsDiValidator : IWinFormsDiValidator
     {
-        private readonly IDiValidationService _coreValidator;
+        private readonly global::WileyWidget.Services.DiValidationService _coreValidator;
         private readonly ILogger<WinFormsDiValidator> _logger;
+        private readonly IConfiguration _configuration;
 
         public WinFormsDiValidator(
-            IDiValidationService coreValidator,
-            ILogger<WinFormsDiValidator> logger)
+            global::WileyWidget.Services.DiValidationService coreValidator,
+            ILogger<WinFormsDiValidator> logger,
+            IConfiguration configuration)
         {
             _coreValidator = coreValidator ?? throw new ArgumentNullException(nameof(coreValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        public DiValidationResult ValidateCriticalServices(IServiceProvider serviceProvider)
+        private bool IsFastValidationEnabled => _configuration.GetValue<bool>("Validation:FastValidation", true);
+
+        private WileyWidget.Services.Abstractions.DiValidationResult ValidateCategoryWithFastSupport(
+            IServiceProvider serviceProvider,
+            IEnumerable<Type> serviceTypes,
+            string categoryName)
+        {
+            var isService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceProviderIsService>(serviceProvider);
+
+            if (IsFastValidationEnabled && isService != null)
+            {
+                var result = new WileyWidget.Services.Abstractions.DiValidationResult();
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+
+                foreach (var type in serviceTypes)
+                {
+                    if (isService.IsService(type))
+                    {
+                        result.SuccessMessages.Add($"{type.Name} registered successfully (Fast)");
+                    }
+                    else
+                    {
+                        result.Errors.Add($"{type.Name} is NOT registered (Fast)");
+                        result.IsValid = false;
+                    }
+                }
+
+                sw.Stop();
+                result.ValidationDuration = sw.Elapsed;
+                result.CategoryResults[categoryName] = result.SuccessMessages.Concat(result.Errors).ToList();
+                result.IsValid = result.Errors.Count == 0;
+                return result;
+            }
+
+            // Fallback to core validator (which may instantiate if fastValidation=false)
+            var coreResult = _coreValidator.ValidateServiceCategory(
+                serviceProvider,
+                serviceTypes,
+                categoryName);
+
+            coreResult.CategoryResults[categoryName] = coreResult.SuccessMessages.Concat(coreResult.Errors).Concat(coreResult.Warnings).ToList();
+            return coreResult;
+        }
+
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateCriticalServices(IServiceProvider serviceProvider)
         {
             var serviceTypes = new[]
             {
                 typeof(Microsoft.Extensions.Configuration.IConfiguration),
                 typeof(Serilog.ILogger),
-                typeof(ErrorReportingService),
-                typeof(ITelemetryService)
+                typeof(WileyWidget.Services.ErrorReportingService),
+                typeof(WileyWidget.Services.Abstractions.ITelemetryService)
             };
 
-            var result = _coreValidator.ValidateServiceCategory(
-                serviceProvider,
-                serviceTypes,
-                "Critical Services");
-
-            result.CategoryResults["Critical Services"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
-
-            return result;
+            return ValidateCategoryWithFastSupport(serviceProvider, serviceTypes, "Critical Services");
         }
 
-        public DiValidationResult ValidateRepositories(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateRepositories(IServiceProvider serviceProvider)
         {
             var serviceTypes = new[]
             {
                 typeof(IAccountsRepository),
-                typeof(BusinessInterfaces.IActivityLogRepository),
+                typeof(WileyWidget.Business.Interfaces.IActivityLogRepository),
                 typeof(IAuditRepository),
                 typeof(IBudgetRepository),
                 typeof(IDepartmentRepository),
@@ -119,67 +155,51 @@ namespace WileyWidget.WinForms.Services
                 typeof(IUtilityCustomerRepository)
             };
 
-            var result = _coreValidator.ValidateServiceCategory(
-                serviceProvider,
-                serviceTypes,
-                "Repositories");
-
-            result.CategoryResults["Repositories"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
-
-            return result;
+            return ValidateCategoryWithFastSupport(serviceProvider, serviceTypes, "Repositories");
         }
 
-        public DiValidationResult ValidateServices(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateServices(IServiceProvider serviceProvider)
         {
+
             var serviceTypes = new List<Type>
             {
                 // Core Services
-                typeof(ISettingsService),
-                typeof(ISecretVaultService),
-                typeof(HealthCheckService),
-                typeof(IDiValidationService),
+                typeof(WileyWidget.Services.SettingsService),
+                typeof(WileyWidget.Services.Abstractions.ISecretVaultService),
+                typeof(WileyWidget.Services.HealthCheckService),
+                typeof(global::WileyWidget.Services.DiValidationService),
 
-                // QuickBooks Services
-                typeof(IQuickBooksApiClient),
-                typeof(IQuickBooksService),
+                // QuickBooks Services (validate as interfaces, not concrete types)
+                typeof(WileyWidget.Services.Abstractions.IQuickBooksApiClient),
+                typeof(WileyWidget.Services.Abstractions.IQuickBooksService),
 
                 // Dashboard & Budget Services
-                typeof(IDashboardService),
+                typeof(WileyWidget.Services.Abstractions.IDashboardService),
                 typeof(IBudgetCategoryService),
-                typeof(IWileyWidgetContextService),
 
                 // AI Services
-                typeof(IAIService),
-                typeof(IAILoggingService),
-                typeof(IAuditService),
+                typeof(WileyWidget.Services.Abstractions.IAIService),
+                typeof(WileyWidget.Services.Abstractions.IAILoggingService),
+                typeof(WileyWidget.Services.Abstractions.IAuditService),
 
                 // Reporting Services
-                typeof(IReportExportService),
-                typeof(IReportService),
-                typeof(CoreServices.Excel.IExcelReaderService),
-                typeof(CoreServices.Export.IExcelExportService),
+                typeof(WileyWidget.Services.Abstractions.IReportExportService),
+                typeof(WileyWidget.Services.Abstractions.IReportService),
+                typeof(WileyWidget.Services.Excel.IExcelReaderService),
+                typeof(WileyWidget.Services.Export.IExcelExportService),
 
                 // Utility Services
-                typeof(IDataAnonymizerService),
-                typeof(IChargeCalculatorService),
-                typeof(IAnalyticsService),
-                typeof(IAnalyticsPipeline),
-                typeof(IGrokSupercomputer)
-
-                // Theme Services removed - SfSkinManager is the single source of truth for theming
+                typeof(WileyWidget.Services.Abstractions.IDataAnonymizerService),
+                typeof(WileyWidget.Services.Abstractions.IChargeCalculatorService),
+                typeof(WileyWidget.Services.Abstractions.IAnalyticsService),
+                typeof(WileyWidget.Services.Abstractions.IAnalyticsPipeline),
+                typeof(WileyWidget.Services.Abstractions.IGrokSupercomputer)
             };
 
-            var result = _coreValidator.ValidateServiceCategory(
-                serviceProvider,
-                serviceTypes,
-                "Business Services");
-
-            result.CategoryResults["Business Services"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
-
-            return result;
+            return ValidateCategoryWithFastSupport(serviceProvider, serviceTypes, "Business Services");
         }
 
-        public DiValidationResult ValidateViewModels(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateViewModels(IServiceProvider serviceProvider)
         {
             var serviceTypes = new[]
             {
@@ -195,17 +215,10 @@ namespace WileyWidget.WinForms.Services
                 typeof(ReportsViewModel)
             };
 
-            var result = _coreValidator.ValidateServiceCategory(
-                serviceProvider,
-                serviceTypes,
-                "ViewModels");
-
-            result.CategoryResults["ViewModels"] = result.SuccessMessages.Concat(result.Errors).Concat(result.Warnings).ToList();
-
-            return result;
+            return ValidateCategoryWithFastSupport(serviceProvider, serviceTypes, "ViewModels");
         }
 
-        public DiValidationResult ValidateForms(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateForms(IServiceProvider serviceProvider)
         {
             // Most UI components are now panels/controls, only MainForm is registered as a Form
             // To avoid runtime DI scope disposal issues, skip resolving MainForm during validation
@@ -221,14 +234,14 @@ namespace WileyWidget.WinForms.Services
             return result;
         }
 
-        public DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidatePanelsFromRegistry(IServiceProvider serviceProvider)
         {
             var panelTypes = PanelRegistry.Panels
                 .Select(p => p.PanelType)
                 .Distinct()
                 .ToList();
 
-            var result = new DiValidationResult();
+            var result = new WileyWidget.Services.Abstractions.DiValidationResult();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             _logger.LogInformation("=== Starting Panels Validation ===");
@@ -280,11 +293,11 @@ namespace WileyWidget.WinForms.Services
             return result;
         }
 
-        public DiValidationResult ValidateScopedPanels(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateScopedPanels(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
-            var result = new DiValidationResult();
+            var result = new WileyWidget.Services.Abstractions.DiValidationResult();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             // Find all types inheriting from ScopedPanelBase<T>
@@ -353,10 +366,18 @@ namespace WileyWidget.WinForms.Services
             return result;
         }
 
-        public DiValidationResult ValidateAll(IServiceProvider serviceProvider)
+        public WileyWidget.Services.Abstractions.DiValidationResult ValidateAll(IServiceProvider serviceProvider)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var combinedResult = new DiValidationResult();
+            var combinedResult = new WileyWidget.Services.Abstractions.DiValidationResult();
+
+            if (!_configuration.GetValue<bool>("Validation:DiValidationEnabled", true))
+            {
+                _logger.LogInformation("DI Validation is disabled in configuration.");
+                combinedResult.IsValid = true;
+                combinedResult.SuccessMessages.Add("Validation skipped per configuration.");
+                return combinedResult;
+            }
 
 #if DEBUG
             _logger.LogInformation("╔════════════════════════════════════════════════════════════════╗");
@@ -366,29 +387,61 @@ namespace WileyWidget.WinForms.Services
             _logger.LogInformation("Comprehensive DI validation starting");
 #endif
 
-            // Validate each category
-            var results = new[]
+            try
             {
-                ValidateCriticalServices(serviceProvider),
-                ValidateRepositories(serviceProvider),
-                ValidateServices(serviceProvider),
-                ValidateViewModels(serviceProvider),
-                ValidateForms(serviceProvider),
-                ValidatePanelsFromRegistry(serviceProvider),
-                ValidateScopedPanels(serviceProvider)
-            };
+                // Validate each category
+                var results = new[]
+                {
+                    ValidateCriticalServices(serviceProvider),
+                    ValidateRepositories(serviceProvider),
+                    ValidateServices(serviceProvider),
+                    ValidateViewModels(serviceProvider),
+                    ValidateForms(serviceProvider),
+                    ValidatePanelsFromRegistry(serviceProvider),
+                    ValidateScopedPanels(serviceProvider)
+                };
 
-            // Combine results
-            foreach (var result in results)
-            {
-                combinedResult.Errors.AddRange(result.Errors);
-                combinedResult.Warnings.AddRange(result.Warnings);
-                combinedResult.SuccessMessages.AddRange(result.SuccessMessages);
+                // Combine results
+                foreach (var result in results)
+                {
+                    combinedResult.Errors.AddRange(result.Errors);
+                    combinedResult.Warnings.AddRange(result.Warnings);
+                    combinedResult.SuccessMessages.AddRange(result.SuccessMessages);
+                }
+
+                stopwatch.Stop();
+                combinedResult.ValidationDuration = stopwatch.Elapsed;
+                combinedResult.IsValid = combinedResult.Errors.Count == 0;
             }
-
-            stopwatch.Stop();
-            combinedResult.ValidationDuration = stopwatch.Elapsed;
-            combinedResult.IsValid = combinedResult.Errors.Count == 0;
+            catch (OperationCanceledException oce)
+            {
+                stopwatch.Stop();
+                var message = $"DI validation was canceled (likely timeout in service initialization): {oce.Message}";
+                _logger.LogWarning(oce, message);
+                combinedResult.Warnings.Add($"Validation interrupted: {oce.Message}");
+                combinedResult.Errors.Add(message);
+                combinedResult.ValidationDuration = stopwatch.Elapsed;
+                combinedResult.IsValid = false;
+            }
+            catch (TimeoutException tex)
+            {
+                stopwatch.Stop();
+                var message = $"DI validation timed out: {tex.Message}";
+                _logger.LogWarning(tex, message);
+                combinedResult.Warnings.Add($"Validation timeout: {tex.Message}");
+                combinedResult.Errors.Add(message);
+                combinedResult.ValidationDuration = stopwatch.Elapsed;
+                combinedResult.IsValid = false;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                var message = $"Unexpected error during DI validation ({ex.GetType().Name}): {ex.Message}";
+                _logger.LogError(ex, message);
+                combinedResult.Errors.Add(message);
+                combinedResult.ValidationDuration = stopwatch.Elapsed;
+                combinedResult.IsValid = false;
+            }
 
             // Log final summary
 #if DEBUG

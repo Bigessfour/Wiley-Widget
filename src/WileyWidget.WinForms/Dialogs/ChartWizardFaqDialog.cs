@@ -20,6 +20,8 @@ namespace WileyWidget.WinForms.Dialogs
         private ChartWizardFaqDialog()
         {
             InitializeDialog();
+            this.PerformLayout();
+            this.Refresh();
         }
 
         /// <summary>

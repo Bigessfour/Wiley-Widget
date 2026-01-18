@@ -34,6 +34,7 @@
     <PackageReference Include="FastReport.OpenSource" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Resilience" />
     <!-- FastReport Open Source WinForms viewer -->
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />

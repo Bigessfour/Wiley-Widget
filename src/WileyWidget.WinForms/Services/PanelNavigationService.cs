@@ -80,6 +80,17 @@ namespace WileyWidget.WinForms.Services
         /// Update the docking manager after delayed initialization.
         /// </summary>
         void UpdateDockingManager(DockingManager dockingManager);
+
+        /// <summary>
+        /// Get the currently active panel name for ribbon button state tracking.
+        /// </summary>
+        /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
+        string? GetActivePanelName();
+
+        /// <summary>
+        /// Event raised when a panel is activated, for ribbon button highlighting.
+        /// </summary>
+        event EventHandler<PanelActivatedEventArgs>? PanelActivated;
     }
 
     public sealed class PanelNavigationService : IPanelNavigationService, IDisposable
@@ -89,6 +100,16 @@ namespace WileyWidget.WinForms.Services
         private readonly Control _parentControl; // Usually MainForm or central document container
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
+
+        /// <summary>
+        /// Tracks the currently active panel name for ribbon button highlighting.
+        /// </summary>
+        private string? _activePanelName;
+
+        /// <summary>
+        /// Event raised when the active panel changes, for ribbon button state updates.
+        /// </summary>
+        public event EventHandler<PanelActivatedEventArgs>? PanelActivated;
 
         private static readonly Dictionary<Type, PanelSizing> PanelSizeOverrides = new()
         {
@@ -107,6 +128,8 @@ namespace WileyWidget.WinForms.Services
             { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
             { typeof(RevenueTrendsPanel), new PanelSizing(new Size(560, 0), new Size(0, 440), new Size(460, 380)) },
             { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(ChatPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
+            { typeof(CustomersPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
         };
 
         /// <summary>
@@ -162,6 +185,8 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
+                _logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);
+
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
                 {
@@ -172,7 +197,7 @@ namespace WileyWidget.WinForms.Services
                 // Create new instance via DI (supports constructor injection)
                 _logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
-                
+
                 // If panel supports parameter initialization, pass the parameters
                 if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
                 {
@@ -225,7 +250,13 @@ namespace WileyWidget.WinForms.Services
             try { existingPanel.BringToFront(); } catch { }
             _dockingManager.ActivateControl(existingPanel);
             ApplyPanelTheme(existingPanel);
+
+            // Track active panel and raise event for ribbon button highlighting
+            _activePanelName = panelName;
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
+
             _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
+            _logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
         }
 
         private void ShowErrorMessage(string panelName)
@@ -322,7 +353,12 @@ namespace WileyWidget.WinForms.Services
             // Cache for reuse
             _cachedPanels[panelName] = panel;
 
+            // Track active panel and raise event for ribbon button highlighting
+            _activePanelName = panelName;
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panel.GetType()));
+
             _logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
+            _logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
         }
 
         private void UpdateDockHandler(object dh, string panelName)
@@ -512,5 +548,28 @@ namespace WileyWidget.WinForms.Services
             _logger.LogWarning("Cannot hide panel '{PanelName}' - not found", panelName);
             return false;
         }
+
+        /// <summary>
+        /// Get the currently active panel name.
+        /// </summary>
+        /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
+        public string? GetActivePanelName() => _activePanelName;
+    }
+
+    /// <summary>
+    /// Event args for panel activation events.
+    /// </summary>
+    public class PanelActivatedEventArgs : EventArgs
+    {
+        public string PanelName { get; set; }
+        public Type PanelType { get; set; }
+
+        public PanelActivatedEventArgs(string panelName, Type panelType)
+        {
+            PanelName = panelName;
+            PanelType = panelType;
+        }
     }
 }
+
+

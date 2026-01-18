@@ -53,7 +53,7 @@ public partial class MainForm
 {
     #region UI Fields
     private DockingManager? _dockingManager;
-    private Syncfusion.WinForms.DataGrid.SfDataGrid? _activityGrid;
+    private WileyWidget.WinForms.Controls.ActivityLogPanel? _activityLogPanel;
     private DockingLayoutManager? _dockingLayoutManager;
     private Panel? _leftDockPanel;
     private Panel? _centralDocumentPanel;
@@ -701,16 +701,26 @@ public partial class MainForm
     {
         try
         {
-            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, SfSkinManager.ApplicationVisualTheme);
+            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger);
             _statusBar = statusBar;
 
-            if (statusBar.Panels is { Length: >= 5 })
+            _logger?.LogInformation("StatusBarFactory returned StatusBarAdv with {PanelCount} panels in Panels collection, and {ControlCount} in Controls collection",
+                statusBar.Panels?.Length ?? 0, statusBar.Controls.Count);
+
+            var panels = statusBar.Panels;
+            if (panels == null || panels.Length < 5)
             {
-                _statusLabel = statusBar.Panels[0];
-                _statusTextPanel = statusBar.Panels[1];
-                _statePanel = statusBar.Panels[2];
-                _progressPanel = statusBar.Panels[3];
-                _clockPanel = statusBar.Panels[4];
+                _logger?.LogWarning("StatusBarAdv.Panels was insufficient ({Count}); falling back to Controls collection", panels?.Length ?? 0);
+                panels = statusBar.Controls.OfType<Syncfusion.Windows.Forms.Tools.StatusBarAdvPanel>().ToArray();
+            }
+
+            if (panels is { Length: >= 5 })
+            {
+                _statusLabel = panels[0];
+                _statusTextPanel = panels[1];
+                _statePanel = panels[2];
+                _progressPanel = panels[3];
+                _clockPanel = panels[4];
 
                 _progressBar = _progressPanel?.Controls.OfType<Syncfusion.Windows.Forms.Tools.ProgressBarAdv>().FirstOrDefault();
 
@@ -765,7 +775,8 @@ public partial class MainForm
                 AccessibleRole = AccessibleRole.ToolBar,
                 AutoSize = true, // ToolStripEx handles height automatically
                 TabIndex = 2,
-                TabStop = true
+                TabStop = true,
+                ThemeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful" // Syncfusion theme integration
             };
 
             var dashboardBtn = new ToolStripButton("Dashboard")
@@ -877,6 +888,45 @@ public partial class MainForm
                 Console.WriteLine("[DIAGNOSTIC] Nav_QuickBooks clicked");
             };
 
+            var aiChatBtn = new ToolStripButton("AI Chat")
+            {
+                Name = "Nav_AIChat",
+                AccessibleName = "AI Chat",
+                AccessibleDescription = "Navigate to AI Chat panel for intelligent assistance"
+            };
+            aiChatBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<InsightFeedPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_AIChat clicked");
+            };
+
+            var proactiveInsightsBtn = new ToolStripButton("Proactive Insights")
+            {
+                Name = "Nav_ProactiveInsights",
+                AccessibleName = "Proactive Insights",
+                AccessibleDescription = "Navigate to Proactive AI Insights panel"
+            };
+            proactiveInsightsBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<ProactiveInsightsPanel>("Proactive Insights", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_ProactiveInsights clicked");
+            };
+
+            var warRoomBtn = new ToolStripButton("War Room")
+            {
+                Name = "Nav_WarRoom",
+                AccessibleName = "War Room",
+                AccessibleDescription = "Navigate to War Room panel for strategic analysis"
+            };
+            warRoomBtn.Click += (s, e) =>
+            {
+                if (_panelNavigator != null)
+                    _panelNavigator.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
+                Console.WriteLine("[DIAGNOSTIC] Nav_WarRoom clicked");
+            };
+
             var settingsBtn = new ToolStripButton("Settings")
             {
                 Name = "Nav_Settings",
@@ -900,15 +950,7 @@ public partial class MainForm
             themeToggleBtn.Click += ThemeToggleBtn_Click;
             themeToggleBtn.Text = SkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
-            // Grid test helpers (navigation strip)
-            var navGridApplyFilter = new ToolStripButton("Apply Grid Filter")
-            {
-                Name = "Nav_ApplyGridFilter",
-                AccessibleName = "Apply Grid Filter",
-                AccessibleDescription = "Apply filter to active grid control"
-            };
-            navGridApplyFilter.Click += (s, e) => ApplyTestFilterToActiveGrid();
-
+            // Grid helpers (navigation strip)
             var navGridClearFilter = new ToolStripButton("Clear Grid Filter")
             {
                 Name = "Nav_ClearGridFilter",
@@ -937,12 +979,14 @@ public partial class MainForm
                 customersBtn,
                 reportsBtn,
                 quickBooksBtn,
+                aiChatBtn,
+                proactiveInsightsBtn,
+                warRoomBtn,
                 new ToolStripSeparator(),
                 settingsBtn,
                 new ToolStripSeparator(),
                 themeToggleBtn,
                 new ToolStripSeparator(),
-                navGridApplyFilter,
                 navGridClearFilter,
                 navGridExport
             });
@@ -1176,7 +1220,7 @@ public partial class MainForm
             {
                 try
                 {
-                    _panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Fill, allowFloating: true);
+                    _panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
                 }
                 catch (Exception ex)
                 {
@@ -1632,14 +1676,14 @@ public partial class MainForm
                 IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
 
             _logger?.LogInformation("Creating DockingHost via factory...");
-            var (dockingManager, leftPanel, rightPanel, activityGrid, activityTimer) =
+            var (dockingManager, leftPanel, rightPanel, activityLogPanel, activityTimer, layoutManager) =
                 DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
 
             _dockingManager = dockingManager;
             _leftDockPanel = leftPanel;
             _rightDockPanel = rightPanel;
-            _activityGrid = activityGrid;
-            _activityRefreshTimer = activityTimer;
+            _activityLogPanel = activityLogPanel;
+            _dockingLayoutManager = layoutManager;
 
             // Wire up cache invalidation for grid discovery
             // Note: ActiveControlChanged event not available on DockingManager
@@ -1669,9 +1713,9 @@ public partial class MainForm
             // 3. Layout recalc is deferred until form is fully shown
 
             // 4. Activity grid will be loaded with actual data after docking completes
-            if (_activityGrid != null)
+            if (_activityLogPanel != null)
             {
-                _activityGrid.Visible = true;
+                _activityLogPanel.Visible = true;
             }
 
             // Panel activation and layout recalc deferred until form is fully shown
@@ -1689,8 +1733,9 @@ public partial class MainForm
             EnsurePanelNavigatorInitialized();
 
             // Create and attach layout manager for state management
-            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger);
-            _logger?.LogDebug("DockingLayoutManager created successfully");
+            string layoutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget", "docking_layout.xml");
+            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger, layoutPath);
+            _logger?.LogDebug("DockingLayoutManager created successfully with path {LayoutPath}", layoutPath);
 
             // Transfer ownership of panels and fonts to the layout manager
             var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
@@ -1705,16 +1750,18 @@ public partial class MainForm
             // CRITICAL FIX: Create and dock initial panels BEFORE suspending layout
             // This ensures DockingManager has controls in its collection before OnPaint events fire
             // Without this, ArgumentOutOfRangeException occurs in DockHost.GetPaintInfo()
-            // TEMPORARILY COMMENTED for debugging CLR thread state crash
-            //try
-            //{
-            //    CreateDockingPanels();
-            //    _logger?.LogDebug("Docking panels created and docked successfully");
-            //}
-            //catch (Exception panelEx)
-            //{
-            //    _logger?.LogError(panelEx, "Failed to create docking panels - paint exceptions may occur");
-            //}
+            try
+            {
+                CreateDockingPanels();
+                var dynamicPanelCount = _dynamicDockPanels?.Count ?? 0;
+                var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null) + dynamicPanelCount;
+                _logger?.LogInformation("Docking panels created and docked — count={PanelCount}, dynamicPanels={DynamicCount}, layoutManagerReady={LayoutManagerReady}",
+                    createdPanelCount, dynamicPanelCount, _dockingLayoutManager != null);
+            }
+            catch (Exception panelEx)
+            {
+                _logger?.LogError(panelEx, "Failed to create docking panels - paint exceptions may occur");
+            }
 
             // Reduce flicker during layout load + theme application (best-effort).
             var dockingUpdatesLocked = false;
@@ -1763,6 +1810,26 @@ public partial class MainForm
                 {
                     _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
                 }
+
+                // Ensure panels start visible & activated
+                if (_dockingManager != null)
+                {
+                    var ienum = _dockingManager.Controls;
+                    GradientPanelExt firstPanel = null;
+                    while (ienum.MoveNext())
+                    {
+                        if (ienum.Current is GradientPanelExt panel)
+                        {
+                            panel.Visible = true;
+                            panel.BringToFront();
+                            if (firstPanel == null) firstPanel = panel;
+                        }
+                    }
+                    if (firstPanel != null)
+                    {
+                        _dockingManager.ActivateControl(firstPanel);
+                    }
+                }
             }
             finally
             {
@@ -1778,8 +1845,8 @@ public partial class MainForm
                 }
             }
 
-            _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityTimerRunning={TimerRunning}",
-                _activityRefreshTimer?.Enabled ?? false);
+            _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
+                _activityLogPanel != null);
         }
         catch (Exception ex)
         {
@@ -1835,6 +1902,8 @@ public partial class MainForm
                 {
                     themeToggleBtn.Text = theme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
                 }
+                // Update ToolStripEx theme to match application theme
+                _navigationStrip.ThemeName = theme;
             }
 
             // Reapply theme to all docking panels via layout manager
@@ -1845,13 +1914,13 @@ public partial class MainForm
             }
 
             // Refresh activity grid with new theme
-            if (_activityGrid != null && !_activityGrid.IsDisposed)
+            if (_activityLogPanel != null && !_activityLogPanel.IsDisposed)
             {
                 try
                 {
                     // REMOVED: Per-control SetVisualStyle - grid inherits theme from ApplicationVisualTheme
                     // Theme cascade ensures consistent styling across all controls
-                    _activityGrid.Refresh();
+                    _activityLogPanel.Refresh();
                 }
                 catch (Exception ex)
                 {
@@ -2003,7 +2072,7 @@ public partial class MainForm
     /// </summary>
     private void CreateCentralDocumentPanel()
     {
-        if (_dockingManager == null) return;
+        if (_dockingManager != null) return; // Skip central panel when docking is enabled to avoid covering docked panels
 
         _centralDocumentPanel = new Panel
         {
@@ -2209,106 +2278,51 @@ public partial class MainForm
             TabStop = false
         };
 
-        _activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
+        // ActivityLogPanel is now created in DockingHostFactory with proper DI integration
+        // This legacy grid creation retained for backward compatibility with existing layout code
+        // Real activity logging happens through ActivityLogPanel in right dock
+
+        var placeholderLabel = new Label
         {
-            Name = "ActivityDataGrid",
-            AccessibleName = "ActivityDataGrid",
-            AccessibleDescription = "Recent activity table with columns Time, Action, Details, and User",
-            AccessibleRole = AccessibleRole.Table,
+            Text = "Activity logging handled by ActivityLogPanel",
             Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowEditing = false,
-            ShowGroupDropArea = false,
-            RowHeight = 36,
-            AllowSorting = true,
-            AllowFiltering = true,
-            TabIndex = 21,
-            TabStop = true
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 10),
+            Name = "ActivityPlaceholder"
         };
-        // REMOVED: Per-control theme application - grid inherits theme from ApplicationVisualTheme
 
-        // Map to ActivityLog properties with flexible column sizing
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridDateTimeColumn { MappingName = "Timestamp", HeaderText = "Time", Format = "HH:mm", Width = 70, MinimumWidth = 60 });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Action", Width = 100, MinimumWidth = 80, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details", Width = 0, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
-        _activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User", Width = 80, MinimumWidth = 60 });
-
-        // Load initial data from database
-        _ = LoadActivityDataAsync();
-
-        // Setup auto-refresh timer (every 30 seconds)
-        _activityRefreshTimer = new System.Windows.Forms.Timer
-        {
-            Interval = 30000 // 30 seconds
-        };
-        _activityRefreshTimer.Tick += async (s, e) => await LoadActivityDataAsync();
-        _activityRefreshTimer.Start();
-
-        activityPanel.Controls.Add(_activityGrid);
+        activityPanel.Controls.Add(placeholderLabel);
         activityPanel.Controls.Add(activityHeader);
 
         return activityPanel;
     }
 
     /// <summary>
-    /// Load activity data from database asynchronously.
+    /// Load activity data from database asynchronously (legacy method - replaced by ActivityLogPanel)
     /// </summary>
     private async Task LoadActivityDataAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var activityLogRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IActivityLogRepository>(scope.ServiceProvider);
-            if (activityLogRepository == null)
-            {
-                _logger.LogWarning("ActivityLogRepository not available, using fallback data");
-                LoadFallbackActivityData();
-                return;
-            }
-
-            var activities = await activityLogRepository.GetRecentActivitiesAsync(skip: 0, take: 50);
-
-            if (_activityGrid != null && !_activityGrid.IsDisposed)
-            {
-                if (_activityGrid.InvokeRequired)
-                {
-                    _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
-                }
-                else
-                {
-                    _activityGrid.DataSource = activities;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load activity data");
-            LoadFallbackActivityData();
-        }
+        // ActivityLogPanel now handles activity data loading with its own refresh cycle
+        // This method retained for backward compatibility but is no longer active
+        _logger?.LogDebug("LoadActivityDataAsync called (legacy method - ActivityLogPanel handles loading now)");
+        await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Load fallback activity data when database is unavailable (legacy method)
+    /// </summary>
     private void LoadFallbackActivityData()
     {
-        if (_activityGrid == null || _activityGrid.IsDisposed)
-            return;
+        // ActivityLogPanel handles fallback data internally
+        _logger?.LogDebug("LoadFallbackActivityData called (legacy method - ActivityLogPanel handles fallback now)");
+    }
 
-        var activities = new[]
-        {
-            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
-            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-15), Activity = "Report Generated", Details = "Budget Q4", User = "Scheduler" },
-            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddMinutes(-30), Activity = "QuickBooks Sync", Details = "42 records", User = "Integrator" },
-            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
-            new WileyWidget.Models.ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
-        };
-
-        if (_activityGrid.InvokeRequired)
-        {
-            _activityGrid.Invoke(() => _activityGrid.DataSource = activities);
-        }
-        else
-        {
-            _activityGrid.DataSource = activities;
-        }
+    /// <summary>
+    /// Ensure activity grid exists (legacy check - now checks ActivityLogPanel)
+    /// </summary>
+    private bool EnsureActivityGridExists()
+    {
+        return _activityLogPanel != null && !_activityLogPanel.IsDisposed;
     }
 
     /// <summary>

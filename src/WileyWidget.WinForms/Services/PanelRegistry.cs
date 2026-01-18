@@ -25,6 +25,7 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(AuditLogPanel), "Audit Log & Activity", DockingStyle.Bottom, false),
             new PanelEntry(typeof(BudgetPanel), "Budget Management", DockingStyle.Right),
             new PanelEntry(typeof(BudgetAnalyticsPanel), "Budget Analytics", DockingStyle.Right, false),
+            new PanelEntry(typeof(CsvMappingWizardPanel), "CSV Data Mapper", DockingStyle.Right, false), // orphaned panel: wired to Data Tools
             new PanelEntry(typeof(CustomersPanel), "Customers", DockingStyle.Right, false),
             new PanelEntry(typeof(DashboardPanel), "Dashboard", DockingStyle.Top, false),
             new PanelEntry(typeof(DepartmentSummaryPanel), "Department Summary", DockingStyle.Right),
@@ -34,7 +35,7 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(ReportsPanel), "Reports", DockingStyle.Right, false),
             new PanelEntry(typeof(RevenueTrendsPanel), "Revenue Trends", DockingStyle.Right),
             new PanelEntry(typeof(SettingsPanel), "Settings", DockingStyle.Right, false),
-            new PanelEntry(typeof(UtilityBillPanel), "Utility Bills", DockingStyle.Right),
+            new PanelEntry(typeof(UtilityBillPanel), "Utility Bills", DockingStyle.Right, false), // orphaned panel: wired to Data Tools
             new PanelEntry(typeof(WarRoomPanel), "War Room", DockingStyle.Right),
         };
     }

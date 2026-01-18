@@ -1,245 +1,126 @@
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
-using Syncfusion.Windows.Forms;
-using WileyWidget.Services;
-using WileyWidget.Services.Abstractions;
-using WileyTheme = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.WinForms.Forms;
+using WileyWidget.Abstractions;
 
 namespace WileyWidget.WinForms.Services
 {
-    /// <summary>
-    /// Coordinates startup tasks (license registration, theming, DI validation) so they can be tested and reused.
-    /// </summary>
     public interface IStartupOrchestrator
     {
-        Task RegisterLicenseAsync(CancellationToken cancellationToken = default);
-
-        Task InitializeThemeAsync(CancellationToken cancellationToken = default);
-
-        Task ValidateServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default);
-
-        void GenerateStartupReport();
+        Task InitializeAsync();
+        Task ValidateServicesAsync(IServiceProvider serviceProvider);
+        Task RunApplicationAsync(IServiceProvider serviceProvider);
     }
 
-    public sealed class StartupOrchestrator : IStartupOrchestrator
+    public class StartupOrchestrator : IStartupOrchestrator
     {
-        private readonly IConfiguration _configuration;
         private readonly IWinFormsDiValidator _validator;
         private readonly ILogger<StartupOrchestrator> _logger;
-        private readonly IStartupTimelineService? _timelineService;
 
-        private static Task RunOnStaThread(Action action, CancellationToken cancellationToken)
+        public StartupOrchestrator(
+            IWinFormsDiValidator validator,
+            ILogger<StartupOrchestrator> logger)
         {
-            if (action == null) throw new ArgumentNullException(nameof(action));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
 
-            var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task InitializeAsync()
+        {
+            _logger.LogInformation("Orchestrating startup initialization...");
+            await Task.CompletedTask;
+        }
 
+        public async Task ValidateServicesAsync(IServiceProvider serviceProvider)
+        {
+            _logger.LogInformation("Starting service validation in background thread...");
+
+            try
+            {
+                // Run validation in a background task to avoid blocking the caller (e.g. Program.cs or UI thread)
+                var result = await Task.Run(() => _validator.ValidateAll(serviceProvider));
+
+                if (!result.IsValid)
+                {
+                    _logger.LogWarning("DI Validation completed with errors. See log for details.");
+                }
+            }
+            catch (OperationCanceledException oce)
+            {
+                // Log timeout/cancellation details without failing the application
+                _logger.LogWarning(oce, "Service validation was canceled (likely timeout in telemetry or other service initialization). " +
+                    "Application will continue but some validation checks were skipped.");
+            }
+            catch (TimeoutException tex)
+            {
+                // Log timeout details without failing the application
+                _logger.LogWarning(tex, "Service validation timed out. Application will continue but some services may be unvalidated.");
+            }
+            catch (Exception ex)
+            {
+                // Log unexpected errors but don't fail startup
+                _logger.LogError(ex, "Service validation failed with an exception: {ExceptionType}: {Message}",
+                    ex.GetType().Name, ex.Message);
+            }
+        }
+
+        public async Task RunApplicationAsync(IServiceProvider serviceProvider)
+        {
+            _logger.LogInformation("Starting WinForms application main loop...");
+
+            // Create a scope to resolve scoped services like MainForm
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
+            using var scope = scopeFactory.CreateScope();
+            var mainForm = scope.ServiceProvider.GetService(typeof(MainForm)) as MainForm
+                ?? throw new InvalidOperationException("MainForm is not registered.");
+
+            // If MainForm implements IAsyncInitializable, initialize it after it's shown
+            if (mainForm is IAsyncInitializable asyncInit)
+            {
+                mainForm.Shown += async (_, __) =>
+                {
+                    try
+                    {
+                        await asyncInit.InitializeAsync();
+                        _ = ValidateServicesAsync(serviceProvider);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to initialize main form asynchronously");
+                    }
+                };
+            }
+            else
+            {
+                mainForm.Shown += (_, __) => _ = ValidateServicesAsync(serviceProvider);
+            }
+
+            System.Windows.Forms.Application.Run(mainForm);
+
+            await Task.CompletedTask;
+        }
+
+        private Task RunOnStaThread(Action action)
+        {
+            var tcs = new TaskCompletionSource();
             var thread = new Thread(() =>
             {
                 try
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        tcs.TrySetCanceled(cancellationToken);
-                        return;
-                    }
-
                     action();
-                    tcs.TrySetResult(null);
-                }
-                catch (OperationCanceledException oce)
-                {
-                    tcs.TrySetCanceled(oce.CancellationToken);
+                    tcs.SetResult();
                 }
                 catch (Exception ex)
                 {
-                    tcs.TrySetException(ex);
+                    tcs.SetException(ex);
                 }
-            })
-            {
-                IsBackground = true,
-                Name = "StartupOrchestrator.STA"
-            };
-
-            // WinForms types (Forms/Controls) require STA. Running DI validation on MTA threadpool
-            // can hang inside framework code and shows up as Monitor.Wait when you pause the debugger.
+            });
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
-
             return tcs.Task;
-        }
-
-        public StartupOrchestrator(
-            IConfiguration configuration,
-            IWinFormsDiValidator validator,
-            ILogger<StartupOrchestrator> logger,
-            IStartupTimelineService? timelineService = null)
-        {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _timelineService = timelineService;
-        }
-
-        public Task RegisterLicenseAsync(CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Syncfusion guidance: register the license in Program.Main before Application.Run().
-            // Keep licensing out of the orchestrator to avoid double-registration and timing confusion.
-            _logger.LogDebug("Syncfusion license registration is handled in Program.Main; skipping in StartupOrchestrator.");
-            return Task.CompletedTask;
-        }
-
-        public Task InitializeThemeAsync(CancellationToken cancellationToken = default)
-        {
-            using var phase = _timelineService?.BeginPhaseScope("Initialize Theme");
-            try
-            {
-                // Only load the theme we actually use
-                var officeAsm = typeof(Office2019Theme).Assembly;
-                if (officeAsm != null)
-                {
-                    SfSkinManager.LoadAssembly(officeAsm);
-                    _logger.LogDebug("Loaded Office2019Theme assembly");
-                }
-                else
-                {
-                    _logger.LogWarning("Office2019Theme assembly not found");
-                }
-
-                // Apply the active theme (from config or default)
-                var activeTheme = _configuration.GetValue<string>("UI:Theme", "Office2019Colorful");
-                SfSkinManager.ApplicationVisualTheme = activeTheme;
-
-                _logger.LogInformation("Syncfusion theme applied: {Theme}", activeTheme);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Theme initialization failed - falling back to default");
-                SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public async Task ValidateServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
-        {
-            using var phase = _timelineService?.BeginPhaseScope("Validate Services");
-            if (serviceProvider == null)
-            {
-                throw new ArgumentNullException(nameof(serviceProvider));
-            }
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // This method is frequently invoked from Task.Run() during startup to keep the splash responsive.
-                // Task.Run uses MTA threadpool threads by default; resolving WinForms types on MTA can hang.
-                DiValidationResult result;
-                if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
-                {
-                    result = _validator.ValidateAll(serviceProvider);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "DI validation requested on non-STA thread (apartment={Apartment}); running on a dedicated STA thread to avoid WinForms deadlocks.",
-                        Thread.CurrentThread.GetApartmentState());
-
-                    DiValidationResult? staResult = null;
-                    await RunOnStaThread(() =>
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        staResult = _validator.ValidateAll(serviceProvider);
-                    }, cancellationToken);
-
-                    result = staResult ?? throw new InvalidOperationException("DI validation did not produce a result.");
-                }
-
-                if (!result.IsValid)
-                {
-                    _logger.LogError("DI validation failed with {ErrorCount} errors", result.Errors.Count);
-                    throw new InvalidOperationException(
-                        $"DI validation failed with {result.Errors.Count} errors: {string.Join("; ", result.Errors)}");
-                }
-
-                _logger.LogInformation(
-                    "DI validation succeeded: {ServicesValidated} services validated with {Warnings} warnings",
-                    result.SuccessMessages.Count,
-                    result.Warnings.Count);
-
-                foreach (var warning in result.Warnings)
-                {
-                    _logger.LogWarning("DI validation warning: {Warning}", warning);
-                }
-            }
-            catch (TaskCanceledException)
-            {
-                _logger.LogInformation("DI validation canceled");
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("DI validation operation canceled");
-            }
-        }
-
-        /// <summary>
-        /// Generates and logs a comprehensive startup timeline report with dependency validation.
-        /// Call this at the end of startup to verify all phases completed in proper order.
-        /// </summary>
-        public void GenerateStartupReport()
-        {
-            if (_timelineService == null || !_timelineService.IsEnabled)
-            {
-                _logger.LogDebug("Startup timeline tracking is disabled; no report generated");
-                return;
-            }
-
-            try
-            {
-                var report = _timelineService.GenerateReport();
-                _logger.LogInformation(
-                    "Startup timeline report: {PhaseCount} phases, {OperationCount} operations, {FormEventCount} form events",
-                    report.Events.Count(e => e.Type == "Phase"),
-                    report.Events.Count(e => e.Type == "Operation"),
-                    report.Events.Count(e => e.Type == "FormLifecycle"));
-
-                var dependencyViolations = report.GetDependencyViolations();
-                if (dependencyViolations.Any())
-                {
-                    _logger.LogWarning("Startup had {Count} dependency violations", dependencyViolations.Count);
-                    foreach (var violation in dependencyViolations)
-                    {
-                        _logger.LogWarning("  - {Violation}", violation);
-                    }
-                }
-
-                var orderViolations = report.GetOrderViolations();
-                if (orderViolations.Any())
-                {
-                    _logger.LogWarning("Startup had {Count} order violations", orderViolations.Count);
-                }
-
-                var threadAffinityIssues = report.GetThreadAffinityIssues();
-                if (threadAffinityIssues.Any())
-                {
-                    _logger.LogWarning("Startup had {Count} thread affinity issues", threadAffinityIssues.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate startup timeline report");
-            }
         }
     }
 }

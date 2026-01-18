@@ -1,20 +1,25 @@
+using System;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Drawing;
-using System;
-using System.Drawing;
-using System.Windows.Forms;
-using System.Threading.Tasks;
-using System.IO;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Models;
+using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
-using WileyWidget.Models;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using Syncfusion.WinForms.DataGrid;
+using Action = System.Action;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -39,179 +44,178 @@ public static class DockingHostFactory
         DockingManager dockingManager,
         GradientPanelExt leftDockPanel,
         GradientPanelExt rightDockPanel,
-        Syncfusion.WinForms.DataGrid.SfDataGrid? activityGrid,
-        System.Windows.Forms.Timer? activityRefreshTimer
+        ActivityLogPanel? activityLogPanel,
+        System.Windows.Forms.Timer? activityRefreshTimer,
+        DockingLayoutManager? layoutManager
     ) CreateDockingHost(
         MainForm mainForm,
         IServiceProvider serviceProvider,
         IPanelNavigationService? panelNavigator,
         ILogger? logger)
     {
-        if (mainForm == null)
-            throw new ArgumentNullException(nameof(mainForm));
-        if (serviceProvider == null)
-            throw new ArgumentNullException(nameof(serviceProvider));
+        if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
+        if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
-        logger?.LogInformation("★ CreateDockingHost START - Creating DockingManager and panels");
+        var sw = Stopwatch.StartNew();
+        logger?.LogInformation("CreateDockingHost: Starting docking creation");
 
-        if (mainForm.IsDisposed)
-        {
-            logger?.LogWarning("MainForm is already disposed; skipping docking host creation.");
-            return (new DockingManager(), new GradientPanelExt(), new GradientPanelExt(), null, null);
-        }
-
-        // Initialize DockingManager
-        logger?.LogInformation("→ Creating DockingManager instance...");
-        var dockingManager = new DockingManager
-        {
-            DockToFill = true,
-            ThemeName = "Office2019Colorful",  // Rely on SfSkinManager; set theme here if needed
-            HostControl = mainForm,  // CRITICAL: Set HostControl to mainForm so docking knows where to anchor panels
-            PersistState = true      // Enable persistence support
-        };
-        logger?.LogInformation("→ DockingManager created successfully with HostControl={HostName}", mainForm.Name);
-
-        // Create left dock panel
-        logger?.LogInformation("→ Creating LeftDockPanel...");
-        var leftDockPanel = new GradientPanelExt
-        {
-            // Dock = DockStyle.Left, // REMOVED: Conflics with DockingManager
-            Width = 300,
-            Name = "LeftDockPanel",
-            AccessibleName = "Navigation panel",
-            AccessibleDescription = "Left docked panel for navigation content",
-            AccessibleRole = AccessibleRole.Pane,
-            TabStop = false,
-            TabIndex = 10
-        };
-        if (!TryDockControl(dockingManager, leftDockPanel, mainForm, DockingStyle.Left, 300, logger))
-        {
-            logger?.LogWarning("Unable to dock left panel; docking host creation aborted.");
-            return (dockingManager, leftDockPanel, new GradientPanelExt(), null, null);
-        }
-        // Force visibility explicitly as requested
-        dockingManager.SetDockVisibility(leftDockPanel, true);
-        logger?.LogInformation("SetDockVisibility(true) for LeftDockPanel");
-        // DO NOT Invalidate/Update here - paint must be deferred until all panels are docked
-
-        // Apply official API: SetDockLabel for visual dock header
         try
         {
-            dockingManager.SetDockLabel(leftDockPanel, "Navigation");
-            logger?.LogDebug("Set dock label for left panel: 'Navigation'");
+            // Create DockingManager with better defaults
+            var dockingManager = new DockingManager
+            {
+                HostControl = mainForm, // CRITICAL: Must assign HostControl before docking controls
+                // DockLayout = DockLayoutType.Free, // Not available in this version
+                // AllowFloating = true, // Set per control
+                // AllowAutoHide = true, // Set per control
+                // AllowDocking = true, // Set per control
+                ShowCaption = true,
+                // ShowCaptionIcon = true,
+                // ShowCaptionButtons = true,
+                DockToFill = true,      // Set to true to allow filling the remaining space
+                ThemeName = "Office2019Colorful"  // Explicit theme for consistency
+            };
+
+            logger?.LogDebug("DockingManager created with Free layout and Office2019 theme");
+
+            // 1. Create central container (required for Fill docking in Syncfusion)
+            var centralContainer = new GradientPanelExt
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.WhiteSmoke, Color.White),
+                Name = "CentralContainer"
+            };
+            dockingManager.DockControl(centralContainer, mainForm, DockingStyle.Fill, 0);  // Dock container to form
+
+            // 2. Dock left sidebar with navigation (dock first, generous width)
+            var leftDockPanel = new GradientPanelExt
+            {
+                Dock = DockStyle.Left,
+                Width = 300,
+                MinimumSize = new Size(280, 0),  // Prevent collapse
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(Color.WhiteSmoke),
+                Name = "LeftDockPanel"
+            };
+
+            // Add header
+            var navHeader = new Label
+            {
+                Text = "Navigation",
+                Dock = DockStyle.Top,
+                Height = 32,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                BackColor = SystemColors.Control,
+                BorderStyle = BorderStyle.FixedSingle,
+                Name = "NavHeader"
+            };
+            leftDockPanel.Controls.Add(navHeader);
+
+            // Add navigation buttons panel with scrolling
+            var navButtonsPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = new Padding(8),
+                BackColor = Color.Transparent,
+                Name = "NavButtonsPanel"
+            };
+            leftDockPanel.Controls.Add(navButtonsPanel);
+
+            // Helper to create navigation button
+            Func<string, System.Action, Button> createNavButton = (text, clickHandler) =>
+            {
+                var btn = new Button
+                {
+                    Text = text,
+                    Dock = DockStyle.Top,
+                    Height = 36,
+                    FlatStyle = FlatStyle.Flat,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(8, 0, 8, 0),
+                    Font = new Font("Segoe UI", 9),
+                    ForeColor = SystemColors.ControlText,
+                    AutoSize = false
+                };
+                btn.Click += (s, e) => clickHandler();
+                return btn;
+            };
+
+            // Add primary navigation buttons
+            navButtonsPanel.Controls.Add(createNavButton("📊 Dashboard", () => mainForm.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Left)));
+            navButtonsPanel.Controls.Add(createNavButton("💰 Accounts", () => mainForm.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left)));
+            navButtonsPanel.Controls.Add(createNavButton("📈 Budget", () => mainForm.ShowPanel<BudgetPanel>("Budget Management", DockingStyle.Right)));
+            navButtonsPanel.Controls.Add(createNavButton("📉 Analytics", () => mainForm.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right)));
+            navButtonsPanel.Controls.Add(createNavButton("📄 Reports", () => mainForm.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right)));
+            navButtonsPanel.Controls.Add(createNavButton("⚙️ Settings", () => mainForm.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right)));
+
+            dockingManager.DockControl(leftDockPanel, mainForm, DockingStyle.Left, 300);
+
+            // 3. Create right dock panel using RightDockPanelFactory (manages Activity Log + JARVIS Chat tabs)
+            var (rightDockPanel, activityLogPanel, jarvisChatControl, initialMode) = RightDockPanelFactory.CreateRightDockPanel(
+                mainForm,
+                serviceProvider,
+                logger);
+            dockingManager.DockControl(rightDockPanel, mainForm, DockingStyle.Right, 350);
+
+            // 4. Dock dashboard INSIDE the central container (not to mainForm)
+            var vm = (WileyWidget.WinForms.Forms.MainViewModel)serviceProvider.GetService(typeof(WileyWidget.WinForms.Forms.MainViewModel))!;
+            var dispatcherHelper = (WileyWidget.Services.Threading.IDispatcherHelper?)serviceProvider.GetService(typeof(WileyWidget.Services.Threading.IDispatcherHelper));
+            var dashboardLogger = (Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.DashboardPanel>?)serviceProvider.GetService(typeof(Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.DashboardPanel>));
+            var dashboardPanel = new WileyWidget.WinForms.Controls.DashboardPanel(vm, dispatcherHelper, dashboardLogger)
+            {
+                Dock = DockStyle.Fill,
+                MinimumSize = new Size(600, 400),
+                Name = "DashboardPanel"
+            };
+            dockingManager.DockControl(dashboardPanel, centralContainer, DockingStyle.Fill, 0);  // ← Key: Dock to container, not mainForm
+
+            // ActivityLogPanel is now created and managed by RightDockPanelFactory
+            // No need for external timer - panel manages its own refresh cycle (5 seconds)
+            System.Windows.Forms.Timer? activityRefreshTimer = null;
+
+            // Create Layout Manager
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
+            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath);
+
+            // Refresh and activate
+            mainForm.SuspendLayout();
+            mainForm.PerformLayout();
+            mainForm.ResumeLayout(true);
+            dockingManager.ActivateControl(dashboardPanel);
+
+            logger?.LogInformation("Central container used for Fill docking - Dashboard bounds: {Bounds}", dashboardPanel.Bounds);
+
+            sw.Stop();
+            logger?.LogInformation("CreateDockingHost: Completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+
+            return (dockingManager, leftDockPanel, rightDockPanel, activityLogPanel, activityRefreshTimer, layoutManager);
         }
         catch (Exception ex)
         {
-            logger?.LogDebug(ex, "Failed to set dock label for left panel; continuing");
-        }
+            logger?.LogError(ex, "Failed to create docking host - falling back to basics");
 
-        // Apply official API: SetAutoHideMode for space-saving capability
-        try
-        {
-            dockingManager.SetAutoHideMode(leftDockPanel, true);
-            logger?.LogDebug("Enabled auto-hide mode for left panel");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Failed to enable auto-hide for left panel; continuing");
-        }
+            // Fallback: Return safe minimal instances to prevent downstream null refs
+            var fallbackManager = new DockingManager
+            {
+                HostControl = mainForm, // CRITICAL: Ensure HostControl is set
+                ThemeName = "Office2019Colorful"
+            };
 
-        // Create right dock panel
-        logger?.LogInformation("→ Creating RightDockPanel...");
-        var rightDockPanel = new GradientPanelExt
-        {
-            // Dock = DockStyle.Right, // REMOVED: Conflicts with DockingManager
-            Width = 300,
-            Name = "RightDockPanel",
-            AccessibleName = "Activity panel",
-            AccessibleDescription = "Right docked panel hosting activity and insights",
-            AccessibleRole = AccessibleRole.Pane,
-            TabStop = false,
-            TabIndex = 11
-        };
-        if (!TryDockControl(dockingManager, rightDockPanel, mainForm, DockingStyle.Right, 300, logger))
-        {
-            logger?.LogWarning("Unable to dock right panel; docking host creation aborted.");
-            return (dockingManager, leftDockPanel, rightDockPanel, null, null);
+            return (
+                fallbackManager,
+                new GradientPanelExt { Dock = DockStyle.Left },
+                new GradientPanelExt { Dock = DockStyle.Right },
+                null,
+                null,
+                null
+            );
         }
-        // Force visibility explicitly as requested
-        dockingManager.SetDockVisibility(rightDockPanel, true);
-        logger?.LogInformation("SetDockVisibility(true) for RightDockPanel");
-
-        // Apply official API: SetDockLabel for visual dock header
-        try
-        {
-            dockingManager.SetDockLabel(rightDockPanel, "Activity");
-            logger?.LogDebug("Set dock label for right panel: 'Activity'");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Failed to set dock label for right panel; continuing");
-        }
-
-        // Apply official API: SetAutoHideMode for space-saving capability
-        try
-        {
-            dockingManager.SetAutoHideMode(rightDockPanel, true);
-            logger?.LogDebug("Enabled auto-hide mode for right panel");
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Failed to enable auto-hide for right panel; continuing");
-        }
-
-        // Create activity grid (bottom dock)
-        var activityGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
-        {
-            // Dock = DockStyle.Bottom, // REMOVED: Conflicts with DockingManager
-            Height = 200,
-            Name = "ActivityGrid",
-            AllowEditing = false,
-            AllowSorting = true,
-            AccessibleName = "Activity grid",
-            AccessibleDescription = "Recent activity table with columns Time, Activity, Details, and User",
-            AccessibleRole = AccessibleRole.Table,
-            TabStop = true,
-            TabIndex = 12
-        };
-        var gridDocked = TryDockControl(dockingManager, activityGrid, mainForm, DockingStyle.Bottom, 200, logger);
-
-        if (!gridDocked)
-        {
-            logger?.LogWarning("Activity grid docking failed; skipping activity grid and timer initialization.");
-            return (dockingManager, leftDockPanel, rightDockPanel, null, null);
-        }
-
-        // Explicitly set dock labels and force visibility explicitly as requested
-        dockingManager.SetDockVisibility(activityGrid, true);
-        logger?.LogInformation("SetDockVisibility(true) for ActivityGrid");
-
-        // Setup activity grid columns
-        if (activityGrid.Columns == null)
-        {
-            logger?.LogWarning("Activity grid columns collection was null; skipping column setup.");
-        }
-        else
-        {
-            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Timestamp", HeaderText = "Time" });
-            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Activity", HeaderText = "Activity" });
-            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Details", HeaderText = "Details" });
-            activityGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "User", HeaderText = "User" });
-        }
-
-        // Load initial activity data
-        LoadActivityDataAsync(activityGrid, serviceProvider, logger);
-
-        // Setup refresh timer
-        var activityRefreshTimer = new System.Windows.Forms.Timer
-        {
-            Interval = 30000  // 30 seconds; adjust as needed
-        };
-        activityRefreshTimer.Tick += (_, _) => LoadActivityDataAsync(activityGrid, serviceProvider, logger);
-        activityRefreshTimer.Start();
-
-        logger?.LogInformation("★ CreateDockingHost COMPLETE - DockingManager initialized with left/right panels and activity grid");
-        return (dockingManager, leftDockPanel, rightDockPanel, activityGrid, activityRefreshTimer);
     }
 
     private static bool TryDockControl(DockingManager dockingManager, Control control, Control host, DockingStyle dockingStyle, int size, ILogger? logger)
@@ -233,38 +237,84 @@ public static class DockingHostFactory
 
         try
         {
-            logger?.LogDebug("TryDockControl: Attempting to dock {ControlName} to {HostName} with style {Style} and size {Size}",
-                control.Name, host.Name, dockingStyle, size);
-
-            // Enforce minimum size to prevent malformation
-            if (size < 100)
-            {
-                size = 100;
-            }
             dockingManager.DockControl(control, host, dockingStyle, size);
-            control.MinimumSize = new Size(Math.Max(100, size), 100);
-            logger?.LogDebug("Enforced minimum size {MinSize} for {Control}", control.MinimumSize, control.Name);
-
-            // Force visibility after docking (do not call BringToFront - it triggers paint)
             control.Visible = true;
 
             logger?.LogInformation("TryDockControl: Successfully docked {ControlName} to {HostName} with style {Style}",
                 control.Name, host.Name, dockingStyle);
             return true;
         }
-        catch (ArgumentOutOfRangeException ex)
+        catch (Exception ex)
         {
-            logger?.LogError(ex, "TryDockControl: ArgumentOutOfRangeException when docking {ControlName} to {HostName} with style {Style} and size {Size}. " +
-                "This usually means DockingManager.DockControl() received invalid size parameter (negative or too large).",
-                control.Name, host.Name, dockingStyle, size);
+            logger?.LogError(ex, "TryDockControl: Failed to dock {ControlName}", control.Name);
             return false;
         }
-        catch (InvalidOperationException ex)
+    }
+
+    /// <summary>
+    /// Load activity data with timeout protection to prevent infinite hangs.
+    /// </summary>
+    private static async Task LoadActivityDataWithTimeoutAsync(
+        SfDataGrid activityGrid,
+        IServiceProvider serviceProvider,
+        ILogger? logger)
+    {
+        const int timeoutSeconds = 5;
+        try
         {
-            logger?.LogError(ex, "TryDockControl: InvalidOperationException when docking {ControlName} to {HostName}. " +
-                "This usually means host is not properly registered or control already has a parent.",
-                control.Name, host.Name);
-            return false;
+            if (activityGrid.IsDisposed) return;
+
+            // Try to resolve activity repository from service provider
+            var activityRepo = serviceProvider.GetService(typeof(IActivityLogRepository)) as IActivityLogRepository;
+            if (activityRepo == null)
+            {
+                logger?.LogDebug("Activity repository not resolved - loading fallback data");
+                LoadFallbackActivityData(activityGrid);
+                return;
+            }
+
+            // Load with timeout protection
+            var loadTask = activityRepo.GetRecentActivitiesAsync(skip: 0, take: 50);
+            var activities = await loadTask.WithTimeout(TimeSpan.FromSeconds(timeoutSeconds)).ConfigureAwait(false);
+
+            if (activityGrid.InvokeRequired)
+            {
+                activityGrid.Invoke(() =>
+                {
+                    if (!activityGrid.IsDisposed)
+                    {
+                        activityGrid.DataSource = activities;
+                        activityGrid.Refresh();
+                        UpdateActivityHeaderForRealData(activityGrid);
+                        logger?.LogInformation("Activity grid loaded real data - {Count} items", activities?.Count ?? 0);
+                    }
+                });
+            }
+            else
+            {
+                if (!activityGrid.IsDisposed)
+                {
+                    activityGrid.DataSource = activities;
+                    activityGrid.Refresh();
+                    UpdateActivityHeaderForRealData(activityGrid);
+                    logger?.LogInformation("Activity grid loaded real data - {Count} items", activities?.Count ?? 0);
+                }
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            logger?.LogWarning(ex, "Activity data load timed out after {TimeoutSeconds}s - loading fallback data", timeoutSeconds);
+            LoadFallbackActivityData(activityGrid);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx && sqlEx.Number == 547)
+        {
+            logger?.LogError(ex, "Database constraint violation during activity load");
+            LoadFallbackActivityData(activityGrid);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to load activity data from database - loading fallback");
+            LoadFallbackActivityData(activityGrid);
         }
     }
 
@@ -272,7 +322,7 @@ public static class DockingHostFactory
     /// Asynchronously load activity data into the grid.
     /// </summary>
     private static async void LoadActivityDataAsync(
-        Syncfusion.WinForms.DataGrid.SfDataGrid activityGrid,
+        SfDataGrid activityGrid,
         IServiceProvider serviceProvider,
         ILogger? logger)
     {
@@ -284,7 +334,7 @@ public static class DockingHostFactory
             var activityRepo = serviceProvider.GetService(typeof(IActivityLogRepository)) as IActivityLogRepository;
             if (activityRepo == null)
             {
-                logger?.LogWarning("Activity repository not resolved - loading fallback data");
+                // logger?.LogWarning("Activity repository not resolved - loading fallback data"); // Reduce noise
                 LoadFallbackActivityData(activityGrid);
                 return;
             }
@@ -319,28 +369,91 @@ public static class DockingHostFactory
 
     /// <summary>
     /// Load fallback activity data when repository is unavailable.
+    /// Uses ActivityFallbackDataService for comprehensive, reusable sample data with session lifetime caching.
+    /// Updates header to indicate fallback data is being used.
     /// </summary>
-    private static void LoadFallbackActivityData(Syncfusion.WinForms.DataGrid.SfDataGrid activityGrid)
+    private static void LoadFallbackActivityData(SfDataGrid activityGrid)
     {
         if (activityGrid == null || activityGrid.IsDisposed)
             return;
 
-        var activities = new[]
-        {
-            new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-5), Activity = "Account Updated", Details = "GL-1001", User = "System" },
-            new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-15), Activity = "Report Generated", Details = "Budget Q4", User = "Scheduler" },
-            new ActivityItem { Timestamp = DateTime.Now.AddMinutes(-30), Activity = "QuickBooks Sync", Details = "42 records", User = "Integrator" },
-            new ActivityItem { Timestamp = DateTime.Now.AddHours(-1), Activity = "User Login", Details = "Admin", User = "Admin" },
-            new ActivityItem { Timestamp = DateTime.Now.AddHours(-2), Activity = "Backup Complete", Details = "12.5 MB", User = "System" }
-        };
+        // Load comprehensive fallback data from service (cached, session-lifetime)
+        var activities = ActivityFallbackDataService.GetFallbackActivityData();
 
         if (activityGrid.InvokeRequired)
         {
-            activityGrid.Invoke(() => activityGrid.DataSource = activities);
+            activityGrid.Invoke(() =>
+            {
+                if (!activityGrid.IsDisposed)
+                {
+                    activityGrid.DataSource = activities;
+                    activityGrid.Refresh();
+
+                    // Update header to show fallback status
+                    UpdateActivityHeaderForFallback(activityGrid);
+                }
+            });
         }
         else
         {
-            activityGrid.DataSource = activities;
+            if (!activityGrid.IsDisposed)
+            {
+                activityGrid.DataSource = activities;
+                activityGrid.Refresh();
+
+                // Update header to show fallback status
+                UpdateActivityHeaderForFallback(activityGrid);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Update the activity grid header label to indicate fallback data is in use.
+    /// </summary>
+    private static void UpdateActivityHeaderForFallback(SfDataGrid activityGrid)
+    {
+        try
+        {
+            // Find the parent container of the grid (the right dock panel)
+            var parent = activityGrid.Parent;
+            if (parent == null) return;
+
+            // Find the header label in the parent's controls
+            var headerLabel = parent.Controls["ActivityHeaderLabel"] as Label;
+            if (headerLabel != null && !headerLabel.IsDisposed)
+            {
+                headerLabel.Text = "Recent Activity (Fallback — real data unavailable)";
+                headerLabel.ForeColor = SystemColors.GrayText;
+            }
+        }
+        catch
+        {
+            // Silently fail if header update fails (not critical)
+        }
+    }
+
+    /// <summary>
+    /// Reset the activity grid header label to normal (when real data loads successfully).
+    /// </summary>
+    private static void UpdateActivityHeaderForRealData(SfDataGrid activityGrid)
+    {
+        try
+        {
+            // Find the parent container of the grid (the right dock panel)
+            var parent = activityGrid.Parent;
+            if (parent == null) return;
+
+            // Find the header label in the parent's controls
+            var headerLabel = parent.Controls["ActivityHeaderLabel"] as Label;
+            if (headerLabel != null && !headerLabel.IsDisposed)
+            {
+                headerLabel.Text = "Recent Activity";
+                headerLabel.ForeColor = SystemColors.ControlText;
+            }
+        }
+        catch
+        {
+            // Silently fail if header update fails (not critical)
         }
     }
 }

@@ -168,11 +168,15 @@
   "omnisharp.excludePaths": [
     "**/tests/**"
   ],
+  "omnisharp.enableAsyncCompletion": true,
+  "omnisharp.analyzeOpenDocumentsOnly": true,
 
   "csharp.suppressDotnetRestoreNotification": true,
 
   "[csharp]": {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-dotnettools.csharp",
+    "editor.formatOnSaveMode": "modifications"
   },
 
   // ============================================================================
@@ -272,8 +276,17 @@
   ],
   "cSpell.enabledFileTypes": {
     "csharp": true,
-    "markdown": true,
+    "markdown": false,
     "xml": true
+  },
+
+  // ============================================================================
+  // Markdown Linting - Disabled (MD lint clutters Problems panel)
+  // ============================================================================
+  "markdownlint.enable": false,
+  "[markdown]": {
+    "editor.defaultFormatter": null,
+    "editor.formatOnSave": false
   },
 
   // ============================================================================

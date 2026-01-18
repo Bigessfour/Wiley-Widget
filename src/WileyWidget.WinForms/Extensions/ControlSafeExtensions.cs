@@ -174,5 +174,56 @@ namespace WileyWidget.WinForms.Extensions
         }
 
         #endregion
+
+        #region Task Timeout Extensions
+
+        /// <summary>
+        /// Applies a timeout to an async Task operation using Task.WhenAny pattern.
+        /// Throws TimeoutException if the task doesn't complete within the specified timeout.
+        /// Note: Does not cancel the underlying task—only prevents waiting beyond timeout.
+        /// The task continues executing in background (fire-and-forget after timeout).
+        /// </summary>
+        public static async System.Threading.Tasks.Task<T> WithTimeout<T>(
+            this System.Threading.Tasks.Task<T> task,
+            TimeSpan timeout)
+        {
+            if (task == null) throw new ArgumentNullException(nameof(task));
+
+            var delayTask = System.Threading.Tasks.Task.Delay(timeout);
+            var completedTask = await System.Threading.Tasks.Task.WhenAny(task, delayTask).ConfigureAwait(false);
+
+            if (completedTask == delayTask)
+            {
+                throw new TimeoutException($"Task did not complete within {timeout.TotalSeconds} seconds");
+            }
+
+            // Task completed first, return its result
+            return await task.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Applies a timeout to an async Task operation (non-generic) using Task.WhenAny pattern.
+        /// Throws TimeoutException if the task doesn't complete within the specified timeout.
+        /// Note: Does not cancel the underlying task—only prevents waiting beyond timeout.
+        /// </summary>
+        public static async System.Threading.Tasks.Task WithTimeout(
+            this System.Threading.Tasks.Task task,
+            TimeSpan timeout)
+        {
+            if (task == null) throw new ArgumentNullException(nameof(task));
+
+            var delayTask = System.Threading.Tasks.Task.Delay(timeout);
+            var completedTask = await System.Threading.Tasks.Task.WhenAny(task, delayTask).ConfigureAwait(false);
+
+            if (completedTask == delayTask)
+            {
+                throw new TimeoutException($"Task did not complete within {timeout.TotalSeconds} seconds");
+            }
+
+            // Task completed first, await it to propagate any exceptions
+            await task.ConfigureAwait(false);
+        }
+
+        #endregion
     }
 }

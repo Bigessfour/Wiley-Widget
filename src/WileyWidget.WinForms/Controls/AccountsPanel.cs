@@ -84,6 +84,9 @@ public partial class AccountsPanel : UserControl
         Controls.Add(_layout);
 
         ResumeLayout(true);
+        this.PerformLayout();
+        this.Refresh();
+        _logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", Name);
     }
 
     private void BindViewModel()

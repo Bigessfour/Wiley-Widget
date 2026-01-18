@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Models;
@@ -68,7 +69,11 @@ namespace WileyWidget.WinForms.ViewModels
             LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDataAsync);
 
-            _logger.LogInformation("MainViewModel constructed with IDashboardService");
+            // Guard against design-time initialization — prevent fallback/service calls in VS designer
+            if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
+            {
+                _logger.LogInformation("MainViewModel constructed with IDashboardService (runtime mode)");
+            }
         }
 
         /// <summary>
@@ -141,12 +146,13 @@ namespace WileyWidget.WinForms.ViewModels
                 }
                 catch (Exception serviceEx)
                 {
-                    _logger.LogWarning(serviceEx, "Dashboard service call failed, attempting fallback to sample data");
+                    _logger.LogWarning(serviceEx, "Dashboard service call failed, loading fallback sample data");
                     _aiLoggingService.LogError("Dashboard Service", serviceEx);
 
-                    // Try sample data fallback
+                    // Load comprehensive fallback data
                     dashboardItems = GetSampleDashboardData();
-                    ErrorMessage = "Using sample data (service unavailable)";
+                    _logger.LogInformation("Loaded fallback dashboard data — {Count} items", dashboardItems?.Count() ?? 0);
+                    ErrorMessage = "Using fallback data (service unavailable)";
                 }
 
                 if (dashboardItems == null || !dashboardItems.Any())
@@ -199,71 +205,30 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Returns sample dashboard data for design-time or offline scenarios.
+        /// Uses FallbackDataService for comprehensive, consistent fallback metrics.
         /// </summary>
         private IEnumerable<DashboardItem> GetSampleDashboardData()
         {
-            return new[]
-            {
-                new DashboardItem
-                {
-                    Title = "Total Budget",
-                    Value = "1250000.00",
-                    Category = "budget",
-                    Description = "Total allocated budget for current fiscal year"
-                },
-                new DashboardItem
-                {
-                    Title = "Total Actual",
-                    Value = "987500.50",
-                    Category = "actual",
-                    Description = "Total actual spending to date"
-                },
-                new DashboardItem
-                {
-                    Title = "Variance",
-                    Value = "262499.50",
-                    Category = "variance",
-                    Description = "Remaining budget (under/over)"
-                },
-                new DashboardItem
-                {
-                    Title = "Active Accounts",
-                    Value = "42",
-                    Category = "accounts",
-                    Description = "Number of active municipal accounts"
-                },
-                new DashboardItem
-                {
-                    Title = "Departments",
-                    Value = "8",
-                    Category = "departments",
-                    Description = "Total departments tracked"
-                },
-                new DashboardItem
-                {
-                    Title = "Recent Activity",
-                    Value = "Budget entry updated",
-                    Category = "activity",
-                    Description = "Latest system activity"
-                },
-                new DashboardItem
-                {
-                    Title = "Sample Transaction",
-                    Value = "Invoice #1234 processed",
-                    Category = "activity",
-                    Description = "Sample transaction for testing"
-                }
-            };
+            var fallbackData = FallbackDataService.GetFallbackDashboardData();
+            return fallbackData.Cast<DashboardItem>();
         }
 
         /// <summary>
         /// Initialize the view model by loading data.
+        /// Guards against design-time initialization to prevent errors in VS designer.
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                _logger.LogInformation("MainViewModel: InitializeAsync called");
+                // Skip initialization in design-time (VS designer) to avoid errors
+                if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                {
+                    _logger.LogDebug("MainViewModel: Design-time mode detected, skipping async initialization");
+                    return;
+                }
+
+                _logger.LogInformation("MainViewModel: InitializeAsync called (runtime mode)");
                 await LoadDataAsync(cancellationToken);
                 _logger.LogInformation("MainViewModel: InitializeAsync completed successfully");
             }

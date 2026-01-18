@@ -383,18 +383,26 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading audit entries...",
+            Dock = DockStyle.Fill,
             AccessibleName = "Loading overlay"
         };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No audit entries found",
+            Dock = DockStyle.Fill,
             AccessibleName = "No data overlay"
         };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
+        this.PerformLayout();
+        this.Refresh();
+        
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private void ConfigureMainSplitContainer()

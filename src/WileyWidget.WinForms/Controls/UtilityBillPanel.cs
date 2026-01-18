@@ -95,7 +95,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
-            Logger.LogDebug("UtilityBillPanel initialized successfully");
+            Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
         catch (Exception ex)
         {
@@ -167,21 +167,28 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         // Loading overlay
         _loadingOverlay = new LoadingOverlay
         {
+            Dock = DockStyle.Fill,
             Message = "Loading utility bill data...",
             Visible = false
         };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         // No data overlay
         _noDataOverlay = new NoDataOverlay
         {
+            Dock = DockStyle.Fill,
             Message = "No utility bills yet\r\nCreate a new bill for a customer to get started",
             Visible = false
         };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
-        PerformLayout();
+        this.PerformLayout();
+        this.Refresh();
+        
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private void InitializeTopPanel()

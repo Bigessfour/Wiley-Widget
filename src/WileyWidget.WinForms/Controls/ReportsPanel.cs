@@ -508,7 +508,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading report...",
-            Visible = false
+            Visible = false,
+            Dock = DockStyle.Fill
         };
         Controls.Add(_loadingOverlay);
 
@@ -516,7 +517,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No report loaded yet\r\nSelect a report from the dropdown and click Generate to preview",
-            Visible = false
+            Visible = false,
+            Dock = DockStyle.Fill
         };
         Controls.Add(_noDataOverlay);
 
@@ -526,9 +528,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Theme changes are handled by SfSkinManager cascade
 
         ResumeLayout(false);
-        PerformLayout();
+        this.PerformLayout();
+        this.Refresh();
 
-        Logger.LogDebug("ReportsPanel controls initialized");
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", Name);
     }
 
     private void BindViewModel()

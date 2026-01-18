@@ -227,6 +227,51 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
+        /// Performs a global search across all modules (accounts, budgets, reports).
+        /// Delegates to GlobalSearchService and displays results.
+        /// </summary>
+        /// <param name="query">Search query string</param>
+        public async void PerformGlobalSearch(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                MessageBox.Show("Please enter a search query.", "Empty Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                _logger?.LogInformation("Global search initiated from ribbon: '{Query}'", query);
+
+                // Try to resolve global search service from DI
+                var searchService = _serviceProvider?.GetService(typeof(IGlobalSearchService)) as IGlobalSearchService;
+                if (searchService != null)
+                {
+                    var results = await searchService.SearchAsync(query);
+                    _logger?.LogInformation("Global search returned {ResultCount} results for '{Query}'", results.TotalResults, query);
+
+                    // Show results in a message box for now
+                    // Future: Display results in a dedicated search results panel
+                    MessageBox.Show(
+                        $"Search found {results.TotalResults} results for '{query}'.\n\nFeature expansion coming soon.",
+                        "Search Results",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+                else
+                {
+                    _logger?.LogWarning("GlobalSearchService not registered in DI container");
+                    MessageBox.Show("Global search service not available.", "Service Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Global search failed for query '{Query}'", query);
+                MessageBox.Show($"Search failed: {ex.Message}", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
         /// Adds an existing panel instance to the docking manager asynchronously.
         /// Useful for panels pre-initialized with specific ViewModels or state.
         /// </summary>
@@ -281,7 +326,6 @@ namespace WileyWidget.WinForms.Forms
         private StatusBarAdvPanel? _clockPanel;
         private System.Windows.Forms.Timer? _statusTimer;
         private bool _dashboardAutoShown;
-        private System.Windows.Forms.Timer? _activityRefreshTimer;
         private Button? _defaultCancelButton;
 
         /// <summary>
@@ -406,29 +450,75 @@ namespace WileyWidget.WinForms.Forms
 
             _asyncLogger?.Information("MainForm.InitializeAsync started - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
+            // Diagnostic: Check initial state
+            _logger?.LogInformation("[DIAGNOSTIC] InitializeAsync: _serviceProvider={HasValue}, _themeService={HasValue}, _panelNavigator={HasValue}, _dockingManager={HasValue}",
+                _serviceProvider != null, _themeService != null, _panelNavigator != null, _dockingManager != null);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [INIT] InitializeAsync started. _serviceProvider={_serviceProvider != null}, _panelNavigator={_panelNavigator != null}, _dockingManager={_dockingManager != null}");
+
             // Align UI with persisted theme from service
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
             }
-
-            // Phase 1: Async Docking Layout Restoration
-            // Separation of concerns: We restore layout asynchronously to prevent UI freeze during startup
-            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
+            else
             {
-                _logger?.LogInformation("Starting asynchronous docking layout restoration");
+                _logger?.LogWarning("[DIAGNOSTIC] _themeService is null in InitializeAsync");
+            }
+
+            // CRITICAL: DockingManager is initialized in OnShown Phase 1.
+            // Verify it exists before proceeding with panel operations.
+            if (_dockingManager == null)
+            {
+                _logger?.LogWarning("[CRITICAL] DockingManager is null in InitializeAsync - docking was not initialized successfully in OnShown");
+                _asyncLogger?.Warning("[CRITICAL] DockingManager is null in InitializeAsync");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [ERROR] DockingManager not initialized - check OnShown for errors!");
+                return;
+            }
+
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [INIT] DockingManager is ready (initialized in OnShown)");
+
+            // Phase 1: Show priority panels for faster startup
+            // Instead of loading full layout, show only essential panels to reduce initialization time
+            if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null)
+            {
+                _logger?.LogInformation("Showing priority panels for faster startup");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [INIT] Starting panel initialization");
                 try
                 {
-                    var layoutPath = GetDockingLayoutPath();
-                    if (!string.IsNullOrEmpty(layoutPath))
-                    {
-                        await LoadAndApplyDockingLayout(layoutPath, cancellationToken).ConfigureAwait(true);
-                    }
+                    // Priority panels: Dashboard only to reduce clutter
+                    _logger?.LogInformation("[PANEL] Showing Dashboard");
+                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
+
+                    //_logger?.LogInformation("[PANEL] Showing AI Chat");
+                    //_panelNavigator.ShowPanel<InsightFeedPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+
+                    //_logger?.LogInformation("[PANEL] Showing QuickBooks");
+                    //_panelNavigator.ShowPanel<AccountsPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+
+                    //_logger?.LogInformation("[PANEL] Showing Customers");
+                    //_panelNavigator.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
+
+                    //_logger?.LogInformation("[PANEL] Showing Revenue Trends");
+                    //_panelNavigator.ShowPanel<AnalyticsPanel>("Revenue Trends", DockingStyle.Right, allowFloating: true);
+
+                    _logger?.LogInformation("Priority panels shown successfully");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [INIT] Dashboard panel shown");
+                }
+                catch (NullReferenceException nrex)
+                {
+                    _logger?.LogError(nrex, "[CRITICAL NRE] NullReferenceException while showing panels. Stack: {Stack}", nrex.StackTrace);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [ERROR] NRE in panel init: {nrex.Message}\n{nrex.StackTrace}");
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Failed to restore docking layout in InitializeAsync");
+                    _logger?.LogError(ex, "Failed to show priority panels: {Type}: {Message}", ex.GetType().Name, ex.Message);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [ERROR] {ex.GetType().Name} in panel init: {ex.Message}");
                 }
+            }
+            else
+            {
+                _logger?.LogWarning("[DIAGNOSTIC] Skipping panel init: UseSync={UseSyncfusionDocking}, PanelNav={HasPanelNav}", _uiConfig.UseSyncfusionDocking, _panelNavigator != null);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [WARN] Skipping panels: UseSyncfusionDocking={_uiConfig.UseSyncfusionDocking}, _panelNavigator={_panelNavigator != null}");
             }
 
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
@@ -447,6 +537,7 @@ namespace WileyWidget.WinForms.Forms
             }
 
             _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
+            ApplyTheme();
         }
 
         private void MainForm_DragEnter(object? sender, DragEventArgs e)
@@ -665,9 +756,10 @@ namespace WileyWidget.WinForms.Forms
             // Restore window state (size, position, maximized/minimized) from previous session
             RestoreWindowState();
 
-            // CRITICAL: Initialize UI Chrome and Docking synchronously on UI thread BEFORE OnShown
-            // Heavy initialization (Chrome, Docking) must complete before form is shown to prevent rendering issues
+            // UI Chrome (Ribbon/StatusBar) initialized synchronously in OnLoad.
+            // Docking initialization is deferred to OnShown for safer timing.
             _logger?.LogDebug("OnLoad: Starting UI initialization on UI thread {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+            InitializeChrome();
 
             // Z-order management: ribbon/status above docking panels.
             try
@@ -692,6 +784,13 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger?.LogError(ex, "OnLoad failed during z-order configuration");
                 throw;
+            }
+
+            // DEFERRED: Docking initialization moved to OnShown for safer timing (per recommendation)
+            // if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true) { ... }
+            if (_uiConfig?.UseSyncfusionDocking == true)
+            {
+                _logger?.LogInformation("OnLoad: Deferring docking initialization to OnShown");
             }
 
             // Panel navigation is created after docking is initialized (OnShown).
@@ -965,7 +1064,7 @@ namespace WileyWidget.WinForms.Forms
             return null;
         }
 
-        private void ToggleTheme()
+public void ToggleTheme()
         {
             try
             {
@@ -985,6 +1084,16 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 _logger?.LogInformation("Theme toggled from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
+
+                // Update theme toggle button text
+                if (_ribbon != null)
+                {
+                    var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
+                    if (themeToggle != null)
+                    {
+                        themeToggle.Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light" : "🌙 Dark";
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -993,26 +1102,14 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// <summary>
         /// OnShown override. Deferred initialization for non-critical background operations.
-        /// Heavy UI initialization (Chrome, Docking) is now performed in OnLoad.
-        /// This method handles background tasks (health checks, test data seeding) and async ViewModel initialization.
         /// </summary>
         protected override async void OnShown(EventArgs e)
         {
-            base.OnShown(e);
-
             if (DesignMode)
+            {
+                base.OnShown(e);
                 return;
-
-            try
-            {
-                await InitializeAsync(CancellationToken.None).ConfigureAwait(true);
-                ApplyTheme();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "OnShown: Pre-initialization theme application failed");
             }
 
             // Thread-safe guard: Prevent duplicate execution
@@ -1026,18 +1123,28 @@ namespace WileyWidget.WinForms.Forms
             _initializationCts = new CancellationTokenSource();
             var cancellationToken = _initializationCts.Token;
 
-            // Defer chrome initialization until after the window is visible
-            try
+            // Phase 1: Initialize Syncfusion Docking (deferred from OnLoad)
+            // Initializing here ensures the form handle and bounds are fully ready.
+            if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
-                _logger?.LogDebug("OnShown: initializing UI chrome");
-                InitializeChrome();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "OnShown: InitializeChrome failed");
+                try
+                {
+                    _logger?.LogInformation("OnShown: Initializing Syncfusion docking");
+                    InitializeSyncfusionDocking();
+                    _syncfusionDockingInitialized = true;
+                    this.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "OnShown: Failed to initialize Syncfusion docking");
+                }
             }
 
+            // Raise Shown event AFTER docking is ready
+            // This ensures event handlers (like StartupOrchestrator) see a fully prepared UI
+            base.OnShown(e);
 
+            _logger?.LogInformation("[UI] MainForm OnShown: Starting deferred initialization - UI thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
             // Database health check + test data seeding (background)
             _ = Task.Run(async () =>
@@ -1146,43 +1253,17 @@ namespace WileyWidget.WinForms.Forms
                     throw;
                 }
 
-                _logger?.LogInformation("→ Phase 1: Docking flag check - _syncfusionDockingInitialized={DockingInitialized}", _syncfusionDockingInitialized);
-                _asyncLogger?.Information("→ Phase 1: Docking flag check - _syncfusionDockingInitialized={DockingInitialized}", _syncfusionDockingInitialized);
+                _logger?.LogInformation("→ Phase 1: Docking already initialized at start of OnShown");
+                _asyncLogger?.Information("→ Phase 1: Docking verification complete");
 
-                if (!_syncfusionDockingInitialized)
-                {
-                    _logger?.LogInformation("→ Phase 1: Docking NOT yet initialized - proceeding with InitializeSyncfusionDocking()");
-                    _asyncLogger?.Information("→ Phase 1: Docking NOT yet initialized - proceeding with InitializeSyncfusionDocking()");
-                    try
-                    {
-                        InitializeSyncfusionDocking();
-                        _syncfusionDockingInitialized = true;
-                        _logger?.LogInformation("Docking initialized successfully");
-
-                        EnsurePanelNavigatorInitialized();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Failed to initialize docking manager in OnShown");
-                        // Continue - not fatal
-                    }
-                }
-                else
-                {
-                    _logger?.LogWarning("⚠ Phase 1 SKIPPED: Docking already initialized (flag=true) - no docking work performed");
-                    _asyncLogger?.Warning("⚠ Phase 1 SKIPPED: Docking already initialized (flag=true) - no docking work performed");
-                }
-
-                // Phase 2: Ensure docking z-order (layout already loaded synchronously in InitializeSyncfusionDocking)
+                // Ensure docking z-order
                 if (_uiConfig.UseSyncfusionDocking)
                 {
-                    // REMOVED: Redundant async reload - LoadDockingLayout() already called synchronously in InitializeSyncfusionDocking()
-                    // This eliminates double-load performance hit and simplifies startup flow
                     try { EnsureDockingZOrder(); }
                     catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
                 }
 
-                // Phase 3: Initialize dashboard data asynchronously
+                // Phase 2: Initialize dashboard data asynchronously
                 _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
                 _logger?.LogInformation("Initializing MainViewModel");
                 ApplyStatus("Loading dashboard data...");
@@ -1215,9 +1296,23 @@ namespace WileyWidget.WinForms.Forms
                     try
                     {
                         _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
-                        await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(true);
-                        _logger?.LogInformation("MainViewModel initialized successfully");
-                        _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                        // CRITICAL FIX: Use ConfigureAwait(false) to avoid blocking UI thread during data load
+                        // This allows other UI operations to proceed while ViewModel loads data
+                        await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                        // Now switch back to UI thread for any UI updates via proper marshaling
+                        if (this.InvokeRequired)
+                        {
+                            await this.InvokeAsync(() =>
+                            {
+                                _logger?.LogInformation("MainViewModel initialized successfully");
+                                _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                            });
+                        }
+                        else
+                        {
+                            _logger?.LogInformation("MainViewModel initialized successfully");
+                            _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -1236,11 +1331,26 @@ namespace WileyWidget.WinForms.Forms
                         {
                             try
                             {
-                                MessageBox.Show(this,
-                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
-                                    "Initialization Error",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                                // Use proper thread marshaling for MessageBox
+                                if (this.InvokeRequired)
+                                {
+                                    this.Invoke(() =>
+                                    {
+                                        MessageBox.Show(this,
+                                            $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                            "Initialization Error",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+                                    });
+                                }
+                                else
+                                {
+                                    MessageBox.Show(this,
+                                        $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                        "Initialization Error",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning);
+                                }
                             }
                             catch { /* Swallow MessageBox errors */ }
                         }
@@ -1258,7 +1368,7 @@ namespace WileyWidget.WinForms.Forms
                     try
                     {
                         _logger?.LogInformation("Showing initial dashboard panel...");
-                        ShowPanel<Controls.DashboardPanel>("Dashboard", null, DockingStyle.Fill);
+                        ShowPanel<Controls.DashboardPanel>("Dashboard", null, DockingStyle.Top);
                         _dashboardAutoShown = true;
                         _logger?.LogInformation("Initial dashboard panel shown successfully");
                     }
@@ -1271,6 +1381,8 @@ namespace WileyWidget.WinForms.Forms
 
                 ApplyStatus("Ready");
                 _logger?.LogInformation("OnShown: Deferred initialization completed");
+
+                _logger?.LogInformation("[UI] MainForm OnShown: Deferred initialization completed successfully");
 
                 // CRITICAL: Late validation pass to catch any images that became invalid after initial load
                 // This prevents GDI+ "Parameter is not valid" crashes in ImageAnimator during paint
@@ -1418,7 +1530,6 @@ namespace WileyWidget.WinForms.Forms
                 try
                 {
                     _statusTimer?.Stop();
-                    _activityRefreshTimer?.Stop();
                     _logger?.LogDebug("Form closing: timers stopped");
                 }
                 catch (Exception ex)
@@ -1445,16 +1556,17 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        // Layout persistence via DockingStateManager
-                        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-                        var stateLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<DockingStateManager>>(_serviceProvider)
-                                          ?? new Microsoft.Extensions.Logging.Abstractions.NullLogger<DockingStateManager>();
-
-                        var layoutManager = new DockingStateManager(layoutPath, stateLogger);
-                        layoutManager.SaveLayout(_dockingManager);
-
-                        _logger?.LogDebug("Form closing: docking layout saved to {Path}", layoutPath);
+                        // Use the centralized layout manager
+                        if (_dockingLayoutManager != null)
+                        {
+                            _dockingLayoutManager.SaveDockingLayout(_dockingManager);
+                            _logger?.LogDebug("Form closing: docking layout saved via DockingLayoutManager");
+                        }
+                        else
+                        {
+                            // Fallback manual save if manager missing (unlikely)
+                            _logger?.LogWarning("Form closing: _dockingLayoutManager is null, skipping layout save");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1531,8 +1643,6 @@ namespace WileyWidget.WinForms.Forms
                 // Stop and dispose timers
                 _statusTimer?.Stop();
                 _statusTimer?.Dispose();
-                _activityRefreshTimer?.Stop();
-                _activityRefreshTimer?.Dispose();
 
                 // Dispose scoped services (CRITICAL for DbContext-holding scopes)
                 _mainViewModelScope?.Dispose();
@@ -1551,8 +1661,8 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void ApplyTheme()
         {
-            // Delay applying theme until the docking panels and grids are set up to prevent NullReferenceExceptions
-            if (_activityGrid == null || _leftDockPanel == null || _rightDockPanel == null || _centralDocumentPanel == null)
+            // Delay applying theme until the docking panels are set up to prevent NullReferenceExceptions
+            if (_activityLogPanel == null || _leftDockPanel == null || _rightDockPanel == null)
             {
                 _logger?.LogDebug("Theme apply skipped: Docking controls are not initialized yet");
                 return;
@@ -1563,7 +1673,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 SfSkinManager.SetVisualStyle(this, themeName);
-                SfSkinManager.SetVisualStyle(_activityGrid, themeName);
+                SfSkinManager.SetVisualStyle(_activityLogPanel, themeName);
                 SfSkinManager.SetVisualStyle(_leftDockPanel, themeName);
                 SfSkinManager.SetVisualStyle(_rightDockPanel, themeName);
                 SfSkinManager.SetVisualStyle(_centralDocumentPanel, themeName);
@@ -1620,38 +1730,6 @@ namespace WileyWidget.WinForms.Forms
         private void ShowErrorDialog(string title, string message)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-
-        /// <summary>
-        /// Performs a global search across all panels and data.
-        /// Searches through municipal accounts, budget entries, and activity logs.
-        /// </summary>
-        /// <param name="searchTerm">The search term to find.</param>
-        public void PerformGlobalSearch(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                _logger?.LogDebug("PerformGlobalSearch called with empty search term");
-                return;
-            }
-
-            try
-            {
-                // Global search implementation: searches accounts, budgets, and activity
-                // Phase 1: Search via repositories if available
-                // Phase 2: Filter and present results in search results panel
-                // For now, show user-friendly message
-                _logger?.LogInformation("Global search requested: {SearchTerm}", searchTerm);
-                MessageBox.Show(
-                    $"Searching for '{searchTerm}'...\\n\\nAdvanced search will index accounts, budgets, and activities.",
-                    "Global Search",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "PerformGlobalSearch failed for term: {SearchTerm}", searchTerm);
-            }
         }
 
         private void ShowErrorDialog(string title, string message, Exception ex)

@@ -182,19 +182,27 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading department data...",
+            Dock = DockStyle.Fill,
             AccessibleName = "Loading overlay"
         };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         // No-data overlay
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No department data available",
+            Dock = DockStyle.Fill,
             AccessibleName = "No data overlay"
         };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
+        this.PerformLayout();
+        this.Refresh();
+
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)

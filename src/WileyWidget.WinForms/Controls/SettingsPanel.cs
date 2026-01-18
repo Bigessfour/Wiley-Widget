@@ -44,6 +44,7 @@ namespace WileyWidget.WinForms.Controls
         public new object? DataContext { get; private set; }
 
         // Controls
+        private PanelHeader? _panelHeader;
         private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _mainPanel;
         private GradientPanelExt? _themeGroup;
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
@@ -181,6 +182,17 @@ namespace WileyWidget.WinForms.Controls
         {
             var padding = 20;
             var y = padding;
+
+            // Panel header
+            _panelHeader = new PanelHeader
+            {
+                Dock = DockStyle.Top,
+                Title = "Application Settings",
+                ShowRefreshButton = false,
+                ShowHelpButton = false
+            };
+            _panelHeader.CloseClicked += (s, e) => ClosePanel();
+            Controls.Add(_panelHeader);
 
             _mainPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt { Dock = DockStyle.Fill, Padding = new Padding(padding), BorderStyle = BorderStyle.None, BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty) };
             SfSkinManager.SetVisualStyle(_mainPanel, _themeName);
@@ -642,8 +654,28 @@ namespace WileyWidget.WinForms.Controls
                 _themeCombo?.SafeDispose();
                 _fontCombo?.SafeDispose();
                 _cmbLogLevel?.SafeDispose();
+                try { _panelHeader?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
+        }
+
+        private void ClosePanel()
+        {
+            try
+            {
+                var parentForm = FindForm();
+                if (parentForm == null) return;
+
+                var closePanelMethod = parentForm.GetType().GetMethod(
+                    "ClosePanel",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+                closePanelMethod?.Invoke(parentForm, new object[] { Name });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "SettingsPanel: Failed to close panel via parent form");
+            }
         }
     }
 }

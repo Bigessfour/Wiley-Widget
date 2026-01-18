@@ -184,6 +184,7 @@ public partial class CustomersPanel : UserControl
         _loadingOverlay = new LoadingOverlay
         {
             Message = "Loading customers...",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_loadingOverlay);
@@ -192,13 +193,17 @@ public partial class CustomersPanel : UserControl
         _noDataOverlay = new NoDataOverlay
         {
             Message = "No customers found. Click 'Add Customer' to create one.",
+            Dock = DockStyle.Fill,
             Visible = false
         };
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
-        PerformLayout();
+        this.PerformLayout();
+        this.Refresh();
+
+        _logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     /// <summary>
@@ -1045,13 +1050,16 @@ public partial class CustomersPanel : UserControl
         try
         {
             var customer = _viewModel.SelectedCustomer;
-            var result = MessageBox.Show(
-                $"Are you sure you want to delete customer:\n\n{customer.DisplayName}\nAccount: {customer.AccountNumber}?",
-                "Confirm Delete",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
+            var message = $"Are you sure you want to delete customer:\n\n{customer.DisplayName}\nAccount: {customer.AccountNumber}?";
+            var detail = "This action cannot be undone. All associated data will be permanently removed.";
 
-            if (result == DialogResult.Yes)
+            using var dialog = Dialogs.DeleteConfirmationDialog.Create(
+                "Delete Customer",
+                message,
+                detail,
+                _logger as Microsoft.Extensions.Logging.ILogger ?? null);
+
+            if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 _logger.LogInformation("Deleting customer {Id} - {Account}",
                     customer.Id, customer.AccountNumber);

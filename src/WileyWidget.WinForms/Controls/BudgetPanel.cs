@@ -126,7 +126,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// Parameterless constructor for designer support only.
     /// DO NOT USE - use DI constructor instead.
     /// </summary>
-    public BudgetPanel() : this(
+    internal BudgetPanel() : this(
         Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services),
         Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<BudgetViewModel>>>(Program.Services))
     {
@@ -178,12 +178,24 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _statusStrip.Items.Add(_statusLabel);
 
         // Loading overlay
-        _loadingOverlay = new LoadingOverlay { Message = "Loading budget data..." };
+        _loadingOverlay = new LoadingOverlay
+        {
+            Message = "Loading budget data...",
+            Dock = DockStyle.Fill,
+            Visible = false
+        };
         Controls.Add(_loadingOverlay);
+        _loadingOverlay.BringToFront();
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay { Message = "No budget entries yet\r\nCreate a new budget to get started" };
+        _noDataOverlay = new NoDataOverlay
+        {
+            Message = "No budget entries yet\r\nCreate a new budget to get started",
+            Dock = DockStyle.Fill,
+            Visible = false
+        };
         Controls.Add(_noDataOverlay);
+        _noDataOverlay.BringToFront();
 
         Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
@@ -192,6 +204,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Set tab order
         SetTabOrder();
+
+        this.PerformLayout();
+        this.Refresh();
+
+        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
     private void InitializeTopPanel()
@@ -660,7 +677,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Visible = false
         };
 
-        _mappingWizardPanel = new CsvMappingWizardPanel { Dock = DockStyle.Fill };
+        _mappingWizardPanel = new CsvMappingWizardPanel(Logger) { Dock = DockStyle.Fill };
         _mappingWizardPanel.MappingApplied += MappingWizardPanel_MappingApplied;
         _mappingWizardPanel.Cancelled += MappingWizardPanel_Cancelled;
         _mappingContainer.Controls.Add(_mappingWizardPanel);

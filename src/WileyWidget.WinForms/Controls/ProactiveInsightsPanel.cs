@@ -36,7 +36,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
         /// </summary>
-        public ProactiveInsightsPanel() : this(ResolveLogger())
+        internal ProactiveInsightsPanel() : this(ResolveLogger())
         {
         }
 
@@ -50,6 +50,11 @@ namespace WileyWidget.WinForms.Controls
             _logger = logger ?? ResolveLogger();
             _logger?.LogInformation("ProactiveInsightsPanel initializing");
             ApplyTheme();
+            
+            this.PerformLayout();
+            this.Refresh();
+            
+            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
             _logger?.LogInformation("ProactiveInsightsPanel initialized successfully");
         }

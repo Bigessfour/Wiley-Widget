@@ -1,20 +1,21 @@
-using System.Threading;
-using Microsoft.Extensions.Logging;
-using Syncfusion.Runtime.Serialization;
-using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Windows.Forms;
-using Syncfusion.WinForms.Controls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
+using Microsoft.Extensions.Logging;
+using Syncfusion.Runtime.Serialization;
+using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -30,11 +31,13 @@ public class DockingLayoutManager : IDisposable
     private readonly ILogger? _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IPanelNavigationService? _panelNavigator;
+    private readonly string _layoutPath;  // Added: Path for layout persistence
 
     private const string LayoutVersionAttributeName = "LayoutVersion";
     private const string CurrentLayoutVersion = "1.0";
     private const int LayoutLoadWarningMs = 5000;
     private const int MinimumSaveIntervalMs = 2000;
+    private const int LayoutLoadTimeoutMs = 2000;  // Added: Timeout for async load
 
     // State management
     private bool _isSavingLayout;
@@ -42,126 +45,169 @@ public class DockingLayoutManager : IDisposable
     private readonly object _dockingSaveLock = new();
     private System.Windows.Forms.Timer? _dockingLayoutSaveTimer;
 
-    // Dynamic panels tracking
-    private Dictionary<string, Controls.GradientPanelExt>? _dynamicDockPanels = new();
+    // In-memory cache for layout data (byte array for binary efficiency)
+    private static byte[]? _layoutCache;
+    private static readonly object _cacheLock = new();
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger)
+    // Dynamic panels tracking
+    private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();  // Made non-static for instance safety
+
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
         _logger = logger;
+        _layoutPath = layoutPath ?? throw new ArgumentNullException(nameof(layoutPath));
 
-        // Initialize dynamic panels dict
-        _dynamicDockPanels = new Dictionary<string, Controls.GradientPanelExt>();
-
-        // Setup save timer
+        // Setup save timer with tick handler
         _dockingLayoutSaveTimer = new System.Windows.Forms.Timer
         {
             Interval = MinimumSaveIntervalMs
         };
         _dockingLayoutSaveTimer.Tick += async (_, _) => await DebounceSaveDockingLayoutAsync();
 
-        _logger?.LogDebug("DockingLayoutManager initialized");
+        _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path}", _layoutPath);
     }
 
     /// <summary>
-    /// Load persisted docking layout from file.
+    /// Asynchronously loads docking layout with timeout and fallback to defaults.
+    /// Uses in-memory cache first, then disk, with performance profiling.
     /// </summary>
-    /// <param name="dockingManager">DockingManager instance</param>
-    /// <param name="layoutFilePath">Path to layout XML file</param>
-    public async Task LoadDockingLayoutAsync(DockingManager dockingManager, string layoutFilePath, CancellationToken cancellationToken = default)
+    public async Task LoadDockingLayoutAsync(DockingManager dockingManager, CancellationToken cancellationToken = default)
     {
-        var stopwatch = Stopwatch.StartNew();
+        if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
 
+        var sw = Stopwatch.StartNew();
         try
         {
-            if (!File.Exists(layoutFilePath))
+            // 1. Try in-memory cache first (fast path)
+            byte[]? layoutData = null;
+            lock (_cacheLock)
             {
-                _logger?.LogInformation("No persisted layout found at {Path} - using default layout", layoutFilePath);
-                return;
+                if (_layoutCache != null)
+                {
+                    layoutData = _layoutCache;
+                    _logger?.LogDebug("Loaded layout from in-memory cache (skipped disk I/O)");
+                }
             }
 
-            // Use BinaryFile serialization mode per Syncfusion best practices
-            var binaryLayoutPath = Path.ChangeExtension(layoutFilePath, ".bin");
-            if (File.Exists(binaryLayoutPath)) layoutFilePath = binaryLayoutPath;
-
-            var serializer = new AppStateSerializer(SerializeMode.BinaryFile, layoutFilePath);
-
-            // Load layout
-            dockingManager.LoadDockState(serializer);
-
-            // Restore dynamic panels (assuming persistence)
-            RestoreDynamicPanels(dockingManager);
-
-            stopwatch.Stop();
-            if (stopwatch.ElapsedMilliseconds > LayoutLoadWarningMs)
+            // 2. Fallback to disk if cache miss
+            if (layoutData == null)
             {
-                _logger?.LogWarning("Layout load took {ElapsedMs}ms - consider optimizing for slow disk I/O or large layout complexity", stopwatch.ElapsedMilliseconds);
+                if (!File.Exists(_layoutPath))
+                {
+                    _logger?.LogInformation("No saved layout found at {Path} - using default docking configuration", _layoutPath);
+                    return;
+                }
+
+                var ioSw = Stopwatch.StartNew();
+                layoutData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken);
+                ioSw.Stop();
+                _logger?.LogDebug("Loaded layout from disk in {ElapsedMs}ms", ioSw.ElapsedMilliseconds);
+
+                // Update cache for next load
+                lock (_cacheLock)
+                {
+                    _layoutCache = layoutData;
+                }
+            }
+
+            // 3. Apply layout with timeout to prevent UI block
+            var applyTask = Task.Run(() =>
+            {
+                using var ms = new MemoryStream(layoutData);
+                var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
+                dockingManager.LoadDockState(serializer);
+            }, cancellationToken);
+
+            if (await Task.WhenAny(applyTask, Task.Delay(LayoutLoadTimeoutMs, cancellationToken)) == applyTask)
+            {
+                await applyTask;  // Propagate any exceptions
+                _logger?.LogInformation("Docking layout applied successfully in {ElapsedMs}ms total", sw.ElapsedMilliseconds);
             }
             else
             {
-                _logger?.LogInformation("Layout loaded successfully in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+                _logger?.LogWarning("Layout application timed out after {TimeoutMs}ms - falling back to defaults", LayoutLoadTimeoutMs);
             }
-
-            await Task.CompletedTask;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("Layout load canceled");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to load docking layout from {Path}", layoutFilePath);
-        }
-    }
-
-    /// <summary>
-    /// Save current docking layout to file with debounce.
-    /// </summary>
-    /// <param name="dockingManager">DockingManager instance</param>
-    /// <param name="layoutFilePath">Path to save layout XML</param>
-    public void SaveDockingLayout(DockingManager dockingManager, string layoutFilePath)
-    {
-        var sw = Stopwatch.StartNew();
-        lock (_dockingSaveLock)
-        {
-            if (_isSavingLayout || (DateTime.UtcNow - _lastSaveTime).TotalMilliseconds < MinimumSaveIntervalMs)
-            {
-                _dockingLayoutSaveTimer?.Start();  // Debounce
-                return;
-            }
-
-            _isSavingLayout = true;
-        }
-
-        try
-        {
-            var binaryLayoutPath = Path.ChangeExtension(layoutFilePath, ".bin");
-            var serializer = new AppStateSerializer(SerializeMode.BinaryFile, binaryLayoutPath);
-
-            // Save dock state using Syncfusion API
-            dockingManager.SaveDockState(serializer);
-            serializer.PersistNow();
-
-            _lastSaveTime = DateTime.UtcNow;
-            sw.Stop();
-            _logger?.LogDebug("Docking layout saved to {Path} in {ElapsedMs}ms", binaryLayoutPath, sw.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to save docking layout to {Path}", layoutFilePath);
+            _logger?.LogError(ex, "Failed to load docking layout - using defaults");
         }
         finally
         {
-            _isSavingLayout = false;
+            sw.Stop();
+            if (sw.ElapsedMilliseconds > LayoutLoadWarningMs)
+            {
+                _logger?.LogWarning("Slow docking layout load detected ({ElapsedMs}ms) - consider optimizing XML or using binary serialization", sw.ElapsedMilliseconds);
+            }
         }
     }
 
     /// <summary>
-    /// Debounced save handler.
+    /// Saves the current docking layout with debounce to prevent frequent disk writes.
     /// </summary>
-    private async Task DebounceSaveDockingLayoutAsync(CancellationToken cancellationToken = default)
+    public void SaveDockingLayout(DockingManager dockingManager)
     {
-        _dockingLayoutSaveTimer?.Stop();
-        // Assuming dockingManager and path are accessible; pass if needed
-        // SaveDockingLayout(dockingManager, layoutFilePath);
-        await Task.CompletedTask;  // Placeholder for async
+        if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
+        if (_isSavingLayout) return;  // Debounce
+
+        lock (_dockingSaveLock)
+        {
+            if ((DateTime.Now - _lastSaveTime).TotalMilliseconds < MinimumSaveIntervalMs) return;
+
+            _isSavingLayout = true;
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                using var ms = new MemoryStream();
+                var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
+                dockingManager.SaveDockState(serializer);
+                serializer.PersistNow();
+
+                var layoutData = ms.ToArray();
+
+                // Update cache
+                lock (_cacheLock)
+                {
+                    _layoutCache = layoutData;
+                }
+
+                // Save to disk
+                var dir = Path.GetDirectoryName(_layoutPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                File.WriteAllBytes(_layoutPath, layoutData);
+
+                _lastSaveTime = DateTime.Now;
+                _logger?.LogDebug("Docking layout saved in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to save docking layout");
+            }
+            finally
+            {
+                _isSavingLayout = false;
+                sw.Stop();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Debounced save handler for timer tick.
+    /// </summary>
+    private async Task DebounceSaveDockingLayoutAsync()
+    {
+        // Implementation: Call SaveDockingLayout if needed
+        // (Assuming you have access to dockingManager; pass it if not)
+        await Task.CompletedTask;  // Placeholder
     }
 
     /// <summary>
@@ -172,9 +218,17 @@ public class DockingLayoutManager : IDisposable
         // Placeholder: Load from XML or config, create panels
         foreach (var info in GetPersistedDynamicPanels())  // Assume method to fetch
         {
-            var panel = new Controls.GradientPanelExt { Name = info.Name };
-            dockingManager.DockControl(panel, null, DockingStyle.Left, 200);  // Example
-            _dynamicDockPanels?.Add(info.Name ?? string.Empty, panel);
+            var panel = new GradientPanelExt { Name = info.Name };
+            Control host = dockingManager.HostControl;
+            if (host != null)
+            {
+                dockingManager.DockControl(panel, host, DockingStyle.Left, 200);  // Example
+                _dynamicDockPanels?.Add(info.Name ?? string.Empty, panel);
+            }
+            else
+            {
+                _logger?.LogWarning("Cannot restore dynamic panel {PanelName}: DockingManager.HostControl is null", info.Name);
+            }
         }
     }
 

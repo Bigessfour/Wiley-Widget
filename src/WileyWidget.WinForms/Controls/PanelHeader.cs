@@ -16,14 +16,22 @@ namespace WileyWidget.WinForms.Controls
         private Label _titleLabel = null!;
         private SfButton _btnRefresh = null!;
         private SfButton _btnPin = null!;
+        private SfButton _btnHelp = null!;
         private SfButton _btnClose = null!;
+        private Label? _loadingLabel;
         private bool _isPinned; // Track toggle state for pin button
+        private bool _isLoading; // Loading state
+        private bool _helpButtonVisible = true;
+        private bool _refreshButtonVisible = true;
 
         /// <summary>Raised when the user clicks Refresh.</summary>
         public event EventHandler? RefreshClicked;
 
         /// <summary>Raised when the user toggles Pin.</summary>
         public event EventHandler? PinToggled;
+
+        /// <summary>Raised when the user clicks Help.</summary>
+        public event EventHandler? HelpClicked;
 
         /// <summary>Raised when the user clicks Close.</summary>
         public event EventHandler? CloseClicked;
@@ -55,6 +63,58 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        /// <summary>Get/set loading state. Disables Refresh button and shows loading indicator.</summary>
+        [Browsable(true)]
+        [DefaultValue(false)]
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set
+            {
+                if (_isLoading == value) return;
+                _isLoading = value;
+                try
+                {
+                    _btnRefresh.Enabled = !value;
+                    if (_loadingLabel != null)
+                    {
+                        _loadingLabel.Visible = value;
+                        _loadingLabel.Text = value ? "Loading..." : "";
+                    }
+                    _btnRefresh.Text = value ? "Refreshing..." : "Refresh";
+                }
+                catch { /* best effort */ }
+            }
+        }
+
+        /// <summary>Show/hide the Help button (default: true).</summary>
+        [Browsable(true)]
+        [DefaultValue(true)]
+        public bool ShowHelpButton
+        {
+            get => _helpButtonVisible;
+            set
+            {
+                if (_helpButtonVisible == value) return;
+                _helpButtonVisible = value;
+                try { _btnHelp.Visible = value; } catch { }
+            }
+        }
+
+        /// <summary>Show/hide the Refresh button (default: true).</summary>
+        [Browsable(true)]
+        [DefaultValue(true)]
+        public bool ShowRefreshButton
+        {
+            get => _refreshButtonVisible;
+            set
+            {
+                if (_refreshButtonVisible == value) return;
+                _refreshButtonVisible = value;
+                try { _btnRefresh.Visible = value; } catch { }
+            }
+        }
+
         public PanelHeader()
         {
             InitializeComponent();
@@ -70,7 +130,9 @@ namespace WileyWidget.WinForms.Controls
                 try { _titleLabel?.Dispose(); } catch { }
                 try { _btnRefresh?.Dispose(); } catch { }
                 try { _btnPin?.Dispose(); } catch { }
+                try { _btnHelp?.Dispose(); } catch { }
                 try { _btnClose?.Dispose(); } catch { }
+                try { _loadingLabel?.Dispose(); } catch { }
             }
 
             base.Dispose(disposing);
@@ -111,9 +173,21 @@ namespace WileyWidget.WinForms.Controls
                 Text = "Refresh",
                 AutoSize = true,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Refresh"
+                AccessibleName = "Refresh",
+                TabStop = true
             };
             _btnRefresh.Click += (s, e) => RefreshClicked?.Invoke(this, EventArgs.Empty);
+            _btnRefresh.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.R) { _btnRefresh.PerformClick(); e.Handled = true; } };
+
+            // Loading indicator
+            _loadingLabel = new Label
+            {
+                Text = "",
+                AutoSize = true,
+                Margin = new Padding(4, 6, 4, 6),
+                Visible = false,
+                Font = new Font("Segoe UI", 9F, FontStyle.Italic)
+            };
 
             // Pin
             _btnPin = new SfButton
@@ -121,9 +195,24 @@ namespace WileyWidget.WinForms.Controls
                 Text = "Pin",
                 AutoSize = true,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Pin"
+                AccessibleName = "Pin",
+                TabStop = true
             };
             _btnPin.Click += PinButton_Click;
+            _btnPin.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.P) { _btnPin.PerformClick(); e.Handled = true; } };
+
+            // Help
+            _btnHelp = new SfButton
+            {
+                Text = "Help",
+                AutoSize = true,
+                Margin = new Padding(4, 6, 4, 6),
+                AccessibleName = "Help",
+                Visible = _helpButtonVisible,
+                TabStop = true
+            };
+            _btnHelp.Click += (s, e) => HelpClicked?.Invoke(this, EventArgs.Empty);
+            _btnHelp.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.H) { _btnHelp.PerformClick(); e.Handled = true; } };
 
             // Close
             _btnClose = new SfButton
@@ -131,12 +220,16 @@ namespace WileyWidget.WinForms.Controls
                 Text = "Close",
                 AutoSize = true,
                 Margin = new Padding(4, 6, 4, 6),
-                AccessibleName = "Close"
+                AccessibleName = "Close",
+                TabStop = true
             };
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
+            _btnClose.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.C) { _btnClose.PerformClick(); e.Handled = true; } };
 
             actionsPanel.Controls.Add(_btnRefresh);
+            actionsPanel.Controls.Add(_loadingLabel);
             actionsPanel.Controls.Add(_btnPin);
+            actionsPanel.Controls.Add(_btnHelp);
             actionsPanel.Controls.Add(_btnClose);
 
             Controls.Add(actionsPanel);
@@ -171,5 +264,23 @@ namespace WileyWidget.WinForms.Controls
         /// Programmatically trigger the Refresh action.
         /// </summary>
         public void TriggerRefresh() => RefreshClicked?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>
+        /// Set the loading state temporarily for an async operation.
+        /// Usage: SetLoadingAsync(async () => await MyLongOperationAsync());
+        /// </summary>
+        public async System.Threading.Tasks.Task SetLoadingAsync(Func<System.Threading.Tasks.Task> operation)
+        {
+            if (operation == null) return;
+            try
+            {
+                IsLoading = true;
+                await operation();
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
     }
 }

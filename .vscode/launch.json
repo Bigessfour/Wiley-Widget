@@ -2,32 +2,37 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Wiley Widget WinForms – Full Symbols + Hot Reload",
+      "name": "🚀 Debug WileyWidget (Launch)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "Build WileyWidget.WinForms",
+      "preLaunchTask": "🔨 Debug Build",
       "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
       "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
       "env": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "DOTNET_DbgEnableMiniDump": "1",
+        "DOTNET_EnableDiagnostics": "1"
       },
       "sourceFileMap": {
         "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
       },
       "symbolOptions": {
         "searchPaths": [
-          "${workspaceFolder}/**",
-          "https://symbols.nuget.org/download/symbols",
-          "https://msdl.microsoft.com/download/symbols",
-          "C:\\SyncfusionSymbols**",
-          "${env:USERPROFILE}\\.nuget\\packages"
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/.symbols",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Business/bin/Debug/net10.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Data/bin/Debug/net10.0",
+          "C:\\Users\\biges\\.nuget\\packages",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Models/bin/Debug/net10.0"
         ],
-        "searchMicrosoftSymbolServer": true,
-        "searchNuGetOrgSymbolServer": true,
-        "cachePath": "${workspaceFolder}/.vsdbg"
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "cachePath": "C:\\Users\\biges\\Desktop\\Wiley-Widget/.vsdbg"
       },
       "sourceLinkOptions": {
         "*": {
@@ -38,8 +43,286 @@
       "requireExactSource": false,
       "enableStepFiltering": false,
       "logging": {
-        "module": true,
+        "moduleLoad": true,
+        "programOutput": true,
+        "engineLogging": false,
+        "trace": false
+      },
+      "presentation": {
+        "group": "debugging",
+        "order": 1
+      }
+    },
+    {
+      "name": "🔍 Debug with Symbols (Full)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "exceptionOptions": [
+        {
+          "name": "CLR Exception",
+          "breakMode": "always"
+        }
+      ],
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "DOTNET_DbgEnableMiniDump": "1",
+        "DOTNET_EnableDiagnostics": "1"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "symbolOptions": {
+        "searchPaths": [
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/.symbols",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Business/bin/Debug/net10.0",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Data/bin/Debug/net10.0",
+          "C:\\Users\\biges\\.nuget\\packages",
+          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Models/bin/Debug/net10.0"
+        ],
+        "searchMicrosoftSymbolServer": false,
+        "searchNuGetOrgSymbolServer": false,
+        "cachePath": "C:\\Users\\biges\\Desktop\\Wiley-Widget/.vsdbg"
+      },
+      "sourceLinkOptions": {
+        "*": {
+          "enabled": true
+        }
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "enableStepFiltering": false,
+      "logging": {
+        "exceptions": true,
+        "moduleLoad": true,
+        "programOutput": true,
+        "engineLogging": true,
+        "trace": true
+      },
+      "presentation": {
+        "group": "debugging",
+        "order": 2
+      }
+    },
+    {
+      "name": "🔗 Attach to Running Process",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": false,
+      "requireExactSource": false,
+      "enableStepFiltering": false,
+      "logging": {
+        "moduleLoad": true,
+        "programOutput": true,
         "engineLogging": false
+      },
+      "presentation": {
+        "group": "debugging",
+        "order": 3
+      }
+    },
+    {
+      "name": "� Performance Profiling (CPU/Memory)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "DOTNET_EnableDiagnostics": "1",
+        "DOTNET_ENABLE_PROFILING": "1"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "symbolOptions": {
+        "searchPaths": [
+          "${workspaceFolder}/.symbols",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0"
+        ],
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "presentation": {
+        "group": "profiling",
+        "order": 1
+      }
+    },
+    {
+      "name": "⏱️ Startup Timeline Analysis",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "WILEY_TIMELINE_ENABLED": "true"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "presentation": {
+        "group": "profiling",
+        "order": 2
+      }
+    },
+    {
+      "name": "🧪 Debug UI Test Harness (Isolated)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "UI:IsUiTestHarness": "true",
+        "Validation:DiValidationEnabled": "false"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "presentation": {
+        "group": "testing",
+        "order": 1
+      }
+    },
+    {
+      "name": "🔧 Debug with Mock Services (Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Testing",
+        "MOCK_EXTERNAL_SERVICES": "true",
+        "USE_IN_MEMORY_DATABASE": "true",
+        "SKIP_TELEMETRY": "true"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "presentation": {
+        "group": "testing",
+        "order": 2
+      }
+    },
+    {
+      "name": "🛠️ Debug Minimal Startup (Core Services Only)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "MINIMAL_STARTUP": "true",
+        "SKIP_HOSTED_SERVICES": "true",
+        "SKIP_ASYNC_INITIALIZATION": "true"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "presentation": {
+        "group": "testing",
+        "order": 3
+      }
+    },
+    {
+      "name": "🔍 Debug DI Validation Focus",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build + DI Validation",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "Validation:DiValidationEnabled": "true",
+        "Validation:FastValidation": "false"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": true,
+        "programOutput": true
+      },
+      "presentation": {
+        "group": "diagnostics",
+        "order": 1
+      }
+    },
+    {
+      "name": "⚠️ Debug Timeout/Cancellation Detection",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "LOG_LEVEL_DEFAULT": "Debug",
+        "LOG_LEVEL_DIVALIDATION": "Debug",
+        "LOG_LEVEL_TELEMETRY": "Debug"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": true,
+        "programOutput": true,
+        "engineLogging": true,
+        "trace": true
+      },
+      "presentation": {
+        "group": "diagnostics",
+        "order": 2
       }
     }
   ]

@@ -104,7 +104,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 BuildTopInputPanel();
                 BuildContentArea();
-                _logger?.LogDebug("WarRoomPanel UI initialized successfully");
+                PerformLayout();
+                Refresh();
+                _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
             }
             catch (Exception ex)
             {
@@ -574,6 +576,11 @@ namespace WileyWidget.WinForms.Controls
 
             ConfigureProjectionsGrid();
             ConfigureDepartmentImpactGrid();
+
+            this.PerformLayout();
+            this.Refresh();
+
+            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
 
         /// <summary>

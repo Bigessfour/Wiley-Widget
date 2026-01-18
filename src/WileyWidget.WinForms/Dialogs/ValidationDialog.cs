@@ -48,7 +48,9 @@ namespace WileyWidget.WinForms.Dialogs
 
             InitializeDialog(title, headerMessage, errorList);
 
-            _logger?.LogDebug("ValidationDialog created with {ErrorCount} errors", errorList.Count);
+            this.PerformLayout();
+            this.Refresh();
+            _logger?.LogDebug("[DIALOG] {DialogName} content anchored and refreshed", this.Name);
         }
 
         private void InitializeDialog(string title, string headerMessage, List<string> errors)

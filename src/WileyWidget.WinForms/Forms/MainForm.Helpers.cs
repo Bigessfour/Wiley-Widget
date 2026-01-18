@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGridConverter;
+using Syncfusion.Data;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
 
@@ -214,80 +216,6 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Applies a test filter to the active grid based on first row data.
-        /// Useful for UI testing and demonstration purposes.
-        /// </summary>
-        private void ApplyTestFilterToActiveGrid()
-        {
-            try
-            {
-                var grid = GetActiveGrid();
-                if (grid == null || grid.IsDisposed)
-                {
-                    _logger?.LogDebug("ApplyTestFilter: No active grid found");
-                    return;
-                }
-
-                // Try to pick a reasonable column and value to filter on.
-                // Use first column with a non-null first-row value and filter by a substring of it.
-                if (!(grid.DataSource is IEnumerable src))
-                {
-                    _logger?.LogDebug("ApplyTestFilter: Grid has no data source");
-                    return;
-                }
-
-                var items = src.Cast<object?>().ToList();
-                if (items.Count == 0)
-                {
-                    _logger?.LogDebug("ApplyTestFilter: Grid data source is empty");
-                    return;
-                }
-
-                var first = items.FirstOrDefault(i => i != null);
-                if (first == null)
-                {
-                    _logger?.LogDebug("ApplyTestFilter: No non-null items in data source");
-                    return;
-                }
-
-                if (grid.Columns == null)
-                {
-                    _logger?.LogDebug("ApplyTestFilter: Grid has no columns");
-                    return;
-                }
-
-                foreach (var col in grid.Columns.OfType<GridColumnBase>())
-                {
-                    try
-                    {
-                        if (col == null || string.IsNullOrWhiteSpace(col.MappingName)) continue;
-
-                        var prop = first.GetType().GetProperty(col.MappingName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                        if (prop == null) continue;
-                        var val = prop.GetValue(first)?.ToString();
-                        if (string.IsNullOrEmpty(val)) continue;
-
-                        // Take a short substring to increase chance of matching multiple rows
-                        var substr = val.Length <= 4 ? val : val.Substring(0, 4);
-                        grid.ApplyTextContainsFilter(col.MappingName, substr);
-                        _logger?.LogDebug("Applied test filter to column {Column} with value '{Value}'", col.MappingName, substr);
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "ApplyTestFilter: Failed to process column {Column}", col?.MappingName ?? "<unknown>");
-                    }
-                }
-
-                _logger?.LogDebug("ApplyTestFilter: No suitable column found for filtering");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "ApplyTestFilterToActiveGrid failed");
-            }
-        }
-
-        /// <summary>
         /// Clears all filters from the active grid.
         /// </summary>
         private void ClearActiveGridFilter()
@@ -311,92 +239,305 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
-        /// Exports the active grid to an Excel file.
-        /// Shows a SaveFileDialog for user to choose file location.
-        /// In UI test harness mode, creates a fake Excel file for testing.
+        /// Applies a 'Contains' filter to a column in the active grid.
         /// </summary>
-        /// <returns>Task representing the async export operation</returns>
-        private async Task ExportActiveGridToExcel(CancellationToken cancellationToken = default)
+        /// <param name="columnName">Name of the column to filter</param>
+        /// <param name="filterValue">Value to filter for (Contains search)</param>
+        private void ApplyActiveGridFilter(string columnName, string filterValue)
         {
             try
             {
                 var grid = GetActiveGrid();
                 if (grid == null || grid.IsDisposed)
                 {
-                    _logger?.LogDebug("ExportActiveGridToExcel: No active grid found");
+                    _logger?.LogDebug("ApplyActiveGridFilter: No active grid found");
                     return;
                 }
 
-                // Test harness mode: create fake Excel file
-                if (_uiConfig.IsUiTestHarness)
+                grid.ApplyTextContainsFilter(columnName, filterValue);
+                _logger?.LogDebug("Applied filter '{Value}' to column {Column}", filterValue, columnName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "ApplyActiveGridFilter failed for column {Column}", columnName);
+            }
+        }
+
+        /// <summary>
+        /// Clears all sorting from the active grid.
+        /// </summary>
+        private void ClearActiveGridSort()
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
                 {
-                    using var uiTestDialog = new SaveFileDialog
-                    {
-                        Filter = "Excel Files (*.xlsx)|*.xlsx|CSV Files (*.csv)|*.csv",
-                        DefaultExt = "xlsx",
-                        FileName = "GridExport.xlsx"
-                    };
-
-                    if (uiTestDialog.ShowDialog() == DialogResult.OK)
-                    {
-                        try
-                        {
-                            var path = uiTestDialog.FileName;
-                            if (string.IsNullOrWhiteSpace(path)) return;
-
-                            var dir = Path.GetDirectoryName(path);
-                            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                            {
-                                Directory.CreateDirectory(dir);
-                            }
-                            await File.WriteAllTextAsync(path, "%XLSX-FAKE\n");
-                            _logger?.LogDebug("Created test harness fake Excel file: {Path}", path);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogWarning(ex, "ExportActiveGridToExcel (test harness) failed");
-                        }
-                    }
-
+                    _logger?.LogDebug("ClearActiveGridSort: No active grid found");
                     return;
                 }
 
-                // Normal operation: use ExportService
+                grid.ClearSort();
+                _logger?.LogDebug("Cleared sorting from active grid");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "ClearActiveGridSort failed");
+            }
+        }
+
+        /// <summary>
+        /// Auto-fits all columns in the active grid based on their content.
+        /// </summary>
+        private void AutoFitActiveGridColumns()
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("AutoFitActiveGridColumns: No active grid found");
+                    return;
+                }
+
+                grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells;
+                _logger?.LogDebug("Auto-fitted columns in active grid");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "AutoFitActiveGridColumns failed");
+            }
+        }
+
+        /// <summary>
+        /// Exports the active grid to an Excel file.
+        /// Shows a SaveFileDialog for user to choose file location.
+        /// </summary>
+        /// <returns>Task representing the async export operation</returns>
+        private async Task ExportActiveGridToExcel(CancellationToken cancellationToken = default)
+        {
+            await ExportActiveGridInternal("Excel Files (*.xlsx)|*.xlsx", "xlsx", "GridExport.xlsx",
+                (grid, path) => WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, path, cancellationToken));
+        }
+
+        /// <summary>
+        /// Exports the active grid to a PDF file.
+        /// Shows a SaveFileDialog for user to choose file location.
+        /// </summary>
+        /// <returns>Task representing the async export operation</returns>
+        private async Task ExportActiveGridToPdf(CancellationToken cancellationToken = default)
+        {
+            await ExportActiveGridInternal("PDF Files (*.pdf)|*.pdf", "pdf", "GridExport.pdf",
+                (grid, path) => WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(grid, path, cancellationToken));
+        }
+
+        /// <summary>
+        /// Internal helper for grid exports with common dialog and error handling logic.
+        /// </summary>
+        private async Task ExportActiveGridInternal(string filter, string ext, string defaultName, Func<SfDataGrid, string, Task> exportAction)
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("Export: No active grid found");
+                    return;
+                }
+
                 using var save = new SaveFileDialog
                 {
-                    Filter = "Excel Files (*.xlsx)|*.xlsx",
-                    DefaultExt = "xlsx",
-                    FileName = "GridExport.xlsx"
+                    Filter = filter,
+                    DefaultExt = ext,
+                    FileName = defaultName
                 };
 
-                if (save.ShowDialog() == DialogResult.OK)
+                if (save.ShowDialog(this) == DialogResult.OK)
                 {
+                    if (string.IsNullOrWhiteSpace(save.FileName)) return;
+
                     try
                     {
-                        if (string.IsNullOrWhiteSpace(save.FileName)) return;
-                        await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, save.FileName);
-                        _logger?.LogInformation("Exported grid to Excel: {Path}", save.FileName);
+                        await exportAction(grid, save.FileName);
+                        _logger?.LogInformation("Exported grid to {Ext}: {Path}", ext.ToUpperInvariant(), save.FileName);
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
-                        if (_uiConfig != null && !_uiConfig.IsUiTestHarness && !IsDisposed)
-                        {
-                            try
-                            {
-                                MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                            catch (ObjectDisposedException)
-                            {
-                                // Form disposed during error display - safe to ignore
-                            }
-                        }
+                        _logger?.LogWarning(ex, "Export to {Ext} failed", ext);
+                        MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "ExportActiveGridToExcel failed");
+                _logger?.LogWarning(ex, "Export dialog or setup failed");
+            }
+        }
+
+        /// <summary>
+        /// Groups the active grid by the specified column.
+        /// Enables grouping if not already enabled.
+        /// </summary>
+        /// <param name="columnName">Name of the column to group by</param>
+        private void GroupActiveGridByColumn(string columnName)
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("GroupActiveGridByColumn: No active grid found");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(columnName))
+                {
+                    _logger?.LogDebug("GroupActiveGridByColumn: Column name is empty");
+                    return;
+                }
+
+                // Enable grouping if not already enabled
+                if (!grid.AllowGrouping)
+                {
+                    grid.AllowGrouping = true;
+                }
+
+                // Check if already grouped by this column
+                var existingGroup = grid.GroupColumnDescriptions.FirstOrDefault(g => g.ColumnName == columnName);
+                if (existingGroup != null)
+                {
+                    _logger?.LogDebug("GroupActiveGridByColumn: Already grouped by {Column}", columnName);
+                    return;
+                }
+
+                // Add group description
+                var groupDesc = new Syncfusion.WinForms.DataGrid.GroupColumnDescription
+                {
+                    ColumnName = columnName
+                };
+                grid.GroupColumnDescriptions.Add(groupDesc);
+
+                _logger?.LogDebug("Grouped grid by column {Column}", columnName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "GroupActiveGridByColumn failed for column {Column}", columnName);
+            }
+        }
+
+        /// <summary>
+        /// Removes grouping from the active grid for the specified column.
+        /// </summary>
+        /// <param name="columnName">Name of the column to ungroup</param>
+        private void UngroupActiveGridByColumn(string columnName)
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("UngroupActiveGridByColumn: No active grid found");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(columnName))
+                {
+                    _logger?.LogDebug("UngroupActiveGridByColumn: Column name is empty");
+                    return;
+                }
+
+                var groupDesc = grid.GroupColumnDescriptions.FirstOrDefault(g => g.ColumnName == columnName);
+                if (groupDesc == null)
+                {
+                    _logger?.LogDebug("UngroupActiveGridByColumn: Not grouped by {Column}", columnName);
+                    return;
+                }
+
+                grid.GroupColumnDescriptions.Remove(groupDesc);
+                _logger?.LogDebug("Ungrouped grid by column {Column}", columnName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "UngroupActiveGridByColumn failed for column {Column}", columnName);
+            }
+        }
+
+        /// <summary>
+        /// Clears all grouping from the active grid.
+        /// </summary>
+        private void ClearActiveGridGrouping()
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("ClearActiveGridGrouping: No active grid found");
+                    return;
+                }
+
+                grid.GroupColumnDescriptions.Clear();
+                _logger?.LogDebug("Cleared all grouping from active grid");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "ClearActiveGridGrouping failed");
+            }
+        }
+
+        /// <summary>
+        /// Searches for text in the active grid.
+        /// </summary>
+        /// <param name="searchText">Text to search for</param>
+        private void SearchActiveGrid(string searchText)
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("SearchActiveGrid: No active grid found");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(searchText))
+                {
+                    // Clear search
+                    grid.SearchController.ClearSearch();
+                    _logger?.LogDebug("Cleared search from active grid");
+                    return;
+                }
+
+                // Perform search
+                grid.SearchController.Search(searchText);
+                _logger?.LogDebug("Searched grid for '{Text}'", searchText);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "SearchActiveGrid failed for text '{Text}'", searchText);
+            }
+        }
+
+        /// <summary>
+        /// Refreshes the data in the active grid.
+        /// </summary>
+        private void RefreshActiveGrid()
+        {
+            try
+            {
+                var grid = GetActiveGrid();
+                if (grid == null || grid.IsDisposed)
+                {
+                    _logger?.LogDebug("RefreshActiveGrid: No active grid found");
+                    return;
+                }
+
+                grid.Refresh();
+                _logger?.LogDebug("Refreshed active grid");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "RefreshActiveGrid failed");
             }
         }
     }

@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Controls;
@@ -31,6 +32,7 @@ namespace WileyWidget.WinForms.Controls
     {
         private readonly BudgetAnalyticsViewModel _vm;
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
+        private readonly ILogger<BudgetAnalyticsPanel>? _logger;
 
         // Controls
         private PanelHeader? _panelHeader;
@@ -67,8 +69,9 @@ namespace WileyWidget.WinForms.Controls
         {
         }
 
-        public BudgetAnalyticsPanel(BudgetAnalyticsViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+        public BudgetAnalyticsPanel(BudgetAnalyticsViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, ILogger<BudgetAnalyticsPanel>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<BudgetAnalyticsPanel>>(Program.Services!);
             _dispatcherHelper = dispatcherHelper;
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
 
@@ -102,6 +105,7 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.Title = "Budget Analytics";
             _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+            _panelHeader.HelpClicked += (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
             Controls.Add(_panelHeader);
@@ -186,8 +190,16 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading analytics..." };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No analytics data available\r\nAdd budget entries and accounts to generate analytics" };
+            _noDataOverlay = new NoDataOverlay
+            {
+                Message = "No analytics data available\r\nAdd budget entries and accounts to generate analytics",
+                Dock = DockStyle.Fill
+            };
             Controls.Add(_noDataOverlay);
+
+            this.PerformLayout();
+            this.Refresh();
+            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
 
         /// <summary>
@@ -305,7 +317,7 @@ namespace WileyWidget.WinForms.Controls
         {
             if (_trendChart == null) return;
 
-            ChartControlDefaults.Apply(_trendChart);
+            ChartControlDefaults.Apply(_trendChart, logger: _logger);
             _trendChart.ShowLegend = true;
             _trendChart.LegendsPlacement = ChartPlacement.Outside;
             _trendChart.Title.Text = "Budget Trend";
@@ -320,7 +332,7 @@ namespace WileyWidget.WinForms.Controls
         {
             if (_departmentChart == null) return;
 
-            ChartControlDefaults.Apply(_departmentChart);
+            ChartControlDefaults.Apply(_departmentChart, logger: _logger);
             _departmentChart.ShowLegend = true;
             _departmentChart.LegendsPlacement = ChartPlacement.Outside;
             _departmentChart.Title.Text = "Department Performance";

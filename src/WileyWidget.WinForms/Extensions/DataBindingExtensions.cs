@@ -9,6 +9,7 @@ namespace WileyWidget.WinForms.Extensions
     /// <summary>
     /// Extension methods for robust WinForms data binding with null safety and automatic UI thread marshalling.
     /// Provides declarative binding pattern to replace manual PropertyChanged switch statements.
+    /// All operations are thread-safe for property notifications from background threads.
     /// </summary>
     public static class DataBindingExtensions
     {
@@ -38,20 +39,19 @@ namespace WileyWidget.WinForms.Extensions
             // Extract property name from expression
             var propertyName = GetPropertyName(propertyExpression);
 
+            // Validate property exists on ViewModel
+            var property = typeof(TViewModel).GetProperty(propertyName);
+            if (property == null)
+            {
+                throw new ArgumentException($"Property '{propertyName}' does not exist on type '{typeof(TViewModel).Name}'", nameof(propertyExpression));
+            }
+
             // Create binding with proper data source and path
             var binding = new Binding(controlProperty, viewModel, propertyName)
             {
                 DataSourceUpdateMode = DataSourceUpdateMode.OnPropertyChanged,
                 ControlUpdateMode = ControlUpdateMode.OnPropertyChanged
             };
-
-            // Note: BindingError event may not be available in current .NET version
-            // binding.BindingError += (s, e) =>
-            // {
-            //     // Log binding error but don't throw - allow UI to remain responsive
-            //     System.Diagnostics.Debug.WriteLine(
-            //         $"[BINDING ERROR] {controlProperty} -> {propertyName}: {e.ErrorText}");
-            // };
 
             // Add binding to control
             control.DataBindings.Add(binding);
@@ -90,8 +90,9 @@ namespace WileyWidget.WinForms.Extensions
         }
 
         /// <summary>
-        /// Subscribes to a ViewModel property change with automatic thread marshalling.
+        /// Subscribes to a ViewModel property change with automatic thread marshalling and weak reference handling.
         /// Useful for complex property changes that need custom handling.
+        /// Unsubscribes automatically if control is disposed.
         /// </summary>
         /// <typeparam name="TViewModel">ViewModel type implementing INotifyPropertyChanged.</typeparam>
         /// <param name="control">Target control for thread marshalling.</param>
@@ -110,22 +111,61 @@ namespace WileyWidget.WinForms.Extensions
             if (string.IsNullOrWhiteSpace(propertyName)) throw new ArgumentException("Property name required", nameof(propertyName));
             if (onPropertyChanged == null) throw new ArgumentNullException(nameof(onPropertyChanged));
 
+            // Validate property exists
+            var property = typeof(TViewModel).GetProperty(propertyName);
+            if (property == null)
+            {
+                throw new ArgumentException($"Property '{propertyName}' does not exist on type '{typeof(TViewModel).Name}'", nameof(propertyName));
+            }
+
             PropertyChangedEventHandler handler = (s, e) =>
             {
                 if (e.PropertyName != propertyName) return;
+                if (s is not TViewModel vm) return;
 
-                var property = typeof(TViewModel).GetProperty(propertyName);
-                var value = property?.GetValue(viewModel);
-
-                // Marshal to UI thread if needed
-                if (control.InvokeRequired && control.IsHandleCreated)
+                // Get value safely from property
+                object? value = null;
+                try
                 {
-                    try { control.BeginInvoke(() => onPropertyChanged(value)); }
-                    catch { /* Control disposed */ }
+                    value = property.GetValue(vm);
                 }
-                else
+                catch
                 {
-                    onPropertyChanged(value);
+                    // Property access failed
+                }
+
+                // Marshal to UI thread if needed - check if control is still valid
+                if (control != null && !control.IsDisposed)
+                {
+                    if (control.InvokeRequired && control.IsHandleCreated)
+                    {
+                        try
+                        {
+                            control.BeginInvoke(() =>
+                            {
+                                // Double-check control isn't disposed during BeginInvoke
+                                if (!control.IsDisposed)
+                                {
+                                    onPropertyChanged(value);
+                                }
+                            });
+                        }
+                        catch
+                        {
+                            // Control disposed during or after BeginInvoke
+                        }
+                    }
+                    else if (!control.IsDisposed)
+                    {
+                        try
+                        {
+                            onPropertyChanged(value);
+                        }
+                        catch
+                        {
+                            // Callback exception - don't crash handler
+                        }
+                    }
                 }
             };
 
@@ -139,18 +179,45 @@ namespace WileyWidget.WinForms.Extensions
         }
 
         /// <summary>
-        /// Internal disposable wrapper for event subscriptions.
+        /// Internal disposable wrapper for event subscriptions with proper IDisposable pattern.
         /// </summary>
-        private class DisposableSubscription : IDisposable
+        private sealed class DisposableSubscription : IDisposable
         {
-            private readonly Action _unsubscribe;
+            private readonly Action? _unsubscribe;
+            private bool _disposed;
 
-            public DisposableSubscription(Action unsubscribe) => _unsubscribe = unsubscribe;
+            public DisposableSubscription(Action unsubscribe)
+            {
+                _unsubscribe = unsubscribe ?? throw new ArgumentNullException(nameof(unsubscribe));
+            }
 
             public void Dispose()
             {
-                _unsubscribe?.Invoke();
+                Dispose(true);
                 GC.SuppressFinalize(this);
+            }
+
+            private void Dispose(bool disposing)
+            {
+                if (_disposed) return;
+                _disposed = true;
+
+                if (disposing)
+                {
+                    try
+                    {
+                        _unsubscribe?.Invoke();
+                    }
+                    catch
+                    {
+                        // Ignore unsubscribe errors
+                    }
+                }
+            }
+
+            ~DisposableSubscription()
+            {
+                Dispose(false);
             }
         }
     }

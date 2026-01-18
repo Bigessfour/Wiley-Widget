@@ -90,7 +90,7 @@ namespace WileyWidget.WinForms.Controls
 
         // DI-friendly default constructor for container/hosting convenience.
         // Use the DI-friendly constructor at runtime; the parameterless overload is for designer/test fallback.
-        public DashboardPanel() : this(new FormsMainViewModel(WileyWidget.WinForms.Logging.NullLogger<FormsMainViewModel>.Instance, null!, null!), null)
+        internal DashboardPanel() : this(new FormsMainViewModel(WileyWidget.WinForms.Logging.NullLogger<FormsMainViewModel>.Instance, null!, null!), null)
         {
         }
 
@@ -365,7 +365,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Theme applied automatically by SfSkinManager cascade from parent form
             // Baseline chart defaults centralized for consistency (keep domain-specific settings below)
-            ChartControlDefaults.Apply(_mainChart);
+            ChartControlDefaults.Apply(_mainChart, logger: _logger);
             _mainChart.ChartArea.PrimaryXAxis.HidePartialLabels = true; // Per demos: hide partial labels
 
             // Axis configuration per demos (ChartAppearance.cs patterns)
@@ -483,7 +483,7 @@ namespace WileyWidget.WinForms.Controls
                     ShowToolTips = false,
                     EnableZooming = false,
                     EnableAxisScrollBar = false
-                });
+                }, logger: _logger);
                 spark.PrimaryYAxis.HidePartialLabels = true;
                 spark.PrimaryXAxis.HidePartialLabels = true;
 
@@ -524,11 +524,19 @@ namespace WileyWidget.WinForms.Controls
             _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard...", Dock = DockStyle.Fill };
             Controls.Add(_loadingOverlay);
 
-            _noDataOverlay = new NoDataOverlay { Message = "No data yet – import or add entries to get started." };
+            _noDataOverlay = new NoDataOverlay
+            {
+                Message = "No data yet – import or add entries to get started.",
+                Dock = DockStyle.Fill
+            };
             Controls.Add(_noDataOverlay);
 
             // Bindings
             TryApplyViewModelBindings();
+
+            this.PerformLayout();
+            this.Refresh();
+            try { _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name); } catch {}
 
             // Theme handler removed - SfSkinManager cascade handles all theme changes automatically
         }

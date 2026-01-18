@@ -48,7 +48,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Creates a new instance of the InsightFeedPanel.
         /// </summary>
-        public InsightFeedPanel() : this(null, null)
+        internal InsightFeedPanel() : this(null, null)
         {
         }
 
@@ -72,6 +72,11 @@ namespace WileyWidget.WinForms.Controls
             InitializeUI();
             BindViewModel();
             ApplyTheme();
+            
+            this.PerformLayout();
+            this.Refresh();
+            
+            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
             _logger?.LogInformation("InsightFeedPanel initialized successfully");
         }

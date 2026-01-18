@@ -37,7 +37,9 @@ namespace WileyWidget.WinForms.Dialogs
             InitializeDialog(title, message, detail);
             ThemeColors.ApplyTheme(this);
 
-            _logger?.LogDebug("DeleteConfirmationDialog created: {Message}", message);
+            this.PerformLayout();
+            this.Refresh();
+            _logger?.LogDebug("[DIALOG] {DialogName} content anchored and refreshed", this.Name);
         }
 
         private void InitializeDialog(string title, string message, string? detail)
@@ -171,6 +173,24 @@ namespace WileyWidget.WinForms.Dialogs
             // Set default buttons
             AcceptButton = _deleteButton;
             CancelButton = _cancelButton;
+        }
+
+        /// <summary>
+        /// Creates a delete confirmation dialog instance without showing it.
+        /// Caller must dispose the returned dialog after use.
+        /// </summary>
+        /// <param name="title">Dialog title</param>
+        /// <param name="message">Confirmation message</param>
+        /// <param name="detail">Optional detail text</param>
+        /// <param name="logger">Optional logger</param>
+        /// <returns>Dialog instance (not shown; caller manages lifecycle)</returns>
+        public static DeleteConfirmationDialog Create(
+            string title,
+            string message,
+            string? detail = null,
+            ILogger? logger = null)
+        {
+            return new DeleteConfirmationDialog(title, message, detail, logger as ILogger<DeleteConfirmationDialog>);
         }
 
         /// <summary>

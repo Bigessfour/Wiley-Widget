@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using DI = Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +15,7 @@ using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
+using WileyWidget.WinForms.Services.Http;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Plugins;
 using WileyWidget.WinForms.ViewModels;
@@ -34,6 +36,14 @@ namespace WileyWidget.WinForms.Configuration
         {
             var services = new ServiceCollection();
             ConfigureServicesInternal(services, includeDefaults);
+            return services;
+        }
+
+        public static IServiceCollection AddWinFormsServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.TryAddSingleton<IConfiguration>(configuration);
+
+            ConfigureServicesInternal(services, includeDefaults: true);
             return services;
         }
 
@@ -58,7 +68,7 @@ namespace WileyWidget.WinForms.Configuration
             // The host's configuration will be automatically available when services are registered
             // This ensures .env, user secrets, and environment variables are all properly loaded
             // For tests, provide a default in-memory configuration
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IConfiguration)))
+            if (includeDefaults)
             {
                 var defaultConfig = new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string?>
@@ -68,7 +78,7 @@ namespace WileyWidget.WinForms.Configuration
                         ["UI:IsUiTestHarness"] = "true"
                     })
                     .Build();
-                services.AddSingleton<IConfiguration>(defaultConfig);
+                services.TryAddSingleton<IConfiguration>(defaultConfig);
             }
 
             // Logging (Singleton - Serilog logger)
@@ -83,28 +93,107 @@ namespace WileyWidget.WinForms.Configuration
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
 
-            // Named HttpClient for Grok with resilience
+            // Global resilience enricher - logs resilience events (retries, breaks, hedging) to Serilog/ILogger
+            // Provides free structured logging like: "[INF] Retry attempt 2 for GrokResilience after 503"
+            services.AddResilienceEnricher();
+
+            // =====================================================================
+            // NAMED HTTP CLIENTS WITH RESILIENCE PIPELINES
+            // =====================================================================
+            // Each service has a tailored pipeline: xAI favors speed (hedging), QB favors reliability (long backoff)
+
+            // XAI/Grok Pipeline: High-volume, rate-limit heavy - prioritize retries + hedging for low latency
             services.AddHttpClient("GrokClient")
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .AddHttpMessageHandler(sp =>
+                {
+                    var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<HttpBulkheadHandler>>(sp);
+                    return new HttpBulkheadHandler(maxConcurrentRequests: 20, clientName: "GrokClient", logger: logger);
+                })
                 .AddResilienceHandler("GrokResilience", builder =>
                 {
+                    // Retry: Exponential backoff, handle transients + 429
                     builder.AddRetry(new HttpRetryStrategyOptions
                     {
-                        MaxRetryAttempts = 3,
-                        Delay = TimeSpan.FromMilliseconds(600),
-                        BackoffType = DelayBackoffType.Linear
+                        MaxRetryAttempts = 6,
+                        BackoffType = DelayBackoffType.Exponential,
+                        Delay = TimeSpan.FromSeconds(1),
+                        MaxDelay = TimeSpan.FromSeconds(15),
+                        ShouldHandle = args => new ValueTask<bool>(
+                            args.Outcome.Exception is HttpRequestException ||
+                            (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||     // 429
+                             args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||  // 503
+                             (int?)args.Outcome.Result?.StatusCode >= 500))  // 5xx
                     });
+
+                    // Hedging: Fire parallel attempts for faster response (great for Grok latency)
+                    // When initial attempt is slow, spawn hedged attempts staggered by 500ms
+                    builder.AddHedging(new HttpHedgingStrategyOptions
+                    {
+                        MaxHedgedAttempts = 3,
+                        Delay = TimeSpan.FromMilliseconds(500)
+                    });
+
+                    // Circuit Breaker: Prevent hammering when Grok is down
                     builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
                     {
                         FailureRatio = 0.5,
-                        SamplingDuration = TimeSpan.FromMinutes(1),
-                        MinimumThroughput = 5,
-                        BreakDuration = TimeSpan.FromMinutes(2)
+                        MinimumThroughput = 10,
+                        BreakDuration = TimeSpan.FromMinutes(2),
+                        SamplingDuration = TimeSpan.FromMinutes(1)
                     });
+
+                    // Timeout per call
                     builder.AddTimeout(new HttpTimeoutStrategyOptions
                     {
                         Timeout = TimeSpan.FromSeconds(15)
                     });
+
+                    // NOTE: Bulkhead implemented at application level via HttpBulkheadHandler (20 concurrent limit)
+                    // Circuit breaker and timeout provide additional backpressure for Grok API rate limits
+                });
+
+            // QuickBooks Pipeline: OAuth + rate limits - longer backoff, stronger breaker
+            services.AddHttpClient("QuickBooksClient")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .AddHttpMessageHandler(sp =>
+                {
+                    var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<HttpBulkheadHandler>>(sp);
+                    return new HttpBulkheadHandler(maxConcurrentRequests: 10, clientName: "QuickBooksClient", logger: logger);
+                })
+                .AddResilienceHandler("QuickBooksResilience", builder =>
+                {
+                    // Retry: Exponential backoff for Intuit's strict rate limiting
+                    builder.AddRetry(new HttpRetryStrategyOptions
+                    {
+                        MaxRetryAttempts = 4,
+                        BackoffType = DelayBackoffType.Exponential,
+                        Delay = TimeSpan.FromSeconds(3),
+                        MaxDelay = TimeSpan.FromSeconds(30),
+                        ShouldHandle = args => new ValueTask<bool>(
+                            args.Outcome.Exception is HttpRequestException ||
+                            (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||     // 429 rate limit
+                             args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.Unauthorized ||        // 401 token refresh
+                             (int?)args.Outcome.Result?.StatusCode >= 500))  // 5xx
+                    });
+
+                    // Circuit Breaker: Strong - Intuit downtime is rare but serious
+                    builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                    {
+                        FailureRatio = 0.3,
+                        MinimumThroughput = 8,
+                        BreakDuration = TimeSpan.FromMinutes(5),
+                        SamplingDuration = TimeSpan.FromMinutes(1)
+                    });
+
+                    // Timeout: QB calls can be slow (report generation, sync operations)
+                    builder.AddTimeout(new HttpTimeoutStrategyOptions
+                    {
+                        Timeout = TimeSpan.FromSeconds(60)
+                    });
+
+                    // NOTE: Bulkhead implemented at application level via HttpBulkheadHandler (10 concurrent limit)
+                    // Circuit breaker and timeout provide additional backpressure for QB API rate limits
                 });
 
             // Memory Cache (Singleton)
@@ -137,8 +226,14 @@ namespace WileyWidget.WinForms.Configuration
             services.AddOptions<WileyWidget.Business.Configuration.GrokRecommendationOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("GrokRecommendation").Bind(opts));
 
+            services.AddOptions<StartupOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Startup").Bind(opts));
+
             services.AddOptions<WileyWidget.Models.AppOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.Bind(opts));
+
+            // Report Viewer Launch Options (Singleton - command-line triggers for report viewer)
+            services.AddSingleton(ReportViewerLaunchOptions.Disabled);
 
             // =====================================================================
             // DATABASE CONTEXT (Scoped - one per request/scope)
@@ -197,28 +292,30 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IAppEventBus, AppEventBus>();
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
-            if (!services.Any(sd => sd.ServiceType == typeof(IStartupTimelineService)))
-            {
-                services.AddSingleton<IStartupTimelineService, StartupTimelineService>();
-            }
+            services.TryAddSingleton<IStartupTimelineService, StartupTimelineService>();
 
             // Startup orchestration (license, theme, DI validation)
             services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
 
-            // Startup orchestration (license, theme, DI validation)
-            services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
+            // Deferred async startup service - runs after MainForm is shown
+            // Prevents blocking UI thread with heavy initialization
+            services.AddHostedService<StartupHostedService>();
 
             // DI Validation Service (uses layered approach: core + WinForms-specific wrapper)
-            services.AddSingleton<IDiValidationService, DiValidationService>();
+            services.AddSingleton<DiValidationService>();
+            services.AddSingleton<WileyWidget.Services.Abstractions.IDiValidationService, DiValidationService>();
             services.AddSingleton<IWinFormsDiValidator, WinFormsDiValidator>();
 
             // =====================================================================
             // BUSINESS DOMAIN SERVICES
             // =====================================================================
 
-            // QuickBooks Integration (Singleton - external API client)
-            services.AddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
-            services.AddSingleton<IQuickBooksService, QuickBooksService>();
+            // QuickBooks Integration Services (with resilience & proper lifecycle)
+            // HttpClient factory already registered above with resilience for QB
+            services.TryAddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
+            services.TryAddSingleton<IQuickBooksService, QuickBooksService>();
+            // NOTE: QuickBooksAuthService is internal and instantiated within QuickBooksService constructor
+
             // Business service to sync QuickBooks actuals into BudgetEntries
             services.AddScoped<WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService, WileyWidget.Business.Services.QuickBooksBudgetSyncService>();
 
@@ -241,28 +338,28 @@ namespace WileyWidget.WinForms.Configuration
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
 
-            services.AddSingleton<IAILoggingService, AILoggingService>();
+            services.TryAddScoped<IAILoggingService, AILoggingService>();
 
             // AI-Powered Search and Analysis Services
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddScoped<IConversationRepository, EfConversationRepository>();
 
-            // JARVIS Personality Service (Singleton - stateless personality injection)
-            services.AddSingleton<IJARVISPersonalityService, JARVISPersonalityService>();
+            // JARVIS Personality Service (Scoped - depends on IAILoggingService which is scoped)
+            services.AddScoped<IJARVISPersonalityService, JARVISPersonalityService>();
 
             // Telemetry Logging Service (Scoped - writes to database)
             services.AddScoped<global::WileyWidget.Services.Abstractions.ITelemetryLogService, TelemetryLogService>();
 
-            // Audit Service (Singleton - writes to repository through scopes)
-            services.AddSingleton<IAuditService, AuditService>();
+            // Audit Service (Scoped - depends on repositories and logging which are scoped)
+            services.AddScoped<IAuditService, AuditService>();
 
             // =====================================================================
             // REPORTING & EXPORT SERVICES
             // =====================================================================
 
             // Report Services (Singleton - stateless report generation)
-            services.AddSingleton<IReportExportService, ReportExportService>();
+            services.TryAddScoped<IReportExportService, ReportExportService>();
             services.AddSingleton<IReportService, FastReportService>();
 
             // Excel Services (Transient - I/O operations, disposable)
@@ -273,7 +370,7 @@ namespace WileyWidget.WinForms.Configuration
             // UTILITY & CALCULATION SERVICES (Transient - Stateless, Per-Use)
             // =====================================================================
 
-            services.AddTransient<IDataAnonymizerService, DataAnonymizerService>();
+            services.TryAddScoped<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
             services.AddTransient<IAnalyticsService, AnalyticsService>();
 
@@ -318,15 +415,15 @@ namespace WileyWidget.WinForms.Configuration
             // Theme Service (Singleton - manages global theme state and notifications)
             services.AddSingleton<IThemeService, ThemeService>();
 
+            // Activity Log Service (Singleton - tracks navigation and application events for audit trail)
+            services.AddSingleton<IActivityLogService, ActivityLogService>();
+
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
             // Grok AI agent service (Singleton - reused across chat sessions)
             // Register a lightweight GrokAgentService for tests and DI validation. Heavy initialization is deferred to InitializeAsync().
-            if (!services.Any(sd => sd.ServiceType == typeof(GrokAgentService)))
-            {
-                services.AddSingleton<GrokAgentService>(sp => Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
-            }
+            services.TryAddSingleton<GrokAgentService>(sp => ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection

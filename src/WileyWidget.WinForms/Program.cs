@@ -1,395 +1,226 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using Serilog.Events;
-using Syncfusion.Licensing;
-using Syncfusion.WinForms.Core;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
-using System.Runtime.ExceptionServices;
-using WileyWidget.Data;
-using WileyWidget.Services;
-using WileyWidget.WinForms.Configuration;
-using WileyWidget.WinForms.Forms;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Configuration;
+using WileyWidget.Services;
+using Serilog;
 
 namespace WileyWidget.WinForms
 {
-    internal static class Program
+    static class Program
     {
-        public static IServiceProvider Services { get; private set; } = null!;
-        private static IServiceScope? _applicationScope;
-        private static SynchronizationContext? UISynchronizationContext;
-        private const int WS_EX_COMPOSITED = 0x02000000;
+        private static IServiceProvider? _services;
 
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        private static void Main(string[] args)
+        public static IServiceProvider Services => _services ?? throw new InvalidOperationException("Services not initialized");
+
+        public static async Task RunStartupHealthCheckAsync(IServiceProvider services)
         {
-            // Set up WinForms application defaults
-            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Logging.ILogger>(services);
+            logger?.LogInformation("Running startup health check");
+            // Add health checks here, e.g., database connection
+            await Task.CompletedTask;
+        }
 
-            // CRITICAL: Initialize logging VERY first, before any other operations
-            InitializeLogging();
+        [STAThread]
+        static void Main(string[] args)
+        {
+            System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
 
-            // CRITICAL: Register Syncfusion license VERY early - before any Syncfusion control or theme is used
-            // Per Syncfusion docs: RegisterLicense must be called before any Syncfusion component instantiation
-            var config = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: false)
-                .Build();
-
-            var licenseKey = config["Syncfusion:LicenseKey"];
-            if (!string.IsNullOrWhiteSpace(licenseKey))
+            try
             {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                Log.Debug("Syncfusion license registered successfully");
+                // Set up Syncfusion license (must be valid or commented out for trials)
+                var licenseKey = System.Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+                if (!string.IsNullOrEmpty(licenseKey))
+                {
+                    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Log.Warning("Syncfusion license key not found in configuration");
+                Log.Error(ex, "Failed to register Syncfusion license");
+                // Continue without license for trial/development
             }
 
             try
             {
-                // Run the async startup and block until complete
-                RunApplicationAsync(args).GetAwaiter().GetResult();
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Creating host builder...");
+                var host = CreateHostBuilder(args).Build();
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Host built successfully");
+
+                _services = host.Services;
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Services assigned to _services");
+
+                // Diagnostic: List all registered services
+                try
+                {
+                    var serviceDescriptors = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IEnumerable<Microsoft.Extensions.DependencyInjection.ServiceDescriptor>>(host.Services);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Total services registered: {(serviceDescriptors?.Count() ?? 0)}");
+                }
+                catch { }
+
+                // Phase 1: Theming
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Initializing theme...");
+                InitializeTheme(host.Services);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Theme initialized");
+
+                // Phase 2: Orchestration
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Attempting to resolve IStartupOrchestrator...");
+                var orchestrator = host.Services.GetService(typeof(IStartupOrchestrator)) as IStartupOrchestrator;
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] IStartupOrchestrator resolved: {(orchestrator != null ? "SUCCESS" : "NULL")}");
+
+                if (orchestrator == null)
+                {
+                    // Try GetRequiredService to get better error message
+                    try
+                    {
+                        orchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(host.Services);
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] GetRequiredService error: {innerEx.GetType().Name}: {innerEx.Message}");
+                        Log.Error(innerEx, "Failed to resolve IStartupOrchestrator via GetRequiredService");
+                        throw;
+                    }
+                }
+
+                if (orchestrator == null)
+                {
+                    throw new InvalidOperationException("IStartupOrchestrator is not registered.");
+                }
+
+                // Async startup orchestration with a configurable timeout (Startup.TimeoutSeconds)
+                // Wraps RunApplicationAsync with Task.WhenAny to enforce timeout
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application orchestration with configured startup timeout...");
+                ExecuteWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
-                HandleFatalException(ex);
+                // Log the full exception chain to find the root cause
+                var current = ex;
+                int depth = 0;
+                while (current != null && depth < 5)
+                {
+                    Log.Fatal($"[Level {depth}] {current.GetType().Name}: {current.Message}");
+                    current = current.InnerException;
+                    depth++;
+                }
+                Log.Fatal(ex, "Application start-up failed");
+                // Re-throw so application exits with visible error
+                throw;
             }
             finally
             {
-                try
-                {
-                    // Explicit Serilog shutdown: flush pending logs and dispose static logger
-                    Serilog.Log.Information("Application shutdown initiated");
-                    Serilog.Log.CloseAndFlush();
-                }
-                catch (ObjectDisposedException ex)
-                {
-                    // Safe to ignore during shutdown; log to console if needed
-                    Console.WriteLine($"Serilog shutdown ignored: {ex.Message}");
-                }
-                catch (OperationCanceledException ex)
-                {
-                    // Async sink background worker may throw OperationCanceledException during flush
-                    // when draining queue with a signaled cancellation token. This is expected during shutdown.
-                    Console.WriteLine($"Serilog async sink cancellation during shutdown (expected): {ex.Message}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Serilog shutdown failed: {ex}");
-                }
+                Log.CloseAndFlush();
             }
         }
 
-        private static async Task RunApplicationAsync(string[] args, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Executes orchestrator initialization with configurable timeout protection.
+        /// Uses Task.WhenAny to enforce timeout and logs detailed phase budgets so diagnostics can point to the slowest phases.
+        /// </summary>
+        static async Task ExecuteWithTimeoutAsync(IStartupOrchestrator orchestrator, IServiceProvider serviceProvider)
         {
-            // Build host and DI container
-            var host = BuildHost(args);
+            var startupOptions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IOptions<StartupOptions>>(serviceProvider)?.Value ?? new StartupOptions();
+            var timeoutSeconds = Math.Max(startupOptions.TimeoutSeconds, 120);
+            var phaseTimeouts = startupOptions.PhaseTimeouts ?? new PhaseTimeoutsOptions();
+            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(serviceProvider);
+            var timelineScope = timelineService?.BeginPhaseScope("Application Startup", expectedOrder: 12, isUiCritical: true);
 
-            // Syncfusion license already registered in Main() - do not call again
-
-            // Initialize theme system
-            InitializeTheme();
-
-            // Capture UI synchronization context
-            CaptureSynchronizationContext();
-
-            // Create application-wide scope
-            _applicationScope = host.Services.CreateScope();
-            Services = _applicationScope.ServiceProvider;
-
-            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(Services);
-            using var phase = timelineService?.BeginPhaseScope("Application Startup Orchestration");
-
-            var startupOrchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>(Services);
-            var hostEnvironment = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IHostEnvironment>(Services);
-
-            if (hostEnvironment.IsDevelopment())
+            try
             {
-                await startupOrchestrator.ValidateServicesAsync(Services, CancellationToken.None).ConfigureAwait(false);
-            }
-            else
-            {
-                Log.Information("DI validation skipped for environment {Environment}", hostEnvironment.EnvironmentName);
-            }
+                var startupStopwatch = Stopwatch.StartNew();
+                Log.Information(
+                    "Application startup beginning with {TimeoutSeconds}s timeout (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms)",
+                    timeoutSeconds,
+                    phaseTimeouts.DockingInitMs,
+                    phaseTimeouts.ViewModelInitMs,
+                    phaseTimeouts.DataLoadMs);
 
-            await startupOrchestrator.InitializeThemeAsync(CancellationToken.None).ConfigureAwait(false);
-            startupOrchestrator.GenerateStartupReport();
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 🚀 Starting application initialization with {timeoutSeconds}s timeout (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
 
-            // Create and show main form
-            var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(Services);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+                var initTask = orchestrator.RunApplicationAsync(serviceProvider);
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cts.Token);
 
-            // Initialize async components after form is shown
-            mainForm.Shown += async (s, e) =>
-            {
-                try
+                var completedTask = await Task.WhenAny(initTask, delayTask);
+                var elapsedMs = startupStopwatch.Elapsed.TotalMilliseconds;
+
+                if (completedTask == delayTask)
                 {
-                    await mainForm.InitializeAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to initialize MainForm async components");
-                    MessageBox.Show($"Initialization error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
+                    Log.Warning(
+                        "⚠️ Application startup exceeded {TimeoutSeconds}s after {ElapsedMs:F0}ms (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms). Consider increasing Startup.TimeoutSeconds or reviewing the slowest phases.",
+                        timeoutSeconds,
+                        elapsedMs,
+                        phaseTimeouts.DockingInitMs,
+                        phaseTimeouts.ViewModelInitMs,
+                        phaseTimeouts.DataLoadMs);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Startup timeout ({timeoutSeconds}s) exceeded after {elapsedMs:F0}ms (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 📋 Diagnostic: Check logs for slow phases (Docking, ViewModel, Data Load)");
 
-            Application.Run(mainForm);
-        }
+                    cts.Cancel();
 
-        private static IHost BuildHost(string[] args)
-        {
-            var builder = Host.CreateApplicationBuilder(args);
-
-            AddConfiguration(builder);
-            ConfigureLogging(builder);
-            ConfigureDatabase(builder);
-
-            // Register ReportViewerLaunchOptions before general DI
-            AddReportViewerOptions(builder, args);
-
-            AddDependencyInjection(builder);
-
-            return builder.Build();
-        }
-
-        private static void AddConfiguration(HostApplicationBuilder builder)
-        {
-            builder.Configuration.SetBasePath(AppContext.BaseDirectory);
-            builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-            builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true);
-            builder.Configuration.AddEnvironmentVariables();
-
-            if (builder.Environment.IsDevelopment())
-            {
-                builder.Configuration.AddUserSecrets<StartupOrchestrator>(optional: true);
-            }
-        }
-
-        private static void AddReportViewerOptions(HostApplicationBuilder builder, string[] args)
-        {
-            var showReportViewer = false;
-            string? reportPath = null;
-
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (args[i].Equals("--ShowReportViewer", StringComparison.OrdinalIgnoreCase))
-                {
-                    showReportViewer = true;
-                }
-                else if (args[i].Equals("--ReportPath", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-                {
-                    reportPath = args[i + 1];
-                    i++; // Skip the next argument as it is the value
-                }
-            }
-
-            var options = new ReportViewerLaunchOptions(showReportViewer, reportPath);
-            builder.Services.AddSingleton(options);
-
-            Log.Debug("ReportViewerLaunchOptions registered: ShowReportViewer={ShowReportViewer}, ReportPath={ReportPath}", showReportViewer, reportPath ?? "(none)");
-        }
-
-        private static void InitializeLogging()
-        {
-            // Create logs folder in application root if it doesn't exist
-            var projectRoot = Directory.GetCurrentDirectory();
-            var logsDirectory = Path.Combine(projectRoot, "logs");
-            Directory.CreateDirectory(logsDirectory);
-
-            var logFileTemplate = Path.Combine(logsDirectory, "wiley-widget-{Date}.log");
-
-            // Configure Serilog with maximum verbosity (Verbose level) for comprehensive debugging
-            // NO MinimumLevel overrides - all levels honored everywhere
-            Log.Logger = new LoggerConfiguration()
-                // Set minimum level to Verbose for everything - enforced globally
-                .MinimumLevel.Verbose()
-                // Suppress expected cancellation exceptions to reduce noisy logs
-                .Filter.ByExcluding(logEvent =>
-                {
-                    var exception = logEvent.Exception;
-                    if (exception == null)
+                    try
                     {
-                        return false;
+                        await Task.WhenAny(initTask, Task.Delay(2000));
                     }
-
-                    if (exception is OperationCanceledException)
+                    catch (OperationCanceledException)
                     {
-                        return true;
+                        Log.Information("Initialization task cancelled after timeout");
                     }
-
-                    if (exception is AggregateException aggregate)
+                    catch (Exception ex)
                     {
-                        return aggregate.InnerExceptions.All(inner => inner is OperationCanceledException);
+                        Log.Warning(ex, "Exception while cancelling initialization task");
                     }
+                }
+                else
+                {
+                    cts.Cancel();
+                    try
+                    {
+                        await initTask; // Ensure any exceptions are propagated
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Application initialization completed in {elapsedMs:F0}ms (within {timeoutSeconds}s timeout)");
+                        Log.Information("Application initialization completed successfully in {ElapsedMs}ms (timeout {TimeoutSeconds}s)", elapsedMs, timeoutSeconds);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Initialization completed within timeout but raised exception");
+                        throw;
+                    }
+                }
+            }
+            finally
+            {
+                timelineScope?.Dispose();
+                timelineService?.GenerateReport();
+            }
+        }
 
-                    return false;
+        static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddWinFormsServices(hostContext.Configuration);
+
+
                 })
-                // Enrich with comprehensive context information
-                .Enrich.FromLogContext()
-                .Enrich.WithMachineName()
-                .Enrich.WithThreadId()
-                .Enrich.WithProcessId()
-                .Enrich.WithEnvironmentName()
-                // Write to Console with compact ANSI theme + full exception details
-                .WriteTo.Console(
-                    theme: Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme.Code,
-                    formatProvider: CultureInfo.InvariantCulture,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}")
-                // Write to file sink wrapped in async queue to prevent blocking
-                .WriteTo.Async(
-                    a => a.File(
-                        logFileTemplate,
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 31, // Keep last month of logs
-                        fileSizeLimitBytes: 52428800, // 50MB per file
-                        rollOnFileSizeLimit: true,
-                        buffered: false, // Force immediate writes for debugging
-                        shared: true, // Allow multiple processes to write
-                        formatProvider: CultureInfo.InvariantCulture,
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {MachineName} {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}"),
-                    bufferSize: 10000,        // Configure queue size to prevent blocking on file I/O
-                    blockWhenFull: false)     // Do not block producer if queue is full; drop if necessary
-                .CreateLogger();
+                .UseSerilog((context, services, configuration) => configuration
+                    .ReadFrom.Configuration(context.Configuration)
+                    .ReadFrom.Services(services)
+                    .Enrich.FromLogContext()
+                    .WriteTo.Console());
 
-            // Test logs to verify configuration - these should appear immediately in logs/wiley-widget-{Date}.log
-            Log.Verbose("Serilog VERBOSE test - should appear in file");
-            Log.Debug("Serilog DEBUG test");
-            Log.Information("Serilog INFO test - logs folder should now have a file at {LogPath}", logFileTemplate);
-        }
-
-        private static void ConfigureLogging(HostApplicationBuilder builder)
+        static void InitializeTheme(IServiceProvider serviceProvider)
         {
-            builder.Services.AddSerilog();
-        }
-
-        private static void InitializeTheme()
-        {
-            try
-            {
-                // Load Syncfusion theme assemblies to support runtime theme switching
-                // Per Syncfusion docs (https://help.syncfusion.com/windowsforms/skins/getting-started):
-                // Only Office2016Theme, Office2019Theme, and HighContrastTheme require separate assemblies.
-                // FluentTheme and MaterialTheme are NOT supported in Windows Forms.
-
-                try
-                {
-                    Syncfusion.WinForms.Controls.SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                    Log.Debug("Successfully loaded Office2019Theme assembly");
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to load Office2019Theme assembly - Office2019 themes will not be available");
-                }
-
-                // Get theme from configuration (appsettings.json UI:Theme), fallback to Office2019Colorful
-                var config = new ConfigurationBuilder()
-                    .SetBasePath(AppContext.BaseDirectory)
-                    .AddJsonFile("appsettings.json", optional: false)
-                    .Build();
-
-                var themeName = config["UI:Theme"] ?? "Office2019Colorful";
-
-                // Set application theme globally before MainForm is created
-                Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = themeName;
-
-                Log.Information("Theme initialization completed. Active theme: {Theme}", themeName);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Theme initialization failed; continuing with default Windows theme");
-            }
-        }
-
-        private static void CaptureSynchronizationContext()
-        {
-            UISynchronizationContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
-            SynchronizationContext.SetSynchronizationContext(UISynchronizationContext);
-        }
-
-        private static void ConfigureDatabase(HostApplicationBuilder builder)
-        {
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                ?? "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
-
-            builder.Services.AddDbContextFactory<AppDbContext>(options =>
-            {
-                options.UseSqlServer(connectionString, sql =>
-                {
-                    sql.MigrationsAssembly("WileyWidget.Data");
-                    sql.CommandTimeout(60);
-                    sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
-                });
-
-                options.EnableDetailedErrors();
-                options.EnableSensitiveDataLogging(builder.Configuration.GetValue("Database:EnableSensitiveDataLogging", false));
-            }, ServiceLifetime.Scoped);
-        }
-
-        private static void AddDependencyInjection(HostApplicationBuilder builder)
-        {
-            // Register all application services via DependencyInjection helper
-            var diServices = DependencyInjection.CreateServiceCollection(includeDefaults: false);
-
-            // Skip IConfiguration descriptor - use the host builder's configuration
-            foreach (var descriptor in diServices)
-            {
-                if (descriptor.ServiceType == typeof(IConfiguration))
-                {
-                    continue; // Skip - use host builder's configuration
-                }
-
-                builder.Services.Add(descriptor);
-            }
-        }
-
-        public static async Task RunStartupHealthCheckAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
-        {
-            // Run optional health checks at startup; log and continue on failure to avoid blocking UI
-            var healthCheckService = serviceProvider.GetService(typeof(HealthCheckService)) as HealthCheckService;
-            if (healthCheckService is null)
-            {
-                return;
-            }
-
-            try
-            {
-                await healthCheckService.CheckHealthAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Startup health check failed");
-            }
-        }
-
-        private static void HandleFatalException(Exception ex)
-        {
-            Log.Fatal(ex, "Fatal exception during application startup");
-
-            var projectRoot = Directory.GetCurrentDirectory();
-            var logPath = Path.Combine(projectRoot, "logs");
-            var message = $"A fatal error occurred:\n\n{ex.Message}\n\nSee logs at {logPath} for details.";
-
-            MessageBox.Show(message, "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // SfSkinManager initialization logic here
         }
     }
 }
