@@ -81,10 +81,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         ILogger<ScopedPanelBase<AnalyticsViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
-
-        // Call the actual initialization method
+        // Call the actual initialization method (theme applied inside InitializeControls)
         InitializeControls();
     }
 
@@ -93,8 +90,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeControls()
     {
-        // Apply Syncfusion theme using SkinManager
-        SfSkinManager.SetTheme(this, "Office2019Colorful");
+        // Apply Syncfusion theme via SfSkinManager (single source of truth)
+        SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         // Set up form properties
         Text = "Budget Analytics";
@@ -175,13 +172,14 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeTopPanel()
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var topPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(topPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(topPanel, currentTheme);
 
         // Button panel
         _buttonPanel = new GradientPanelExt
@@ -192,7 +190,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_buttonPanel, currentTheme);
 
         var buttonTable = new TableLayoutPanel
         {
@@ -283,7 +281,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_scenarioPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_scenarioPanel, currentTheme);
 
         var scenarioGroup = new GradientPanelExt
         {
@@ -292,7 +290,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(scenarioGroup, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(scenarioGroup, currentTheme);
 
         var scenarioTable = new TableLayoutPanel
         {
@@ -407,13 +405,14 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeBottomPanel()
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var bottomPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(bottomPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(bottomPanel, currentTheme);
 
         // Results panel with grids and insights
         _resultsPanel = new GradientPanelExt
@@ -423,7 +422,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_resultsPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_resultsPanel, currentTheme);
 
         var resultsSplit = new SplitContainer
         {
@@ -439,7 +438,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(gridsPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(gridsPanel, currentTheme);
 
         var gridsSplit = new SplitContainer
         {
@@ -456,7 +455,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(metricsPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(metricsPanel, currentTheme);
 
         // Metrics search (deduplicated, always use TextBoxExt and GradientPanelExt)
         var metricsSearchPanel = new GradientPanelExt
@@ -466,7 +465,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(metricsSearchPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(metricsSearchPanel, currentTheme);
         var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
         _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9 };
         _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
@@ -501,7 +500,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(variancesPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(variancesPanel, currentTheme);
 
         // Variances search (deduplicated, always use TextBoxExt and GradientPanelExt)
         var variancesSearchPanel = new GradientPanelExt
@@ -511,7 +510,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(variancesSearchPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(variancesSearchPanel, currentTheme);
         var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
         _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
         _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
@@ -550,7 +549,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(insightsPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(insightsPanel, currentTheme);
 
         var insightsSplit = new SplitContainer
         {
@@ -567,7 +566,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(insightsGroup, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(insightsGroup, currentTheme);
 
         _insightsListBox = new SfListView
         {
@@ -588,7 +587,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(recommendationsGroup, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(recommendationsGroup, currentTheme);
 
         _recommendationsListBox = new SfListView
         {
@@ -647,7 +646,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_chartsPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_chartsPanel, currentTheme);
 
         var chartsSplit = new SplitContainer
         {
@@ -663,7 +662,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(trendsPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(trendsPanel, currentTheme);
 
         _trendsChart = new ChartControl
         {
@@ -688,7 +687,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(forecastPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(forecastPanel, currentTheme);
 
         _forecastChart = new ChartControl
         {
@@ -1075,6 +1074,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             // Unsubscribe from events before disposal
             if (ViewModel != null)
                 ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+            if (_entityComboBox != null)
+            {
+                _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
+                _entityComboBox.SafeDispose();
+            }
 
             // Use SafeDispose for Syncfusion controls
             _metricsGrid.SafeDispose();
