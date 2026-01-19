@@ -1,19 +1,24 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.Windows.Forms.Gauge;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
-using Microsoft.Extensions.Logging;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Utils;
+using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.Windows.Forms.Chart;
+using Syncfusion.Windows.Forms.Gauge;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -28,15 +33,17 @@ namespace WileyWidget.WinForms.Controls
     /// - Prominent "Required Rate Increase" display
     /// Production-Ready: Full validation, databinding, error handling, sizing, accessibility.
     /// </summary>
-    public partial class WarRoomPanel : UserControl
+    public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>
     {
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
         /// </summary>
         public new object? DataContext { get; private set; }
 
-        private readonly WarRoomViewModel _vm;
-        private readonly ILogger<WarRoomPanel>? _logger;
+        // Event handler storage for proper cleanup in Dispose
+        private EventHandler? _btnRunScenarioClickHandler;
+        private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
+        private EventHandler? _scenarioInputTextChangedHandler;
 
         private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
@@ -69,24 +76,34 @@ namespace WileyWidget.WinForms.Controls
         private SfDataGrid _departmentImpactGrid = null!;
 
         private Panel _contentPanel = null!;
+        private ErrorProvider? _errorProvider;
 
-        [Obsolete("Use DI constructor with WarRoomViewModel and ILogger parameters", false)]
-        public WarRoomPanel() : this(
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WarRoomViewModel>(Program.Services!) ?? new WarRoomViewModel(),
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<WarRoomPanel>>(Program.Services!))
+        // Obsolete parameterless constructor for designer compatibility
+        [Obsolete("Use DI constructor with IServiceScopeFactory and ILogger", false)]
+        public WarRoomPanel()
+            : this(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services!),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<WarRoomViewModel>>>(Program.Services!))
         {
         }
 
-        public WarRoomPanel(WarRoomViewModel viewModel, ILogger<WarRoomPanel>? logger = null)
+        // Primary DI constructor
+        public WarRoomPanel(
+            IServiceScopeFactory scopeFactory,
+            ILogger<ScopedPanelBase<WarRoomViewModel>> logger)
+            : base(scopeFactory, logger)
         {
+            _logger?.LogInformation("WarRoomPanel initializing");
+
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
-            _logger = logger;
-            _vm = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            DataContext = _vm;
-            _logger?.LogInformation("WarRoomPanel initializing");
+            try
+            {
+                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+            }
+            catch { }
+
             BindViewModel();
 
             // Defer sizing validation for complex WarRoom layouts with charts and grids
@@ -97,12 +114,20 @@ namespace WileyWidget.WinForms.Controls
 
         /// <summary>
         /// Initializes all UI controls with proper layout and databinding.
-        /// Theme is applied globally via application startup.
         /// </summary>
         private void InitializeComponent()
         {
             try
             {
+                // Initialize ErrorProvider first (used in input validation)
+                _errorProvider = new ErrorProvider
+                {
+                    BlinkStyle = ErrorBlinkStyle.NeverBlink,
+                    BlinkRate = 0,
+                    Icon = null!,
+                    ContainerControl = this
+                };
+
                 BuildTopInputPanel();
                 BuildContentArea();
                 PerformLayout();
@@ -122,7 +147,10 @@ namespace WileyWidget.WinForms.Controls
 
             if (IsHandleCreated)
             {
-                try { BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                try
+                {
+                    BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+                }
                 catch { }
                 return;
             }
@@ -133,7 +161,10 @@ namespace WileyWidget.WinForms.Controls
                 HandleCreated -= handleCreatedHandler;
                 if (IsDisposed) return;
 
-                try { BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
+                try
+                {
+                    BeginInvoke(new Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+                }
                 catch { }
             };
 
@@ -222,7 +253,7 @@ namespace WileyWidget.WinForms.Controls
             _btnRunScenario = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = "Run Scenario",
-                AutoSize = true,
+                AutoSize = false,
                 Anchor = AnchorStyles.Right,
                 Margin = new Padding(0),
                 Name = "RunScenarioButton",
@@ -234,7 +265,7 @@ namespace WileyWidget.WinForms.Controls
             _lblInputError = new Label
             {
                 Text = string.Empty,
-                AutoSize = true,
+                AutoSize = false,
                 Margin = new Padding(0, 4, 0, 0),
                 Name = "InputErrorLabel",
                 AccessibleName = "Input Error",
@@ -249,7 +280,7 @@ namespace WileyWidget.WinForms.Controls
             _lblVoiceHint = new Label
             {
                 Text = "💬 Or ask JARVIS aloud",
-                AutoSize = true,
+                AutoSize = false,
                 Margin = new Padding(0, 4, 0, 0),
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 Name = "VoiceHint",
@@ -439,10 +470,6 @@ namespace WileyWidget.WinForms.Controls
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                // NOTE: SplitterDistance removed from initializer - must be set AFTER control sizing
-                // Per Microsoft docs (https://learn.microsoft.com/dotnet/api/system.windows.forms.splitcontainer):
-                // "SplitterDistance must be between Panel1MinSize and Width - Panel2MinSize"
-                // Setting before control has size causes InvalidOperationException
                 SplitterWidth = 6,
                 Margin = new Padding(0, 0, 0, 12),
                 Name = "ChartSplitContainer",
@@ -714,11 +741,11 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Binds the ViewModel to UI controls with comprehensive error handling and validation.
+        /// Binds the ViewModel to UI controls with event handler storage for proper cleanup.
         /// </summary>
         private void BindViewModel()
         {
-            if (_vm == null)
+            if (ViewModel == null)
             {
                 _logger?.LogWarning("ViewModel is null - cannot bind");
                 return;
@@ -727,65 +754,35 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Validate grids exist before binding
-                if (_projectionsGrid != null && _vm.Projections != null)
+                if (_projectionsGrid != null && ViewModel.Projections != null)
                 {
-                    _projectionsGrid.DataSource = _vm.Projections;
+                    _projectionsGrid.DataSource = ViewModel.Projections;
                 }
                 else
                 {
                     _logger?.LogWarning("ProjectionsGrid or Projections collection is null");
                 }
 
-                if (_departmentImpactGrid != null && _vm.DepartmentImpacts != null)
+                if (_departmentImpactGrid != null && ViewModel.DepartmentImpacts != null)
                 {
-                    _departmentImpactGrid.DataSource = _vm.DepartmentImpacts;
+                    _departmentImpactGrid.DataSource = ViewModel.DepartmentImpacts;
                 }
                 else
                 {
                     _logger?.LogWarning("DepartmentImpactGrid or DepartmentImpacts collection is null");
                 }
 
-                // Subscribe to ViewModel property changes
-                _vm.PropertyChanged += ViewModel_PropertyChanged;
+                // Subscribe to ViewModel property changes (with stored delegate for cleanup)
+                _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+                ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
-                // Wire up Run Scenario command with error handling
-                _btnRunScenario.Click += async (s, e) =>
-                {
-                    try
-                    {
-                        _lblInputError.Visible = false;
+                // Wire up Run Scenario button with stored handler for cleanup
+                _btnRunScenarioClickHandler = async (s, e) => await OnRunScenarioClickAsync();
+                _btnRunScenario.Click += _btnRunScenarioClickHandler;
 
-                        if (string.IsNullOrWhiteSpace(_scenarioInput.Text))
-                        {
-                            _lblInputError.Text = "Please enter a scenario";
-                            _lblInputError.Visible = true;
-                            return;
-                        }
-
-                        if (_scenarioInput.Text.Length < 10)
-                        {
-                            _lblInputError.Text = "Scenario description too short (minimum 10 characters)";
-                            _lblInputError.Visible = true;
-                            return;
-                        }
-
-                        await _vm.RunScenarioCommand.ExecuteAsync(null);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Error in Run Scenario click handler");
-                        _lblInputError.Text = $"Error: {ex.Message}";
-                        _lblInputError.Visible = true;
-                        MessageBox.Show($"Failed to run scenario: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                };
-
-                // Wire up input textbox with validation
-                _scenarioInput.TextChanged += (s, e) =>
-                {
-                    _vm.ScenarioInput = _scenarioInput.Text;
-                    _lblInputError.Visible = false; // Clear error on input change
-                };
+                // Wire up scenario input textbox with stored handler for cleanup
+                _scenarioInputTextChangedHandler = (s, e) => OnScenarioInputTextChanged();
+                _scenarioInput.TextChanged += _scenarioInputTextChangedHandler;
 
                 _logger?.LogInformation("ViewModel bound successfully");
             }
@@ -796,18 +793,74 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Handles ViewModel property changes with proper null checking and UI updates.
+        /// Handles Run Scenario button click with validation.
         /// </summary>
-        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private async Task OnRunScenarioClickAsync()
         {
             try
             {
+                _lblInputError.Visible = false;
+
+                if (string.IsNullOrWhiteSpace(_scenarioInput.Text))
+                {
+                    _lblInputError.Text = "Please enter a scenario";
+                    _lblInputError.Visible = true;
+                    return;
+                }
+
+                if (_scenarioInput.Text.Length < 10)
+                {
+                    _lblInputError.Text = "Scenario description too short (minimum 10 characters)";
+                    _lblInputError.Visible = true;
+                    return;
+                }
+
+                if (ViewModel?.RunScenarioCommand == null)
+                {
+                    _logger?.LogError("RunScenarioCommand is null");
+                    return;
+                }
+
+                await ViewModel.RunScenarioCommand.ExecuteAsync(null);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error in Run Scenario handler");
+                _lblInputError.Text = $"Error: {ex.Message}";
+                _lblInputError.Visible = true;
+                MessageBox.Show($"Failed to run scenario: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Handles scenario input text changes.
+        /// </summary>
+        private void OnScenarioInputTextChanged()
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.ScenarioInput = _scenarioInput.Text;
+                _lblInputError.Visible = false; // Clear error on input change
+            }
+        }
+
+        /// <summary>
+        /// Handles ViewModel property changes with proper null checking and UI updates.
+        /// </summary>
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            try
+            {
+                // Verify ViewModel still exists (may be disposed)
+                if (ViewModel == null || IsDisposed)
+                    return;
+
                 switch (e?.PropertyName)
                 {
                     case nameof(WarRoomViewModel.StatusMessage):
                         if (_lblStatus != null)
                         {
-                            _lblStatus.Text = _vm?.StatusMessage ?? "Ready";
+                            _lblStatus.Text = ViewModel.StatusMessage ?? "Ready";
                             _lblStatus.Refresh();
                         }
                         break;
@@ -815,7 +868,7 @@ namespace WileyWidget.WinForms.Controls
                     case nameof(WarRoomViewModel.IsAnalyzing):
                         if (_loadingOverlay != null)
                         {
-                            _loadingOverlay.Visible = _vm?.IsAnalyzing ?? false;
+                            _loadingOverlay.Visible = ViewModel.IsAnalyzing;
                             if (_loadingOverlay.Visible)
                             {
                                 _loadingOverlay.BringToFront();
@@ -824,7 +877,7 @@ namespace WileyWidget.WinForms.Controls
                         break;
 
                     case nameof(WarRoomViewModel.HasResults):
-                        bool hasResults = _vm?.HasResults ?? false;
+                        bool hasResults = ViewModel.HasResults;
                         if (_resultsPanel != null)
                         {
                             _resultsPanel.Visible = hasResults;
@@ -838,20 +891,20 @@ namespace WileyWidget.WinForms.Controls
                     case nameof(WarRoomViewModel.RequiredRateIncrease):
                         if (_lblRateIncreaseValue != null)
                         {
-                            _lblRateIncreaseValue.Text = _vm?.RequiredRateIncrease ?? "—";
+                            _lblRateIncreaseValue.Text = ViewModel.RequiredRateIncrease ?? "—";
                         }
                         break;
 
                     case nameof(WarRoomViewModel.RiskLevel):
                         if (_riskGauge != null)
                         {
-                            _riskGauge.Value = (float)(_vm?.RiskLevel ?? 0);
+                            _riskGauge.Value = (float)ViewModel.RiskLevel;
                         }
                         break;
 
                     case nameof(WarRoomViewModel.Projections):
                         // Validate before rendering
-                        if (_vm?.Projections != null && _vm.Projections.Count > 0)
+                        if (ViewModel.Projections != null && ViewModel.Projections.Count > 0)
                         {
                             RenderRevenueChart();
                         }
@@ -859,7 +912,7 @@ namespace WileyWidget.WinForms.Controls
 
                     case nameof(WarRoomViewModel.DepartmentImpacts):
                         // Validate before rendering
-                        if (_vm?.DepartmentImpacts != null && _vm.DepartmentImpacts.Count > 0)
+                        if (ViewModel.DepartmentImpacts != null && ViewModel.DepartmentImpacts.Count > 0)
                         {
                             RenderDepartmentChart();
                         }
@@ -886,7 +939,7 @@ namespace WileyWidget.WinForms.Controls
                     return;
                 }
 
-                if (_vm?.Projections == null || _vm.Projections.Count == 0)
+                if (ViewModel?.Projections == null || ViewModel.Projections.Count == 0)
                 {
                     _logger?.LogDebug("No projections data - skipping revenue chart render");
                     return;
@@ -903,7 +956,7 @@ namespace WileyWidget.WinForms.Controls
                     Type = ChartSeriesType.Line
                 };
 
-                foreach (var proj in _vm.Projections)
+                foreach (var proj in ViewModel.Projections)
                 {
                     revenueSeries.Points.Add(proj.Year, (double)proj.ProjectedRevenue);
                 }
@@ -917,7 +970,7 @@ namespace WileyWidget.WinForms.Controls
                     Type = ChartSeriesType.Line
                 };
 
-                foreach (var proj in _vm.Projections)
+                foreach (var proj in ViewModel.Projections)
                 {
                     expenseSeries.Points.Add(proj.Year, (double)proj.ProjectedExpenses);
                 }
@@ -926,7 +979,7 @@ namespace WileyWidget.WinForms.Controls
 
                 // Refresh chart
                 _revenueChart.Refresh();
-                _logger?.LogDebug("Revenue chart rendered with {Count} projections", _vm.Projections.Count);
+                _logger?.LogDebug("Revenue chart rendered with {Count} projections", ViewModel.Projections.Count);
             }
             catch (Exception ex)
             {
@@ -948,7 +1001,7 @@ namespace WileyWidget.WinForms.Controls
                     return;
                 }
 
-                if (_vm?.DepartmentImpacts == null || _vm.DepartmentImpacts.Count == 0)
+                if (ViewModel?.DepartmentImpacts == null || ViewModel.DepartmentImpacts.Count == 0)
                 {
                     _logger?.LogDebug("No department impacts data - skipping department chart render");
                     return;
@@ -964,7 +1017,7 @@ namespace WileyWidget.WinForms.Controls
                     Type = ChartSeriesType.Column
                 };
 
-                foreach (var impact in _vm.DepartmentImpacts)
+                foreach (var impact in ViewModel.DepartmentImpacts)
                 {
                     impactSeries.Points.Add(impact.DepartmentName, (double)impact.ImpactAmount);
                 }
@@ -972,7 +1025,7 @@ namespace WileyWidget.WinForms.Controls
                 _departmentChart.Series.Add(impactSeries);
 
                 _departmentChart.Refresh();
-                _logger?.LogDebug("Department chart rendered with {Count} departments", _vm.DepartmentImpacts.Count);
+                _logger?.LogDebug("Department chart rendered with {Count} departments", ViewModel.DepartmentImpacts.Count);
             }
             catch (Exception ex)
             {
@@ -980,7 +1033,230 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        // InitializeComponent moved to WarRoomPanel.Designer.cs for designer support
-        // Dispose moved to WarRoomPanel.Designer.cs for designer support
+        /// <summary>
+        /// Loads scenario data and initializes the panel.
+        /// </summary>
+        public override async Task LoadAsync(CancellationToken ct)
+        {
+            if (IsLoaded) return;
+
+            try
+            {
+                IsBusy = true;
+
+                // Pre-load any cached scenarios or default data
+                if (ViewModel != null && !DesignMode)
+                {
+                    _logger?.LogInformation("Loading WarRoom scenario data");
+                    await Task.CompletedTask;
+                }
+
+                _logger?.LogInformation("WarRoomPanel loaded successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("WarRoomPanel load cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error loading WarRoom panel");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Saves any unsaved scenario changes (if applicable).
+        /// </summary>
+        public override async Task SaveAsync(CancellationToken ct)
+        {
+            try
+            {
+                if (!HasUnsavedChanges)
+                {
+                    _logger?.LogDebug("No unsaved changes in WarRoom panel");
+                    return;
+                }
+
+                IsBusy = true;
+
+                // Validate before saving
+                var validationResult = await ValidateAsync(ct);
+                if (!validationResult.IsValid)
+                {
+                    _logger?.LogWarning("Validation failed during save: {ErrorCount} errors", validationResult.Errors.Count);
+                    throw new InvalidOperationException($"Cannot save: {validationResult.Errors.Count} validation error(s)");
+                }
+
+                // Persist any scenario state if needed
+                _logger?.LogInformation("Saving WarRoom scenario data");
+                await Task.CompletedTask;
+
+                SetHasUnsavedChanges(false);
+                _logger?.LogInformation("WarRoomPanel saved successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("WarRoomPanel save cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error saving WarRoom panel");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Validates the scenario input before submission.
+        /// </summary>
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+        {
+            try
+            {
+                IsBusy = true;
+                _errorProvider?.Clear();
+                var errors = new List<ValidationItem>();
+
+                // Validate scenario input
+                if (string.IsNullOrEmpty(_scenarioInput.Text))
+                {
+                    var error = new ValidationItem(
+                        FieldName: "ScenarioInput",
+                        Message: "Scenario cannot be empty",
+                        Severity: ValidationSeverity.Error
+                    );
+                    errors.Add(error);
+                    _errorProvider?.SetError(_scenarioInput, "Required");
+                }
+                else if (_scenarioInput.Text.Length < 10)
+                {
+                    var error = new ValidationItem(
+                        FieldName: "ScenarioInput",
+                        Message: "Scenario must be at least 10 characters",
+                        Severity: ValidationSeverity.Error
+                    );
+                    errors.Add(error);
+                    _errorProvider?.SetError(_scenarioInput, "Too short");
+                }
+                else if (_scenarioInput.Text.Length > 500)
+                {
+                    var error = new ValidationItem(
+                        FieldName: "ScenarioInput",
+                        Message: "Scenario must be 500 characters or less",
+                        Severity: ValidationSeverity.Error
+                    );
+                    errors.Add(error);
+                    _errorProvider?.SetError(_scenarioInput, "Too long");
+                }
+                else
+                {
+                    // Clear error for valid input
+                    _errorProvider?.SetError(_scenarioInput, "");
+                }
+
+                await Task.CompletedTask;
+
+                return errors.Count == 0
+                    ? ValidationResult.Success
+                    : ValidationResult.Failed(errors.ToArray());
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error validating WarRoom panel");
+                return ValidationResult.Failed(new ValidationItem(
+                    FieldName: "Validation",
+                    Message: ex.Message,
+                    Severity: ValidationSeverity.Error
+                ));
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Focuses the first validation error control.
+        /// </summary>
+        public override void FocusFirstError()
+        {
+            try
+            {
+                // If scenario input has error, focus it
+                if (_scenarioInput != null && !string.IsNullOrEmpty(_errorProvider?.GetError(_scenarioInput)))
+                {
+                    _scenarioInput.Focus();
+                    _scenarioInput.SelectAll();
+                    return;
+                }
+
+                // Default: focus scenario input
+                if (_scenarioInput != null)
+                {
+                    _scenarioInput.Focus();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error focusing first validation error");
+            }
+        }
+
+        /// <summary>
+        /// Cleans up all resources, event handlers, and child controls.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try
+                {
+                    // Unsubscribe from ViewModel events
+                    if (ViewModel != null && _viewModelPropertyChangedHandler != null)
+                    {
+                        ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+                    }
+
+                    // Unsubscribe from button click handler
+                    if (_btnRunScenario != null && _btnRunScenarioClickHandler != null)
+                    {
+                        _btnRunScenario.Click -= _btnRunScenarioClickHandler;
+                    }
+
+                    // Unsubscribe from text changed handler
+                    if (_scenarioInput != null && _scenarioInputTextChangedHandler != null)
+                    {
+                        _scenarioInput.TextChanged -= _scenarioInputTextChangedHandler;
+                    }
+
+                    // Dispose Syncfusion controls
+                    _projectionsGrid?.Dispose();
+                    _departmentImpactGrid?.Dispose();
+                    _revenueChart?.Dispose();
+                    _departmentChart?.Dispose();
+                    _riskGauge?.Dispose();
+
+                    // Dispose containers and overlays
+                    _loadingOverlay?.Dispose();
+                    _topPanel?.Dispose();
+                    _panelHeader?.Dispose();
+                    _contentPanel?.Dispose();
+
+                    // Dispose ErrorProvider
+                    _errorProvider?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error during Dispose cleanup");
+                }
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }
