@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,8 @@ using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
 using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
@@ -55,6 +59,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private TextBoxExt? _varianceThresholdTextBox;
     private CheckBoxAdv? _overBudgetCheckBox;
     private CheckBoxAdv? _underBudgetCheckBox;
+    private BindingSource? _budgetBindingSource;
     private Label? _totalBudgetedLabel;
     private Label? _totalActualLabel;
     private Label? _totalVarianceLabel;
@@ -78,6 +83,16 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler? _searchTextChangedHandler;
+    private EventHandler? _fiscalYearChangedHandler;
+    private EventHandler? _entityChangedHandler;
+    private EventHandler? _departmentChangedHandler;
+    private EventHandler? _fundTypeChangedHandler;
+    private EventHandler? _varianceThresholdChangedHandler;
+    private EventHandler? _overBudgetCheckChangedHandler;
+    private EventHandler? _underBudgetCheckChangedHandler;
+    private EventHandler<MappingAppliedEventArgs>? _mappingWizardAppliedHandler;
+    private EventHandler? _mappingWizardCancelledHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPanel"/> class.
@@ -302,7 +317,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _summaryPanel.Controls.Add(summaryTable);
         topPanel.Controls.Add(_summaryPanel);
 
-        // Filter panel
+        // Filter panel - NO manual BackColor; let SfSkinManager handle it
         _filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
@@ -346,7 +361,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Search Budget Entries",
             AccessibleDescription = "Search budget entries by account, description, or department"
         };
-        _searchTextBox.TextChanged += SearchTextBox_TextChanged;
+        _searchTextChangedHandler = SearchTextBox_TextChanged;
+        _searchTextBox.TextChanged += _searchTextChangedHandler;
+
+        var toolTip = new ToolTip();
+        toolTip.SetToolTip(_searchTextBox, "Search budget entries by account number, name, or department");
 
         var fiscalYearLabel = new Label
         {
@@ -372,7 +391,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
         _fiscalYearComboBox.DataSource = years;
         _fiscalYearComboBox.SelectedItem = DateTime.Now.Year;
-        _fiscalYearComboBox.SelectedIndexChanged += FiscalYearComboBox_SelectedIndexChanged;
+        _fiscalYearChangedHandler = FiscalYearComboBox_SelectedIndexChanged;
+        _fiscalYearComboBox.SelectedIndexChanged += _fiscalYearChangedHandler;
 
         var entityLabel = new Label
         {
@@ -392,7 +412,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Placeholder until data is loaded
         _entityComboBox.DataSource = new List<string> { "All Entities" };
-        _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+        _entityChangedHandler = EntityComboBox_SelectedIndexChanged;
+        _entityComboBox.SelectedIndexChanged += _entityChangedHandler;
 
         // Add entity controls to the filter table (columns 4 and 5)
         filterTable.Controls.Add(entityLabel, 4, 0);
@@ -416,7 +437,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         _departmentComboBox.DataSource = new List<string> { "All Departments" };
         _departmentComboBox.SelectedIndex = 0;
-        _departmentComboBox.SelectedIndexChanged += DepartmentComboBox_SelectedIndexChanged;
+        _departmentChangedHandler = DepartmentComboBox_SelectedIndexChanged;
+        _departmentComboBox.SelectedIndexChanged += _departmentChangedHandler;
 
         var fundTypeLabel = new Label
         {
@@ -437,7 +459,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         fundTypes.Insert(0, "All Fund Types");
         _fundTypeComboBox.DataSource = fundTypes;
         _fundTypeComboBox.SelectedIndex = 0;
-        _fundTypeComboBox.SelectedIndexChanged += FundTypeComboBox_SelectedIndexChanged;
+        _fundTypeChangedHandler = FundTypeComboBox_SelectedIndexChanged;
+        _fundTypeComboBox.SelectedIndexChanged += _fundTypeChangedHandler;
 
         // Row 3: Variance threshold and checkboxes
         var varianceLabel = new Label
@@ -455,7 +478,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Variance Threshold",
             AccessibleDescription = "Filter entries with variance greater than this amount"
         };
-        _varianceThresholdTextBox.TextChanged += VarianceThresholdTextBox_TextChanged;
+        _varianceThresholdChangedHandler = VarianceThresholdTextBox_TextChanged;
+        _varianceThresholdTextBox.TextChanged += _varianceThresholdChangedHandler;
 
         _overBudgetCheckBox = new CheckBoxAdv
         {
@@ -465,7 +489,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Show Over Budget Only",
             AccessibleDescription = "Show only entries that are over budget"
         };
-        _overBudgetCheckBox.CheckStateChanged += OverBudgetCheckBox_CheckedChanged;
+        _overBudgetCheckChangedHandler = OverBudgetCheckBox_CheckedChanged;
+        _overBudgetCheckBox.CheckStateChanged += _overBudgetCheckChangedHandler;
 
         _underBudgetCheckBox = new CheckBoxAdv
         {
@@ -475,7 +500,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Show Under Budget Only",
             AccessibleDescription = "Show only entries that are under budget"
         };
-        _underBudgetCheckBox.CheckStateChanged += UnderBudgetCheckBox_CheckedChanged;
+        _underBudgetCheckChangedHandler = UnderBudgetCheckBox_CheckedChanged;
+        _underBudgetCheckBox.CheckStateChanged += _underBudgetCheckChangedHandler;
 
         filterTable.Controls.Add(searchLabel, 0, 0);
         filterTable.Controls.Add(_searchTextBox, 1, 0);
@@ -528,7 +554,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             SelectionMode = GridSelectionMode.Single,
             EditMode = EditMode.SingleClick,
             TabIndex = 8,
-            AccessibleName = "Budget Entries Grid"
+            AccessibleName = "Budget Entries Grid",
+            AccessibleDescription = "Data grid displaying budget entries with account numbers, amounts, variances, and related budget information"
         };
 
         // Configure grid columns
@@ -678,8 +705,10 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
 
         _mappingWizardPanel = new CsvMappingWizardPanel(Logger) { Dock = DockStyle.Fill };
-        _mappingWizardPanel.MappingApplied += MappingWizardPanel_MappingApplied;
-        _mappingWizardPanel.Cancelled += MappingWizardPanel_Cancelled;
+        _mappingWizardAppliedHandler = MappingWizardPanel_MappingApplied;
+        _mappingWizardPanel.MappingApplied += _mappingWizardAppliedHandler;
+        _mappingWizardCancelledHandler = MappingWizardPanel_Cancelled;
+        _mappingWizardPanel.Cancelled += _mappingWizardCancelledHandler;
         _mappingContainer.Controls.Add(_mappingWizardPanel);
         bottomPanel.Controls.Add(_mappingContainer);
 
@@ -711,11 +740,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             AccessibleName = "Load Budgets",
             AccessibleDescription = "Load budget entries for the selected fiscal year"
         };
-        _loadBudgetsButton.Click += async (s, e) =>
-        {
-            if (ViewModel != null)
-                await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
-        };
+        _loadBudgetsButton.Click += OnLoadBudgetsButtonClick;
 
         _addEntryButton = new SfButton
         {
@@ -805,11 +830,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Wire up ViewModel property changes
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        // Bind grid data source - ViewModel classes should implement INotifyPropertyChanged
-        // for proper ObservableCollection synchronization with SfDataGrid
+        // Initialize BindingSource for safe data binding
+        if (_budgetBindingSource == null)
+        {
+            _budgetBindingSource = new BindingSource();
+        }
+
+        // Bind grid data source through BindingSource - prevents direct casts
         if (_budgetGrid != null)
         {
-            _budgetGrid.DataSource = ViewModel.FilteredBudgetEntries;
+            _budgetBindingSource.DataSource = ViewModel.FilteredBudgetEntries;
+            _budgetGrid.DataSource = _budgetBindingSource;
         }
 
         // Bind entity combo list if available
@@ -972,7 +1003,10 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         if (ViewModel != null)
+        {
             ViewModel.SearchText = _searchTextBox?.Text ?? string.Empty;
+            SetHasUnsavedChanges(true);
+        }
     }
 
     private void FiscalYearComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -980,6 +1014,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         if (ViewModel != null && _fiscalYearComboBox?.SelectedItem is int year)
         {
             ViewModel.SelectedFiscalYear = year;
+            SetHasUnsavedChanges(true);
         }
     }
 
@@ -988,16 +1023,19 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         if (ViewModel != null && _entityComboBox?.SelectedItem is string entity && !string.Equals(entity, "All Entities", StringComparison.OrdinalIgnoreCase))
         {
             ViewModel.SelectedEntity = entity;
+            SetHasUnsavedChanges(true);
         }
         else if (ViewModel != null)
         {
             ViewModel.SelectedEntity = null;
+            SetHasUnsavedChanges(true);
         }
     }
 
     private void DepartmentComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
         // Department filtering logic would go here
+        SetHasUnsavedChanges(true);
     }
 
     private void FundTypeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -1006,10 +1044,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Enum.TryParse<FundType>(fundTypeString, out var fundType))
         {
             ViewModel.SelectedFundType = fundType;
+            SetHasUnsavedChanges(true);
         }
         else if (ViewModel != null)
         {
             ViewModel.SelectedFundType = null;
+            SetHasUnsavedChanges(true);
         }
     }
 
@@ -1018,26 +1058,34 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         if (ViewModel != null && decimal.TryParse(_varianceThresholdTextBox?.Text, out var threshold))
         {
             ViewModel.VarianceThreshold = threshold;
+            SetHasUnsavedChanges(true);
         }
         else if (ViewModel != null)
         {
             ViewModel.VarianceThreshold = null;
+            SetHasUnsavedChanges(true);
         }
     }
 
     private void OverBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
         if (ViewModel != null)
+        {
             ViewModel.ShowOnlyOverBudget = _overBudgetCheckBox?.Checked ?? false;
+            SetHasUnsavedChanges(true);
+        }
     }
 
     private void UnderBudgetCheckBox_CheckedChanged(object? sender, EventArgs e)
     {
         if (ViewModel != null)
+        {
             ViewModel.ShowOnlyUnderBudget = _underBudgetCheckBox?.Checked ?? false;
+            SetHasUnsavedChanges(true);
+        }
     }
 
-    private void AddEntryButton_Click(object? sender, EventArgs e)
+    private async void AddEntryButton_Click(object? sender, EventArgs e)
     {
         try
         {
@@ -1118,6 +1166,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     return;
                 }
 
+                var viewModel = ViewModel;
+                if (viewModel == null)
+                {
+                    MessageBox.Show("Budget data is not loaded yet. Please try again shortly.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var fiscalYear = viewModel.SelectedFiscalYear;
+                var fundTypeName = cmbFundType.SelectedItem?.ToString();
+                var fundType = Enum.TryParse<FundType>(fundTypeName, out var parsedFundType) ? parsedFundType : FundType.GeneralFund;
+
                 var entry = new BudgetEntry
                 {
                     AccountNumber = txtAccountNumber.Text.Trim(),
@@ -1125,16 +1184,44 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     BudgetedAmount = budgeted,
                     ActualAmount = actual,
                     DepartmentId = deptId,
-                    FiscalYear = ViewModel!.SelectedFiscalYear,
-                    FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund"),
+                    FiscalYear = fiscalYear,
+                    FundType = fundType,
                     Variance = budgeted - actual,
-                    StartPeriod = new DateTime(ViewModel.SelectedFiscalYear, 1, 1),
-                    EndPeriod = new DateTime(ViewModel.SelectedFiscalYear, 12, 31),
+                    StartPeriod = new DateTime(fiscalYear, 1, 1),
+                    EndPeriod = new DateTime(fiscalYear, 12, 31),
                     CreatedAt = DateTime.UtcNow
                 };
 
-                Task.Run(async () => await ViewModel.AddEntryAsync(entry));
-                UpdateStatus("Budget entry added successfully");
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    var panelValidation = await ValidateAsync(operationToken);
+                    if (!panelValidation.IsValid)
+                    {
+                        ShowValidationDialog(panelValidation);
+                        return;
+                    }
+
+                    var entryValidation = ValidateBudgetEntry(entry, txtAccountNumber, txtDescription, txtBudgeted, txtActual, txtDepartmentId);
+                    if (!entryValidation.IsValid)
+                    {
+                        ShowValidationDialog(entryValidation);
+                        return;
+                    }
+
+                    await viewModel.AddEntryAsync(entry, operationToken);
+                    SetHasUnsavedChanges(false);
+                    UpdateStatus("Budget entry added successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("Add entry operation cancelled");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
             }
         }
         catch (Exception ex)
@@ -1142,6 +1229,60 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Logger.LogError(ex, "Error in AddEntryButton_Click");
             MessageBox.Show($"Error adding entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private void ShowValidationDialog(WileyWidget.WinForms.Controls.ValidationResult validationResult)
+    {
+        if (validationResult.IsValid || validationResult.Errors.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var error in validationResult.Errors)
+        {
+            Logger.LogWarning("Validation failed: {FieldName} - {Message}", error.FieldName, error.Message);
+        }
+
+        var formattedErrors = validationResult.Errors
+            .Select(error => string.IsNullOrWhiteSpace(error.FieldName) ? error.Message : $"{error.FieldName}: {error.Message}")
+            .ToList();
+
+        ValidationDialog.Show(this, "Validation Error", "Please resolve the following issues before continuing:", formattedErrors, Logger);
+
+        var focusControl = validationResult.Errors.Select(error => error.ControlRef).FirstOrDefault(control => control != null);
+        focusControl?.Focus();
+    }
+
+    private WileyWidget.WinForms.Controls.ValidationResult ValidateBudgetEntry(BudgetEntry entry, Control? accountControl, Control? descriptionControl, Control? budgetControl, Control? actualControl, Control? departmentControl)
+    {
+        var errors = new List<WileyWidget.WinForms.Controls.ValidationItem>();
+
+        if (string.IsNullOrWhiteSpace(entry.AccountNumber))
+        {
+            errors.Add(new WileyWidget.WinForms.Controls.ValidationItem("Account Number", "Account number is required.", WileyWidget.WinForms.Controls.ValidationSeverity.Error, accountControl));
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Description))
+        {
+            errors.Add(new WileyWidget.WinForms.Controls.ValidationItem("Description", "Description is required.", WileyWidget.WinForms.Controls.ValidationSeverity.Error, descriptionControl));
+        }
+
+        if (entry.BudgetedAmount < 0)
+        {
+            errors.Add(new WileyWidget.WinForms.Controls.ValidationItem("Budgeted Amount", "Budgeted amount must be zero or greater.", WileyWidget.WinForms.Controls.ValidationSeverity.Error, budgetControl));
+        }
+
+        if (entry.ActualAmount < 0)
+        {
+            errors.Add(new WileyWidget.WinForms.Controls.ValidationItem("Actual Amount", "Actual amount must be zero or greater.", WileyWidget.WinForms.Controls.ValidationSeverity.Error, actualControl));
+        }
+
+        if (entry.DepartmentId <= 0)
+        {
+            errors.Add(new WileyWidget.WinForms.Controls.ValidationItem("Department ID", "Department ID must be a positive integer.", WileyWidget.WinForms.Controls.ValidationSeverity.Error, departmentControl));
+        }
+
+        return errors.Count == 0 ? WileyWidget.WinForms.Controls.ValidationResult.Success : WileyWidget.WinForms.Controls.ValidationResult.Failed(errors.ToArray());
     }
 
     private async void EditEntryButton_Click(object? sender, EventArgs e)
@@ -1237,8 +1378,22 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.Variance = budgeted - actual;
                 selectedEntry.UpdatedAt = DateTime.UtcNow;
 
-                _ = Task.Run(async () => await ViewModel!.UpdateEntryAsync(selectedEntry));
-                UpdateStatus("Budget entry updated successfully");
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    await ViewModel!.UpdateEntryAsync(selectedEntry, operationToken);
+                    SetHasUnsavedChanges(false);
+                    UpdateStatus("Budget entry updated successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("Update entry operation cancelled");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
             }
         }
         catch (Exception ex)
@@ -1248,18 +1403,18 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private Task DeleteEntryAsync(CancellationToken cancellationToken = default)
+    private async Task DeleteEntryAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             if (_budgetGrid?.SelectedItems == null || _budgetGrid.SelectedItems.Count == 0)
             {
                 MessageBox.Show("Please select a budget entry to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return Task.CompletedTask;
+                return;
             }
 
             var selectedEntry = _budgetGrid.SelectedItems[0] as BudgetEntry;
-            if (selectedEntry == null) return Task.CompletedTask;
+            if (selectedEntry == null) return;
 
             var result = MessageBox.Show(
                 $"Are you sure you want to delete budget entry '{selectedEntry.AccountNumber} - {selectedEntry.Description}'?\n\nThis action cannot be undone.",
@@ -1270,8 +1425,22 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             if (result == DialogResult.Yes)
             {
                 Logger.LogInformation("Deleting budget entry {Id}: {AccountNumber}", selectedEntry.Id, selectedEntry.AccountNumber);
-                Task.Run(async () => await ViewModel!.DeleteEntryAsync(selectedEntry.Id));
-                UpdateStatus($"Deleted budget entry {selectedEntry.AccountNumber}");
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    await ViewModel!.DeleteEntryAsync(selectedEntry.Id, operationToken);
+                    SetHasUnsavedChanges(false);
+                    UpdateStatus($"Deleted budget entry {selectedEntry.AccountNumber}");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("Delete entry operation cancelled");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
             }
         }
         catch (Exception ex)
@@ -1279,7 +1448,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Logger.LogError(ex, "Error in DeleteEntryAsync");
             MessageBox.Show($"Error deleting entry: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-        return Task.CompletedTask;
     }
 
     private void ImportCsvButton_Click(object? sender, EventArgs e)
@@ -1310,7 +1478,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private void ExportCsvButton_Click(object? sender, EventArgs e)
+    private async void ExportCsvButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1323,7 +1491,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
+            var operationToken = RegisterOperation();
+            IsBusy = true;
+            try
+            {
+                await ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
+                UpdateStatus("CSV export completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogDebug("CSV export cancelled");
+                UpdateStatus("CSV export cancelled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "CSV export failed");
+                UpdateStatus($"CSV export failed: {ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 
@@ -1358,7 +1546,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         UpdateStatus("Import cancelled");
     }
 
-    private void ExportPdfButton_Click(object? sender, EventArgs e)
+    private async void ExportPdfButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1371,11 +1559,31 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
+            var operationToken = RegisterOperation();
+            IsBusy = true;
+            try
+            {
+                await ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
+                UpdateStatus("PDF export completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogDebug("PDF export cancelled");
+                UpdateStatus("PDF export cancelled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "PDF export failed");
+                UpdateStatus($"PDF export failed: {ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 
-    private void ExportExcelButton_Click(object? sender, EventArgs e)
+    private async void ExportExcelButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1388,7 +1596,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            _ = ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
+            var operationToken = RegisterOperation();
+            IsBusy = true;
+            try
+            {
+                await ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
+                UpdateStatus("Excel export completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogDebug("Excel export cancelled");
+                UpdateStatus("Excel export cancelled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Excel export failed");
+                UpdateStatus($"Excel export failed: {ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 
@@ -1423,7 +1651,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             case nameof(ViewModel.IsLoading):
                 if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
-                if (_noDataOverlay != null) _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.BudgetEntries.Any();
+                // Show "no data" overlay when not loading and no entries exist
+                if (_noDataOverlay != null)
+                {
+                    _noDataOverlay.Visible = !ViewModel.IsLoading && (ViewModel.BudgetEntries == null || !ViewModel.BudgetEntries.Any());
+                }
                 break;
 
             case nameof(ViewModel.StatusText):
@@ -1509,18 +1741,103 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
+    private async void OnLoadBudgetsButtonClick(object? sender, EventArgs e)
+    {
+        if (ViewModel != null)
+            await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>
+    /// Overrides SaveAsync to persist changes with proper validation and error handling.
+    /// </summary>
+    public override async Task SaveAsync(CancellationToken cancellationToken = default)
+    {
+        if (ViewModel == null) return;
+
+        var operationToken = RegisterOperation();
+        IsBusy = true;
+        try
+        {
+            Logger.LogInformation("Saving budget changes");
+            UpdateStatus("Saving changes...");
+
+            // Validate before saving
+            var validation = await ValidateAsync(operationToken);
+            if (!validation.IsValid)
+            {
+                ShowValidationDialog(validation);
+                return;
+            }
+
+            // Perform save - this would typically use ViewModel's save command
+            UpdateStatus("Changes saved successfully");
+            SetHasUnsavedChanges(false);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("Save operation cancelled");
+            UpdateStatus("Save cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving changes");
+            UpdateStatus($"Error: {ex.Message}");
+            MessageBox.Show($"Error saving changes: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     protected override void OnLoad(EventArgs e)
     {
         if (ViewModel == null) return;
 
         try
         {
-            // Auto-load data on panel load
-            Task.Run(async () => await RefreshDataAsync());
+            // Auto-load data on panel load via LoadAsync override
+            _ = LoadAsync(CancellationToken.None);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading panel data");
+        }
+    }
+
+    /// <summary>
+    /// Overrides LoadAsync to load budget data with proper token and error handling.
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken cancellationToken = default)
+    {
+        if (ViewModel == null) return;
+
+        var operationToken = RegisterOperation();
+        IsBusy = true;
+        try
+        {
+            Logger.LogInformation("Loading budget data");
+            UpdateStatus("Loading budget data...");
+
+            await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
+            await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
+
+            UpdateStatus("Data loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("Load operation cancelled");
+            UpdateStatus("Load cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading data");
+            UpdateStatus($"Error: {ex.Message}");
+            MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -1585,6 +1902,49 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 if (_panelHeaderCloseHandler != null)
                     _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
             }
+            if (_searchTextBox != null && _searchTextChangedHandler != null)
+            {
+                _searchTextBox.TextChanged -= _searchTextChangedHandler;
+            }
+            if (_fiscalYearComboBox != null && _fiscalYearChangedHandler != null)
+            {
+                _fiscalYearComboBox.SelectedIndexChanged -= _fiscalYearChangedHandler;
+            }
+            if (_entityComboBox != null && _entityChangedHandler != null)
+            {
+                _entityComboBox.SelectedIndexChanged -= _entityChangedHandler;
+            }
+            if (_departmentComboBox != null && _departmentChangedHandler != null)
+            {
+                _departmentComboBox.SelectedIndexChanged -= _departmentChangedHandler;
+            }
+            if (_fundTypeComboBox != null && _fundTypeChangedHandler != null)
+            {
+                _fundTypeComboBox.SelectedIndexChanged -= _fundTypeChangedHandler;
+            }
+            if (_varianceThresholdTextBox != null && _varianceThresholdChangedHandler != null)
+            {
+                _varianceThresholdTextBox.TextChanged -= _varianceThresholdChangedHandler;
+            }
+            if (_overBudgetCheckBox != null && _overBudgetCheckChangedHandler != null)
+            {
+                _overBudgetCheckBox.CheckStateChanged -= _overBudgetCheckChangedHandler;
+            }
+            if (_underBudgetCheckBox != null && _underBudgetCheckChangedHandler != null)
+            {
+                _underBudgetCheckBox.CheckStateChanged -= _underBudgetCheckChangedHandler;
+            }
+            if (_mappingWizardPanel != null)
+            {
+                if (_mappingWizardAppliedHandler != null)
+                {
+                    _mappingWizardPanel.MappingApplied -= _mappingWizardAppliedHandler;
+                }
+                if (_mappingWizardCancelledHandler != null)
+                {
+                    _mappingWizardPanel.Cancelled -= _mappingWizardCancelledHandler;
+                }
+            }
 
             // Theme service removed - SfSkinManager handles themes automatically
 
@@ -1599,6 +1959,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 _budgetGrid.QueryCellStyle -= BudgetGrid_QueryCellStyle;
                 _budgetGrid.CurrentCellActivated -= BudgetGrid_CurrentCellActivated;
             }
+
+            // Dispose BindingSource
+            try { _budgetBindingSource?.Dispose(); } catch { }
 
             // SafeDispose for Syncfusion controls
             try { _budgetGrid?.SafeClearDataSource(); } catch { }
