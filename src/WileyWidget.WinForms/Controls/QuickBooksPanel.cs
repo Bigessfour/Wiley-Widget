@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -77,6 +79,133 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private Label? _totalRecordsLabel;
     private Label? _accountsImportedLabel;
     private Label? _avgDurationLabel;
+
+    #endregion
+
+    #region ICompletablePanel Overrides
+
+    /// <summary>
+    /// Loads the panel asynchronously (ICompletablePanel implementation).
+    /// Initializes ViewModel and loads sync history.
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken ct)
+    {
+        if (IsLoaded) return;
+
+        try
+        {
+            IsBusy = true;
+
+            if (ViewModel != null && !DesignMode)
+            {
+                await ViewModel.InitializeAsync(ct);
+                UpdateLoadingState();
+                UpdateNoDataOverlay();
+            }
+
+            Logger.LogDebug("QuickBooksPanel loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInformation("QuickBooksPanel load cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load QuickBooksPanel");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the panel asynchronously (ICompletablePanel implementation).
+    /// QuickBooks panel is read-only, so this is a no-op.
+    /// </summary>
+    public override async Task SaveAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+
+            // QuickBooks panel is view-only; no persistence required.
+            // If future changes allow edits, implement save logic here.
+
+            await Task.CompletedTask;
+            Logger.LogDebug("QuickBooksPanel save completed");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInformation("QuickBooksPanel save cancelled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save QuickBooksPanel");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Validates the panel asynchronously (ICompletablePanel implementation).
+    /// Ensures connection is active and syncs are not failing.
+    /// </summary>
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+
+            var errors = new List<ValidationItem>();
+
+            if (ViewModel == null)
+            {
+                errors.Add(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error));
+            }
+            else if (!ViewModel.IsConnected)
+            {
+                errors.Add(new ValidationItem("Connection", "QuickBooks connection is not active", ValidationSeverity.Warning));
+            }
+            else if (ViewModel.IsSyncing)
+            {
+                errors.Add(new ValidationItem("Sync", "Sync operation in progress; please wait", ValidationSeverity.Info));
+            }
+
+            await Task.CompletedTask;
+
+            return errors.Count == 0
+                ? ValidationResult.Success
+                : new ValidationResult(false, errors);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInformation("QuickBooksPanel validation cancelled");
+            return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Validation error in QuickBooksPanel");
+            return ValidationResult.Failed(new ValidationItem("Validation", ex.Message, ValidationSeverity.Error));
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Focuses the first validation error control (ICompletablePanel implementation).
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        if (_connectionPanel != null)
+        {
+            _connectionPanel.Focus();
+        }
+    }
 
     #endregion
 
