@@ -17,6 +17,7 @@ using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using Syncfusion.WinForms.DataGrid;
 using Action = System.Action;
@@ -73,22 +74,12 @@ public static class DockingHostFactory
                 // ShowCaptionIcon = true,
                 // ShowCaptionButtons = true,
                 DockToFill = true,      // Set to true to allow filling the remaining space
-                ThemeName = "Office2019Colorful"  // Explicit theme for consistency
+                ThemeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme  // Explicit theme for consistency
             };
 
             logger?.LogDebug("DockingManager created with Free layout and Office2019 theme");
 
-            // 1. Create central container (required for Fill docking in Syncfusion)
-            var centralContainer = new GradientPanelExt
-            {
-                Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.WhiteSmoke, Color.White),
-                Name = "CentralContainer"
-            };
-            dockingManager.DockControl(centralContainer, mainForm, DockingStyle.Fill, 0);  // Dock container to form
-
-            // 2. Dock left sidebar with navigation (dock first, generous width)
+            // 1. Dock left sidebar with navigation (dock left first, generous width)
             var leftDockPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Left,
@@ -153,6 +144,10 @@ public static class DockingHostFactory
             navButtonsPanel.Controls.Add(createNavButton("📄 Reports", () => mainForm.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right)));
             navButtonsPanel.Controls.Add(createNavButton("⚙️ Settings", () => mainForm.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right)));
 
+            // CRITICAL: Add controls to mainForm BEFORE docking them
+            mainForm.Controls.Add(leftDockPanel);
+
+            // Dock left panel AFTER adding to mainForm
             dockingManager.DockControl(leftDockPanel, mainForm, DockingStyle.Left, 300);
 
             // 3. Create right dock panel using RightDockPanelFactory (manages Activity Log + JARVIS Chat tabs)
@@ -160,19 +155,15 @@ public static class DockingHostFactory
                 mainForm,
                 serviceProvider,
                 logger);
+
+            // CRITICAL: Add rightPanel to mainForm BEFORE docking it
+            mainForm.Controls.Add(rightDockPanel);
             dockingManager.DockControl(rightDockPanel, mainForm, DockingStyle.Right, 350);
 
-            // 4. Dock dashboard INSIDE the central container (not to mainForm)
-            var vm = (WileyWidget.WinForms.Forms.MainViewModel)serviceProvider.GetService(typeof(WileyWidget.WinForms.Forms.MainViewModel))!;
-            var dispatcherHelper = (WileyWidget.Services.Threading.IDispatcherHelper?)serviceProvider.GetService(typeof(WileyWidget.Services.Threading.IDispatcherHelper));
-            var dashboardLogger = (Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.DashboardPanel>?)serviceProvider.GetService(typeof(Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.DashboardPanel>));
-            var dashboardPanel = new WileyWidget.WinForms.Controls.DashboardPanel(vm, dispatcherHelper, dashboardLogger)
-            {
-                Dock = DockStyle.Fill,
-                MinimumSize = new Size(600, 400),
-                Name = "DashboardPanel"
-            };
-            dockingManager.DockControl(dashboardPanel, centralContainer, DockingStyle.Fill, 0);  // ← Key: Dock to container, not mainForm
+            // 4. Central space fills automatically with DockToFill=true
+            // The DockingManager with DockToFill=true will auto-fill remaining space
+            // No need to manually create a dashboard panel here - it will be shown on demand via ShowPanel
+            logger?.LogDebug("Central space configured to auto-fill between left (300px) and right (350px) docking panels");
 
             // ActivityLogPanel is now created and managed by RightDockPanelFactory
             // No need for external timer - panel manages its own refresh cycle (5 seconds)
@@ -183,13 +174,7 @@ public static class DockingHostFactory
             var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
             var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath);
 
-            // Refresh and activate
-            mainForm.SuspendLayout();
-            mainForm.PerformLayout();
-            mainForm.ResumeLayout(true);
-            dockingManager.ActivateControl(dashboardPanel);
-
-            logger?.LogInformation("Central container used for Fill docking - Dashboard bounds: {Bounds}", dashboardPanel.Bounds);
+            logger?.LogInformation("Docking layout complete - Dashboard fills remaining central space (Left=300px, Right=350px)");
 
             sw.Stop();
             logger?.LogInformation("CreateDockingHost: Completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);

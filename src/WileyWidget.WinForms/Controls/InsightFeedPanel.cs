@@ -400,13 +400,14 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                // Apply theme via SfSkinManager (authoritative theme source)
+                // Apply current application theme via SfSkinManager (authoritative theme source)
                 // This cascades to all child controls automatically
-                SfSkinManager.SetVisualStyle(this, AppThemeColors.DefaultTheme);
+                var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(this, currentTheme);
 
                 // Apply theme to key child controls explicitly for cascade assurance
-                SfSkinManager.SetVisualStyle(_topPanel, AppThemeColors.DefaultTheme);
-                SfSkinManager.SetVisualStyle(_insightsGrid, AppThemeColors.DefaultTheme);
+                SfSkinManager.SetVisualStyle(_topPanel, currentTheme);
+                SfSkinManager.SetVisualStyle(_insightsGrid, currentTheme);
 
                 // Note: Manual BackColor/ForeColor assignments removed
                 // All colors now come from SfSkinManager theme cascade
@@ -414,11 +415,11 @@ namespace WileyWidget.WinForms.Controls
 
                 _logger?.LogDebug(
                     "Theme applied successfully to InsightFeedPanel using {Theme}",
-                    AppThemeColors.DefaultTheme);
+                    currentTheme);
 
                 if (_loadingOverlay != null)
                 {
-                    SfSkinManager.SetVisualStyle(_loadingOverlay, AppThemeColors.DefaultTheme);
+                    SfSkinManager.SetVisualStyle(_loadingOverlay, currentTheme);
                 }
             }
             catch (Exception ex)

@@ -101,7 +101,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
             SetupUI();
             BindViewModel();
             ApplyCurrentTheme();
@@ -123,6 +123,7 @@ namespace WileyWidget.WinForms.Controls
 
         private void SetupUI()
         {
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
 
             // Panel header
@@ -143,7 +144,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(_topPanel, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(_topPanel, currentTheme);
 
             var toolbar = new TableLayoutPanel
             {
@@ -226,7 +227,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
 
             // Create summary tiles
@@ -323,6 +324,7 @@ namespace WileyWidget.WinForms.Controls
 
         private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
         {
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             var tile = new GradientPanelExt
             {
                 Width = 150,
@@ -333,7 +335,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = $"{title} summary card",
                 AccessibleDescription = $"Displays {title.ToLower(CultureInfo.CurrentCulture)} metric"
             };
-            SfSkinManager.SetVisualStyle(tile, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(tile, currentTheme);
 
             var lblTitle = new Label
             {

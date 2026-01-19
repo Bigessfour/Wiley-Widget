@@ -22,6 +22,7 @@ using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -187,7 +188,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         ResumeLayout(false);
         this.PerformLayout();
         this.Refresh();
-        
+
         Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
@@ -199,7 +200,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
+        var theme1 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(topPanel, theme1);
 
         // Summary panel with KPIs
         InitializeSummaryPanel();
@@ -226,7 +228,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        var theme2 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_summaryPanel, theme2);
 
         var summaryTable = new TableLayoutPanel
         {
@@ -275,7 +278,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
+        var theme3 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_buttonPanel, theme3);
 
         var buttonFlow = new FlowLayoutPanel
         {
@@ -347,7 +351,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_gridPanel, "Office2019Colorful");
+        var theme4 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_gridPanel, theme4);
 
         _billsGrid = new SfDataGrid
         {
@@ -456,7 +461,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_buttonPanel, "Office2019Colorful");
+        var theme5 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_buttonPanel, theme5);
 
         var buttonTable = new TableLayoutPanel
         {
@@ -543,7 +549,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(bottomPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(bottomPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Filter panel
         var filterPanel = new GradientPanelExt
@@ -554,7 +560,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(filterPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(filterPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         var filterTable = new TableLayoutPanel
         {
@@ -628,7 +634,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(customersPanel, "Office2019Colorful");
+        var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(customersPanel, theme);
 
         _customersGrid = new SfDataGrid
         {

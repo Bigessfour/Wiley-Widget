@@ -25,6 +25,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -104,7 +105,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
         InitializeComponent();
         SubscribeToThemeChanges();
     }

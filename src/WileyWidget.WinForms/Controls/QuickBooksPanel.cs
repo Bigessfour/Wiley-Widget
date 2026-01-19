@@ -20,8 +20,11 @@ using Syncfusion.Drawing;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls;
@@ -241,6 +244,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void CreateSummaryPanel()
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
@@ -250,7 +254,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             CornerRadius = 4,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
 
         var summaryTable = new TableLayoutPanel
         {
@@ -285,6 +289,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private Label CreateMetricCard(TableLayoutPanel parent, int column, int row, string title, string value)
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var cardPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
@@ -294,7 +299,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Padding = new Padding(10, 8, 10, 8)
         };
-        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(cardPanel, currentTheme);
 
         var titleLabel = new Label
         {
@@ -336,7 +341,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Padding = new Padding(10)
         };
-        SfSkinManager.SetVisualStyle(topPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(topPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Vertical split: left = connection, right = operations (safe deferred sizing)
         var splitTop = new SplitContainer
@@ -377,7 +382,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             CornerRadius = 2,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_connectionPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_connectionPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Connection header
         var connectionHeader = new Label
@@ -400,7 +405,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             CornerRadius = 0,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(infoPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(infoPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         _connectionStatusLabel = new Label
         {
@@ -453,7 +458,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleName = "Connect to QuickBooks",
             AccessibleDescription = "Establishes connection to QuickBooks Online"
         };
-        _connectButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ConnectCommand);
+        _connectButton.Click += async (s, e) => await InitiateQuickBooksOAuthFlowAsync();
         buttonsPanel.Controls.Add(_connectButton);
 
         _disconnectButton = new SfButton
@@ -495,7 +500,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             CornerRadius = 2,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_operationsPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_operationsPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Operations header
         var operationsHeader = new Label
@@ -574,7 +579,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Padding = new Padding(8)
         };
-        SfSkinManager.SetVisualStyle(_historyPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_historyPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // History header with filter
         var headerPanel = new GradientPanelExt
@@ -586,7 +591,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             CornerRadius = 0,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(headerPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(headerPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         var headerLayout = new TableLayoutPanel
         {
@@ -1076,6 +1081,143 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             Logger.LogError(ex, "Command execution failed");
             MessageBox.Show($"Operation failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Initiates the QuickBooks OAuth 2.0 authorization flow.
+    /// Starts the callback handler, generates the authorization URL, and opens the browser.
+    /// </summary>
+    private async Task InitiateQuickBooksOAuthFlowAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            Logger.LogInformation("Starting QuickBooks OAuth flow");
+
+            // Resolve services from the parent form's service provider
+            var serviceProvider = ((Form?)FindForm())?.GetType().GetProperty("ServiceProvider", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(FindForm()) as IServiceProvider
+                ?? throw new InvalidOperationException("Unable to resolve service provider from parent form");
+
+            // Start the OAuth callback handler (listens on port 5000)
+            var callbackHandler = serviceProvider.GetService(typeof(QuickBooksOAuthCallbackHandler)) as QuickBooksOAuthCallbackHandler
+                ?? throw new InvalidOperationException("QuickBooksOAuthCallbackHandler is not registered in DI");
+
+            await callbackHandler.StartListeningAsync(cancellationToken);
+            Logger.LogInformation("OAuth callback handler started on http://localhost:5000/callback");
+
+            // Get the auth service to generate the authorization URL
+            var authService = serviceProvider.GetService(typeof(IQuickBooksAuthService)) as IQuickBooksAuthService
+                ?? throw new InvalidOperationException("IQuickBooksAuthService is not registered in DI");
+
+            var authUrl = authService.GenerateAuthorizationUrl();
+            Logger.LogInformation("Generated OAuth authorization URL");
+
+            // Open the browser to the authorization URL
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = authUrl,
+                UseShellExecute = true
+            });
+
+            Logger.LogInformation("Opened browser to QuickBooks authorization URL");
+
+            // Give user instructions
+            MessageBox.Show(
+                "A browser window will open for QuickBooks authorization.\n\n" +
+                "1. Log in with your QuickBooks Online account\n" +
+                "2. Review and authorize the app\n" +
+                "3. The browser will close automatically after authorization\n\n" +
+                "If the browser doesn't open, please visit:\n" + authUrl,
+                "QuickBooks Authorization",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            // Wait a bit for OAuth callback to complete (5 seconds)
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+
+            // Check if OAuth succeeded by verifying token is available
+            var token = await authService.GetAccessTokenAsync(cancellationToken);
+            if (token != null)
+            {
+                Logger.LogInformation("OAuth authentication successful");
+                MessageBox.Show(
+                    "Authorization successful! Now fetching company information and accounts...",
+                    "Success",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                // Fetch company info
+                var companyService = serviceProvider.GetService(typeof(IQuickBooksCompanyInfoService)) as IQuickBooksCompanyInfoService;
+                if (companyService != null)
+                {
+                    var companyInfo = await companyService.GetCompanyInfoAsync(cancellationToken);
+                    if (companyInfo != null)
+                    {
+                        Logger.LogInformation("Fetched company info: {CompanyName}", companyInfo.CompanyName);
+                    }
+                }
+
+                // Fetch Chart of Accounts
+                var accountService = serviceProvider.GetService(typeof(IQuickBooksChartOfAccountsService)) as IQuickBooksChartOfAccountsService;
+                if (accountService != null)
+                {
+                    var accounts = await accountService.FetchAccountsAsync(cancellationToken);
+                    Logger.LogInformation("Fetched {AccountCount} accounts", accounts.Count);
+
+                    // If no accounts exist, seed the sandbox
+                    if (accounts.Count == 0)
+                    {
+                        Logger.LogInformation("No accounts found; seeding sandbox with municipal finance accounts...");
+                        var seederService = serviceProvider.GetService(typeof(IQuickBooksSandboxSeederService)) as IQuickBooksSandboxSeederService;
+                        if (seederService != null)
+                        {
+                            var seedResult = await seederService.SeedSandboxAsync(cancellationToken);
+                            if (seedResult.IsSuccess)
+                            {
+                                MessageBox.Show(
+                                    $"Sandbox seeded successfully!\n\nCreated {seedResult.AccountsCreated} accounts:\n" +
+                                    $"{string.Join("\n", seedResult.CreatedAccounts.Take(10))}" +
+                                    (seedResult.CreatedAccounts.Count > 10 ? "\n..." : ""),
+                                    "Seeding Complete",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information);
+                            }
+                            else
+                            {
+                                MessageBox.Show(
+                                    $"Sandbox seeding completed with issues:\n{seedResult.Message}\n\n" +
+                                    $"Created {seedResult.AccountsCreated} of {seedResult.AccountsAttempted} accounts",
+                                    "Seeding Partial",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+                            }
+                        }
+                    }
+                    // TODO: Update UI to display the accounts
+                }
+
+                // Stop the callback handler once OAuth is complete
+                await callbackHandler.StopListeningAsync(cancellationToken);
+            }
+            else
+            {
+                Logger.LogWarning("OAuth authorization failed: no token received");
+                MessageBox.Show(
+                    "Authorization was not completed. Please try again.",
+                    "Authorization Failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initiate OAuth flow");
+            MessageBox.Show(
+                $"Failed to start authorization: {ex.Message}\n\n" +
+                "Please ensure port 5000 is available and try again.",
+                "Authorization Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
     }
 

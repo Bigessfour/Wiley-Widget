@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
+using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -21,8 +22,8 @@ namespace WileyWidget.WinForms.Controls
         private SfDataGrid? _activityGrid;
         private PanelHeader? _panelHeader;
         private System.Windows.Forms.Timer? _autoRefreshTimer;
-        private Button? _btnClearLog;
-        private CheckBox? _chkAutoRefresh;
+        private SfButton? _btnClearLog;
+        private CheckBoxAdv? _chkAutoRefresh;
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -44,14 +45,13 @@ namespace WileyWidget.WinForms.Controls
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
-            BackColor = System.Drawing.Color.White;
 
-            // Main vertical split for header + grid
+            // Main horizontal split for header (top) + grid (bottom)
             var mainSplit = new SplitContainer
             {
                 Name = "MainSplit",
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
+                Orientation = Orientation.Horizontal,
                 SplitterDistance = 60
             };
 
@@ -64,14 +64,21 @@ namespace WileyWidget.WinForms.Controls
                 Padding = new Padding(8)
             };
 
-            _panelHeader = new PanelHeader
+            // Control buttons - add right-docked controls first so the title fills remaining space
+            _btnClearLog = new SfButton
             {
-                Text = "Recent Activity (Navigation Hub Activity Log)"
+                Text = "Clear",
+                AutoSize = true,
+                Dock = DockStyle.Right,
+                Padding = new Padding(8)
             };
-            headerPanel.Controls.Add(_panelHeader);
+            _btnClearLog.Click += OnClearLogClicked;
+            _btnClearLog.AccessibleName = "Clear Activity Log";
+            _btnClearLog.AccessibleDescription = "Clears all activity log entries";
+            _btnClearLog.TabIndex = 2;
+            headerPanel.Controls.Add(_btnClearLog);
 
-            // Control buttons
-            _chkAutoRefresh = new CheckBox
+            _chkAutoRefresh = new CheckBoxAdv
             {
                 Text = "Auto-refresh",
                 AutoSize = true,
@@ -79,24 +86,21 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Right,
                 Padding = new Padding(8)
             };
-            _chkAutoRefresh.CheckedChanged += (s, e) =>
-            {
-                if (_autoRefreshTimer != null)
-                {
-                    _autoRefreshTimer.Enabled = _chkAutoRefresh.Checked;
-                }
-            };
+            _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
+            _chkAutoRefresh.AccessibleName = "Auto Refresh";
+            _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
+            _chkAutoRefresh.TabIndex = 3;
             headerPanel.Controls.Add(_chkAutoRefresh);
 
-            _btnClearLog = new Button
+            _panelHeader = new PanelHeader
             {
-                Text = "Clear",
-                AutoSize = true,
-                Dock = DockStyle.Right,
-                Padding = new Padding(8)
+                Title = "Recent Activity (Navigation Hub Activity Log)",
+                Dock = DockStyle.Fill
             };
-            _btnClearLog.Click += (s, e) => ClearActivityLog();
-            headerPanel.Controls.Add(_btnClearLog);
+            _panelHeader.AccessibleName = "Activity Log Header";
+            _panelHeader.AccessibleDescription = "Header for the activity log panel";
+            _panelHeader.TabIndex = 0;
+            headerPanel.Controls.Add(_panelHeader);
 
             mainSplit.Panel1.Controls.Add(headerPanel);
 
@@ -110,9 +114,12 @@ namespace WileyWidget.WinForms.Controls
                 AllowFiltering = true,
                 ShowBusyIndicator = false
             };
+            _activityGrid.AccessibleName = "Activity Log Grid";
+            _activityGrid.AccessibleDescription = "Grid listing recent activity entries";
+            _activityGrid.TabIndex = 1;
 
-            // Configure columns
-            _activityGrid.Columns.Add(new GridTextColumn
+            // Configure columns - use DateTime column for timestamps
+            _activityGrid.Columns.Add(new GridDateTimeColumn
             {
                 MappingName = "Timestamp",
                 HeaderText = "Time",
@@ -173,20 +180,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Interval = 5000 // Refresh every 5 seconds
             };
-            _autoRefreshTimer.Tick += async (s, e) =>
-            {
-                try
-                {
-                    if (ViewModel != null && _chkAutoRefresh?.Checked == true)
-                    {
-                        await ViewModel.RefreshActivityEntriesAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger?.LogWarning(ex, "Auto-refresh failed");
-                }
-            };
+            _autoRefreshTimer.Tick += OnAutoRefreshTick;
             _autoRefreshTimer.Start();
         }
 
@@ -214,10 +208,15 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
-                if (_activityGrid != null)
+                var theme = SfSkinManager.ApplicationVisualTheme;
+                if (!string.IsNullOrEmpty(theme))
                 {
-                    SfSkinManager.SetVisualStyle(_activityGrid, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+                    SfSkinManager.SetVisualStyle(this, theme);
+                    if (_activityGrid != null)
+                    {
+                        // Prefer theme cascade; set ThemeName on grid as a best-effort to ensure consistent visuals
+                        _activityGrid.ThemeName = theme;
+                    }
                 }
             }
             catch (Exception ex)
@@ -226,16 +225,106 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        private void OnClearLogClicked(object? sender, EventArgs e) => ClearActivityLog();
+
+        private void OnAutoRefreshCheckedChanged(object? sender, EventArgs e)
+        {
+            if (_autoRefreshTimer != null && _chkAutoRefresh != null)
+            {
+                _autoRefreshTimer.Enabled = _chkAutoRefresh.Checked;
+            }
+        }
+
+        private async void OnAutoRefreshTick(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (ViewModel != null && _chkAutoRefresh?.Checked == true)
+                {
+                    await ViewModel.RefreshActivityEntriesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "Auto-refresh failed");
+            }
+        }
+
+        /// <summary>
+        /// Validate the activity log. Since it's append-only, validation passes if ViewModel is ready.
+        /// </summary>
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+        {
+            // Activity log is append-only and read-only from the UI.
+            // Valid if the ViewModel is loaded.
+            if (ViewModel == null)
+            {
+                return ValidationResult.Failed(new ValidationItem("ViewModel", "Activity log ViewModel not loaded", ValidationSeverity.Error));
+            }
+
+            return await Task.FromResult(ValidationResult.Success);
+        }
+
+        /// <summary>
+        /// Save is a no-op for the read-only Activity Log panel.
+        /// </summary>
+        public override Task SaveAsync(CancellationToken ct) => Task.CompletedTask;
+
+        /// <summary>
+        /// Load activity entries from the ViewModel asynchronously.
+        /// </summary>
+        public override async Task LoadAsync(CancellationToken ct)
+        {
+            if (ViewModel == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var ct_op = RegisterOperation();
+                IsBusy = true;
+                await ViewModel.RefreshActivityEntriesAsync();
+                SetHasUnsavedChanges(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger?.LogDebug("ActivityLogPanel load cancelled");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _autoRefreshTimer?.Stop();
-                _autoRefreshTimer?.Dispose();
-                _activityGrid?.Dispose();
-                _panelHeader?.Dispose();
-                _btnClearLog?.Dispose();
-                _chkAutoRefresh?.Dispose();
+                if (_autoRefreshTimer != null)
+                {
+                    try { _autoRefreshTimer.Tick -= OnAutoRefreshTick; } catch { }
+                    try { _autoRefreshTimer.Stop(); } catch { }
+                    try { _autoRefreshTimer.Dispose(); } catch { }
+                    _autoRefreshTimer = null;
+                }
+
+                if (_chkAutoRefresh != null)
+                {
+                    try { _chkAutoRefresh.CheckedChanged -= OnAutoRefreshCheckedChanged; } catch { }
+                    try { _chkAutoRefresh.Dispose(); } catch { }
+                    _chkAutoRefresh = null;
+                }
+
+                if (_btnClearLog != null)
+                {
+                    try { _btnClearLog.Click -= OnClearLogClicked; } catch { }
+                    try { _btnClearLog.Dispose(); } catch { }
+                    _btnClearLog = null;
+                }
+
+                try { _activityGrid?.Dispose(); } catch { }
+                try { _panelHeader?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
         }

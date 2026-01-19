@@ -78,7 +78,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme); } catch { }
             SetupUI();
             BindViewModel();
             ApplyCurrentTheme();
@@ -216,7 +216,7 @@ namespace WileyWidget.WinForms.Controls
                 CornerRadius = 2,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(_filterPanel, WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SfSkinManager.SetVisualStyle(_filterPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             var flow = new FlowLayoutPanel
             {

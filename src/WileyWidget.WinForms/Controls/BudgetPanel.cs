@@ -1097,8 +1097,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new Syncfusion.WinForms.Controls.SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Syncfusion.WinForms.Controls.SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);
@@ -1207,8 +1207,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             tableLayout.Controls.Add(cmbFundType, 1, 5);
 
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            var btnOK = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
-            var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
+            var btnOK = new Syncfusion.WinForms.Controls.SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
+            var btnCancel = new Syncfusion.WinForms.Controls.SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
             tableLayout.Controls.Add(btnPanel, 1, 8);

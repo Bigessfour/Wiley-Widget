@@ -44,9 +44,9 @@ namespace WileyWidget.WinForms.Controls
         private SfComboBox cmbType = null!;
         private SfNumericTextBox numBalance = null!;
         private SfNumericTextBox numBudget = null!;
-        private CheckBox chkActive = null!;
-        private Button btnSave = null!;
-        private Button btnCancel = null!;
+        private CheckBoxAdv chkActive = null!;
+        private Syncfusion.WinForms.Controls.SfButton btnSave = null!;
+        private Syncfusion.WinForms.Controls.SfButton btnCancel = null!;
 
         private readonly AccountsViewModel _viewModel;
         private readonly MunicipalAccountEditModel _editModel;
@@ -54,6 +54,7 @@ namespace WileyWidget.WinForms.Controls
         private ErrorProvider? _errorProvider;
         private ErrorProviderBinding? _errorBinding;
         private ToolTip? _toolTip;
+        private BindingSource _bindingSource = null!;
 
         private bool _isNew;
 
@@ -69,10 +70,13 @@ namespace WileyWidget.WinForms.Controls
             _isNew = existingAccount == null;
             _editModel = new MunicipalAccountEditModel(existingAccount);
 
+            // BindingSource wraps the edit model for robust WinForms data-binding scenarios
+            _bindingSource = new BindingSource { DataSource = _editModel };
+
             InitializeComponent();
 
             // Apply theme via SfSkinManager (remove any manual colors)
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             DataContext = _editModel;
             BindControls();
@@ -85,20 +89,20 @@ namespace WileyWidget.WinForms.Controls
         private void BindControls()
         {
             // Bind controls to _editModel properties (MVVM style)
-            txtAccountNumber.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.AccountNumber), true, DataSourceUpdateMode.OnPropertyChanged);
-            txtName.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Name), true, DataSourceUpdateMode.OnPropertyChanged);
-            txtDescription.DataBindings.Add(nameof(TextBox.Text), _editModel, nameof(_editModel.Description), true, DataSourceUpdateMode.OnPropertyChanged);
+            txtAccountNumber.DataBindings.Add(nameof(TextBox.Text), _bindingSource, nameof(MunicipalAccountEditModel.AccountNumber), true, DataSourceUpdateMode.OnPropertyChanged);
+            txtName.DataBindings.Add(nameof(TextBox.Text), _bindingSource, nameof(MunicipalAccountEditModel.Name), true, DataSourceUpdateMode.OnPropertyChanged);
+            txtDescription.DataBindings.Add(nameof(TextBox.Text), _bindingSource, nameof(MunicipalAccountEditModel.Description), true, DataSourceUpdateMode.OnPropertyChanged);
 
             // SfNumericTextBox uses Value property (double?)
-            numBalance.DataBindings.Add("Value", _editModel, nameof(_editModel.Balance), true, DataSourceUpdateMode.OnPropertyChanged);
-            numBudget.DataBindings.Add("Value", _editModel, nameof(_editModel.BudgetAmount), true, DataSourceUpdateMode.OnPropertyChanged);
+            numBalance.DataBindings.Add("Value", _bindingSource, nameof(MunicipalAccountEditModel.Balance), true, DataSourceUpdateMode.OnPropertyChanged);
+            numBudget.DataBindings.Add("Value", _bindingSource, nameof(MunicipalAccountEditModel.BudgetAmount), true, DataSourceUpdateMode.OnPropertyChanged);
 
-            chkActive.DataBindings.Add(nameof(CheckBox.Checked), _editModel, nameof(_editModel.IsActive), true, DataSourceUpdateMode.OnPropertyChanged);
+            chkActive.DataBindings.Add(nameof(CheckBox.Checked), _bindingSource, nameof(MunicipalAccountEditModel.IsActive), true, DataSourceUpdateMode.OnPropertyChanged);
 
             // SfComboBox bindings - SelectedValue binds to model property
-            cmbDepartment.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.DepartmentId), true, DataSourceUpdateMode.OnPropertyChanged);
-            cmbFund.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.Fund), true, DataSourceUpdateMode.OnPropertyChanged);
-            cmbType.DataBindings.Add("SelectedValue", _editModel, nameof(_editModel.Type), true, DataSourceUpdateMode.OnPropertyChanged);
+            cmbDepartment.DataBindings.Add("SelectedValue", _bindingSource, nameof(MunicipalAccountEditModel.DepartmentId), true, DataSourceUpdateMode.OnPropertyChanged);
+            cmbFund.DataBindings.Add("SelectedValue", _bindingSource, nameof(MunicipalAccountEditModel.Fund), true, DataSourceUpdateMode.OnPropertyChanged);
+            cmbType.DataBindings.Add("SelectedValue", _bindingSource, nameof(MunicipalAccountEditModel.Type), true, DataSourceUpdateMode.OnPropertyChanged);
         }
 
         private async void AccountEditPanel_Load(object? sender, EventArgs e)
@@ -115,8 +119,12 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "AccountEditPanel_Load: unexpected error");
-                MessageBox.Show($"Error loading data: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                try
+                {
+                    MessageBox.Show("An error occurred while loading account data. See logs for details.", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch { }
             }
         }
 
@@ -162,6 +170,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "txtAccountNumber",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 MaxLength = 20,
                 AccessibleName = "Account Number",
@@ -187,6 +196,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "txtName",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 MaxLength = 100,
                 AccessibleName = "Account Name",
@@ -211,6 +221,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "txtDescription",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 Height = 60,
                 MaxLength = 500,
@@ -238,12 +249,14 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "cmbDepartment",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AccessibleName = "Department",
                 AccessibleDescription = "Select the department this account belongs to",
                 TabIndex = 4
             };
+            cmbDepartment.ThemeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             Controls.Add(cmbDepartment);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
             y += rowHeight;
@@ -262,12 +275,14 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "cmbFund",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AccessibleName = "Fund Type",
                 AccessibleDescription = "Select the municipal fund type for this account",
                 TabIndex = 5
             };
+            cmbFund.ThemeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             Controls.Add(cmbFund);
             _toolTip.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
             y += rowHeight;
@@ -286,12 +301,14 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "cmbType",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AccessibleName = "Account Type",
                 AccessibleDescription = "Select the account type",
                 TabIndex = 6
             };
+            cmbType.ThemeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             Controls.Add(cmbType);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
             y += rowHeight;
@@ -310,6 +327,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "numBalance",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 AllowNull = false,
                 MinValue = (double)decimal.MinValue,
@@ -318,6 +336,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Enter the current account balance",
                 TabIndex = 7
             };
+            numBalance.ThemeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             numBalance.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
             Controls.Add(numBalance);
             _toolTip.SetToolTip(numBalance, "Current account balance");
@@ -337,6 +356,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Name = "numBudget",
                 Location = new Point(padding + labelWidth + 10, y),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Width = controlWidth,
                 AllowNull = false,
                 MinValue = 0,
@@ -345,13 +365,14 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Enter the budgeted amount for this account",
                 TabIndex = 8
             };
+            numBudget.ThemeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             numBudget.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
             Controls.Add(numBudget);
             _toolTip.SetToolTip(numBudget, "Budgeted amount for this account");
             y += rowHeight;
 
             // Active checkbox
-            chkActive = new CheckBox
+            chkActive = new CheckBoxAdv
             {
                 Name = "chkActive",
                 Text = "Active",
@@ -372,10 +393,11 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding, y),
                 Width = labelWidth + controlWidth + 10,
                 Height = 40,
-                Dock = DockStyle.None
+                Dock = DockStyle.None,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
 
-            btnSave = new Button
+            btnSave = new SfButton
             {
                 Name = "btnSave",
                 Text = _isNew ? "&Create" : "&Save",
@@ -386,10 +408,11 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Save the account changes",
                 TabIndex = 10
             };
+            btnSave.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnSave.Click += BtnSave_Click;
             buttonPanel.Controls.Add(btnSave);
 
-            btnCancel = new Button
+            btnCancel = new SfButton
             {
                 Name = "btnCancel",
                 Text = "&Cancel",
@@ -400,6 +423,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11
             };
+            btnCancel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnCancel.Click += BtnCancel_Click;
             buttonPanel.Controls.Add(btnCancel);
 
@@ -499,7 +523,7 @@ namespace WileyWidget.WinForms.Controls
                 Serilog.Log.Error(ex, "AccountEditPanel.LoadDataAsync failed");
                 try
                 {
-                    MessageBox.Show($"Error loading data: {ex.Message}\n\nSome dropdowns may have limited options.",
+                    MessageBox.Show("Some dropdowns may have limited options due to a data load error. See logs for details.",
                         "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
                 catch { }
@@ -511,8 +535,13 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private async void BtnSave_Click(object? sender, EventArgs e)
         {
+            // Disable save button and show busy cursor to prevent re-entrancy
+            var prevCursor = Cursor.Current;
             try
             {
+                btnSave.Enabled = false;
+                Cursor.Current = Cursors.WaitCursor;
+
                 Serilog.Log.Information("AccountEditPanel: Save button clicked");
 
                 if (_errorBinding != null)
@@ -525,6 +554,15 @@ namespace WileyWidget.WinForms.Controls
                     }
                 }
 
+                // Pre-save uniqueness check (client-side quick check)
+                if (_isNew && !string.IsNullOrWhiteSpace(_editModel.AccountNumber) && _viewModel.Accounts != null
+                    && _viewModel.Accounts.Any(a => string.Equals(a.AccountNumber, _editModel.AccountNumber, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Dialogs.ValidationDialog.Show(this, "Validation Error", "Duplicate Account Number",
+                        new[] { $"An account with number '{_editModel.AccountNumber}' already exists." }, null);
+                    return;
+                }
+
                 // Convert edit model to entity
                 var account = _editModel.ToEntity();
 
@@ -534,7 +572,7 @@ namespace WileyWidget.WinForms.Controls
                     account.Id = _existingAccount.Id;
                 }
 
-                // Save via view model command
+                // Save via view model command (viewmodel performs server-side validation/uniqueness)
                 if (_isNew)
                 {
                     await _viewModel.CreateAccountCommand.ExecuteAsync(account);
@@ -544,10 +582,10 @@ namespace WileyWidget.WinForms.Controls
                     await _viewModel.UpdateAccountCommand.ExecuteAsync(account);
                 }
 
-                // Check for errors from viewmodel
+                // Check for errors reported by the viewmodel
                 if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
                 {
-                    MessageBox.Show(_viewModel.ErrorMessage, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    try { MessageBox.Show(_viewModel.ErrorMessage, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); } catch { }
                     return;
                 }
 
@@ -566,7 +604,16 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "AccountEditPanel: BtnSave_Click failed");
-                MessageBox.Show($"Error saving account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                try
+                {
+                    MessageBox.Show("An error occurred while saving the account. See logs for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch { }
+            }
+            finally
+            {
+                try { btnSave.Enabled = true; } catch { }
+                Cursor.Current = prevCursor;
             }
         }
 
@@ -596,6 +643,7 @@ namespace WileyWidget.WinForms.Controls
                 _errorBinding?.Dispose();
                 _toolTip?.Dispose();
                 _errorProvider?.Dispose();
+                _bindingSource?.Dispose();
 
                 // Unbind if needed (DataBindings usually cleaned up automatically)
             }

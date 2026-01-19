@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -87,7 +88,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
@@ -146,7 +147,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Audit log filters"
         };
-        SfSkinManager.SetVisualStyle(_filterPanel, "Office2019Colorful");
+        var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_filterPanel, theme);
 
         var filterTable = new TableLayoutPanel
         {
@@ -401,7 +403,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         ResumeLayout(false);
         this.PerformLayout();
         this.Refresh();
-        
+
         Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 

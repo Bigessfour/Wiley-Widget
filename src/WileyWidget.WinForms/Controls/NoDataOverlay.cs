@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -39,7 +40,8 @@ namespace WileyWidget.WinForms.Controls
         {
             // Configure gradient panel - let SkinManager handle background via theme cascade
             this.BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty);
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(this, theme);
 
             Dock = DockStyle.Fill;
             // BackColor inherited from theme cascade
@@ -149,7 +151,8 @@ namespace WileyWidget.WinForms.Controls
                     AccessibleName = "Action button",
                     TabStop = true
                 };
-                SfSkinManager.SetVisualStyle(_actionButton, "Office2019Colorful");
+                var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(_actionButton, theme);
                 _actionButton.Click += (s, e) =>
                 {
                     ActionButtonClicked?.Invoke(this, EventArgs.Empty);

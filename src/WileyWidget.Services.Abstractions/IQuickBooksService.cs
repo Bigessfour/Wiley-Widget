@@ -27,6 +27,15 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<List<Invoice>> GetInvoicesAsync(string? enterprise = null, CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Synchronizes accounts from QuickBooks Online (Chart of Accounts).
+        /// This is a test sync method that fetches all active accounts and logs the result.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token for the operation</param>
+        /// <returns>SyncResult containing the sync status, record count, and any error messages</returns>
+        System.Threading.Tasks.Task<SyncResult> SyncAccountsAsync(CancellationToken cancellationToken = default);
+
         System.Threading.Tasks.Task<List<JournalEntry>> GetJournalEntriesAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<List<WileyWidget.Models.QuickBooksBudget>> GetBudgetsAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncBudgetsToAppAsync(IEnumerable<WileyWidget.Models.QuickBooksBudget> budgets, CancellationToken cancellationToken = default);

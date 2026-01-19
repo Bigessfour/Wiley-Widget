@@ -28,6 +28,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Diagnostics;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -1666,6 +1667,7 @@ public partial class MainForm
     /// </summary>
     private void InitializeSyncfusionDocking()
     {
+        var globalStopwatch = System.Diagnostics.Stopwatch.StartNew();
         var timelineService = _serviceProvider != null ?
             Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(_serviceProvider) : null;
         using var phase = timelineService?.BeginPhaseScope("Syncfusion Docking Initialization");
@@ -1675,15 +1677,22 @@ public partial class MainForm
             _logger?.LogInformation("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}",
                 IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
 
+            // Phase: DockingManager Creation
+            var dockingHostStopwatch = System.Diagnostics.Stopwatch.StartNew();
             _logger?.LogInformation("Creating DockingHost via factory...");
             var (dockingManager, leftPanel, rightPanel, activityLogPanel, activityTimer, layoutManager) =
                 DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
+            dockingHostStopwatch.Stop();
+            StartupInstrumentation.RecordPhaseTime("DockingManager Creation", dockingHostStopwatch.ElapsedMilliseconds);
 
             _dockingManager = dockingManager;
             _leftDockPanel = leftPanel;
             _rightDockPanel = rightPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
+
+            var currentTheme = _themeService?.CurrentTheme ?? AppThemeColors.DefaultTheme;
+            ThemeApplicationHelper.ApplyThemeToDockingManager(_dockingManager, currentTheme, _logger);
 
             // Wire up cache invalidation for grid discovery
             // Note: ActiveControlChanged event not available on DockingManager
@@ -1799,15 +1808,19 @@ public partial class MainForm
 
                 // CRITICAL: Apply SkinManager theme AFTER DockingManager is fully initialized and panels are docked
                 // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
+                var themeStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
                     var themeName = SkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
                     SfSkinManager.SetVisualStyle(this, themeName);
-                    _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme}", themeName);
-                    Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName}");
+                    themeStopwatch.Stop();
+                    StartupInstrumentation.RecordPhaseTime("Theme Application", themeStopwatch.ElapsedMilliseconds);
+                    _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme} ({Time}ms)", themeName, themeStopwatch.ElapsedMilliseconds);
+                    Console.WriteLine($"[DIAGNOSTIC] Applied SfSkinManager theme to MainForm: {themeName} ({themeStopwatch.ElapsedMilliseconds}ms)");
                 }
                 catch (Exception themeEx)
                 {
+                    themeStopwatch.Stop();
                     _logger?.LogWarning(themeEx, "Failed to apply SkinManager theme to MainForm after DockingManager setup");
                 }
 
@@ -1847,10 +1860,51 @@ public partial class MainForm
 
             _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
                 _activityLogPanel != null);
+
+            globalStopwatch.Stop();
+            StartupInstrumentation.RecordPhaseTime("Total DockingManager Initialization", globalStopwatch.ElapsedMilliseconds);
+            StartupInstrumentation.LogInitializationState(_logger);
+            Console.WriteLine(StartupInstrumentation.GetFormattedMetrics());
+        }
+        catch (Exception ex) when (ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
+        {
+            // Theme assembly load failure - provide user-friendly message
+            _logger?.LogError(ex, "Theme assembly failed to load during DockingManager initialization");
+            _asyncLogger?.Error($"Theme Assembly Error: {ex.Message}");
+            MessageBox.Show(
+                "Theme assembly missing—please reinstall Syncfusion packages or reset to default theme.",
+                "Theme Loading Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            // Fall back to default theme
+            try
+            {
+                SkinManager.ApplicationVisualTheme = "Office2019Colorful";
+                SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+                _logger?.LogInformation("Fell back to default Office2019Colorful theme after assembly load failure");
+            }
+            catch (Exception fallbackEx)
+            {
+                _logger?.LogError(fallbackEx, "Failed to apply fallback theme");
+            }
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("Syncfusion"))
+        {
+            // Syncfusion-related error - provide diagnostic info
+            _logger?.LogError(ex, "Syncfusion exception during DockingManager initialization: {Message}", ex.Message);
+            _asyncLogger?.Error($"Syncfusion Error: {ex.Message}");
+            MessageBox.Show(
+                $"UI initialization error: {ex.Message}\n\nThe application may be unstable. Please restart.",
+                "Syncfusion Initialization Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            // Docking initialization failure is non-critical - system can still function
+            // but without docking capabilities
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to initialize Syncfusion DockingManager");
+            _logger?.LogError(ex, "Failed to initialize Syncfusion DockingManager: {Message}", ex.Message);
+            _asyncLogger?.Error($"Initialization Error: {ex.GetType().Name}: {ex.Message}");
             // Docking initialization failure is non-critical - system can still function
             // but without docking capabilities
         }
@@ -3326,7 +3380,7 @@ public partial class MainForm
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(panel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
             // Add content to panel
             content.Dock = DockStyle.Fill;

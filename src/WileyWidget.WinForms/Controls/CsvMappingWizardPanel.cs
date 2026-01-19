@@ -6,6 +6,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Syncfusion.WinForms.Controls;
+using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using Microsoft.Extensions.Logging;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -38,9 +40,9 @@ namespace WileyWidget.WinForms.Controls
         private readonly ComboBox _cbActual;
         private readonly ComboBox _cbFiscalYear;
         private readonly ComboBox _cbEntity;
-        private readonly Button _btnApply;
-        private readonly Button _btnCancel;
-        private readonly CheckBox _chkHasHeader;
+        private readonly SfButton _btnApply;
+        private readonly SfButton _btnCancel;
+        private readonly CheckBoxAdv _chkHasHeader;
 
         private string _filePath = string.Empty;
         private List<string> _headers = new();
@@ -65,7 +67,7 @@ namespace WileyWidget.WinForms.Controls
 
             var rightPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(8), AutoScroll = true };
 
-            _chkHasHeader = new CheckBox { Text = "First row contains headers", Checked = true, AutoSize = true };
+            _chkHasHeader = new CheckBoxAdv { Text = "First row contains headers", Checked = true, AutoSize = true };
             rightPanel.Controls.Add(_chkHasHeader);
 
             rightPanel.Controls.Add(new Label { Text = "Map Account Number", AutoSize = true });
@@ -87,8 +89,8 @@ namespace WileyWidget.WinForms.Controls
             _cbEntity = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 }; rightPanel.Controls.Add(_cbEntity);
 
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
-            _btnApply = new Button { Text = "Import", Width = 90 }; _btnApply.Click += BtnApply_Click; btnPanel.Controls.Add(_btnApply);
-            _btnCancel = new Button { Text = "Cancel", Width = 90 }; _btnCancel.Click += BtnCancel_Click; btnPanel.Controls.Add(_btnCancel);
+            _btnApply = new SfButton { Text = "Import", Width = 90 }; _btnApply.Click += BtnApply_Click; btnPanel.Controls.Add(_btnApply);
+            _btnCancel = new SfButton { Text = "Cancel", Width = 90 }; _btnCancel.Click += BtnCancel_Click; btnPanel.Controls.Add(_btnCancel);
 
             var rightContainer = new Panel { Dock = DockStyle.Fill }; rightContainer.Controls.Add(rightPanel); rightContainer.Controls.Add(btnPanel);
             main.Controls.Add(rightContainer, 1, 0);

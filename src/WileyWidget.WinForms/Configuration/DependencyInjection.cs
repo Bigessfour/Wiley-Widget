@@ -27,6 +27,9 @@ using System.Net.Http;
 using System.Linq;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Syncfusion.Blazor;
+using Serilog;
+using Serilog.Extensions.Logging;
+using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -42,6 +45,9 @@ namespace WileyWidget.WinForms.Configuration
         public static IServiceCollection AddWinFormsServices(this IServiceCollection services, IConfiguration configuration)
         {
             services.TryAddSingleton<IConfiguration>(configuration);
+
+            // Register QuickBooks OAuth configuration BEFORE calling ConfigureServicesInternal
+            services.Configure<QuickBooksOAuthOptions>(configuration.GetSection("Services:QuickBooks:OAuth"));
 
             ConfigureServicesInternal(services, includeDefaults: true);
             return services;
@@ -82,7 +88,16 @@ namespace WileyWidget.WinForms.Configuration
             }
 
             // Logging (Singleton - Serilog logger)
-            services.AddSingleton(Serilog.Log.Logger);
+            services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp =>
+                new Serilog.Extensions.Logging.SerilogLoggerFactory(Serilog.Log.Logger)
+                    .CreateLogger(string.Empty));
+
+            // Microsoft Logging Framework (provides ILogger<T> for dependency injection)
+            services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.ClearProviders();
+                loggingBuilder.AddSerilog(Serilog.Log.Logger);
+            });
 
             // Health Check Configuration (Singleton)
             services.AddSingleton(new HealthCheckConfiguration());
@@ -310,11 +325,32 @@ namespace WileyWidget.WinForms.Configuration
             // BUSINESS DOMAIN SERVICES
             // =====================================================================
 
+            // QuickBooks Token Store (in-memory cache + disk persistence)
+            services.TryAddSingleton<QuickBooksTokenStore>();
+
+            // QuickBooks Auth Service (OAuth token lifecycle management - public interface for DI)
+            services.TryAddSingleton<IQuickBooksAuthService, QuickBooksAuthService>();
+            services.TryAddSingleton<QuickBooksAuthService>(sp =>
+                (QuickBooksAuthService)DI.ServiceProviderServiceExtensions.GetRequiredService<IQuickBooksAuthService>(sp));
+
+            // QuickBooks OAuth Callback Handler (HTTP listener on port 5000 for OAuth redirect)
+            services.TryAddSingleton<QuickBooksOAuthCallbackHandler>();
+
+            // QuickBooks Token Store (persists and caches OAuth tokens + realm ID)
+            services.TryAddSingleton<QuickBooksTokenStore>();
+
             // QuickBooks Integration Services (with resilience & proper lifecycle)
             // HttpClient factory already registered above with resilience for QB
             services.TryAddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
             services.TryAddSingleton<IQuickBooksService, QuickBooksService>();
-            // NOTE: QuickBooksAuthService is internal and instantiated within QuickBooksService constructor
+
+            // QuickBooks Account Data Services (Company Info & Chart of Accounts)
+            services.AddSingleton<IQuickBooksCompanyInfoService, QuickBooksCompanyInfoService>();
+            services.AddSingleton<IQuickBooksChartOfAccountsService, QuickBooksChartOfAccountsService>();
+
+            // QuickBooks Sandbox Seeding Service (creates sample accounts after OAuth)
+            services.AddSingleton<IQuickBooksSandboxSeederService, QuickBooksSandboxSeederService>();
+            // NOTE: QuickBooksAuthService is now available via IQuickBooksAuthService
 
             // Business service to sync QuickBooks actuals into BudgetEntries
             services.AddScoped<WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService, WileyWidget.Business.Services.QuickBooksBudgetSyncService>();
@@ -398,15 +434,10 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             // Panel Navigation Service
-            // NOTE: This service depends on MainForm's DockingManager + central document panel.
-            // Those are created during MainForm deferred initialization (OnShown), so we avoid
-            // registering a DI factory that resolves MainForm (circular dependency).
-            // MainForm creates PanelNavigationService once docking is ready.
-            services.AddScoped<IPanelNavigationService>(sp =>
-            {
-                var mainForm = DI.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(sp);
-                return mainForm.PanelNavigator ?? throw new InvalidOperationException("PanelNavigator is not yet initialized. Access it after MainForm is shown.");
-            });
+            // NOTE: NOT registered in DI because it requires both MainForm and DockingManager,
+            // which are UI components not created until the form is shown.
+            // MainForm creates this directly in OnShown() after docking manager is initialized.
+            // See: MainForm.OnShown() - line 378
 
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
@@ -482,6 +513,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<QuickBooksViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<ChatPanelViewModel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
             services.AddTransient<JARVISChatHostForm>();
 
             // =====================================================================
@@ -499,6 +531,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.CustomersPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();

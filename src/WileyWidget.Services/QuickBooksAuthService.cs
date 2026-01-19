@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -22,22 +23,24 @@ namespace WileyWidget.Services;
 /// Implements Polly v8 patterns for timeout, circuit breaker, and retry with jitter.
 /// Intuit API Spec: https://developer.intuit.com/app/developer/qbo/docs/auth/oauth2
 /// </summary>
-internal sealed class QuickBooksAuthService : IDisposable
+public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 {
     private readonly ILogger _logger;
     private readonly ISettingsService _settings;
     private readonly ISecretVaultService? _secretVault;
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
+    private readonly QuickBooksTokenStore? _tokenStore;
+    private readonly QuickBooksOAuthOptions? _oauthOptions;
 
     // Resilience pipelines
-    private readonly ResiliencePipeline<TokenResult> _tokenRefreshPipeline;
+    private readonly ResiliencePipeline<Abstractions.TokenResult> _tokenRefreshPipeline;
     private readonly ActivitySource _activitySource = new("WileyWidget.Services.QuickBooksAuthService");
 
     // Values loaded lazily from secret vault or environment
     private string? _clientId;
     private string? _clientSecret;
-    private string _redirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
+    private string? _redirectUri;
     private string? _realmId;
     private string _environment = "sandbox";
 
@@ -59,13 +62,17 @@ internal sealed class QuickBooksAuthService : IDisposable
         ISecretVaultService keyVaultService,
         ILogger logger,
         HttpClient httpClient,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        QuickBooksTokenStore? tokenStore = null,
+        Microsoft.Extensions.Options.IOptions<QuickBooksOAuthOptions>? oauthOptions = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _secretVault = keyVaultService; // may be null in some test contexts
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _tokenStore = tokenStore;
+        _oauthOptions = oauthOptions?.Value;
 
         // Initialize Polly v8 resilience pipeline for token refresh
         _tokenRefreshPipeline = BuildTokenRefreshPipeline();
@@ -81,20 +88,20 @@ internal sealed class QuickBooksAuthService : IDisposable
     /// Builds the resilience pipeline for token refresh operations.
     /// Stack order (outer to inner): Timeout → CircuitBreaker → Retry
     /// </summary>
-    private ResiliencePipeline<TokenResult> BuildTokenRefreshPipeline()
+    private ResiliencePipeline<Abstractions.TokenResult> BuildTokenRefreshPipeline()
     {
-        return new ResiliencePipelineBuilder<TokenResult>()
+        return new ResiliencePipelineBuilder<Abstractions.TokenResult>()
             // Outermost: Timeout prevents indefinite hangs
             .AddTimeout(TimeSpan.FromSeconds(TokenRefreshTimeoutSeconds))
 
             // Middle: Circuit breaker prevents hammering Intuit on persistent failures
-            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TokenResult>
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<Abstractions.TokenResult>
             {
                 FailureRatio = CircuitBreakerFailureRatio,  // Open on 70% failures
                 BreakDuration = TimeSpan.FromMinutes(5),     // Wait 5 min before retry
                 MinimumThroughput = 2,                       // After 2 requests
                 SamplingDuration = TimeSpan.FromSeconds(30), // 30-second sample window
-                ShouldHandle = new PredicateBuilder<TokenResult>()
+                ShouldHandle = new PredicateBuilder<Abstractions.TokenResult>()
                     .HandleResult(r => r == null)
                     .Handle<HttpRequestException>()
                     .Handle<JsonException>()
@@ -273,8 +280,248 @@ internal sealed class QuickBooksAuthService : IDisposable
         if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
         if (s.QboTokenExpiry == default) return false;
 
-        // Ensure 5-minute buffer to prevent mid-flight expiry
-        return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(TokenExpiryBufferSeconds);
+        var bufferTime = DateTime.UtcNow.AddSeconds(TokenExpiryBufferSeconds);
+        return s.QboTokenExpiry > bufferTime;
+    }
+
+    /// <inheritdoc/>
+    public async Task<QuickBooksOAuthToken?> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        // Use token store if available
+        if (_tokenStore != null)
+        {
+            var token = await _tokenStore.GetTokenAsync().ConfigureAwait(false);
+            if (token?.IsValid == true && !token.IsExpiredOrSoonToExpire(_oauthOptions?.TokenExpiryBufferSeconds ?? TokenExpiryBufferSeconds))
+            {
+                _logger.LogDebug("Returning cached access token");
+                return token;
+            }
+
+            // Attempt refresh if token is expired
+            if (token?.RefreshToken != null && !token.IsRefreshTokenExpired)
+            {
+                _logger.LogInformation("Token expired, attempting refresh");
+                var result = await RefreshTokenAsync(token.RefreshToken, cancellationToken).ConfigureAwait(false);
+                if (result.IsSuccess && result.Token != null)
+                {
+                    await _tokenStore.SaveTokenAsync(result.Token).ConfigureAwait(false);
+                    return result.Token;
+                }
+            }
+        }
+
+        // Fallback to settings-based token
+        if (HasValidAccessToken())
+        {
+            return new QuickBooksOAuthToken
+            {
+                AccessToken = _settings.Current.QboAccessToken,
+                RefreshToken = _settings.Current.QboRefreshToken,
+                TokenType = "Bearer",
+                IssuedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        _logger.LogWarning("No valid access token available");
+        return null;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Abstractions.TokenResult> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return Abstractions.TokenResult.Failure("Refresh token is null or empty");
+        }
+
+        try
+        {
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            using var activity = _activitySource.StartActivity("RefreshToken");
+            activity?.SetTag("realm_id", _realmId);
+
+            var result = await PerformTokenRefreshAsync(refreshToken).ConfigureAwait(false);
+
+            if (result?.IsSuccess != true)
+            {
+                return Abstractions.TokenResult.Failure(result?.ErrorMessage ?? "Token refresh failed");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Token refresh failed: {Message}", ex.Message);
+            return Abstractions.TokenResult.Failure("Token refresh failed", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Abstractions.TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(authorizationCode))
+        {
+            return Abstractions.TokenResult.Failure("Authorization code is null or empty");
+        }
+
+        if (_oauthOptions == null || !_oauthOptions.IsValid)
+        {
+            return Abstractions.TokenResult.Failure("QuickBooks OAuth configuration is not valid");
+        }
+
+        try
+        {
+            var requestContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("grant_type", "authorization_code"),
+                new KeyValuePair<string, string>("code", authorizationCode),
+                new KeyValuePair<string, string>("client_id", _oauthOptions.ClientId!),
+                new KeyValuePair<string, string>("client_secret", _oauthOptions.ClientSecret!)
+            });
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _oauthOptions.TokenEndpoint)
+            {
+                Content = requestContent
+            };
+
+            var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var tokenResponse = JsonSerializer.Deserialize<QuickBooksTokenResponse>(json);
+
+            if (tokenResponse == null)
+            {
+                return Abstractions.TokenResult.Failure("Failed to parse token response");
+            }
+
+            var token = tokenResponse.ToOAuthToken();
+            if (!token.IsValid)
+            {
+                return Abstractions.TokenResult.Failure("Token response validation failed");
+            }
+
+            _logger.LogInformation("Successfully exchanged authorization code for tokens");
+            return Abstractions.TokenResult.Success(token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Authorization code exchange failed: {Message}", ex.Message);
+            return Abstractions.TokenResult.Failure("Authorization code exchange failed", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public string GenerateAuthorizationUrl()
+    {
+        if (_oauthOptions == null || !_oauthOptions.IsValid)
+        {
+            throw new InvalidOperationException("QuickBooks OAuth configuration is not valid");
+        }
+
+        var state = Guid.NewGuid().ToString("N");
+        var scopes = string.Join(" ", _oauthOptions.Scopes);
+
+        var queryParams = new System.Collections.Generic.List<string>
+        {
+            $"client_id={Uri.EscapeDataString(_oauthOptions.ClientId!)}",
+            $"response_type=code",
+            $"scope={Uri.EscapeDataString(scopes)}",
+            $"redirect_uri={Uri.EscapeDataString(_oauthOptions.RedirectUri!)}",
+            $"state={Uri.EscapeDataString(state)}"
+        };
+
+        var authUrl = $"{_oauthOptions.AuthorizationEndpoint}?{string.Join("&", queryParams)}";
+        _logger.LogDebug("Generated OAuth authorization URL with state: {State}", state);
+
+        return authUrl;
+    }
+
+    /// <inheritdoc/>
+    public async Task RevokeTokenAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+            if (token == null)
+            {
+                _logger.LogInformation("No token to revoke");
+                return;
+            }
+
+            if (_oauthOptions == null)
+            {
+                _logger.LogWarning("OAuth options not configured, cannot revoke token");
+                return;
+            }
+
+            // Revoke via Intuit endpoint
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("token", token.RefreshToken ?? token.AccessToken!),
+                new KeyValuePair<string, string>("client_id", _oauthOptions.ClientId!),
+                new KeyValuePair<string, string>("client_secret", _oauthOptions.ClientSecret!)
+            });
+
+            var response = await _httpClient.PostAsync(new Uri(_oauthOptions.RevokeEndpoint), content, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            // Clear local token
+            if (_tokenStore != null)
+            {
+                await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
+            }
+
+            _settings.Current.QboAccessToken = null;
+            _settings.Current.QboRefreshToken = null;
+            _settings.Current.QboTokenExpiry = default;
+            _settings.Save();
+
+            _logger.LogInformation("OAuth token revoked successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to revoke OAuth token: {Message}", ex.Message);
+            // Continue despite error - clear local state anyway
+            if (_tokenStore != null)
+            {
+                await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<QuickBooksOAuthToken?> GetCurrentTokenAsync(CancellationToken cancellationToken = default)
+    {
+        if (_tokenStore != null)
+        {
+            var token = await _tokenStore.GetTokenAsync().ConfigureAwait(false);
+            if (token != null)
+            {
+                return token;
+            }
+        }
+
+        if (HasValidAccessToken())
+        {
+            return new QuickBooksOAuthToken
+            {
+                AccessToken = _settings.Current.QboAccessToken,
+                RefreshToken = _settings.Current.QboRefreshToken,
+                TokenType = "Bearer",
+                IssuedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasValidTokenAsync(CancellationToken cancellationToken = default)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+        return token?.IsValid == true && !token.IsExpired;
     }
 
     public async Task RefreshTokenIfNeededAsync(CancellationToken cancellationToken = default)
@@ -289,85 +536,7 @@ internal sealed class QuickBooksAuthService : IDisposable
                 "No refresh token available. Please re-authorize the application.");
         }
 
-        await RefreshTokenAsync();
-    }
-
-    /// <summary>
-    /// Refreshes the access token using the refresh token.
-    /// Applies Polly resilience pipeline for timeout, circuit breaker, and retry.
-    /// </summary>
-    public async Task RefreshTokenAsync(CancellationToken cancellationToken = default)
-    {
-        await EnsureInitializedAsync().ConfigureAwait(false);
-        var s = _settings.Current;
-
-        using var activity = _activitySource.StartActivity("RefreshToken");
-        activity?.SetTag("realm_id", _realmId);
-
-        try
-        {
-            var result = await _tokenRefreshPipeline.ExecuteAsync(
-                async (ctx) => await PerformTokenRefreshAsync(s.QboRefreshToken!)).ConfigureAwait(false);
-
-            // VALIDATE before persisting
-            if (string.IsNullOrEmpty(result.AccessToken) ||
-                string.IsNullOrEmpty(result.RefreshToken) ||
-                result.ExpiresIn <= 0)
-            {
-                throw new InvalidOperationException(
-                    "Invalid token response from Intuit: missing required fields");
-            }
-
-            // Only UPDATE after validation succeeds
-            var newAccessToken = result.AccessToken;
-            var newRefreshToken = result.RefreshToken;
-            var newExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn);
-
-            // Update settings
-            s.QboAccessToken = newAccessToken;
-            s.QboRefreshToken = newRefreshToken;
-            s.QboTokenExpiry = newExpiry;
-
-            // PERSIST after all updates complete
-            _settings.Save();
-
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            _logger.LogInformation(
-                "Successfully refreshed QBO tokens (expires {Expiry}, buffer: {Buffer}s)",
-                newExpiry,
-                TokenExpiryBufferSeconds);
-        }
-        catch (BrokenCircuitException ex)
-        {
-            _logger.LogError(ex,
-                "Token refresh circuit breaker is open - Intuit service appears unavailable");
-            throw new QuickBooksAuthException(
-                "QuickBooks service is currently unavailable. Please try again later.",
-                ex);
-        }
-        catch (OperationCanceledException ex)
-        {
-            _logger.LogError(ex, "Token refresh operation timed out ({Timeout}s)",
-                TokenRefreshTimeoutSeconds);
-            throw new QuickBooksAuthException(
-                "Token refresh timed out. Intuit service may be slow or unreachable.",
-                ex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Token refresh failed - clearing invalid credentials");
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-
-            // Clear invalid tokens ONLY on failure
-            s.QboAccessToken = null;
-            s.QboRefreshToken = null;
-            s.QboTokenExpiry = default;
-            _settings.Save();
-
-            throw new QuickBooksAuthException(
-                "Failed to refresh QuickBooks tokens. Please re-authorize the application.",
-                ex);
-        }
+        await RefreshTokenAsync(s.QboRefreshToken, cancellationToken);
     }
 
     /// <summary>
@@ -439,7 +608,7 @@ internal sealed class QuickBooksAuthService : IDisposable
         var refreshExpires = root.TryGetProperty("x_refresh_token_expires_in", out var x) &&
                             x.TryGetInt32(out var xVal) ? xVal : 0;
 
-        return new TokenResult(access, refresh, expires, refreshExpires);
+        return Abstractions.TokenResult.Success(access, refresh, expires);
     }
 
     public string GetAccessToken()
@@ -456,14 +625,6 @@ internal sealed class QuickBooksAuthService : IDisposable
     public string? GetRealmId() => _realmId;
     public string GetEnvironment() => _environment;
 
-    /// <summary>
-    /// Result of token refresh operation.
-    /// </summary>
-    private sealed record TokenResult(
-        string AccessToken,
-        string RefreshToken,
-        int ExpiresIn,
-        int RefreshTokenExpiresIn);
 }
 
 /// <summary>

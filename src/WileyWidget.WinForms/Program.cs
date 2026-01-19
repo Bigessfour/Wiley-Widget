@@ -10,6 +10,9 @@ using Microsoft.Extensions.Options;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.Services;
+using WileyWidget.WinForms.Themes;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
 using Serilog;
 
 namespace WileyWidget.WinForms
@@ -220,7 +223,20 @@ namespace WileyWidget.WinForms
 
         static void InitializeTheme(IServiceProvider serviceProvider)
         {
-            // SfSkinManager initialization logic here
+            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeService>(serviceProvider);
+            var themeName = themeService?.CurrentTheme ?? ThemeColors.DefaultTheme;
+
+            try
+            {
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Theme assembly load skipped or failed");
+            }
+
+            SfSkinManager.ApplicationVisualTheme = themeName;
+            Log.Information("Syncfusion theme initialized: {Theme}", themeName);
         }
     }
 }

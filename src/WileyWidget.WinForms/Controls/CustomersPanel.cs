@@ -211,6 +211,7 @@ public partial class CustomersPanel : UserControl
     /// </summary>
     private void CreateToolbar()
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         _toolbarPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
@@ -218,7 +219,7 @@ public partial class CustomersPanel : UserControl
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_toolbarPanel, currentTheme);
 
         // Main container for two rows
         var toolbarLayout = new TableLayoutPanel
@@ -430,11 +431,9 @@ public partial class CustomersPanel : UserControl
         _toolbarPanel.Controls.Add(toolbarLayout);
     }
 
-    /// <summary>
-    /// Creates the summary panel with customer statistics.
-    /// </summary>
     private void CreateSummaryPanel()
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         _summaryPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
@@ -442,7 +441,7 @@ public partial class CustomersPanel : UserControl
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
 
         var summaryLayout = new FlowLayoutPanel
         {
@@ -472,6 +471,7 @@ public partial class CustomersPanel : UserControl
     /// </summary>
     private Label CreateSummaryLabel(string text)
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         var cardPanel = new GradientPanelExt
         {
             Width = 180,
@@ -481,7 +481,7 @@ public partial class CustomersPanel : UserControl
             Margin = new Padding(5),
             AutoSize = false
         };
-        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(cardPanel, currentTheme);
 
         var label = new Label
         {

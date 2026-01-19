@@ -1119,11 +1119,33 @@ public void ToggleTheme()
                 return;
             }
 
-            // Create cancellation token source for initialization operations
-            _initializationCts = new CancellationTokenSource();
+            // Create cancellation token source for initialization operations with 30s timeout
+            _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var cancellationToken = _initializationCts.Token;
 
-            // Phase 1: Initialize Syncfusion Docking (deferred from OnLoad)
+            // Phase 1: Validate initialization state before proceeding
+            if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
+            {
+                try
+                {
+                    _logger?.LogInformation("OnShown: Validating initialization state");
+                    ValidateInitializationState();
+                }
+                catch (InvalidOperationException valEx)
+                {
+                    _logger?.LogError(valEx, "OnShown: Initialization state validation failed");
+                    _asyncLogger?.Error($"Validation Error: {valEx.Message}");
+                    MessageBox.Show(
+                        $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
+                        "Initialization Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    Application.Exit();
+                    return;
+                }
+            }
+
+            // Phase 2: Initialize Syncfusion Docking (deferred from OnLoad)
             // Initializing here ensures the form handle and bounds are fully ready.
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
@@ -1134,9 +1156,24 @@ public void ToggleTheme()
                     _syncfusionDockingInitialized = true;
                     this.Refresh();
                 }
+                catch (Exception syncEx) when (syncEx.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Theme-specific exception
+                    _logger?.LogError(syncEx, "OnShown: Theme assembly failed to load");
+                    _asyncLogger?.Error($"Theme Assembly Error: {syncEx.Message}");
+                    // Theme failure already handled in InitializeSyncfusionDocking
+                }
+                catch (Exception syncEx) when (syncEx.GetType().Name.Contains("Syncfusion"))
+                {
+                    // Syncfusion-related exception
+                    _logger?.LogError(syncEx, "OnShown: Syncfusion initialization failed - {Message}", syncEx.Message);
+                    _asyncLogger?.Error($"Syncfusion Error: {syncEx.Message}");
+                    // Docking failure is non-critical; already handled in InitializeSyncfusionDocking
+                }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "OnShown: Failed to initialize Syncfusion docking");
+                    _logger?.LogError(ex, "OnShown: Failed to initialize Syncfusion docking - {Type}: {Message}", ex.GetType().Name, ex.Message);
+                    _asyncLogger?.Error($"Docking Init Error: {ex.GetType().Name}: {ex.Message}");
                 }
             }
 
@@ -1161,7 +1198,7 @@ public void ToggleTheme()
                 }
                 catch (OperationCanceledException)
                 {
-                    _logger?.LogDebug("Deferred startup health check canceled");
+                    _logger?.LogWarning("Initialization timeout: Deferred startup health check canceled after 30 seconds");
                 }
                 catch (ObjectDisposedException)
                 {
@@ -1184,7 +1221,7 @@ public void ToggleTheme()
                 }
                 catch (OperationCanceledException)
                 {
-                    _logger?.LogDebug("Deferred test data seeding canceled");
+                    _logger?.LogWarning("Initialization timeout: Deferred test data seeding canceled after 30 seconds");
                 }
                 catch (ObjectDisposedException)
                 {
@@ -1424,12 +1461,54 @@ public void ToggleTheme()
             }
         }
 
+        /// <summary>
+        /// Validates all critical initialization dependencies before proceeding.
+        /// Throws InvalidOperationException if any critical dependency is missing.
+        /// </summary>
+        private void ValidateInitializationState()
+        {
+            if (_serviceProvider == null)
+            {
+                throw new InvalidOperationException("ServiceProvider not initialized - dependency injection setup failed");
+            }
+
+            if (!IsHandleCreated)
+            {
+                throw new InvalidOperationException("Form handle not created - cannot initialize DockingManager");
+            }
+
+            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<IThemeService>(_serviceProvider);
+            if (themeService == null)
+            {
+                throw new InvalidOperationException("IThemeService not resolved from ServiceProvider");
+            }
+
+            var themeName = themeService.CurrentTheme;
+            if (string.IsNullOrEmpty(themeName))
+            {
+                throw new InvalidOperationException("Theme name not configured in IThemeService");
+            }
+
+            _logger?.LogInformation("ValidateInitializationState: All dependencies validated - theme={Theme}", themeName);
+        }
+
         private void EnsurePanelNavigatorInitialized()
         {
             try
             {
-                if (_serviceProvider == null) return;
-                if (_dockingManager == null) return;
+                // Defensive checks: Validate all dependencies before proceeding
+                if (_serviceProvider == null)
+                {
+                    _logger?.LogWarning("EnsurePanelNavigatorInitialized: ServiceProvider is null - skipping panel navigator initialization");
+                    return;
+                }
+
+                if (_dockingManager == null)
+                {
+                    _logger?.LogWarning("EnsurePanelNavigatorInitialized: DockingManager is null - skipping panel navigator initialization");
+                    return;
+                }
 
                 // If it's null, create it (fallback if constructor failed for some reason)
                 if (_panelNavigator == null)
@@ -1437,19 +1516,34 @@ public void ToggleTheme()
                     var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                         .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
 
-                    _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
-                    _logger?.LogDebug("PanelNavigationService created after docking initialization");
+                    try
+                    {
+                        _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
+                        _logger?.LogDebug("PanelNavigationService created after docking initialization");
+                    }
+                    catch (Exception creationEx)
+                    {
+                        _logger?.LogError(creationEx, "Failed to create PanelNavigationService - docking panel navigation will be unavailable");
+                        return;
+                    }
                 }
                 else
                 {
                     // Update existing navigator with the real docking manager
-                    _panelNavigator.UpdateDockingManager(_dockingManager);
-                    _logger?.LogDebug("PanelNavigationService updated with real DockingManager");
+                    try
+                    {
+                        _panelNavigator.UpdateDockingManager(_dockingManager);
+                        _logger?.LogDebug("PanelNavigationService updated with real DockingManager");
+                    }
+                    catch (Exception updateEx)
+                    {
+                        _logger?.LogWarning(updateEx, "Failed to update PanelNavigationService with DockingManager");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to initialize PanelNavigationService");
+                _logger?.LogWarning(ex, "Unexpected error in EnsurePanelNavigatorInitialized - panel navigation may be unavailable");
             }
         }
 

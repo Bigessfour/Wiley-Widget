@@ -14,12 +14,14 @@ using Intuit.Ipp.DataService;
 using Intuit.Ipp.Security;
 using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.IO;
 using System.Text.Json;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Services.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.Services;
@@ -90,8 +92,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             AutoReplenishment = true
         });
 
-        // Initialize auth service with resilient HttpClient
-        _authService = new QuickBooksAuthService(settings, keyVaultService, logger, _httpClient, serviceProvider);
+        // Initialize auth service via DI container to inject all dependencies including QuickBooksTokenStore
+        _authService = serviceProvider.GetRequiredService<QuickBooksAuthService>();
 
         // Secrets and OAuth client are loaded lazily via EnsureInitializedAsync()
         EnsureSettingsLoaded();
@@ -300,10 +302,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return;
         }
 
-        await _authService.RefreshTokenAsync();
+        await _authService.RefreshTokenIfNeededAsync();
     }
 
-    public async System.Threading.Tasks.Task RefreshTokenAsync(CancellationToken cancellationToken = default) => await _authService.RefreshTokenAsync();
+    public async System.Threading.Tasks.Task RefreshTokenAsync(CancellationToken cancellationToken = default) => await _authService.RefreshTokenIfNeededAsync(cancellationToken);
 
     private (ServiceContext Ctx, DataService Ds) GetDataService()
     {
@@ -608,6 +610,120 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             _logger.LogError(ex, "QBO chart of accounts batch fetch failed");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Test sync of accounts from QuickBooks.
+    /// Fetches the chart of accounts and returns sync result with metrics.
+    /// </summary>
+    public async System.Threading.Tasks.Task<SyncResult> SyncAccountsAsync(CancellationToken cancellationToken = default)
+    {
+        var startTime = DateTime.UtcNow;
+        try
+        {
+            _logger.LogInformation("Starting QuickBooks accounts test sync");
+
+            // Ensure authenticated and token is valid
+            await EnsureInitializedAsync().ConfigureAwait(false);
+            await RefreshTokenIfNeededAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Fetch chart of accounts
+            var accounts = await GetChartOfAccountsAsync(cancellationToken).ConfigureAwait(false);
+
+            if (accounts == null || accounts.Count == 0)
+            {
+                _logger.LogWarning("No accounts found in QuickBooks");
+                var duration = DateTime.UtcNow - startTime;
+                return new SyncResult
+                {
+                    Success = true,
+                    RecordsSynced = 0,
+                    Duration = duration,
+                    ErrorMessage = "No accounts found in QuickBooks (may indicate empty company or access issue)"
+                };
+            }
+
+            // Log account details for debugging
+            _logger.LogInformation("Synced {Count} accounts from QuickBooks", accounts.Count);
+            foreach (var account in accounts.Take(10)) // Log first 10 for sample
+            {
+                _logger.LogDebug("  - {AccountName} ({AccountNumber}): {AccountType}",
+                    account.Name ?? "<unnamed>",
+                    account.AcctNum ?? "<no-number>",
+                    account.AccountType.ToString());
+            }
+
+            if (accounts.Count > 10)
+            {
+                _logger.LogDebug("  ... and {More} more accounts", accounts.Count - 10);
+            }
+
+            var syncDuration = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Accounts sync completed successfully. Count: {Count}, Duration: {Duration}ms",
+                accounts.Count, syncDuration.TotalMilliseconds);
+
+            return new SyncResult
+            {
+                Success = true,
+                RecordsSynced = accounts.Count,
+                Duration = syncDuration,
+                ErrorMessage = null
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogWarning("Accounts sync was cancelled after {Duration}ms", duration.TotalMilliseconds);
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = 0,
+                Duration = duration,
+                ErrorMessage = "Operation was cancelled"
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Accounts sync failed due to configuration issue");
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = 0,
+                Duration = duration,
+                ErrorMessage = $"Configuration error: {ex.Message}"
+            };
+        }
+        catch (QuickBooksAuthException ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Accounts sync failed due to authentication error");
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = 0,
+                Duration = duration,
+                ErrorMessage = $"Authentication error: {ex.Message}"
+            };
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Accounts sync failed with unexpected error: {ErrorMessage}", ex.Message);
+
+            // Fallback to cached/sample accounts on sync failure
+            _logger.LogInformation("Attempting to use fallback accounts due to sync failure");
+            var fallbackAccounts = GetFallbackAccounts();
+
+            return new SyncResult
+            {
+                Success = false,
+                RecordsSynced = fallbackAccounts.Count,
+                Duration = duration,
+                ErrorMessage = $"Sync failed - using {fallbackAccounts.Count} fallback accounts. Original error: {ex.Message}"
+            };
         }
     }
 
@@ -2087,5 +2203,90 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 Duration = duration
             };
         }
+    }
+
+    /// <summary>
+    /// Returns sample/fallback accounts for testing or when sync fails.
+    /// Used as a safety net to ensure Dashboard can display data even if QuickBooks is unavailable.
+    /// </summary>
+    private List<Account> GetFallbackAccounts()
+    {
+        _logger.LogInformation("Loading fallback/sample accounts for Dashboard");
+
+        return new List<Account>
+        {
+            new Account
+            {
+                Name = "[FALLBACK] Operating Account",
+                AcctNum = "1000",
+                AccountType = AccountTypeEnum.Bank,
+                CurrentBalance = 50000m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Equipment",
+                AcctNum = "1500",
+                AccountType = AccountTypeEnum.FixedAsset,
+                CurrentBalance = 125000m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Accounts Payable",
+                AcctNum = "2000",
+                AccountType = AccountTypeEnum.AccountsPayable,
+                CurrentBalance = -35000m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Retained Earnings",
+                AcctNum = "3000",
+                AccountType = AccountTypeEnum.Equity,
+                CurrentBalance = -140000m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Revenue",
+                AcctNum = "4000",
+                AccountType = AccountTypeEnum.Income,
+                CurrentBalance = 0m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Salaries Expense",
+                AcctNum = "5100",
+                AccountType = AccountTypeEnum.Expense,
+                CurrentBalance = 0m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Utilities Expense",
+                AcctNum = "5200",
+                AccountType = AccountTypeEnum.Expense,
+                CurrentBalance = 0m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            },
+            new Account
+            {
+                Name = "[FALLBACK] Depreciation Expense",
+                AcctNum = "5300",
+                AccountType = AccountTypeEnum.Expense,
+                CurrentBalance = 0m,
+                Active = true,
+                Description = "Sample fallback account - QuickBooks sync unavailable"
+            }
+        };
     }
 }

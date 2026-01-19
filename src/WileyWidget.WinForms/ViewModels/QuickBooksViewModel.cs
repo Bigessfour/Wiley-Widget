@@ -125,6 +125,9 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// <summary>Gets the command to synchronize data from QuickBooks.</summary>
     public IAsyncRelayCommand SyncDataCommand { get; }
 
+    /// <summary>Gets the command to test sync accounts from QuickBooks.</summary>
+    public IAsyncRelayCommand SyncAccountsCommand { get; }
+
     /// <summary>Gets the command to import chart of accounts.</summary>
     public IAsyncRelayCommand ImportAccountsCommand { get; }
 
@@ -159,6 +162,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
         DisconnectCommand = new AsyncRelayCommand(DisconnectAsync, CanDisconnect);
         TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync);
         SyncDataCommand = new AsyncRelayCommand(SyncDataAsync, CanSyncData);
+        SyncAccountsCommand = new AsyncRelayCommand(SyncAccountsTestAsync, CanSyncData);
         ImportAccountsCommand = new AsyncRelayCommand(ImportAccountsAsync, CanImportAccounts);
         RefreshHistoryCommand = new AsyncRelayCommand(RefreshHistoryAsync);
         ClearHistoryCommand = new RelayCommand(ClearHistory);
@@ -546,6 +550,95 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
             {
                 Timestamp = DateTime.Now,
                 Operation = "Sync Data",
+                Status = "Error",
+                RecordsProcessed = 0,
+                Duration = TimeSpan.Zero,
+                Message = $"Error: {ex.Message}"
+            });
+        }
+        finally
+        {
+            IsSyncing = false;
+            IsLoading = false;
+            SyncProgress = 0;
+        }
+    }
+
+    /// <summary>
+    /// Test sync of accounts from QuickBooks (pulls Chart of Accounts).
+    /// </summary>
+    private async Task SyncAccountsTestAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            IsSyncing = true;
+            IsLoading = true;
+            SyncProgress = 0;
+            StatusText = "Syncing accounts from QuickBooks...";
+            ErrorMessage = null;
+
+            _logger.LogInformation("Starting QuickBooks accounts test sync");
+
+            var startTime = DateTime.Now;
+
+            var result = await _quickBooksService.SyncAccountsAsync(cancellationToken);
+
+            var duration = DateTime.Now - startTime;
+
+            if (result.Success)
+            {
+                StatusText = result.RecordsSynced > 0
+                    ? $"Account sync successful: {result.RecordsSynced} accounts synced in {result.Duration.TotalSeconds:F1}s"
+                    : $"Account sync complete: No accounts found (check QuickBooks connection)";
+
+                AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+                {
+                    Timestamp = DateTime.Now,
+                    Operation = "Sync Accounts (Test)",
+                    Status = "Success",
+                    RecordsProcessed = result.RecordsSynced,
+                    Duration = result.Duration,
+                    Message = result.ErrorMessage ?? $"Successfully synced {result.RecordsSynced} accounts"
+                });
+
+                _logger.LogInformation("Accounts test sync completed: {RecordCount} accounts", result.RecordsSynced);
+            }
+            else
+            {
+                StatusText = $"Account sync failed: {result.ErrorMessage}";
+                ErrorMessage = result.ErrorMessage;
+
+                AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+                {
+                    Timestamp = DateTime.Now,
+                    Operation = "Sync Accounts (Test)",
+                    Status = "Failed",
+                    RecordsProcessed = 0,
+                    Duration = duration,
+                    Message = result.ErrorMessage ?? "Account sync failed"
+                });
+
+                _logger.LogWarning("Accounts test sync failed: {Error}", result.ErrorMessage);
+            }
+
+            SyncProgress = 100;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Accounts sync was cancelled");
+            StatusText = "Account sync cancelled";
+            ErrorMessage = "Operation was cancelled";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during accounts test sync");
+            StatusText = "Accounts sync error";
+            ErrorMessage = $"Error: {ex.Message}";
+
+            AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+            {
+                Timestamp = DateTime.Now,
+                Operation = "Sync Accounts (Test)",
                 Status = "Error",
                 RecordsProcessed = 0,
                 Duration = TimeSpan.Zero,

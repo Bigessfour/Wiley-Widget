@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,7 +19,7 @@ namespace WileyWidget.WinForms.Controls;
 /// Handles proper scope creation, ViewModel resolution, and disposal to prevent DI lifetime violations.
 /// </summary>
 /// <typeparam name="TViewModel">The ViewModel type to resolve from the scoped service provider.</typeparam>
-public abstract class ScopedPanelBase<TViewModel> : UserControl
+public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePanel, INotifyPropertyChanged
     where TViewModel : class
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -23,6 +28,15 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     protected TViewModel? _viewModel;
     private object? _dataContext;
     private bool _disposed;
+
+    // ICompletablePanel backing fields
+    private bool _isLoaded;
+    private bool _isBusy;
+    private bool _hasUnsavedChanges;
+    private PanelMode _mode = PanelMode.View;
+    private readonly List<ValidationItem> _validationErrors = new();
+    private CancellationTokenSource? _currentOperationCts;
+    private DateTimeOffset? _lastSavedAt = null;
 
     /// <summary>
     /// Gets or sets the ViewModel instance.
@@ -35,6 +49,72 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
         get => _viewModel;
         set => _viewModel = value;
     }
+
+    /// <summary>
+    /// ICompletablePanel: whether the panel completed initial load (ViewModel resolved and OnViewModelResolved executed).
+    /// </summary>
+    [Browsable(false)]
+    public bool IsLoaded => _isLoaded;
+
+    /// <summary>
+    /// ICompletablePanel: whether the panel is performing a long-running operation.
+    /// </summary>
+    [Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (_isBusy == value) return;
+            _isBusy = value;
+            OnPropertyChanged(nameof(IsBusy));
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// ICompletablePanel: indicates unsaved changes tracked by the panel.
+    /// </summary>
+    [Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public bool HasUnsavedChanges => _hasUnsavedChanges;
+
+    protected void SetHasUnsavedChanges(bool value)
+    {
+        if (_hasUnsavedChanges == value) return;
+        _hasUnsavedChanges = value;
+        OnPropertyChanged(nameof(HasUnsavedChanges));
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// ICompletablePanel: aggregated validation state.
+    /// </summary>
+    [Browsable(false)]
+    public bool IsValid => !_validationErrors.Any();
+
+    public IReadOnlyList<ValidationItem> ValidationErrors => _validationErrors;
+
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public PanelMode Mode
+    {
+        get => _mode;
+        protected set
+        {
+            if (_mode == value) return;
+            _mode = value;
+            OnPropertyChanged(nameof(Mode));
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public CancellationTokenSource? CurrentOperationCts => _currentOperationCts;
+
+    public DateTimeOffset? LastSavedAt => _lastSavedAt;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? StateChanged;
 
     /// <summary>
     /// Gets the logger instance for diagnostic logging.
@@ -104,6 +184,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
 
             // Allow derived classes to perform additional initialization with the resolved ViewModel
             OnViewModelResolved(_viewModel);
+
+            // Mark panel as loaded for consumers (tests, automation, commands)
+            _isLoaded = true;
+            OnPropertyChanged(nameof(IsLoaded));
+            StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (ObjectDisposedException ex)
         {
@@ -136,6 +221,56 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     }
 
     /// <summary>
+    /// Default (no-op) async validation hook. Panels may override to perform server-side checks.
+    /// </summary>
+    public virtual Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        return Task.FromResult(ValidationResult.Success);
+    }
+
+    /// <summary>
+    /// Focus the first control referenced in the validation list.
+    /// </summary>
+    public virtual void FocusFirstError()
+    {
+        var item = _validationErrors.FirstOrDefault();
+        item?.ControlRef?.Focus();
+    }
+
+    /// <summary>
+    /// Default save/load hooks - derived panels should implement real logic.
+    /// </summary>
+    public virtual Task SaveAsync(CancellationToken ct) => Task.CompletedTask;
+    public virtual Task LoadAsync(CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>
+    /// Helper to register a new operation token; cancels any previous operation.
+    /// </summary>
+    protected CancellationToken RegisterOperation()
+    {
+        CancelCurrentOperation();
+        _currentOperationCts = new CancellationTokenSource();
+        return _currentOperationCts.Token;
+    }
+
+    protected void CancelCurrentOperation()
+    {
+        try
+        {
+            if (_currentOperationCts != null)
+            {
+                _currentOperationCts.Cancel();
+                _currentOperationCts.Dispose();
+                _currentOperationCts = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error cancelling current operation for {PanelType}", GetType().Name);
+        }
+    }
+
+    /// <summary>
     /// Disposes the service scope and releases all managed resources.
     /// </summary>
     /// <param name="disposing">True if called from Dispose(); false if called from finalizer.</param>
@@ -146,6 +281,9 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
             if (disposing)
             {
                 _logger.LogDebug("Disposing scope for {PanelType}", GetType().Name);
+
+                // Cancel any running operations (async work)
+                CancelCurrentOperation();
 
                 // Dispose ViewModel if it implements IDisposable
                 if (_viewModel is IDisposable disposableViewModel)
@@ -193,14 +331,21 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl
     {
         try
         {
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-            SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
-            ApplyThemeRecursively(this, ThemeColors.DefaultTheme);
+            // Get current application theme - SkinManager cascade should handle this automatically
+            // Only apply explicitly if control was created after theme initialization
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(this, currentTheme);
+            ApplyThemeRecursively(this, currentTheme);
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Theme cascade skipped for {PanelType}", GetType().Name);
         }
+    }
+
+    protected void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     private static void ApplyThemeRecursively(Control control, string themeName)

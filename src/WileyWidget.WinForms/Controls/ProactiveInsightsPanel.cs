@@ -178,24 +178,25 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Applies Office2019Colorful theme to the panel using SfSkinManager.
+        /// Applies current application theme to the panel using SfSkinManager.
         /// </summary>
         private void ApplyTheme()
         {
             try
             {
-                // Apply theme via SfSkinManager (authoritative theme source)
-                SfSkinManager.SetVisualStyle(this, AppThemeColors.DefaultTheme);
+                // Apply current application theme via SfSkinManager (authoritative theme source)
+                var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(this, currentTheme);
 
                 // Ensure theme cascades to key child containers as well
                 if (_topPanel != null)
                 {
-                    SfSkinManager.SetVisualStyle(_topPanel, AppThemeColors.DefaultTheme);
+                    SfSkinManager.SetVisualStyle(_topPanel, currentTheme);
                 }
 
                 if (_insightFeedPanel != null)
                 {
-                    SfSkinManager.SetVisualStyle(_insightFeedPanel, AppThemeColors.DefaultTheme);
+                    SfSkinManager.SetVisualStyle(_insightFeedPanel, currentTheme);
                 }
 
                 _logger?.LogDebug("Theme applied successfully to ProactiveInsightsPanel");

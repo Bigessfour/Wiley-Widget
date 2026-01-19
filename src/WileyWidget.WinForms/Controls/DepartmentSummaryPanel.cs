@@ -15,6 +15,7 @@ using Syncfusion.Drawing;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -58,7 +59,7 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
-        try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+        try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
         SetupUI();
         SubscribeToThemeChanges();
     }
@@ -115,7 +116,8 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Summary metrics panel"
         };
-        SfSkinManager.SetVisualStyle(_summaryPanel, "Office2019Colorful");
+        var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_summaryPanel, theme);
 
         _summaryCardsPanel = new TableLayoutPanel
         {
@@ -217,7 +219,8 @@ public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryV
             BorderStyle = BorderStyle.FixedSingle,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(cardPanel, "Office2019Colorful");
+        var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(cardPanel, theme);
 
         var lblTitle = new GradientLabel
         {

@@ -40,8 +40,9 @@ namespace WileyWidget.WinForms.Controls
         private void InitializeComponent()
         {
             // Configure gradient panel - let SkinManager handle background via theme cascade
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             this.BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, Color.Empty, Color.Empty);
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, ThemeColors.DefaultTheme);
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, currentTheme);
 
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
@@ -57,7 +58,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(container, ThemeColors.DefaultTheme);
+            SfSkinManager.SetVisualStyle(container, currentTheme);
 
             // Prefer using Syncfusion waiting control when available (reflection to avoid hard dependency)
             object? syncControl = null;

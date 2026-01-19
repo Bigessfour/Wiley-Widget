@@ -119,7 +119,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
 
             // Defer sizing validations until control is properly laid out to prevent "controls cut off" issues
             // Dashboard has complex nested layouts (TableLayoutPanel, SplitContainer, gauges, chart, grid)
@@ -175,6 +175,7 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
@@ -194,7 +195,8 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(_topPanel, "Office2019Colorful");
+            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(_topPanel, theme);
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
@@ -359,7 +361,8 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(chartPanel, "Office2019Colorful");
+            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(chartPanel, theme);
             _mainChart = new ChartControl { Dock = DockStyle.Fill, AccessibleName = "Budget chart", AccessibleDescription = "Displays budget vs expenditure" };
             _mainChartRegionEventWiring = new ChartControlRegionEventWiring(_mainChart);
 
@@ -450,7 +453,8 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(summaryPanel, "Office2019Colorful");
+            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(summaryPanel, theme);
             // Replace the small summary labels with three tile widgets that include a sparkline next to each
             var summaryTiles = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
             summaryTiles.WrapContents = false;
@@ -467,7 +471,8 @@ namespace WileyWidget.WinForms.Controls
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
                 };
-                SfSkinManager.SetVisualStyle(tile, "Office2019Colorful");
+                var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(tile, theme);
 
                 var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
                 var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
@@ -617,6 +622,7 @@ namespace WileyWidget.WinForms.Controls
         /// <returns>GradientPanelExt containing gauge with label</returns>
         private GradientPanelExt CreateGaugePanel(string title, string iconName)
         {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             var container = new GradientPanelExt
             {
                 Width = 280,
@@ -625,7 +631,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(container, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(container, theme);
             var gauge = new RadialGauge
             {
                 Width = 110,
@@ -693,7 +699,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(lblPanel, "Office2019Colorful");
+            SfSkinManager.SetVisualStyle(lblPanel, theme);
             var titleLabel = new Label
             {
                 Text = title,
@@ -737,7 +743,8 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(panel, "Office2019Colorful");
+            var panelTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(panel, panelTheme);
 
             var flowLayout = new FlowLayoutPanel
             {
@@ -758,7 +765,8 @@ namespace WileyWidget.WinForms.Controls
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
                 };
-                SfSkinManager.SetVisualStyle(container, "Office2019Colorful");
+                var containerTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(container, containerTheme);
                 var gauge = new RadialGauge
                 {
                     Width = 110,
@@ -848,7 +856,8 @@ namespace WileyWidget.WinForms.Controls
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
                 };
-                SfSkinManager.SetVisualStyle(lblPanelInner, "Office2019Colorful");
+                var lblPanelTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(lblPanelInner, lblPanelTheme);
                 var titleLabel = new Label
                 {
                     Text = title,

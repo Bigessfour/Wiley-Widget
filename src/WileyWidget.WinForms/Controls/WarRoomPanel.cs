@@ -13,6 +13,7 @@ using Syncfusion.WinForms.Controls;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -44,7 +45,7 @@ namespace WileyWidget.WinForms.Controls
 
         // Input controls
         private TextBox _scenarioInput = null!;
-        private Button _btnRunScenario = null!;
+        private Syncfusion.WinForms.Controls.SfButton _btnRunScenario = null!;
         private Label _lblVoiceHint = null!;
         private Label _lblInputError = null!;
 
@@ -81,7 +82,7 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
             _logger = logger;
             _vm = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             DataContext = _vm;
@@ -218,7 +219,7 @@ namespace WileyWidget.WinForms.Controls
             };
             scenarioLayout.Controls.Add(_scenarioInput, 0, 0);
 
-            _btnRunScenario = new Button
+            _btnRunScenario = new Syncfusion.WinForms.Controls.SfButton
             {
                 Text = "Run Scenario",
                 AutoSize = true,

@@ -221,7 +221,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_parametersPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_parametersPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Use TableLayoutPanel for parameters panel layout
         var parametersLayout = new TableLayoutPanel
@@ -341,7 +341,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_toolbarPanel, "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_toolbarPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Use FlowLayoutPanel for toolbar controls
         var toolbarFlow = new FlowLayoutPanel
@@ -448,6 +448,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _mainSplitContainer.Panel1.Controls.Add(_toolbarPanel);
 
         // Bottom panel: FastReport viewer container
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var viewerPanel = new GradientPanelExt
         {
             Name = "PreviewPanel",
@@ -456,7 +457,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(viewerPanel, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(viewerPanel, currentTheme);
 
         // Initialize FastReport viewer container
         _reportViewerContainer = new GradientPanelExt
@@ -467,7 +468,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             BorderStyle = BorderStyle.FixedSingle,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(_reportViewerContainer, ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_reportViewerContainer, currentTheme);
 
         // Initialize FastReport
         _fastReport = new Report();

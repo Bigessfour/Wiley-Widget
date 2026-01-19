@@ -77,7 +77,7 @@ namespace WileyWidget.WinForms.Controls
 
         // AI / XAI controls
         private GroupBox? _aiGroup;
-        private CheckBox? _chkEnableAi;
+        private CheckBoxAdv? _chkEnableAi;
         private TextBox? _txtXaiApiEndpoint;
         private TextBox? _txtXaiApiKey;
         private Syncfusion.WinForms.Controls.SfButton? _btnShowApiKey;
@@ -290,7 +290,7 @@ namespace WileyWidget.WinForms.Controls
             // AI / xAI settings group
             _aiGroup = new GroupBox { Text = "AI / xAI Settings", Location = new Point(padding, y), Size = new Size(440, 240), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
 
-            _chkEnableAi = new CheckBox { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
+            _chkEnableAi = new CheckBoxAdv { Text = "Enable AI (xAI)", AutoSize = true, Location = new Point(20, 28), Checked = ViewModel?.EnableAi ?? false, Font = new Font("Segoe UI", 9, FontStyle.Regular), AccessibleName = "Enable AI", AccessibleDescription = "Enable xAI API integrations" };
             _chkEnableAi.CheckedChanged += (s, e) => { try { if (ViewModel != null) ViewModel.EnableAi = _chkEnableAi.Checked; } catch { } };
 
             var lblEndpoint = new Label { Text = "API Endpoint:", AutoSize = true, Location = new Point(20, 56), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
