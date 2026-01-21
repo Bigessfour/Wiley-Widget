@@ -190,26 +190,6 @@
           "Microsoft.Extensions.Options": "10.0.2"
         }
       },
-      "Microsoft.SemanticKernel": {
-        "type": "Direct",
-        "requested": "[1.40.1, )",
-        "resolved": "1.40.1",
-        "contentHash": "qmRYndOTkvHKUbOZe3UkByWccpdkCqiV4RSrd8Zwm7AF8xMCLmjF6JGS6L3E1BPvlz1GL36ADGdOFpK+UCcx0A==",
-        "dependencies": {
-          "Microsoft.SemanticKernel.Connectors.AzureOpenAI": "1.40.1",
-          "Microsoft.SemanticKernel.Core": "1.40.1"
-        }
-      },
-      "Microsoft.SemanticKernel.Connectors.OpenAI": {
-        "type": "Direct",
-        "requested": "[1.40.1, )",
-        "resolved": "1.40.1",
-        "contentHash": "+vizdcjaCSnMeRr+EzrjQSUpH1QnPYIn5Y2CIpvSbfB0rP2THIVsz1UTYeyDFdjEeg5LrnWatpfxOwvH8nyJog==",
-        "dependencies": {
-          "Microsoft.SemanticKernel.Core": "1.40.1",
-          "OpenAI": "[2.2.0-beta.1]"
-        }
-      },
       "Polly": {
         "type": "Direct",
         "requested": "[8.6.5, )",
@@ -270,15 +250,6 @@
           "Serilog": "4.2.0"
         }
       },
-      "Azure.AI.OpenAI": {
-        "type": "Transitive",
-        "resolved": "2.2.0-beta.1",
-        "contentHash": "PQQg4Jc4NdwBnYID4Rr2SzJP72d1ihKUR3PKBoKV9cRD1cEGNjokkZRG/4j62uEFtNoxcF+ugQDMi9ShL/Y8gQ==",
-        "dependencies": {
-          "Azure.Core": "1.44.1",
-          "OpenAI": "2.2.0-beta.1"
-        }
-      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.50.0",
@@ -308,11 +279,6 @@
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "3WA9q9yVqJp222P3x1wYIGDAkpjAku0TMUaaQV22g6L67AI0LdOIrVS7Ht2vJfLHGSPVuqN94vIr15qn+HEkHw=="
-      },
-      "Microsoft.Bcl.HashCode": {
-        "type": "Transitive",
-        "resolved": "1.1.1",
-        "contentHash": "MalY0Y/uM/LjXtHfX/26l2VtN4LDNZ2OE3aumNOHDLsT4fNYy2hiHXI4CXCqKpNUNm7iJ2brrc4J89UdaL56FA=="
       },
       "Microsoft.Bcl.TimeProvider": {
         "type": "Transitive",
@@ -392,11 +358,6 @@
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.2",
           "Microsoft.Extensions.Logging": "10.0.2"
         }
-      },
-      "Microsoft.Extensions.AI.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.3.0-preview.1.25114.11",
-        "contentHash": "Bh5RqAGzOUTSnx6vLrQqVH5LJXSPYmMF8/worfSmKiJ18blVQRHLqvpcc/JhSdFf/3YTOk2PPpWSX1PK+cbiPQ=="
       },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
@@ -632,11 +593,6 @@
           "Microsoft.Extensions.Options": "10.0.2"
         }
       },
-      "Microsoft.Extensions.VectorData.Abstractions": {
-        "type": "Transitive",
-        "resolved": "9.0.0-preview.1.25078.1",
-        "contentHash": "5woABLba0aAyk6X6jamKZg/3a5X0+z7hj8+325phSkPkiJCFUeY0DIlIH4KvAjtBYlLyJOObsFXdKBekFlE8hw=="
-      },
       "Microsoft.Identity.Client": {
         "type": "Transitive",
         "resolved": "4.80.0",
@@ -698,39 +654,6 @@
         "contentHash": "fQ0VVCba75lknUHGldi3iTKAYUQqbzp1Un8+d9cm9nON0Gs8NAkXddNg8iaUB0qi/ybtAmNWizTR4avdkCJ9pQ==",
         "dependencies": {
           "Microsoft.IdentityModel.Logging": "7.7.1"
-        }
-      },
-      "Microsoft.SemanticKernel.Abstractions": {
-        "type": "Transitive",
-        "resolved": "1.40.1",
-        "contentHash": "nr8MHvO4aFA/39UtldFjW2XxdMU4Nlozcbq4uV1q7NbckXcsaCf6vWSQT9+X2gspBEpmynZLr4ZrXRqYxeCdoQ==",
-        "dependencies": {
-          "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
-          "Microsoft.Bcl.HashCode": "1.1.1",
-          "Microsoft.Extensions.AI.Abstractions": "9.3.0-preview.1.25114.11",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
-          "Microsoft.Extensions.VectorData.Abstractions": "9.0.0-preview.1.25078.1"
-        }
-      },
-      "Microsoft.SemanticKernel.Connectors.AzureOpenAI": {
-        "type": "Transitive",
-        "resolved": "1.40.1",
-        "contentHash": "Ky14N2FSjIlcngEzD97mAD22oKzaV/VsdlV4TZYIsQXfUCm47i7gpoGkjj7M9W8vNW03uOsZqHFwd9LcIlkUpw==",
-        "dependencies": {
-          "Azure.AI.OpenAI": "[2.2.0-beta.1]",
-          "Microsoft.SemanticKernel.Connectors.OpenAI": "1.40.1",
-          "Microsoft.SemanticKernel.Core": "1.40.1"
-        }
-      },
-      "Microsoft.SemanticKernel.Core": {
-        "type": "Transitive",
-        "resolved": "1.40.1",
-        "contentHash": "Qc61c7tMl9VcTjdNOj5T2uLPzO/+Yav/8Zesqx2usrPBZnHix2Kd8qrqtRia3CdfNzKeCAjZDVZgRI3UQoYaeg==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection": "8.0.1",
-          "Microsoft.SemanticKernel.Abstractions": "1.40.1",
-          "System.Numerics.Tensors": "8.0.0"
         }
       },
       "Microsoft.SqlServer.Server": {
@@ -1063,15 +986,6 @@
         "resolved": "13.0.3",
         "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
-      "OpenAI": {
-        "type": "CentralTransitive",
-        "requested": "[2.2.0-beta.1, )",
-        "resolved": "2.2.0-beta.1",
-        "contentHash": "h0NKU7n5CppiyhZvcu6RtmrHUnN8IUpvbfCuEhFMPaeWKJIGEpRVP3PVywuJAqPugXp0zMFM3afFQFDQ8Sjiaw==",
-        "dependencies": {
-          "System.ClientModel": "1.2.1"
-        }
-      },
       "Polly.Core": {
         "type": "CentralTransitive",
         "requested": "[8.6.5, )",
@@ -1116,12 +1030,6 @@
         "dependencies": {
           "Serilog": "2.10.0"
         }
-      },
-      "System.Numerics.Tensors": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.2, )",
-        "resolved": "8.0.0",
-        "contentHash": "fhODzTe9ON9IzmRfyVeA6L8yXOciMtpq1YufkRVBliggcVKZE+XDxqIn46+yF4PWR6wNPuDpXtPpuY86VcKxUA=="
       },
       "System.Security.Cryptography.Xml": {
         "type": "CentralTransitive",
