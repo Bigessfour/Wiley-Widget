@@ -797,7 +797,7 @@ public static class RibbonFactory
             Width = 220,
             ToolTipText = "Search panels and data (press Enter to execute, Ctrl+F to focus)"
         };
-        searchBox.KeyDown += (s, e) =>
+        searchBox.KeyDown += async (s, e) =>
         {
             if (s is not ToolStripTextBox box) return;
             try
@@ -805,12 +805,21 @@ public static class RibbonFactory
                 if (e.KeyCode == Keys.Enter && !string.IsNullOrWhiteSpace(box.Text))
                 {
                     logger?.LogInformation("[RIBBON_SEARCH] Global search triggered: {SearchText}", box.Text);
-                    form.PerformGlobalSearch(box.Text);
+                    form.GlobalIsBusy = true;
+                    try
+                    {
+                        await form.PerformGlobalSearchAsync(box.Text);
+                    }
+                    finally
+                    {
+                        form.GlobalIsBusy = false;
+                    }
                     e.Handled = true;
                 }
             }
             catch (Exception ex)
             {
+                form.GlobalIsBusy = false;
                 logger?.LogError(ex, "[RIBBON_SEARCH] Search box KeyDown handler failed");
                 MessageBox.Show($"Search failed: {ex.Message}", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }

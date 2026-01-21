@@ -39,6 +39,8 @@
     <PackageReference Include="Serilog.Sinks.Async" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Polly" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
     <!-- QuickBooks SDK packages -->
 
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />

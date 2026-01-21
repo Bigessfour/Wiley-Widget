@@ -42,5 +42,10 @@ namespace WileyWidget.WinForms.ViewModels
         /// Count of low-priority insights.
         /// </summary>
         int LowPriorityCount { get; set; }
+
+        /// <summary>
+        /// Refreshes the insights data.
+        /// </summary>
+        System.Threading.Tasks.Task RefreshAsync(System.Threading.CancellationToken ct = default);
     }
 }

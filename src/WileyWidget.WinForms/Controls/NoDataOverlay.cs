@@ -17,6 +17,9 @@ namespace WileyWidget.WinForms.Controls
     {
         private Label _messageLabel = null!;
         private SfButton? _actionButton;
+        private LayoutEventHandler? _layoutHandler;
+        private EventHandler? _resizeHandler;  // Resize event uses EventHandler, not LayoutEventHandler
+        private EventHandler? _actionButtonClickHandler;
 
         public event EventHandler? ActionButtonClicked;
 
@@ -29,8 +32,23 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
-                try { _messageLabel?.Dispose(); } catch { }
-                try { _actionButton?.Dispose(); } catch { }
+                // Unsubscribe events (Pattern K)
+                if (_layoutHandler != null)
+                {
+                    this.Layout -= _layoutHandler;
+                }
+                if (_resizeHandler != null)
+                {
+                    this.Resize -= _resizeHandler;  // EventHandler type
+                }
+                if (_actionButton != null && _actionButtonClickHandler != null)
+                {
+                    _actionButton.Click -= _actionButtonClickHandler;
+                }
+
+                // Dispose controls
+                _messageLabel?.Dispose();
+                _actionButton?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -38,14 +56,38 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
-            // Configure gradient panel - let SkinManager handle background via theme cascade
-            this.BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty);
+            // Configure gradient panel - SfSkinManager handles all theming
             var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
+            this.ThemeName = theme;
 
             Dock = DockStyle.Fill;
-            // BackColor inherited from theme cascade
             Visible = false;
+
+            // Use TableLayoutPanel for dock-based centering
+            var table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 3
+            };
+            table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            // Center container
+            var container = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Anchor = AnchorStyles.None,
+                WrapContents = false
+            };
+            SfSkinManager.SetVisualStyle(container, theme);
 
             _messageLabel = new Label
             {
@@ -53,22 +95,29 @@ namespace WileyWidget.WinForms.Controls
                 Anchor = AnchorStyles.None,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 11.0f, FontStyle.Regular),
-                // ForeColor inherited from theme cascade
                 Text = "No data available",
                 AccessibleName = "No data message",
+                AccessibleDescription = "Displays a message when no data is available",
+                TabIndex = 1,
                 TabStop = true
             };
+            var tooltip = new ToolTip();
+            tooltip.SetToolTip(_messageLabel, "No data is currently available for display");
 
-            // Center message on layout/resize and constrain width for wrapping
-            this.Layout += (s, e) => CenterControls();
-            this.Resize += (s, e) => CenterControls();
+            container.Controls.Add(_messageLabel);
 
-            // Make overlay accessible and keyboard-visible when present
+            table.Controls.Add(container, 1, 1);
+            Controls.Add(table);
+
+            // Store handlers for cleanup (Pattern A & K)
+            _layoutHandler = (s, e) => CenterControls();
+            _resizeHandler = (s, e) => CenterControls();
+            this.Layout += _layoutHandler;
+            this.Resize += _resizeHandler;
+
+            // Make overlay accessible
             AccessibleName = "No data overlay";
             AccessibleDescription = "Indicates there is currently no data to display in this panel";
-
-            Controls.Add(_messageLabel);
-            CenterControls();
         }
 
         [Browsable(false)]
@@ -89,37 +138,7 @@ namespace WileyWidget.WinForms.Controls
 
         private void CenterControls()
         {
-            if (_messageLabel == null) return;
-            try
-            {
-                // Constrain message width to parent's client width minus padding so it wraps sensibly.
-                _messageLabel.MaximumSize = new Size(Math.Max(80, this.ClientSize.Width - 40), 0);
-                // Force layout update to get correct size
-                _messageLabel.AutoSize = true;
-                _messageLabel.PerformLayout();
-
-                // Calculate positions
-                int totalHeight = _messageLabel.Height;
-                if (_actionButton != null && !string.IsNullOrEmpty(ActionButtonText))
-                {
-                    totalHeight += _actionButton.Height + 20; // 20 pixels spacing
-                }
-
-                int startY = Math.Max(0, (ClientSize.Height - totalHeight) / 2);
-
-                // Center message
-                var msgX = Math.Max(0, (ClientSize.Width - _messageLabel.Width) / 2);
-                _messageLabel.Location = new Point(msgX, startY);
-
-                // Center button if visible
-                if (_actionButton != null && !string.IsNullOrEmpty(ActionButtonText))
-                {
-                    int btnX = Math.Max(0, (ClientSize.Width - _actionButton.Width) / 2);
-                    _actionButton.Location = new Point(btnX, startY + _messageLabel.Height + 20);
-                    _actionButton.Visible = true;
-                }
-            }
-            catch { }
+            // Layout handled by TableLayoutPanel and FlowLayoutPanel - no manual positioning needed
         }
 
         [Browsable(false)]
@@ -132,8 +151,7 @@ namespace WileyWidget.WinForms.Controls
                 base.Visible = value;
                 if (Parent != null && value)
                     BringToFront();
-                if (value) CenterControls();
-                // If becoming visible, attempt to set accessibility focus for screen readers
+                // If becoming visible, attempt to set accessibility focus
                 try { if (value && _actionButton?.Visible == true) _actionButton?.Focus(); else _messageLabel?.Focus(); } catch { }
             }
         }
@@ -149,21 +167,31 @@ namespace WileyWidget.WinForms.Controls
                     Size = new Size(140, 40),
                     Font = new Font("Segoe UI", 10.0f, FontStyle.Bold),
                     AccessibleName = "Action button",
+                    AccessibleDescription = "Button to perform an action when no data is available",
+                    TabIndex = 2,
                     TabStop = true
                 };
                 var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                 SfSkinManager.SetVisualStyle(_actionButton, theme);
-                _actionButton.Click += (s, e) =>
+                _actionButton.ThemeName = theme;
+
+                var tooltip = new ToolTip();
+                tooltip.SetToolTip(_actionButton, "Click to perform an action");
+
+                _actionButtonClickHandler = (s, e) =>
                 {
                     ActionButtonClicked?.Invoke(this, EventArgs.Empty);
                     clickHandler?.Invoke(s, e);
                 };
-                Controls.Add(_actionButton);
-                _actionButton.BringToFront();
+                _actionButton.Click += _actionButtonClickHandler;
+
+                // Add to container for proper layout
+                var container = Controls[0] as TableLayoutPanel; // Assuming table is first control
+                var innerContainer = container?.GetControlFromPosition(1, 1) as FlowLayoutPanel;
+                innerContainer?.Controls.Add(_actionButton);
             }
 
             _actionButton.Text = buttonText;
-            CenterControls();
         }
 
         public void HideActionButton()
@@ -173,7 +201,6 @@ namespace WileyWidget.WinForms.Controls
             {
                 _actionButton.Visible = false;
             }
-            CenterControls();
         }
 
         /// <summary>

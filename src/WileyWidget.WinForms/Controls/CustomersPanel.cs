@@ -1,8 +1,9 @@
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
 using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
@@ -22,15 +23,12 @@ using WileyWidget.Models;
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
-/// Panel for viewing and managing utility customers.
+/// Panel for viewing and managing utility customers with DI-scoped lifecycle.
 /// Provides customer search, add, edit, delete, and QuickBooks synchronization capabilities.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class CustomersPanel : UserControl
+public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 {
-    private readonly CustomersViewModel _viewModel;
-    private readonly ILogger<CustomersPanel> _logger;
-
     #region UI Controls
 
     private PanelHeader? _panelHeader;
@@ -67,25 +65,78 @@ public partial class CustomersPanel : UserControl
     private Label? _activeCustomersLabel;
     private Label? _balanceSummaryLabel;
 
+    // Event handler backing fields
+    private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler? _searchButtonClickHandler;
+    private EventHandler? _clearFiltersClickHandler;
+    private EventHandler? _showActiveOnlyChangedHandler;
+    private EventHandler? _addCustomerClickHandler;
+    private EventHandler? _editCustomerClickHandler;
+    private EventHandler? _deleteCustomerClickHandler;
+    private EventHandler? _refreshClickHandler;
+    private EventHandler? _syncQuickBooksClickHandler;
+    private EventHandler? _exportClickHandler;
+    private EventHandler? _noDataOverlayActionHandler;
+
+    private ErrorProvider? _errorProvider;
+    private ToolTip? _toolTip;
+
     #endregion
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CustomersPanel"/> class.
+    /// Initializes a new instance of the <see cref="CustomersPanel"/> class with DI scope factory.
     /// </summary>
-    /// <param name="viewModel">The customers view model.</param>
+    /// <param name="scopeFactory">Factory for creating DI scopes.</param>
     /// <param name="logger">Logger instance.</param>
     public CustomersPanel(
-        CustomersViewModel viewModel,
-        ILogger<CustomersPanel> logger)
+        IServiceScopeFactory scopeFactory,
+        ILogger<ScopedPanelBase<CustomersViewModel>> logger)
+        : base(scopeFactory, logger)
     {
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
         InitializeControls();
         BindViewModel();
         ApplySyncfusionTheme();
 
-        _logger.LogDebug("CustomersPanel initialized");
+        _logger?.LogDebug("CustomersPanel initialized");
+    }
+
+    public override async Task LoadAsync(CancellationToken ct = default)
+    {
+        if (ViewModel != null)
+        {
+            await ViewModel.LoadAsync(ct);
+        }
+        _isLoaded = true;
+    }
+
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+    {
+        var errors = (List<ValidationItem>)ValidationErrors;
+        errors.Clear();
+
+        if (ViewModel != null)
+        {
+            var result = await ViewModel.ValidateAsync(ct);
+            // Populate errors from ViewModel if available
+            // For now, assume ViewModel handles its own errors
+            return result;
+        }
+        return ValidationResult.Success;
+    }
+
+    public override async Task<ValidationResult> SaveAsync(CancellationToken ct = default)
+    {
+        if (ViewModel != null)
+        {
+            var result = await ViewModel.SaveAsync(ct);
+            if (result.IsValid)
+            {
+                SetHasUnsavedChanges(false);
+            }
+            return result;
+        }
+        return ValidationResult.Success;
     }
 
     /// <summary>
@@ -138,6 +189,15 @@ public partial class CustomersPanel : UserControl
         Dock = DockStyle.Fill;
         AutoSize = false;
 
+        // Initialize UI helpers
+        _errorProvider = new ErrorProvider
+        {
+            BlinkStyle = ErrorBlinkStyle.NeverBlink,
+            ContainerControl = this
+        };
+
+        _toolTip = new ToolTip();
+
         // Panel header
         _panelHeader = new PanelHeader
         {
@@ -145,8 +205,10 @@ public partial class CustomersPanel : UserControl
             Height = 50
         };
         _panelHeader.Title = "Customers Management";
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshCustomersAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeaderRefreshHandler = (s, e) => { _ = RefreshCustomersAsync(); };
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
+        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
         // Main layout container
@@ -264,16 +326,25 @@ public partial class CustomersPanel : UserControl
         };
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
+        _searchTextBox.AccessibleName = "Customer search";
+        _searchTextBox.TabIndex = 10;
+        _toolTip?.SetToolTip(_searchTextBox, "Search customers by name, account number, or address.");
         searchFilterRow.Controls.Add(_searchTextBox);
 
         // Search button
         _searchButton = new SfButton
         {
             Text = "🔍 &Search",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(95, 32),
             Margin = new Padding(0, 3, 5, 0)
         };
-        _searchButton.Click += async (s, e) => await SearchCustomersAsync();
+        SfSkinManager.SetVisualStyle(_searchButton, currentTheme);
+        _searchButton.AccessibleName = "Search Button";
+        _searchButton.TabIndex = 11;
+        _toolTip?.SetToolTip(_searchButton, "Execute search");
+        _searchButtonClickHandler = (s, e) => { _ = SearchCustomersAsync(); };
+        _searchButton.Click += _searchButtonClickHandler;
         searchFilterRow.Controls.Add(_searchButton);
 
         // Clear filters button
@@ -283,7 +354,12 @@ public partial class CustomersPanel : UserControl
             AutoSize = true,
             Margin = new Padding(0, 3, 10, 0)
         };
-        _clearFiltersButton.Click += (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
+        SfSkinManager.SetVisualStyle(_clearFiltersButton, currentTheme);
+        _clearFiltersButton.AccessibleName = "Clear Filters";
+        _clearFiltersButton.TabIndex = 12;
+        _toolTip?.SetToolTip(_clearFiltersButton, "Clear all filters");
+        _clearFiltersClickHandler = (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
+        _clearFiltersButton.Click += _clearFiltersClickHandler;
         searchFilterRow.Controls.Add(_clearFiltersButton);
 
         // Separator
@@ -314,6 +390,10 @@ public partial class CustomersPanel : UserControl
             Margin = new Padding(0, 5, 5, 0)
         };
         _filterTypeComboBox.SelectedIndex = 0;
+        SfSkinManager.SetVisualStyle(_filterTypeComboBox, currentTheme);
+        _filterTypeComboBox.AccessibleName = "Filter by Type";
+        _filterTypeComboBox.TabIndex = 13;
+        _toolTip?.SetToolTip(_filterTypeComboBox, "Filter customers by type");
         _filterTypeComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
         searchFilterRow.Controls.Add(_filterTypeComboBox);
 
@@ -336,6 +416,10 @@ public partial class CustomersPanel : UserControl
             Margin = new Padding(0, 5, 10, 0)
         };
         _filterLocationComboBox.SelectedIndex = 0;
+        SfSkinManager.SetVisualStyle(_filterLocationComboBox, currentTheme);
+        _filterLocationComboBox.AccessibleName = "Filter by Location";
+        _filterLocationComboBox.TabIndex = 14;
+        _toolTip?.SetToolTip(_filterLocationComboBox, "Filter customers by service location");
         _filterLocationComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
         searchFilterRow.Controls.Add(_filterLocationComboBox);
 
@@ -347,8 +431,11 @@ public partial class CustomersPanel : UserControl
             Checked = true,
             Margin = new Padding(0, 7, 0, 0)
         };
-        _showActiveOnlyCheckBox.CheckedChanged += (s, e) =>
-            _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
+        _showActiveOnlyCheckBox.AccessibleName = "Show active only";
+        _showActiveOnlyCheckBox.TabIndex = 15;
+        _toolTip?.SetToolTip(_showActiveOnlyCheckBox, "Toggle to show only active customers");
+        _showActiveOnlyChangedHandler = (s, e) => _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
+        _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
         searchFilterRow.Controls.Add(_showActiveOnlyCheckBox);
 
         toolbarLayout.Controls.Add(searchFilterRow, 0, 0);
@@ -371,7 +458,12 @@ public partial class CustomersPanel : UserControl
             Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold),
             Margin = new Padding(0, 0, 5, 0)
         };
-        _addCustomerButton.Click += async (s, e) => await AddCustomerAsync();
+        SfSkinManager.SetVisualStyle(_addCustomerButton, currentTheme);
+        _addCustomerButton.AccessibleName = "Add Customer";
+        _addCustomerButton.TabIndex = 20;
+        _toolTip?.SetToolTip(_addCustomerButton, "Add a new customer");
+        _addCustomerClickHandler = (s, e) => { _ = AddCustomerAsync(); };
+        _addCustomerButton.Click += _addCustomerClickHandler;
         actionButtonsRow.Controls.Add(_addCustomerButton);
 
         // Edit Customer button
@@ -382,48 +474,77 @@ public partial class CustomersPanel : UserControl
             Enabled = false,
             Margin = new Padding(0, 0, 5, 0)
         };
-        _editCustomerButton.Click += (s, e) => EditSelectedCustomer();
+        SfSkinManager.SetVisualStyle(_editCustomerButton, currentTheme);
+        _editCustomerButton.AccessibleName = "Edit Customer";
+        _editCustomerButton.TabIndex = 21;
+        _toolTip?.SetToolTip(_editCustomerButton, "Edit the selected customer");
+        _editCustomerClickHandler = (s, e) => EditSelectedCustomer();
+        _editCustomerButton.Click += _editCustomerClickHandler;
         actionButtonsRow.Controls.Add(_editCustomerButton);
 
         // Delete Customer button
         _deleteCustomerButton = new SfButton
         {
             Text = "🗑️ &Delete",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(95, 32),
             Enabled = false,
             Margin = new Padding(0, 0, 10, 0)
         };
-        _deleteCustomerButton.Click += async (s, e) => await DeleteSelectedCustomerAsync();
+        SfSkinManager.SetVisualStyle(_deleteCustomerButton, currentTheme);
+        _deleteCustomerButton.AccessibleName = "Delete Customer";
+        _deleteCustomerButton.TabIndex = 22;
+        _toolTip?.SetToolTip(_deleteCustomerButton, "Delete the selected customer");
+        _deleteCustomerClickHandler = (s, e) => { _ = DeleteSelectedCustomerAsync(); };
+        _deleteCustomerButton.Click += _deleteCustomerClickHandler;
         actionButtonsRow.Controls.Add(_deleteCustomerButton);
 
         // Refresh button
         _refreshButton = new SfButton
         {
             Text = "🔄 &Refresh",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(100, 32),
             Margin = new Padding(0, 0, 5, 0)
         };
-        _refreshButton.Click += async (s, e) => await RefreshCustomersAsync();
+        SfSkinManager.SetVisualStyle(_refreshButton, currentTheme);
+        _refreshButton.AccessibleName = "Refresh";
+        _refreshButton.TabIndex = 23;
+        _toolTip?.SetToolTip(_refreshButton, "Refresh the customer list");
+        _refreshClickHandler = (s, e) => { _ = RefreshCustomersAsync(); };
+        _refreshButton.Click += _refreshClickHandler;
         actionButtonsRow.Controls.Add(_refreshButton);
 
         // Sync QuickBooks button
         _syncQuickBooksButton = new SfButton
         {
             Text = "📊 Sync QB",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(110, 32),
             Margin = new Padding(0, 0, 5, 0)
         };
-        _syncQuickBooksButton.Click += async (s, e) => await SyncWithQuickBooksAsync();
+        SfSkinManager.SetVisualStyle(_syncQuickBooksButton, currentTheme);
+        _syncQuickBooksButton.AccessibleName = "Sync QuickBooks";
+        _syncQuickBooksButton.TabIndex = 24;
+        _toolTip?.SetToolTip(_syncQuickBooksButton, "Synchronize customers with QuickBooks");
+        _syncQuickBooksClickHandler = (s, e) => { _ = SyncWithQuickBooksAsync(); };
+        _syncQuickBooksButton.Click += _syncQuickBooksClickHandler;
         actionButtonsRow.Controls.Add(_syncQuickBooksButton);
 
         // Export button
         _exportButton = new SfButton
         {
             Text = "💾 E&xport",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(100, 32),
             Margin = new Padding(0, 0, 0, 0)
         };
-        _exportButton.Click += async (s, e) => await ExportCustomersAsync();
+        SfSkinManager.SetVisualStyle(_exportButton, currentTheme);
+        _exportButton.AccessibleName = "Export Customers";
+        _exportButton.TabIndex = 25;
+        _toolTip?.SetToolTip(_exportButton, "Export customers to CSV");
+        _exportClickHandler = (s, e) => { _ = ExportCustomersAsync(); };
+        _exportButton.Click += _exportClickHandler;
         actionButtonsRow.Controls.Add(_exportButton);
 
         toolbarLayout.Controls.Add(actionButtonsRow, 0, 1);
@@ -645,18 +766,108 @@ public partial class CustomersPanel : UserControl
     #region View Model Binding
 
     /// <summary>
-    /// Binds the view model to UI controls.
+    /// Binds the view model to UI controls using DataBindings for two-way binding.
     /// </summary>
     private void BindViewModel()
     {
-        // Bind grid to filtered customers
+        // Create BindingSource for the ViewModel
+        var viewModelBinding = new BindingSource
+        {
+            DataSource = _viewModel
+        };
+
+        // Bind grid to filtered customers collection
         if (_customersGrid != null)
         {
             _customersGrid.DataSource = _viewModel.FilteredCustomers;
         }
 
-        // Subscribe to property changes
+        // Bind search text box to ViewModel.SearchText with two-way binding
+        if (_searchTextBox != null)
+        {
+            _searchTextBox.DataBindings.Add(
+                nameof(_searchTextBox.Text),
+                viewModelBinding,
+                nameof(_viewModel.SearchText),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind show active only checkbox
+        if (_showActiveOnlyCheckBox != null)
+        {
+            _showActiveOnlyCheckBox.DataBindings.Add(
+                nameof(_showActiveOnlyCheckBox.Checked),
+                viewModelBinding,
+                nameof(_viewModel.ShowActiveOnly),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind summary labels
+        if (_totalCustomersLabel != null)
+        {
+            _totalCustomersLabel.DataBindings.Add(
+                nameof(_totalCustomersLabel.Text),
+                viewModelBinding,
+                nameof(_viewModel.TotalCustomers),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Total: {0}");
+        }
+
+        if (_activeCustomersLabel != null)
+        {
+            _activeCustomersLabel.DataBindings.Add(
+                nameof(_activeCustomersLabel.Text),
+                viewModelBinding,
+                nameof(_viewModel.ActiveCustomers),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Active: {0}");
+        }
+
+        if (_balanceSummaryLabel != null)
+        {
+            _balanceSummaryLabel.DataBindings.Add(
+                nameof(_balanceSummaryLabel.Text),
+                viewModelBinding,
+                nameof(_viewModel.TotalOutstandingBalance),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Balance: {0:C}");
+        }
+
+        // Bind status strip labels
+        if (_statusLabel != null)
+        {
+            _statusLabel.DataBindings.Add(
+                nameof(_statusLabel.Text),
+                viewModelBinding,
+                nameof(_viewModel.StatusText),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        if (_countLabel != null)
+        {
+            _countLabel.DataBindings.Add(
+                nameof(_countLabel.Text),
+                viewModelBinding,
+                nameof(_viewModel.TotalCustomers),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "{0} customers");
+        }
+
+        // Subscribe to property changes for complex UI updates
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        _logger?.LogDebug("CustomersPanel ViewModel bound with DataBindings");
 
         // Initial load
         _ = LoadCustomersAsync();
@@ -808,7 +1019,8 @@ public partial class CustomersPanel : UserControl
             if (hasNoData)
             {
                 // Show action button when there's no data
-                _noDataOverlay.ShowActionButton("➕ Add Customer", async (s, e) => await AddCustomerAsync());
+                _noDataOverlayActionHandler = (s, e) => { _ = AddCustomerAsync(); };
+                _noDataOverlay.ShowActionButton("➕ Add Customer", _noDataOverlayActionHandler);
             }
             else
             {
@@ -1223,7 +1435,48 @@ public partial class CustomersPanel : UserControl
     {
         if (disposing)
         {
-            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            // Unsubscribe view model and UI events
+            try
+            {
+                if (_panelHeader != null)
+                {
+                    if (_panelHeaderRefreshHandler != null) _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                    if (_panelHeaderCloseHandler != null) _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                }
+
+                if (_searchButton != null && _searchButtonClickHandler != null) _searchButton.Click -= _searchButtonClickHandler;
+                if (_clearFiltersButton != null && _clearFiltersClickHandler != null) _clearFiltersButton.Click -= _clearFiltersClickHandler;
+                if (_showActiveOnlyCheckBox != null && _showActiveOnlyChangedHandler != null) _showActiveOnlyCheckBox.CheckedChanged -= _showActiveOnlyChangedHandler;
+                if (_addCustomerButton != null && _addCustomerClickHandler != null) _addCustomerButton.Click -= _addCustomerClickHandler;
+                if (_editCustomerButton != null && _editCustomerClickHandler != null) _editCustomerButton.Click -= _editCustomerClickHandler;
+                if (_deleteCustomerButton != null && _deleteCustomerClickHandler != null) _deleteCustomerButton.Click -= _deleteCustomerClickHandler;
+                if (_refreshButton != null && _refreshClickHandler != null) _refreshButton.Click -= _refreshClickHandler;
+                if (_syncQuickBooksButton != null && _syncQuickBooksClickHandler != null) _syncQuickBooksButton.Click -= _syncQuickBooksClickHandler;
+                if (_exportButton != null && _exportClickHandler != null) _exportButton.Click -= _exportClickHandler;
+
+                if (_noDataOverlay != null && _noDataOverlayActionHandler != null)
+                {
+                    _noDataOverlay.HideActionButton();
+                    // Assuming HideActionButton also removes registered handler; stored reference kept for safety
+                }
+
+                if (_customersGrid != null)
+                {
+                    _customersGrid.SelectionChanged -= CustomersGrid_SelectionChanged;
+                    _customersGrid.CellDoubleClick -= CustomersGrid_CellDoubleClick;
+                }
+
+                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+            catch
+            {
+                // Best-effort unsubscribe; swallowing to avoid throwing in Dispose
+            }
+
+            // Dispose helpers and UI
+            _errorProvider?.Dispose();
+            _toolTip?.Dispose();
+            _currentOperationCts?.Dispose();
 
             _customersGrid?.Dispose();
             _mainLayout?.Dispose();

@@ -20,9 +20,9 @@ namespace WileyWidget.WinForms.Themes
     {
         // Theme name for Syncfusion v31.2.15+ (configurable via appsettings.json UI:Theme)
         // Per Syncfusion documentation, use SkinManager.ApplicationVisualTheme for global theming
-        // Available themes: "Office2019Colorful", "Office2019Black", "Office2019White", "FluentLight", "FluentDark", "MaterialLight", "MaterialDark"
+        // Available themes: "Office2019White", "Office2019Black", "Office2019DarkGray", "FluentLight", "FluentDark", "MaterialLight", "MaterialDark"
         // To change theme: Edit appsettings.json UI:Theme property OR set BEFORE InitializeComponent() in Program.Main()
-        public const string DefaultTheme = "Office2019Colorful";
+        public const string DefaultTheme = "Office2019White";
 
         /// <summary>
         /// Gets the currently active theme name, falling back to DefaultTheme when not set.
@@ -130,7 +130,7 @@ namespace WileyWidget.WinForms.Themes
         {
             try
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
             }
             catch (Exception ex)
             {

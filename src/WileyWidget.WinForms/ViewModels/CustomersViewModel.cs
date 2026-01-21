@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -769,6 +770,58 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        #endregion
+
+        #region ICompletablePanel Implementation
+
+        public async Task LoadAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                IsLoading = true;
+                ErrorMessage = null;
+
+                // Load customers
+                var customersList = await _repo.GetAllAsync(ct);
+                Customers = new ObservableCollection<UtilityCustomer>(customersList);
+                FilteredCustomers = new ObservableCollection<UtilityCustomer>(customersList);
+
+                StatusText = $"Loaded {Customers.Count} customers";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load customers");
+                ErrorMessage = $"Failed to load customers: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        public async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+        {
+            // Basic validation - can be expanded
+            if (!Customers.Any())
+            {
+                return ValidationResult.Success;
+            }
+
+            // Validate selected customer if any
+            if (SelectedCustomer != null)
+            {
+                // Add validation logic here
+            }
+
+            return ValidationResult.Success;
+        }
+
+        public async Task<ValidationResult> SaveAsync(CancellationToken ct = default)
+        {
+            // Implement save logic if needed
+            return ValidationResult.Success;
         }
 
         #endregion

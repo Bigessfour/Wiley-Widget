@@ -10,6 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
@@ -105,6 +106,8 @@
     <PackageReference Include="Syncfusion.Blazor.Core" />
     <PackageReference Include="Syncfusion.Blazor.Themes" />
     <PackageReference Include="Syncfusion.Blazor.SmartComponents" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" />
+    <PackageReference Include="Syncfusion.Blazor.Buttons" />
   </ItemGroup>
 
   <ItemGroup>

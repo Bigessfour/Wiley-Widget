@@ -540,6 +540,42 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "RefreshActiveGrid failed");
             }
         }
+
+        /// <summary>
+        /// Notifies a panel's ViewModel of visibility changes to trigger lazy data loading.
+        /// If the panel's ViewModel implements ILazyLoadViewModel, calls OnVisibilityChangedAsync.
+        /// </summary>
+        /// <param name="control">The panel control to notify.</param>
+        private async Task NotifyPanelVisibilityChangedAsync(Control control)
+        {
+            try
+            {
+                if (control == null || control.IsDisposed)
+                {
+                    return;
+                }
+
+                // Check if control's DataContext (ViewModel) implements ILazyLoadViewModel
+                var dataContext = control.GetType().GetProperty("DataContext", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(control);
+                if (dataContext == null)
+                {
+                    // Try ViewModel property instead
+                    dataContext = control.GetType().GetProperty("ViewModel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(control);
+                }
+
+                // Check if ViewModel implements ILazyLoadViewModel
+                if (dataContext is WileyWidget.Abstractions.ILazyLoadViewModel lazyViewModel)
+                {
+                    var isVisible = _dockingManager?.GetDockVisibility(control) ?? control.Visible;
+                    _logger?.LogDebug("Notifying {PanelType} visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
+                    await lazyViewModel.OnVisibilityChangedAsync(isVisible);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to notify panel visibility change for {ControlName}", control?.Name ?? "unknown");
+            }
+        }
     }
     #endregion
 }

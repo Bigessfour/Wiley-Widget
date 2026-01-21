@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
@@ -59,10 +60,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private Label? _totalVarianceLabel;
     private Label? _averageVarianceLabel;
     private Label? _recommendationExplanationLabel;
-    private Panel? _scenarioPanel;
-    private Panel? _resultsPanel;
-    private Panel? _chartsPanel;
-    private Panel? _buttonPanel;
+    private GradientPanelExt? _scenarioPanel;
+    private GradientPanelExt? _resultsPanel;
+    private GradientPanelExt? _chartsPanel;
+    private GradientPanelExt? _buttonPanel;
     private SplitContainer? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -70,6 +71,23 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
     private ErrorProvider? _errorProvider;
+    private SfComboBox? _entityComboBox;
+
+    // === EVENT HANDLER STORAGE FOR CLEANUP ===
+    private EventHandler? _performAnalysisButtonClickHandler;
+    private EventHandler? _runScenarioButtonClickHandler;
+    private EventHandler? _generateForecastButtonClickHandler;
+    private EventHandler? _refreshButtonClickHandler;
+    private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler? _entityComboBoxSelectedIndexChangedHandler;
+    private EventHandler? _rateIncreaseTextBoxTextChangedHandler;
+    private EventHandler? _expenseIncreaseTextBoxTextChangedHandler;
+    private EventHandler? _revenueTargetTextBoxTextChangedHandler;
+    private EventHandler? _projectionYearsTextBoxTextChangedHandler;
+    private EventHandler? _metricsSearchTextBoxTextChangedHandler;
+    private EventHandler? _variancesSearchTextBoxTextChangedHandler;
+    private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
 
     /// <summary>
     /// Initializes a new instance of the AnalyticsPanel class.
@@ -84,6 +102,175 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         // Call the actual initialization method (theme applied inside InitializeControls)
         InitializeControls();
     }
+
+    #region ICompletablePanel Implementation
+
+    /// <summary>
+    /// Loads the panel asynchronously and initializes analytics data.
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken ct)
+    {
+        if (IsLoaded) return;
+        try
+        {
+            IsBusy = true;
+            if (ViewModel != null && !DesignMode && ViewModel.PerformAnalysisCommand.CanExecute(null))
+            {
+                await ViewModel.PerformAnalysisCommand.ExecuteAsync(null);
+            }
+            _logger?.LogDebug("AnalyticsPanel loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AnalyticsPanel load cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load AnalyticsPanel");
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Saves the panel asynchronously. Analytics panel is read-only, so this is a no-op.
+    /// </summary>
+    public override async Task SaveAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+            await Task.CompletedTask;
+            _logger?.LogDebug("AnalyticsPanel save completed");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AnalyticsPanel save cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to save AnalyticsPanel");
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Validates the panel asynchronously. Ensures scenario parameters are valid and data is available.
+    /// </summary>
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+            
+            // Clear existing error indicators before validation
+            if (_errorProvider != null)
+            {
+                if (InvokeRequired)
+                    Invoke(() => ClearErrorIndicators());
+                else
+                    ClearErrorIndicators();
+            }
+            
+            var errors = new List<ValidationItem>();
+            if (ViewModel == null)
+            {
+                errors.Add(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error));
+            }
+            else
+            {
+                // Validate rate increase (0-100)
+                if (_rateIncreaseTextBox != null)
+                {
+                    if (!decimal.TryParse(_rateIncreaseTextBox.Text, out var rateValue) || rateValue < 0 || rateValue > 100)
+                    {
+                        var error = new ValidationItem("RateIncrease", "Rate increase must be 0-100", ValidationSeverity.Error, _rateIncreaseTextBox);
+                        errors.Add(error);
+                        _errorProvider?.SetError(_rateIncreaseTextBox, "Rate increase must be 0-100");
+                    }
+                }
+
+                // Validate expense increase (0-100)
+                if (_expenseIncreaseTextBox != null)
+                {
+                    if (!decimal.TryParse(_expenseIncreaseTextBox.Text, out var expenseValue) || expenseValue < 0 || expenseValue > 100)
+                    {
+                        var error = new ValidationItem("ExpenseIncrease", "Expense increase must be 0-100", ValidationSeverity.Error, _expenseIncreaseTextBox);
+                        errors.Add(error);
+                        _errorProvider?.SetError(_expenseIncreaseTextBox, "Expense increase must be 0-100");
+                    }
+                }
+
+                // Validate revenue target (0-100)
+                if (_revenueTargetTextBox != null)
+                {
+                    if (!decimal.TryParse(_revenueTargetTextBox.Text, out var revenueValue) || revenueValue < 0 || revenueValue > 100)
+                    {
+                        var error = new ValidationItem("RevenueTarget", "Revenue target must be 0-100", ValidationSeverity.Error, _revenueTargetTextBox);
+                        errors.Add(error);
+                        _errorProvider?.SetError(_revenueTargetTextBox, "Revenue target must be 0-100");
+                    }
+                }
+
+                // Validate projection years (1-10)
+                if (_projectionYearsTextBox != null)
+                {
+                    if (!int.TryParse(_projectionYearsTextBox.Text, out var yearsValue) || yearsValue < 1 || yearsValue > 10)
+                    {
+                        var error = new ValidationItem("ProjectionYears", "Projection years must be 1-10", ValidationSeverity.Error, _projectionYearsTextBox);
+                        errors.Add(error);
+                        _errorProvider?.SetError(_projectionYearsTextBox, "Projection years must be 1-10");
+                    }
+                }
+
+                // Check data availability
+                if (!ViewModel.FilteredMetrics.Any())
+                    errors.Add(new ValidationItem("Data", "No analytics data available", ValidationSeverity.Warning));
+            }
+            await Task.CompletedTask;
+            return errors.Count == 0 ? ValidationResult.Success : ValidationResult.Failed(errors.ToArray());
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AnalyticsPanel validation cancelled");
+            return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Validation error in AnalyticsPanel");
+            return ValidationResult.Failed(new ValidationItem("Validation", ex.Message, ValidationSeverity.Error));
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Clears all error indicators from the error provider.
+    /// </summary>
+    private void ClearErrorIndicators()
+    {
+        if (_errorProvider == null) return;
+        
+        if (_rateIncreaseTextBox != null)
+            _errorProvider.SetError(_rateIncreaseTextBox, "");
+        if (_expenseIncreaseTextBox != null)
+            _errorProvider.SetError(_expenseIncreaseTextBox, "");
+        if (_revenueTargetTextBox != null)
+            _errorProvider.SetError(_revenueTargetTextBox, "");
+        if (_projectionYearsTextBox != null)
+            _errorProvider.SetError(_projectionYearsTextBox, "");
+    }
+
+    /// <summary>
+    /// Focuses the first validation error control.
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        if (_scenarioPanel?.Visible == true)
+            _scenarioPanel.Focus();
+        else
+            _rateIncreaseTextBox?.Focus();
+    }
+
+    #endregion
 
     /// <summary>
     /// Initializes all UI controls and sets up the layout.
@@ -100,8 +287,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
-        _panelHeader.RefreshClicked += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeaderRefreshHandler = async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
+        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
         // Main split container
@@ -123,8 +312,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _statusLabel = new ToolStripStatusLabel
         {
             Text = "Ready",
-            Spring = true,
-            TextAlign = ContentAlignment.MiddleLeft
+            Spring = true
         };
         _statusStrip.Items.Add(_statusLabel);
 
@@ -209,7 +397,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Perform Analysis",
             AccessibleDescription = "Run exploratory data analysis on budget data"
         };
-        _performAnalysisButton.Click += async (s, e) => await ViewModel!.PerformAnalysisCommand.ExecuteAsync(null);
+        _performAnalysisButtonClickHandler = async (s, e) => { SetHasUnsavedChanges(true); await ViewModel!.PerformAnalysisCommand.ExecuteAsync(null); };
+        _performAnalysisButton.Click += _performAnalysisButtonClickHandler;
 
         _runScenarioButton = new SfButton
         {
@@ -218,7 +407,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Run Scenario",
             AccessibleDescription = "Run rate adjustment scenario analysis"
         };
-        _runScenarioButton.Click += async (s, e) => await ViewModel!.RunScenarioCommand.ExecuteAsync(null);
+        _runScenarioButtonClickHandler = async (s, e) => { SetHasUnsavedChanges(true); await ViewModel!.RunScenarioCommand.ExecuteAsync(null); };
+        _runScenarioButton.Click += _runScenarioButtonClickHandler;
 
         _generateForecastButton = new SfButton
         {
@@ -227,7 +417,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Generate Forecast",
             AccessibleDescription = "Generate predictive reserve forecast"
         };
-        _generateForecastButton.Click += async (s, e) => await ViewModel!.GenerateForecastCommand.ExecuteAsync(null);
+        _generateForecastButtonClickHandler = async (s, e) => { SetHasUnsavedChanges(true); await ViewModel!.GenerateForecastCommand.ExecuteAsync(null); };
+        _generateForecastButton.Click += _generateForecastButtonClickHandler;
 
         _refreshButton = new SfButton
         {
@@ -236,7 +427,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _refreshButton.Click += async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _refreshButtonClickHandler = async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _refreshButton.Click += _refreshButtonClickHandler;
 
         buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
         buttonTable.Controls.Add(_runScenarioButton, 1, 0);
@@ -259,7 +451,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
         _entityComboBox.DataSource = new List<string> { "All Entities" };
-        _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+        _entityComboBoxSelectedIndexChangedHandler = EntityComboBox_SelectedIndexChanged;
+        _entityComboBox.SelectedIndexChanged += _entityComboBoxSelectedIndexChangedHandler;
 
         buttonTable.Controls.Add(entityLabel, 4, 0);
         buttonTable.Controls.Add(_entityComboBox, 5, 0);
@@ -319,10 +512,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             TabIndex = 5,
             AccessibleName = "Rate Increase Percentage",
-            AccessibleDescription = "Percentage increase for rate scenario"
+            AccessibleDescription = "Percentage increase for rate scenario (0-100)",
+            MaxLength = 5
         };
 #pragma warning restore RS0030
-        _rateIncreaseTextBox.TextChanged += RateIncreaseTextBox_TextChanged;
+        _rateIncreaseTextBoxTextChangedHandler = RateIncreaseTextBox_TextChanged;
+        _rateIncreaseTextBox.TextChanged += _rateIncreaseTextBoxTextChangedHandler;
 
         // Row 2: Expense Increase
         var expenseIncreaseLabel = new Label
@@ -339,10 +534,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             TabIndex = 6,
             AccessibleName = "Expense Increase Percentage",
-            AccessibleDescription = "Percentage increase for expenses in scenario"
+            AccessibleDescription = "Percentage increase for expenses in scenario (0-100)",
+            MaxLength = 5
         };
 #pragma warning restore RS0030
-        _expenseIncreaseTextBox.TextChanged += ExpenseIncreaseTextBox_TextChanged;
+        _expenseIncreaseTextBoxTextChangedHandler = ExpenseIncreaseTextBox_TextChanged;
+        _expenseIncreaseTextBox.TextChanged += _expenseIncreaseTextBoxTextChangedHandler;
 
         // Row 3: Revenue Target
         var revenueTargetLabel = new Label
@@ -359,10 +556,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             TabIndex = 7,
             AccessibleName = "Revenue Target Percentage",
-            AccessibleDescription = "Target revenue increase percentage"
+            AccessibleDescription = "Target revenue increase percentage (0-100)",
+            MaxLength = 5
         };
 #pragma warning restore RS0030
-        _revenueTargetTextBox.TextChanged += RevenueTargetTextBox_TextChanged;
+        _revenueTargetTextBoxTextChangedHandler = RevenueTargetTextBox_TextChanged;
+        _revenueTargetTextBox.TextChanged += _revenueTargetTextBoxTextChangedHandler;
 
         // Row 4: Projection Years
         var projectionYearsLabel = new Label
@@ -379,10 +578,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             TabIndex = 8,
             AccessibleName = "Projection Years",
-            AccessibleDescription = "Number of years for projections"
+            AccessibleDescription = "Number of years for projections (1-10)",
+            MaxLength = 2
         };
 #pragma warning restore RS0030
-        _projectionYearsTextBox.TextChanged += ProjectionYearsTextBox_TextChanged;
+        _projectionYearsTextBoxTextChangedHandler = ProjectionYearsTextBox_TextChanged;
+        _projectionYearsTextBox.TextChanged += _projectionYearsTextBoxTextChangedHandler;
 
         scenarioTable.Controls.Add(rateIncreaseLabel, 0, 0);
         scenarioTable.Controls.Add(_rateIncreaseTextBox, 1, 0);
@@ -468,7 +669,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         SfSkinManager.SetVisualStyle(metricsSearchPanel, currentTheme);
         var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
         _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9 };
-        _metricsSearchTextBox.TextChanged += MetricsSearchTextBox_TextChanged;
+        _metricsSearchTextBoxTextChangedHandler = MetricsSearchTextBox_TextChanged;
+        _metricsSearchTextBox.TextChanged += _metricsSearchTextBoxTextChangedHandler;
         metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
         metricsSearchPanel.Controls.Add(metricsSearchLabel);
 
@@ -513,7 +715,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         SfSkinManager.SetVisualStyle(variancesSearchPanel, currentTheme);
         var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
         _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
-        _variancesSearchTextBox.TextChanged += VariancesSearchTextBox_TextChanged;
+        _variancesSearchTextBoxTextChangedHandler = VariancesSearchTextBox_TextChanged;
+        _variancesSearchTextBox.TextChanged += _variancesSearchTextBoxTextChangedHandler;
         variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
         variancesSearchPanel.Controls.Add(variancesSearchLabel);
 
@@ -719,8 +922,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         // Tab order set in control initialization
     }
 
-    private SfComboBox? _entityComboBox;
-
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider so panels can bind to it safely.
     /// </summary>
@@ -728,14 +929,27 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         base.OnViewModelResolved(viewModel);
 
-        // Subscribe to property changed for UI updates
-        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Subscribe to property changed for UI updates and live preview (store handler for cleanup)
+        _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+        viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Initial binding for grids and lists
         if (_metricsGrid != null) _metricsGrid.DataSource = viewModel.FilteredMetrics;
         if (_variancesGrid != null) _variancesGrid.DataSource = viewModel.FilteredTopVariances;
         if (_insightsListBox != null) _insightsListBox.DataSource = viewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
         if (_recommendationsListBox != null) _recommendationsListBox.DataSource = viewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+
+        // Two-way binding for scenario parameters (live preview)
+        // TextBox -> ViewModel: handled by TextChanged handlers
+        // ViewModel -> TextBox: handled by PropertyChanged handler below
+        if (_rateIncreaseTextBox != null)
+            _rateIncreaseTextBox.Text = viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_expenseIncreaseTextBox != null)
+            _expenseIncreaseTextBox.Text = viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_revenueTargetTextBox != null)
+            _revenueTargetTextBox.Text = viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_projectionYearsTextBox != null)
+            _projectionYearsTextBox.Text = viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
 
         // Bind entity combo if present
         if (_entityComboBox != null)
@@ -748,47 +962,75 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     }
 
     /// <summary>
-    /// Handles rate increase text box text changed event.
+    /// Validates and updates scenario parameter with error feedback.
+    /// </summary>
+    private void ValidateScenarioParameter(TextBoxExt textBox, Action<decimal> setter, decimal min, decimal max, string fieldName)
+    {
+        if (decimal.TryParse(textBox.Text, out var value) && value >= min && value <= max)
+        {
+            setter(value);
+            _errorProvider?.SetError(textBox, "");
+        }
+        else
+        {
+            _errorProvider?.SetError(textBox, $"{fieldName} must be {min}-{max}");
+        }
+    }
+
+    /// <summary>
+    /// Validates and updates scenario parameter (integer) with error feedback.
+    /// </summary>
+    private void ValidateScenarioParameterInt(TextBoxExt textBox, Action<int> setter, int min, int max, string fieldName)
+    {
+        if (int.TryParse(textBox.Text, out var value) && value >= min && value <= max)
+        {
+            setter(value);
+            _errorProvider?.SetError(textBox, "");
+        }
+        else
+        {
+            _errorProvider?.SetError(textBox, $"{fieldName} must be {min}-{max}");
+        }
+    }
+
+    /// <summary>
+    /// Handles rate increase text box text changed event with error feedback.
     /// </summary>
     private void RateIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_rateIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.RateIncreasePercentage = value;
-        else
-            _rateIncreaseTextBox!.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_rateIncreaseTextBox == null) return;
+        SetHasUnsavedChanges(true);
+        ValidateScenarioParameter(_rateIncreaseTextBox, v => _viewModel.RateIncreasePercentage = v, 0, 100, "Rate increase");
     }
 
     /// <summary>
-    /// Handles expense increase text box text changed event.
+    /// Handles expense increase text box text changed event with error feedback.
     /// </summary>
     private void ExpenseIncreaseTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_expenseIncreaseTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.ExpenseIncreasePercentage = value;
-        else
-            _expenseIncreaseTextBox!.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_expenseIncreaseTextBox == null) return;
+        SetHasUnsavedChanges(true);
+        ValidateScenarioParameter(_expenseIncreaseTextBox, v => _viewModel.ExpenseIncreasePercentage = v, 0, 100, "Expense increase");
     }
 
     /// <summary>
-    /// Handles revenue target text box text changed event.
+    /// Handles revenue target text box text changed event with error feedback.
     /// </summary>
     private void RevenueTargetTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (decimal.TryParse(_revenueTargetTextBox?.Text, out var value) && value >= 0 && value <= 100)
-            _viewModel.RevenueTargetPercentage = value;
-        else
-            _revenueTargetTextBox!.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+        if (_revenueTargetTextBox == null) return;
+        SetHasUnsavedChanges(true);
+        ValidateScenarioParameter(_revenueTargetTextBox, v => _viewModel.RevenueTargetPercentage = v, 0, 100, "Revenue target");
     }
 
     /// <summary>
-    /// Handles projection years text box text changed event.
+    /// Handles projection years text box text changed event with error feedback.
     /// </summary>
     private void ProjectionYearsTextBox_TextChanged(object? sender, EventArgs e)
     {
-        if (int.TryParse(_projectionYearsTextBox?.Text, out var value) && value > 0 && value <= 10)
-            _viewModel.ProjectionYears = value;
-        else
-            _projectionYearsTextBox!.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+        if (_projectionYearsTextBox == null) return;
+        SetHasUnsavedChanges(true);
+        ValidateScenarioParameterInt(_projectionYearsTextBox, v => _viewModel.ProjectionYears = v, 1, 10, "Projection years");
     }
 
     /// <summary>
@@ -796,6 +1038,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void MetricsSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
+        SetHasUnsavedChanges(true);
         _viewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
     }
 
@@ -804,6 +1047,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void VariancesSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
+        SetHasUnsavedChanges(true);
         _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
     }
 
@@ -839,6 +1083,30 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         switch (e.PropertyName)
         {
+            case nameof(_viewModel.RateIncreasePercentage):
+                // Live preview: update TextBox when ViewModel property changes
+                if (_rateIncreaseTextBox != null && _rateIncreaseTextBox.Focused == false)
+                    _rateIncreaseTextBox.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+                break;
+
+            case nameof(_viewModel.ExpenseIncreasePercentage):
+                // Live preview: update TextBox when ViewModel property changes
+                if (_expenseIncreaseTextBox != null && _expenseIncreaseTextBox.Focused == false)
+                    _expenseIncreaseTextBox.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+                break;
+
+            case nameof(_viewModel.RevenueTargetPercentage):
+                // Live preview: update TextBox when ViewModel property changes
+                if (_revenueTargetTextBox != null && _revenueTargetTextBox.Focused == false)
+                    _revenueTargetTextBox.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+                break;
+
+            case nameof(_viewModel.ProjectionYears):
+                // Live preview: update TextBox when ViewModel property changes
+                if (_projectionYearsTextBox != null && _projectionYearsTextBox.Focused == false)
+                    _projectionYearsTextBox.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+                break;
+
             case nameof(_viewModel.FilteredMetrics):
                 if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.FilteredMetrics;
                 break;
@@ -1071,22 +1339,52 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (disposing)
         {
-            // Unsubscribe from events before disposal
-            if (ViewModel != null)
-                ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            // Unsubscribe from all events before disposal to prevent memory leaks
+            if (ViewModel != null && _viewModelPropertyChangedHandler != null)
+                ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
 
-            if (_entityComboBox != null)
+            // Button event handlers
+            if (_performAnalysisButton != null && _performAnalysisButtonClickHandler != null)
+                _performAnalysisButton.Click -= _performAnalysisButtonClickHandler;
+            if (_runScenarioButton != null && _runScenarioButtonClickHandler != null)
+                _runScenarioButton.Click -= _runScenarioButtonClickHandler;
+            if (_generateForecastButton != null && _generateForecastButtonClickHandler != null)
+                _generateForecastButton.Click -= _generateForecastButtonClickHandler;
+            if (_refreshButton != null && _refreshButtonClickHandler != null)
+                _refreshButton.Click -= _refreshButtonClickHandler;
+
+            // Panel header event handlers
+            if (_panelHeader != null)
             {
-                _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
-                _entityComboBox.SafeDispose();
+                if (_panelHeaderRefreshHandler != null)
+                    _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                if (_panelHeaderCloseHandler != null)
+                    _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
             }
+
+            // Entity combo box event handler
+            if (_entityComboBox != null && _entityComboBoxSelectedIndexChangedHandler != null)
+                _entityComboBox.SelectedIndexChanged -= _entityComboBoxSelectedIndexChangedHandler;
+
+            // TextBox event handlers
+            if (_rateIncreaseTextBox != null && _rateIncreaseTextBoxTextChangedHandler != null)
+                _rateIncreaseTextBox.TextChanged -= _rateIncreaseTextBoxTextChangedHandler;
+            if (_expenseIncreaseTextBox != null && _expenseIncreaseTextBoxTextChangedHandler != null)
+                _expenseIncreaseTextBox.TextChanged -= _expenseIncreaseTextBoxTextChangedHandler;
+            if (_revenueTargetTextBox != null && _revenueTargetTextBoxTextChangedHandler != null)
+                _revenueTargetTextBox.TextChanged -= _revenueTargetTextBoxTextChangedHandler;
+            if (_projectionYearsTextBox != null && _projectionYearsTextBoxTextChangedHandler != null)
+                _projectionYearsTextBox.TextChanged -= _projectionYearsTextBoxTextChangedHandler;
+            if (_metricsSearchTextBox != null && _metricsSearchTextBoxTextChangedHandler != null)
+                _metricsSearchTextBox.TextChanged -= _metricsSearchTextBoxTextChangedHandler;
+            if (_variancesSearchTextBox != null && _variancesSearchTextBoxTextChangedHandler != null)
+                _variancesSearchTextBox.TextChanged -= _variancesSearchTextBoxTextChangedHandler;
 
             // Use SafeDispose for Syncfusion controls
             _metricsGrid.SafeDispose();
             _variancesGrid.SafeDispose();
 
             // Region event wiring removed; ChartControl handles cleanup via Dispose
-
             _trendsChart.SafeDispose();
             _forecastChart.SafeDispose();
             _insightsListBox.SafeClearDataSource();
@@ -1096,6 +1394,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _mainSplitContainer.SafeDispose();
             _statusStrip.SafeDispose();
             _panelHeader.SafeDispose();
+            _entityComboBox.SafeDispose();
             _loadingOverlay.SafeDispose();
             _noDataOverlay.SafeDispose();
             _errorProvider.SafeDispose();

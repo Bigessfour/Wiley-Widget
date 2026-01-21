@@ -55,6 +55,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private SfComboBox? _cmbChartGroupBy;
     private Label? _lblChartSummary;
 
+    // Data binding source for grid
+    private BindingSource? _bindingSource;
+
     // Auto-refresh timer
     private System.Windows.Forms.Timer? _autoRefreshTimer;
 
@@ -137,14 +140,13 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // Filter panel
+        // Filter panel - theme applied via SfSkinManager cascade (no manual BackgroundColor)
         _filterPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 120,
             Padding = new Padding(8),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = "Audit log filters"
         };
         var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
@@ -156,7 +158,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             ColumnCount = 6,
             RowCount = 2,
             AutoSize = true
-        };
+        }; // Standard WinForms (no Syncfusion TableLayoutPanel in v32.1.19)
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // Start Date label
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150)); // Start Date picker
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // End Date label
@@ -165,7 +167,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // Action Type combo
 
         // Row 1: Date filters
-        filterTable.Controls.Add(new Label { Text = "Start Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+        filterTable.Controls.Add(new Label { Text = "Start Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, AccessibleName = "Start date label" }, 0, 0);
         _dtpStartDate = new SfDateTimeEdit
         {
             Width = 140,
@@ -177,7 +179,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _dtpStartDate.ValueChanged += _dtpStartDateValueChangedHandler;
         filterTable.Controls.Add(_dtpStartDate, 1, 0);
 
-        filterTable.Controls.Add(new Label { Text = "End Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 2, 0);
+        filterTable.Controls.Add(new Label { Text = "End Date:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, AccessibleName = "End date label" }, 2, 0);
         _dtpEndDate = new SfDateTimeEdit
         {
             Width = 140,
@@ -190,7 +192,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         filterTable.Controls.Add(_dtpEndDate, 3, 0);
 
         // Row 2: Action Type and User filters
-        filterTable.Controls.Add(new Label { Text = "Action Type:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+        filterTable.Controls.Add(new Label { Text = "Action Type:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, AccessibleName = "Action type label" }, 0, 1);
         _cmbActionType = new SfComboBox
         {
             Width = 140,
@@ -206,7 +208,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _cmbActionType.SelectedIndexChanged += _cmbActionTypeSelectedIndexChangedHandler;
         filterTable.Controls.Add(_cmbActionType, 1, 1);
 
-        filterTable.Controls.Add(new Label { Text = "User:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft }, 2, 1);
+        filterTable.Controls.Add(new Label { Text = "User:", AutoSize = true, TextAlign = ContentAlignment.MiddleLeft, AccessibleName = "User label" }, 2, 1);
         _cmbUser = new SfComboBox
         {
             Width = 140,
@@ -260,7 +262,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _filterPanel.Controls.Add(filterTable);
 
-        // Chart options toolbar
+        // Chart options toolbar - standard WinForms (no Syncfusion FlowLayoutPanel in v32.1.19)
         var chartOptionsFlow = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -275,7 +277,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Text = "Chart Period:",
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(8, 8, 8, 8)
+            Padding = new Padding(8, 8, 8, 8),
+            AccessibleName = "Chart grouping label"
         };
 
         _cmbChartGroupBy = new SfComboBox
@@ -309,13 +312,13 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _filterPanel.Controls.Add(chartOptionsFlow);
         Controls.Add(_filterPanel);
 
-        // Main split container: left grid, right chart/details
+        // Main split container: left grid, right chart/details - standard WinForms
         _mainSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             AccessibleName = "Audit grid and chart split container"
-        };
+        }; // Standard WinForms (no Syncfusion SplitContainer in v32.1.19)
         ConfigureMainSplitContainer();
 
         // Audit grid (left)
@@ -340,14 +343,14 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         ConfigureGridColumns();
         _mainSplit.Panel1.Controls.Add(_auditGrid);
 
-        // Chart host (right)
+        // Chart host (right) - standard WinForms Panel
         _chartHostPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(8),
             AccessibleName = "Chart host panel",
             AccessibleDescription = "Displays chart of audit events"
-        };
+        }; // Standard WinForms (no Syncfusion Panel equivalent in v32.1.19)
 
         _chartControl = new ChartControl
         {
@@ -373,7 +376,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Height = 26,
             TextAlign = ContentAlignment.MiddleLeft,
             Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular),
-            Padding = new Padding(6, 0, 0, 0)
+            Padding = new Padding(6, 0, 0, 0),
+            AccessibleName = "Chart summary",
+            AccessibleDescription = "Summary statistics for chart data"
         };
         _chartHostPanel.Controls.Add(_lblChartSummary);
 
@@ -770,9 +775,16 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             _auditGrid.SuspendLayout();
 
+            // Use BindingSource for improved filtering/sorting support
+            if (_bindingSource == null)
+            {
+                _bindingSource = new BindingSource();
+            }
+
             // Create snapshot to avoid collection modification issues
             var snapshot = ViewModel.Entries.ToList();
-            _auditGrid.DataSource = snapshot;
+            _bindingSource.DataSource = snapshot;
+            _auditGrid.DataSource = _bindingSource;
 
             _auditGrid.ResumeLayout();
         }
@@ -859,6 +871,102 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             // Ignore
         }
     }
+
+    #region ICompletablePanel Implementation
+
+    /// <summary>
+    /// Loads the panel and initializes audit log data asynchronously.
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken ct)
+    {
+        if (IsLoaded) return;
+        try
+        {
+            IsBusy = true;
+            await RefreshDataAsync(ct);
+            _logger?.LogDebug("AuditLogPanel loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AuditLogPanel load cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load AuditLogPanel");
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Saves panel state. AuditLogPanel is read-only, so this is a no-op.
+    /// </summary>
+    public override async Task SaveAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+            await Task.CompletedTask;
+            _logger?.LogDebug("AuditLogPanel save completed");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AuditLogPanel save cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to save AuditLogPanel");
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Validates panel data. Ensures ViewModel is initialized and entries are accessible.
+    /// </summary>
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+            var errors = new List<ValidationItem>();
+
+            if (ViewModel == null)
+            {
+                errors.Add(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error));
+            }
+            else
+            {
+                // Validate that grid has data binding
+                if (ViewModel.Entries.Count == 0)
+                {
+                    errors.Add(new ValidationItem("Data", "No audit entries available", ValidationSeverity.Warning));
+                }
+            }
+
+            await Task.CompletedTask;
+            return errors.Count == 0 ? ValidationResult.Success : ValidationResult.Failed(errors.ToArray());
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("AuditLogPanel validation cancelled");
+            return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Validation error in AuditLogPanel");
+            return ValidationResult.Failed(new ValidationItem("Validation", ex.Message, ValidationSeverity.Error));
+        }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// Focuses the first control on the panel.
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        _auditGrid?.Focus();
+    }
+
+    #endregion
 
     private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
@@ -1061,6 +1169,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
                 }
             }
             catch { }
+
+            // Dispose BindingSource
+            try { _bindingSource?.Dispose(); } catch { }
 
             // Dispose controls using SafeDispose pattern
             try { _auditGrid?.SafeClearDataSource(); } catch { }

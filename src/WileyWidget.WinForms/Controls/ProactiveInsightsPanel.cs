@@ -29,9 +29,11 @@ namespace WileyWidget.WinForms.Controls
         // Internal child controls (kept as fields for disposal and layout control)
         private GradientPanelExt? _topPanel;
         private PanelHeader? _panelHeader;
-        private ToolStrip? _toolStrip;
-        private ToolStripButton? _btnRefresh;
-        private ToolStripButton? _btnClear;
+        private FlowLayoutPanel? _buttonContainer;
+        private SfButton? _btnRefresh;
+        private SfButton? _btnClear;
+        private EventHandler? _btnRefreshClickHandler;
+        private EventHandler? _btnClearClickHandler;
 
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
@@ -50,10 +52,10 @@ namespace WileyWidget.WinForms.Controls
             _logger = logger ?? ResolveLogger();
             _logger?.LogInformation("ProactiveInsightsPanel initializing");
             ApplyTheme();
-            
+
             this.PerformLayout();
             this.Refresh();
-            
+
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
             _logger?.LogInformation("ProactiveInsightsPanel initialized successfully");
@@ -122,13 +124,12 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Container for right-aligned toolbar actions"
             };
 
-            // Toolbar for actions
-            _toolStrip = new ToolStrip
+            // Button container for actions (using FlowLayoutPanel instead of ToolStrip for consistency)
+            _buttonContainer = new FlowLayoutPanel
             {
-                Height = 32,
+                FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                GripStyle = ToolStripGripStyle.Hidden,
-                LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow,
+                WrapContents = false,
                 Margin = new Padding(0),
                 Padding = new Padding(4, 2, 4, 2),
                 Name = "ProactiveToolStrip",
@@ -136,29 +137,47 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Toolbar for proactive insights actions"
             };
 
-            // Refresh button
-            _btnRefresh = new ToolStripButton("🔄 Refresh")
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+
+            // Refresh button (using SfButton for Syncfusion consistency)
+            _btnRefresh = new SfButton
             {
-                ToolTipText = "Refresh insights",
+                Text = "🔄 Refresh",
+                AutoSize = false,
+                Size = new Size(100, 32),
                 Name = "ProactiveRefresh",
                 AccessibleName = "Refresh Insights Button",
                 AccessibleDescription = "Click to refresh proactive insights",
-                Margin = new Padding(4, 0, 4, 0)
+                Margin = new Padding(4, 0, 4, 0),
+                TabIndex = 1,
+                TabStop = true
             };
-            _toolStrip.Items.Add(_btnRefresh);
+            var refreshTooltip = new ToolTip();
+            refreshTooltip.SetToolTip(_btnRefresh, "Refresh insights");
+            SfSkinManager.SetVisualStyle(_btnRefresh, currentTheme);
+            _btnRefresh.ThemeName = currentTheme;
+            _buttonContainer.Controls.Add(_btnRefresh);
 
-            // Clear button
-            _btnClear = new ToolStripButton("🗑️ Clear")
+            // Clear button (using SfButton for Syncfusion consistency)
+            _btnClear = new SfButton
             {
-                ToolTipText = "Clear all insights",
+                Text = "🗑️ Clear",
+                AutoSize = false,
+                Size = new Size(85, 32),
                 Name = "ProactiveClear",
                 AccessibleName = "Clear Insights Button",
                 AccessibleDescription = "Click to clear all proactive insights",
-                Margin = new Padding(4, 0, 4, 0)
+                Margin = new Padding(4, 0, 4, 0),
+                TabIndex = 2,
+                TabStop = true
             };
-            _toolStrip.Items.Add(_btnClear);
+            var clearTooltip = new ToolTip();
+            clearTooltip.SetToolTip(_btnClear, "Clear all insights");
+            SfSkinManager.SetVisualStyle(_btnClear, currentTheme);
+            _btnClear.ThemeName = currentTheme;
+            _buttonContainer.Controls.Add(_btnClear);
 
-            rightFlow.Controls.Add(_toolStrip);
+            rightFlow.Controls.Add(_buttonContainer);
 
             headerLayout.Controls.Add(rightFlow, 1, 0);
 
@@ -173,8 +192,35 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_insightFeedPanel);
 
             // Hook up toolbar actions to named handlers so we can unsubscribe later
-            _btnRefresh.Click += BtnRefresh_Click;
-            _btnClear.Click += BtnClear_Click;
+            _btnRefreshClickHandler = (s, e) => BtnRefresh_Click(s, e);
+            _btnClearClickHandler = (s, e) => BtnClear_Click(s, e);
+            _btnRefresh.Click += _btnRefreshClickHandler;
+            _btnClear.Click += _btnClearClickHandler;
+        }
+
+        /// <summary>
+        /// Dispose implementation - clean up event handlers and child controls.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Unsubscribe event handlers
+                if (_btnRefresh != null && _btnRefreshClickHandler != null)
+                    _btnRefresh.Click -= _btnRefreshClickHandler;
+                if (_btnClear != null && _btnClearClickHandler != null)
+                    _btnClear.Click -= _btnClearClickHandler;
+
+                // Dispose controls
+                _btnRefresh?.SafeDispose();
+                _btnClear?.SafeDispose();
+                _buttonContainer?.SafeDispose();
+                _panelHeader?.SafeDispose();
+                _topPanel?.SafeDispose();
+                _insightFeedPanel?.SafeDispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         /// <summary>
@@ -260,9 +306,6 @@ namespace WileyWidget.WinForms.Controls
                 return null;
             }
         }
-
-        // InitializeComponent moved to ProactiveInsightsPanel.Designer.cs for designer support
-        // Dispose moved to ProactiveInsightsPanel.Designer.cs for designer support
     }
 }
 

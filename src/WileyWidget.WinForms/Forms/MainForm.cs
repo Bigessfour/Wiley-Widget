@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Win32;
 using Serilog;
 using Serilog.Events;
 using Syncfusion.WinForms.Controls;
@@ -12,8 +11,6 @@ using Syncfusion.Windows.Forms;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
@@ -25,13 +22,16 @@ using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Abstractions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.WinForms.Helpers;
 
 #pragma warning disable CS8604 // Possible null reference argument
 
@@ -94,6 +94,37 @@ namespace WileyWidget.WinForms.Forms
         /// Resolved during MainForm.OnShown and kept alive for the form's lifetime.
         /// </summary>
         public MainViewModel? MainViewModel { get; private set; }
+
+        /// <summary>
+        /// Global busy state for long-running operations (e.g., global search).
+        /// Use this to track application-level async operations that affect the entire UI.
+        /// </summary>
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        private bool _globalIsBusy;
+
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public bool GlobalIsBusy
+        {
+            get => _globalIsBusy;
+            set
+            {
+                if (_globalIsBusy != value)
+                {
+                    _globalIsBusy = value;
+                    OnGlobalIsBusyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Invoked when global busy state changes. Override to update UI (e.g., disable search button).
+        /// </summary>
+        protected virtual void OnGlobalIsBusyChanged()
+        {
+            // Can be overridden by subclasses to disable buttons, show progress, etc.
+            _logger?.LogDebug("GlobalIsBusy changed to {Value}", _globalIsBusy);
+        }
 
         /// <summary>
         /// Enables flicker reduction via WS_EX_COMPOSITED for heavy UI chrome (Ribbon + Docking).
@@ -228,47 +259,51 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Performs a global search across all modules (accounts, budgets, reports).
-        /// Delegates to GlobalSearchService and displays results.
+        /// This method delegates to MainViewModel.GlobalSearchCommand for MVVM purity.
+        /// Called from ribbon search box for backward compatibility.
         /// </summary>
         /// <param name="query">Search query string</param>
-        public async void PerformGlobalSearch(string query)
+        /// <remarks>
+        /// DEPRECATED: Use MainViewModel.GlobalSearchCommand.ExecuteAsync(query) directly.
+        /// Kept for backward compatibility with ribbon event handlers.
+        /// </remarks>
+        public async Task PerformGlobalSearchAsync(string query)
         {
-            if (string.IsNullOrWhiteSpace(query))
+            var viewModel = MainViewModel;
+            if (viewModel?.GlobalSearchCommand == null)
             {
-                MessageBox.Show("Please enter a search query.", "Empty Search", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                UIHelper.ShowErrorOnUI(this, "ViewModel not initialized.", "Search Error", _logger);
                 return;
             }
 
+            // Delegate to ViewModel's GlobalSearchCommand
+            // Command handles validation, error display, and resilience
             try
             {
-                _logger?.LogInformation("Global search initiated from ribbon: '{Query}'", query);
-
-                // Try to resolve global search service from DI
-                var searchService = _serviceProvider?.GetService(typeof(IGlobalSearchService)) as IGlobalSearchService;
-                if (searchService != null)
+                var method = viewModel.GlobalSearchCommand.GetType().GetMethod("ExecuteAsync", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (method != null)
                 {
-                    var results = await searchService.SearchAsync(query);
-                    _logger?.LogInformation("Global search returned {ResultCount} results for '{Query}'", results.TotalResults, query);
-
-                    // Show results in a message box for now
-                    // Future: Display results in a dedicated search results panel
-                    MessageBox.Show(
-                        $"Search found {results.TotalResults} results for '{query}'.\n\nFeature expansion coming soon.",
-                        "Search Results",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-                else
-                {
-                    _logger?.LogWarning("GlobalSearchService not registered in DI container");
-                    MessageBox.Show("Global search service not available.", "Service Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    var task = (Task?)method.Invoke(viewModel.GlobalSearchCommand, new object?[] { query });
+                    if (task != null)
+                        await task;
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Global search failed for query '{Query}'", query);
-                MessageBox.Show($"Search failed: {ex.Message}", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _logger?.LogError(ex, "Failed to execute GlobalSearchCommand");
+                UIHelper.ShowErrorOnUI(this, $"Search failed: {ex.Message}", "Search Error", _logger);
             }
+        }
+
+        /// <summary>
+        /// Synchronous wrapper for backward compatibility with async void callers.
+        /// New code should use PerformGlobalSearchAsync() or MainViewModel.GlobalSearchCommand directly.
+        /// </summary>
+        [Obsolete("Use PerformGlobalSearchAsync() or MainViewModel.GlobalSearchCommand.ExecuteAsync() instead")]
+        public void PerformGlobalSearch(string query)
+        {
+            // Fire-and-forget for backward compatibility
+            _ = PerformGlobalSearchAsync(query);
         }
 
         /// <summary>
@@ -356,10 +391,14 @@ namespace WileyWidget.WinForms.Forms
         private int _onShownExecuted = 0;
         private CancellationTokenSource? _initializationCts;
         private Serilog.ILogger? _asyncLogger;
+        private Task? _deferredInitializationTask;
         private readonly List<string> _mruList = new List<string>();
         // Dashboard description labels are declared in docking partial
 
-        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService)
+        private readonly IWindowStateService _windowStateService;
+        private readonly IFileImportService _fileImportService;
+
+        public MainForm(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<MainForm> logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService, IWindowStateService windowStateService, IFileImportService fileImportService)
         {
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DIAGNOSTIC] MainForm constructor: ENTERED");
@@ -369,6 +408,8 @@ namespace WileyWidget.WinForms.Forms
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
             _themeService = themeService;
+            _windowStateService = windowStateService ?? throw new ArgumentNullException(nameof(windowStateService));
+            _fileImportService = fileImportService ?? throw new ArgumentNullException(nameof(fileImportService));
 
             // Initialize centralized UI configuration
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
@@ -430,6 +471,13 @@ namespace WileyWidget.WinForms.Forms
             // Add FirstChanceException handlers for comprehensive error logging
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
 
+            // Add UI thread exception handler - catches and logs unhandled exceptions on the main UI thread
+            System.Windows.Forms.Application.ThreadException += (s, e) =>
+            {
+                Log.Error(e.Exception, "Unhandled UI thread exception in MainForm");
+                _logger?.LogError(e.Exception, "Unhandled UI thread exception in MainForm");
+            };
+
             // Subscribe to font changes for real-time updates
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
 
@@ -449,6 +497,11 @@ namespace WileyWidget.WinForms.Forms
             using var phase = timelineService?.BeginPhaseScope("MainForm Async Initialization");
 
             _asyncLogger?.Information("MainForm.InitializeAsync started - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+
+            // Load MRU and Restore Window State
+            _mruList.Clear();
+            _mruList.AddRange(_windowStateService.LoadMru());
+            _windowStateService.RestoreWindowState(this);
 
             // Diagnostic: Check initial state
             _logger?.LogInformation("[DIAGNOSTIC] InitializeAsync: _serviceProvider={HasValue}, _themeService={HasValue}, _panelNavigator={HasValue}, _dockingManager={HasValue}",
@@ -628,16 +681,14 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
 
                     // Add to MRU
-                    AddToMruList(file);
+                    _windowStateService.AddToMru(file);
+                    _mruList.Clear();
+                    _mruList.AddRange(_windowStateService.LoadMru());
 
-                    // Handle based on file type
-                    if (ext == ".csv" || ext == ".xlsx" || ext == ".xls")
+                    if (ext == ".csv" || ext == ".xlsx" || ext == ".xls" || ext == ".json" || ext == ".xml")
                     {
-                        await ImportDataFileAsync(file);
-                    }
-                    else if (ext == ".json" || ext == ".xml")
-                    {
-                        await ImportConfigurationDataAsync(file);
+                        var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
+                        HandleImportResult(file, result);
                     }
                     else
                     {
@@ -652,6 +703,22 @@ namespace WileyWidget.WinForms.Forms
             }
 
             await Task.CompletedTask;
+        }
+
+        private void HandleImportResult<T>(string file, Result<T> result) where T : class
+        {
+            if (result.IsSuccess && result.Data != null)
+            {
+                var count = (result.Data as System.Collections.IDictionary)?.Count ?? 0;
+                _logger.LogInformation("Successfully imported {File}: {Count} properties", Path.GetFileName(file), count);
+                MessageBox.Show($"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
+                    "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                _logger.LogWarning("Import failed for {File}: {Error}", Path.GetFileName(file), result.ErrorMessage);
+                ShowErrorDialog("Import Failed", result.ErrorMessage ?? "Unknown error");
+            }
         }
 
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
@@ -750,11 +817,9 @@ namespace WileyWidget.WinForms.Forms
 
             _initialized = true;
 
-            // Load MRU list from registry
-            LoadMruFromRegistry();
-
-            // Restore window state (size, position, maximized/minimized) from previous session
-            RestoreWindowState();
+            // Load MRU list and restore window state from persistent storage
+            _mruList.AddRange(_windowStateService.LoadMru());
+            _windowStateService.RestoreWindowState(this);
 
             // UI Chrome (Ribbon/StatusBar) initialized synchronously in OnLoad.
             // Docking initialization is deferred to OnShown for safer timing.
@@ -1104,7 +1169,7 @@ public void ToggleTheme()
         /// <summary>
         /// OnShown override. Deferred initialization for non-critical background operations.
         /// </summary>
-        protected override async void OnShown(EventArgs e)
+        protected override void OnShown(EventArgs e)
         {
             if (DesignMode)
             {
@@ -1112,18 +1177,15 @@ public void ToggleTheme()
                 return;
             }
 
-            // Thread-safe guard: Prevent duplicate execution
             if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
             {
                 _logger?.LogWarning("OnShown called multiple times - ignoring duplicate call");
                 return;
             }
 
-            // Create cancellation token source for initialization operations with 30s timeout
             _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var cancellationToken = _initializationCts.Token;
 
-            // Phase 1: Validate initialization state before proceeding
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
                 try
@@ -1145,8 +1207,6 @@ public void ToggleTheme()
                 }
             }
 
-            // Phase 2: Initialize Syncfusion Docking (deferred from OnLoad)
-            // Initializing here ensures the form handle and bounds are fully ready.
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
                 try
@@ -1158,17 +1218,13 @@ public void ToggleTheme()
                 }
                 catch (Exception syncEx) when (syncEx.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Theme-specific exception
                     _logger?.LogError(syncEx, "OnShown: Theme assembly failed to load");
                     _asyncLogger?.Error($"Theme Assembly Error: {syncEx.Message}");
-                    // Theme failure already handled in InitializeSyncfusionDocking
                 }
                 catch (Exception syncEx) when (syncEx.GetType().Name.Contains("Syncfusion"))
                 {
-                    // Syncfusion-related exception
                     _logger?.LogError(syncEx, "OnShown: Syncfusion initialization failed - {Message}", syncEx.Message);
                     _asyncLogger?.Error($"Syncfusion Error: {syncEx.Message}");
-                    // Docking failure is non-critical; already handled in InitializeSyncfusionDocking
                 }
                 catch (Exception ex)
                 {
@@ -1177,13 +1233,50 @@ public void ToggleTheme()
                 }
             }
 
-            // Raise Shown event AFTER docking is ready
-            // This ensures event handlers (like StartupOrchestrator) see a fully prepared UI
             base.OnShown(e);
 
             _logger?.LogInformation("[UI] MainForm OnShown: Starting deferred initialization - UI thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
-            // Database health check + test data seeding (background)
+            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
+            timelineService?.RecordFormLifecycleEvent("MainForm", "Shown");
+
+            try
+            {
+                var projectRoot = Directory.GetCurrentDirectory();
+                var logsDirectory = Path.Combine(projectRoot, "logs");
+                Directory.CreateDirectory(logsDirectory);
+                var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
+                _asyncLogger = new LoggerConfiguration()
+                    .MinimumLevel.Verbose()
+                    .WriteTo.Async(a => a.File(asyncLogPath,
+                        rollingInterval: RollingInterval.Day,
+                        retainedFileCountLimit: 7,
+                        buffered: false,
+                        shared: true,
+                        formatProvider: CultureInfo.InvariantCulture,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}"),
+                        bufferSize: 10000,    // Configure queue size to prevent blocking
+                        blockWhenFull: false) // Do not block producer if queue is full; drop if necessary
+                    .Enrich.FromLogContext()
+                    .CreateLogger();
+
+                _asyncLogger.Information("✓ Async diagnostics logger initialized - path: {LogPath}", asyncLogPath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to initialize async logging for MainForm - falling back to main logger");
+            }
+
+            Activated += MainForm_Activated;
+
+            _asyncLogger?.Information("MainForm OnShown: Starting deferred initialization - UI thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+
+            _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
+        }
+
+        private async Task RunDeferredInitializationAsync(CancellationToken cancellationToken)
+        {
             _ = Task.Run(async () =>
             {
                 try
@@ -1233,46 +1326,6 @@ public void ToggleTheme()
                 }
             }, cancellationToken);
 
-            // Track form shown event for startup timeline analysis
-            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
-            timelineService?.RecordFormLifecycleEvent("MainForm", "Shown");
-
-            // Initialize async logging for MainForm diagnostics to avoid blocking UI thread
-            try
-            {
-                // CRITICAL: Use SAME centralized logs directory as main logger
-                // This ensures ALL application logs are in one location
-                var projectRoot = Directory.GetCurrentDirectory();
-                var logsDirectory = Path.Combine(projectRoot, "logs");
-                Directory.CreateDirectory(logsDirectory);
-                var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
-                _asyncLogger = new LoggerConfiguration()
-                    .MinimumLevel.Verbose()
-                    .WriteTo.Async(a => a.File(asyncLogPath,
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 7,
-                        buffered: false,
-                        shared: true,
-                        formatProvider: CultureInfo.InvariantCulture,
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {ThreadId} {SourceContext} {Message:lj}{NewLine}{Exception}"),
-                        bufferSize: 10000,    // Configure queue size to prevent blocking
-                        blockWhenFull: false) // Do not block producer if queue is full; drop if necessary
-                    .Enrich.FromLogContext()
-                    .CreateLogger();
-
-                _asyncLogger.Information("✓ Async diagnostics logger initialized - path: {LogPath}", asyncLogPath);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to initialize async logging for MainForm - falling back to main logger");
-            }
-
-            // Wire Activated event for tracking (only once)
-            Activated += MainForm_Activated;
-
-            _asyncLogger?.Information("MainForm OnShown: Starting deferred initialization - UI thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
-
             try
             {
                 try
@@ -1293,14 +1346,12 @@ public void ToggleTheme()
                 _logger?.LogInformation("→ Phase 1: Docking already initialized at start of OnShown");
                 _asyncLogger?.Information("→ Phase 1: Docking verification complete");
 
-                // Ensure docking z-order
                 if (_uiConfig.UseSyncfusionDocking)
                 {
                     try { EnsureDockingZOrder(); }
                     catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
                 }
 
-                // Phase 2: Initialize dashboard data asynchronously
                 _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
                 _logger?.LogInformation("Initializing MainViewModel");
                 ApplyStatus("Loading dashboard data...");
@@ -1315,8 +1366,6 @@ public void ToggleTheme()
                         return;
                     }
 
-                    // Create a scope for scoped services - CRITICAL: Keep scope alive for MainViewModel's lifetime
-                    // Disposing the scope immediately causes ObjectDisposedException when MainViewModel uses DbContext
                     _mainViewModelScope = _serviceProvider.CreateScope();
                     var scopedServices = _mainViewModelScope.ServiceProvider;
                     MainViewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scopedServices);
@@ -1333,10 +1382,7 @@ public void ToggleTheme()
                     try
                     {
                         _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
-                        // CRITICAL FIX: Use ConfigureAwait(false) to avoid blocking UI thread during data load
-                        // This allows other UI operations to proceed while ViewModel loads data
                         await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(false);
-                        // Now switch back to UI thread for any UI updates via proper marshaling
                         if (this.InvokeRequired)
                         {
                             await this.InvokeAsync(() =>
@@ -1363,12 +1409,10 @@ public void ToggleTheme()
                         _logger?.LogError(ex, "Failed to initialize MainViewModel in OnShown");
                         _asyncLogger?.Error(ex, "MainForm OnShown: Failed to initialize MainViewModel in OnShown");
                         ApplyStatus("Error loading dashboard data");
-                        // Show user-friendly error message
                         if (this.IsHandleCreated)
                         {
                             try
                             {
-                                // Use proper thread marshaling for MessageBox
                                 if (this.InvokeRequired)
                                 {
                                     this.Invoke(() =>
@@ -1389,7 +1433,7 @@ public void ToggleTheme()
                                         MessageBoxIcon.Warning);
                                 }
                             }
-                            catch { /* Swallow MessageBox errors */ }
+                            catch { }
                         }
                         return;
                     }
@@ -1399,7 +1443,6 @@ public void ToggleTheme()
                     _logger?.LogWarning("MainViewModel not available in service provider");
                 }
 
-                // Force Dashboard display on startup after ViewModel is ready
                 if (!_dashboardAutoShown && _panelNavigator != null)
                 {
                     try
@@ -1421,8 +1464,6 @@ public void ToggleTheme()
 
                 _logger?.LogInformation("[UI] MainForm OnShown: Deferred initialization completed successfully");
 
-                // CRITICAL: Late validation pass to catch any images that became invalid after initial load
-                // This prevents GDI+ "Parameter is not valid" crashes in ImageAnimator during paint
                 try
                 {
                     _logger?.LogDebug("OnShown: Running late image validation pass");
@@ -1445,18 +1486,31 @@ public void ToggleTheme()
                 _logger?.LogError(ex, "Unexpected error during OnShown deferred initialization");
                 ApplyStatus("Initialization error");
 
-                // Critical error - show user-friendly message
                 if (this.IsHandleCreated)
                 {
                     try
                     {
-                        MessageBox.Show(this,
-                            $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
-                            "Critical Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
+                        if (this.InvokeRequired)
+                        {
+                            this.Invoke(() =>
+                            {
+                                MessageBox.Show(this,
+                                    $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
+                                    "Critical Error",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error);
+                            });
+                        }
+                        else
+                        {
+                            MessageBox.Show(this,
+                                $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
+                                "Critical Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        }
                     }
-                    catch { /* Swallow MessageBox errors */ }
+                    catch { }
                 }
             }
         }
@@ -1668,11 +1722,12 @@ public void ToggleTheme()
                     }
                 }
 
-                // Save window state (size, position, maximized/minimized) for next session
+                // Save window state (size, position, maximized/minimized) and MRU list for next session
                 try
                 {
-                    SaveWindowState();
-                    _logger?.LogDebug("Form closing: window state saved");
+                    _windowStateService.SaveWindowState(this);
+                    _windowStateService.SaveMru(_mruList);
+                    _logger?.LogDebug("Form closing: window state and MRU list saved");
                 }
                 catch (Exception ex)
                 {
@@ -1832,214 +1887,17 @@ public void ToggleTheme()
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        private void AddToMruList(string file)
-        {
-            if (!_mruList.Contains(file))
-            {
-                _mruList.Insert(0, file);
-                if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1);
-                SaveMruToRegistry();
-            }
-        }
-
-        private void SaveMruToRegistry()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\MRU");
-                if (key == null) return;
-
-                // Clear existing values
-                foreach (var valueName in key.GetValueNames())
-                {
-                    key.DeleteValue(valueName, false);
-                }
-
-                // Save current MRU list
-                for (int i = 0; i < _mruList.Count; i++)
-                {
-                    key.SetValue($"File{i}", _mruList[i]);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to save MRU to registry");
-            }
-        }
-
-        private void LoadMruFromRegistry()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\MRU");
-                if (key == null) return;
-
-                _mruList.Clear();
-                for (int i = 0; i < 10; i++)
-                {
-                    var value = key.GetValue($"File{i}") as string;
-                    if (!string.IsNullOrEmpty(value) && File.Exists(value))
-                    {
-                        _mruList.Add(value);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to load MRU from registry");
-            }
-        }
-
-        private void RestoreWindowState()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\WileyWidget\WindowState");
-                if (key == null) return;
-
-                var left = key.GetValue("Left") as int?;
-                var top = key.GetValue("Top") as int?;
-                var width = key.GetValue("Width") as int?;
-                var height = key.GetValue("Height") as int?;
-                var state = key.GetValue("WindowState") as int?;
-
-                if (left.HasValue && top.HasValue && width.HasValue && height.HasValue)
-                {
-                    var screen = Screen.FromPoint(new Point(left.Value, top.Value));
-                    var workingArea = screen.WorkingArea;
-
-                    // Ensure window is visible on screen
-                    if (left.Value < workingArea.Right && top.Value < workingArea.Bottom &&
-                        left.Value + width.Value > workingArea.Left && top.Value + height.Value > workingArea.Top)
-                    {
-                        Location = new Point(left.Value, top.Value);
-                        Size = new Size(width.Value, height.Value);
-                    }
-                }
-
-                if (state.HasValue)
-                {
-                    WindowState = (System.Windows.Forms.FormWindowState)state.Value;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to restore window state");
-            }
-        }
-
-        private void SaveWindowState()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.CreateSubKey(@"Software\WileyWidget\WindowState");
-                if (key == null) return;
-
-                key.SetValue("Left", Location.X);
-                key.SetValue("Top", Location.Y);
-                key.SetValue("Width", Size.Width);
-                key.SetValue("Height", Size.Height);
-                key.SetValue("WindowState", (int)WindowState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to save window state");
-            }
-        }
-
-        private async Task ImportDataFileAsync(string file, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                _logger.LogInformation("Importing data from {File}", file);
-
-                var content = await File.ReadAllTextAsync(file);
-                _logger.LogInformation("Read {Length} characters from file", content.Length);
-
-                // Try to parse as JSON data
-                try
-                {
-                    var data = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        AllowTrailingCommas = true
-                    });
-
-                    if (data != null)
-                    {
-                        _logger.LogInformation("Successfully parsed JSON data with {Count} properties", data.Count);
-                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\nParsed {data.Count} data properties", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Not JSON, just show content info
-                    MessageBox.Show($"Data imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-
-                _logger.LogInformation("Data import completed from {File}", file);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to import data from {File}", file);
-                ShowErrorDialog("Import Failed", $"Failed to import data: {ex.Message}");
-            }
-        }
-
-        private async Task ImportConfigurationDataAsync(string file, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                _logger.LogInformation("Importing configuration from {File}", file);
-
-                var content = await File.ReadAllTextAsync(file);
-                _logger.LogInformation("Read {Length} characters from configuration file", content.Length);
-
-                // Try to parse as JSON configuration
-                try
-                {
-                    var config = JsonSerializer.Deserialize<Dictionary<string, object>>(content, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        AllowTrailingCommas = true
-                    });
-
-                    if (config != null)
-                    {
-                        _logger.LogInformation("Successfully parsed configuration with {Count} settings", config.Count);
-                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\nParsed {config.Count} settings", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Not JSON, just show content info
-                    MessageBox.Show($"Configuration imported from {Path.GetFileName(file)}\n({content.Length} characters read)", "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-
-                _logger.LogInformation("Configuration import completed from {File}", file);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to import configuration from {File}", file);
-                ShowErrorDialog("Import Failed", $"Failed to import configuration: {ex.Message}");
-            }
-        }
-
         private void UpdateMruMenu(ToolStripMenuItem menu)
         {
             menu.DropDownItems.Clear();
             foreach (var file in _mruList)
             {
                 var item = new ToolStripMenuItem(file);
-                item.Click += async (s, e) => await ImportDataFileAsync(file);
+                item.Click += async (s, e) => 
+                {
+                    var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file);
+                    HandleImportResult(file, result);
+                };
                 menu.DropDownItems.Add(item);
             }
         }
@@ -2047,7 +1905,8 @@ public void ToggleTheme()
         private void ClearMruList()
         {
             _mruList.Clear();
-            UpdateMruMenu(_recentFilesMenu);
+            _windowStateService.ClearMru();
+            UpdateMruMenu(_recentFilesMenu!);
         }
     }
 }

@@ -22,17 +22,16 @@
       },
       "symbolOptions": {
         "searchPaths": [
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/.symbols",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Business/bin/Debug/net10.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Data/bin/Debug/net10.0",
-          "C:\\Users\\biges\\.nuget\\packages",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Models/bin/Debug/net10.0"
+          "${workspaceFolder}/.symbols",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.Business/bin/Debug/net10.0",
+          "${workspaceFolder}/src/WileyWidget.Data/bin/Debug/net10.0",
+          "${workspaceFolder}/src/WileyWidget.Models/bin/Debug/net10.0"
         ],
         "searchMicrosoftSymbolServer": false,
         "searchNuGetOrgSymbolServer": false,
-        "cachePath": "C:\\Users\\biges\\Desktop\\Wiley-Widget/.vsdbg"
+        "cachePath": "${workspaceFolder}/.vsdbg"
       },
       "sourceLinkOptions": {
         "*": {
@@ -45,7 +44,9 @@
       "logging": {
         "moduleLoad": true,
         "programOutput": true,
-        "engineLogging": false,
+        "diagnosticsLog": {
+          "protocolMessages": false
+        },
         "trace": false
       },
       "presentation": {
@@ -64,12 +65,6 @@
       "stopAtEntry": false,
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "exceptionOptions": [
-        {
-          "name": "CLR Exception",
-          "breakMode": "always"
-        }
-      ],
       "env": {
         "DOTNET_ENVIRONMENT": "Development",
         "DOTNET_DbgEnableMiniDump": "1",
@@ -80,17 +75,16 @@
       },
       "symbolOptions": {
         "searchPaths": [
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/.symbols",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Business/bin/Debug/net10.0",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Data/bin/Debug/net10.0",
-          "C:\\Users\\biges\\.nuget\\packages",
-          "C:\\Users\\biges\\Desktop\\Wiley-Widget/src/WileyWidget.Models/bin/Debug/net10.0"
+          "${workspaceFolder}/.symbols",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.Business/bin/Debug/net10.0",
+          "${workspaceFolder}/src/WileyWidget.Data/bin/Debug/net10.0",
+          "${workspaceFolder}/src/WileyWidget.Models/bin/Debug/net10.0"
         ],
         "searchMicrosoftSymbolServer": false,
         "searchNuGetOrgSymbolServer": false,
-        "cachePath": "C:\\Users\\biges\\Desktop\\Wiley-Widget/.vsdbg"
+        "cachePath": "${workspaceFolder}/.vsdbg"
       },
       "sourceLinkOptions": {
         "*": {
@@ -104,12 +98,66 @@
         "exceptions": true,
         "moduleLoad": true,
         "programOutput": true,
-        "engineLogging": true,
+        "diagnosticsLog": {
+          "protocolMessages": true
+        },
         "trace": true
       },
       "presentation": {
         "group": "debugging",
         "order": 2
+      }
+    },
+    {
+      "name": "🎨 Debug Syncfusion Controls (Design/Rendering)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "DOTNET_DbgEnableMiniDump": "1",
+        "DOTNET_EnableDiagnostics": "1",
+        "LOG_LEVEL_SYNCFUSION": "Debug",
+        "SYNCFUSION_ENABLE_TRACING": "true"
+      },
+      "sourceFileMap": {
+        "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
+      },
+      "symbolOptions": {
+        "searchPaths": [
+          "${workspaceFolder}/.symbols",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0"
+        ],
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
+        "cachePath": "${workspaceFolder}/.vsdbg"
+      },
+      "sourceLinkOptions": {
+        "*": {
+          "enabled": true
+        }
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "enableStepFiltering": false,
+      "logging": {
+        "moduleLoad": true,
+        "programOutput": true,
+        "diagnosticsLog": {
+          "protocolMessages": true
+        },
+        "trace": true
+      },
+      "presentation": {
+        "group": "debugging",
+        "order": 3
       }
     },
     {
@@ -123,11 +171,13 @@
       "logging": {
         "moduleLoad": true,
         "programOutput": true,
-        "engineLogging": false
+        "diagnosticsLog": {
+          "protocolMessages": false
+        }
       },
       "presentation": {
         "group": "debugging",
-        "order": 3
+        "order": 4
       }
     },
     {
@@ -317,7 +367,9 @@
       "logging": {
         "moduleLoad": true,
         "programOutput": true,
-        "engineLogging": true,
+        "diagnosticsLog": {
+          "protocolMessages": true
+        },
         "trace": true
       },
       "presentation": {

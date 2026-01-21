@@ -14,6 +14,7 @@ using WileyWidget.Services.Excel;
 using WileyWidget.Services.Export;
 using WileyWidget.Services.Telemetry;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Services.Http;
 using WileyWidget.WinForms.Forms;
@@ -369,7 +370,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
 
             // AI Services (Scoped - may hold request-specific context)
-            services.AddScoped<IAIService, XAIService>();
+            services.AddScoped<IAIService>(static sp => (GrokAgentService)sp.GetService(typeof(GrokAgentService))!);
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
@@ -389,6 +390,9 @@ namespace WileyWidget.WinForms.Configuration
 
             // Audit Service (Scoped - depends on repositories and logging which are scoped)
             services.AddScoped<IAuditService, AuditService>();
+
+            // Global Search Service (Singleton - stateless search aggregation across modules)
+            services.AddSingleton<IGlobalSearchService, GlobalSearchService>();
 
             // =====================================================================
             // REPORTING & EXPORT SERVICES
@@ -486,6 +490,16 @@ namespace WileyWidget.WinForms.Configuration
             // UI types and fail during host build. Instantiate these classes at runtime after
             // the MainForm and DockingManager are created (for example, in MainForm.OnShown
             // or PanelNavigationService). Do NOT register them here to avoid build-time DI validation.
+
+            // =====================================================================
+            // MAINFORM PERSISTENCE & IMPORT SERVICES
+            // =====================================================================
+
+            // Window State Service (Singleton - manages window position, size, and MRU list persistence via Registry)
+            services.AddSingleton<IWindowStateService, WindowStateService>();
+
+            // File Import Service (Transient - async file import with JSON/XML parsing support)
+            services.AddTransient<IFileImportService, FileImportService>();
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)

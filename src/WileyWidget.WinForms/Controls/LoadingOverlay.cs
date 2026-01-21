@@ -19,6 +19,7 @@ namespace WileyWidget.WinForms.Controls
         private Label? _messageLabel;
         private ProgressBarAdv? _progress;
         private Control? _spinnerHost;
+        private ToolTip? _toolTip;
 
         public LoadingOverlay()
         {
@@ -29,9 +30,11 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
+                // Dispose controls
                 try { _progress?.Dispose(); } catch { }
                 try { _messageLabel?.Dispose(); } catch { }
                 try { _spinnerHost?.Dispose(); } catch { }
+                _toolTip?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -41,14 +44,27 @@ namespace WileyWidget.WinForms.Controls
         {
             // Configure gradient panel - let SkinManager handle background via theme cascade
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-            this.BackgroundColor = new Syncfusion.Drawing.BrushInfo(Syncfusion.Drawing.GradientStyle.Vertical, Color.Empty, Color.Empty);
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, currentTheme);
+            SfSkinManager.SetVisualStyle(this, currentTheme);
+            this.ThemeName = currentTheme;
 
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
-            // BackColor inherited from theme cascade
             Visible = false;
             TabStop = false;
+
+            // Use TableLayoutPanel for dock-based centering
+            var table = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 3
+            };
+            table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
             // Center container
             var container = new WileyWidget.WinForms.Controls.GradientPanelExt
@@ -56,9 +72,10 @@ namespace WileyWidget.WinForms.Controls
                 AutoSize = true,
                 Padding = new Padding(12),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                Dock = DockStyle.Fill
             };
             SfSkinManager.SetVisualStyle(container, currentTheme);
+            container.ThemeName = currentTheme;
 
             // Prefer using Syncfusion waiting control when available (reflection to avoid hard dependency)
             object? syncControl = null;
@@ -83,6 +100,7 @@ namespace WileyWidget.WinForms.Controls
                 sfWait.Width = 40;
                 sfWait.Height = 40;
                 sfWait.Anchor = AnchorStyles.None;
+                SfSkinManager.SetVisualStyle(sfWait, currentTheme);
                 _spinnerHost = sfWait;
             }
             else
@@ -94,27 +112,35 @@ namespace WileyWidget.WinForms.Controls
                     Width = 180,
                     Height = 18,
                     Dock = DockStyle.Bottom,
-                    Anchor = AnchorStyles.None
+                    Anchor = AnchorStyles.None,
+                    ThemeName = currentTheme
                 };
+                SfSkinManager.SetVisualStyle(_progress, currentTheme);
                 _spinnerHost = _progress;
 
                 _messageLabel = new Label
                 {
                     AutoSize = true,
-                    // ForeColor inherited from theme cascade
                     Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
                     Text = WileyWidget.WinForms.Forms.MainFormResources.LoadingText,
                     TextAlign = ContentAlignment.MiddleCenter,
                     Anchor = AnchorStyles.None,
-                    Margin = new Padding(0, 6, 0, 0)
+                    Margin = new Padding(0, 6, 0, 0),
+                    AccessibleName = "Loading Message",
+                    AccessibleDescription = "Displays the current loading status message"
                 };
+
+                _toolTip = new ToolTip();
+                _toolTip.SetToolTip(_messageLabel, "Loading data, please wait");
 
                 var inner = new FlowLayoutPanel
                 {
                     FlowDirection = FlowDirection.TopDown,
                     AutoSize = true,
                     AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    Anchor = AnchorStyles.None
+                    Anchor = AnchorStyles.None,
+                    AccessibleName = "Loading Indicator Container",
+                    AccessibleDescription = "Contains the loading spinner and message"
                 };
 
                 // Add whichever spinner control we resolved
@@ -122,19 +148,10 @@ namespace WileyWidget.WinForms.Controls
                 inner.Controls.Add(_messageLabel);
 
                 container.Controls.Add(inner);
-
-                Controls.Add(container);
-
-                // Layout center
-                container.Location = new Point((Width - container.Width) / 2, (Height - container.Height) / 2);
-                container.Anchor = AnchorStyles.None | AnchorStyles.Top;
-
-                this.Resize += (s, e) =>
-                {
-                    container.Location = new Point((Width - container.Width) / 2, (Height - container.Height) / 2);
-                };
             }
 
+            table.Controls.Add(container, 1, 1);
+            Controls.Add(table);
         }
 
         /// <summary>

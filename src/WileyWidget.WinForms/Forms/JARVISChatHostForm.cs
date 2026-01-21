@@ -61,6 +61,7 @@ namespace WileyWidget.WinForms.Forms
             this._blazorWebView.Dock = DockStyle.Fill;
             this._blazorWebView.HostPage = "wwwroot/index.html";
             this._blazorWebView.Services = _serviceProvider;
+            this._blazorWebView.AccessibleName = "JARVIS AI Chat Interface";
             this._blazorWebView.RootComponents.Add<JARVISAssist>("#app");
 
             this.Controls.Add(this._blazorWebView);

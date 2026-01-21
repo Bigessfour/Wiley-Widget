@@ -8,6 +8,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.BlazorComponents;
+using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -21,6 +22,7 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     private PanelHeader? _panelHeader;
     private BlazorWebView? _blazorWebView;
     private Panel? _containerPanel;
+    private EventHandler? _closeClickedHandler;
 
     public ChatPanel(IServiceScopeFactory scopeFactory, ILogger<ChatPanel> logger)
         : base(scopeFactory, logger)
@@ -32,6 +34,8 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     {
         this.Name = "ChatPanel";
         this.Size = new Size(400, 600);
+        this.AccessibleName = "JARVIS AI Chat Panel";
+        this.AccessibleDescription = "Interactive chat interface for communicating with JARVIS AI assistant";
 
         // Panel header (JARVIS title and close button)
         _panelHeader = new PanelHeader
@@ -39,22 +43,27 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             Dock = DockStyle.Top,
             Title = "JARVIS AI Assistant",
             ShowRefreshButton = false,
-            ShowHelpButton = false
+            ShowHelpButton = false,
+            AccessibleName = "JARVIS AI Assistant Panel Header",
+            AccessibleDescription = "Header with title and close button for the JARVIS chat panel"
         };
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _closeClickedHandler = (s, e) => ClosePanel();
+        _panelHeader.CloseClicked += _closeClickedHandler;
         this.Controls.Add(_panelHeader);
 
         _containerPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Name = "ChatContainer"
+            Name = "ChatContainer",
+            AccessibleName = "JARVIS Chat Container",
+            AccessibleDescription = "Container for the Blazor-based chat interface"
         };
 
         this.Controls.Add(_containerPanel);
-        
+
         this.PerformLayout();
         this.Refresh();
-        
+
         Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
     }
 
@@ -69,7 +78,8 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             {
                 Dock = DockStyle.Fill,
                 HostPage = "wwwroot/index.html",
-                Name = "JarvisWebView"
+                Name = "JarvisWebView",
+                AccessibleName = "JARVIS AI Chat Interface"
             };
 
             // CRITICAL: Use the scoped service provider from ScopedPanelBase
@@ -80,14 +90,16 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
             }
 
             // Target the #app element in index.html and render JARVISAssist component
-            _blazorWebView.RootComponents.Add(new RootComponent("#app", typeof(JARVISAssist), null));
+            var theme = GetCurrentBlazorTheme();
+            var parameters = new Dictionary<string, object?> { ["Theme"] = theme };
+            _blazorWebView.RootComponents.Add(new RootComponent("#app", typeof(JARVISAssist), parameters));
 
             _containerPanel?.Controls.Add(_blazorWebView);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize BlazorWebView in ChatPanel");
-            
+
             // Fallback display
             var errorLabel = new Label
             {
@@ -104,9 +116,39 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
     {
         if (disposing)
         {
+            if (_panelHeader != null && _closeClickedHandler != null)
+            {
+                _panelHeader.CloseClicked -= _closeClickedHandler;
+            }
             _blazorWebView?.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    public override async Task LoadAsync(CancellationToken ct)
+    {
+        // Initialize conversation if needed
+        if (!IsLoaded)
+        {
+            Logger.LogInformation("ChatPanel loaded and ready for JARVIS interaction");
+        }
+    }
+
+    public override async Task SaveAsync(CancellationToken ct)
+    {
+        // Chat history is persisted via the service, no explicit save needed
+        SetHasUnsavedChanges(false);
+    }
+
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        // No validation required for chat panel
+        return ValidationResult.Success;
+    }
+
+    public override void FocusFirstError()
+    {
+        // No errors to focus
     }
 
     private void ClosePanel()
@@ -126,5 +168,12 @@ public partial class ChatPanel : ScopedPanelBase<ChatPanelViewModel>
         {
             Logger.LogError(ex, "ChatPanel: Failed to close panel via parent form");
         }
+    }
+
+    private string GetCurrentBlazorTheme()
+    {
+        var winFormsTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        // Map WinForms theme names to Blazor theme CSS file names
+        return winFormsTheme.ToLowerInvariant().Replace("office2019", "office-2019");
     }
 }

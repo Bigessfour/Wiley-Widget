@@ -5,7 +5,10 @@ using Syncfusion.WinForms.DataGrid;
 using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Services;
@@ -22,8 +25,11 @@ namespace WileyWidget.WinForms.Controls
         private SfDataGrid? _activityGrid;
         private PanelHeader? _panelHeader;
         private System.Windows.Forms.Timer? _autoRefreshTimer;
+        private EventHandler? _autoRefreshTickHandler;
         private SfButton? _btnClearLog;
+        private SfButton? _btnExport;
         private CheckBoxAdv? _chkAutoRefresh;
+        private BindingSource? _bindingSource;
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -65,6 +71,20 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Control buttons - add right-docked controls first so the title fills remaining space
+            _btnExport = new SfButton
+            {
+                Text = "Export",
+                AutoSize = true,
+                Dock = DockStyle.Right,
+                Padding = new Padding(8)
+            };
+            _btnExport.Click += OnExportClicked;
+            _btnExport.AccessibleName = "Export Activity Log";
+            _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
+
+            _btnExport.TabIndex = 2;
+            headerPanel.Controls.Add(_btnExport);
+
             _btnClearLog = new SfButton
             {
                 Text = "Clear",
@@ -75,7 +95,8 @@ namespace WileyWidget.WinForms.Controls
             _btnClearLog.Click += OnClearLogClicked;
             _btnClearLog.AccessibleName = "Clear Activity Log";
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
-            _btnClearLog.TabIndex = 2;
+
+            _btnClearLog.TabIndex = 3;
             headerPanel.Controls.Add(_btnClearLog);
 
             _chkAutoRefresh = new CheckBoxAdv
@@ -89,7 +110,8 @@ namespace WileyWidget.WinForms.Controls
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
-            _chkAutoRefresh.TabIndex = 3;
+
+            _chkAutoRefresh.TabIndex = 4;
             headerPanel.Controls.Add(_chkAutoRefresh);
 
             _panelHeader = new PanelHeader
@@ -165,7 +187,13 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_activityGrid != null && ViewModel != null)
                 {
-                    _activityGrid.DataSource = ViewModel.ActivityEntries;
+                    // Use BindingSource for reactive data binding and consistent grid updates
+                    _bindingSource = new BindingSource
+                    {
+                        DataSource = ViewModel,
+                        DataMember = "ActivityEntries"
+                    };
+                    _activityGrid.DataSource = _bindingSource;
                 }
             }
             catch (Exception ex)
@@ -180,7 +208,9 @@ namespace WileyWidget.WinForms.Controls
             {
                 Interval = 5000 // Refresh every 5 seconds
             };
-            _autoRefreshTimer.Tick += OnAutoRefreshTick;
+            // Store handler reference to prevent GC issues and ensure proper unsubscription in Dispose
+            _autoRefreshTickHandler = OnAutoRefreshTick;
+            _autoRefreshTimer.Tick += _autoRefreshTickHandler;
             _autoRefreshTimer.Start();
         }
 
@@ -211,12 +241,9 @@ namespace WileyWidget.WinForms.Controls
                 var theme = SfSkinManager.ApplicationVisualTheme;
                 if (!string.IsNullOrEmpty(theme))
                 {
+                    // SfSkinManager.SetVisualStyle applies theme cascade to form and all child controls
+                    // Do NOT set ThemeName manually; rely on theme cascade from ScopedPanelBase
                     SfSkinManager.SetVisualStyle(this, theme);
-                    if (_activityGrid != null)
-                    {
-                        // Prefer theme cascade; set ThemeName on grid as a best-effort to ensure consistent visuals
-                        _activityGrid.ThemeName = theme;
-                    }
                 }
             }
             catch (Exception ex)
@@ -226,6 +253,70 @@ namespace WileyWidget.WinForms.Controls
         }
 
         private void OnClearLogClicked(object? sender, EventArgs e) => ClearActivityLog();
+
+        private void OnExportClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                using (SaveFileDialog dialog = new SaveFileDialog
+                {
+                    Filter = "CSV Files|*.csv|All Files|*.*",
+                    FileName = $"ActivityLog_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.csv",
+                    Title = "Export Activity Log"
+                })
+                {
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        ExportToCSV(dialog.FileName);
+                        MessageBox.Show($"Activity log exported to {Path.GetFileName(dialog.FileName)}.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Failed to export activity log");
+                MessageBox.Show($"Failed to export log: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportToCSV(string filePath)
+        {
+            if (ViewModel?.ActivityEntries == null || ViewModel.ActivityEntries.Count == 0)
+            {
+                MessageBox.Show("No activity entries to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var writer = new StreamWriter(filePath, false, Encoding.UTF8))
+            {
+                // Write header
+                writer.WriteLine("Timestamp,Activity,Details,Status");
+
+                // Write data rows
+                foreach (var entry in ViewModel.ActivityEntries)
+                {
+                    var timestamp = entry.Timestamp.ToString("g");
+                    var activity = EscapeCSVField(entry.Activity);
+                    var details = EscapeCSVField(entry.Details);
+                    var status = EscapeCSVField(entry.Status);
+
+                    writer.WriteLine($"{timestamp},{activity},{details},{status}");
+                }
+            }
+        }
+
+        private static string EscapeCSVField(string? field)
+        {
+            if (string.IsNullOrEmpty(field))
+                return "\"\"";
+
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\""; // Escape quotes and wrap in quotes
+            }
+
+            return field;
+        }
 
         private void OnAutoRefreshCheckedChanged(object? sender, EventArgs e)
         {
@@ -256,10 +347,15 @@ namespace WileyWidget.WinForms.Controls
         public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
         {
             // Activity log is append-only and read-only from the UI.
-            // Valid if the ViewModel is loaded.
+            // Valid if the ViewModel is loaded and ActivityEntries collection exists.
             if (ViewModel == null)
             {
                 return ValidationResult.Failed(new ValidationItem("ViewModel", "Activity log ViewModel not loaded", ValidationSeverity.Error));
+            }
+
+            if (ViewModel.ActivityEntries == null)
+            {
+                return ValidationResult.Failed(new ValidationItem("ActivityEntries", "Activity entries collection not initialized", ValidationSeverity.Error));
             }
 
             return await Task.FromResult(ValidationResult.Success);
@@ -301,9 +397,17 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
+                // Cleanup timer with stored handler reference
                 if (_autoRefreshTimer != null)
                 {
-                    try { _autoRefreshTimer.Tick -= OnAutoRefreshTick; } catch { }
+                    try
+                    {
+                        if (_autoRefreshTickHandler != null)
+                        {
+                            _autoRefreshTimer.Tick -= _autoRefreshTickHandler;
+                        }
+                    }
+                    catch { }
                     try { _autoRefreshTimer.Stop(); } catch { }
                     try { _autoRefreshTimer.Dispose(); } catch { }
                     _autoRefreshTimer = null;
@@ -323,8 +427,29 @@ namespace WileyWidget.WinForms.Controls
                     _btnClearLog = null;
                 }
 
-                try { _activityGrid?.Dispose(); } catch { }
+                if (_btnExport != null)
+                {
+                    try { _btnExport.Click -= OnExportClicked; } catch { }
+                    try { _btnExport.Dispose(); } catch { }
+                    _btnExport = null;
+                }
+
+                // Cleanup BindingSource and grid data binding
+                if (_bindingSource != null)
+                {
+                    try { _bindingSource.Dispose(); } catch { }
+                    _bindingSource = null;
+                }
+
+                if (_activityGrid != null)
+                {
+                    try { _activityGrid.DataSource = null; } catch { }
+                    try { _activityGrid.Dispose(); } catch { }
+                    _activityGrid = null;
+                }
+
                 try { _panelHeader?.Dispose(); } catch { }
+                _panelHeader = null;
             }
             base.Dispose(disposing);
         }

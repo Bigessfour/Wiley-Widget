@@ -4,15 +4,18 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
+using System.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
-using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
@@ -22,20 +25,12 @@ using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 namespace WileyWidget.WinForms.Controls
 {
     /// <summary>
-    /// User control for displaying proactive AI insights in a grid with priority highlighting.
-    /// Uses Syncfusion SfDataGrid with Office2019Colorful theme styling.
+    /// Panel for displaying proactive AI insights in a grid with priority highlighting.
+    /// Uses Syncfusion SfDataGrid with SfSkinManager theme styling.
     /// Cards display priority badges with color coding and "Ask JARVIS" action buttons.
     /// </summary>
-    public partial class InsightFeedPanel : UserControl
+    public partial class InsightFeedPanel : ScopedPanelBase<IInsightFeedViewModel>
     {
-        /// <summary>
-        /// Simple DataContext wrapper for host compatibility.
-        /// </summary>
-        public new object? DataContext { get; private set; }
-
-        private readonly IInsightFeedViewModel? _vm;
-        private readonly ILogger<InsightFeedPanel>? _logger;
-
         private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -45,40 +40,56 @@ namespace WileyWidget.WinForms.Controls
         private ToolStripButton _btnRefresh = null!;
         private ToolTip? _sharedTooltip;
 
-        /// <summary>
-        /// Creates a new instance of the InsightFeedPanel.
-        /// </summary>
-        internal InsightFeedPanel() : this(null, null)
-        {
-        }
+        private EventHandler? _refreshButtonClickHandler;
+        private PropertyChangedEventHandler _viewModelPropertyChangedHandler;
+        private SelectionChangingEventHandler? _insightsGridSelectionChangingHandler;
 
         /// <summary>
-        /// Creates a new instance with explicit ViewModel and services.
-        /// Deprecated IThemeService parameter removed - SfSkinManager handles theme cascade.
+        /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        public InsightFeedPanel(
-            IInsightFeedViewModel? viewModel = null,
-            ILogger<InsightFeedPanel>? logger = null)
+        public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase<IInsightFeedViewModel>>? logger = null)
+            : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), logger)
         {
             InitializeComponent();
 
-            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<InsightFeedPanel>.Instance;
-            _vm = viewModel ?? new InsightFeedViewModel();
-
-            DataContext = _vm;
 
             _logger?.LogInformation("InsightFeedPanel initializing");
 
             InitializeUI();
             BindViewModel();
             ApplyTheme();
-            
+
             this.PerformLayout();
             this.Refresh();
-            
+
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
             _logger?.LogInformation("InsightFeedPanel initialized successfully");
+        }
+
+        public override async Task LoadAsync(CancellationToken ct = default)
+        {
+            if (ViewModel != null)
+            {
+                await ViewModel.RefreshAsync(ct);
+            }
+        }
+
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+        {
+            // Insights feed is read-only, minimal validation
+            return await Task.FromResult(ValidationResult.Success);
+        }
+
+        public override async Task<ValidationResult> SaveAsync(CancellationToken ct = default)
+        {
+            // Insights feed is read-only, no save needed
+            return await Task.FromResult(ValidationResult.Success);
+        }
+
+        public override void FocusFirstError()
+        {
+            _insightsGrid?.Focus();
         }
 
         /// <summary>
@@ -274,7 +285,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private void BindViewModel()
         {
-            if (_vm == null)
+            if (_viewModel == null)
             {
                 _logger?.LogWarning("ViewModel is null - cannot bind");
                 return;
@@ -283,17 +294,20 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 // Bind insights collection to grid (ObservableCollection handles updates automatically)
-                _insightsGrid.DataSource = _vm.InsightCards;
+                _insightsGrid.DataSource = _viewModel.InsightCards;
                 _logger?.LogDebug("ViewModel InsightCards collection bound to SfDataGrid");
 
                 // Subscribe to ViewModel property changes for UI updates
-                _vm.PropertyChanged += ViewModel_PropertyChanged;
+                _viewModelPropertyChangedHandler = new System.ComponentModel.PropertyChangedEventHandler(ViewModel_PropertyChanged);
+                _viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
                 // Wire up refresh command (manual refresh button in toolbar)
-                _btnRefresh.Click += RefreshButton_Click;
+                _refreshButtonClickHandler = RefreshButton_Click;
+                _btnRefresh.Click += _refreshButtonClickHandler;
 
                 // Handle row selection for Ask Jarvis action (single-click to ask about insight)
-                _insightsGrid.SelectionChanging += InsightsGrid_SelectionChanging;
+                _insightsGridSelectionChangingHandler = InsightsGrid_SelectionChanging;
+                _insightsGrid.SelectionChanging += _insightsGridSelectionChangingHandler;
 
                 _logger?.LogInformation("ViewModel bound successfully to InsightFeedPanel");
             }
@@ -314,19 +328,19 @@ namespace WileyWidget.WinForms.Controls
                 switch (e?.PropertyName)
                 {
                     case nameof(InsightFeedViewModel.StatusMessage):
-                        if (_vm?.StatusMessage != null)
+                        if (_viewModel?.StatusMessage != null)
                         {
-                            _lblStatus.Text = _vm.StatusMessage;
+                            _lblStatus.Text = _viewModel.StatusMessage;
                             _lblStatus.Refresh();
-                            _logger?.LogDebug("Status updated: {Status}", _vm.StatusMessage);
+                            _logger?.LogDebug("Status updated: {Status}", _viewModel.StatusMessage);
                         }
                         break;
 
                     case nameof(InsightFeedViewModel.IsLoading):
                         if (_loadingOverlay != null)
                         {
-                            _loadingOverlay.Visible = _vm?.IsLoading ?? false;
-                            _logger?.LogDebug("Loading state changed: {IsLoading}", _vm?.IsLoading);
+                            _loadingOverlay.Visible = _viewModel?.IsLoading ?? false;
+                            _logger?.LogDebug("Loading state changed: {IsLoading}", _viewModel?.IsLoading);
                         }
                         break;
 
@@ -335,9 +349,9 @@ namespace WileyWidget.WinForms.Controls
                     case nameof(InsightFeedViewModel.LowPriorityCount):
                         _logger?.LogDebug(
                             "Priority counts updated: High={High}, Medium={Medium}, Low={Low}",
-                            _vm?.HighPriorityCount,
-                            _vm?.MediumPriorityCount,
-                            _vm?.LowPriorityCount);
+                            _viewModel?.HighPriorityCount,
+                            _viewModel?.MediumPriorityCount,
+                            _viewModel?.LowPriorityCount);
                         break;
                 }
             }
@@ -355,7 +369,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 _logger?.LogInformation("User requested manual refresh of insights");
-                if (_vm is InsightFeedViewModel concreteVm)
+                if (_viewModel is InsightFeedViewModel concreteVm)
                 {
                     concreteVm.RefreshInsightsCommand.Execute(null);
                 }
@@ -380,7 +394,7 @@ namespace WileyWidget.WinForms.Controls
                         "User selected insight: Category={Category}, Priority={Priority}",
                         card.Category,
                         card.Priority);
-                    if (_vm is InsightFeedViewModel concreteVm)
+                    if (_viewModel is InsightFeedViewModel concreteVm)
                     {
                         concreteVm.AskJarvisCommand.Execute(card);
                     }
@@ -451,19 +465,19 @@ namespace WileyWidget.WinForms.Controls
                 try
                 {
                     // Unsubscribe from events to prevent leaks
-                    if (_vm != null)
+                    if (_viewModel != null && _viewModelPropertyChangedHandler != null)
                     {
-                        _vm.PropertyChanged -= ViewModel_PropertyChanged;
+                        _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
                     }
 
-                    if (_btnRefresh != null)
+                    if (_btnRefresh != null && _refreshButtonClickHandler != null)
                     {
-                        _btnRefresh.Click -= RefreshButton_Click;
+                        _btnRefresh.Click -= _refreshButtonClickHandler;
                     }
 
-                    if (_insightsGrid != null)
+                    if (_insightsGrid != null && _insightsGridSelectionChangingHandler != null)
                     {
-                        _insightsGrid.SelectionChanging -= InsightsGrid_SelectionChanging;
+                        _insightsGrid.SelectionChanging -= _insightsGridSelectionChangingHandler;
                     }
 
                     _sharedTooltip?.Dispose();

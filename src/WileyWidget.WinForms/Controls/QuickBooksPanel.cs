@@ -80,6 +80,22 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private Label? _accountsImportedLabel;
     private Label? _avgDurationLabel;
 
+    // Event handler storage (for proper cleanup in Dispose)
+    private EventHandler? _panelHeaderRefreshClickedHandler;
+    private EventHandler? _panelHeaderCloseClickedHandler;
+    private EventHandler? _connectButtonClickHandler;
+    private EventHandler? _disconnectButtonClickHandler;
+    private EventHandler? _testConnectionButtonClickHandler;
+    private EventHandler? _syncDataButtonClickHandler;
+    private EventHandler? _importAccountsButtonClickHandler;
+    private EventHandler? _refreshHistoryButtonClickHandler;
+    private EventHandler? _clearHistoryButtonClickHandler;
+    private EventHandler? _exportHistoryButtonClickHandler;
+    private EventHandler? _filterTextBoxTextChangedHandler;
+    private SelectionChangedEventHandler? _gridSelectionChangedHandler;
+    private MouseEventHandler? _gridMouseDoubleClickHandler;
+    private QueryCellStyleEventHandler? _gridQueryCellStyleHandler;
+
     #endregion
 
     #region ICompletablePanel Overrides
@@ -304,8 +320,13 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Height = 50
         };
         _panelHeader.Title = "QuickBooks Integration";
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+
+        // Store handlers for cleanup
+        _panelHeaderRefreshClickedHandler = async (s, e) => await RefreshAsync();
+        _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
+
+        _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
+        _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
         Controls.Add(_panelHeader);
 
         // Summary panel (KPI metrics)
@@ -362,10 +383,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _noDataOverlay.BringToFront();
 
         ResumeLayout(false);
-        this.PerformLayout();
-        this.Refresh();
+        // NOTE: Do NOT call PerformLayout() or Refresh() here - causes infinite loop with TableLayoutPanel
+        // ResumeLayout(false) already schedules layout correctly without triggering GetPreferredSize recursion
 
-        Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+        Logger.LogDebug("[PANEL] {PanelName} content anchored", this.Name);
     }
 
     /// <summary>
@@ -391,7 +412,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             ColumnCount = 3,
             RowCount = 2,
             Padding = new Padding(2),
-            Margin = Padding.Empty
+            Margin = Padding.Empty,
+            AutoSize = false  // Prevent GetPreferredSize recursion
         };
 
         for (var i = 0; i < 3; i++)
@@ -426,7 +448,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             BorderStyle = BorderStyle.FixedSingle,
             CornerRadius = 4,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-            Padding = new Padding(10, 8, 10, 8)
+            Padding = new Padding(10, 8, 10, 8),
+            AutoSize = false  // Prevent GetPreferredSize recursion with TableLayoutPanel
         };
         SfSkinManager.SetVisualStyle(cardPanel, currentTheme);
 
@@ -582,40 +605,61 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _connectButton = new SfButton
         {
             Text = "Connect",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(85, 36),
             Margin = new Padding(3),
             AccessibleName = "Connect to QuickBooks",
-            AccessibleDescription = "Establishes connection to QuickBooks Online"
+            AccessibleDescription = "Establishes connection to QuickBooks Online",
+            TabIndex = 1,
+            TabStop = true
         };
-        _connectButton.Click += async (s, e) => await InitiateQuickBooksOAuthFlowAsync();
+        var connectTooltip = new ToolTip();
+        connectTooltip.SetToolTip(_connectButton, "Click to authorize QuickBooks connection via OAuth");
+
+        _connectButtonClickHandler = async (s, e) => await InitiateQuickBooksOAuthFlowAsync();
+        _connectButton.Click += _connectButtonClickHandler;
         buttonsPanel.Controls.Add(_connectButton);
 
         _disconnectButton = new SfButton
         {
             Text = "Disconnect",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(100, 36),
             Margin = new Padding(3),
             AccessibleName = "Disconnect from QuickBooks",
-            AccessibleDescription = "Terminates current QuickBooks Online connection"
+            AccessibleDescription = "Terminates current QuickBooks Online connection",
+            TabIndex = 2,
+            TabStop = true
         };
-        _disconnectButton.Click += async (s, e) =>
+        var disconnectTooltip = new ToolTip();
+        disconnectTooltip.SetToolTip(_disconnectButton, "Click to disconnect from QuickBooks");
+
+        _disconnectButtonClickHandler = async (s, e) =>
         {
             if (await ShowDisconnectConfirmationAsync())
             {
                 await ExecuteCommandAsync(ViewModel?.DisconnectCommand);
             }
         };
+        _disconnectButton.Click += _disconnectButtonClickHandler;
         buttonsPanel.Controls.Add(_disconnectButton);
 
         _testConnectionButton = new SfButton
         {
             Text = "Test Connection",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(120, 36),
             Margin = new Padding(3),
             AccessibleName = "Test QuickBooks Connection",
-            AccessibleDescription = "Verifies QuickBooks Online connection status"
+            AccessibleDescription = "Verifies QuickBooks Online connection status",
+            TabIndex = 3,
+            TabStop = true
         };
-        _testConnectionButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.TestConnectionCommand);
+        var testTooltip = new ToolTip();
+        testTooltip.SetToolTip(_testConnectionButton, "Click to test the current QuickBooks connection");
+
+        _testConnectionButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.TestConnectionCommand);
+        _testConnectionButton.Click += _testConnectionButtonClickHandler;
         buttonsPanel.Controls.Add(_testConnectionButton);
 
         _connectionPanel.Controls.Add(buttonsPanel);
@@ -656,30 +700,44 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _syncDataButton = new SfButton
         {
             Text = "🔄 Sync Data",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(130, 36),
             Margin = new Padding(3),
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             AccessibleName = "Sync Data with QuickBooks",
-            AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online"
+            AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online",
+            TabIndex = 4,
+            TabStop = true
         };
-        _syncDataButton.Click += async (s, e) =>
+        var syncTooltip = new ToolTip();
+        syncTooltip.SetToolTip(_syncDataButton, "Click to synchronize data with QuickBooks");
+
+        _syncDataButtonClickHandler = async (s, e) =>
         {
             if (await ShowSyncConfirmationAsync("Sync Data"))
             {
                 await ExecuteCommandAsync(ViewModel?.SyncDataCommand);
             }
         };
+        _syncDataButton.Click += _syncDataButtonClickHandler;
         opsPanel.Controls.Add(_syncDataButton);
 
         _importAccountsButton = new SfButton
         {
             Text = "📥 Import Chart of Accounts",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(180, 36),
             Margin = new Padding(3),
             AccessibleName = "Import Chart of Accounts",
-            AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online"
+            AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online",
+            TabIndex = 5,
+            TabStop = true
         };
-        _importAccountsButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
+        var importTooltip = new ToolTip();
+        importTooltip.SetToolTip(_importAccountsButton, "Click to import the chart of accounts from QuickBooks");
+
+        _importAccountsButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
+        _importAccountsButton.Click += _importAccountsButtonClickHandler;
         opsPanel.Controls.Add(_importAccountsButton);
 
         _operationsPanel.Controls.Add(opsPanel);
@@ -761,13 +819,21 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 0, 12, 0),
-            MinimumSize = new Size(220, 28)
+            MinimumSize = new Size(220, 28),
+            AccessibleName = "Filter Sync History",
+            AccessibleDescription = "Enter text to filter sync history records",
+            TabIndex = 6,
+            TabStop = true
         };
-        _filterTextBox.TextChanged += (s, e) =>
+        var filterTooltip = new ToolTip();
+        filterTooltip.SetToolTip(_filterTextBox, "Type to filter the sync history by any field");
+
+        _filterTextBoxTextChangedHandler = (s, e) =>
         {
             if (ViewModel != null)
                 ViewModel.FilterText = _filterTextBox.Text;
         };
+        _filterTextBox.TextChanged += _filterTextBoxTextChangedHandler;
         headerLayout.Controls.Add(_filterTextBox, 2, 0);
 
         // Buttons - use FlowLayoutPanel for consistent spacing
@@ -785,12 +851,18 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _exportHistoryButton = new SfButton
         {
             Text = "📤 Export CSV",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(105, 32),
             Margin = new Padding(3),
             AccessibleName = "Export History to CSV",
-            AccessibleDescription = "Exports sync history data to CSV file"
+            AccessibleDescription = "Exports sync history data to CSV file",
+            TabIndex = 9,
+            TabStop = true
         };
-        _exportHistoryButton.Click += async (s, e) =>
+        var exportTooltip = new ToolTip();
+        exportTooltip.SetToolTip(_exportHistoryButton, "Click to export sync history as CSV");
+
+        _exportHistoryButtonClickHandler = async (s, e) =>
         {
             var filePath = ShowExportFilePickerDialog();
             if (filePath != null)
@@ -799,17 +871,24 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 MessageBox.Show($"Export functionality will be implemented.\nSelected: {filePath}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         };
+        _exportHistoryButton.Click += _exportHistoryButtonClickHandler;
         buttonsFlow.Controls.Add(_exportHistoryButton);
 
         _clearHistoryButton = new SfButton
         {
             Text = "🗑 Clear",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(75, 32),
             Margin = new Padding(3),
             AccessibleName = "Clear Sync History",
-            AccessibleDescription = "Removes all sync history records from the display"
+            AccessibleDescription = "Removes all sync history records from the display",
+            TabIndex = 8,
+            TabStop = true
         };
-        _clearHistoryButton.Click += async (s, e) =>
+        var clearTooltip = new ToolTip();
+        clearTooltip.SetToolTip(_clearHistoryButton, "Click to clear all sync history (cannot be undone)");
+
+        _clearHistoryButtonClickHandler = async (s, e) =>
         {
             if (await ShowClearHistoryConfirmationAsync())
             {
@@ -819,17 +898,25 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 }
             }
         };
+        _clearHistoryButton.Click += _clearHistoryButtonClickHandler;
         buttonsFlow.Controls.Add(_clearHistoryButton);
 
         _refreshHistoryButton = new SfButton
         {
             Text = "🔄 Refresh",
-            AutoSize = true,
+            AutoSize = false,
+            Size = new Size(95, 32),
             Margin = new Padding(3),
             AccessibleName = "Refresh Sync History",
-            AccessibleDescription = "Reloads sync history from database"
+            AccessibleDescription = "Reloads sync history from database",
+            TabIndex = 7,
+            TabStop = true
         };
-        _refreshHistoryButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel?.RefreshHistoryCommand);
+        var refreshTooltip = new ToolTip();
+        refreshTooltip.SetToolTip(_refreshHistoryButton, "Click to reload sync history");
+
+        _refreshHistoryButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.RefreshHistoryCommand);
+        _refreshHistoryButton.Click += _refreshHistoryButtonClickHandler;
         buttonsFlow.Controls.Add(_refreshHistoryButton);
 
         headerLayout.Controls.Add(buttonsFlow, 3, 0);
@@ -908,22 +995,24 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AllowSorting = false
         });
 
-        _syncHistoryGrid.SelectionChanged += (s, e) =>
+        _gridSelectionChangedHandler = (s, e) =>
         {
             if (ViewModel != null && _syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record)
             {
                 ViewModel.SelectedSyncRecord = record;
             }
         };
+        _syncHistoryGrid.SelectionChanged += _gridSelectionChangedHandler;
 
         // Double-click to show record details
-        _syncHistoryGrid.MouseDoubleClick += (s, e) =>
+        _gridMouseDoubleClickHandler = (s, e) =>
         {
             if (_syncHistoryGrid.SelectedItem is QuickBooksSyncHistoryRecord record)
             {
                 HandleSyncRecordDoubleClick(record);
             }
         };
+        _syncHistoryGrid.MouseDoubleClick += _gridMouseDoubleClickHandler;
 
         // Right-click context menu for record actions
         var contextMenu = new ContextMenuStrip
@@ -959,7 +1048,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         contextMenu.Items.AddRange(new ToolStripItem[] { viewDetailsItem, retryItem, deleteItem });
         _syncHistoryGrid.ContextMenuStrip = contextMenu;
 
-        _syncHistoryGrid.QueryCellStyle += SyncHistoryGrid_QueryCellStyle;
+        _gridQueryCellStyleHandler = (object? sender, QueryCellStyleEventArgs e) => SyncHistoryGrid_QueryCellStyle(sender, e);
+        _syncHistoryGrid.QueryCellStyle += _gridQueryCellStyleHandler;
     }
 
     #endregion
@@ -1056,6 +1146,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 RefreshSyncHistoryDisplay();
                 UpdateNoDataOverlay();
                 break;
+
+            case nameof(ViewModel.FilterText):
+                if (_filterTextBox != null && _filterTextBox.Text != (ViewModel.FilterText ?? ""))
+                    _filterTextBox.Text = ViewModel.FilterText ?? "";
+                break;
         }
     }
 
@@ -1071,6 +1166,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         var isConnected = ViewModel.IsConnected;
 
+        // Use semantic status colors only for connection indicator (exception to theme rule)
         if (_connectionStatusLabel != null)
         {
             _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;
@@ -1648,16 +1744,52 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (disposing)
         {
+            // Unsubscribe from ViewModel
             if (ViewModel != null)
             {
                 ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             }
 
+            // Unsubscribe panel header events
+            if (_panelHeader != null && _panelHeaderRefreshClickedHandler != null)
+                _panelHeader.RefreshClicked -= _panelHeaderRefreshClickedHandler;
+            if (_panelHeader != null && _panelHeaderCloseClickedHandler != null)
+                _panelHeader.CloseClicked -= _panelHeaderCloseClickedHandler;
+
+            // Unsubscribe button click events
+            if (_connectButton != null && _connectButtonClickHandler != null)
+                _connectButton.Click -= _connectButtonClickHandler;
+            if (_disconnectButton != null && _disconnectButtonClickHandler != null)
+                _disconnectButton.Click -= _disconnectButtonClickHandler;
+            if (_testConnectionButton != null && _testConnectionButtonClickHandler != null)
+                _testConnectionButton.Click -= _testConnectionButtonClickHandler;
+            if (_syncDataButton != null && _syncDataButtonClickHandler != null)
+                _syncDataButton.Click -= _syncDataButtonClickHandler;
+            if (_importAccountsButton != null && _importAccountsButtonClickHandler != null)
+                _importAccountsButton.Click -= _importAccountsButtonClickHandler;
+            if (_refreshHistoryButton != null && _refreshHistoryButtonClickHandler != null)
+                _refreshHistoryButton.Click -= _refreshHistoryButtonClickHandler;
+            if (_clearHistoryButton != null && _clearHistoryButtonClickHandler != null)
+                _clearHistoryButton.Click -= _clearHistoryButtonClickHandler;
+            if (_exportHistoryButton != null && _exportHistoryButtonClickHandler != null)
+                _exportHistoryButton.Click -= _exportHistoryButtonClickHandler;
+
+            // Unsubscribe filter text box
+            if (_filterTextBox != null && _filterTextBoxTextChangedHandler != null)
+                _filterTextBox.TextChanged -= _filterTextBoxTextChangedHandler;
+
+            // Unsubscribe grid events
             if (_syncHistoryGrid != null)
             {
-                _syncHistoryGrid.QueryCellStyle -= SyncHistoryGrid_QueryCellStyle;
+                if (_gridSelectionChangedHandler != null)
+                    _syncHistoryGrid.SelectionChanged -= _gridSelectionChangedHandler;
+                if (_gridMouseDoubleClickHandler != null)
+                    _syncHistoryGrid.MouseDoubleClick -= _gridMouseDoubleClickHandler;
+                if (_gridQueryCellStyleHandler != null)
+                    _syncHistoryGrid.QueryCellStyle -= _gridQueryCellStyleHandler;
             }
 
+            // Dispose controls
             try { _syncHistoryGrid?.SafeClearDataSource(); } catch { }
             try { _syncHistoryGrid?.SafeDispose(); } catch { }
             try { _connectButton?.Dispose(); } catch { }
@@ -1668,6 +1800,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             try { _refreshHistoryButton?.Dispose(); } catch { }
             try { _clearHistoryButton?.Dispose(); } catch { }
             try { _exportHistoryButton?.Dispose(); } catch { }
+            try { _filterTextBox?.Dispose(); } catch { }
             try { _syncProgressBar?.Dispose(); } catch { }
             try { _panelHeader?.Dispose(); } catch { }
             try { _loadingOverlay?.Dispose(); } catch { }

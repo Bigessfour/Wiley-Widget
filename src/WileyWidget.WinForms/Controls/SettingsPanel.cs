@@ -26,8 +26,9 @@ namespace WileyWidget.WinForms.Controls
         public const string PanelTitle = "Settings";
         public const string AppTitleLabel = "Application Title:";
         public const string AppearanceGroup = "Appearance";
-        public const string DarkThemeLabel = "Dark Theme (Fluent Dark)";
-        public const string LightThemeLabel = "Light Theme (Fluent Light)";
+        public const string ColorfulThemeLabel = "Colorful Theme (Office 2019)";
+        public const string BlackThemeLabel = "Dark Theme (Office 2019 Black)";
+        public const string WhiteThemeLabel = "Light Theme (Office 2019 White)";
         public const string AboutGroup = "About";
         public const string SettingsSavedTitle = "Settings Saved";
         public const string SettingsSavedMessage = "Theme changes are applied immediately and saved.";
@@ -76,6 +77,10 @@ namespace WileyWidget.WinForms.Controls
         private CheckBoxAdv? _chkOpenEditFormsDocked;
         private ErrorProviderBinding? _errorBinding;
 
+        // Status feedback
+        private StatusStrip? _statusStrip;
+        private ToolStripStatusLabel? _statusLabel;
+
             // AI / XAI controls
             private GroupBox? _aiGroup;
         private CheckBoxAdv? _chkEnableAi;
@@ -97,6 +102,7 @@ namespace WileyWidget.WinForms.Controls
         private EventHandler? _chkOpenEditFormsDockedHandler;
         private EventHandler? _chkUseDemoDataHandler;
         private EventHandler? _chkEnableAiHandler;
+        private EventHandler? _themeComboSelectedHandler;
         private EventHandler? _txtXaiApiEndpointChangedHandler;
         private EventHandler? _cmbXaiModelSelectedHandler;
         private EventHandler? _txtXaiApiKeyChangedHandler;
@@ -192,8 +198,100 @@ namespace WileyWidget.WinForms.Controls
             InitializeComponent();
             ApplyCurrentTheme();
 
+            // Set initial font selection
+            SetInitialFontSelection();
+
             // Start async load
-            _ = LoadViewDataAsync();
+            _ = LoadAsync();
+        }
+
+        public override async Task LoadAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                IsBusy = true;
+                UpdateStatus("Loading settings...");
+
+                await LoadViewDataAsync(ct);
+                SetInitialFontSelection();
+
+                UpdateStatus("Settings loaded successfully");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Load failed: {ex.Message}", true);
+                throw;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+        {
+            if (_error_provider == null) return ValidationResult.Success;
+
+            _error_provider.Clear();
+            var errors = new List<ValidationItem>();
+
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(_txtAppTitle?.Text))
+                errors.Add(new ValidationItem("AppTitle", "Application title is required", ValidationSeverity.Error, _txtAppTitle));
+
+            if (string.IsNullOrWhiteSpace(_txtExportPath?.Text))
+                errors.Add(new ValidationItem("DefaultExportPath", "Export path is required", ValidationSeverity.Error, _txtExportPath));
+
+            // Validate ViewModel properties via ErrorProviderBinding
+            if (_errorBinding != null)
+            {
+                // The binding will set errors on controls
+                // We can collect them if needed
+            }
+
+            // Set errors on controls
+            foreach (var error in errors)
+            {
+                if (error.ControlRef != null)
+                    _error_provider.SetError(error.ControlRef, error.Message);
+            }
+
+            return errors.Any() ? ValidationResult.Failed(errors.ToArray()) : ValidationResult.Success;
+        }
+
+        public override void FocusFirstError()
+        {
+            var firstError = ValidationErrors.FirstOrDefault(e => e.ControlRef != null);
+            firstError?.ControlRef?.Focus();
+        }
+
+        public override async Task SaveAsync(CancellationToken ct = default)
+        {
+            var validation = await ValidateAsync(ct);
+            if (!validation.IsValid)
+            {
+                FocusFirstError();
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                UpdateStatus("Saving settings...");
+
+                ViewModel?.SaveCommand?.Execute(null);
+
+                UpdateStatus("Settings saved successfully");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Save failed: {ex.Message}", true);
+                throw;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
         private void InitializeComponent()
@@ -217,7 +315,9 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Padding = new Padding(padding),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                AutoScroll = true,
+                AutoScrollMinSize = new Size(480, 1200)
             };
             SfSkinManager.SetVisualStyle(_mainPanel, _themeName);
 
@@ -236,6 +336,10 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Application Title",
                 AccessibleDescription = "Set the friendly application title"
             };
+            if (ViewModel != null)
+            {
+                _txtAppTitle.DataBindings.Add("Text", ViewModel, "AppTitle", true, DataSourceUpdateMode.OnPropertyChanged);
+            }
 #pragma warning restore RS0030
             _txtToolTip = new ToolTip();
             _txtToolTip.SetToolTip(_txtAppTitle, "Enter a custom title for the application window");
@@ -271,6 +375,9 @@ namespace WileyWidget.WinForms.Controls
             };
             _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try { _themeCombo.DataSource = ViewModel?.Themes?.Cast<object>().ToList(); } catch { }
+            try { _themeCombo.SelectedItem = ViewModel?.SelectedTheme; } catch { }
+            _themeComboSelectedHandler = (s, e) => { if (ViewModel != null && _themeCombo.SelectedItem is string theme) ViewModel.SelectedTheme = theme; SetHasUnsavedChanges(true); };
+            _themeCombo.SelectedIndexChanged += _themeComboSelectedHandler;
 
             // Font selection combo
             var lblFont = new Label { Text = "Application Font:", AutoSize = true, Location = new Point(20, 85), Font = new Font("Segoe UI", 9, FontStyle.Regular) };
@@ -288,7 +395,6 @@ namespace WileyWidget.WinForms.Controls
             };
             _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             _fontCombo.DataSource = GetAvailableFonts();
-            _fontCombo.SelectedItem = FontService.Instance.CurrentFont;
             _fontSelectionChangedHandler = (s, e) => OnFontSelectionChanged(s, e);
             _fontCombo.SelectedIndexChanged += _fontSelectionChangedHandler;
 
@@ -324,7 +430,6 @@ namespace WileyWidget.WinForms.Controls
                 Location = new Point(padding, y),
                 Checked = ViewModel?.UseDemoData ?? false,
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
-                ForeColor = Color.Orange, // Semantic warning color (allowed exception)
                 AccessibleName = "Use demo data",
                 AccessibleDescription = "When enabled, views display sample data instead of database data"
             };
@@ -724,6 +829,24 @@ namespace WileyWidget.WinForms.Controls
             _mainPanel.Controls.Add(_btnClose);
             Controls.Add(_mainPanel);
 
+            // StatusStrip for feedback
+            _statusStrip = new StatusStrip
+            {
+                Dock = DockStyle.Bottom,
+                Name = "StatusStrip",
+                AccessibleName = "Status Bar",
+                AccessibleDescription = "Displays current status and feedback"
+            };
+            _statusLabel = new ToolStripStatusLabel
+            {
+                Text = "Ready",
+                Name = "StatusLabel",
+                AccessibleName = "Status Message",
+                AccessibleDescription = "Current status of the settings panel"
+            };
+            _statusStrip.Items.Add(_statusLabel);
+            Controls.Add(_statusStrip);
+
             // Setup BindingSource
             try
             {
@@ -908,6 +1031,10 @@ namespace WileyWidget.WinForms.Controls
                 if (_fontCombo?.SelectedItem is Font selectedFont)
                 {
                     FontService.Instance.SetApplicationFont(selectedFont);
+                    if (ViewModel != null)
+                    {
+                        ViewModel.ApplicationFont = $"{selectedFont.FontFamily.Name}, {selectedFont.Size}pt";
+                    }
                     SetHasUnsavedChanges(true);
                 }
             }
@@ -930,6 +1057,58 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        /// <summary>
+        /// Sets the initial font selection in the combo box based on ViewModel.ApplicationFont.
+        /// </summary>
+        private void SetInitialFontSelection()
+        {
+            try
+            {
+                if (ViewModel?.ApplicationFont != null && _fontCombo != null)
+                {
+                    var font = ParseFontString(ViewModel.ApplicationFont);
+                    if (font != null)
+                    {
+                        _fontCombo.SelectedItem = font;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "SettingsPanel: Failed to set initial font selection");
+            }
+        }
+
+        /// <summary>
+        /// Parses a font string like "Segoe UI, 9pt" into a Font object.
+        /// </summary>
+        private Font? ParseFontString(string fontString)
+        {
+            try
+            {
+                // Expected format: "FontName, Sizept"
+                var parts = fontString.Split(',');
+                if (parts.Length == 2)
+                {
+                    var fontName = parts[0].Trim();
+                    var sizePart = parts[1].Trim();
+                    if (sizePart.EndsWith("pt"))
+                    {
+                        var sizeString = sizePart.Substring(0, sizePart.Length - 2);
+                        if (float.TryParse(sizeString, out var size))
+                        {
+                            return new Font(fontName, size, FontStyle.Regular);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Failed to parse font string: {FontString}", fontString);
+            }
+            return null;
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -939,6 +1118,7 @@ namespace WileyWidget.WinForms.Controls
                 try { if (_chkOpenEditFormsDocked != null) _chkOpenEditFormsDocked.CheckedChanged -= _chkOpenEditFormsDockedHandler; } catch { }
                 try { if (_chkUseDemoData != null) _chkUseDemoData.CheckedChanged -= _chkUseDemoDataHandler; } catch { }
                 try { if (_chkEnableAi != null) _chkEnableAi.CheckedChanged -= _chkEnableAiHandler; } catch { }
+                try { if (_themeCombo != null) _themeCombo.SelectedIndexChanged -= _themeComboSelectedHandler; } catch { }
                 try { if (_txtXaiApiEndpoint != null) _txtXaiApiEndpoint.TextChanged -= _txtXaiApiEndpointChangedHandler; } catch { }
                 try { if (_cmbXaiModel != null) _cmbXaiModel.SelectedIndexChanged -= _cmbXaiModelSelectedHandler; } catch { }
                 try { if (_txtXaiApiKey != null) _txtXaiApiKey.TextChanged -= _txtXaiApiKeyChangedHandler; } catch { }
@@ -987,6 +1167,7 @@ namespace WileyWidget.WinForms.Controls
                 try { _chkUseDemoData?.Dispose(); } catch { }
                 try { _demoDataToolTip?.Dispose(); } catch { }
                 try { _panelHeader?.Dispose(); } catch { }
+                try { _statusStrip?.Dispose(); } catch { }
                 try { _txtXaiApiEndpoint?.Dispose(); } catch { }
                 try { _txtXaiApiKey?.Dispose(); } catch { }
                 try { _btnShowApiKey?.Dispose(); } catch { }
@@ -997,6 +1178,21 @@ namespace WileyWidget.WinForms.Controls
                 try { _chkEnableAi?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
+        }
+
+        /// <summary>
+        /// Updates the status bar with the specified message.
+        /// </summary>
+        /// <param name="message">The status message to display.</param>
+        /// <param name="isError">True if this is an error message.</param>
+        private void UpdateStatus(string message, bool isError = false)
+        {
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = message;
+                _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
+                _statusLabel.Invalidate();
+            }
         }
 
         private void ClosePanel()

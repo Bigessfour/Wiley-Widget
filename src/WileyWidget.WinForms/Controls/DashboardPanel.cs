@@ -18,10 +18,12 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
+using static WileyWidget.WinForms.Services.ExportService;
 using WileyWidget.WinForms.Forms; // Added for MainViewModel access
 using FormsMainViewModel = WileyWidget.WinForms.Forms.MainViewModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -32,17 +34,12 @@ namespace WileyWidget.WinForms.Controls
     }
 
     /// <summary>
-    /// Dashboard panel (UserControl) with KPIs, charts, and details grid.
-    /// Designed for embedding in DockingManager.
+    /// Dashboard panel with KPIs, charts, and details grid.
+    /// Migrated to ScopedPanelBase<FormsMainViewModel> for proper DI scoping and lifecycle management.
     /// </summary>
-    public partial class DashboardPanel : UserControl
+    public partial class DashboardPanel : ScopedPanelBase<FormsMainViewModel>
     {
-        /// <summary>
-        /// Simple DataContext wrapper for host compatibility.
-        /// Uses 'new' to intentionally hide Control.DataContext when present in platform versions.
-        /// </summary>
-        public new object? DataContext { get; private set; }
-        private readonly FormsMainViewModel _vm;
+        private FormsMainViewModel? _vm => ViewModel;
 
         // controls
         private Syncfusion.Windows.Forms.Tools.GradientPanelExt _topPanel = null!;
@@ -51,6 +48,11 @@ namespace WileyWidget.WinForms.Controls
         private NoDataOverlay? _noDataOverlay;
         private ToolStrip _toolStrip = null!;
         private ToolStripButton _btnRefresh = null!;
+        private ToolStripButton _btnLoadDashboard = null!;
+        private ToolStripButton _btnExportExcel = null!;
+        private ToolStripButton _btnExportPdf = null!;
+        private ToolStripButton _btnAccounts = null!;
+        private ToolStripButton _btnCharts = null!;
         private Label _lblLastRefreshed = null!;
 
         private SfListView? _kpiList = null;
@@ -61,11 +63,17 @@ namespace WileyWidget.WinForms.Controls
         private ErrorProvider? _errorProvider;
         private ToolStripStatusLabel _statusLabel = null!;
 
-
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         // Named event handlers for PanelHeader (stored for proper unsubscription)
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
+        // Stored event handlers for proper unsubscription
+        private EventHandler? _btnLoadDashboardClickHandler;
+        private EventHandler? _btnRefreshClickHandler;
+        private EventHandler? _btnExportExcelClickHandler;
+        private EventHandler? _btnExportPdfClickHandler;
+        private EventHandler? _btnAccountsClickHandler;
+        private EventHandler? _btnChartsClickHandler;
         // per-tile sparkline references
         private ChartControl? _sparkBudget;
         private ChartControlRegionEventWiring? _sparkBudgetRegionEventWiring;
@@ -82,31 +90,22 @@ namespace WileyWidget.WinForms.Controls
         private RadialGauge? _expenseGauge;
         private RadialGauge? _varianceGauge;
 
-        // Logger for diagnostic output (nullable - gracefully handles absence)
-        private readonly Microsoft.Extensions.Logging.ILogger<DashboardPanel>? _logger;
-
         // Shared tooltip for all interactive controls (prevents memory leaks from multiple ToolTip instances)
         private ToolTip? _sharedTooltip;
 
-        // DI-friendly default constructor for container/hosting convenience.
-        // Use the DI-friendly constructor at runtime; the parameterless overload is for designer/test fallback.
-        internal DashboardPanel() : this(new FormsMainViewModel(WileyWidget.WinForms.Logging.NullLogger<FormsMainViewModel>.Instance, null!, null!), null)
-        {
-        }
-
-        // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
-        // Deprecated services (IThemeIconService, IThemeService) removed - SfSkinManager handles theme cascade
-
-        private IAsyncRelayCommand? _refreshCommand;
+        // Dispatcher helper for marshaling UI updates to the UI thread
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
 
-        public DashboardPanel(FormsMainViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, Microsoft.Extensions.Logging.ILogger<DashboardPanel>? logger = null)
+        // DI-friendly constructor for DependencyInjection container.
+        // ViewModel is resolved from scoped provider after handle creation.
+        public DashboardPanel(
+            IServiceScopeFactory scopeFactory,
+            ILogger<ScopedPanelBase<FormsMainViewModel>> logger,
+            WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
+            : base(scopeFactory, logger)
         {
             _dispatcherHelper = dispatcherHelper;
-            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-            DataContext = vm;
 
-            _logger = logger;
             // Initialize shared tooltip for all interactive controls
             _sharedTooltip = new ToolTip
             {
@@ -125,16 +124,51 @@ namespace WileyWidget.WinForms.Controls
             // Dashboard has complex nested layouts (TableLayoutPanel, SplitContainer, gauges, chart, grid)
             DeferSizingValidation();
 
-            // Theme is applied automatically by SfSkinManager cascade from parent Form.
-            // Per Syncfusion documentation: SetVisualStyle on parent form applies to ALL child controls.
-            // No need to call ApplyCurrentTheme() here - it's redundant and can cause double-theming issues.
-
             // Diagnostic logging
             try { Serilog.Log.Debug("DashboardPanel initialized"); } catch { }
+        }
 
-            // Wire initial load
-            // Defer load until visibility notification via ILazyLoadViewModel
-            // EnsureLoadedAsync();
+        /// <summary>
+        /// Called after the ViewModel has been resolved from the scoped service provider.
+        /// Wires up event handlers but defers heavy binding work to async task.
+        /// </summary>
+        protected override void OnViewModelResolved(FormsMainViewModel viewModel)
+        {
+            base.OnViewModelResolved(viewModel);
+
+            try
+            {
+                // Subscribe to ViewModel property changes - lightweight, synchronous only
+                if (viewModel is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
+                {
+                    _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+                    npc.PropertyChanged += _viewModelPropertyChangedHandler;
+                }
+
+                // Defer heavy binding work to background thread to prevent UI blocking
+                // This follows async-initialization-pattern: synchronous initialize, heavy work deferred
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(100); // Allow UI to settle after control creation
+                        if (!IsDisposed)
+                        {
+                            await EnsureLoadedAsync();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "DashboardPanel: Failed to apply deferred bindings");
+                    }
+                });
+
+                Logger.LogDebug("DashboardPanel: ViewModel resolved, deferred binding scheduled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "DashboardPanel: Failed to initialize ViewModel");
+            }
         }
 
         private async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
@@ -145,7 +179,9 @@ namespace WileyWidget.WinForms.Controls
                     _vm != null, _vm?.LoadDataCommand != null, _vm?.IsLoading ?? false);
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] EnsureLoadedAsync: START - LoadCommand={_vm?.LoadDataCommand != null}, IsLoading={_vm?.IsLoading ?? false}");
 
-                if (_vm.LoadDataCommand != null && !_vm.IsLoading)
+                UpdateStatus("Loading dashboard data...");
+
+                if (_vm?.LoadDataCommand != null && !(_vm?.IsLoading ?? false))
                 {
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Executing LoadDataCommand...");
                     await _vm.LoadDataCommand.ExecuteAsync(null).ConfigureAwait(true);
@@ -154,15 +190,31 @@ namespace WileyWidget.WinForms.Controls
                 }
                 else
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Skipping load - Command={_vm.LoadDataCommand != null}, IsLoading={_vm.IsLoading}");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD] Skipping load - Command={_vm?.LoadDataCommand != null}, IsLoading={_vm?.IsLoading}");
                     Serilog.Log.Warning("DashboardPanel.EnsureLoadedAsync: Skipping load - Command={CmdNotNull}, IsLoading={IsLoading}",
-                        _vm.LoadDataCommand != null, _vm.IsLoading);
+                        _vm?.LoadDataCommand != null, _vm?.IsLoading);
+                }
+
+                UpdateStatus("Dashboard data loaded");
+
+                // Now apply bindings on the UI thread after data is loaded
+                if (!IsDisposed)
+                {
+                    if (InvokeRequired)
+                    {
+                        BeginInvoke(new System.Action(TryApplyViewModelBindings));
+                    }
+                    else
+                    {
+                        TryApplyViewModelBindings();
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [DASHBOARD ERROR] EnsureLoadedAsync failed: {ex.Message}");
                 Serilog.Log.Error(ex, "DashboardPanel.EnsureLoadedAsync: Failed to load dashboard data");
+                UpdateStatus($"Load failed: {ex.Message}");
                 try
                 {
                     _errorProvider ??= new ErrorProvider() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
@@ -202,13 +254,12 @@ namespace WileyWidget.WinForms.Controls
             _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
 
             // Load button (automation-friendly id)
-            var btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
-            btnLoadDashboard.Click += async (s, e) => { try { if (_vm?.LoadDataCommand != null) await _vm.LoadDataCommand.ExecuteAsync(null); } catch { } };
-            _refreshCommand = _vm.RefreshCommand;
-            _btnRefresh.Click += (s, e) =>
-            {
-                try { _refreshCommand?.ExecuteAsync(null); } catch { }
-            };
+            _btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
+            _btnLoadDashboardClickHandler = async (s, e) => { try { if (_vm?.LoadDataCommand != null) await _vm.LoadDataCommand.ExecuteAsync(null); } catch { } };
+            _btnLoadDashboard.Click += _btnLoadDashboardClickHandler;
+            var refreshCommand = _vm?.RefreshCommand;
+            _btnRefreshClickHandler = (s, e) => { try { refreshCommand?.ExecuteAsync(null); } catch { } };
+            _btnRefresh.Click += _btnRefreshClickHandler;
 
             try
             {
@@ -225,67 +276,70 @@ namespace WileyWidget.WinForms.Controls
             _toolStrip.Items.Add(dashboardLabel);
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(_btnRefresh);
-            _toolStrip.Items.Add(btnLoadDashboard);
+            _toolStrip.Items.Add(_btnLoadDashboard);
             _toolStrip.Items.Add(new ToolStripSeparator());
 
             // Export buttons (Excel / PDF)
-            var btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            btnExportExcel.Click += async (s, e) =>
+            _btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
+            _btnExportExcelClickHandler = async (s, e) =>
             {
                 try
                 {
                     using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "dashboard-details.xlsx" };
                     if (sfd.ShowDialog() != DialogResult.OK) return;
-                    await WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(_detailsGrid, sfd.FileName);
+                    await ExportGridToExcelAsync(_detailsGrid, sfd.FileName);
                     MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             };
-            _toolStrip.Items.Add(btnExportExcel);
+            _btnExportExcel.Click += _btnExportExcelClickHandler;
+            _toolStrip.Items.Add(_btnExportExcel);
 
-            var btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            btnExportPdf.Click += async (s, e) =>
+            _btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
+            _btnExportPdfClickHandler = async (s, e) =>
             {
                 try
                 {
                     using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "dashboard.pdf" };
                     if (sfd.ShowDialog() != DialogResult.OK) return;
                     // Export main chart into PDF
-                    await WileyWidget.WinForms.Services.ExportService.ExportChartToPdfAsync(_mainChart, sfd.FileName);
+                    await ExportChartToPdfAsync(_mainChart, sfd.FileName);
                     MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             };
-            _toolStrip.Items.Add(btnExportPdf);
+            _btnExportPdf.Click += _btnExportPdfClickHandler;
+            _toolStrip.Items.Add(_btnExportPdf);
 
-            // Navigation buttons per Syncfusion demos patterns
-            var btnAccounts = new ToolStripButton("Accounts")
+            _btnAccounts = new ToolStripButton("Accounts")
             {
                 AccessibleName = "View Accounts",
                 AccessibleDescription = "Navigate to Accounts panel",
                 ToolTipText = "View Municipal Accounts (Ctrl+Shift+A)"
             };
             // Icon removed per SfSkinManager enforcement rules
-            btnAccounts.Click += (s, e) =>
+            _btnAccountsClickHandler = (s, e) =>
             {
                 try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Accounts"); } catch { }
                 NavigateToPanel<AccountsPanel>("Accounts");
             };
-            _toolStrip.Items.Add(btnAccounts);
+            _btnAccounts.Click += _btnAccountsClickHandler;
+            _toolStrip.Items.Add(_btnAccounts);
 
-            var btnCharts = new ToolStripButton("Charts")
+            _btnCharts = new ToolStripButton("Charts")
             {
                 AccessibleName = "View Charts",
                 AccessibleDescription = "Navigate to Charts analytics panel",
                 ToolTipText = "View Budget Analytics (Ctrl+Shift+C)"
             };
             // Icon removed per SfSkinManager enforcement rules
-            btnCharts.Click += (s, e) =>
+            _btnChartsClickHandler = (s, e) =>
             {
                 try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Charts"); } catch { }
                 NavigateToPanel<BudgetAnalyticsPanel>("Charts");
             };
-            _toolStrip.Items.Add(btnCharts);
+            _btnCharts.Click += _btnChartsClickHandler;
+            _toolStrip.Items.Add(_btnCharts);
 
             _toolStrip.Items.Add(new ToolStripSeparator());
             _toolStrip.Items.Add(new ToolStripLabel(" "));
@@ -368,7 +422,7 @@ namespace WileyWidget.WinForms.Controls
 
             // Theme applied automatically by SfSkinManager cascade from parent form
             // Baseline chart defaults centralized for consistency (keep domain-specific settings below)
-            ChartControlDefaults.Apply(_mainChart, logger: _logger);
+            ChartControlDefaults.Apply(_mainChart, logger: Logger);
             _mainChart.ChartArea.PrimaryXAxis.HidePartialLabels = true; // Per demos: hide partial labels
 
             // Axis configuration per demos (ChartAppearance.cs patterns)
@@ -471,8 +525,8 @@ namespace WileyWidget.WinForms.Controls
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
                 };
-                var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                SfSkinManager.SetVisualStyle(tile, theme);
+                var tileTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(tile, tileTheme);
 
                 var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
                 var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
@@ -488,7 +542,7 @@ namespace WileyWidget.WinForms.Controls
                     ShowToolTips = false,
                     EnableZooming = false,
                     EnableAxisScrollBar = false
-                }, logger: _logger);
+                }, logger: Logger);
                 spark.PrimaryYAxis.HidePartialLabels = true;
                 spark.PrimaryXAxis.HidePartialLabels = true;
 
@@ -507,9 +561,9 @@ namespace WileyWidget.WinForms.Controls
             };
 
             // Create three tiles (values will be updated in bindings)
-            _sparkBudget = createTile("Total Budget", "Total budget", _vm.TotalBudget);
-            _sparkExpenditure = createTile("Expenditure", "Total expenditure", _vm.TotalExpenditure);
-            _sparkRemaining = createTile("Remaining", "Remaining budget", _vm.RemainingBudget);
+            _sparkBudget = createTile("Total Budget", "Total budget", _vm?.TotalBudget ?? 0);
+            _sparkExpenditure = createTile("Expenditure", "Total expenditure", _vm?.TotalExpenditure ?? 0);
+            _sparkRemaining = createTile("Remaining", "Remaining budget", _vm?.RemainingBudget ?? 0);
 
             summaryPanel.Controls.Add(summaryTiles);
 
@@ -536,12 +590,11 @@ namespace WileyWidget.WinForms.Controls
             };
             Controls.Add(_noDataOverlay);
 
-            // Bindings
-            TryApplyViewModelBindings();
+            // Bindings will be applied after ViewModel is resolved (OnViewModelResolved)
 
             this.PerformLayout();
             this.Refresh();
-            try { _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name); } catch {}
+            try { Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name); } catch { }
 
             // Theme handler removed - SfSkinManager cascade handles all theme changes automatically
         }
@@ -570,7 +623,7 @@ namespace WileyWidget.WinForms.Controls
                     var panelValidation = SafeControlSizeValidator.ValidateControlSize(this);
                     if (!panelValidation.IsValid)
                     {
-                        _logger?.LogWarning($"Dashboard sizing issue: {panelValidation.Message}");
+                        Logger.LogWarning($"Dashboard sizing issue: {panelValidation.Message}");
                     }
 
                     // Validate child control sizes - prevents cut-off controls
@@ -579,7 +632,7 @@ namespace WileyWidget.WinForms.Controls
                         var chartValidation = SafeControlSizeValidator.ValidateControlSize(_mainChart);
                         if (!chartValidation.IsValid && _mainChart.Width > 0 && _mainChart.Height > 0)
                         {
-                            _logger?.LogWarning($"Chart sizing issue: {chartValidation.Message}");
+                            Logger.LogWarning($"Chart sizing issue: {chartValidation.Message}");
                         }
                     }
 
@@ -588,7 +641,7 @@ namespace WileyWidget.WinForms.Controls
                         var gridValidation = SafeControlSizeValidator.ValidateControlSize(_detailsGrid);
                         if (!gridValidation.IsValid && _detailsGrid.Width > 0 && _detailsGrid.Height > 0)
                         {
-                            _logger?.LogWarning($"Grid sizing issue: {gridValidation.Message}");
+                            Logger.LogWarning($"Grid sizing issue: {gridValidation.Message}");
                         }
                     }
 
@@ -603,17 +656,12 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError($"Error during dashboard sizing validation: {ex.Message}");
+                    Logger.LogError($"Error during dashboard sizing validation: {ex.Message}");
                 }
             };
             validationTimer.Start();
         }
 
-        /// <summary>
-        /// Creates the gauge panel with four circular gauges for dashboard metrics.
-        /// Gauges are configured with smooth 500ms pointer animation, color ranges (green/yellow/red),
-        /// and data binding to ViewModel properties with PropertyChanged notifications.
-        /// </summary>
         /// <summary>
         /// Creates a single gauge panel for metrics display.
         /// </summary>
@@ -622,7 +670,7 @@ namespace WileyWidget.WinForms.Controls
         /// <returns>GradientPanelExt containing gauge with label</returns>
         private GradientPanelExt CreateGaugePanel(string title, string iconName)
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            var panelTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             var container = new GradientPanelExt
             {
                 Width = 280,
@@ -631,7 +679,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(container, theme);
+            SfSkinManager.SetVisualStyle(container, panelTheme);
             var gauge = new RadialGauge
             {
                 Width = 110,
@@ -699,7 +747,7 @@ namespace WileyWidget.WinForms.Controls
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(lblPanel, theme);
+            SfSkinManager.SetVisualStyle(lblPanel, panelTheme);
             var titleLabel = new Label
             {
                 Text = title,
@@ -733,204 +781,6 @@ namespace WileyWidget.WinForms.Controls
             return container;
         }
 
-        private GradientPanelExt CreateGaugePanel()
-        {
-            var panel = new GradientPanelExt
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8),
-                MinimumSize = new Size(800, 100),  // Minimum size for 4 gauges side-by-side
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            var panelTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            SfSkinManager.SetVisualStyle(panel, panelTheme);
-
-            var flowLayout = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
-                AutoScroll = false,
-                WrapContents = false
-            };
-
-            // Helper to create a gauge with label
-            RadialGauge CreateGauge(string title, string description, Color rangeGreen, Color rangeYellow, Color rangeRed)
-            {
-                var container = new GradientPanelExt
-                {
-                    Width = 280,
-                    Height = 120,
-                    Margin = new Padding(4),
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-                };
-                var containerTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                SfSkinManager.SetVisualStyle(container, containerTheme);
-                var gauge = new RadialGauge
-                {
-                    Width = 110,
-                    Height = 110,
-                    Dock = DockStyle.Left,
-                    AccessibleName = title,
-                    AccessibleDescription = description,
-                    MinimumValue = 0,
-                    MaximumValue = 100,
-                    EnableCustomNeedles = true  // Enable smooth needle animations
-                };
-
-                // Configure gauge appearance per Syncfusion demos
-                gauge.GaugeLabel = "";
-                gauge.ShowTicks = true;
-                gauge.MajorTickMarkHeight = 8;
-                gauge.MinorTickMarkHeight = 4;
-                gauge.ShowScaleLabel = true;
-                gauge.MinimumSize = new Size(110, 110);
-
-                // Enable smooth pointer animation (500ms transition per Syncfusion best practices)
-                gauge.EnableCustomNeedles = true;
-                gauge.VisualStyle = Syncfusion.Windows.Forms.Gauge.ThemeStyle.Office2016Colorful;  // Will be overridden by SfSkinManager cascade
-
-                // Add tooltip using shared instance (prevents memory leaks)
-                if (_sharedTooltip != null)
-                {
-                    _sharedTooltip.SetToolTip(gauge, $"{description}\nCurrent value will update in real-time\nClick to drill down into details");
-                }
-
-                // Add color ranges: green (0-60%), yellow (60-90%), red (90-100%)
-                gauge.Ranges.Clear();
-                var greenRange = new Syncfusion.Windows.Forms.Gauge.Range
-                {
-                    StartValue = 0,
-                    EndValue = 60,
-                    Color = rangeGreen,
-                    Height = 8,
-                    InRange = true,
-                    RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
-                };
-                var yellowRange = new Syncfusion.Windows.Forms.Gauge.Range
-                {
-                    StartValue = 60,
-                    EndValue = 90,
-                    Color = rangeYellow,
-                    Height = 8,
-                    InRange = true,
-                    RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
-                };
-                var redRange = new Syncfusion.Windows.Forms.Gauge.Range
-                {
-                    StartValue = 90,
-                    EndValue = 100,
-                    Color = rangeRed,
-                    Height = 8,
-                    InRange = true,
-                    RangePlacement = Syncfusion.Windows.Forms.Gauge.TickPlacement.Inside
-                };
-                gauge.Ranges.Add(greenRange);
-                gauge.Ranges.Add(yellowRange);
-                gauge.Ranges.Add(redRange);
-
-                // Configure needle
-                gauge.NeedleColor = Color.DarkSlateGray;
-
-                // Add click interactivity for drill-down (optional enhancement)
-                gauge.Cursor = Cursors.Hand;
-                gauge.Click += (s, e) =>
-                {
-                    try
-                    {
-                        // Future enhancement: Filter details grid based on gauge type
-                        _logger?.LogDebug("DashboardPanel: Gauge '{Title}' clicked - drill-down placeholder", title);
-                        // Could filter _detailsGrid.DataSource here based on title
-                    }
-                    catch (Exception ex)
-                    {
-                        try { Serilog.Log.Warning(ex, "DashboardPanel: Gauge click handler failed"); } catch { }
-                    }
-                };
-
-                // Label panel
-                var lblPanelInner = new GradientPanelExt
-                {
-                    Dock = DockStyle.Fill,
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-                };
-                var lblPanelTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                SfSkinManager.SetVisualStyle(lblPanelInner, lblPanelTheme);
-                var titleLabel = new Label
-                {
-                    Text = title,
-                    Dock = DockStyle.Top,
-                    Height = 24,
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                    TextAlign = ContentAlignment.MiddleLeft
-                };
-                var valueLabel = new Label
-                {
-                    Name = $"{title}ValueLabel",
-                    Text = "0%",
-                    Dock = DockStyle.Top,
-                    Height = 32,
-                    Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                    TextAlign = ContentAlignment.MiddleLeft
-                };
-                var descLabel = new Label
-                {
-                    Text = description,
-                    Dock = DockStyle.Fill,
-                    Font = new Font("Segoe UI", 8),
-                    TextAlign = ContentAlignment.TopLeft,
-                    ForeColor = Color.Gray
-                };
-
-                lblPanelInner.Controls.Add(descLabel);
-                lblPanelInner.Controls.Add(valueLabel);
-                lblPanelInner.Controls.Add(titleLabel);
-
-                container.Controls.Add(lblPanelInner);
-                container.Controls.Add(gauge);
-                flowLayout.Controls.Add(container);
-
-                return gauge;
-            }
-
-            // Create four gauges for key metrics
-            // NOTE: Explicit gauge colors are acceptable per SfSkinManager rules.
-            // These are semantic data visualization colors (not UI theme colors).
-            // Gauges use standardized color ranges (Green/Amber/Red, etc.) for universal comprehension.
-            _budgetUtilizationGauge = CreateGauge(
-                "Budget Utilization",
-                "Actual spending vs budgeted",
-                Color.Green,
-                Color.Orange,
-                Color.Red);
-
-            _revenueGauge = CreateGauge(
-                "Revenue Collection",
-                "Revenue collected vs target",
-                Color.Green,
-                Color.Orange,
-                Color.Red);
-
-            _expenseGauge = CreateGauge(
-                "Expense Rate",
-                "Expenses vs allocation",
-                Color.Green,
-                Color.Orange,
-                Color.Red);
-
-            _varianceGauge = CreateGauge(
-                "Variance",
-                "Budget variance indicator",
-                Color.Green,
-                Color.Orange,
-                Color.Red);
-
-            panel.Controls.Add(flowLayout);
-            return panel;
-        }
-
         private void TryApplyViewModelBindings()
         {
             // Ensure this method runs on the UI thread. Some callers may originate
@@ -954,17 +804,10 @@ namespace WileyWidget.WinForms.Controls
                 return;
             }
 
-            // Listen for property changes (subscribe once).
-            if (_vm is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
-            {
-                _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-                npc.PropertyChanged += _viewModelPropertyChangedHandler;
-            }
-
             try
             {
                 // Controls may not be fully initialized yet (or may be disposed).
-                if (IsDisposed || _mainChart == null || _detailsGrid == null || _lblLastRefreshed == null)
+                if (IsDisposed || _mainChart == null || _detailsGrid == null || _lblLastRefreshed == null || _vm == null)
                 {
                     return;
                 }
@@ -1278,7 +1121,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (IsDisposed) return;
+                if (IsDisposed || _vm == null) return;
 
                 // Marshal to UI thread for all property changes that affect UI
                 if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
@@ -1388,21 +1231,6 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Applies the current theme to dynamically added controls.
-        /// NOTE: This method is NOT needed for initial UserControl setup.
-        /// Per Syncfusion documentation: When a form has SfSkinManager.SetVisualStyle() applied,
-        /// the theme automatically cascades to ALL child controls (including nested UserControls).
-        /// Only use this for controls added dynamically AFTER the form is shown.
-        /// Reference: https://help.syncfusion.com/windowsforms/skins/getting-started
-        /// </summary>
-        private void ApplyCurrentTheme()
-        {
-            // This method intentionally left minimal - theme cascade handles initial setup.
-            // Only needed if we dynamically create Syncfusion controls after form load.
-            // Per Syncfusion: "SetVisualStyle on window applies theme to ALL controls inside it"
-        }
-
-        /// <summary>
         /// Navigates to another panel via parent form's DockingManager.
         /// Per Syncfusion demos navigation pattern.
         /// </summary>
@@ -1442,7 +1270,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                await (_vm.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+                await (_vm?.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
             }
             catch (Exception ex)
             {
@@ -1467,12 +1295,89 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        /// <summary>
+        /// Loads dashboard data asynchronously.
+        /// </summary>
+        public override async Task LoadAsync(CancellationToken ct)
+        {
+            try
+            {
+                IsBusy = true;
+                UpdateStatus("Loading dashboard data...");
+                await EnsureLoadedAsync(ct);
+                SetHasUnsavedChanges(false);
+                UpdateStatus("Dashboard loaded successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                UpdateStatus("Load cancelled");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Load failed: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Saves dashboard data (dashboard is read-only, so no-op).
+        /// </summary>
+        public override async Task SaveAsync(CancellationToken ct)
+        {
+            // Dashboard is read-only, no save operation
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Validates dashboard state.
+        /// </summary>
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+        {
+            var errors = new List<ValidationItem>();
+            // Dashboard has no editable fields, always valid
+            return ValidationResult.Success;
+        }
+
+        /// <summary>
+        /// Focuses the first error (no errors in dashboard).
+        /// </summary>
+        public override void FocusFirstError()
+        {
+            // No editable fields to focus
+        }
+
+        /// <summary>
+        /// Updates the status strip with a message.
+        /// </summary>
+        private void UpdateStatus(string message)
+        {
+            if (_statusLabel != null && !IsDisposed)
+            {
+                if (InvokeRequired)
+                    BeginInvoke(() => _statusLabel.Text = message);
+                else
+                    _statusLabel.Text = message;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 // Unsubscribe from ViewModel events
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
+
+                // Unsubscribe from button click events
+                try { if (_btnLoadDashboardClickHandler != null) _btnLoadDashboard.Click -= _btnLoadDashboardClickHandler; } catch { }
+                try { if (_btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler; } catch { }
+                try { if (_btnExportExcelClickHandler != null) _btnExportExcel.Click -= _btnExportExcelClickHandler; } catch { }
+                try { if (_btnExportPdfClickHandler != null) _btnExportPdf.Click -= _btnExportPdfClickHandler; } catch { }
+                try { if (_btnAccountsClickHandler != null) _btnAccounts.Click -= _btnAccountsClickHandler; } catch { }
+                try { if (_btnChartsClickHandler != null) _btnCharts.Click -= _btnChartsClickHandler; } catch { }
 
                 // Unsubscribe from PanelHeader events using stored named handlers (no reflection needed)
                 try
@@ -1546,4 +1451,3 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
-

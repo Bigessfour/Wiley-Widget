@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ using WileyWidget.Services;
 using WileyWidget.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.Windows.Forms;
 using Serilog;
 
 namespace WileyWidget.WinForms
@@ -31,12 +33,47 @@ namespace WileyWidget.WinForms
             await Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Shows an error dialog with minimal detail to user, logs full exception to Serilog.
+        /// </summary>
+        private static void ShowErrorDialog(string title, string message, Exception ex)
+        {
+            try
+            {
+                MessageBox.Show(
+                    message,
+                    title,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            catch
+            {
+                // Fallback if MessageBox fails (e.g., no UI)
+                Console.WriteLine($"ERROR: {title} - {message}");
+            }
+        }
+
         [STAThread]
         static void Main(string[] args)
         {
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+
+            // Wire global exception handlers for unobserved async tasks and UI thread errors
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                Log.Error(e.Exception, "Unobserved task exception (fire-and-forget task raised error)");
+                e.SetObserved(); // Suppress crash, log only
+            };
+
+            System.Windows.Forms.Application.ThreadException += static (s, e) =>
+            {
+                Log.Error(e.Exception, "Unhandled UI thread exception");
+                // Show minimal error dialog to user, full details to log
+                ShowErrorDialog("Application Error", e.Exception.Message, e.Exception);
+                // Note: ThreadExceptionEventArgs doesn't support suppression; application will terminate
+            };
 
             try
             {
@@ -74,6 +111,9 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Initializing theme...");
                 InitializeTheme(host.Services);
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Theme initialized");
+
+                // Log that exception handlers are active
+                Log.Information("Exception handlers registered for unobserved tasks and UI thread errors");
 
                 // Phase 2: Orchestration
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Attempting to resolve IStartupOrchestrator...");
@@ -224,19 +264,24 @@ namespace WileyWidget.WinForms
         static void InitializeTheme(IServiceProvider serviceProvider)
         {
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeService>(serviceProvider);
-            var themeName = themeService?.CurrentTheme ?? ThemeColors.DefaultTheme;
+            var themeName = themeService?.CurrentTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
+            // Load all required theme assemblies for Office2019Colorful and fallback themes
             try
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
+                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Theme assembly load skipped or failed");
+                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - theme may not apply correctly");
+                throw new InvalidOperationException("Office2019Theme assembly is required but failed to load. Ensure Syncfusion.WinForms.Themes NuGet package is installed.", ex);
             }
 
+            // Set application-level theme
             SfSkinManager.ApplicationVisualTheme = themeName;
-            Log.Information("Syncfusion theme initialized: {Theme}", themeName);
+            Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
         }
     }
 }

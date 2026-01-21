@@ -93,6 +93,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
+    private EventHandler? _panelHeaderHelpClickedHandler;
 
     /// <summary>
     /// Initializes a new instance with required DI dependencies.
@@ -127,7 +128,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         };
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
-        _panelHeader.HelpClicked += (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
+        _panelHeaderHelpClickedHandler = (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
+        _panelHeader.HelpClicked += _panelHeaderHelpClickedHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
@@ -670,12 +672,11 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
                 };
 
                 // Configure series style - CHANGE 24: No manual color assignments; rely on theme
-                lineSeries.Style.Border.Width = 2;
-                // Border color inherited from theme
-
-                // Markers are OK for monthly granularity; colors inherit from theme
+                // Per SfSkinManager authority, all colors (border, symbol, legend) cascade from ApplicationVisualTheme
+                lineSeries.Style.Border.Width = 2;  // Width only - color inherited from active theme
+                // Symbol colors (fill, border) automatically inherited from theme
                 lineSeries.Style.Symbol.Shape = ChartSymbolShape.Circle;
-                lineSeries.Style.Symbol.Size = new Size(8, 8);
+                lineSeries.Style.Symbol.Size = new Size(8, 8);  // Size only - color inherited
 
                 // Configure tooltip format
                 lineSeries.PointsToolTipFormat = "{1:C0}";
@@ -860,6 +861,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
                 {
                     if (_panelHeaderRefreshHandler != null)
                         _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                    if (_panelHeaderHelpClickedHandler != null)
+                        _panelHeader.HelpClicked -= _panelHeaderHelpClickedHandler;
                     if (_panelHeaderCloseHandler != null)
                         _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
                 }

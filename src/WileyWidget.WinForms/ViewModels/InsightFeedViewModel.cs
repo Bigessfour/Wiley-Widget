@@ -250,7 +250,7 @@ namespace WileyWidget.WinForms.ViewModels
                 if (serviceProvider != null)
                 {
                     var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Forms.JARVISChatHostForm>(serviceProvider);
-                    
+
                     // We'll set the prompt on the form before showing it
                     // The form will wait for the Blazor component to be ready
                     chatForm.InitialPrompt = insightContext.ToString();
@@ -328,6 +328,14 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogError(ex, "Error refreshing insights");
                 StatusMessage = "Error refreshing insights";
             }
+        }
+
+        /// <summary>
+        /// Refreshes the insights data asynchronously.
+        /// </summary>
+        public async Task RefreshAsync(CancellationToken ct = default)
+        {
+            await Task.Run(() => RefreshInsights(), ct);
         }
 
         /// <summary>

@@ -1107,6 +1107,8 @@
           "Microsoft.Extensions.Hosting": "[10.0.2, )",
           "Microsoft.Extensions.Http": "[10.0.2, )",
           "Microsoft.Extensions.Logging": "[10.0.2, )",
+          "Microsoft.SemanticKernel": "[1.40.1, )",
+          "Microsoft.SemanticKernel.Connectors.OpenAI": "[1.40.1, )",
           "Polly": "[8.6.5, )",
           "Serilog": "[4.3.0, )",
           "Serilog.Enrichers.Environment": "[3.0.1, )",
@@ -1206,7 +1208,7 @@
       },
       "Microsoft.CodeAnalysis.CSharp": {
         "type": "CentralTransitive",
-        "requested": "[4.14.0, )",
+        "requested": "[5.0.0, )",
         "resolved": "5.0.0",
         "contentHash": "5DSyJ9bk+ATuDy7fp2Zt0mJStDVKbBoiz1DyfAwSa+k4H4IwykAUcV3URelw5b8/iVbfSaOwkwmPUZH6opZKCw==",
         "dependencies": {

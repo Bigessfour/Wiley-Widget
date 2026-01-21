@@ -44,7 +44,7 @@ public static class RightDockPanelFactory
     public static (
         GradientPanelExt rightDockPanel,
         ActivityLogPanel activityLogPanel,
-        JARVISChatUserControl? jarvisControl,
+        ChatPanel? chatPanel,
         RightPanelMode initialMode
     ) CreateRightDockPanel(
         MainForm mainForm,
@@ -90,25 +90,25 @@ public static class RightDockPanelFactory
             activityLogTab.Controls.Add(activityLogPanel);
             tabControl.TabPages.Add(activityLogTab);
 
-            // Tab 2: JARVIS Chat (docked version)
+            // Tab 2: ChatPanel (docked version)
             var jarvisTab = new TabPage { Text = "JARVIS AI", Name = "JARVISTab" };
-            JARVISChatUserControl? jarvisChatControl = null;
+            ChatPanel? chatPanel = null;
             try
             {
-                var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.IThemeService>(serviceProvider);
-                var jarvisLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<JARVISChatUserControl>>(serviceProvider);
-                jarvisChatControl = new JARVISChatUserControl(serviceProvider, themeService, jarvisLogger)
+                var chatLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ChatPanel>>(serviceProvider)
+                    ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ChatPanel>;
+                chatPanel = new ChatPanel(scopeFactory, chatLogger!)
                 {
                     Dock = DockStyle.Fill,
-                    Name = "JARVISChatUserControl"
+                    Name = "ChatPanel"
                 };
-                jarvisTab.Controls.Add(jarvisChatControl);
+                jarvisTab.Controls.Add(chatPanel);
                 tabControl.TabPages.Add(jarvisTab);
-                logger?.LogInformation("RightDockPanelFactory: JARVIS Chat tab created and added");
+                logger?.LogInformation("RightDockPanelFactory: ChatPanel tab created and added");
             }
             catch (Exception ex)
             {
-                logger?.LogWarning(ex, "RightDockPanelFactory: Failed to create JARVIS Chat tab - JARVIS will be available as modal only");
+                logger?.LogWarning(ex, "RightDockPanelFactory: Failed to create ChatPanel tab - Chat will be available as modal only");
             }
 
             rightDockPanel.Controls.Add(tabControl);
@@ -122,7 +122,7 @@ public static class RightDockPanelFactory
                 "RightDockPanelFactory: Right panel created in {ElapsedMs}ms - Activity Log initialized as default",
                 sw.ElapsedMilliseconds);
 
-            return (rightDockPanel, activityLogPanel, jarvisChatControl, RightPanelMode.ActivityLog);
+            return (rightDockPanel, activityLogPanel, chatPanel, RightPanelMode.ActivityLog);
         }
         catch (Exception ex)
         {

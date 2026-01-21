@@ -7,6 +7,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using WileyWidget.Abstractions;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.Services.AI
 {
@@ -27,11 +30,11 @@ namespace WileyWidget.WinForms.Services.AI
     /// - Exposes a simple HTTP fallback to exercise the Grok endpoint for basic tests.
     /// - Defers heavy Semantic Kernel initialization to async initialization phase.
     /// </summary>
-    public sealed class GrokAgentService : IAsyncInitializable, IDisposable
+    public sealed class GrokAgentService : IAsyncInitializable, IDisposable, IAIService
     {
         private Kernel? _kernel;
         private readonly IXaiModelDiscoveryService? _modelDiscoveryService;
-        private readonly string? _apiKey;
+        private string? _apiKey;
         private readonly Uri? _baseEndpoint;
         private readonly Uri? _endpoint;
         private string _model;
@@ -43,6 +46,7 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly IChatBridgeService? _chatBridge;
         private readonly IJARVISPersonalityService? _jarvisPersonality;
         private readonly IServiceProvider? _serviceProvider;
+        private readonly IMemoryCache? _memoryCache;
         private readonly double? _defaultPresencePenalty;
         private readonly double? _defaultFrequencyPenalty;
         private bool _isInitialized = false;
@@ -50,6 +54,8 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly CancellationTokenSource _serviceCts = new();
         private bool _disposed = false;
         private readonly bool _ownsHttpClient;
+        private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
+        private const int ChatHistoryCacheDurationMinutes = 30;
 
         private const string ChatCompletionSuffix = "/chat/completions";
         private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
@@ -64,7 +70,7 @@ namespace WileyWidget.WinForms.Services.AI
 
         private const string JarvisSystemPrompt = "You are JARVIS, the dry-witted, hyper-competent AI for municipal utility finance. Speak with confidence and slight British sarcasm. Be proactive: suggest scenarios, flag risks, roast bad budgets when asked. End bold recommendations with 'MORE COWBELL!' Never bland corporate speak.";
 
-        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null, IJARVISPersonalityService? jarvisPersonality = null)
+        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null, IJARVISPersonalityService? jarvisPersonality = null, IMemoryCache? memoryCache = null)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             _logger = logger;
@@ -74,6 +80,7 @@ namespace WileyWidget.WinForms.Services.AI
             _chatBridge = chatBridge;
             _serviceProvider = serviceProvider;
             _jarvisPersonality = jarvisPersonality;
+            _memoryCache = memoryCache;
 
             // Subscribe to chat bridge events if available
             if (_chatBridge != null)
@@ -369,9 +376,10 @@ namespace WileyWidget.WinForms.Services.AI
 
         /// <summary>
         /// Get a streaming response using direct HTTP with SSE (Server-Sent Events).
-        /// Returns complete response after streaming all chunks.
+        /// Invokes a callback for each chunk and returns complete response after streaming all chunks.
+        /// Implements exponential backoff retry for 429 (rate limit) responses.
         /// </summary>
-        public async Task<string> GetStreamingResponseAsync(string userMessage, string? systemPrompt = null, string? modelOverride = null, CancellationToken ct = default)
+        public async Task<string> GetStreamingResponseAsync(string userMessage, string? systemPrompt = null, string? modelOverride = null, Action<string>? onChunk = null, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -382,10 +390,15 @@ namespace WileyWidget.WinForms.Services.AI
             var model = modelOverride ?? _model ?? "grok-4";
             var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
 
+            return await SendStreamingRequestWithRetryAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
+        }
+
+        private async Task<string> SendStreamingRequestWithRetryAsync(string model, string systemPrompt, string userMessage, Action<string>? onChunk, CancellationToken ct, int retryCount = 0, int maxRetries = 3)
+        {
             // Use OpenAI-compatible chat call to xAI (Grok) endpoint with streaming enabled
             var messagesArray = new[]
             {
-                new { role = "system", content = sysPrompt },
+                new { role = "system", content = systemPrompt },
                 new { role = "user", content = userMessage }
             };
 
@@ -402,8 +415,25 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogDebug("[XAI] GetStreamingResponseAsync -> POST {Url} with streaming=true (model={Model})", _endpoint, model);
+                _logger?.LogDebug("[XAI] SendStreamingRequestWithRetryAsync -> POST {Url} with streaming=true (model={Model}, retryCount={RetryCount})", _endpoint, model, retryCount);
                 var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+
+                // Handle rate limit with exponential backoff
+                if ((int)resp.StatusCode == 429)
+                {
+                    if (retryCount < maxRetries)
+                    {
+                        var delayMs = (int)Math.Pow(2, retryCount) * 1000; // 1s, 2s, 4s backoff
+                        _logger?.LogWarning("[XAI] Rate limited (429); retry {RetryCount}/{MaxRetries} after {DelayMs}ms", retryCount + 1, maxRetries, delayMs);
+                        await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                        return await SendStreamingRequestWithRetryAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount + 1, maxRetries).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _logger?.LogError("[XAI] Rate limit (429) exceeded max retries ({MaxRetries})", maxRetries);
+                        return $"Grok API rate limited (429) - exceeded max retries";
+                    }
+                }
 
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -422,7 +452,7 @@ namespace WileyWidget.WinForms.Services.AI
                     }
                     catch (JsonException)
                     {
-                        _logger?.LogDebug("GetStreamingResponseAsync: failed to parse error JSON for diagnostics");
+                        _logger?.LogDebug("SendStreamingRequestWithRetryAsync: failed to parse error JSON for diagnostics");
                     }
                     return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
                 }
@@ -462,6 +492,7 @@ namespace WileyWidget.WinForms.Services.AI
                                     if (!string.IsNullOrEmpty(contentText))
                                     {
                                         responseBuilder.Append(contentText);
+                                        onChunk?.Invoke(contentText);
                                     }
                                 }
                             }
@@ -480,7 +511,7 @@ namespace WileyWidget.WinForms.Services.AI
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogWarning("GetStreamingResponseAsync canceled by token");
+                _logger?.LogWarning("SendStreamingRequestWithRetryAsync canceled by token");
                 throw;
             }
             catch (Exception ex)
@@ -856,7 +887,7 @@ namespace WileyWidget.WinForms.Services.AI
         /// Event handler for chat bridge prompt submissions.
         /// Routes prompts from Blazor through the agent and streams responses back via the bridge.
         /// </summary>
-        private void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
+        private async void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
             {
@@ -877,29 +908,117 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         private async Task RunAgentToChatBridgeAsync(string userRequest, string? conversationId, CancellationToken ct)
         {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger?.LogInformation("RunAgentToChatBridgeAsync called but no Grok API key configured.");
+                await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = "No API key configured for Grok", IsUser = false, Timestamp = DateTime.UtcNow });
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(userRequest))
+            {
+                _logger?.LogWarning("RunAgentToChatBridgeAsync called with empty user request");
+                return;
+            }
+
+            if (!_isInitialized || _kernel == null)
+            {
+                _logger?.LogInformation("[XAI] Kernel not initialized; falling back to simple chat");
+                var response = await GetSimpleResponse(userRequest, _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt);
+                await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = response, IsUser = false, Timestamp = DateTime.UtcNow });
+                return;
+            }
+
             try
             {
-                // Run agent with JARVIS personality + streaming callback that sends chunks to bridge
-                var systemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
-                await RunAgentAsync(userRequest, systemPrompt, chunk =>
+                _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync invoked - User request length: {Length}, ConversationId: {ConversationId}", userRequest.Length, conversationId ?? "N/A");
+
+                // Use Semantic Kernel's native streaming with FunctionChoiceBehavior.Auto() (Microsoft Docs recommended pattern)
+                var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+
+                // Configure execution settings with automatic function calling
+                var settings = new OpenAIPromptExecutionSettings
                 {
-                    if (!ct.IsCancellationRequested)
+                    ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                    Temperature = 0.3,
+                    MaxTokens = 4000
+                };
+
+                // Only add penalties for non-reasoning models
+                if (!IsReasoningModel(_model))
+                {
+                    if (_defaultPresencePenalty.HasValue) settings.PresencePenalty = _defaultPresencePenalty.Value;
+                    if (_defaultFrequencyPenalty.HasValue) settings.FrequencyPenalty = _defaultFrequencyPenalty.Value;
+                }
+
+                // Load existing conversation history if provided
+                var systemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
+                var history = await LoadChatHistoryAsync(conversationId, systemPrompt).ConfigureAwait(false);
+                history.AddUserMessage(userRequest);
+
+                _logger?.LogDebug("[XAI] Invoking streaming chat with ToolCallBehavior.AutoInvokeKernelFunctions - Plugins: {Count}", _kernel.Plugins.Count);
+
+                // Use Semantic Kernel's native streaming (handles SSE and function calling automatically)
+                var responseBuilder = new StringBuilder();
+
+                await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+                    history,
+                    executionSettings: settings,
+                    kernel: _kernel).ConfigureAwait(false))
+                {
+                    if (!string.IsNullOrEmpty(chunk.Content))
                     {
-                        // Send each chunk back to bridge (fire-and-forget)
-                        _ = _chatBridge!.SendResponseChunkAsync(chunk);
+                        responseBuilder.Append(chunk.Content);
+                        if (!ct.IsCancellationRequested)
+                        {
+                            await _chatBridge!.SendResponseChunkAsync(chunk.Content);
+                        }
                     }
-                }, conversationId).ConfigureAwait(false);
+
+                    // Log function calls for observability
+                    if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
+                    {
+                        _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
+                    }
+                }
+
+                var fullMsg = responseBuilder.ToString();
+
+                if (string.IsNullOrWhiteSpace(fullMsg))
+                {
+                    _logger?.LogWarning("[XAI] Empty response from streaming chat; attempting fallback");
+                    fullMsg = await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
+                }
+
+                // Add assistant response and persist history
+                history.AddAssistantMessage(fullMsg);
+                if (!string.IsNullOrEmpty(conversationId))
+                {
+                    await SaveChatHistoryAsync(conversationId, history).ConfigureAwait(false);
+                }
+
+                // Notify that the full message is received
+                await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = fullMsg, IsUser = false, Timestamp = DateTime.UtcNow });
+
+                _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync completed via Semantic Kernel streaming - Response length: {Length}", fullMsg.Length);
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogDebug("[XAI] Chat bridge agent operation was canceled.");
+                _logger?.LogWarning("[XAI] RunAgentToChatBridgeAsync was canceled");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "[XAI] Error in chat bridge agent loop");
-                if (!ct.IsCancellationRequested)
+                _logger?.LogWarning(ex, "[XAI] Semantic Kernel streaming failed; attempting fallback to simple HTTP chat");
+                try
                 {
-                    await _chatBridge!.SendResponseChunkAsync($"[Error: {ex.Message}]");
+                    var fallback = await GetSimpleResponse(userRequest, _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt).ConfigureAwait(false);
+                    await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = fallback ?? $"Grok streaming failed: {ex.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
+                    _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync completed via fallback - Response length: {Length}", fallback?.Length ?? 0);
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger?.LogError(fallbackEx, "[XAI] Both Semantic Kernel and fallback failed");
+                    await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = $"Grok agent error: {ex.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
                 }
             }
         }
@@ -1029,6 +1148,19 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
+                // L1 cache: check in-memory cache first (if available)
+                var cacheKey = $"{ChatHistoryCacheKeyPrefix}{conversationId}";
+                if (_memoryCache != null && _memoryCache.TryGetValue(cacheKey, out ChatHistory? cachedHistory))
+                {
+                    if (cachedHistory != null)
+                    {
+                        _logger?.LogDebug("[XAI] Loaded chat history from L1 memory cache for {ConversationId}", conversationId);
+                        // Restore system message from current context
+                        cachedHistory.AddSystemMessage(systemPrompt);
+                        return cachedHistory;
+                    }
+                }
+
                 using var scope = _serviceProvider?.CreateScope();
                 var repo = scope != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConversationRepository>(scope.ServiceProvider) : null;
                 if (repo == null) return history;
@@ -1046,7 +1178,14 @@ namespace WileyWidget.WinForms.Services.AI
                             else if (string.Equals(m.Role, "assistant", StringComparison.OrdinalIgnoreCase))
                                 history.AddAssistantMessage(m.Content);
                         }
-                        _logger?.LogDebug("[XAI] Loaded {Count} messages for conversation {ConversationId}", messages.Count, conversationId);
+                        _logger?.LogDebug("[XAI] Loaded {Count} messages for conversation {ConversationId} from database", messages.Count, conversationId);
+
+                        // Cache in L1 for next 30 minutes
+                        if (_memoryCache != null)
+                        {
+                            _memoryCache.Set(cacheKey, history, TimeSpan.FromMinutes(ChatHistoryCacheDurationMinutes));
+                            _logger?.LogDebug("[XAI] Cached chat history for {ConversationId} in L1 memory cache", conversationId);
+                        }
                     }
                 }
             }
@@ -1088,6 +1227,14 @@ namespace WileyWidget.WinForms.Services.AI
 
                 await repo.SaveConversationAsync(conversation).ConfigureAwait(false);
                 _logger?.LogDebug("[XAI] Saved conversation {ConversationId} with {Count} messages", conversationId, messages.Count);
+
+                // Invalidate L1 cache after persistence
+                if (_memoryCache != null)
+                {
+                    var cacheKey = $"{ChatHistoryCacheKeyPrefix}{conversationId}";
+                    _memoryCache.Remove(cacheKey);
+                    _logger?.LogDebug("[XAI] Invalidated L1 cache for {ConversationId}", conversationId);
+                }
             }
             catch (Exception ex)
             {
@@ -1151,6 +1298,128 @@ namespace WileyWidget.WinForms.Services.AI
                 }
                 _disposed = true;
             }
+        }
+
+        // IAIService implementation
+        public async Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default)
+        {
+            var prompt = $"Context: {context}\nQuestion: {question}\nProvide insights.";
+            return await GetSimpleResponse(prompt, ct: cancellationToken);
+        }
+
+        public async Task<string> AnalyzeDataAsync(string data, string analysisType, CancellationToken cancellationToken = default)
+        {
+            var prompt = $"Data: {data}\nAnalysis Type: {analysisType}\nAnalyze the data.";
+            return await GetSimpleResponse(prompt, ct: cancellationToken);
+        }
+
+        public async Task<string> ReviewApplicationAreaAsync(string areaName, string currentState, CancellationToken cancellationToken = default)
+        {
+            var prompt = $"Area: {areaName}\nCurrent State: {currentState}\nReview and provide recommendations.";
+            return await GetSimpleResponse(prompt, ct: cancellationToken);
+        }
+
+        public async Task<string> GenerateMockDataSuggestionsAsync(string dataType, string requirements, CancellationToken cancellationToken = default)
+        {
+            var prompt = $"Data Type: {dataType}\nRequirements: {requirements}\nGenerate mock data suggestions.";
+            return await GetSimpleResponse(prompt, ct: cancellationToken);
+        }
+
+        public async Task<AIResponseResult> GetInsightsWithStatusAsync(string context, string question, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var content = await GetInsightsAsync(context, question, cancellationToken);
+                return new AIResponseResult(content);
+            }
+            catch (Exception ex)
+            {
+                return new AIResponseResult("", 500, "Error", ex.Message);
+            }
+        }
+
+        public async Task<AIResponseResult> ValidateApiKeyAsync(string apiKey, CancellationToken cancellationToken = default)
+        {
+            var originalKey = _apiKey;
+            _apiKey = apiKey;
+            try
+            {
+                var (success, message) = await ValidateApiKeyAsync(cancellationToken);
+                return new AIResponseResult(message, success ? 200 : 401, success ? null : "InvalidApiKey");
+            }
+            finally
+            {
+                _apiKey = originalKey;
+            }
+        }
+
+        public async Task UpdateApiKeyAsync(string newApiKey, CancellationToken cancellationToken = default)
+        {
+            // Note: This is a simple implementation; in a real scenario, you might need to update configuration
+            _apiKey = newApiKey;
+            // Reinitialize if needed
+            await InitializeAsync(cancellationToken);
+        }
+
+        public async Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var content = await GetSimpleResponse(prompt, ct: cancellationToken);
+                return new AIResponseResult(content);
+            }
+            catch (Exception ex)
+            {
+                return new AIResponseResult("", 500, "Error", ex.Message);
+            }
+        }
+
+        public async IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                yield return "No API key configured for Grok";
+                yield break;
+            }
+
+            if (!_isInitialized || _kernel == null)
+            {
+                yield return "Grok service not initialized";
+                yield break;
+            }
+
+            var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+            var history = new ChatHistory();
+            if (!string.IsNullOrWhiteSpace(systemMessage))
+            {
+                history.AddSystemMessage(systemMessage);
+            }
+            history.AddUserMessage(prompt);
+
+            var settings = new OpenAIPromptExecutionSettings
+            {
+                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                Temperature = 0.3,
+                MaxTokens = 4000
+            };
+
+            await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+                history,
+                executionSettings: settings,
+                kernel: _kernel,
+                cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                if (!string.IsNullOrEmpty(chunk.Content))
+                {
+                    yield return chunk.Content;
+                }
+            }
+        }
+
+        public async Task<string> SendMessageAsync(string message, object conversationHistory, CancellationToken cancellationToken = default)
+        {
+            // Simple implementation; conversation history is ignored for now
+            return await GetSimpleResponse(message, ct: cancellationToken);
         }
     }
 }

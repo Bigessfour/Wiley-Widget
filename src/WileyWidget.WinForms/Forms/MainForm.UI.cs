@@ -1638,7 +1638,7 @@ public partial class MainForm
                 if (!string.IsNullOrWhiteSpace(searchText))
                 {
                     _logger?.LogInformation("Global search triggered: {SearchText}", searchText);
-                    PerformGlobalSearch(searchText);
+                    _ = PerformGlobalSearchAsync(searchText);
                 }
                 e.Handled = true;
             }
@@ -2098,7 +2098,7 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Create left dock panel with dashboard cards (collapsible, auto-hide enabled)
+    /// Create left dock panel with navigation buttons (collapsible, auto-hide enabled)
     /// </summary>
     private void CreateLeftDockPanel()
     {
@@ -2113,12 +2113,84 @@ public partial class MainForm
             Padding = new Padding(8, 8, 8, 8)
         };
 
-        var dashboardContent = CreateDashboardCardsPanel();
-        _leftDockPanel.Controls.Add(dashboardContent);
+        // Create navigation buttons for left panel
+        var navPanel = CreateNavigationButtonsPanel();
+        _leftDockPanel.Controls.Add(navPanel);
 
-        ConfigurePanelDocking(_leftDockPanel, DockingStyle.Left, 280, "Dashboard");
+        ConfigurePanelDocking(_leftDockPanel, DockingStyle.Left, 280, "Navigation");
 
-        _logger.LogDebug("Left dock panel created with dashboard cards");
+        _logger.LogDebug("Left dock panel created with navigation buttons");
+    }
+
+    /// <summary>
+    /// Create a panel containing navigation buttons for the left dock
+    /// </summary>
+    private Panel CreateNavigationButtonsPanel()
+    {
+        var navPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            Padding = new Padding(5),
+            Name = "NavigationButtonsPanel"
+        };
+
+        // Create navigation buttons
+        var navButtons = new (string Label, string Name, Type PanelType, DockingStyle DockStyle)[] 
+        {
+            ("Dashboard", "Nav_Dash", typeof(DashboardPanel), DockingStyle.Top),
+            ("Accounts", "Nav_Accts", typeof(AccountsPanel), DockingStyle.Left),
+            ("Budget", "Nav_Budget", typeof(BudgetOverviewPanel), DockingStyle.Bottom),
+            ("Charts", "Nav_Charts", typeof(BudgetAnalyticsPanel), DockingStyle.Right),
+            ("Reports", "Nav_Reports", typeof(ReportsPanel), DockingStyle.Right),
+            ("QuickBooks", "Nav_QB", typeof(QuickBooksPanel), DockingStyle.Right),
+            ("Settings", "Nav_Settings", typeof(SettingsPanel), DockingStyle.Right),
+        };
+
+        foreach (var (label, name, panelType, dockStyle) in navButtons)
+        {
+            var btn = new Button
+            {
+                Text = label,
+                Name = name,
+                Width = 220,
+                Height = 32,
+                Margin = new Padding(5, 5, 5, 5),
+                AccessibleName = label,
+                AccessibleDescription = $"Navigate to {label} panel",
+                TabIndex = 0,
+                Font = new Font("Segoe UI", 9F)
+            };
+
+            // Wire up click handler using reflection to avoid hard-coding ShowPanel<T>
+            btn.Click += (s, e) =>
+            {
+                try
+                {
+                    if (_panelNavigator != null)
+                    {
+                        // Use reflection to call ShowPanel<T> with the correct panel type
+                        var method = _panelNavigator.GetType().GetMethod("ShowPanel");
+                        if (method != null)
+                        {
+                            var genericMethod = method.MakeGenericMethod(panelType);
+                            genericMethod.Invoke(_panelNavigator, new object[] { label, dockStyle, true });
+                        }
+                    }
+                    _logger?.LogDebug("Navigation button '{ButtonName}' clicked", name);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to navigate to panel from button {ButtonName}", name);
+                }
+            };
+
+            navPanel.Controls.Add(btn);
+        }
+
+        return navPanel;
     }
 
     /// <summary>
@@ -3145,58 +3217,6 @@ public partial class MainForm
     }
 
     #region Docking Event Handlers
-
-    /// <summary>
-    /// Notifies the ViewModel associated with a control about its visibility status.
-    /// Supports lazy loading via ILazyLoadViewModel interface.
-    /// </summary>
-    /// <param name="control">The control whose visibility changed.</param>
-    private async Task NotifyPanelVisibilityChangedAsync(Control control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        if (_dockingManager == null)
-        {
-            return;
-        }
-
-        try
-        {
-            // Determine if the control is effectively visible to the user
-            bool isVisible = _dockingManager.GetDockVisibility(control);
-
-            _logger?.LogDebug("Notifying visibility change for {Control}: isVisible={IsVisible}", control.Name, isVisible);
-
-            // Try to find ILazyLoadViewModel in DataContext
-            // Some panels (like DashboardPanel) have a DataContext property
-            object? dataContext = null;
-
-            // 1. Try explicit DataContext property (common in our ScopedPanelBase and DashboardPanel)
-            var dcProp = control.GetType().GetProperty("DataContext");
-            if (dcProp != null)
-            {
-                dataContext = dcProp.GetValue(control);
-            }
-
-            // 2. If it inherits from ScopedPanelBase<T>, it has a ViewModel property
-            if (dataContext == null)
-            {
-                var vmProp = control.GetType().GetProperty("ViewModel");
-                if (vmProp != null)
-                {
-                    dataContext = vmProp.GetValue(control);
-                }
-            }
-
-            if (dataContext is ILazyLoadViewModel lazyVm)
-            {
-                await lazyVm.OnVisibilityChangedAsync(isVisible);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to notify visibility change for panel {Control}", control.Name);
-        }
-    }
 
     private async void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
     {

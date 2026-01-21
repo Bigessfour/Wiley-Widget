@@ -279,13 +279,13 @@ namespace WileyWidget.WinForms.Controls
 
             _lblVoiceHint = new Label
             {
-                Text = "💬 Or ask JARVIS aloud",
+                Text = "💬 Or ask JARVIS aloud using voice input (if available in your installation)",
                 AutoSize = false,
                 Margin = new Padding(0, 4, 0, 0),
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 Name = "VoiceHint",
                 AccessibleName = "Voice Hint",
-                AccessibleDescription = "Hint to use voice input with JARVIS"
+                AccessibleDescription = "Hint to use voice input with JARVIS assistant (Alt+V)"
             };
             scenarioLayout.Controls.Add(_lblVoiceHint, 0, 2);
             scenarioLayout.SetColumnSpan(_lblVoiceHint, 2);
@@ -793,7 +793,7 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Handles Run Scenario button click with validation.
+        /// Handles Run Scenario button click with validation and busy state tracking.
         /// </summary>
         private async Task OnRunScenarioClickAsync()
         {
@@ -805,6 +805,7 @@ namespace WileyWidget.WinForms.Controls
                 {
                     _lblInputError.Text = "Please enter a scenario";
                     _lblInputError.Visible = true;
+                    _scenarioInput.Focus();
                     return;
                 }
 
@@ -812,34 +813,51 @@ namespace WileyWidget.WinForms.Controls
                 {
                     _lblInputError.Text = "Scenario description too short (minimum 10 characters)";
                     _lblInputError.Visible = true;
+                    _scenarioInput.Focus();
                     return;
                 }
 
                 if (ViewModel?.RunScenarioCommand == null)
                 {
                     _logger?.LogError("RunScenarioCommand is null");
+                    _lblInputError.Text = "Command not available";
+                    _lblInputError.Visible = true;
                     return;
                 }
 
-                await ViewModel.RunScenarioCommand.ExecuteAsync(null);
+                // Set busy state during scenario analysis
+                var token = RegisterOperation();
+                IsBusy = true;
+
+                try
+                {
+                    await ViewModel.RunScenarioCommand.ExecuteAsync(token);
+                    _logger?.LogInformation("Scenario analysis completed successfully");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error in Run Scenario handler");
                 _lblInputError.Text = $"Error: {ex.Message}";
                 _lblInputError.Visible = true;
+                IsBusy = false;
                 MessageBox.Show($"Failed to run scenario: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         /// <summary>
-        /// Handles scenario input text changes.
+        /// Handles scenario input text changes and marks panel as dirty.
         /// </summary>
         private void OnScenarioInputTextChanged()
         {
             if (ViewModel != null)
             {
                 ViewModel.ScenarioInput = _scenarioInput.Text;
+                SetHasUnsavedChanges(true); // Mark as dirty on user edit
                 _lblInputError.Visible = false; // Clear error on input change
             }
         }
@@ -1048,9 +1066,11 @@ namespace WileyWidget.WinForms.Controls
                 if (ViewModel != null && !DesignMode)
                 {
                     _logger?.LogInformation("Loading WarRoom scenario data");
+                    // Initialize ViewModel with any default scenarios from database if available
                     await Task.CompletedTask;
                 }
 
+                SetHasUnsavedChanges(false);
                 _logger?.LogInformation("WarRoomPanel loaded successfully");
             }
             catch (OperationCanceledException)
@@ -1087,6 +1107,7 @@ namespace WileyWidget.WinForms.Controls
                 if (!validationResult.IsValid)
                 {
                     _logger?.LogWarning("Validation failed during save: {ErrorCount} errors", validationResult.Errors.Count);
+                    FocusFirstError();
                     throw new InvalidOperationException($"Cannot save: {validationResult.Errors.Count} validation error(s)");
                 }
 

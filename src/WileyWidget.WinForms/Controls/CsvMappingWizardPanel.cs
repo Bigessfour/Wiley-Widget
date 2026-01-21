@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
@@ -30,8 +31,22 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 
-    public partial class CsvMappingWizardPanel : UserControl
+    public partial class CsvMappingWizardPanel : UserControl, ICompletablePanel
     {
+        // ICompletablePanel backing fields
+        private ErrorProvider? _errorProvider;
+        private ToolTip? _toolTip;
+        private CancellationTokenSource? _currentOperationCts = null;
+        private bool _isLoaded;
+        private bool _hasUnsavedChanges;
+        private List<ValidationItem>? _validationErrors;
+        private PanelMode? _mode = PanelMode.View;
+
+        // Stored event delegates for safe unsubscribe in Dispose
+        private EventHandler? _btnApplyClickHandler;
+        private EventHandler? _btnCancelClickHandler;
+        private EventHandler? _comboChangedHandler;
+        private EventHandler? _chkHasHeaderChangedHandler;
         private readonly ILogger? _logger;
         private readonly DataGridView _previewGrid;
         private readonly ComboBox _cbAccount;
@@ -89,18 +104,84 @@ namespace WileyWidget.WinForms.Controls
             _cbEntity = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 }; rightPanel.Controls.Add(_cbEntity);
 
             var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 40 };
-            _btnApply = new SfButton { Text = "Import", Width = 90 }; _btnApply.Click += BtnApply_Click; btnPanel.Controls.Add(_btnApply);
-            _btnCancel = new SfButton { Text = "Cancel", Width = 90 }; _btnCancel.Click += BtnCancel_Click; btnPanel.Controls.Add(_btnCancel);
+            _btnApply = new SfButton { Text = "Import", Width = 90 };
+            btnPanel.Controls.Add(_btnApply);
+            _btnCancel = new SfButton { Text = "Cancel", Width = 90 };
+            btnPanel.Controls.Add(_btnCancel);
 
             var rightContainer = new Panel { Dock = DockStyle.Fill }; rightContainer.Controls.Add(rightPanel); rightContainer.Controls.Add(btnPanel);
             main.Controls.Add(rightContainer, 1, 0);
 
             Controls.Add(main);
-            
+
             this.PerformLayout();
             this.Refresh();
-            
+
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+
+            // Accessibility, tooltips and ErrorProvider
+            _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
+            _toolTip = new ToolTip();
+
+            _previewGrid.AccessibleName = "CSV Preview";
+            _previewGrid.AccessibleDescription = "Preview of CSV rows";
+            _previewGrid.TabIndex = 0;
+
+            _chkHasHeader.AccessibleName = "Has Header";
+            _chkHasHeader.TabIndex = 1;
+            _toolTip.SetToolTip(_chkHasHeader, "Toggle whether the first row contains column headers");
+
+            _cbAccount.AccessibleName = "Account Mapping";
+            _cbAccount.TabIndex = 2;
+            _cbDescription.AccessibleName = "Description Mapping";
+            _cbDescription.TabIndex = 3;
+            _cbBudgeted.AccessibleName = "Budgeted Amount Mapping";
+            _cbBudgeted.TabIndex = 4;
+            _cbActual.AccessibleName = "Actual Amount Mapping";
+            _cbActual.TabIndex = 5;
+            _cbFiscalYear.AccessibleName = "Fiscal Year Override";
+            _cbFiscalYear.TabIndex = 6;
+            _cbEntity.AccessibleName = "Entity Mapping";
+            _cbEntity.TabIndex = 7;
+
+            _btnApply.TabIndex = 8;
+            _btnCancel.TabIndex = 9;
+
+            // Wire stored event handlers for safe unsubscribe
+            _btnApplyClickHandler = BtnApply_Click;
+            _btnApply.Click += _btnApplyClickHandler;
+
+            _btnCancelClickHandler = BtnCancel_Click;
+            _btnCancel.Click += _btnCancelClickHandler;
+
+            _comboChangedHandler = (s, e) => SetHasUnsavedChanges(true);
+            _cbAccount.SelectedIndexChanged += _comboChangedHandler;
+            _cbDescription.SelectedIndexChanged += _comboChangedHandler;
+            _cbBudgeted.SelectedIndexChanged += _comboChangedHandler;
+            _cbActual.SelectedIndexChanged += _comboChangedHandler;
+            _cbFiscalYear.SelectedIndexChanged += _comboChangedHandler;
+            _cbEntity.SelectedIndexChanged += _comboChangedHandler;
+
+            // Header toggle should reload preview and mark dirty (store delegate for unsubscribe)
+            _chkHasHeaderChangedHandler = (s, e) => { LoadPreviewAndHeaders(); SetHasUnsavedChanges(true); };
+            _chkHasHeader.CheckedChanged += _chkHasHeaderChangedHandler;
+
+            // Apply current theme to dynamic controls (no hard-coded theme names)
+            try
+            {
+                var theme = SfSkinManager.ApplicationVisualTheme;
+                if (!string.IsNullOrWhiteSpace(theme))
+                {
+                    SfSkinManager.SetVisualStyle(this, theme);
+                    SfSkinManager.SetVisualStyle(_btnApply, theme);
+                    SfSkinManager.SetVisualStyle(_btnCancel, theme);
+                    SfSkinManager.SetVisualStyle(_previewGrid, theme);
+                }
+            }
+            catch
+            {
+                // Non-fatal: theming will still be applied by form-level SkinManager
+            }
         }
 
         public void Initialize(string filePath, IEnumerable<string>? availableEntities = null, int defaultFiscalYear = 2025)
@@ -123,6 +204,8 @@ namespace WileyWidget.WinForms.Controls
             _cbFiscalYear.SelectedItem = defaultFiscalYear;
 
             LoadPreviewAndHeaders();
+            _isLoaded = true;
+            StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void LoadPreviewAndHeaders()
@@ -233,9 +316,77 @@ namespace WileyWidget.WinForms.Controls
             PopulateCombo(_cbActual);
         }
 
-        private void BtnApply_Click(object? sender, EventArgs e)
+        private void OnMappingChanged(object? sender, EventArgs e) => SetHasUnsavedChanges(true);
+
+        private async void BtnApply_Click(object? sender, EventArgs e)
         {
-            // Build mapping - selected item strings will be header names or ColumnN tokens
+            var validation = await ValidateAsync(CancellationToken.None);
+            if (!validation.IsValid)
+            {
+                _logger?.LogInformation("CSV mapping validation failed");
+                return;
+            }
+
+            await SaveAsync(CancellationToken.None);
+        }
+
+        private void BtnCancel_Click(object? sender, EventArgs e)
+        {
+            Cancelled?.Invoke(this, EventArgs.Empty);
+        }
+
+        // ICompletablePanel implementation
+        public bool IsLoaded => _isLoaded;
+
+        private bool _isBusy;
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set
+            {
+                if (_isBusy == value) return;
+                _isBusy = value;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool HasUnsavedChanges => _hasUnsavedChanges;
+
+        public bool IsValid => _validationErrors == null || _validationErrors.Count == 0;
+
+        public IReadOnlyList<ValidationItem> ValidationErrors => _validationErrors != null ? (IReadOnlyList<ValidationItem>)_validationErrors : Array.Empty<ValidationItem>();
+
+        public PanelMode? Mode => _mode;
+
+        public CancellationTokenSource? CurrentOperationCts => _currentOperationCts;
+
+        public event EventHandler? StateChanged;
+
+        public Task<ValidationResult> ValidateAsync(CancellationToken ct)
+        {
+            _errorProvider?.Clear();
+            var errors = new List<ValidationItem>();
+
+            if (string.IsNullOrWhiteSpace(_cbAccount.SelectedItem?.ToString()))
+            {
+                errors.Add(new ValidationItem("AccountNumber", "Account mapping is required", ValidationSeverity.Error, _cbAccount));
+                _errorProvider?.SetError(_cbAccount, "Account mapping is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(_cbBudgeted.SelectedItem?.ToString()) && string.IsNullOrWhiteSpace(_cbActual.SelectedItem?.ToString()))
+            {
+                errors.Add(new ValidationItem("AmountMapping", "At least one of Budgeted or Actual must be mapped", ValidationSeverity.Error, _cbBudgeted));
+                _errorProvider?.SetError(_cbBudgeted, "Map Budgeted or Actual amount");
+            }
+
+            _validationErrors = errors;
+            return Task.FromResult(errors.Count == 0 ? ValidationResult.Success : ValidationResult.Failed(errors.ToArray()));
+        }
+
+        public Task SaveAsync(CancellationToken ct)
+        {
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["AccountNumber"] = _cbAccount.SelectedItem?.ToString() ?? string.Empty,
@@ -249,11 +400,60 @@ namespace WileyWidget.WinForms.Controls
             if (_cbFiscalYear.SelectedItem != null && int.TryParse(_cbFiscalYear.SelectedItem.ToString(), out var y)) fy = y;
 
             MappingApplied?.Invoke(this, new MappingAppliedEventArgs(_filePath, map, selectedEntity, fy));
+            SetHasUnsavedChanges(false);
+            return Task.CompletedTask;
         }
 
-        private void BtnCancel_Click(object? sender, EventArgs e)
+        public Task LoadAsync(CancellationToken ct) => Task.CompletedTask;
+
+        public void FocusFirstError()
         {
-            Cancelled?.Invoke(this, EventArgs.Empty);
+            if (_validationErrors != null && _validationErrors.Count > 0)
+            {
+                _validationErrors[0].ControlRef?.Focus();
+            }
+        }
+
+        private void SetHasUnsavedChanges(bool value)
+        {
+            if (_hasUnsavedChanges == value) return;
+            _hasUnsavedChanges = value;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try
+                {
+                    if (_btnApply != null && _btnApplyClickHandler != null) _btnApply.Click -= _btnApplyClickHandler;
+                    if (_btnCancel != null && _btnCancelClickHandler != null) _btnCancel.Click -= _btnCancelClickHandler;
+                    if (_cbAccount != null && _comboChangedHandler != null) _cbAccount.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_cbDescription != null && _comboChangedHandler != null) _cbDescription.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_cbBudgeted != null && _comboChangedHandler != null) _cbBudgeted.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_cbActual != null && _comboChangedHandler != null) _cbActual.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_cbFiscalYear != null && _comboChangedHandler != null) _cbFiscalYear.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_cbEntity != null && _comboChangedHandler != null) _cbEntity.SelectedIndexChanged -= _comboChangedHandler;
+                    if (_chkHasHeader != null && _chkHasHeaderChangedHandler != null) _chkHasHeader.CheckedChanged -= _chkHasHeaderChangedHandler;
+                }
+                catch { }
+
+                _errorProvider?.Dispose();
+                _toolTip?.Dispose();
+                _previewGrid?.Dispose();
+                _btnApply?.Dispose();
+                _btnCancel?.Dispose();
+                _chkHasHeader?.Dispose();
+                _cbAccount?.Dispose();
+                _cbDescription?.Dispose();
+                _cbBudgeted?.Dispose();
+                _cbActual?.Dispose();
+                _cbFiscalYear?.Dispose();
+                _cbEntity?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

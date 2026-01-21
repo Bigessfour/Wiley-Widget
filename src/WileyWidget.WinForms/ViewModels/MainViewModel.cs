@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -23,6 +25,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IDashboardService _dashboardService;
         private readonly IAILoggingService _aiLoggingService;
         private readonly IQuickBooksService _quickBooksService;
+        private readonly IGlobalSearchService _globalSearchService;
         private bool _disposed;
 
         [ObservableProperty]
@@ -61,17 +64,20 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand LoadDataCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand SyncQuickBooksAccountsCommand { get; }
+        public IAsyncRelayCommand<string> GlobalSearchCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService)
+        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService, IGlobalSearchService globalSearchService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
             _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
+            _globalSearchService = globalSearchService ?? throw new ArgumentNullException(nameof(globalSearchService));
 
             LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDataAsync);
             SyncQuickBooksAccountsCommand = new AsyncRelayCommand(SyncQuickBooksAccountsAsync);
+            GlobalSearchCommand = new AsyncRelayCommand<string>(PerformGlobalSearchAsync);
 
             // Guard against design-time initialization — prevent fallback/service calls in VS designer
             if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
@@ -351,6 +357,47 @@ namespace WileyWidget.WinForms.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Performs global search across all modules with resilience and error handling.
+        /// Executes via MainViewModel.GlobalSearchCommand with automatic IsBusy state management.
+        /// </summary>
+        /// <param name="query">Search query string</param>
+        /// <param name="cancellationToken">Cancellation token for search operation</param>
+        private async Task PerformGlobalSearchAsync(string? query, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                _logger.LogWarning("Global search attempted with empty query");
+                ErrorMessage = "Please enter a search query.";
+                return;
+            }
+
+            try
+            {
+                _logger.LogInformation("Global search initiated: '{Query}'", query);
+                ErrorMessage = null;
+
+                var results = await _globalSearchService.SearchAsync(query);
+                _logger.LogInformation("Global search completed: {ResultCount} results for '{Query}'", results.TotalResults, query);
+
+                // Update UI with results
+                LastUpdateTime = DateTime.Now.ToString("g");
+                ErrorMessage = results.TotalResults == 0 
+                    ? $"No results found for '{query}'. Try a different search term."
+                    : $"Found {results.TotalResults} results for '{query}'.";
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Global search cancelled for query '{Query}'", query);
+                ErrorMessage = "Search was cancelled.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Global search failed for query '{Query}'", query);
+                ErrorMessage = $"Search failed: {ex.Message}";
             }
         }
 

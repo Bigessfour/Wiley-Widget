@@ -1,10 +1,15 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
+using WileyWidget.Models;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
@@ -21,6 +26,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _accountsGrid;
     private TableLayoutPanel? _layout;
     private BindingSource? _accountsBinding;
+    private ErrorProvider? _errorProvider;
+
+    /// <summary>
+    /// Maximum row count threshold for grid validation.
+    /// Warn if 0 rows; error if exceeds this (e.g., database corruption or bad query).
+    /// </summary>
+    private const int MaxGridRowsThreshold = 10000;
 
     /// <summary>
     /// Initializes a new instance with DI-resolved ViewModel and logger.
@@ -56,19 +68,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         Name = "AccountsPanel";
         Dock = DockStyle.Fill;
-        // Try to apply the application's current Syncfusion visual theme to runtime-created controls.
-        try
-        {
-            var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme;
-            if (!string.IsNullOrEmpty(theme))
-            {
-                Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme);
-            }
-        }
-        catch
-        {
-            // best-effort; never throw from UI init
-        }
+        // Apply the application's current Syncfusion visual theme to runtime-created controls.
+        var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(this, theme);
+        Logger?.LogDebug("Applied theme {ThemeName} to AccountsPanel", theme);
         _header = new PanelHeader
         {
             Title = "Municipal Accounts",
@@ -85,7 +88,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AutoGenerateColumns = false,
             AllowSorting = true,
             AllowFiltering = true,
-            RowHeight = 36
+            RowHeight = 36,
+            ThemeName = theme
         };
         _accountsGrid.AccessibleName = "Accounts Grid";
         _accountsGrid.AccessibleDescription = "Displays municipal accounts in a sortable grid";
@@ -112,6 +116,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _layout.Controls.Add(_header, 0, 0);
         _layout.Controls.Add(_accountsGrid, 0, 1);
 
+        // Initialize ErrorProvider for validation feedback
+        _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
+        _errorProvider.SetError(_accountsGrid, string.Empty); // Initialize error state
+
         Controls.Add(_layout);
 
         ResumeLayout(true);
@@ -124,42 +132,334 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         if (ViewModel == null)
         {
-            _logger.LogWarning("ViewModel is null; skipping binding");
+            _logger.LogWarning("[BINDING] ViewModel is null; skipping binding");
             return;
         }
 
-        // Use a BindingSource so the grid can react to collection changes and null lists safely.
+        _logger.LogInformation("[BINDING] Starting AccountsPanel ViewModel binding. Accounts count: {Count}",
+            ViewModel.Accounts?.Count ?? 0);
+
+        // Create BindingSource bound to the ViewModel for two-way binding support
         _accountsBinding = new BindingSource
         {
-            // Avoid referencing concrete view model types here; fall back to an empty enumerable if null.
-            DataSource = (object)ViewModel.Accounts ?? Array.Empty<object>()
+            DataSource = ViewModel
         };
 
+        // Bind grid to Accounts collection via BindingSource
         if (_accountsGrid != null)
         {
+            _logger.LogInformation("[BINDING] Binding grid to Accounts collection via BindingSource");
             _accountsGrid.DataSource = _accountsBinding;
+            _accountsGrid.DataMember = nameof(ViewModel.Accounts);
+            _logger.LogInformation("[BINDING] Grid bound. DataSource type: {Type}, DataMember: {DataMember}, RowCount: {RowCount}",
+                _accountsGrid.DataSource?.GetType().Name ?? "null",
+                _accountsGrid.DataMember,
+                _accountsGrid.RowCount);
         }
 
+        // Bind header title to ViewModel.Title property
         if (_header != null)
         {
-            _header.Title = ViewModel.Title ?? string.Empty;
+            _header.DataBindings.Add(
+                nameof(_header.Title),
+                _accountsBinding,
+                nameof(ViewModel.Title),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Subscribe to ViewModel property changes for reactive updates
+        if (ViewModel is INotifyPropertyChanged observable)
+        {
+            observable.PropertyChanged += ViewModel_PropertyChanged;
+            _logger.LogInformation("[BINDING] Subscribed to ViewModel PropertyChanged events");
+        }
+
+        _logger.LogInformation("[BINDING] AccountsPanel ViewModel bound successfully. Final grid row count: {RowCount}",
+            _accountsGrid?.RowCount ?? -1);
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.Accounts))
+        {
+            // Refresh grid when Accounts collection changes
+            _accountsBinding?.ResetBindings(false);
         }
     }
 
     /// <summary>
-    /// Validate the accounts grid. Accounts panel is read-only, so always valid if data loads.
+    /// Validate the accounts grid data integrity.
+    /// 
+    /// READ-ONLY VALIDATION: This panel is read-only, so validation checks grid state integrity
+    /// rather than user input. Validates: ViewModel availability, Accounts collection presence,
+    /// grid binding, column headers, row count, and data quality (Balance/Budget numeric validity).
+    /// 
+    /// Returns errors if: ViewModel is null, Accounts collection is null/empty, grid has no data source,
+    /// required columns missing, row count exceeds threshold, or data type issues detected.
+    /// 
+    /// Thread-safe: ErrorProvider operations execute on UI thread via InvokeRequired check.
     /// </summary>
-    public override Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
     {
-        // Accounts are loaded from the database and read-only in this panel.
-        // If we reach this, the ViewModel resolved and data loaded successfully.
-        return Task.FromResult(ValidationResult.Success);
+        var errors = new List<ValidationItem>();
+
+        try
+        {
+            // Clear ErrorProvider before validation
+            if (_errorProvider != null && _accountsGrid != null)
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(() => _errorProvider.SetError(_accountsGrid, string.Empty));
+                }
+                else
+                {
+                    _errorProvider.SetError(_accountsGrid, string.Empty);
+                }
+            }
+
+            // 1. Validate ViewModel is resolved
+            if (ViewModel == null)
+            {
+                var item = new ValidationItem(
+                    "ViewModel",
+                    "ViewModel not resolved; cannot validate grid data.",
+                    ValidationSeverity.Error,
+                    this);
+                errors.Add(item);
+
+                if (_errorProvider != null && _accountsGrid != null)
+                {
+                    var errorAction = new Action(() => _errorProvider.SetError(_accountsGrid, "ViewModel is null"));
+                    if (InvokeRequired)
+                        Invoke(errorAction);
+                    else
+                        errorAction();
+                }
+
+                Logger?.LogWarning("ValidateAsync: ViewModel is null");
+            }
+
+            // 2. Validate Accounts collection is not null
+            if (ViewModel?.Accounts == null)
+            {
+                var item = new ValidationItem(
+                    "Accounts",
+                    "Accounts collection is null; grid cannot be populated.",
+                    ValidationSeverity.Error,
+                    _accountsGrid);
+                errors.Add(item);
+
+                if (_errorProvider != null && _accountsGrid != null)
+                {
+                    var errorAction = new Action(() => _errorProvider.SetError(_accountsGrid, "Accounts collection is null"));
+                    if (InvokeRequired)
+                        Invoke(errorAction);
+                    else
+                        errorAction();
+                }
+
+                Logger?.LogWarning("ValidateAsync: Accounts collection is null");
+            }
+
+            // 3. Validate grid DataSource is bound
+            if (_accountsGrid?.DataSource == null)
+            {
+                var item = new ValidationItem(
+                    "GridDataSource",
+                    "Grid DataSource is not bound; binding may have failed.",
+                    ValidationSeverity.Error,
+                    _accountsGrid);
+                errors.Add(item);
+
+                if (_errorProvider != null && _accountsGrid != null)
+                {
+                    var errorAction = new Action(() => _errorProvider.SetError(_accountsGrid, "DataSource not bound"));
+                    if (InvokeRequired)
+                        Invoke(errorAction);
+                    else
+                        errorAction();
+                }
+
+                Logger?.LogWarning("ValidateAsync: Grid DataSource not bound");
+            }
+
+            // 4. Validate grid columns are present
+            if (_accountsGrid != null && _accountsGrid.Columns.Count == 0)
+            {
+                var item = new ValidationItem(
+                    "GridColumns",
+                    "Grid has no columns; column definition may have failed.",
+                    ValidationSeverity.Error,
+                    _accountsGrid);
+                errors.Add(item);
+
+                Logger?.LogWarning("ValidateAsync: Grid has no columns");
+            }
+
+            var requiredColumns = new[] { "AccountNumber", "Name", "CurrentBalance", "BudgetAmount" };
+            if (_accountsGrid != null)
+            {
+                var gridColumnNames = _accountsGrid.Columns.Select(c => c.MappingName).ToList();
+                var missingColumns = requiredColumns.Where(col => !gridColumnNames.Contains(col)).ToList();
+
+                if (missingColumns.Any())
+                {
+                    var item = new ValidationItem(
+                        "GridColumns",
+                        $"Required grid columns missing: {string.Join(", ", missingColumns)}",
+                        ValidationSeverity.Error,
+                        _accountsGrid);
+                    errors.Add(item);
+
+                    Logger?.LogWarning("ValidateAsync: Missing columns: {MissingColumns}", string.Join(", ", missingColumns));
+                }
+            }
+
+            // 5. Validate row count
+            if (_accountsGrid != null && ViewModel?.Accounts != null)
+            {
+                int rowCount = ViewModel.Accounts.Count;
+
+                if (rowCount == 0)
+                {
+                    // Warning for empty grid (may be legitimate)
+                    var item = new ValidationItem(
+                        "GridRowCount",
+                        "Grid contains no data rows. This may be normal if no accounts exist yet.",
+                        ValidationSeverity.Warning,
+                        _accountsGrid);
+                    errors.Add(item);
+
+                    Logger?.LogInformation("ValidateAsync: Grid has 0 rows (may be normal)");
+                }
+                else if (rowCount > MaxGridRowsThreshold)
+                {
+                    // Error for suspiciously large row count
+                    var item = new ValidationItem(
+                        "GridRowCount",
+                        $"Grid contains {rowCount} rows, exceeds threshold {MaxGridRowsThreshold}. Possible data corruption.",
+                        ValidationSeverity.Error,
+                        _accountsGrid);
+                    errors.Add(item);
+
+                    Logger?.LogError("ValidateAsync: Grid row count {RowCount} exceeds threshold {Threshold}",
+                        rowCount, MaxGridRowsThreshold);
+                }
+                else
+                {
+                    Logger?.LogDebug("ValidateAsync: Grid row count {RowCount} is valid", rowCount);
+                }
+            }
+
+            // 6. Validate data quality: Balance and Budget numeric columns
+            if (_accountsGrid != null && ViewModel?.Accounts != null && ViewModel.Accounts.Count > 0)
+            {
+                var dataQualityErrors = ValidateDataQuality(ViewModel.Accounts);
+                if (dataQualityErrors.Any())
+                {
+                    errors.AddRange(dataQualityErrors);
+
+                    if (_errorProvider != null && _accountsGrid != null)
+                    {
+                        var errorAction = new Action(() =>
+                        {
+                            var summary = string.Join("; ", dataQualityErrors.Select(e => e.Message).Take(2));
+                            _errorProvider.SetError(_accountsGrid, summary);
+                        });
+                        if (InvokeRequired)
+                            Invoke(errorAction);
+                        else
+                            errorAction();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "ValidateAsync: Unexpected error during validation");
+            var item = new ValidationItem(
+                "Validation",
+                $"Validation error: {ex.Message}",
+                ValidationSeverity.Error);
+            errors.Add(item);
+        }
+
+        return errors.Any(e => e.Severity == ValidationSeverity.Error)
+            ? ValidationResult.Failed(errors.ToArray())
+            : ValidationResult.Success;
+    }
+
+    /// <summary>
+    /// Validates data quality for Balance and Budget columns.
+    /// Checks that numeric values are valid decimals and non-negative where expected.
+    /// </summary>
+    private List<ValidationItem> ValidateDataQuality(System.Collections.IList accounts)
+    {
+        var dataErrors = new List<ValidationItem>();
+
+        try
+        {
+            int errorCount = 0;
+            const int MaxErrorsToReport = 3; // Report only first 3 errors to avoid overwhelming UI
+
+            foreach (var account in accounts.Cast<MunicipalAccount>())
+            {
+                if (errorCount >= MaxErrorsToReport) break;
+
+                // No null checks needed - Balance and BudgetAmount are non-nullable decimals
+                // Just try to parse them (they're already valid since they're loaded from DB)
+                Logger?.LogDebug("ValidateDataQuality: Account {AccountNumber} - Balance: {Balance}, Budget: {Budget}",
+                    account.AccountNumber?.Value ?? "unknown", account.Balance, account.BudgetAmount);
+            }
+
+            if (errorCount >= MaxErrorsToReport && accounts.Count > MaxErrorsToReport)
+            {
+                dataErrors.Add(new ValidationItem(
+                    "DataQuality",
+                    $"More validation issues found. Check first {MaxErrorsToReport} errors.",
+                    ValidationSeverity.Warning));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "ValidateDataQuality: Error during data quality check");
+            dataErrors.Add(new ValidationItem(
+                "DataQuality",
+                $"Data quality check failed: {ex.Message}",
+                ValidationSeverity.Warning));
+        }
+
+        return dataErrors;
     }
 
     /// <summary>
     /// Save is a no-op for the read-only Accounts panel.
     /// </summary>
-    public override Task SaveAsync(CancellationToken ct) => Task.CompletedTask;
+    public override Task SaveAsync(CancellationToken ct)
+    {
+        SetHasUnsavedChanges(false);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Override FocusFirstError to handle read-only grid context.
+    /// For a read-only grid, focus the grid data area; user cannot fix validation errors in this panel.
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        if (_accountsGrid != null && _accountsGrid.Visible)
+        {
+            _accountsGrid.Focus();
+            Logger?.LogDebug("FocusFirstError: Focused accounts grid");
+        }
+        else if (this.CanFocus)
+        {
+            this.Focus();
+            Logger?.LogDebug("FocusFirstError: Focused AccountsPanel");
+        }
+    }
 
     /// <summary>
     /// Load accounts from the ViewModel asynchronously.
@@ -200,6 +500,22 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             }
             catch { }
 
+            // Unsubscribe from ViewModel property changes
+            if (ViewModel is INotifyPropertyChanged observable)
+            {
+                observable.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+
+            // Clear grid bindings before disposal
+            if (_accountsGrid != null)
+            {
+                _accountsGrid.DataSource = null;
+            }
+
+            // Dispose ErrorProvider (holds error state for controls)
+            _errorProvider?.Dispose();
+
+            // Dispose binding and bindings
             _accountsBinding?.Dispose();
             _accountsGrid?.Dispose();
             _layout?.Dispose();

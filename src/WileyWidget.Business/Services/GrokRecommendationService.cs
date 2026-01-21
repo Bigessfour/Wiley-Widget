@@ -3,11 +3,10 @@ using WileyWidget.Business.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
@@ -16,8 +15,18 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+using System.ComponentModel;
 
 namespace WileyWidget.Business.Services;
+
+/// <summary>
+/// Structured recommendation result from AI function calling.
+/// </summary>
+public record StructuredRecommendation(
+    Dictionary<string, decimal> Factors,
+    string Explanation);
 
 /// <summary>
 /// Service for AI-driven rate recommendations using xAI Grok API.
@@ -33,6 +42,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
     private readonly string? _apiKey;
     private readonly string _apiEndpoint;
     private readonly string _model;
+    private readonly Kernel? _kernel;
 
     // Resilience policies
     private readonly AsyncCircuitBreakerPolicy _circuitBreaker;
@@ -57,11 +67,6 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
     private const string CacheIndexKey = "grok_cache_keys";
     private readonly object _cacheIndexLock = new object();
 
-    // Response records
-    private record GrokResponse(
-        Dictionary<string, decimal> factors,
-        string explanation);
-
     public GrokRecommendationService(
         ILogger<GrokRecommendationService> logger,
         IConfiguration configuration,
@@ -83,6 +88,22 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         _model = _configuration["XAI:Model"] ?? "grok-beta";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
                       _configuration.GetValue<bool>("XAI:Enabled", false);
+
+        // Initialize Semantic Kernel if API is enabled
+        if (_useGrokApi && !string.IsNullOrWhiteSpace(_apiKey))
+        {
+            var builder = Kernel.CreateBuilder();
+            builder.AddOpenAIChatCompletion(_model, _apiKey, _apiEndpoint);
+            _kernel = builder.Build();
+
+            // Register the recommendation tool
+            _kernel.Plugins.AddFromFunctions("RecommendationTools", [
+                _kernel.CreateFunctionFromMethod(
+                    method: GenerateStructuredRecommendation,
+                    functionName: "generate_recommendation",
+                    description: "Generate structured rate adjustment recommendations with factors and explanation")
+            ]);
+        }
 
         // Initialize resilience policies
         _circuitBreaker = Policy
@@ -236,74 +257,61 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         }
     }
 
-private async Task<RecommendationResult> QueryGrokApiAsync(
+    private async Task<RecommendationResult> QueryGrokApiAsync(
         Dictionary<string, decimal> departmentExpenses,
         decimal targetProfitMargin,
         CancellationToken cancellationToken)
+    {
+        if (_kernel == null)
+            throw new InvalidOperationException("Semantic Kernel not initialized");
+
+        var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
+
+        var settings = new OpenAIPromptExecutionSettings
         {
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+            Temperature = 0.3,
+            MaxTokens = 1000
+        };
 
-            var prompt = BuildRecommendationPrompt(departmentExpenses, targetProfitMargin);
+        var arguments = new KernelArguments(settings);
 
-            var requestBody = new
-            {
-                model = _model,
-                messages = new[]
-                {
-                    new { role = "system", content = "You are a financial analyst specializing in municipal utility rate optimization. Provide precise, data-driven recommendations based on industry standards and cost analysis." },
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.3, // Lower temperature for more consistent results
-                max_tokens = 500
-            };
+        _logger.LogDebug("Sending request to Grok API via Semantic Kernel with function calling");
 
-            _logger.LogDebug("Sending request to Grok API: {Endpoint} with model {Model}", _apiEndpoint, _model);
+        var result = await _kernel.InvokePromptAsync(
+            prompt,
+            arguments,
+            cancellationToken: cancellationToken);
 
-            var response = await _circuitBreaker.ExecuteAsync(() =>
-                client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken));
+        if (result == null)
+            throw new InvalidOperationException("Grok API returned null response");
 
-            response.EnsureSuccessStatusCode();
+        // Get the structured recommendation from function calling
+        var structuredResult = result.GetValue<StructuredRecommendation>();
+        if (structuredResult == null)
+            throw new InvalidOperationException("Failed to get structured recommendation from AI response");
 
-            var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+        // Convert to RecommendationResult
+        var recommendationResult = new RecommendationResult(
+            AdjustmentFactors: structuredResult.Factors,
+            Explanation: structuredResult.Explanation,
+            FromGrokApi: true,
+            ApiModelUsed: _model,
+            Warnings: Array.Empty<string>());
 
-            // Extract the content from Grok's response structure in a robust way
-            if (result == null)
-                throw new InvalidOperationException("Grok API returned null response");
-
-            string? content = null;
-            try
-            {
-                var root = result.RootElement;
-                if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
-                {
-                    var firstChoice = choicesEl[0];
-                    if (firstChoice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
-                    {
-                        if (messageEl.TryGetProperty("content", out var contentEl))
-                        {
-                            if (contentEl.ValueKind == JsonValueKind.String) content = contentEl.GetString();
-                            else content = contentEl.GetRawText();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to parse Grok API response content");
-                throw new InvalidOperationException("Failed to parse Grok API response", ex);
-            }
-
-            if (string.IsNullOrWhiteSpace(content))
-                throw new InvalidOperationException("Grok API returned empty or invalid content");
-
-            // Parse response (content is non-null due to check above)
-            var safeContent = content!;
-            var recommendationResult = ParseGrokResponse(safeContent, departmentExpenses.Keys, targetProfitMargin);
-
-            _logger.LogInformation("Grok API recommendations received: {Count} departments", recommendationResult.AdjustmentFactors.Count);
-            return recommendationResult;
+        // Validate the response
+        var validationResult = ValidateRecommendationResponse(recommendationResult.AdjustmentFactors, departmentExpenses);
+        if (!validationResult.IsValid)
+        {
+            _validationFailures.Add(1);
+            _logger.LogWarning("AI response validation failed: {Errors}",
+                string.Join(", ", validationResult.Errors));
+            throw new InvalidOperationException("AI response validation failed");
         }
+
+        _logger.LogInformation("Grok API recommendations received via SK: {Count} departments", recommendationResult.AdjustmentFactors.Count);
+        return recommendationResult;
+    }
 
     private Dictionary<string, decimal> CalculateRuleBasedRecommendations(
         Dictionary<string, decimal> departmentExpenses,
@@ -362,60 +370,10 @@ You are a senior municipal finance analyst specializing in utility rate design.
 Given monthly departmental expenses: {{expenseList}}
 Target profit margin: {{margin}}%
 
-Provide rate adjustment factors (multipliers) that achieve full cost recovery plus the target margin, considering typical municipal patterns (e.g., higher infrastructure costs for Electric/Water, efficiency in Trash, bundled overhead in Apartments).
+Use the generate_recommendation tool to provide structured rate adjustment factors that achieve full cost recovery plus the target margin, considering typical municipal patterns (e.g., higher infrastructure costs for Electric/Water, efficiency in Trash, bundled overhead in Apartments).
 
-Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown, no code blocks, no extra text:
-
-{
-  "factors": {
-    "Water": 1.15,
-    "Sewer": 1.18,
-    ...
-  },
-  "explanation": "Multi-paragraph professional explanation suitable for city council and public presentation. Reference specific departmental differences and overall rationale."
-}
+The tool will return factors as multipliers (e.g., 1.15 for 15% increase) and a professional explanation suitable for city council presentation.
 """;
-    }
-
-    private static string ExtractJsonObject(string content)
-    {
-        // Use regex to find the outermost { ... } JSON object
-        var match = Regex.Match(content, @"\{(?:[^{}]|(?<open>\{)|(?<-open>\}))*(?(open)(?!))\}");
-        return match.Success ? match.Value : content;
-    }
-
-    private RecommendationResult ParseGrokResponse(string content, IEnumerable<string> expectedDepartments, decimal targetProfitMargin)
-    {
-        // Robust extraction: strip potential markdown/code blocks first
-        var json = ExtractJsonObject(content);
-
-        var response = JsonSerializer.Deserialize<GrokResponse>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        }) ?? throw new InvalidOperationException("Failed to deserialize Grok response");
-
-        // Validate all departments present; supplement missing with rule-based
-        var warnings = new List<string>();
-        foreach (var dept in expectedDepartments)
-        {
-            if (!response.factors.ContainsKey(dept))
-            {
-                response.factors[dept] = CalculateSingleRuleBasedFactor(dept, targetProfitMargin);
-                warnings.Add($"Missing factor for {dept}; used rule-based fallback");
-            }
-            else
-            {
-                // Round to 4 decimal places
-                response.factors[dept] = Math.Round(response.factors[dept], 4);
-            }
-        }
-
-        return new RecommendationResult(
-            AdjustmentFactors: response.factors,
-            Explanation: response.explanation,
-            FromGrokApi: true,
-            ApiModelUsed: _model,
-            Warnings: warnings);
     }
 
     private void ValidateInput(Dictionary<string, decimal> expenses, decimal margin)
@@ -428,13 +386,36 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
 
         foreach (var expense in expenses)
         {
-            if (expense.Value < 0)
-                throw new ArgumentException($"Expense for {expense.Key} cannot be negative", nameof(expenses));
+            if (expense.Value <= 0)
+                throw new ArgumentException($"Expense for {expense.Key} must be greater than zero", nameof(expenses));
             if (string.IsNullOrWhiteSpace(expense.Key))
                 throw new ArgumentException("Department names cannot be null or empty", nameof(expenses));
             if (!_knownDepartments.Contains(expense.Key))
                 throw new ArgumentException($"Unknown department '{expense.Key}'. Known departments are: {string.Join(", ", _knownDepartments)}", nameof(expenses));
         }
+    }
+
+    /// <summary>
+    /// Generates structured rate adjustment recommendations using AI function calling.
+    /// This method is called by the AI with generated factors and explanation.
+    /// </summary>
+    [KernelFunction("generate_recommendation")]
+    [Description("Generate structured rate adjustment recommendations with factors and explanation")]
+    public StructuredRecommendation GenerateStructuredRecommendation(
+        [Description("Dictionary of department adjustment factors")] Dictionary<string, decimal> factors,
+        [Description("Professional explanation of the recommendations")] string explanation)
+    {
+        // Validate the AI-generated factors
+        if (factors == null || !factors.Any())
+            throw new ArgumentException("Factors cannot be null or empty");
+
+        if (string.IsNullOrWhiteSpace(explanation))
+            throw new ArgumentException("Explanation cannot be null or empty");
+
+        // Round factors to 4 decimal places
+        var roundedFactors = factors.ToDictionary(kvp => kvp.Key, kvp => Math.Round(kvp.Value, 4));
+
+        return new StructuredRecommendation(roundedFactors, explanation.Trim());
     }
 
     private string GenerateCacheKey(Dictionary<string, decimal> expenses, decimal margin)
@@ -656,8 +637,8 @@ Respond EXACTLY with valid JSON in this format and NOTHING else — no markdown,
         decimal targetProfitMargin,
         CancellationToken cancellationToken)
     {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+        if (_kernel == null)
+            throw new InvalidOperationException("Semantic Kernel not initialized");
 
         var expenseList = string.Join(", ", departmentExpenses.Select(e => $"{e.Key}: ${e.Value:N2}"));
         var prompt = $@"Provide a clear, professional explanation for municipal utility rate adjustments.
@@ -665,71 +646,32 @@ Monthly expenses are: {expenseList}.
 Target profit margin: {targetProfitMargin}%.
 Explain why these adjustments are necessary in 2-3 paragraphs suitable for public presentation.";
 
-        var requestBody = new
+        var settings = new OpenAIPromptExecutionSettings
         {
-            model = "grok-beta",
-            messages = new[]
-            {
-                new { role = "system", content = "You are a municipal finance expert explaining utility rate adjustments to city officials and the public." },
-                new { role = "user", content = prompt }
-            },
-            temperature = 0.7,
-            max_tokens = 400
+            Temperature = 0.7,
+            MaxTokens = 400
         };
 
-        var response = await client.PostAsJsonAsync(_apiEndpoint, requestBody, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var arguments = new KernelArguments(settings);
 
-        var result = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+        _logger.LogDebug("Requesting explanation from Grok API via Semantic Kernel");
+
+        var result = await _kernel.InvokePromptAsync(
+            prompt,
+            arguments,
+            cancellationToken: cancellationToken);
 
         if (result == null)
-            throw new InvalidOperationException("Grok API returned null response");
+            throw new InvalidOperationException("Grok API returned null response for explanation");
 
-        string? explanation = null;
-        try
-        {
-            var root = result.RootElement;
-            if (root.TryGetProperty("choices", out var choicesEl) && choicesEl.ValueKind == JsonValueKind.Array && choicesEl.GetArrayLength() > 0)
-            {
-                var choice = choicesEl[0];
-                if (choice.TryGetProperty("message", out var messageEl) && messageEl.ValueKind == JsonValueKind.Object)
-                {
-                    if (messageEl.TryGetProperty("content", out var contentEl))
-                    {
-                        if (contentEl.ValueKind == JsonValueKind.String)
-                        {
-                            explanation = contentEl.GetString();
-                        }
-                        else if (contentEl.ValueKind == JsonValueKind.Object || contentEl.ValueKind == JsonValueKind.Array)
-                        {
-                            explanation = contentEl.GetRawText();
-                        }
-                        else if (contentEl.ValueKind == JsonValueKind.Null || contentEl.ValueKind == JsonValueKind.Undefined)
-                        {
-                            explanation = null;
-                        }
-                        else
-                        {
-                            explanation = contentEl.ToString();
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to extract explanation content from Grok response - using fallback");
-            explanation = null;
-        }
-
+        var explanation = result.ToString()?.Trim();
         if (string.IsNullOrWhiteSpace(explanation))
         {
-            _logger.LogWarning("Grok API returned empty or whitespace explanation content; using fallback explanation");
+            _logger.LogWarning("Grok API returned empty explanation - using fallback");
             return GenerateRuleBasedExplanation(departmentExpenses, targetProfitMargin);
         }
 
-        // Trim and normalize whitespace to avoid returning spurious blank strings
-        return explanation!.Trim();
+        return explanation;
     }
 
     private string GenerateRuleBasedExplanation(Dictionary<string, decimal> departmentExpenses, decimal targetProfitMargin)

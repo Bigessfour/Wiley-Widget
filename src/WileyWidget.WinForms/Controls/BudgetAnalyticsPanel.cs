@@ -6,7 +6,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
@@ -20,26 +22,25 @@ using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Controls;
 
 namespace WileyWidget.WinForms.Controls
 {
     /// <summary>
     /// Budget analytics panel displaying budget variance trends, department performance,
     /// and financial forecasting. Uses proper Syncfusion API (Dock-based layout, GradientPanelExt per docs).
+    /// Implements ICompletablePanel for proper async lifecycle management.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class BudgetAnalyticsPanel : UserControl
+    public partial class BudgetAnalyticsPanel : ScopedPanelBase<BudgetAnalyticsViewModel>
     {
-        private readonly BudgetAnalyticsViewModel _vm;
-        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
-        private readonly ILogger<BudgetAnalyticsPanel>? _logger;
-
         // Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
         private GradientPanelExt? _filterPanel;
         private ErrorProvider? _errorProvider;
+        private BindingSource? _bindingSource;
 
         // Filter controls
         private SfComboBox? _comboDepartment;
@@ -53,55 +54,213 @@ namespace WileyWidget.WinForms.Controls
         private ChartControl? _departmentChart;
         private SfDataGrid? _analyticsGrid;
         private Label? _summaryLabel;
+        private ToolTip? _tooltips;
 
-        // Event handlers
+        // Event handlers (stored for cleanup)
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
+        private EventHandler? _comboDepartmentSelectedHandler;
+        private EventHandler? _comboDateRangeSelectedHandler;
+        private EventHandler? _btnApplyFilterClickHandler;
+        private EventHandler? _btnResetClickHandler;
+        private EventHandler? _btnExportReportClickHandler;
+        private NotifyCollectionChangedEventHandler? _analyticsDataCollectionChangedHandler;
 
         /// <summary>
-        /// Parameterless constructor for designer support ONLY. Use DI constructor in production.
+        /// Initializes a new instance of BudgetAnalyticsPanel.
         /// </summary>
-        [Obsolete("Use DI constructor with BudgetAnalyticsViewModel and IDispatcherHelper parameters", false)]
-        public BudgetAnalyticsPanel() : this(
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<BudgetAnalyticsViewModel>(Program.Services!) ?? new BudgetAnalyticsViewModel(),
-            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Threading.IDispatcherHelper>(Program.Services!))
+        public BudgetAnalyticsPanel(
+            IServiceScopeFactory scopeFactory,
+            ILogger<ScopedPanelBase<BudgetAnalyticsViewModel>> logger)
+            : base(scopeFactory, logger)
         {
+            // No need to assign _scopeFactory; handled by base class
         }
 
-        public BudgetAnalyticsPanel(BudgetAnalyticsViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null, ILogger<BudgetAnalyticsPanel>? logger = null)
+        #region ICompletablePanel Overrides
+
+        /// <summary>
+        /// Loads the panel asynchronously (ICompletablePanel implementation).
+        /// Initializes ViewModel and loads analytics data.
+        /// </summary>
+        public override async Task LoadAsync(CancellationToken ct)
         {
-            _logger = logger ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<BudgetAnalyticsPanel>>(Program.Services!);
-            _dispatcherHelper = dispatcherHelper;
-            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+            if (IsLoaded) return;
 
-            InitializeComponent();
+            try
+            {
+                IsBusy = true;
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme); } catch { }
+                if (ViewModel != null && !DesignMode)
+                {
+                    if (ViewModel.LoadDataCommand.CanExecute(null))
+                    {
+                        await ViewModel.LoadDataCommand.ExecuteAsync(null);
+                    }
+                }
+
+                _logger?.LogDebug("BudgetAnalyticsPanel loaded successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("BudgetAnalyticsPanel load cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to load BudgetAnalyticsPanel");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Saves the panel asynchronously (ICompletablePanel implementation).
+        /// Budget analytics panel is read-only, so this is a no-op.
+        /// </summary>
+        public override async Task SaveAsync(CancellationToken ct)
+        {
+            try
+            {
+                IsBusy = true;
+
+                // Budget analytics panel is view-only; no persistence required.
+                await Task.CompletedTask;
+                _logger?.LogDebug("BudgetAnalyticsPanel save completed");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("BudgetAnalyticsPanel save cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to save BudgetAnalyticsPanel");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Validates the panel asynchronously (ICompletablePanel implementation).
+        /// Ensures analytics data is available.
+        /// </summary>
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+        {
+            try
+            {
+                IsBusy = true;
+
+                var errors = new List<ValidationItem>();
+
+                if (ViewModel == null)
+                {
+                    errors.Add(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error));
+                    _errorProvider?.SetError(this, "ViewModel not initialized");
+                }
+                else if (!ViewModel.AnalyticsData.Any())
+                {
+                    errors.Add(new ValidationItem("Data", "No analytics data available", ValidationSeverity.Warning));
+                    if (_analyticsGrid != null)
+                        _errorProvider?.SetError(_analyticsGrid, "No analytics data available");
+                }
+                else
+                {
+                    _errorProvider?.SetError(this, string.Empty);
+                }
+
+                await Task.CompletedTask;
+
+                return errors.Count == 0 ? ValidationResult.Success : ValidationResult.Failed(errors.ToArray());
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("BudgetAnalyticsPanel validation cancelled");
+                return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Validation error in BudgetAnalyticsPanel");
+                _errorProvider?.SetError(this, "Validation failed");
+                return ValidationResult.Failed(new ValidationItem("Validation", ex.Message, ValidationSeverity.Error));
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Focuses the first validation error control (ICompletablePanel implementation).
+        /// </summary>
+        public override void FocusFirstError()
+        {
+            if (_comboDepartment?.Visible == true) _comboDepartment.Focus();
+            else if (_comboDateRange?.Visible == true) _comboDateRange.Focus();
+            else if (_analyticsGrid?.Visible == true) _analyticsGrid.Focus();
+            else _filterPanel?.Focus();
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Called after the ViewModel has been resolved. Initializes UI and bindings.
+        /// </summary>
+        protected override void OnViewModelResolved(BudgetAnalyticsViewModel viewModel)
+        {
+            base.OnViewModelResolved(viewModel);
+
             SetupUI();
             BindViewModel();
-            ApplyCurrentTheme();
+
+            _logger?.LogDebug("BudgetAnalyticsPanel: ViewModel resolved and UI initialized");
         }
 
-        private void InitializeComponent()
+        /// <summary>
+        /// Loads the panel and initializes the ViewModel.
+        /// </summary>
+        protected override async void OnLoad(EventArgs e)
         {
-            this.SuspendLayout();
+            base.OnLoad(e);
 
-            Name = "BudgetAnalyticsPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
-            Dock = DockStyle.Fill;
-            try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
-            this.ResumeLayout(false);
+            if (ViewModel != null && !DesignMode)
+            {
+                try
+                {
+                    if (ViewModel.LoadDataCommand.CanExecute(null))
+                    {
+                        await ViewModel.LoadDataCommand.ExecuteAsync(null);
+                    }
+                    UpdateUI();
+                    UpdateNoDataOverlay();
 
+                    // Defer sizing validation
+                    DeferSizeValidation();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to initialize BudgetAnalyticsPanel");
+                }
+            }
         }
+
+        #region UI Setup
 
         private void SetupUI()
         {
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
 
             // Panel header
-            _panelHeader = new PanelHeader { Dock = DockStyle.Top };
+            _panelHeader = new PanelHeader
+            {
+                Dock = DockStyle.Top,
+                TabIndex = 0,
+                AccessibleName = "Budget Analytics Header",
+                AccessibleDescription = "Header with refresh and help buttons"
+            };
             _panelHeader.Title = "Budget Analytics";
             _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
@@ -207,6 +366,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private void CreateFilterPanel()
         {
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             _filterPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Top,
@@ -216,7 +376,7 @@ namespace WileyWidget.WinForms.Controls
                 CornerRadius = 2,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
-            SfSkinManager.SetVisualStyle(_filterPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
+            SfSkinManager.SetVisualStyle(_filterPanel, currentTheme);
 
             var flow = new FlowLayoutPanel
             {
@@ -225,6 +385,9 @@ namespace WileyWidget.WinForms.Controls
                 AutoSize = true,
                 WrapContents = true
             };
+
+            // Tooltip manager for all controls
+            _tooltips = new ToolTip();
 
             // Department filter
             var lblDept = new Label
@@ -235,6 +398,7 @@ namespace WileyWidget.WinForms.Controls
                 TextAlign = ContentAlignment.MiddleLeft,
                 Margin = new Padding(0, 6, 4, 0)
             };
+            _tooltips.SetToolTip(lblDept, "Select department to filter analytics");
             flow.Controls.Add(lblDept);
 
             _comboDepartment = new SfComboBox
@@ -244,7 +408,9 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Department filter",
                 AccessibleDescription = "Filter analytics by department"
             };
-            _comboDepartment.SelectedIndexChanged += ComboFilter_SelectedIndexChanged;
+            _comboDepartmentSelectedHandler = ComboFilter_SelectedIndexChanged;
+            _comboDepartment.SelectedIndexChanged += _comboDepartmentSelectedHandler;
+            _tooltips.SetToolTip(_comboDepartment, "Select department to filter analytics by department");
             flow.Controls.Add(_comboDepartment);
 
             // Date range filter
@@ -255,6 +421,7 @@ namespace WileyWidget.WinForms.Controls
                 TextAlign = ContentAlignment.MiddleLeft,
                 Margin = new Padding(8, 6, 4, 0)
             };
+            _tooltips.SetToolTip(lblDate, "Select date range to filter analytics");
             flow.Controls.Add(lblDate);
 
             _comboDateRange = new SfComboBox
@@ -264,7 +431,9 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Date range filter",
                 AccessibleDescription = "Filter analytics by date range"
             };
-            _comboDateRange.SelectedIndexChanged += ComboFilter_SelectedIndexChanged;
+            _comboDateRangeSelectedHandler = ComboFilter_SelectedIndexChanged;
+            _comboDateRange.SelectedIndexChanged += _comboDateRangeSelectedHandler;
+            _tooltips.SetToolTip(_comboDateRange, "Select date range to filter analytics by date range");
             flow.Controls.Add(_comboDateRange);
 
             // Buttons using FlowLayoutPanel
@@ -284,7 +453,9 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Apply analytics filter",
                 AccessibleDescription = "Apply selected filters to analytics"
             };
-            _btnApplyFilter.Click += async (s, e) => await RefreshDataAsync();
+            _btnApplyFilterClickHandler = async (s, e) => await RefreshDataAsync();
+            _btnApplyFilter.Click += _btnApplyFilterClickHandler;
+            _tooltips.SetToolTip(_btnApplyFilter, "Apply selected filters to analytics data");
             btnFlow.Controls.Add(_btnApplyFilter);
 
             _btnReset = new SfButton
@@ -295,18 +466,23 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleName = "Reset analytics filters",
                 AccessibleDescription = "Clear all filter selections"
             };
-            _btnReset.Click += (s, e) => ResetFilters();
+            _btnResetClickHandler = (s, e) => ResetFilters();
+            _btnReset.Click += _btnResetClickHandler;
+            _tooltips.SetToolTip(_btnReset, "Clear all filter selections");
             btnFlow.Controls.Add(_btnReset);
 
             _btnExportReport = new SfButton
             {
                 Text = "📊 Export Report",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(130, 32),
                 Margin = new Padding(3),
                 AccessibleName = "Export analytics report",
                 AccessibleDescription = "Export analytics data to CSV"
             };
-            _btnExportReport.Click += async (s, e) => await ExportReportAsync();
+            _btnExportReportClickHandler = async (s, e) => await ExportReportAsync();
+            _btnExportReport.Click += _btnExportReportClickHandler;
+            _tooltips.SetToolTip(_btnExportReport, "Export analytics data to CSV file");
             btnFlow.Controls.Add(_btnExportReport);
 
             flow.Controls.Add(btnFlow);
@@ -326,6 +502,7 @@ namespace WileyWidget.WinForms.Controls
             _trendChart.PrimaryXAxis.DrawGrid = false;
             _trendChart.PrimaryYAxis.Title = "Amount";
             _trendChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
+            _trendChart.TabIndex = 10;
         }
 
         private void ConfigureDepartmentChart()
@@ -341,47 +518,107 @@ namespace WileyWidget.WinForms.Controls
             _departmentChart.PrimaryXAxis.DrawGrid = false;
             _departmentChart.PrimaryYAxis.Title = "Variance %";
             _departmentChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
+            _departmentChart.TabIndex = 11;
         }
 
         private void ConfigureGridColumns()
         {
             if (_analyticsGrid == null) return;
 
-            _analyticsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 150 });
-            _analyticsGrid.Columns.Add(new GridTextColumn { MappingName = "PeriodName", HeaderText = "Period", MinimumWidth = 120 });
-            _analyticsGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 120 });
-            _analyticsGrid.Columns.Add(new GridNumericColumn { MappingName = "ActualAmount", HeaderText = "Actual", MinimumWidth = 120 });
-            _analyticsGrid.Columns.Add(new GridNumericColumn { MappingName = "VarianceAmount", HeaderText = "Variance", MinimumWidth = 120 });
-            _analyticsGrid.Columns.Add(new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 100 });
-            _analyticsGrid.Columns.Add(new GridTextColumn { MappingName = "Status", HeaderText = "Status", MinimumWidth = 100 });
+            _analyticsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "DepartmentName",
+                HeaderText = "Department",
+                MinimumWidth = 150,
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "PeriodName",
+                HeaderText = "Period",
+                MinimumWidth = 120,
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridNumericColumn
+            {
+                MappingName = "BudgetedAmount",
+                HeaderText = "Budgeted",
+                MinimumWidth = 120,
+                Format = "C2",
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridNumericColumn
+            {
+                MappingName = "ActualAmount",
+                HeaderText = "Actual",
+                MinimumWidth = 120,
+                Format = "C2",
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridNumericColumn
+            {
+                MappingName = "VarianceAmount",
+                HeaderText = "Variance",
+                MinimumWidth = 120,
+                Format = "C2",
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "VariancePercent",
+                HeaderText = "Variance %",
+                MinimumWidth = 100,
+                AllowSorting = true
+            });
+            _analyticsGrid.Columns.Add(new GridTextColumn
+            {
+                MappingName = "Status",
+                HeaderText = "Status",
+                MinimumWidth = 100,
+                AllowSorting = true
+            });
+
+            _analyticsGrid.TabIndex = 12;
         }
 
         private void BindViewModel()
         {
-            // Bind filters
+            if (ViewModel == null) return;
+
             try
             {
-                if (_comboDepartment != null && _vm.AvailableDepartments.Any())
+                // Create BindingSource for MVVM grid binding
+                _bindingSource = new BindingSource { DataSource = ViewModel };
+                if (_analyticsGrid != null) _analyticsGrid.DataSource = _bindingSource;
+
+                // Bind filter dropdowns to static lists
+                if (_comboDepartment != null && ViewModel.AvailableDepartments.Any())
                 {
-                    _comboDepartment.DataSource = _vm.AvailableDepartments.ToList();
+                    _comboDepartment.DataSource = ViewModel.AvailableDepartments.ToList();
                 }
 
-                if (_comboDateRange != null && _vm.AvailableDateRanges.Any())
+                if (_comboDateRange != null && ViewModel.AvailableDateRanges.Any())
                 {
-                    _comboDateRange.DataSource = _vm.AvailableDateRanges.ToList();
+                    _comboDateRange.DataSource = ViewModel.AvailableDateRanges.ToList();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to bind filter controls");
+            }
 
             // Subscribe to property changes
             _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-            _vm.PropertyChanged += _viewModelPropertyChangedHandler;
+            ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
             // Subscribe to collection changes
-            _vm.AnalyticsData.CollectionChanged += AnalyticsData_CollectionChanged;
+            _analyticsDataCollectionChangedHandler = AnalyticsData_CollectionChanged;
+            ViewModel.AnalyticsData.CollectionChanged += _analyticsDataCollectionChangedHandler;
 
             // Initial UI update
             UpdateUI();
+
+            _logger?.LogDebug("BudgetAnalyticsPanel: ViewModel bound to UI");
         }
 
         private void AnalyticsData_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -390,11 +627,20 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsHandleCreated && !IsDisposed)
                 {
-                    BeginInvoke((MethodInvoker)(() => AnalyticsData_CollectionChanged(sender, e)));
+                    try
+                    {
+                        BeginInvoke((MethodInvoker)(() => AnalyticsData_CollectionChanged(sender, e)));
+                    }
+                    catch { /* Control disposed */ }
                 }
                 return;
             }
-            UpdateUI();
+
+            if (!IsDisposed)
+            {
+                UpdateUI();
+                UpdateNoDataOverlay();
+            }
         }
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -403,36 +649,38 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (IsDisposed) return;
 
-                if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
-                {
-                    _ = _dispatcherHelper.InvokeAsync(() => ViewModel_PropertyChanged(sender, e));
-                    return;
-                }
                 if (InvokeRequired)
                 {
-                    if (IsHandleCreated)
+                    if (IsHandleCreated && !IsDisposed)
                     {
-                        BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+                        try
+                        {
+                            BeginInvoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+                        }
+                        catch { /* Control disposed */ }
                     }
                     return;
                 }
 
+                if (ViewModel == null) return;
+
                 switch (e.PropertyName)
                 {
-                    case nameof(_vm.IsLoading):
-                        if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading;
+                    case nameof(ViewModel.IsLoading):
+                        if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
                         break;
 
-                    case nameof(_vm.AnalyticsData):
-                    case nameof(_vm.SelectedDepartment):
-                    case nameof(_vm.SelectedDateRange):
+                    case nameof(ViewModel.AnalyticsData):
+                    case nameof(ViewModel.SelectedDepartment):
+                    case nameof(ViewModel.SelectedDateRange):
                         UpdateUI();
+                        UpdateNoDataOverlay();
                         break;
 
-                    case nameof(_vm.ErrorMessage):
-                        if (!string.IsNullOrEmpty(_vm.ErrorMessage))
+                    case nameof(ViewModel.ErrorMessage):
+                        if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
                         {
-                            _errorProvider?.SetError(this, _vm.ErrorMessage);
+                            _errorProvider?.SetError(this, ViewModel.ErrorMessage);
                         }
                         else
                         {
@@ -444,7 +692,7 @@ namespace WileyWidget.WinForms.Controls
             catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: PropertyChanged handler failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: PropertyChanged handler failed");
             }
         }
 
@@ -452,19 +700,21 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (IsDisposed) return;
+                if (IsDisposed || ViewModel == null) return;
 
-                // Update grid
-                if (_analyticsGrid != null)
+                // Refresh grid via BindingSource
+                if (_analyticsGrid != null && _bindingSource != null)
                 {
                     try
                     {
                         _analyticsGrid.SuspendLayout();
-                        var snapshot = _vm.AnalyticsData.ToList();
-                        _analyticsGrid.DataSource = snapshot;
+                        _bindingSource.DataSource = ViewModel.AnalyticsData.ToList();
                         _analyticsGrid.ResumeLayout();
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to update grid");
+                    }
                 }
 
                 // Update charts
@@ -474,22 +724,26 @@ namespace WileyWidget.WinForms.Controls
                 // Update summary label
                 if (_summaryLabel != null)
                 {
-                    _summaryLabel.Text = $"Displaying {_vm.AnalyticsData.Count} records • Updated: {DateTime.Now:HH:mm:ss}";
+                    _summaryLabel.Text = $"Displaying {ViewModel.AnalyticsData.Count} records • Updated: {DateTime.Now:HH:mm:ss}";
                 }
-
-                // Show no-data overlay if needed
-                if (_noDataOverlay != null)
-                    _noDataOverlay.Visible = !_vm.IsLoading && !_vm.AnalyticsData.Any();
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: UpdateUI failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: UpdateUI failed");
             }
+        }
+
+        private void UpdateNoDataOverlay()
+        {
+            if (_noDataOverlay == null || ViewModel == null) return;
+
+            var hasData = ViewModel.AnalyticsData.Count > 0;
+            _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading;
         }
 
         private void UpdateTrendChart()
         {
-            if (_trendChart == null) return;
+            if (_trendChart == null || ViewModel == null) return;
 
             try
             {
@@ -498,7 +752,7 @@ namespace WileyWidget.WinForms.Controls
                 var budgetSeries = new ChartSeries("Budgeted", ChartSeriesType.Line);
                 var actualSeries = new ChartSeries("Actual", ChartSeriesType.Line);
 
-                foreach (var data in _vm.AnalyticsData.Take(12))
+                foreach (var data in ViewModel.AnalyticsData.Take(12))
                 {
                     budgetSeries.Points.Add(data.PeriodName, (double)data.BudgetedAmount);
                     actualSeries.Points.Add(data.PeriodName, (double)data.ActualAmount);
@@ -509,13 +763,13 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: UpdateTrendChart failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: UpdateTrendChart failed");
             }
         }
 
         private void UpdateDepartmentChart()
         {
-            if (_departmentChart == null) return;
+            if (_departmentChart == null || ViewModel == null) return;
 
             try
             {
@@ -523,9 +777,9 @@ namespace WileyWidget.WinForms.Controls
 
                 var varianceSeries = new ChartSeries("Variance %", ChartSeriesType.Column);
 
-                var deptData = _vm.AnalyticsData
+                var deptData = ViewModel.AnalyticsData
                     .GroupBy(x => x.DepartmentName)
-                    .Select(g => new { Department = g.Key, AvgVariance = g.Average(x => double.Parse(x.VariancePercent ?? "0", System.Globalization.CultureInfo.InvariantCulture)) })
+                    .Select(g => new { Department = g.Key, AvgVariance = g.Average(x => double.Parse(x.VariancePercent ?? "0", CultureInfo.InvariantCulture)) })
                     .Take(10);
 
                 foreach (var dept in deptData)
@@ -537,7 +791,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: UpdateDepartmentChart failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: UpdateDepartmentChart failed");
             }
         }
 
@@ -545,13 +799,18 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                if (ViewModel == null) return;
+
                 if (_comboDepartment?.SelectedItem is string dept)
-                    _vm.SelectedDepartment = dept;
+                    ViewModel.SelectedDepartment = dept;
 
                 if (_comboDateRange?.SelectedItem is string range)
-                    _vm.SelectedDateRange = range;
+                    ViewModel.SelectedDateRange = range;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to update filter selection");
+            }
         }
 
         private void ResetFilters()
@@ -567,54 +826,89 @@ namespace WileyWidget.WinForms.Controls
             catch { }
         }
 
+        /// <summary>
+        /// Updates the status label with current operation state.
+        /// </summary>
+        private void UpdateStatus(string message)
+        {
+            if (_summaryLabel != null && !IsDisposed)
+            {
+                _summaryLabel.Text = message ?? "Ready";
+            }
+        }
+
         private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
         {
+            if (ViewModel == null) return;
+
             try
             {
-                await _vm.RefreshCommand.ExecuteAsync(null);
+                UpdateStatus("Refreshing analytics data...");
+                if (ViewModel.RefreshCommand.CanExecute(null))
+                {
+                    await ViewModel.RefreshCommand.ExecuteAsync(null);
+                }
+                UpdateStatus("Analytics refreshed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("Refresh cancelled");
+                UpdateStatus("Refresh cancelled");
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: Refresh failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: Refresh failed");
+                UpdateStatus($"Error: {ex.Message}");
                 MessageBox.Show($"Failed to refresh data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private async Task ExportReportAsync(CancellationToken cancellationToken = default)
         {
+            if (ViewModel == null) return;
+
             try
             {
+                UpdateStatus("Preparing export...");
                 using var sfd = new SaveFileDialog
                 {
-                    Filter = "CSV Files|*.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
                     DefaultExt = "csv",
-                    FileName = $"budget-analytics-{DateTime.Now:yyyyMMdd}.csv"
+                    FileName = $"budget-analytics-{DateTime.Now:yyyyMMdd}.csv",
+                    InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
                 };
 
                 if (sfd.ShowDialog() != DialogResult.OK) return;
 
-                var sb = new System.Text.StringBuilder();
+                var sb = new StringBuilder();
                 sb.AppendLine("Department,Period,Budgeted,Actual,Variance,Variance %,Status");
 
-                foreach (var data in _vm.AnalyticsData)
+                foreach (var data in ViewModel.AnalyticsData)
                 {
-                    sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                         "\"{0}\",\"{1}\",{2},{3},{4},{5},\"{6}\"",
                         data.DepartmentName,
                         data.PeriodName,
-                        data.BudgetedAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        data.ActualAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        data.VarianceAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        data.BudgetedAmount.ToString(CultureInfo.InvariantCulture),
+                        data.ActualAmount.ToString(CultureInfo.InvariantCulture),
+                        data.VarianceAmount.ToString(CultureInfo.InvariantCulture),
                         data.VariancePercent,
                         data.Status));
                 }
 
-                await System.IO.File.WriteAllTextAsync(sfd.FileName, sb.ToString());
+                await System.IO.File.WriteAllTextAsync(sfd.FileName, sb.ToString(), cancellationToken);
+                UpdateStatus($"Export complete: {sfd.FileName}");
                 MessageBox.Show($"Exported to {sfd.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("Export cancelled");
+                UpdateStatus("Export cancelled");
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "BudgetAnalyticsPanel: Export failed");
+                _logger?.LogError(ex, "BudgetAnalyticsPanel: Export failed");
+                UpdateStatus($"Export failed: {ex.Message}");
                 MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -635,34 +929,11 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetAnalyticsPanel: ClosePanel failed");
+                _logger?.LogWarning(ex, "BudgetAnalyticsPanel: ClosePanel failed");
             }
         }
 
-        private void ApplyCurrentTheme()
-        {
-            try
-            {
-                // Theme is applied automatically by SfSkinManager cascade from parent form
-            }
-            catch { }
-        }
 
-        protected override void OnLoad(EventArgs e)
-        {
-            base.OnLoad(e);
-            try
-            {
-                // Defer sizing validation until layout is complete
-                DeferSizeValidation();
-
-                // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "BudgetAnalyticsPanel: OnLoad failed");
-            }
-        }
 
         private void DeferSizeValidation()
         {
@@ -688,13 +959,30 @@ namespace WileyWidget.WinForms.Controls
             HandleCreated += handleCreatedHandler;
         }
 
+        #endregion
+
+        #region Disposal
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                try { if (_viewModelPropertyChangedHandler != null) _vm.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
-                try { _vm.AnalyticsData.CollectionChanged -= AnalyticsData_CollectionChanged; } catch { }
+                // Unsubscribe from ViewModel events
+                try
+                {
+                    if (_viewModelPropertyChangedHandler != null && ViewModel != null)
+                        ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+                }
+                catch { }
 
+                try
+                {
+                    if (_analyticsDataCollectionChangedHandler != null && ViewModel?.AnalyticsData != null)
+                        ViewModel.AnalyticsData.CollectionChanged -= _analyticsDataCollectionChangedHandler;
+                }
+                catch { }
+
+                // Unsubscribe from Panel Header events
                 try
                 {
                     if (_panelHeader != null)
@@ -705,6 +993,45 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch { }
 
+                // Unsubscribe from Filter controls events
+                try
+                {
+                    if (_comboDepartment != null && _comboDepartmentSelectedHandler != null)
+                        _comboDepartment.SelectedIndexChanged -= _comboDepartmentSelectedHandler;
+                }
+                catch { }
+
+                try
+                {
+                    if (_comboDateRange != null && _comboDateRangeSelectedHandler != null)
+                        _comboDateRange.SelectedIndexChanged -= _comboDateRangeSelectedHandler;
+                }
+                catch { }
+
+                // Unsubscribe from Button events
+                try
+                {
+                    if (_btnApplyFilter != null && _btnApplyFilterClickHandler != null)
+                        _btnApplyFilter.Click -= _btnApplyFilterClickHandler;
+                }
+                catch { }
+
+                try
+                {
+                    if (_btnReset != null && _btnResetClickHandler != null)
+                        _btnReset.Click -= _btnResetClickHandler;
+                }
+                catch { }
+
+                try
+                {
+                    if (_btnExportReport != null && _btnExportReportClickHandler != null)
+                        _btnExportReport.Click -= _btnExportReportClickHandler;
+                }
+                catch { }
+
+                // Dispose controls
+                try { _bindingSource?.Dispose(); } catch { }
                 try { _analyticsGrid?.SafeClearDataSource(); } catch { }
                 try { _analyticsGrid?.SafeDispose(); } catch { }
                 try { _trendChart?.Dispose(); } catch { }
@@ -719,8 +1046,12 @@ namespace WileyWidget.WinForms.Controls
                 try { _noDataOverlay?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
                 try { _filterPanel?.Dispose(); } catch { }
+                try { _tooltips?.Dispose(); } catch { }
             }
+
             base.Dispose(disposing);
         }
+
+        #endregion
     }
 }

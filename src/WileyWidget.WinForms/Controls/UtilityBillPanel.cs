@@ -69,6 +69,19 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
     private NotifyCollectionChangedEventHandler? _customersCollectionChangedHandler;
 
+    // Event handler delegates for proper cleanup
+    private EventHandler? _createBillButtonClickHandler;
+    private EventHandler? _saveBillButtonClickHandler;
+    private EventHandler? _deleteBillButtonClickHandler;
+    private EventHandler? _markPaidButtonClickHandler;
+    private EventHandler? _generateReportButtonClickHandler;
+    private EventHandler? _exportExcelButtonClickHandler;
+    private EventHandler? _refreshButtonClickHandler;
+    private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderCloseHandler;
+
+    private ErrorProvider? _errorProvider;
+
     #endregion
 
     #region Constructor
@@ -95,6 +108,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+
+            // Start async load
+            _ = LoadAsync();
 
             Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
@@ -125,6 +141,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             ShowAlways = true
         };
 
+        // Initialize error provider
+        _errorProvider = new ErrorProvider
+        {
+            BlinkStyle = ErrorBlinkStyle.NeverBlink
+        };
+
         // Panel header
         _panelHeader = new PanelHeader
         {
@@ -132,8 +154,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Title = "Utility Bill Management",
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f)
         };
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshDataAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
+        _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
+        _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
         // Main split container (bills top, customers bottom)
@@ -293,31 +317,38 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         var buttonSize = new Size((int)DpiAware.LogicalToDeviceUnits(110f), (int)DpiAware.LogicalToDeviceUnits(32f));
 
         _createBillButton = CreateButton("&Create Bill", buttonSize, 1);
-        _createBillButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel.CreateBillCommand);
+        _createBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.CreateBillCommand);
+        _createBillButton.Click += _createBillButtonClickHandler;
         _toolTip!.SetToolTip(_createBillButton, "Create a new utility bill for the selected customer (Ctrl+N)");
 
         _saveBillButton = CreateButton("&Save", buttonSize, 2);
-        _saveBillButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel.SaveBillCommand);
+        _saveBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.SaveBillCommand);
+        _saveBillButton.Click += _saveBillButtonClickHandler;
         _toolTip.SetToolTip(_saveBillButton, "Save changes to the selected bill (Ctrl+S)");
 
         _deleteBillButton = CreateButton("&Delete", buttonSize, 3);
-        _deleteBillButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel.DeleteBillCommand);
+        _deleteBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.DeleteBillCommand);
+        _deleteBillButton.Click += _deleteBillButtonClickHandler;
         _toolTip.SetToolTip(_deleteBillButton, "Delete the selected bill (Del)");
 
         _markPaidButton = CreateButton("Mark &Paid", buttonSize, 4);
-        _markPaidButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel.MarkAsPaidCommand);
+        _markPaidButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.MarkAsPaidCommand);
+        _markPaidButton.Click += _markPaidButtonClickHandler;
         _toolTip.SetToolTip(_markPaidButton, "Record payment for the selected bill (Ctrl+P)");
 
         _generateReportButton = CreateButton("&Report", buttonSize, 5);
-        _generateReportButton.Click += async (s, e) => await ExecuteCommandAsync(ViewModel.GenerateReportCommand);
+        _generateReportButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.GenerateReportCommand);
+        _generateReportButton.Click += _generateReportButtonClickHandler;
         _toolTip.SetToolTip(_generateReportButton, "Generate utility bill report (Ctrl+R)");
 
         _exportExcelButton = CreateButton("E&xport", buttonSize, 6);
-        _exportExcelButton.Click += ExportExcelButton_Click;
+        _exportExcelButtonClickHandler = ExportExcelButton_Click;
+        _exportExcelButton.Click += _exportExcelButtonClickHandler;
         _toolTip.SetToolTip(_exportExcelButton, "Export bills to Excel (Ctrl+X)");
 
         _refreshButton = CreateButton("Re&fresh", buttonSize, 7);
-        _refreshButton.Click += async (s, e) => await RefreshDataAsync();
+        _refreshButtonClickHandler = async (s, e) => await RefreshDataAsync();
+        _refreshButton.Click += _refreshButtonClickHandler;
         _toolTip.SetToolTip(_refreshButton, "Refresh all data (F5)");
 
         buttonFlow.Controls.Add(_createBillButton);
@@ -831,7 +862,97 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #endregion
 
-    #region Event Handlers
+    #region ICompletablePanel Implementation
+
+    /// <summary>
+    /// Loads the panel asynchronously (ICompletablePanel implementation).
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken ct = default)
+    {
+        if (IsLoaded) return; // Prevent double-load
+
+        try
+        {
+            IsBusy = true;
+            UpdateStatus("Loading utility bill data...");
+
+            var token = RegisterOperation();
+            await (ViewModel.LoadBillsCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+            await (ViewModel.LoadCustomersCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+
+            SetHasUnsavedChanges(false);
+            UpdateStatus("Utility bill data loaded successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus("Load cancelled");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"Load failed: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Validates the panel asynchronously (ICompletablePanel implementation).
+    /// </summary>
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+    {
+        _errorProvider?.Clear();
+        var errors = new List<ValidationItem>();
+
+        // For now, basic validation - can be extended
+        if (ViewModel?.SelectedBill != null)
+        {
+            // Validate selected bill if needed
+        }
+
+        return errors.Count > 0 ? ValidationResult.Failed(errors.ToArray()) : ValidationResult.Success;
+    }
+
+    /// <summary>
+    /// Saves the panel asynchronously (ICompletablePanel implementation).
+    /// </summary>
+    public override async Task SaveAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            IsBusy = true;
+            UpdateStatus("Saving utility bill data...");
+
+            var token = RegisterOperation();
+            // Individual save operations are handled by commands
+            // No global save needed for this panel
+
+            SetHasUnsavedChanges(false);
+            UpdateStatus("Utility bill data saved successfully");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus($"Save failed: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Focuses the first validation error control (ICompletablePanel implementation).
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        var item = ValidationErrors.FirstOrDefault();
+        item?.ControlRef?.Focus();
+    }
+
+    #endregion
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -967,8 +1088,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 MessageBoxIcon.Error);
         }
     }
-
-    #endregion
 
     #region Helper Methods
 
@@ -1127,9 +1246,27 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
                 if (_panelHeader != null)
                 {
-                    _panelHeader.RefreshClicked -= async (s, e) => await RefreshDataAsync();
-                    _panelHeader.CloseClicked -= (s, e) => ClosePanel();
+                    if (_panelHeaderRefreshHandler != null)
+                        _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                    if (_panelHeaderCloseHandler != null)
+                        _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
                 }
+
+                // Unsubscribe button handlers
+                if (_createBillButton != null && _createBillButtonClickHandler != null)
+                    _createBillButton.Click -= _createBillButtonClickHandler;
+                if (_saveBillButton != null && _saveBillButtonClickHandler != null)
+                    _saveBillButton.Click -= _saveBillButtonClickHandler;
+                if (_deleteBillButton != null && _deleteBillButtonClickHandler != null)
+                    _deleteBillButton.Click -= _deleteBillButtonClickHandler;
+                if (_markPaidButton != null && _markPaidButtonClickHandler != null)
+                    _markPaidButton.Click -= _markPaidButtonClickHandler;
+                if (_generateReportButton != null && _generateReportButtonClickHandler != null)
+                    _generateReportButton.Click -= _generateReportButtonClickHandler;
+                if (_exportExcelButton != null && _exportExcelButtonClickHandler != null)
+                    _exportExcelButton.Click -= _exportExcelButtonClickHandler;
+                if (_refreshButton != null && _refreshButtonClickHandler != null)
+                    _refreshButton.Click -= _refreshButtonClickHandler;
 
                 // Safe dispose Syncfusion controls
                 _billsGrid.SafeDispose();
@@ -1142,6 +1279,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 _loadingOverlay?.Dispose();
                 _noDataOverlay?.Dispose();
                 _toolTip?.Dispose();
+                _errorProvider?.Dispose();
 
                 Logger.LogDebug("UtilityBillPanel disposed");
             }

@@ -3,12 +3,16 @@
 @using WileyWidget.Models
 @using WileyWidget.Services.Abstractions
 @using static WileyWidget.Models.ChatMessage
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.Buttons
+@using CommunityToolkit.Mvvm.Input
 @implements IDisposable
 @inject IChatBridgeService ChatBridge
 @inject IJSRuntime JS
 
 <div class="jarvis-container">
-    <div class="messages" @ref="_messageContainer">
+    <div class="messages" @ref="_messageContainer" role="log" aria-live="polite" aria-label="Chat messages">
         @foreach (var msg in _messages)
         {
             <div class="message @(msg.IsUser ? "user" : "assistant")">
@@ -19,7 +23,7 @@
         }
         @if (_isThinking)
         {
-            <div class="message assistant thinking">
+            <div class="message assistant thinking" role="alert" aria-live="assertive">
                 <div class="typing-indicator">
                     <span></span>
                     <span></span>
@@ -30,13 +34,16 @@
     </div>
 
     <div class="input-area">
-        <textarea @bind="_userInput"
-                  @onkeyup="HandleKeyUp"
-                  placeholder="Ask JARVIS anything..."
-                  disabled="@_isThinking"></textarea>
-        <button @onclick="SendMessage" disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isThinking)">
-            Send
-        </button>
+        <SfTextArea @bind-Value="_userInput"
+                    Placeholder="Ask JARVIS anything..."
+                    Rows="3"
+                    aria-label="Message input"
+                    @onkeyup="HandleKeyUp"></SfTextArea>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="error-message">@_errorMessage</div>
+        }
+        <SfButton Command="_sendCommand" Disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isThinking || _isSending)">Send</SfButton>
     </div>
 </div>
 
@@ -45,8 +52,8 @@
         display: flex;
         flex-direction: column;
         height: 100vh;
-        background: #1e1e1e;
-        color: #d4d4d4;
+        background: var(--sf-background);
+        color: var(--sf-text);
         font-family: 'Segoe UI', sans-serif;
     }
 
@@ -66,15 +73,15 @@
 
     .message.user {
         align-self: flex-end;
-        background: #007acc;
-        color: white;
+        background: var(--sf-primary);
+        color: var(--sf-text);
         margin-left: auto;
     }
 
     .message.assistant {
         align-self: flex-start;
-        background: #333;
-        border: 1px solid #444;
+        background: var(--sf-surface);
+        border: 1px solid var(--sf-border);
     }
 
     .message.thinking {
@@ -86,7 +93,7 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: #007acc;
+        background: var(--sf-primary);
         border-radius: 50%;
         margin-right: 5px;
         animation: blink 1.4s infinite both;
@@ -102,91 +109,148 @@
 
     .input-area {
         padding: 20px;
-        background: #252526;
+        background: var(--sf-surface);
         display: flex;
         gap: 10px;
     }
 
-    textarea {
+    /* SfTextArea styling */
+    .input-area .e-textarea,
+    .input-area .e-input-group {
         flex: 1;
-        background: #3c3c3c;
-        border: 1px solid #333;
-        color: white;
-        padding: 10px;
+        background: var(--sf-input-background);
+        border: 1px solid var(--sf-border);
+        color: var(--sf-text);
         border-radius: 4px;
-        resize: none;
-        height: 60px;
     }
 
-    button {
-        background: #007acc;
-        color: white;
-        border: none;
-        padding: 0 20px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    button:disabled {
-        background: #444;
-        cursor: not-allowed;
+    .error-message {
+        color: var(--sf-error);
+        font-size: 0.9em;
+        margin-top: 5px;
     }
 </style>
 
 @code {
     private string _userInput = "";
     private bool _isThinking = false;
+    private bool _isSending = false;
     private List<ChatMessage> _messages = new();
     private ElementReference _messageContainer;
     private string _conversationId = Guid.NewGuid().ToString();
+    private string _errorMessage = "";
+    private CancellationTokenSource? _cts;
+    private AsyncRelayCommand? _sendCommand;
+    private bool _suppressRender = false;
+    private DateTime _lastRenderTime = DateTime.UtcNow;
+    private const int MinRenderIntervalMs = 100; // Throttle renders to max 10/sec
+
+    [Parameter] public string Theme { get; set; } = "office-2019-colorful";
 
     protected override void OnInitialized()
     {
         ChatBridge.OnMessageReceived += HandleMessageReceived;
+        _sendCommand = new AsyncRelayCommand(SendMessageAsync);
         _messages.Add(new ChatMessage { Content = "Hello, I am JARVIS. How can I assist you today?", IsUser = false });
     }
 
     private void HandleMessageReceived(object? sender, ChatMessage msg)
     {
+        // Use InvokeAsync to marshal the update to the UI thread, but only call StateHasChanged once at the end
         InvokeAsync(() => {
+            bool needsRender = false;
             if (!_messages.Any(m => m.Id == msg.Id))
             {
                 _messages.Add(msg);
                 _isThinking = false;
-                StateHasChanged();
-                ScrollToBottom();
+                needsRender = true;
             }
             else
             {
                 var existing = _messages.First(m => m.Id == msg.Id);
                 existing.Content = msg.Content;
-                StateHasChanged();
-                ScrollToBottom();
+                needsRender = true;
+            }
+            // Throttle renders to prevent flicker - max 10 renders per second
+            if (needsRender)
+            {
+                var now = DateTime.UtcNow;
+                var timeSinceLastRender = (now - _lastRenderTime).TotalMilliseconds;
+                if (timeSinceLastRender >= MinRenderIntervalMs)
+                {
+                    _lastRenderTime = now;
+                    StateHasChanged();
+                    ScrollToBottom();
+                }
+                else
+                {
+                    _suppressRender = true;
+                }
             }
         });
     }
 
-    private async Task SendMessage()
+    private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(_userInput)) return;
+        if (string.IsNullOrWhiteSpace(_userInput) || _isThinking || _isSending)
+            return;
 
-        var userMsg = new ChatMessage { Content = _userInput, IsUser = true, Id = Guid.NewGuid().ToString() };
+        // Validation
+        if (_userInput.Length > 2000)
+        {
+            _errorMessage = "Message is too long. Maximum 2000 characters.";
+            StateHasChanged();
+            return;
+        }
+
+        // Sanitize input
+        var sanitizedInput = _userInput.Trim();
+        if (string.IsNullOrEmpty(sanitizedInput))
+            return;
+
+        // Rate limiting
+        _isSending = true;
+        _errorMessage = "";
+
+        var userMsg = new ChatMessage { Content = sanitizedInput, IsUser = true, Id = Guid.NewGuid().ToString() };
         _messages.Add(userMsg);
-        var prompt = _userInput;
+        var prompt = sanitizedInput;
         _userInput = "";
         _isThinking = true;
 
+        // Single state change for all mutations
+        _lastRenderTime = DateTime.UtcNow;
         StateHasChanged();
         ScrollToBottom();
 
-        await ChatBridge.SubmitPromptAsync(prompt, _conversationId);
+        // Cancellation token for long calls
+        _cts = new CancellationTokenSource();
+        _cts.CancelAfter(TimeSpan.FromMinutes(5)); // Timeout after 5 minutes
+
+        try
+        {
+            await ChatBridge.SubmitPromptAsync(prompt, _conversationId, _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error sending message: {ex.Message}";
+            _isThinking = false;
+            _lastRenderTime = DateTime.UtcNow;
+            StateHasChanged();
+        }
+        finally
+        {
+            _isSending = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
     }
 
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !e.ShiftKey)
         {
-            await SendMessage();
+            await SendMessageAsync();
         }
     }
 
@@ -198,5 +262,7 @@
     public void Dispose()
     {
         ChatBridge.OnMessageReceived -= HandleMessageReceived;
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 }

@@ -10,6 +10,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
@@ -41,20 +43,19 @@ namespace WileyWidget.WinForms.Controls
     }
 
     /// <summary>
-    /// Budget overview panel (UserControl) displaying budget vs actual analysis with
+    /// Budget overview panel displaying budget vs actual analysis with
     /// fiscal year filtering, variance tracking, and CSV export capabilities.
-    /// Designed for embedding in DockingManager.
+    /// Designed for embedding in DockingManager with DI-scoped lifecycle.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class BudgetOverviewPanel : UserControl
+    public partial class BudgetOverviewPanel : ScopedPanelBase<BudgetOverviewViewModel>
     {
-        private readonly BudgetOverviewViewModel _vm;
-        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper;
+        private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper = null;
 
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
         /// </summary>
-        public new object? DataContext { get; private set; }
+        // DataContext managed by ScopedPanelBase
 
         // Controls
         private PanelHeader? _panelHeader;
@@ -82,21 +83,22 @@ namespace WileyWidget.WinForms.Controls
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
+        private EventHandler? _fiscalYearSelectedChangedHandler;
+        private EventHandler? _refreshButtonClickHandler;
+        private EventHandler? _exportButtonClickHandler;
+
+        // Data binding sources
+        private BindingSource? _fiscalYearBindingSource;
+        private BindingSource? _summaryBindingSource;
 
         /// <summary>
-        /// Parameterless constructor for DI/designer support.
+        /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        internal BudgetOverviewPanel() : this(new BudgetOverviewViewModel(), null)
+        public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<BudgetOverviewViewModel>>? logger)
+            : base(scopeFactory, logger)
         {
-        }
-
-        // Runtime resolution helpers removed in favor of constructor injection and explicit test/designer fallbacks.
-
-        public BudgetOverviewPanel(BudgetOverviewViewModel vm, WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
-        {
-            _dispatcherHelper = dispatcherHelper;
-            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-            DataContext = vm;
+            // Dispatcher helper resolved from scope if available
+            // _dispatcherHelper = TryGetService<WileyWidget.Services.Threading.IDispatcherHelper>();
 
             InitializeComponent();
 
@@ -104,9 +106,43 @@ namespace WileyWidget.WinForms.Controls
             try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
             SetupUI();
             BindViewModel();
-            ApplyCurrentTheme();
+                }
 
-            // Theme changes are handled by SfSkinManager cascade
+        public override async Task LoadAsync(CancellationToken ct = default)
+        {
+            IsBusy = true;
+            try
+            {
+                if (ViewModel != null)
+                {
+                    await ViewModel.InitializeAsync(ct);
+                }
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
+        {
+            // Validate that fiscal years are available
+            if (ViewModel == null)
+                return await Task.FromResult(ValidationResult.Failed(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error)));
+            
+            if (!ViewModel.AvailableFiscalYears.Any())
+                return await Task.FromResult(ValidationResult.Failed(new ValidationItem("FiscalYear", "No fiscal year data available", ValidationSeverity.Error)));
+            
+            if (!ViewModel.Metrics.Any())
+                return await Task.FromResult(ValidationResult.Failed(new ValidationItem("Metrics", "No budget metrics available", ValidationSeverity.Warning)));
+            
+            return await Task.FromResult(ValidationResult.Success);
+        }
+
+        public override async Task<ValidationResult> SaveAsync(CancellationToken ct = default)
+        {
+            // Budget overview is read-only, no save needed
+            return await Task.FromResult(ValidationResult.Success);
         }
 
         private void InitializeComponent()
@@ -125,8 +161,11 @@ namespace WileyWidget.WinForms.Controls
         {
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
+            var tooltips = new ToolTip();
 
-            // Panel header
+            // Initialize binding sources for MVVM data binding
+            _fiscalYearBindingSource = new BindingSource();
+            _summaryBindingSource = new BindingSource();
             _panelHeader = new PanelHeader { Dock = DockStyle.Top };
             _panelHeader.Title = BudgetOverviewPanelResources.PanelTitle;
             _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
@@ -178,9 +217,11 @@ namespace WileyWidget.WinForms.Controls
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 AccessibleName = "Fiscal year selector",
                 AccessibleDescription = "Select the fiscal year to view budget data",
-                Margin = new Padding(0, 2, 0, 2)
+                Margin = new Padding(0, 2, 0, 2),
+                DataSource = _fiscalYearBindingSource
             };
-            _comboFiscalYear.SelectedIndexChanged += ComboFiscalYear_SelectedIndexChanged;
+            _fiscalYearSelectedChangedHandler = ComboFiscalYear_SelectedIndexChanged;
+            _comboFiscalYear.SelectedIndexChanged += _fiscalYearSelectedChangedHandler;
             toolbar.Controls.Add(_comboFiscalYear, 1, 0);
 
             // Spacer
@@ -196,7 +237,8 @@ namespace WileyWidget.WinForms.Controls
                 Margin = new Padding(0, 2, 0, 2)
             };
             SetupRefreshButtonIcon();
-            _btnRefresh.Click += async (s, e) => await RefreshDataAsync();
+            _refreshButtonClickHandler = OnRefreshButtonClick;
+            _btnRefresh.Click += _refreshButtonClickHandler;
             toolbar.Controls.Add(_btnRefresh, 3, 0);
 
             // Spacer
@@ -212,7 +254,8 @@ namespace WileyWidget.WinForms.Controls
                 Margin = new Padding(0, 2, 0, 2)
             };
             SetupExportButtonIcon();
-            _btnExportCsv.Click += async (s, e) => await ExportToCsvAsync();
+            _exportButtonClickHandler = OnExportCsvClick;
+            _btnExportCsv.Click += _exportButtonClickHandler;
             toolbar.Controls.Add(_btnExportCsv, 5, 0);
 
             _topPanel.Controls.Add(toolbar);
@@ -230,12 +273,31 @@ namespace WileyWidget.WinForms.Controls
             SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
 
-            // Create summary tiles
+            // Create summary tiles with data bindings
             _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", Color.DodgerBlue);
+            _lblTotalBudget.DataBindings.Add("Text", _summaryBindingSource, nameof(BudgetOverviewViewModel.TotalBudgeted), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            _lblTotalBudget.AccessibleName = "Total Budget";
+            tooltips.SetToolTip(_lblTotalBudget, "Total budgeted amount across all departments");
+
             _lblTotalActual = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalActualLabel, "$0", Color.Green);
+            _lblTotalActual.DataBindings.Add("Text", _summaryBindingSource, nameof(BudgetOverviewViewModel.TotalActual), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            _lblTotalActual.AccessibleName = "Total Actual";
+            tooltips.SetToolTip(_lblTotalActual, "Total actual spending across all departments");
+
             _lblVariance = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.VarianceLabel, "$0", Color.Orange);
+            _lblVariance.DataBindings.Add("Text", _summaryBindingSource, nameof(BudgetOverviewViewModel.TotalVariance), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            _lblVariance.AccessibleName = "Total Variance";
+            tooltips.SetToolTip(_lblVariance, "Budget vs actual variance (negative = over budget)");
+
             _lblOverBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.OverBudgetLabel, "0", Color.Red);
+            _lblOverBudgetCount.DataBindings.Add("Text", _summaryBindingSource, nameof(BudgetOverviewViewModel.OverBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
+            _lblOverBudgetCount.AccessibleName = "Over Budget Count";
+            tooltips.SetToolTip(_lblOverBudgetCount, "Number of departments over budget");
+
             _lblUnderBudgetCount = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.UnderBudgetLabel, "0", Color.Green);
+            _lblUnderBudgetCount.DataBindings.Add("Text", _summaryBindingSource, nameof(BudgetOverviewViewModel.UnderBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
+            _lblUnderBudgetCount.AccessibleName = "Under Budget Count";
+            tooltips.SetToolTip(_lblUnderBudgetCount, "Number of departments under budget");
 
             _summaryPanel.Controls.Add(summaryFlow);
             Controls.Add(_summaryPanel);
@@ -260,7 +322,8 @@ namespace WileyWidget.WinForms.Controls
             ConfigureChart();
             mainSplit.Panel1.Controls.Add(_varianceChart);
 
-            // Metrics grid
+            // Metrics grid with data binding
+            var gridBindingSource = new BindingSource();
             _metricsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
@@ -276,12 +339,11 @@ namespace WileyWidget.WinForms.Controls
                 AllowResizingColumns = true,
                 AllowTriStateSorting = true,
                 AccessibleName = "Budget metrics grid",
-                AccessibleDescription = "Displays budget metrics by department"
+                AccessibleDescription = "Displays budget metrics by department",
+                ThemeName = currentTheme,
+                DataSource = gridBindingSource
             };
-            // Theme applied automatically by SkinManager cascade from parent form
             ConfigureGridColumns();
-
-            // Grid theming handled by SkinManager cascade
 
             mainSplit.Panel2.Controls.Add(_metricsGrid);
 
@@ -385,9 +447,9 @@ namespace WileyWidget.WinForms.Controls
             if (_metricsGrid == null) return;
 
             _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 150 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 120 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120 });
-            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 120 });
+            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 120, Format = "C2" });
+            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120, Format = "C2" });
+            _metricsGrid.Columns.Add(new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 120, Format = "C2" });
             _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 100 });
         }
 
@@ -436,26 +498,45 @@ namespace WileyWidget.WinForms.Controls
 
         private void BindViewModel()
         {
-            // Bind fiscal years combo
+            // Bind fiscal years combo via BindingSource
             try
             {
-                if (_comboFiscalYear != null && _vm.AvailableFiscalYears.Any())
+                if (_fiscalYearBindingSource != null && ViewModel != null)
                 {
-                    _comboFiscalYear.DataSource = _vm.AvailableFiscalYears.ToList();
-                    _comboFiscalYear.SelectedItem = _vm.SelectedFiscalYear;
+                    _fiscalYearBindingSource.DataSource = ViewModel.AvailableFiscalYears.ToList();
                 }
             }
             catch { }
 
-            // Subscribe to property changes
+            // Bind summary tiles via BindingSource (currency/count formatting handled by DataBindings)
+            if (_summaryBindingSource != null && ViewModel != null)
+            {
+                _summaryBindingSource.DataSource = ViewModel;
+            }
+
+            // Bind metrics grid via BindingSource
+            if (ViewModel?.Metrics != null)
+            {
+                var gridBinding = _metricsGrid?.DataSource as BindingSource;
+                if (gridBinding != null)
+                {
+                    gridBinding.DataSource = ViewModel.Metrics;
+                }
+            }
+
+            // Subscribe to property changes for UI-only updates (IsLoading, ErrorMessage)
             _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-            _vm.PropertyChanged += _viewModelPropertyChangedHandler;
+            if (ViewModel != null)
+                ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
-            // Subscribe to metrics collection changes
-            _vm.Metrics.CollectionChanged -= (s, e) => UpdateUI();  // Remove old
-            _vm.Metrics.CollectionChanged += BudgetMetrics_CollectionChanged;  // Add safe handler
+            // Subscribe to metrics collection changes for overlay visibility
+            if (ViewModel != null)
+            {
+                ViewModel.Metrics.CollectionChanged -= (s, e) => UpdateUI();  // Remove old
+                ViewModel.Metrics.CollectionChanged += BudgetMetrics_CollectionChanged;  // Add safe handler
+            }
 
-            // Initial UI update
+            // Initial UI update for overlays
             UpdateUI();
         }
 
@@ -476,7 +557,7 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (IsDisposed) return;
+                if (IsDisposed || ViewModel == null) return;
 
                 if (_dispatcherHelper != null && !_dispatcherHelper.CheckAccess())
                 {
@@ -491,24 +572,24 @@ namespace WileyWidget.WinForms.Controls
 
                 switch (e.PropertyName)
                 {
-                    case nameof(_vm.IsLoading):
-                        if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading;
+                    case nameof(ViewModel.IsLoading):
+                        if (_loadingOverlay != null) _loadingOverlay.Visible = ViewModel.IsLoading;
                         break;
 
-                    case nameof(_vm.Metrics):
-                    case nameof(_vm.TotalBudgeted):
-                    case nameof(_vm.TotalActual):
-                    case nameof(_vm.TotalVariance):
-                    case nameof(_vm.OverBudgetCount):
-                    case nameof(_vm.UnderBudgetCount):
-                    case nameof(_vm.LastUpdated):
+                    case nameof(ViewModel.Metrics):
+                    case nameof(ViewModel.TotalBudgeted):
+                    case nameof(ViewModel.TotalActual):
+                    case nameof(ViewModel.TotalVariance):
+                    case nameof(ViewModel.OverBudgetCount):
+                    case nameof(ViewModel.UnderBudgetCount):
+                    case nameof(ViewModel.LastUpdated):
                         UpdateUI();
                         break;
 
-                    case nameof(_vm.ErrorMessage):
-                        if (!string.IsNullOrEmpty(_vm.ErrorMessage))
+                    case nameof(ViewModel.ErrorMessage):
+                        if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
                         {
-                            _errorProvider?.SetError(this, _vm.ErrorMessage);
+                            _errorProvider?.SetError(this, ViewModel.ErrorMessage);
                         }
                         else
                         {
@@ -528,44 +609,28 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (IsDisposed) return;
+                if (IsDisposed || ViewModel == null) return;
 
-                // Update summary tiles
-                if (_lblTotalBudget != null)
-                    _lblTotalBudget.Text = _vm.TotalBudgeted.ToString("C0", CultureInfo.CurrentCulture);
-                if (_lblTotalActual != null)
-                    _lblTotalActual.Text = _vm.TotalActual.ToString("C0", CultureInfo.CurrentCulture);
+                // Summary tiles are now bound via BindingSource - no manual update needed
+                // Just update semantic color for variance (red = over, green = under)
                 if (_lblVariance != null)
                 {
-                    _lblVariance.Text = _vm.TotalVariance.ToString("C0", CultureInfo.CurrentCulture);
-                    _lblVariance.ForeColor = _vm.TotalVariance >= 0 ? Color.Red : Color.Green;  // Semantic: red for over, green for under
+                    _lblVariance.ForeColor = ViewModel.TotalVariance >= 0 ? Color.Red : Color.Green;  // Semantic: red for over, green for under
                 }
-                if (_lblOverBudgetCount != null)
-                    _lblOverBudgetCount.Text = _vm.OverBudgetCount.ToString(CultureInfo.CurrentCulture);
-                if (_lblUnderBudgetCount != null)
-                    _lblUnderBudgetCount.Text = _vm.UnderBudgetCount.ToString(CultureInfo.CurrentCulture);
+
+                // Update last-updated timestamp
                 if (_lblLastUpdated != null)
-                    _lblLastUpdated.Text = $"Last updated: {_vm.LastUpdated:yyyy-MM-dd HH:mm:ss}";
+                    _lblLastUpdated.Text = $"Last updated: {ViewModel.LastUpdated:yyyy-MM-dd HH:mm:ss}";
 
                 // Update chart
                 UpdateChart();
 
-                // Update grid
-                if (_metricsGrid != null)
-                {
-                    try
-                    {
-                        _metricsGrid.SuspendLayout();
-                        var snapshot = _vm.Metrics.ToList();
-                        _metricsGrid.DataSource = snapshot;
-                        _metricsGrid.ResumeLayout();
-                    }
-                    catch { }
-                }
+                // Update grid with no-data check (grid data is bound via BindingSource)
+                UpdateMetricsGrid();
 
                 // Show no-data overlay if needed
                 if (_noDataOverlay != null)
-                    _noDataOverlay.Visible = !_vm.IsLoading && !_vm.Metrics.Any();
+                    _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Metrics.Any();
             }
             catch (Exception ex)
             {
@@ -573,9 +638,26 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        private void UpdateMetricsGrid()
+        {
+            if (_metricsGrid == null || ViewModel == null) return;
+
+            try
+            {
+                // Grid is bound via BindingSource which auto-updates on collection changes
+                // This method now only handles layout refresh if needed
+                _metricsGrid.SuspendLayout();
+                _metricsGrid.ResumeLayout();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateMetricsGrid failed");
+            }
+        }
+
         private void UpdateChart()
         {
-            if (_varianceChart == null) return;
+            if (_varianceChart == null || ViewModel == null) return;
 
             try
             {
@@ -584,7 +666,7 @@ namespace WileyWidget.WinForms.Controls
                 var budgetSeries = new ChartSeries("Budgeted", ChartSeriesType.Column);
                 var actualSeries = new ChartSeries("Actual", ChartSeriesType.Column);
 
-                foreach (var metric in _vm.Metrics.Take(10)) // Limit to top 10 for chart readability
+                foreach (var metric in ViewModel.Metrics.Take(10)) // Limit to top 10 for chart readability
                 {
                     budgetSeries.Points.Add(metric.DepartmentName, (double)metric.BudgetedAmount);
                     actualSeries.Points.Add(metric.DepartmentName, (double)metric.Amount);
@@ -604,9 +686,9 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (_comboFiscalYear?.SelectedItem is int year && year != _vm.SelectedFiscalYear)
+                if (_comboFiscalYear?.SelectedItem is int year && ViewModel != null && year != ViewModel.SelectedFiscalYear)
                 {
-                    _vm.SelectedFiscalYear = year;
+                    ViewModel.SelectedFiscalYear = year;
                 }
             }
             catch { }
@@ -616,7 +698,8 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                await _vm.RefreshCommand.ExecuteAsync(null);
+                if (ViewModel != null)
+                    await ViewModel.RefreshCommand.ExecuteAsync(null);
             }
             catch (Exception ex)
             {
@@ -629,19 +712,29 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                if (ViewModel == null) return;
+
                 using var sfd = new SaveFileDialog
                 {
                     Filter = "CSV Files|*.csv",
                     DefaultExt = "csv",
-                    FileName = $"budget-overview-{_vm.SelectedFiscalYear}.csv"
+                    FileName = $"budget-overview-{ViewModel.SelectedFiscalYear}.csv"
                 };
 
                 if (sfd.ShowDialog() != DialogResult.OK) return;
 
+                // Sanitize file path
+                var filePath = Path.GetFullPath(sfd.FileName);
+                if (!IsValidFilePath(filePath))
+                {
+                    MessageBox.Show("Invalid file path", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 var sb = new StringBuilder();
                 sb.AppendLine("Department,Budgeted,Actual,Variance,Variance %,Over Budget");
 
-                foreach (var metric in _vm.Metrics)
+                foreach (var metric in ViewModel.Metrics)
                 {
                     sb.AppendLine(string.Concat(
                         '"', metric.DepartmentName, '"', ",",
@@ -656,18 +749,33 @@ namespace WileyWidget.WinForms.Controls
                 sb.AppendLine();
                 sb.AppendLine(string.Concat(
                     '"', "TOTAL", '"', ",",
-                    _vm.TotalBudgeted.ToString(CultureInfo.InvariantCulture), ",",
-                    _vm.TotalActual.ToString(CultureInfo.InvariantCulture), ",",
-                    _vm.TotalVariance.ToString(CultureInfo.InvariantCulture), ",",
-                    _vm.OverallVariancePercent.ToString("F2", CultureInfo.InvariantCulture), ","));
+                    ViewModel.TotalBudgeted.ToString(CultureInfo.InvariantCulture), ",",
+                    ViewModel.TotalActual.ToString(CultureInfo.InvariantCulture), ",",
+                    ViewModel.TotalVariance.ToString(CultureInfo.InvariantCulture), ",",
+                    ViewModel.OverallVariancePercent.ToString("F2", CultureInfo.InvariantCulture), ","));
 
-                await File.WriteAllTextAsync(sfd.FileName, sb.ToString());
-                MessageBox.Show($"Exported to {sfd.FileName}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await File.WriteAllTextAsync(filePath, sb.ToString());
+                MessageBox.Show($"Exported to {filePath}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "BudgetOverviewPanel: Export to CSV failed");
                 MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private static bool IsValidFilePath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            try
+            {
+                var fi = new FileInfo(path);
+                return fi.DirectoryName != null && Directory.Exists(fi.DirectoryName) && 
+                       !Path.GetInvalidPathChars().Any(c => fi.Name.Contains(c));
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -689,6 +797,16 @@ namespace WileyWidget.WinForms.Controls
             {
                 Serilog.Log.Warning(ex, "BudgetOverviewPanel: ClosePanel failed");
             }
+        }
+
+        private async void OnRefreshButtonClick(object? sender, EventArgs e)
+        {
+            await RefreshDataAsync();
+        }
+
+        private async void OnExportCsvClick(object? sender, EventArgs e)
+        {
+            await ExportToCsvAsync();
         }
 
         private void OnThemeChanged(object? sender, string theme)
@@ -748,8 +866,8 @@ namespace WileyWidget.WinForms.Controls
             {
                 // Unsubscribe from events
                 // Theme subscriptions removed - handled by SfSkinManager
-                try { if (_viewModelPropertyChangedHandler != null) _vm.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
-                try { _vm.Metrics.CollectionChanged -= BudgetMetrics_CollectionChanged; } catch { }
+                try { if (_viewModelPropertyChangedHandler != null && ViewModel != null) ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
+                try { if (ViewModel != null) ViewModel.Metrics.CollectionChanged -= BudgetMetrics_CollectionChanged; } catch { }
 
                 try
                 {
@@ -758,8 +876,26 @@ namespace WileyWidget.WinForms.Controls
                         if (_panelHeaderRefreshHandler != null) _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
                         if (_panelHeaderCloseHandler != null) _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
                     }
+                    if (_comboFiscalYear != null && _fiscalYearSelectedChangedHandler != null)
+                    {
+                        _comboFiscalYear.SelectedIndexChanged -= _fiscalYearSelectedChangedHandler;
+                    }
+                    if (_btnRefresh != null && _refreshButtonClickHandler != null)
+                    {
+                        _btnRefresh.Click -= _refreshButtonClickHandler;
+                    }
+                    if (_btnExportCsv != null && _exportButtonClickHandler != null)
+                    {
+                        _btnExportCsv.Click -= _exportButtonClickHandler;
+                    }
                 }
                 catch { }
+
+                // Dispose binding sources
+                try { _fiscalYearBindingSource?.Dispose(); } catch { }
+                try { _summaryBindingSource?.Dispose(); } catch { }
+                _fiscalYearBindingSource = null;
+                _summaryBindingSource = null;
 
                 // Dispose controls
                 try { _metricsGrid?.SafeClearDataSource(); } catch { }

@@ -259,53 +259,73 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         for (int i = 0; i < 6; i++)
             summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
 
+        var tooltip = new ToolTip();
+
         _totalBudgetedLabel = new Label
         {
             Text = "Total Budgeted: $0.00",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Total Budgeted",
+            AccessibleDescription = "Sum of all budgeted amounts across entries"
         };
+        tooltip.SetToolTip(_totalBudgetedLabel, "Total budgeted amount for all entries");
 
         _totalActualLabel = new Label
         {
             Text = "Total Actual: $0.00",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Total Actual",
+            AccessibleDescription = "Sum of all actual amounts across entries"
         };
+        tooltip.SetToolTip(_totalActualLabel, "Total actual spending for all entries");
 
         _totalVarianceLabel = new Label
         {
             Text = "Total Variance: $0.00",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Total Variance",
+            AccessibleDescription = "Difference between budgeted and actual amounts"
         };
+        tooltip.SetToolTip(_totalVarianceLabel, "Total variance (budgeted - actual)");
 
         _percentUsedLabel = new Label
         {
             Text = "Percent Used: 0.00%",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Percent Used",
+            AccessibleDescription = "Percentage of budget consumed by actual spending"
         };
+        tooltip.SetToolTip(_percentUsedLabel, "Percentage of budget used (actual / budgeted)");
 
         _entriesOverBudgetLabel = new Label
         {
             Text = "Over Budget: 0",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Over Budget Count",
+            AccessibleDescription = "Number of entries exceeding budget"
         };
+        tooltip.SetToolTip(_entriesOverBudgetLabel, "Number of entries over budget");
 
         _entriesUnderBudgetLabel = new Label
         {
             Text = "Under Budget: 0",
             Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Under Budget Count",
+            AccessibleDescription = "Number of entries within budget"
         };
+        tooltip.SetToolTip(_entriesUnderBudgetLabel, "Number of entries under budget");
 
         summaryTable.Controls.Add(_totalBudgetedLabel, 0, 0);
         summaryTable.Controls.Add(_totalActualLabel, 1, 0);
@@ -821,7 +841,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     }
 
     /// <summary>
-    /// Binds ViewModel properties to UI controls.
+    /// Binds ViewModel properties to UI controls using DataBindings for two-way binding.
     /// </summary>
     private void BindViewModel()
     {
@@ -830,33 +850,165 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Wire up ViewModel property changes
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        // Initialize BindingSource for safe data binding
+        // Create BindingSource for the ViewModel
+        var viewModelBinding = new BindingSource
+        {
+            DataSource = ViewModel
+        };
+
+        // Initialize BindingSource for grid data
         if (_budgetBindingSource == null)
         {
             _budgetBindingSource = new BindingSource();
         }
 
-        // Bind grid data source through BindingSource - prevents direct casts
+        // Bind grid data source through BindingSource
         if (_budgetGrid != null)
         {
             _budgetBindingSource.DataSource = ViewModel.FilteredBudgetEntries;
             _budgetGrid.DataSource = _budgetBindingSource;
         }
 
+        // Bind search textbox with two-way binding
+        if (_searchTextBox != null)
+        {
+            _searchTextBox.DataBindings.Add(
+                nameof(_searchTextBox.Text),
+                viewModelBinding,
+                nameof(ViewModel.SearchText),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind variance threshold textbox
+        if (_varianceThresholdTextBox != null)
+        {
+            _varianceThresholdTextBox.DataBindings.Add(
+                nameof(_varianceThresholdTextBox.Text),
+                viewModelBinding,
+                nameof(ViewModel.VarianceThreshold),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind over budget checkbox
+        if (_overBudgetCheckBox != null)
+        {
+            _overBudgetCheckBox.DataBindings.Add(
+                nameof(_overBudgetCheckBox.Checked),
+                viewModelBinding,
+                nameof(ViewModel.ShowOnlyOverBudget),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind under budget checkbox
+        if (_underBudgetCheckBox != null)
+        {
+            _underBudgetCheckBox.DataBindings.Add(
+                nameof(_underBudgetCheckBox.Checked),
+                viewModelBinding,
+                nameof(ViewModel.ShowOnlyUnderBudget),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind summary labels
+        if (_totalBudgetedLabel != null)
+        {
+            _totalBudgetedLabel.DataBindings.Add(
+                nameof(_totalBudgetedLabel.Text),
+                viewModelBinding,
+                nameof(ViewModel.TotalBudgeted),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Budgeted: {0:C}");
+        }
+
+        if (_totalActualLabel != null)
+        {
+            _totalActualLabel.DataBindings.Add(
+                nameof(_totalActualLabel.Text),
+                viewModelBinding,
+                nameof(ViewModel.TotalActual),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Actual: {0:C}");
+        }
+
+        if (_totalVarianceLabel != null)
+        {
+            _totalVarianceLabel.DataBindings.Add(
+                nameof(_totalVarianceLabel.Text),
+                viewModelBinding,
+                nameof(ViewModel.TotalVariance),
+                true,
+                DataSourceUpdateMode.OnPropertyChanged,
+                null,
+                "Variance: {0:C}");
+        }
+
+        // Bind status strip
+        if (_statusLabel != null)
+        {
+            _statusLabel.DataBindings.Add(
+                nameof(_statusLabel.Text),
+                viewModelBinding,
+                nameof(ViewModel.StatusText),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
         // Bind entity combo list if available
         if (_entityComboBox != null)
         {
             _entityComboBox.DataSource = ViewModel.AvailableEntities ?? new ObservableCollection<string>(new[] { "All Entities" });
-            // Default selection
-            if (ViewModel.SelectedEntity == null && ViewModel.AvailableEntities != null && ViewModel.AvailableEntities.Contains("All Entities"))
-                _entityComboBox.SelectedItem = "All Entities";
-            else
-                _entityComboBox.SelectedItem = ViewModel.SelectedEntity;
 
-            // Ensure handler is attached (prevent duplicate handlers)
-            _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
-            _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
+            // Bind selected entity with two-way binding
+            _entityComboBox.DataBindings.Add(
+                nameof(_entityComboBox.SelectedItem),
+                viewModelBinding,
+                nameof(ViewModel.SelectedEntity),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
         }
+
+        // Bind fiscal year combo
+        if (_fiscalYearComboBox != null)
+        {
+            _fiscalYearComboBox.DataBindings.Add(
+                nameof(_fiscalYearComboBox.SelectedItem),
+                viewModelBinding,
+                nameof(ViewModel.SelectedFiscalYear),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind department combo (using DepartmentId)
+        if (_departmentComboBox != null)
+        {
+            _departmentComboBox.DataBindings.Add(
+                nameof(_departmentComboBox.SelectedValue),
+                viewModelBinding,
+                nameof(ViewModel.SelectedDepartmentId),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        // Bind fund type combo
+        if (_fundTypeComboBox != null)
+        {
+            _fundTypeComboBox.DataBindings.Add(
+                nameof(_fundTypeComboBox.SelectedItem),
+                viewModelBinding,
+                nameof(ViewModel.SelectedFundType),
+                false,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        Logger.LogDebug("BudgetPanel ViewModel bound with DataBindings");
     }
 
     /// <summary>
@@ -997,7 +1149,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void BudgetGrid_CurrentCellActivated(object? sender, EventArgs e)
     {
-        // Handle grid selection if needed
+        // Track that user is editing grid cell
+        SetHasUnsavedChanges(true);
     }
 
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
@@ -1748,6 +1901,50 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     }
 
     /// <summary>
+    /// Overrides ValidateAsync to validate budget entries and panel state.
+    /// </summary>
+    public override async Task<ValidationResult> ValidateAsync(CancellationToken ct)
+    {
+        var errors = new List<ValidationItem>();
+
+        // Check ViewModel is loaded
+        if (ViewModel == null)
+        {
+            errors.Add(new ValidationItem("ViewModel", "Budget data not loaded", ValidationSeverity.Error, this));
+            return ValidationResult.Failed(errors.ToArray());
+        }
+
+        // Check grid has data
+        if (ViewModel.BudgetEntries == null || !ViewModel.BudgetEntries.Any())
+        {
+            errors.Add(new ValidationItem("Entries", "No budget entries available", ValidationSeverity.Warning, _budgetGrid));
+        }
+
+        // Validate that fiscal year is selected
+        if (ViewModel.SelectedFiscalYear <= 0)
+        {
+            errors.Add(new ValidationItem("FiscalYear", "Fiscal year must be selected", ValidationSeverity.Error, _fiscalYearComboBox));
+        }
+
+        return await Task.FromResult(
+            errors.Count > 0 ? ValidationResult.Failed(errors.ToArray()) : ValidationResult.Success);
+    }
+
+    /// <summary>
+    /// Overrides FocusFirstError to focus the first control with validation error.
+    /// </summary>
+    public override void FocusFirstError()
+    {
+        if (ValidationErrors.Count == 0) return;
+
+        var firstError = ValidationErrors.FirstOrDefault();
+        if (firstError?.ControlRef is Control control && !control.IsDisposed)
+        {
+            control.Focus();
+        }
+    }
+
+    /// <summary>
     /// Overrides SaveAsync to persist changes with proper validation and error handling.
     /// </summary>
     public override async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -1766,10 +1963,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             if (!validation.IsValid)
             {
                 ShowValidationDialog(validation);
+                FocusFirstError();
                 return;
             }
 
-            // Perform save - this would typically use ViewModel's save command
+            // Budget data is persisted via CRUD operations (Add/Edit/Delete)
+            // No explicit save command needed - entries are saved individually
             UpdateStatus("Changes saved successfully");
             SetHasUnsavedChanges(false);
         }
@@ -1810,6 +2009,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     public override async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        if (IsLoaded) return; // Prevent double-load
+        
         if (ViewModel == null) return;
 
         var operationToken = RegisterOperation();
@@ -1823,6 +2024,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
 
             UpdateStatus("Data loaded successfully");
+            SetHasUnsavedChanges(false); // Clear dirty flag after load
         }
         catch (OperationCanceledException)
         {

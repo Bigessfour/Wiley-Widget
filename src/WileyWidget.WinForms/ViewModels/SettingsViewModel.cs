@@ -54,6 +54,7 @@ namespace WileyWidget.WinForms.ViewModels
                 XaiTimeout = cur.XaiTimeout;
                 XaiMaxTokens = cur.XaiMaxTokens;
                 XaiTemperature = cur.XaiTemperature;
+                ApplicationFont = cur.ApplicationFont ?? "Segoe UI, 9pt";
             }
 
             _logger.LogInformation("SettingsViewModel initialized with default export path: {DefaultExportPath}", DefaultExportPath);
@@ -93,6 +94,9 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private int autoSaveIntervalMinutes = 5;
+
+        [ObservableProperty]
+        private string applicationFont = "Segoe UI, 9pt";
 
         [ObservableProperty]
         private string logLevel = "Information";
@@ -162,6 +166,16 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnAutoSaveIntervalMinutesChanged(int value)
         {
             _logger.LogInformation("AutoSaveIntervalMinutes changed to: {AutoSaveIntervalMinutes}", value);
+            MarkDirty();
+        }
+
+        partial void OnApplicationFontChanged(string value)
+        {
+            _logger.LogInformation("ApplicationFont changed to: {ApplicationFont}", value);
+            if (_settingsService != null)
+            {
+                _settingsService.Current.ApplicationFont = value;
+            }
             MarkDirty();
         }
 
@@ -284,6 +298,7 @@ namespace WileyWidget.WinForms.ViewModels
                 XaiTimeout = cur.XaiTimeout;
                 XaiMaxTokens = cur.XaiMaxTokens;
                 XaiTemperature = cur.XaiTemperature;
+                ApplicationFont = cur.ApplicationFont ?? "Segoe UI, 9pt";
 
                 HasUnsavedChanges = false;
             }

@@ -2,7 +2,10 @@ using System;
 using System.Drawing;
 using System.ComponentModel;
 using System.Windows.Forms;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls
 {

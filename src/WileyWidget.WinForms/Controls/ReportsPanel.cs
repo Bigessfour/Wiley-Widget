@@ -66,8 +66,19 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SplitContainer? _mainSplitContainer;
     private SplitContainer? _parametersSplitContainer;
 
-    // Event handlers for proper cleanup
-// Event handlers removed - not assigned in current design
+    // Event handlers for proper cleanup (Pattern A & K)
+    private EventHandler? _panelHeaderRefreshClickedHandler;
+    private EventHandler? _panelHeaderCloseClickedHandler;
+    private EventHandler? _loadReportButtonClickHandler;
+    private EventHandler? _exportPdfButtonClickHandler;
+    private EventHandler? _exportExcelButtonClickHandler;
+    private EventHandler? _printButtonClickHandler;
+    private EventHandler? _parametersButtonClickHandler;
+    private EventHandler? _applyParametersButtonClickHandler;
+    private EventHandler? _closeParametersButtonClickHandler;
+    private EventHandler? _reportSelectorSelectedIndexChangedHandler;
+    private EventHandler? _handleCreatedHandler;
+    private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
 
 
     /// <summary>
@@ -110,17 +121,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             return;
         }
 
-        EventHandler? handleCreatedHandler = null;
-        handleCreatedHandler = (s, e) =>
+        // Store handler for cleanup (Pattern A)
+        _handleCreatedHandler = (s, e) =>
         {
-            HandleCreated -= handleCreatedHandler;
+            HandleCreated -= _handleCreatedHandler;
             if (IsDisposed) return;
 
             try { BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _))); }
             catch { }
         };
 
-        HandleCreated += handleCreatedHandler;
+        HandleCreated += _handleCreatedHandler;
     }
 
     /// <summary>
@@ -137,11 +148,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             // Auto-load the report after the panel is fully initialized
             if (IsHandleCreated && ViewModel != null)
             {
-                BeginInvoke(new System.Action(() => LoadInitialReport()));
+                BeginInvoke(new System.Action(async () => await LoadInitialReportAsync()));
             }
             else
             {
-                HandleCreated += (s, e) => LoadInitialReport();
+                EventHandler? handleCreatedForInitial = null;
+                handleCreatedForInitial = async (s, e) =>
+                {
+                    HandleCreated -= handleCreatedForInitial;
+                    await LoadInitialReportAsync();
+                };
+                HandleCreated += handleCreatedForInitial;
             }
         }
         else if (parameters != null)
@@ -166,11 +183,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 UpdateStatus($"Failed to load report: {ex.Message}");
             }
         }
-    }
-
-    private void LoadInitialReport()
-    {
-        _ = LoadInitialReportAsync();
     }
 
     private void InitializeControls()
@@ -200,8 +212,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             if (dh != null && txtProp != null) txtProp.SetValue(dh, "Reports");
         }
         catch { }
-        _panelHeader.RefreshClicked += async (s, e) => await RefreshReportsAsync();
-        _panelHeader.CloseClicked += (s, e) => ClosePanel();
+        // Store handlers for cleanup (Pattern A)
+        _panelHeaderRefreshClickedHandler = async (s, e) => await RefreshReportsAsync();
+        _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
+        _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
+        _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
         Controls.Add(_panelHeader);
 
         // Main layout container with parameters panel support
@@ -300,12 +315,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Text = "&Close",
             Name = "closeParametersButton",
-            AccessibleName = "Close Parameters",
+            AccessibleName = "Close Parameters Panel",
+            AccessibleDescription = "Hides the report parameters panel",
             AutoSize = true,
             MinimumSize = new System.Drawing.Size(80, 30),
-            Margin = new Padding(0)
+            Margin = new Padding(0),
+            TabIndex = 7
         };
-        _closeParametersButton.Click += (s, e) => ToggleParametersPanel();
+        var closeParamsTooltip = new ToolTip();
+        closeParamsTooltip.SetToolTip(_closeParametersButton, "Hide parameters panel");
+        _closeParametersButtonClickHandler = (s, e) => ToggleParametersPanel();
+        _closeParametersButton.Click += _closeParametersButtonClickHandler;
         parametersButtonPanel.Controls.Add(_closeParametersButton);
 
         _applyParametersButton = new SfButton
@@ -313,11 +333,16 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "&Apply",
             Name = "applyParametersButton",
             AccessibleName = "Apply Parameters",
+            AccessibleDescription = "Applies selected parameters to the report",
             AutoSize = true,
             MinimumSize = new System.Drawing.Size(80, 30),
-            Margin = new Padding(0, 0, 10, 0)
+            Margin = new Padding(0, 0, 10, 0),
+            TabIndex = 6
         };
-        _applyParametersButton.Click += async (s, e) => await ApplyParametersAsync();
+        var applyParamsTooltip = new ToolTip();
+        applyParamsTooltip.SetToolTip(_applyParametersButton, "Apply parameters to report");
+        _applyParametersButtonClickHandler = async (s, e) => await ApplyParametersAsync();
+        _applyParametersButton.Click += _applyParametersButtonClickHandler;
         parametersButtonPanel.Controls.Add(_applyParametersButton);
 
         parametersLayout.Controls.Add(parametersButtonPanel, 0, 2);
@@ -370,25 +395,35 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _reportSelector = new SfComboBox
         {
             Name = "reportSelector",
-            AccessibleName = "reportSelector",
-            Location = new Point(65, 10),
-            Size = new Size(300, 25),
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
+            AccessibleName = "Report Selector",
+            AccessibleDescription = "Select a report template from the dropdown",
+            AutoSize = true,
+            TabIndex = 1,
+            Margin = new Padding(0, 0, 10, 0)
         };
-        _reportSelector.SelectedIndexChanged += ReportSelector_SelectedIndexChanged;
+        _reportSelector.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+        var reportSelectorTooltip = new ToolTip();
+        reportSelectorTooltip.SetToolTip(_reportSelector, "Select report template to load");
+        _reportSelectorSelectedIndexChangedHandler = (s, e) => ReportSelector_SelectedIndexChanged(s, e);
+        _reportSelector.SelectedIndexChanged += _reportSelectorSelectedIndexChangedHandler;
         toolbarFlow.Controls.Add(_reportSelector);
 
         // Load/Generate button
         _loadReportButton = new SfButton
         {
-            Text = "Generate",
+            Text = "&Generate",
             Name = "Toolbar_Generate",
-            AccessibleName = "Generate",
-            Location = new Point(380, 10),
-            Size = new Size(100, 30),
-            Enabled = false
+            AccessibleName = "Generate Report",
+            AccessibleDescription = "Load and generate the selected report",
+            AutoSize = true,
+            Enabled = false,
+            TabIndex = 2,
+            Margin = new Padding(0, 0, 10, 0)
         };
-        _loadReportButton.Click += async (s, e) => await LoadSelectedReportAsync();
+        var generateTooltip = new ToolTip();
+        generateTooltip.SetToolTip(_loadReportButton, "Load and generate selected report (Alt+G)");
+        _loadReportButtonClickHandler = async (s, e) => await LoadSelectedReportAsync();
+        _loadReportButton.Click += _loadReportButtonClickHandler;
         toolbarFlow.Controls.Add(_loadReportButton);
 
         // Parameters button
@@ -397,37 +432,52 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Text = "&Parameters",
             Name = "parametersButton",
             AccessibleName = "Toggle Parameters",
+            AccessibleDescription = "Show or hide the report parameters panel",
             AutoSize = true,
             MinimumSize = new System.Drawing.Size(100, 30),
             Enabled = false,
-            Margin = new Padding(0, 0, 10, 0)
+            Margin = new Padding(0, 0, 10, 0),
+            TabIndex = 3
         };
-        _parametersButton.Click += (s, e) => ToggleParametersPanel();
+        var parametersTooltip = new ToolTip();
+        parametersTooltip.SetToolTip(_parametersButton, "Show/hide parameters panel (Alt+P)");
+        _parametersButtonClickHandler = (s, e) => ToggleParametersPanel();
+        _parametersButton.Click += _parametersButtonClickHandler;
         toolbarFlow.Controls.Add(_parametersButton);
 
         // Export buttons
         _exportPdfButton = new SfButton
         {
-            Text = "Export PDF",
+            Text = "Export &PDF",
             Name = "Toolbar_ExportPdf",
             AccessibleName = "Export PDF",
-            Location = new Point(490, 10),
-            Size = new Size(100, 30),
-            Enabled = false
+            AccessibleDescription = "Export the report to PDF file",
+            AutoSize = true,
+            Enabled = false,
+            TabIndex = 4,
+            Margin = new Padding(0, 0, 10, 0)
         };
-        _exportPdfButton.Click += async (s, e) => await ExportToPdfAsync();
+        var exportPdfTooltip = new ToolTip();
+        exportPdfTooltip.SetToolTip(_exportPdfButton, "Export report to PDF file (Alt+P)");
+        _exportPdfButtonClickHandler = async (s, e) => await ExportToPdfAsync();
+        _exportPdfButton.Click += _exportPdfButtonClickHandler;
         toolbarFlow.Controls.Add(_exportPdfButton);
 
         _exportExcelButton = new SfButton
         {
-            Text = "Export Excel",
+            Text = "Export &Excel",
             Name = "Toolbar_ExportExcel",
             AccessibleName = "Export Excel",
-            Location = new Point(600, 10),
-            Size = new Size(100, 30),
-            Enabled = false
+            AccessibleDescription = "Export the report to Excel spreadsheet",
+            AutoSize = true,
+            Enabled = false,
+            TabIndex = 5,
+            Margin = new Padding(0, 0, 10, 0)
         };
-        _exportExcelButton.Click += async (s, e) => await ExportToExcelAsync();
+        var exportExcelTooltip = new ToolTip();
+        exportExcelTooltip.SetToolTip(_exportExcelButton, "Export report to Excel file (Alt+E)");
+        _exportExcelButtonClickHandler = async (s, e) => await ExportToExcelAsync();
+        _exportExcelButton.Click += _exportExcelButtonClickHandler;
         toolbarFlow.Controls.Add(_exportExcelButton);
 
         // Print button
@@ -435,12 +485,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Text = "&Print",
             Name = "Toolbar_Print",
-            AccessibleName = "Print",
-            Location = new Point(710, 10),
-            Size = new Size(100, 30),
-            Enabled = false
+            AccessibleName = "Print Report",
+            AccessibleDescription = "Print the current report",
+            AutoSize = true,
+            Enabled = false,
+            TabIndex = 6,
+            Margin = new Padding(0, 0, 10, 0)
         };
-        _printButton.Click += async (s, e) => await PrintReportAsync();
+        var printTooltip = new ToolTip();
+        printTooltip.SetToolTip(_printButton, "Print report (Alt+P)");
+        _printButtonClickHandler = async (s, e) => await PrintReportAsync();
+        _printButton.Click += _printButtonClickHandler;
         toolbarFlow.Controls.Add(_printButton);
 
         _toolbarPanel.Controls.Add(toolbarFlow);
@@ -545,8 +600,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Set the PreviewControl reference in ViewModel
         // ViewModel.PreviewControl = _previewControl; // Not available in Open Source
 
-        // Subscribe to ViewModel property changes
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Subscribe to ViewModel property changes (Pattern A)
+        _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+        ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Initial state update
         UpdateButtonStates();
@@ -736,6 +792,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             {
                 ViewModel.Parameters[kvp.Key] = kvp.Value;
             }
+
+            // Mark as having unsaved changes (Pattern D)
+            SetHasUnsavedChanges(true);
 
             UpdateStatus("Parameters applied");
             Logger.LogDebug("Applied {Count} parameters to report", parameters.Count);
@@ -1025,21 +1084,44 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             {
                 Logger.LogDebug("Disposing ReportsPanel");
 
-                // Unsubscribe from ViewModel events
-                if (ViewModel != null)
+                // Unsubscribe from ViewModel events (Pattern K)
+                if (ViewModel != null && _viewModelPropertyChangedHandler != null)
                 {
-                    ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                    ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
                 }
 
-                // Theme subscription removed - handled by SfSkinManager
-                // Unsubscribe panel header events - handlers removed from design
-                // if (_panelHeader != null)
-                // {
-                //     if (_panelHeaderRefreshHandler != null)
-                //         _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
-                //     if (_panelHeaderCloseHandler != null)
-                //         _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
-                // }
+                // Unsubscribe panel header events (Pattern K)
+                if (_panelHeader != null)
+                {
+                    if (_panelHeaderRefreshClickedHandler != null)
+                        _panelHeader.RefreshClicked -= _panelHeaderRefreshClickedHandler;
+                    if (_panelHeaderCloseClickedHandler != null)
+                        _panelHeader.CloseClicked -= _panelHeaderCloseClickedHandler;
+                }
+
+                // Unsubscribe button click handlers (Pattern K)
+                if (_loadReportButton != null && _loadReportButtonClickHandler != null)
+                    _loadReportButton.Click -= _loadReportButtonClickHandler;
+                if (_exportPdfButton != null && _exportPdfButtonClickHandler != null)
+                    _exportPdfButton.Click -= _exportPdfButtonClickHandler;
+                if (_exportExcelButton != null && _exportExcelButtonClickHandler != null)
+                    _exportExcelButton.Click -= _exportExcelButtonClickHandler;
+                if (_printButton != null && _printButtonClickHandler != null)
+                    _printButton.Click -= _printButtonClickHandler;
+                if (_parametersButton != null && _parametersButtonClickHandler != null)
+                    _parametersButton.Click -= _parametersButtonClickHandler;
+                if (_applyParametersButton != null && _applyParametersButtonClickHandler != null)
+                    _applyParametersButton.Click -= _applyParametersButtonClickHandler;
+                if (_closeParametersButton != null && _closeParametersButtonClickHandler != null)
+                    _closeParametersButton.Click -= _closeParametersButtonClickHandler;
+
+                // Unsubscribe ComboBox handler (Pattern K)
+                if (_reportSelector != null && _reportSelectorSelectedIndexChangedHandler != null)
+                    _reportSelector.SelectedIndexChanged -= _reportSelectorSelectedIndexChangedHandler;
+
+                // Unsubscribe HandleCreated handler (Pattern K)
+                if (_handleCreatedHandler != null)
+                    HandleCreated -= _handleCreatedHandler;
 
                 // Dispose FastReport
                 try { _fastReport?.Dispose(); } catch { }

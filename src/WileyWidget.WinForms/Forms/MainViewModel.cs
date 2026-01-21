@@ -110,6 +110,7 @@ namespace WileyWidget.WinForms.Forms
 
         public IAsyncRelayCommand LoadDataCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
+        public object GlobalSearchCommand { get; internal set; }
 
         public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService)
         {

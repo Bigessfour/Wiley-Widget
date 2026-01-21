@@ -30,12 +30,12 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     private bool _disposed;
 
     // ICompletablePanel backing fields
-    private bool _isLoaded;
-    private bool _isBusy;
-    private bool _hasUnsavedChanges;
-    private PanelMode _mode = PanelMode.View;
-    private readonly List<ValidationItem> _validationErrors = new();
-    private CancellationTokenSource? _currentOperationCts;
+    protected bool _isLoaded;
+    protected bool _isBusy;
+    protected bool _hasUnsavedChanges;
+    protected PanelMode? _mode = PanelMode.View;
+    protected readonly List<ValidationItem> _validationErrors = new();
+    protected CancellationTokenSource? _currentOperationCts;
     private DateTimeOffset? _lastSavedAt = null;
 
     /// <summary>
@@ -97,7 +97,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     public IReadOnlyList<ValidationItem> ValidationErrors => _validationErrors;
 
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public PanelMode Mode
+    public PanelMode? Mode
     {
         get => _mode;
         protected set
@@ -117,6 +117,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     public event EventHandler? StateChanged;
 
     /// <summary>
+    /// Raises the StateChanged event. Protected so derived classes can notify of state changes.
+    /// </summary>
+    protected void OnStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
     /// Gets the logger instance for diagnostic logging.
     /// </summary>
     protected ILogger Logger => _logger;
@@ -133,10 +138,10 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// <param name="logger">The logger instance for diagnostic logging.</param>
     protected ScopedPanelBase(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<TViewModel>> logger)
+        ILogger<ScopedPanelBase<TViewModel>>? logger = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ScopedPanelBase<TViewModel>>.Instance;
     }
 
     /// <summary>
