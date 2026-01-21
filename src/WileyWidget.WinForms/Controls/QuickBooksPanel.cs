@@ -1418,7 +1418,45 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                             }
                         }
                     }
-                    // TODO: Update UI to display the accounts
+
+                    // Update UI to display the accounts
+                    if (_syncHistoryGrid != null && accounts.Count > 0)
+                    {
+                        try
+                        {
+                            // Create display records from fetched accounts
+                            var accountRecords = accounts.Select(account => new QuickBooksSyncHistoryRecord
+                            {
+                                Timestamp = DateTime.UtcNow,
+                                Operation = "Account Import",
+                                Status = "Success",
+                                RecordsProcessed = 1,
+                                Message = $"{account.Name} ({account.AccountNumber ?? "N/A"}) - {account.Type}/{account.SubType}",
+                                Duration = TimeSpan.Zero
+                            }).ToList();
+
+                            // Display accounts in sync history grid
+                            _syncHistoryGrid.DataSource = accountRecords;
+
+                            // Update ViewModel metrics
+                            if (ViewModel != null)
+                            {
+                                ViewModel.AccountsImported = accounts.Count;
+                                ViewModel.TotalRecordsSynced += accounts.Count;
+                            }
+
+                            Logger.LogInformation("Displayed {AccountCount} accounts in sync history grid", accounts.Count);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError(ex, "Failed to display accounts in grid");
+                            MessageBox.Show(
+                                $"Error displaying accounts: {ex.Message}",
+                                "Display Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                        }
+                    }
                 }
 
                 // Stop the callback handler once OAuth is complete

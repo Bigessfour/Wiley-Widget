@@ -42,9 +42,16 @@ public static class DashboardFactory
         DashboardViewModel? viewModel = null;
         try
         {
-            if (mainForm?.ServiceProvider != null)
+            // Try to get ServiceProvider from MainForm via a method or property
+            IServiceProvider? serviceProvider = mainForm as IServiceProvider;
+            if (serviceProvider == null)
             {
-                viewModel = ServiceProviderExtensions.GetService<DashboardViewModel>(mainForm.ServiceProvider);
+                var prop = mainForm.GetType().GetProperty("ServiceProvider");
+                serviceProvider = prop?.GetValue(mainForm) as IServiceProvider;
+            }
+            if (serviceProvider != null)
+            {
+                viewModel = ServiceProviderExtensions.GetService<DashboardViewModel>(serviceProvider);
             }
         }
         catch { /* Suppress; optional data for cards */ }
@@ -71,7 +78,7 @@ public static class DashboardFactory
             const int cardHeight = 80;
 
             // Card 1: Accounts
-            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? MainFormResources.LoadingText, cardWidth, cardHeight).Panel;
+            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? "Loading...", cardWidth, cardHeight).Panel;
             SetupCardClickHandler(accountsCard, () =>
             {
                 panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left);
@@ -99,7 +106,7 @@ public static class DashboardFactory
             });
 
             // Card 5: Budget Status (Static/Status Display)
-            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? MainFormResources.LoadingText, cardWidth, cardHeight).Panel;
+            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? "Loading...", cardWidth, cardHeight).Panel;
             SetupCardClickHandler(infoCard, () =>
             {
                 panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom);

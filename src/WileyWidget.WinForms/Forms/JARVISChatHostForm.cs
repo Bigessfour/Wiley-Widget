@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Services;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.BlazorComponents;
@@ -75,22 +77,35 @@ namespace WileyWidget.WinForms.Forms
         {
             base.OnShown(e);
 
-            if (!string.IsNullOrEmpty(InitialPrompt))
+            var prompt = InitialPrompt?.Trim();
+            if (string.IsNullOrWhiteSpace(prompt))
             {
-                try
-                {
-                    _logger.LogInformation("Sending initial prompt to JARVIS: {PromptLength} chars", InitialPrompt.Length);
-                    
-                    // Small delay to ensure Blazor WebView is fully ready and JARVISAssist is initialized
-                    await System.Threading.Tasks.Task.Delay(1500);
+                return;
+            }
 
-                    var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IChatBridgeService>(_serviceProvider);
-                    await chatBridge.RequestExternalPromptAsync(InitialPrompt);
-                }
-                catch (Exception ex)
+            try
+            {
+                _logger.LogInformation("Sending initial prompt to JARVIS: {PromptLength} chars", prompt.Length);
+
+                // Small delay to ensure Blazor WebView is fully ready and JARVISAssist is initialized
+                await Task.Delay(1500).ConfigureAwait(true);
+
+                if (IsDisposed || Disposing)
                 {
-                    _logger.LogError(ex, "Failed to send initial prompt to JARVIS");
+                    return;
                 }
+
+                var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetRequiredService<IChatBridgeService>(_serviceProvider);
+                await chatBridge.RequestExternalPromptAsync(prompt).ConfigureAwait(true);
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogDebug("JARVISChatHostForm disposed before initial prompt could be sent");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send initial prompt to JARVIS");
             }
         }
 

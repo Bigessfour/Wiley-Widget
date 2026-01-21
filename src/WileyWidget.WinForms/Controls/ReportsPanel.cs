@@ -528,7 +528,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Initialize FastReport
         _fastReport = new Report();
 
-        // FastReport preview control not available in Open Source - using placeholder
+        // Note: FastReport preview control (ReportViewer) is only available in FastReport.NET (commercial)
+        // FastReport Open Source doesn't include the UI viewer component
+        // Therefore, we use a placeholder Panel that can display report content via custom rendering
+        // when the commercial version is available, simply uncomment the ReportViewer code below:
         // _previewControl = new FastReport.ReportViewer
         // {
         //     Name = "previewControl",
@@ -536,6 +539,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         //     Dock = DockStyle.Fill
         // };
         // _reportViewerContainer.Controls.Add(_previewControl);
+
+        // For now, the container remains as a placeholder panel that shows
+        // status messages about the report and available exports
 
         viewerPanel.Controls.Add(_reportViewerContainer);
         _mainSplitContainer.Panel2.Controls.Add(viewerPanel);
@@ -732,19 +738,48 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         try
         {
-            // This is a placeholder - in production, you would load actual parameters
-            // from the FastReport file or a configuration
-            var sampleParameters = new List<ReportParameter>
+            // Load parameters for the selected report
+            // In production, parameters should be loaded from the FastReport file metadata or
+            // from a database configuration service based on the report name
+            
+            var parameters = new List<ReportParameter>();
+            var selectedReport = _reportSelector?.SelectedItem as string;
+            
+            // Example: Load parameters based on report type
+            if (selectedReport != null)
             {
-                new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" },
-                new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" },
-                new ReportParameter { Name = "Department", Value = "All", Type = "String" },
-                new ReportParameter { Name = "IncludeInactive", Value = "false", Type = "Boolean" }
-            };
+                switch (selectedReport.ToLowerInvariant())
+                {
+                    case var s when s.Contains("financial"):
+                        parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "Department", Value = "All", Type = "String" });
+                        break;
+                    case var s when s.Contains("activity"):
+                        parameters.Add(new ReportParameter { Name = "StartDate", Value = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "EndDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "LogLevel", Value = "All", Type = "String" });
+                        break;
+                    default:
+                        // Generic parameters for other reports
+                        parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        break;
+                }
+            }
+            else
+            {
+                // Default parameters
+                parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                parameters.Add(new ReportParameter { Name = "Department", Value = "All", Type = "String" });
+                parameters.Add(new ReportParameter { Name = "IncludeInactive", Value = "false", Type = "Boolean" });
+            }
 
             if (_parametersGrid != null)
             {
-                _parametersGrid.DataSource = sampleParameters;
+                _parametersGrid.DataSource = parameters;
+                Logger.LogDebug("Loaded {ParameterCount} parameters for report {ReportName}", parameters.Count, selectedReport);
             }
         }
         catch (Exception ex)

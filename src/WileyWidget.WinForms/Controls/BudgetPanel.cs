@@ -1047,7 +1047,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (e.Column != null && e.DataRow != null)
         {
-            // Alternating row styling removed - let SkinManager handle theming
+            // Alternating row styling removed - let SFSkinManager handle theming
 
 
 
@@ -1995,8 +1995,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         try
         {
-            // Auto-load data on panel load via LoadAsync override
-            _ = LoadAsync(CancellationToken.None);
+            // Auto-load data on panel load via LoadAsync override - fire-and-forget with error handling
+            _ = LoadAsyncSafe();
         }
         catch (Exception ex)
         {
@@ -2010,7 +2010,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     public override async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         if (IsLoaded) return; // Prevent double-load
-        
+
         if (ViewModel == null) return;
 
         var operationToken = RegisterOperation();

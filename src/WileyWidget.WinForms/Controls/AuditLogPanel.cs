@@ -1120,7 +1120,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         try
         {
-            // Theme is applied automatically by SkinManager cascade from parent form
+            // Theme is applied automatically by SFSkinManager cascade from parent form
             // No manual color assignments needed
         }
         catch

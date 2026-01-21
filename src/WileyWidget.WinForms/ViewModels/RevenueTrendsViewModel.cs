@@ -288,7 +288,7 @@ public class RevenueMonthlyData
     /// <summary>
     /// Month start date (first day of month).
     /// </summary>
-    public DateTime Month { get; set; }
+    public required DateTime Month { get; init; }
 
     /// <summary>
     /// Display-friendly month label (e.g., "Jan 2025").
@@ -298,12 +298,12 @@ public class RevenueMonthlyData
     /// <summary>
     /// Total revenue for the month.
     /// </summary>
-    public decimal Revenue { get; set; }
+    public required decimal Revenue { get; init; }
 
     /// <summary>
     /// Number of transactions contributing to revenue.
     /// </summary>
-    public int TransactionCount { get; set; }
+    public required int TransactionCount { get; init; }
 
     /// <summary>
     /// Average transaction value for the month.

@@ -38,12 +38,11 @@ namespace WileyWidget.ViewModels
     /// </summary>
     public partial class BudgetOverviewViewModel : ObservableObject, ILazyLoadViewModel
     {
-        private bool _isDataLoaded;
-        public bool IsDataLoaded
-        {
-            get => _isDataLoaded;
-            private set => SetProperty(ref _isDataLoaded, value);
-        }
+        /// <summary>
+        /// Gets or sets a value indicating whether data has been loaded.
+        /// </summary>
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         public async Task OnVisibilityChangedAsync(bool isVisible)
         {

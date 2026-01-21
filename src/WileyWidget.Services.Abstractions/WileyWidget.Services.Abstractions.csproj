@@ -10,7 +10,11 @@
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Enable APIs (DispatcherPriority etc.) used by some abstractions -->
-
+    <!-- .NET 10 Runtime Performance Optimizations -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
   </PropertyGroup>
 
   <ItemGroup>

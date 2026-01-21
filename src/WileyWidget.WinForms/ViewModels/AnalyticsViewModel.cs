@@ -16,12 +16,11 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable, ILazyLoadViewModel
     {
-        private bool _isDataLoaded;
-        public bool IsDataLoaded
-        {
-            get => _isDataLoaded;
-            private set => SetProperty(ref _isDataLoaded, value);
-        }
+    /// <summary>
+    /// Gets or sets a value indicating whether data has been loaded.
+    /// </summary>
+    [ObservableProperty]
+    private bool isDataLoaded;
 
         public async Task OnVisibilityChangedAsync(bool isVisible)
         {
@@ -598,16 +597,16 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Gets or sets the category name
         /// </summary>
-        public string Name { get; set; } = string.Empty;
+        public required string Name { get; init; }
 
         /// <summary>
         /// Gets or sets the metric value
         /// </summary>
-        public decimal Value { get; set; }
+        public required decimal Value { get; init; }
 
         /// <summary>
         /// Gets or sets the unit of measurement
         /// </summary>
-        public string Unit { get; set; } = string.Empty;
+        public required string Unit { get; init; }
     }
 }

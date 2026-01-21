@@ -42,7 +42,7 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
-            // Configure gradient panel - let SkinManager handle background via theme cascade
+            // Configure gradient panel - let SFSkinManager handle background via theme cascade
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, currentTheme);
             this.ThemeName = currentTheme;

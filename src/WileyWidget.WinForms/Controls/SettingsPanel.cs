@@ -201,8 +201,8 @@ namespace WileyWidget.WinForms.Controls
             // Set initial font selection
             SetInitialFontSelection();
 
-            // Start async load
-            _ = LoadAsync();
+            // Start async load - fire-and-forget with error handling
+            _ = LoadAsyncSafe();
         }
 
         public override async Task LoadAsync(CancellationToken ct = default)

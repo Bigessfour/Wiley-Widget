@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <LangVersion>14.0</LangVersion>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Nullable>enable</Nullable>
@@ -11,6 +11,14 @@
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- .NET 10 Runtime Performance Optimizations -->
+    <!-- Enable Server GC: better for long-running desktop apps with heavy memory usage -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <!-- Enable Tiered Compilation: JIT optimizes hot paths after warm-up (5-20% perf improvement) -->
+    <TieredCompilation>true</TieredCompilation>
+    <!-- Quick JIT: initial fast JIT pass, then optimization JIT for hot methods -->
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
   </PropertyGroup>
 
   <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->

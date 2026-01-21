@@ -14,8 +14,7 @@ namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
 /// Factory for creating and managing the right-docked panel container.
-/// Supports dynamic content switching between Activity Log and JARVIS AI chat.
-/// Implements "JARVIS as king of the hill" design with toggle capability.
+/// Hosts Activity Log only; JARVIS AI chat is available via modal JARVISChatHostForm.
 /// </summary>
 public static class RightDockPanelFactory
 {
@@ -29,22 +28,19 @@ public static class RightDockPanelFactory
     }
 
     /// <summary>
-    /// Create the right-docked panel container with dynamic content management and TabControl.
-    /// Supports Activity Log and JARVIS Chat as dockable tabs.
+    /// Create the right-docked panel container for Activity Log content.
     /// </summary>
     /// <param name="mainForm">Parent MainForm instance</param>
     /// <param name="serviceProvider">Service provider for dependency resolution</param>
     /// <param name="logger">Logger instance</param>
-    /// <returns>Tuple of (rightDockPanel, activityLogPanel, jarvisChatControl, initialMode)</returns>
+    /// <returns>Tuple of (rightDockPanel, activityLogPanel, initialMode)</returns>
     /// <remarks>
-    /// The right panel is 350px wide with 320px minimum to accommodate both Activity Log and JARVIS chat.
-    /// Uses TabControl to switch between Activity Log and JARVIS tabs.
-    /// Content can be toggled via ribbon button or tab click without recreating the panel.
+    /// The right panel is 350px wide with 320px minimum to accommodate Activity Log.
+    /// JARVIS chat is launched via JARVISChatHostForm (modal) and is not docked.
     /// </remarks>
     public static (
         GradientPanelExt rightDockPanel,
         ActivityLogPanel activityLogPanel,
-        ChatPanel? chatPanel,
         RightPanelMode initialMode
     ) CreateRightDockPanel(
         MainForm mainForm,
@@ -55,7 +51,7 @@ public static class RightDockPanelFactory
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
         var sw = Stopwatch.StartNew();
-        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel container with TabControl");
+        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel container (Activity Log)");
 
         try
         {
@@ -70,7 +66,7 @@ public static class RightDockPanelFactory
                 Name = "RightDockPanel"
             };
 
-            // Create TabControl for Activity Log and JARVIS Chat
+            // Create TabControl for Activity Log
             var tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
@@ -81,35 +77,15 @@ public static class RightDockPanelFactory
             var activityLogTab = new TabPage { Text = "Activity Log", Name = "ActivityLogTab" };
             var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
             var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ActivityLogPanel>>(serviceProvider)
-                ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>;
-            var activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger!)
+                ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+            var activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
             {
                 Dock = DockStyle.Fill,
                 Name = "ActivityLogPanel"
             };
             activityLogTab.Controls.Add(activityLogPanel);
             tabControl.TabPages.Add(activityLogTab);
-
-            // Tab 2: ChatPanel (docked version)
-            var jarvisTab = new TabPage { Text = "JARVIS AI", Name = "JARVISTab" };
-            ChatPanel? chatPanel = null;
-            try
-            {
-                var chatLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ChatPanel>>(serviceProvider)
-                    ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ChatPanel>;
-                chatPanel = new ChatPanel(scopeFactory, chatLogger!)
-                {
-                    Dock = DockStyle.Fill,
-                    Name = "ChatPanel"
-                };
-                jarvisTab.Controls.Add(chatPanel);
-                tabControl.TabPages.Add(jarvisTab);
-                logger?.LogInformation("RightDockPanelFactory: ChatPanel tab created and added");
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "RightDockPanelFactory: Failed to create ChatPanel tab - Chat will be available as modal only");
-            }
 
             rightDockPanel.Controls.Add(tabControl);
 
@@ -122,7 +98,7 @@ public static class RightDockPanelFactory
                 "RightDockPanelFactory: Right panel created in {ElapsedMs}ms - Activity Log initialized as default",
                 sw.ElapsedMilliseconds);
 
-            return (rightDockPanel, activityLogPanel, chatPanel, RightPanelMode.ActivityLog);
+            return (rightDockPanel, activityLogPanel, RightPanelMode.ActivityLog);
         }
         catch (Exception ex)
         {
@@ -171,32 +147,61 @@ public static class RightDockPanelFactory
             logger?.LogInformation("RightDockPanelFactory: Switching right panel from {CurrentMode} to {TargetMode}",
                 currentMode, targetMode);
 
-            // FEATURE PLACEHOLDER: Implement tab switching when JARVIS docked tab is added
+            // FEATURE: Implement tab switching when JARVIS docked tab is added
             // For now, Activity Log is the only docked content
             switch (targetMode)
             {
                 case RightPanelMode.ActivityLog:
-                    // Ensure Activity Log is visible
-                    var activityPanel = rightDockPanel.Controls["ActivityLogPanel"] as ActivityLogPanel;
-                    if (activityPanel != null && activityPanel.IsDisposed)
+                    // Ensure Activity Log is visible via TabControl
+                    if (rightDockPanel.Controls[0] is TabControl tabControl)
                     {
-                        logger?.LogWarning("RightDockPanelFactory: Activity Log panel is disposed - cannot switch to it");
-                        return;
+                        var activityLogTab = tabControl.TabPages.Cast<TabPage>()
+                            .FirstOrDefault(tp => tp.Name == "ActivityLogTab");
+                        if (activityLogTab != null)
+                        {
+                            tabControl.SelectedTab = activityLogTab;
+                            activityLogTab.Visible = true;
+                            logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
+                        }
                     }
-                    if (activityPanel != null)
+                    else
                     {
-                        activityPanel.Visible = true;
-                        activityPanel.BringToFront();
-                        logger?.LogDebug("RightDockPanelFactory: Activity Log panel brought to front");
+                        // Fallback: Direct control visibility
+                        var activityPanel = rightDockPanel.Controls["ActivityLogPanel"] as ActivityLogPanel;
+                        if (activityPanel != null && !activityPanel.IsDisposed)
+                        {
+                            activityPanel.Visible = true;
+                            activityPanel.BringToFront();
+                            logger?.LogDebug("RightDockPanelFactory: Activity Log panel brought to front (fallback)");
+                        }
                     }
                     break;
 
                 case RightPanelMode.JarvisChat:
-                    // FUTURE: Implement when JARVISChatUserControl is created
-                    logger?.LogInformation("RightDockPanelFactory: JARVIS docked mode not yet implemented - use modal via ribbon button");
-                    // When implemented:
-                    // var jarvisControl = rightDockPanel.Controls["JARVISChatControl"] as UserControl;
-                    // if (jarvisControl != null) { jarvisControl.Visible = true; jarvisControl.BringToFront(); }
+                    // FUTURE: Implement when JARVISChatUserControl is created from JARVISChatHostForm
+                    // Implementation steps:
+                    // 1. Create JARVISChatUserControl.cs by converting JARVISChatHostForm to UserControl
+                    // 2. Add as second TabPage in CreateRightDockPanel:
+                    //    var jarvisTab = new TabPage { Text = "JARVIS Chat", Name = "JARVISChatTab" };
+                    //    var jarvisControl = new JARVISChatUserControl(...) { Dock = DockStyle.Fill };
+                    //    jarvisTab.Controls.Add(jarvisControl);
+                    //    tabControl.TabPages.Add(jarvisTab);
+                    // 3. Then uncomment this implementation to switch tabs:
+                    if (rightDockPanel.Controls[0] is TabControl tc)
+                    {
+                        var jarvisTab = tc.TabPages.Cast<TabPage>()
+                            .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
+                        if (jarvisTab != null)
+                        {
+                            tc.SelectedTab = jarvisTab;
+                            jarvisTab.Visible = true;
+                            logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected");
+                        }
+                        else
+                        {
+                            logger?.LogInformation("RightDockPanelFactory: JARVIS Chat tab not yet created - use modal dialog instead");
+                        }
+                    }
                     break;
             }
 

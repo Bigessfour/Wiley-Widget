@@ -1,24 +1,25 @@
 namespace WileyWidget.Models
 {
     /// <summary>
-    /// Represents information about a fiscal year
+    /// Represents information about a fiscal year.
+    /// Uses init-only properties for immutable initialization pattern.
     /// </summary>
     public class FiscalYearInfo
     {
         /// <summary>
-        /// Gets or sets the fiscal year number
+        /// Gets the fiscal year number
         /// </summary>
-        public int Year { get; set; }
+        public int Year { get; init; }
 
         /// <summary>
-        /// Gets or sets the start date of the fiscal year
+        /// Gets the start date of the fiscal year
         /// </summary>
-        public DateTime StartDate { get; set; }
+        public DateTime StartDate { get; init; }
 
         /// <summary>
-        /// Gets or sets the end date of the fiscal year
+        /// Gets the end date of the fiscal year
         /// </summary>
-        public DateTime EndDate { get; set; }
+        public DateTime EndDate { get; init; }
 
         /// <summary>
         /// Gets the display name for the fiscal year

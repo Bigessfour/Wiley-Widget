@@ -168,7 +168,7 @@ namespace WileyWidget.WinForms.Themes
 
     /// <summary>
     /// Handles runtime theme switching.
-    /// Updates global theme via SkinManager (cascade handles all controls automatically).
+    /// Updates global theme via SFSkinManager (cascade handles all controls automatically).
     /// Also updates DockingManager explicitly using the adapter pattern.
     /// </summary>
     public class ThemeSwitchHandler
@@ -196,7 +196,7 @@ namespace WileyWidget.WinForms.Themes
 
         /// <summary>
         /// Handles theme change event from IThemeService.
-        /// Applies new theme globally via SkinManager (cascade handles all controls).
+        /// Applies new theme globally via SFSkinManager (cascade handles all controls).
         /// Also updates DockingManager explicitly via adapter for edge case.
         /// </summary>
         public void OnThemeChanged(string newThemeName)

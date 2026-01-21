@@ -270,7 +270,7 @@ namespace WileyWidget.WinForms
             try
             {
                 // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
-                SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
                 Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
             }
             catch (Exception ex)

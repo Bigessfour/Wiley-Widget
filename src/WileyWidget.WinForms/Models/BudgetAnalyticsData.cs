@@ -4,27 +4,28 @@ namespace WileyWidget.WinForms.Models;
 
 /// <summary>
 /// Represents a single row of budget analytics data.
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class BudgetAnalyticsData
 {
-    /// <summary>Gets or sets the department name.</summary>
-    public string DepartmentName { get; set; } = string.Empty;
+    /// <summary>Gets the department name.</summary>
+    public required string DepartmentName { get; init; }
 
-    /// <summary>Gets or sets the period name (month/quarter/year).</summary>
-    public string PeriodName { get; set; } = string.Empty;
+    /// <summary>Gets the period name (month/quarter/year).</summary>
+    public required string PeriodName { get; init; }
 
-    /// <summary>Gets or sets the budgeted amount.</summary>
-    public decimal BudgetedAmount { get; set; }
+    /// <summary>Gets the budgeted amount.</summary>
+    public decimal BudgetedAmount { get; init; }
 
-    /// <summary>Gets or sets the actual amount spent.</summary>
-    public decimal ActualAmount { get; set; }
+    /// <summary>Gets the actual amount spent.</summary>
+    public decimal ActualAmount { get; init; }
 
-    /// <summary>Gets or sets the variance amount (actual - budgeted).</summary>
-    public decimal VarianceAmount { get; set; }
+    /// <summary>Gets the variance amount (actual - budgeted).</summary>
+    public decimal VarianceAmount { get; init; }
 
-    /// <summary>Gets or sets the variance percentage.</summary>
-    public string VariancePercent { get; set; } = "0";
+    /// <summary>Gets the variance percentage.</summary>
+    public string VariancePercent { get; init; } = "0";
 
-    /// <summary>Gets or sets the budget status (Over Budget / Under Budget).</summary>
-    public string Status { get; set; } = string.Empty;
+    /// <summary>Gets the budget status (Over Budget / Under Budget).</summary>
+    public string Status { get; init; } = string.Empty;
 }

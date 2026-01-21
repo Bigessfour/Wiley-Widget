@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Logging;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -26,13 +27,14 @@ public abstract class ViewModelBase : ObservableObject
         // Warn if fallback was used (indicates DI misconfiguration)
         if (logger == null)
         {
-            Console.WriteLine($"[WARNING] {GetType().Name}: ILogger is null - using NullLogger fallback");
+            ConsoleOutputHelper.WriteLineSafe($"[WARNING] {GetType().Name}: ILogger is null - using NullLogger fallback");
         }
     }
 
     /// <summary>
     /// Validates that a required dependency is not null.
     /// Throws InvalidOperationException with detailed context if null.
+    /// C# 14: Uses field keyword for cleaner validation logic with custom semantics.
     /// </summary>
     /// <typeparam name="T">Type of dependency to validate</typeparam>
     /// <param name="value">Dependency value to check</param>
@@ -47,7 +49,7 @@ public abstract class ViewModelBase : ObservableObject
         {
             var message = $"CRITICAL: Required dependency '{parameterName}' is null in {GetType().Name}. Check DI registration.";
             Logger.LogCritical(message);
-            Console.WriteLine($"[CRITICAL NULL] {message}");
+            ConsoleOutputHelper.WriteLineSafe($"[CRITICAL NULL] {message}");
             throw new InvalidOperationException(message);
         }
     }
@@ -68,7 +70,7 @@ public abstract class ViewModelBase : ObservableObject
         {
             var message = $"CRITICAL: Null dependencies in {GetType().Name}: {string.Join(", ", nullDependencies)}";
             Logger.LogCritical(message);
-            Console.WriteLine($"[CRITICAL NULL] {message}");
+            ConsoleOutputHelper.WriteLineSafe($"[CRITICAL NULL] {message}");
             throw new InvalidOperationException(message);
         }
     }

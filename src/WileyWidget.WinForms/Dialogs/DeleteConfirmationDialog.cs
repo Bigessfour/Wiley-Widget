@@ -62,7 +62,7 @@ namespace WileyWidget.WinForms.Dialogs
                 ColumnCount = 2,
                 RowCount = 3,
                 Padding = new Padding(15)
-                // BackColor handled by SkinManager theme cascade
+                // BackColor handled by SFSkinManager theme cascade
             };
 
             // Icon column (fixed 48px)
@@ -96,7 +96,7 @@ namespace WileyWidget.WinForms.Dialogs
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F),
-                // ForeColor handled by SkinManager theme cascade
+                // ForeColor handled by SFSkinManager theme cascade
                 Padding = new Padding(0, 8, 0, 5),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -112,7 +112,7 @@ namespace WileyWidget.WinForms.Dialogs
                     AutoSize = false,
                     Dock = DockStyle.Fill,
                     Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                    // ForeColor handled by SkinManager theme cascade
+                    // ForeColor handled by SFSkinManager theme cascade
                     Padding = new Padding(0, 0, 0, 10),
                     TextAlign = ContentAlignment.TopLeft
                 };
@@ -152,7 +152,7 @@ namespace WileyWidget.WinForms.Dialogs
                 Text = "Delete",
                 Size = new Size(90, 32),
                 DialogResult = DialogResult.OK,
-                // Colors removed - let SkinManager handle theming
+                // Colors removed - let SFSkinManager handle theming
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 8, 0)

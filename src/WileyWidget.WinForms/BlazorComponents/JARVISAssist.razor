@@ -141,53 +141,148 @@
     private string _errorMessage = "";
     private CancellationTokenSource? _cts;
     private AsyncRelayCommand? _sendCommand;
-    private bool _suppressRender = false;
     private DateTime _lastRenderTime = DateTime.UtcNow;
     private const int MinRenderIntervalMs = 100; // Throttle renders to max 10/sec
+    private bool _suppressRender;
+    private Task? _deferredRenderTask;
+    private string? _streamingMessageId;
 
     [Parameter] public string Theme { get; set; } = "office-2019-colorful";
 
     protected override void OnInitialized()
     {
-        ChatBridge.OnMessageReceived += HandleMessageReceived;
         _sendCommand = new AsyncRelayCommand(SendMessageAsync);
         _messages.Add(new ChatMessage { Content = "Hello, I am JARVIS. How can I assist you today?", IsUser = false });
+
+        ChatBridge.OnMessageReceived += HandleMessageReceived;
+        ChatBridge.ResponseChunkReceived += HandleResponseChunkReceived;
+        ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
     }
 
     private void HandleMessageReceived(object? sender, ChatMessage msg)
     {
-        // Use InvokeAsync to marshal the update to the UI thread, but only call StateHasChanged once at the end
-        InvokeAsync(() => {
-            bool needsRender = false;
-            if (!_messages.Any(m => m.Id == msg.Id))
+        _ = InvokeAsync(() =>
+        {
+            if (msg == null)
             {
+                return;
+            }
+
+            var messageId = string.IsNullOrWhiteSpace(msg.Id) ? Guid.NewGuid().ToString() : msg.Id;
+            var existing = _messages.FirstOrDefault(m => m.Id == messageId);
+            if (existing == null)
+            {
+                msg.Id = messageId;
                 _messages.Add(msg);
-                _isThinking = false;
-                needsRender = true;
             }
             else
             {
-                var existing = _messages.First(m => m.Id == msg.Id);
                 existing.Content = msg.Content;
-                needsRender = true;
+                existing.IsUser = msg.IsUser;
+                existing.Timestamp = msg.Timestamp;
             }
-            // Throttle renders to prevent flicker - max 10 renders per second
-            if (needsRender)
+
+            _streamingMessageId = messageId;
+            _isThinking = false;
+            RequestRender();
+        });
+    }
+
+    private void HandleResponseChunkReceived(object? sender, ChatResponseChunkEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Chunk))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            var message = _streamingMessageId != null
+                ? _messages.FirstOrDefault(m => m.Id == _streamingMessageId)
+                : null;
+
+            if (message == null)
             {
-                var now = DateTime.UtcNow;
-                var timeSinceLastRender = (now - _lastRenderTime).TotalMilliseconds;
-                if (timeSinceLastRender >= MinRenderIntervalMs)
+                message = new ChatMessage
                 {
-                    _lastRenderTime = now;
+                    Id = Guid.NewGuid().ToString(),
+                    IsUser = false,
+                    Content = string.Empty
+                };
+                _messages.Add(message);
+                _streamingMessageId = message.Id;
+            }
+
+            message.Content += e.Chunk;
+            _isThinking = false;
+            RequestRender();
+        });
+    }
+
+    private void HandleExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(e.Prompt))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_isSending)
+            {
+                return;
+            }
+
+            _userInput = e.Prompt;
+            await SendMessageAsync();
+        });
+    }
+
+    private void RequestRender()
+    {
+        var now = DateTime.UtcNow;
+        var timeSinceLastRender = (now - _lastRenderTime).TotalMilliseconds;
+        if (timeSinceLastRender >= MinRenderIntervalMs)
+        {
+            _lastRenderTime = now;
+            _suppressRender = false;
+            StateHasChanged();
+            ScrollToBottom();
+            return;
+        }
+
+        var delay = (int)Math.Max(1d, MinRenderIntervalMs - timeSinceLastRender);
+        _suppressRender = true;
+
+        if (_deferredRenderTask == null || _deferredRenderTask.IsCompleted)
+        {
+            _deferredRenderTask = InvokeAsync(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delay);
+                    _lastRenderTime = DateTime.UtcNow;
+                    _suppressRender = false;
                     StateHasChanged();
                     ScrollToBottom();
                 }
-                else
+                catch
                 {
-                    _suppressRender = true;
+                    _suppressRender = false;
                 }
-            }
-        });
+            });
+        }
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (_suppressRender)
+        {
+            _suppressRender = false;
+            return false;
+        }
+
+        return true;
     }
 
     private async Task SendMessageAsync()
@@ -217,6 +312,7 @@
         var prompt = sanitizedInput;
         _userInput = "";
         _isThinking = true;
+        _streamingMessageId = null;
 
         // Single state change for all mutations
         _lastRenderTime = DateTime.UtcNow;
@@ -229,7 +325,7 @@
 
         try
         {
-            await ChatBridge.SubmitPromptAsync(prompt, _conversationId, _cts.Token);
+            await ChatBridge.SubmitPromptAsync(prompt, _conversationId);
         }
         catch (Exception ex)
         {
@@ -262,6 +358,9 @@
     public void Dispose()
     {
         ChatBridge.OnMessageReceived -= HandleMessageReceived;
+        ChatBridge.ResponseChunkReceived -= HandleResponseChunkReceived;
+        ChatBridge.ExternalPromptRequested -= HandleExternalPromptRequested;
+
         _cts?.Cancel();
         _cts?.Dispose();
     }

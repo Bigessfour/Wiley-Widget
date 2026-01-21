@@ -137,12 +137,12 @@ public static class DockingHostFactory
             };
 
             // Add primary navigation buttons
-            navButtonsPanel.Controls.Add(createNavButton("📊 Dashboard", () => mainForm.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Left)));
-            navButtonsPanel.Controls.Add(createNavButton("💰 Accounts", () => mainForm.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left)));
-            navButtonsPanel.Controls.Add(createNavButton("📈 Budget", () => mainForm.ShowPanel<BudgetPanel>("Budget Management", DockingStyle.Right)));
-            navButtonsPanel.Controls.Add(createNavButton("📉 Analytics", () => mainForm.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right)));
-            navButtonsPanel.Controls.Add(createNavButton("📄 Reports", () => mainForm.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right)));
-            navButtonsPanel.Controls.Add(createNavButton("⚙️ Settings", () => mainForm.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right)));
+            navButtonsPanel.Controls.Add(createNavButton("📊 Dashboard", () => mainForm.ShowPanel<DashboardPanel>()));
+            navButtonsPanel.Controls.Add(createNavButton("💰 Accounts", () => mainForm.ShowPanel<AccountsPanel>()));
+            navButtonsPanel.Controls.Add(createNavButton("📈 Budget", () => mainForm.ShowPanel<BudgetPanel>()));
+            navButtonsPanel.Controls.Add(createNavButton("📉 Analytics", () => mainForm.ShowPanel<BudgetAnalyticsPanel>()));
+            navButtonsPanel.Controls.Add(createNavButton("📄 Reports", () => mainForm.ShowPanel<ReportsPanel>()));
+            navButtonsPanel.Controls.Add(createNavButton("⚙️ Settings", () => mainForm.ShowPanel<SettingsPanel>()));
 
             // CRITICAL: Add controls to mainForm BEFORE docking them
             mainForm.Controls.Add(leftDockPanel);
@@ -151,7 +151,7 @@ public static class DockingHostFactory
             dockingManager.DockControl(leftDockPanel, mainForm, DockingStyle.Left, 300);
 
             // 3. Create right dock panel using RightDockPanelFactory (manages Activity Log + JARVIS Chat tabs)
-            var (rightDockPanel, activityLogPanel, jarvisChatControl, initialMode) = RightDockPanelFactory.CreateRightDockPanel(
+            var (rightDockPanel, activityLogPanel, _) = RightDockPanelFactory.CreateRightDockPanel(
                 mainForm,
                 serviceProvider,
                 logger);

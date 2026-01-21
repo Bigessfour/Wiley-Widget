@@ -247,14 +247,14 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
 /// </summary>
 public class DepartmentMetric
 {
-    public int DepartmentId { get; set; }
-    public string DepartmentName { get; set; } = string.Empty;
-    public string DepartmentCode { get; set; } = string.Empty;
-    public decimal BudgetedAmount { get; set; }
-    public decimal ActualAmount { get; set; }
-    public decimal Variance { get; set; }
-    public decimal VariancePercent { get; set; }
-    public bool IsOverBudget { get; set; }
+    public required int DepartmentId { get; init; }
+    public required string DepartmentName { get; init; }
+    public required string DepartmentCode { get; init; }
+    public required decimal BudgetedAmount { get; init; }
+    public required decimal ActualAmount { get; init; }
+    public required decimal Variance { get; init; }
+    public required decimal VariancePercent { get; init; }
+    public required bool IsOverBudget { get; init; }
 }
 
 /// <summary>

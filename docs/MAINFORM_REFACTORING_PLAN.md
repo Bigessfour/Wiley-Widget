@@ -58,7 +58,7 @@ This refactoring plan systematically extracts responsibilities into smaller, tes
 | **State Persistence**          | MainForm.cs (SaveWindowState, RestoreWindowState, Load/SaveMruFromRegistry, ClearMruList, UpdateMruMenu)                                   | 100–150      | HIGH     |
 | **Event Handling**             | MainForm.cs (OnLoad, OnShown, OnClosing, OnResize, Ribbon_Click, etc.)                                                                     | 150–200      | MEDIUM   |
 | **File Imports**               | MainForm.cs (ImportDataFileAsync, ImportConfigurationDataAsync, async file reads, JSON parsing)                                            | 80–120       | MEDIUM   |
-| **Navigation & Panel Control** | MainForm.cs (ShowPanel<T>, AddPanelAsync, ClosePanel, IPanelNavigationService delegation)                                                  | 60–100       | MEDIUM   |
+| **Navigation & Panel Control** | MainForm.cs (ShowPanel\`<T>\`, AddPanelAsync, ClosePanel, IPanelNavigationService delegation)                                              | 60–100       | MEDIUM   |
 | **Theming & Status Updates**   | MainForm.cs (ApplyTheme, ShowErrorDialog, ApplyStatus)                                                                                     | 40–80        | MEDIUM   |
 | **Syncfusion-Specific Hacks**  | MainForm.cs + MainForm.UI.cs (ValidateAndConvertRibbonImages, EnsureDockingZOrder, ImageAnimator workarounds)                              | 50–80        | MEDIUM   |
 | **Global Search Proxy**        | MainForm.cs (PerformGlobalSearch, GlobalSearchCommand binding)                                                                             | 30–50        | LOW      |
@@ -574,7 +574,7 @@ public static class DockingManagerExtensions
 
 **GitHub Commit #2:**
 
-commit <hash> (Phase 3: Extract UI helpers & Syncfusion extensions)
+(Phase 3: Extract UI helpers & Syncfusion extensions)
 
 refactor(mainform): consolidate UI utilities and Syncfusion workarounds
 
@@ -604,8 +604,6 @@ Testing:
 This refactor improves code organization and reusability without changing
 behavior. Reduces MainForm.cs by ~80 lines. Consolidates Syncfusion
 workarounds in one place for easier maintenance and v32.1.19 issue tracking.
-
-```
 
 **Commit Metadata:**
 
@@ -907,8 +905,7 @@ public partial class MainForm : RibbonForm
 
 **GitHub Commit #3:**
 
-```
-commit <hash> (Phase 4: Refactor into partial classes)
+(Phase 4: Refactor into partial classes)
 
 refactor(mainform): split into logical partial classes by concern
 
@@ -921,7 +918,7 @@ refactor(mainform): split into logical partial classes by concern
   - Add DisposeDocking() for safe resource cleanup per DockingManagerExtensions
   - Encapsulate docking manager and layout persistence (with Syncfusion serialization)
   - Test advanced docking states: auto-hide, floating, persisted across restarts
-  - Reference: https://help.syncfusion.com/windowsforms/dockingmanager/serialization
+  - Reference: <https://help.syncfusion.com/windowsforms/dockingmanager/serialization>
 
 - Create MainForm.Navigation.cs
   - Move ShowPanel<T>, AddPanelAsync, ClosePanel, global search proxy
@@ -938,6 +935,7 @@ refactor(mainform): split into logical partial classes by concern
 - Delete MainForm.UI.cs (content moved to partials)
 
 Testing:
+
 - ✅ Build succeeds, no compilation errors or analyzer violations
 - ✅ Manual tests: Ribbon, menu, docking, navigation all work
 - ✅ Advanced docking tests: Auto-hide panels, floating windows, layout persistence
@@ -948,7 +946,6 @@ Testing:
 This is the main refactor step. MainForm is now ~50% smaller,
 organized by concern, and easier to maintain. Docking complexity
 is now encapsulated with proper Syncfusion serialization handling.
-```
 
 **Commit Metadata:**
 
@@ -977,10 +974,10 @@ is now encapsulated with proper Syncfusion serialization handling.
    run_task -id "shell: build" -workspaceFolder "C:\Users\biges\Desktop\Wiley-Widget"
    ```
 
-   - Verify no compiler errors/warnings.
-   - Check code analyzers (Roslyn rules from `.editorconfig`).
+- Verify no compiler errors/warnings.
+- Check code analyzers (Roslyn rules from `.editorconfig`).
 
-2. Run unit tests for new services:
+1. Run unit tests for new services:
 
    ```powershell
    run_task -id "shell: test" -workspaceFolder "C:\Users\biges\Desktop\Wiley-Widget"
@@ -989,13 +986,13 @@ is now encapsulated with proper Syncfusion serialization handling.
    - Verify `WindowStateService` tests pass (Registry mocking, MRU logic).
    - Verify `FileImportService` tests pass (JSON deserialization, error handling).
 
-3. Run UI-specific tests (if available):
+2. Run UI-specific tests (if available):
 
    ```powershell
    run_task -id "shell: 🧪 Run UI Tests (Isolated)"
    ```
 
-4. Check for dead code or unused usings:
+3. Check for dead code or unused usings:
    - Use IDE's "Find Unused References" feature.
    - Run Roslyn analyzer: `dotnet roslynator analyze` to flag unused members and code style violations.
    - Remove any obsolete `[Obsolete(..., error: false)]` methods marked for deletion.

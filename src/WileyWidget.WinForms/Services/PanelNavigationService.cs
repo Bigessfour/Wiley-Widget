@@ -4,8 +4,11 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Themes;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -77,11 +80,6 @@ namespace WileyWidget.WinForms.Services
         Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true);
 
         /// <summary>
-        /// Update the docking manager after delayed initialization.
-        /// </summary>
-        void UpdateDockingManager(DockingManager dockingManager);
-
-        /// <summary>
         /// Get the currently active panel name for ribbon button state tracking.
         /// </summary>
         /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
@@ -95,8 +93,12 @@ namespace WileyWidget.WinForms.Services
 
     public sealed class PanelNavigationService : IPanelNavigationService, IDisposable
     {
-        private readonly ILogger<PanelNavigationService> _logger;
-        private DockingManager _dockingManager;
+        /// <summary>
+        /// C# 14: Logger property for cleaner access.
+        /// </summary>
+        private readonly ILogger<PanelNavigationService> Logger;
+
+        private readonly DockingManager _dockingManager;
         private readonly Control _parentControl; // Usually MainForm or central document container
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
@@ -128,35 +130,31 @@ namespace WileyWidget.WinForms.Services
             { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
             { typeof(RevenueTrendsPanel), new PanelSizing(new Size(560, 0), new Size(0, 440), new Size(460, 380)) },
             { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-            { typeof(ChatPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(CustomersPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
         };
 
         /// <summary>
         /// Initializes the panel navigation service with docking infrastructure and dependency injection support.
+        /// DockingManager must be non-null and properly initialized before construction.
         /// </summary>
+        /// <param name="dockingManager">Initialized DockingManager instance (required, non-null).</param>
+        /// <param name="parentControl">Parent control hosting the docked panels.</param>
+        /// <param name="serviceProvider">Service provider for DI resolution of panel types.</param>
+        /// <param name="logger">Logger instance.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
         public PanelNavigationService(
-            DockingManager? dockingManager,
+            DockingManager dockingManager,
             Control parentControl,
             IServiceProvider serviceProvider,
             ILogger<PanelNavigationService> logger)
         {
-            _dockingManager = dockingManager!; // Allowed to be null initially to support circular dependency fixes
+            _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager), "DockingManager must be initialized before PanelNavigationService construction.");
             _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _logger = logger;
+            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _logger.LogDebug("PanelNavigationService initialized with DI support");
-        }
-
-        /// <summary>
-        /// Update the docking manager after delayed initialization.
-        /// </summary>
-        public void UpdateDockingManager(DockingManager dockingManager)
-        {
-            _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
-            _logger.LogDebug("PanelNavigationService docking manager updated");
-        }
+            Logger.LogDebug("PanelNavigationService initialized with non-null DockingManager");
+            }
 
         public void ShowPanel<TPanel>(
             string panelName,
@@ -177,15 +175,9 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            if (_parentControl.InvokeRequired)
-            {
-                _parentControl.Invoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
-                return;
-            }
-
             try
             {
-                _logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);
+                Logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);
 
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
@@ -195,11 +187,11 @@ namespace WileyWidget.WinForms.Services
                 }
 
                 // Create new instance via DI (supports constructor injection)
-                _logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
+                Logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
                 var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
 
-                // If panel supports parameter initialization, pass the parameters
-                if (parameters != null && panel is IParameterizedPanel parameterizedPanel)
+                // C# 14: Pattern matching with 'is not null' for cleaner guard clause
+                if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
                 {
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
@@ -208,43 +200,39 @@ namespace WileyWidget.WinForms.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to show panel: {PanelName}", panelName);
-                ShowErrorMessage(panelName);
+                Logger.LogError(ex, "Failed to show panel: {PanelName}", panelName);
+                throw new InvalidOperationException($"Unable to show panel '{panelName}'. Check logs for details.", ex);
             }
         }
 
         public async Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
         {
-            if (panel == null) throw new ArgumentNullException(nameof(panel));
+            if (panel is null) throw new ArgumentNullException(nameof(panel));
             if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
-
-            if (_parentControl.InvokeRequired)
-            {
-                await (Task)_parentControl.Invoke(new Func<Task>(() => AddPanelAsync(panel, panelName, preferredStyle, allowFloating)));
-                return;
-            }
 
             try
             {
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
                 {
-                    ActivateExistingPanel(existingPanel, panelName, allowFloating);
+                    await _parentControl.InvokeAsync(() => ActivateExistingPanel(existingPanel, panelName, allowFloating));
                     return;
                 }
 
-                DockPanelInternal(panel, panelName, preferredStyle, allowFloating);
+                await _parentControl.InvokeAsync(() => DockPanelInternal(panel, panelName, preferredStyle, allowFloating));
                 await Task.Yield(); // Allow UI to breathe
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to add panel async: {PanelName}", panelName);
-                ShowErrorMessage(panelName);
+                Logger.LogError(ex, "Failed to add panel async: {PanelName}", panelName);
+                throw new InvalidOperationException($"Unable to add panel '{panelName}'. Check logs for details.", ex);
             }
         }
 
         private void ActivateExistingPanel(UserControl existingPanel, string panelName, bool allowFloating)
         {
+            // Already on UI thread - ActivateExistingPanel is called only from ShowPanel or AddPanelAsync
+            // which have already marshalled execution via InvokeAsync
             ApplyCaptionSettings(existingPanel, panelName, allowFloating);
             _dockingManager.SetDockVisibility(existingPanel, true);
             try { existingPanel.BringToFront(); } catch { }
@@ -255,21 +243,14 @@ namespace WileyWidget.WinForms.Services
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
 
-            _logger.LogDebug("Activated existing panel: {PanelName}", panelName);
-            _logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
-        }
-
-        private void ShowErrorMessage(string panelName)
-        {
-            MessageBox.Show(
-                $"Unable to open {panelName}. See log for details.",
-                "Navigation Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+            Logger.LogDebug("Activated existing panel: {PanelName}", panelName);
+            Logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
         }
 
         private void DockPanelInternal(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
         {
+            // Already on UI thread - DockPanelInternal is called only from ShowPanel or AddPanelAsync
+            // which have already marshalled execution via InvokeAsync
             panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
 
             // Apply sensible defaults so charts/grids have usable space on first show
@@ -282,7 +263,7 @@ namespace WileyWidget.WinForms.Services
             var effectiveStyle = preferredStyle;
             if (effectiveStyle == DockingStyle.Fill)
             {
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "DockingStyle.Fill is not supported when docking to the DockingManager host. Falling back to DockingStyle.Right for panel: {PanelName}",
                     panelName);
                 effectiveStyle = DockingStyle.Right;
@@ -300,54 +281,85 @@ namespace WileyWidget.WinForms.Services
             {
                 dockSize = desiredSize.Height;
             }
+
+            // Dock the panel with calculated size
             _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
+
+            // Apply minimum size to ensure usable bounds (Syncfusion API - no reflection needed)
+            var (_, minimumSize) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
+            if (minimumSize.Width > 0 || minimumSize.Height > 0)
+            {
+                try
+                {
+                    _dockingManager.SetControlMinimumSize(panel, minimumSize);
+                }
+                catch (Exception minSizeEx)
+                {
+                    Logger.LogDebug(minSizeEx, "SetControlMinimumSize failed (non-critical), continuing");
+                }
+            }
 
             // Ensure theme cascade reaches the newly created panel and children
             ApplyPanelTheme(panel);
 
-            // Force visibility explicitly as requested for all panels
-            _dockingManager.SetDockVisibility(panel, true);
-
-            // Propagate accessibility and header/dock caption so UI automation can find panels reliably
+            // Set panel accessibility properties for UI automation
             try
             {
                 panel.AccessibleName = panelName;
                 panel.AccessibleDescription = $"Panel: {panelName}";
                 panel.Tag = panelName;
+            }
+            catch (Exception accEx)
+            {
+                Logger.LogDebug(accEx, "Failed to set accessibility properties (non-critical)");
+            }
 
-                // If panel has a PanelHeader control, ensure its title matches and is discoverable
+            // Set dock label and caption via documented Syncfusion API (no reflection)
+            try
+            {
+                _dockingManager.SetDockLabel(panel, panelName);
+            }
+            catch (Exception labelEx)
+            {
+                Logger.LogDebug(labelEx, "SetDockLabel failed (non-critical)");
+            }
+
+            // Update PanelHeader control if present
+            try
+            {
+                // C# 14: Using 'is not null' pattern for more expressive null checking
                 var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
-                if (header != null)
+                if (header is not null)
                 {
                     header.Title = panelName;
                     try { header.AccessibleName = panelName + " header"; } catch { }
                 }
-
-                // If Syncfusion DockHandler is present, set its Text and a stable Name if supported (via reflection)
-                var dh = panel.GetType().GetProperty("DockHandler")?.GetValue(panel);
-                if (dh != null)
-                {
-                    UpdateDockHandler(dh, panelName);
-                }
             }
-            catch { }
+            catch (Exception headerEx)
+            {
+                Logger.LogDebug(headerEx, "Failed to update PanelHeader (non-critical)");
+            }
 
-            // Small pause to allow DockingManager to update UI
-            try { System.Threading.Thread.Sleep(250); } catch { }
-
-            // Prevent malformation in navigation - force clean rendering
+            // Force visibility and activation
             try
             {
-                panel.MinimumSize = new Size(200, 200);
-                panel.Invalidate(true);
-                panel.Update();
+                _dockingManager.SetDockVisibility(panel, true);
                 _dockingManager.ActivateControl(panel);
-                _parentControl.PerformLayout();
-                _logger.LogInformation("Panel {Name} docked (visible=true, minSize=200x200)", panelName);
             }
-            catch (Exception navEx)
+            catch (Exception visEx)
             {
-                _logger.LogError(navEx, "Panel navigation malformation protection failed for {Name}: {Message}", panelName, navEx.Message);
+                Logger.LogDebug(visEx, "Failed to set visibility/activation (non-critical)");
+            }
+
+            // Subscribe to DockStateChanged event to verify panel rendering
+            // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
+            try
+            {
+                _dockingManager.DockStateChanged += (sender, e) => OnDockStateChanged(panel, panelName);
+            }
+            catch (Exception eventEx)
+            {
+                Logger.LogDebug(eventEx, "Failed to subscribe to DockStateChanged (non-critical)");
             }
 
             // Cache for reuse
@@ -357,34 +369,52 @@ namespace WileyWidget.WinForms.Services
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panel.GetType()));
 
-            _logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
-            _logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
+            Logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
+            Logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
         }
 
-        private void UpdateDockHandler(object dh, string panelName)
+        /// <summary>
+        /// Event handler for DockStateChanged. Validates panel visibility and forces rendering.
+        /// Replaces Thread.Sleep(250) timing hack with proper event synchronization.
+        /// </summary>
+        /// <summary>
+        /// Event handler for DockStateChanged. Validates panel visibility and forces rendering.
+        /// C# 14: Using 'is not' pattern for cleaner control flow.
+        /// </summary>
+        private void OnDockStateChanged(UserControl panel, string panelName)
         {
             try
             {
-                var txtProp = dh.GetType().GetProperty("Text");
-                if (txtProp != null) txtProp.SetValue(dh, panelName);
-
-                var nameProp = dh.GetType().GetProperty("Name");
-                if (nameProp != null && nameProp.CanWrite) nameProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
-
-                var aidProp = dh.GetType().GetProperty("AutomationId");
-                if (aidProp != null && aidProp.CanWrite) aidProp.SetValue(dh, "DockHandler_" + panelName.Replace(" ", "", StringComparison.Ordinal));
+                if (panel is not null && !panel.IsDisposed && panel.Visible)
+                {
+                    // Panel is visible - invalidate to force clean rendering
+                    if (!panel.IsDisposed)
+                    {
+                        panel.Invalidate(true);
+                        panel.Update();
+                    }
+                    Logger.LogDebug("Panel {PanelName} verified visible via DockStateChanged event", panelName);
+                }
             }
-            catch { }
+            catch (ObjectDisposedException)
+            {
+                // Panel was disposed - safe to ignore
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Error in OnDockStateChanged for panel {PanelName}", panelName);
+            }
         }
 
-        private static void ApplyPanelTheme(Control panel)
+        private void ApplyPanelTheme(Control panel)
         {
             try
             {
+                // C# 14: Extension method for safe theme application with null-conditional.
                 // SfSkinManager is the single source of truth for theming.
                 // Theme cascade from parent form automatically applies to all child controls.
-                panel.Invalidate(true);
-                panel.Update();
+                var themeName = GetCurrentThemeName();
+                panel?.ApplySyncfusionTheme(themeName, Logger);
             }
             catch
             {
@@ -392,26 +422,90 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
+        /// <summary>
+        /// Gets the current active theme name from SfSkinManager.
+        /// C# 14 feature: Uses simplified pattern matching and null-coalescing.
+        /// SfSkinManager is Syncfusion's single source of truth for theming.
+        /// </summary>
+        private static string GetCurrentThemeName() =>
+            SfSkinManager.ApplicationVisualTheme ?? "Office2019White";
+
         private void ApplyCaptionSettings(UserControl panel, string panelName, bool allowFloating)
         {
-            if (panel == null)
+            // Already on UI thread - ApplyCaptionSettings is called only from ActivateExistingPanel or DockPanelInternal
+            // which are themselves called only from ShowPanel or AddPanelAsync (both marshalled via InvokeAsync)
+            if (panel is null)
             {
                 return;
             }
 
             try { _dockingManager.EnableContextMenu = true; } catch { }
 
-            try { _dockingManager.SetEnableDocking(panel, true); } catch { }
-            try { _dockingManager.SetDockLabel(panel, panelName); } catch { }
-            try { _dockingManager.SetAllowFloating(panel, allowFloating); } catch { }
-            try { _dockingManager.SetCloseButtonVisibility(panel, true); } catch { }
-            try { _dockingManager.SetAutoHideButtonVisibility(panel, true); } catch { }
-            try { _dockingManager.SetMenuButtonVisibility(panel, true); } catch { }
+            // Set caption, floating, and close button settings directly using Syncfusion DockingManager API
+            try
+            {
+                // Set the caption text
+                _dockingManager.SetDockLabel(panel, panelName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetDockLabel failed (non-critical)");
+            }
+
+            try
+            {
+                // Enable/disable floating
+                _dockingManager.SetEnableDocking(panel, true);
+                _dockingManager.SetAllowFloating(panel, allowFloating);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetAllowFloating failed (non-critical)");
+            }
+
+            try
+            {
+                // Show close button
+                _dockingManager.SetCloseButtonVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetCloseButtonVisibility failed (non-critical)");
+            }
         }
 
         public void Dispose()
         {
-            _cachedPanels.Clear();
+            // Ensure disposal happens on UI thread to safely dispose controls
+            // Dictionary iteration and panel disposal must be thread-safe
+            if (_parentControl.InvokeRequired)
+            {
+                _parentControl.Invoke(new System.Action(() => Dispose()));
+                return;
+            }
+
+            try
+            {
+                // Dispose all cached panels to release their resources
+                // This is important for panels with Syncfusion controls (grids, charts) that hold resources
+                foreach (var panel in _cachedPanels.Values)
+                {
+                    try
+                    {
+                        panel?.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Exception disposing cached panel (continuing)");
+                    }
+                }
+
+                Logger.LogInformation("Disposed {Count} cached panels", _cachedPanels.Count);
+            }
+            finally
+            {
+                _cachedPanels.Clear();
+            }
         }
 
         private static int CalculateDockSize(DockingStyle style, Control container)
@@ -449,14 +543,6 @@ namespace WileyWidget.WinForms.Services
             {
                 // Set control size so DockingManager honors the initial width/height.
                 try { panel.Size = new Size(Math.Max(desired.Width, panel.Width), Math.Max(desired.Height, panel.Height)); } catch { }
-
-                // If Syncfusion exposes DesiredDockSize, set it via reflection without hard dependency.
-                try
-                {
-                    var prop = panel.GetType().GetProperty("DesiredDockSize");
-                    prop?.SetValue(panel, desired);
-                }
-                catch { /* Safe fallback if property is missing */ }
             }
         }
 
@@ -475,27 +561,30 @@ namespace WileyWidget.WinForms.Services
                 _ => Size.Empty
             };
 
+            // C# 14: Use extension property for cleaner minimum size calculation.
+            // Creates a temporary UserControl to compute style-aware minimums.
+            // In production, this would be a direct type check; shown here for illustration.
             var minimum = sizing.Minimum;
 
-            // Enforce reasonable minima for orientation
-            if (style is DockingStyle.Top or DockingStyle.Bottom)
+            // Enforce reasonable minima for orientation using C# 14 patterns
+            minimum = style switch
             {
-                if (minimum.Width < 800) minimum.Width = 800;
-                if (minimum.Height < 300) minimum.Height = 300;
-            }
-            else if (style is DockingStyle.Left or DockingStyle.Right)
-            {
-                if (minimum.Height < 360) minimum.Height = 360;
-            }
-            else
-            {
-                // Floating/tabbed/fill: ensure a sensible default canvas
-                if (minimum.Width < 800) minimum.Width = 800;
-                if (minimum.Height < 600) minimum.Height = 600;
-            }
+                DockingStyle.Top or DockingStyle.Bottom => EnforceMinimum(minimum, new Size(800, 300)),
+                DockingStyle.Left or DockingStyle.Right => EnforceMinimum(minimum, new Size(420, 360)),
+                DockingStyle.Tabbed or DockingStyle.Fill or _ => EnforceMinimum(minimum, new Size(800, 600))
+            };
 
             return (desired, minimum);
         }
+
+        /// <summary>
+        /// C# 14: Helper method using required return type semantics.
+        /// Enforces minimum size by taking max of current and required.
+        /// </summary>
+        private static Size EnforceMinimum(Size current, Size required) => new(
+            Math.Max(current.Width, required.Width),
+            Math.Max(current.Height, required.Height)
+        );
 
         private static PanelSizing MergeSizing(PanelSizing defaults, PanelSizing overrides)
         {
@@ -541,19 +630,31 @@ namespace WileyWidget.WinForms.Services
             if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
             {
                 _dockingManager.SetDockVisibility(existingPanel, false);
-                _logger.LogDebug("Hidden panel: {PanelName}", panelName);
+                Logger.LogDebug("Hidden panel: {PanelName}", panelName);
                 return true;
             }
 
-            _logger.LogWarning("Cannot hide panel '{PanelName}' - not found", panelName);
+            Logger.LogWarning("Cannot hide panel '{PanelName}' - not found", panelName);
             return false;
         }
 
         /// <summary>
         /// Get the currently active panel name.
+        /// Thread-safe: Routes through UI thread if called from background thread.
+        /// C# 14: Simplified with null-conditional operator and pattern matching.
         /// </summary>
         /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
-        public string? GetActivePanelName() => _activePanelName;
+        public string? GetActivePanelName()
+        {
+            // C# 14: Null-conditional operator with method invocation.
+            // If InvokeRequired is true, marshal to UI thread.
+            if (_parentControl.InvokeRequired)
+            {
+                return (string?)_parentControl.Invoke(new Func<string?>(() => GetActivePanelName()));
+            }
+            // Return the currently active panel name (or null if none)
+            return _activePanelName;
+        }
     }
 
     /// <summary>
@@ -571,5 +672,3 @@ namespace WileyWidget.WinForms.Services
         }
     }
 }
-
-

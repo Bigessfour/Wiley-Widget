@@ -17,12 +17,12 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public class ScenarioProjection
     {
-        public int Year { get; set; }
-        public decimal ProjectedRate { get; set; }
-        public decimal ProjectedRevenue { get; set; }
-        public decimal ProjectedExpenses { get; set; }
-        public decimal ProjectedBalance { get; set; }
-        public decimal ReserveLevel { get; set; }
+        public required int Year { get; init; }
+        public required decimal ProjectedRate { get; init; }
+        public required decimal ProjectedRevenue { get; init; }
+        public required decimal ProjectedExpenses { get; init; }
+        public required decimal ProjectedBalance { get; init; }
+        public required decimal ReserveLevel { get; init; }
     }
 
     /// <summary>
@@ -30,11 +30,11 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public class DepartmentImpact
     {
-        public string DepartmentName { get; set; } = string.Empty;
-        public decimal CurrentBudget { get; set; }
-        public decimal ProjectedBudget { get; set; }
-        public decimal ImpactAmount { get; set; }
-        public decimal ImpactPercentage { get; set; }
+        public required string DepartmentName { get; init; }
+        public required decimal CurrentBudget { get; init; }
+        public required decimal ProjectedBudget { get; init; }
+        public required decimal ImpactAmount { get; init; }
+        public required decimal ImpactPercentage { get; init; }
     }
 
     /// <summary>

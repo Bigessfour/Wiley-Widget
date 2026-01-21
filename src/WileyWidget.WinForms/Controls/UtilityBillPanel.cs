@@ -109,8 +109,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
-            // Start async load
-            _ = LoadAsync();
+            // Start async load - fire-and-forget with error handling
+            _ = LoadAsyncSafe();
 
             Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
         }
@@ -285,7 +285,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             Text = text,
             Font = new Font(Font.FontFamily, DpiAware.LogicalToDeviceUnits(10f), FontStyle.Bold),
-            // ForeColor removed - let SkinManager handle theming
+            // ForeColor removed - let SFSkinManager handle theming
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AutoSize = false

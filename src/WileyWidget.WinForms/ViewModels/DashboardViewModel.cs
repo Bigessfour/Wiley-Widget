@@ -9,6 +9,7 @@ using WileyWidget.Models;
 using Microsoft.Extensions.Configuration;
 using WileyWidget.WinForms.Logging;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -17,12 +18,12 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public class DashboardMetric
     {
-        public string Name { get; set; } = string.Empty;
-        public double Value { get; set; }
-        public string Unit { get; set; } = string.Empty;
-        public string Trend { get; set; } = string.Empty;
-        public double ChangePercent { get; set; }
-        public string Description { get; set; } = string.Empty;
+        public required string Name { get; init; }
+        public required double Value { get; init; }
+        public required string Unit { get; init; }
+        public required string Trend { get; init; }
+        public required double ChangePercent { get; init; }
+        public required string Description { get; init; }
     }
 
     /// <summary>
@@ -236,7 +237,7 @@ namespace WileyWidget.WinForms.ViewModels
         private async Task LoadDashboardDataAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("=== LoadDashboardDataAsync STARTED ===");
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: ENTRY");
+            ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: ENTRY");
 
             // Validate dependencies defensively
             ValidateCriticalDependencies();
@@ -246,23 +247,23 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = false;
                 _logger.LogError("Critical dependencies missing - aborting dashboard load");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Critical dependencies missing - aborting");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Critical dependencies missing - aborting");
                 return;
             }
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Dependencies validated successfully");
+            ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Dependencies validated successfully");
 
             var cancellationTokenSource = new CancellationTokenSource();
             var localCancellationToken = cancellationTokenSource.Token;
 
             _logger.LogDebug("Acquiring load lock...");
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Acquiring semaphore");
+            ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Acquiring semaphore");
 
             // Keep on UI thread to ensure property updates work correctly
             await _loadLock.WaitAsync().ConfigureAwait(true);
 
             _logger.LogDebug("Load lock acquired");
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Semaphore acquired");
+            ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Semaphore acquired");
             try
             {
                 // Cancel any existing load operation
@@ -447,7 +448,7 @@ namespace WileyWidget.WinForms.ViewModels
                         _logger.LogInformation("Dashboard collections: {FundCount} funds, {DeptCount} departments, {VarianceCount} variances",
                             FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
                         _logger.LogInformation("=== Dashboard load COMPLETED SUCCESSFULLY ===");
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
+                        ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -455,7 +456,7 @@ namespace WileyWidget.WinForms.ViewModels
                     {
                         // Handle cancellation gracefully for dashboard loads (tests expect cancellation to be swallowed)
                         _logger.LogInformation("Dashboard load cancelled (likely due to concurrent load request)");
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Cancelled");
+                        ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Cancelled");
                         ErrorMessage = null; // Clear error since this is expected
                         // Stop retrying and exit method without throwing to callers
                         break;
@@ -484,7 +485,7 @@ namespace WileyWidget.WinForms.ViewModels
             finally
             {
                 _logger.LogDebug("Releasing load lock");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Releasing semaphore");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Releasing semaphore");
                 _loadLock.Release();
             }
         }
@@ -776,9 +777,9 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public class MonthlyRevenue
     {
-        public string Month { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public int MonthNumber { get; set; }
+        public required string Month { get; init; }
+        public required decimal Amount { get; init; }
+        public required int MonthNumber { get; init; }
     }
 }
 
@@ -824,7 +825,7 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogCritical(message);
 
                 // Also log to console for immediate visibility during debugging
-                Console.WriteLine($"[CRITICAL NULL] {message}");
+                ConsoleOutputHelper.WriteLineSafe($"[CRITICAL NULL] {message}");
 
                 throw new InvalidOperationException(message);
             }
@@ -838,7 +839,7 @@ namespace WileyWidget.WinForms.ViewModels
         private void ValidateCriticalDependencies()
         {
             _logger.LogDebug("=== ValidateCriticalDependencies STARTED ===");
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: ENTRY");
+            ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: ENTRY");
 
             // _logger is always valid (falls back to NullLogger)
             // But verify repositories which are required for data loading
@@ -846,44 +847,44 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 var message = "BudgetRepository is null - dashboard will show error state";
                 _logger.LogWarning(message);
-                Console.WriteLine($"[WARNING] {message}");
+                ConsoleOutputHelper.WriteLineSafe($"[WARNING] {message}");
                 ErrorMessage = "Budget data unavailable - repository not configured";
                 HasError = true;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null BudgetRepository");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null BudgetRepository");
             }
             else
             {
                 _logger.LogDebug("BudgetRepository is available");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: BudgetRepository OK");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: BudgetRepository OK");
             }
 
             if (_accountRepository == null)
             {
                 var message = "AccountRepository is null - dashboard will show error state";
                 _logger.LogWarning(message);
-                Console.WriteLine($"[WARNING] {message}");
+                ConsoleOutputHelper.WriteLineSafe($"[WARNING] {message}");
                 if (!HasError)
                 {
                     ErrorMessage = "Account data unavailable - repository not configured";
                 }
                 HasError = true;
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null AccountRepository");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null AccountRepository");
             }
             else
             {
                 _logger.LogDebug("AccountRepository is available");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: AccountRepository OK");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: AccountRepository OK");
             }
 
             if (HasError)
             {
                 _logger.LogError("Critical dependencies validation failed - HasError=true, ErrorMessage: {ErrorMessage}", ErrorMessage);
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: FAILED - HasError=true, ErrorMessage: {ErrorMessage}");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: FAILED - HasError=true, ErrorMessage: {ErrorMessage}");
             }
             else
             {
                 _logger.LogDebug("All critical dependencies validated successfully");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: SUCCESS - All dependencies OK");
+                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: SUCCESS - All dependencies OK");
             }
 
             _logger.LogDebug("=== ValidateCriticalDependencies COMPLETED ===");
@@ -892,3 +893,4 @@ namespace WileyWidget.WinForms.ViewModels
         #endregion
     }
 }
+

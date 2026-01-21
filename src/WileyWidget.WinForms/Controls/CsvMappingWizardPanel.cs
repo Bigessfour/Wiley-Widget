@@ -180,7 +180,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch
             {
-                // Non-fatal: theming will still be applied by form-level SkinManager
+                // Non-fatal: theming will still be applied by form-level SFSkinManager
             }
         }
 
@@ -338,16 +338,15 @@ namespace WileyWidget.WinForms.Controls
         // ICompletablePanel implementation
         public bool IsLoaded => _isLoaded;
 
-        private bool _isBusy;
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public bool IsBusy
         {
-            get => _isBusy;
+            get => field;
             set
             {
-                if (_isBusy == value) return;
-                _isBusy = value;
+                if (field == value) return;
+                field = value;
                 StateChanged?.Invoke(this, EventArgs.Empty);
             }
         }

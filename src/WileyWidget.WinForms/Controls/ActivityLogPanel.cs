@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Services;
 
@@ -185,15 +186,25 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
-                if (_activityGrid != null && ViewModel != null)
+                if (_activityGrid != null)
                 {
-                    // Use BindingSource for reactive data binding and consistent grid updates
-                    _bindingSource = new BindingSource
+                    if (ViewModel != null)
                     {
-                        DataSource = ViewModel,
-                        DataMember = "ActivityEntries"
-                    };
-                    _activityGrid.DataSource = _bindingSource;
+                        // Use BindingSource for reactive data binding and consistent grid updates
+                        _bindingSource = new BindingSource
+                        {
+                            DataSource = ViewModel,
+                            DataMember = "ActivityEntries"
+                        };
+                        _activityGrid.DataSource = _bindingSource;
+                    }
+                    else
+                    {
+                        // Defensive initialization: provide empty collection when ViewModel not yet loaded
+                        // (e.g., during form instantiation in test harness before InitializeAsync runs)
+                        _activityGrid.DataSource = new System.Collections.Generic.List<ActivityLog>();
+                        Logger?.LogDebug("ActivityGrid initialized with empty collection - ViewModel will be bound in InitializeAsync()");
+                    }
                 }
             }
             catch (Exception ex)
@@ -462,25 +473,66 @@ namespace WileyWidget.WinForms.Controls
     public class ActivityLogViewModel
     {
         private readonly ILogger<ActivityLogViewModel>? _logger;
+        private readonly IActivityLogRepository? _repository;
 
         /// <summary>
         /// Observable collection of activity entries.
         /// </summary>
         public ObservableCollection<ActivityLog> ActivityEntries { get; } = new();
 
-        public ActivityLogViewModel(ILogger<ActivityLogViewModel>? logger = null)
+        /// <summary>
+        /// Initialize ViewModel with optional repository and logger.
+        /// Repository is optional to support testing and fallback scenarios.
+        /// </summary>
+        public ActivityLogViewModel(
+            IActivityLogRepository? repository = null,
+            ILogger<ActivityLogViewModel>? logger = null)
         {
+            _repository = repository;
             _logger = logger;
         }
 
         /// <summary>
-        /// Refresh activity entries from data source.
+        /// Refresh activity entries from data source (repository or in-memory).
         /// </summary>
         public async System.Threading.Tasks.Task RefreshActivityEntriesAsync()
         {
-            // TODO: Load from database via repository
-            // For now, this is a placeholder for integration
-            await System.Threading.Tasks.Task.CompletedTask;
+            try
+            {
+                if (_repository != null)
+                {
+                    // Load from repository/database
+                    var activities = await _repository.GetRecentActivitiesAsync(skip: 0, take: 500);
+                    ActivityEntries.Clear();
+                    
+                    // Convert ActivityItem to ActivityLog for display in grid
+                    foreach (var activity in activities.OrderByDescending(a => a.Timestamp))
+                    {
+                        ActivityEntries.Add(new ActivityLog
+                        {
+                            Timestamp = activity.Timestamp,
+                            Activity = activity.Activity,
+                            Details = activity.Details,
+                            Status = activity.ActivityType,
+                            User = activity.User,
+                            Category = activity.Category,
+                            Icon = activity.Icon,
+                            ActivityType = activity.ActivityType,
+                            Severity = ""
+                        });
+                    }
+                    _logger?.LogDebug("Activity entries refreshed from database; {EntryCount} entries loaded", ActivityEntries.Count);
+                }
+                else
+                {
+                    // Fallback: maintain current in-memory entries
+                    _logger?.LogDebug("Activity entries maintained in-memory; {EntryCount} entries current", ActivityEntries.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to refresh activity entries from database");
+            }
         }
 
         /// <summary>

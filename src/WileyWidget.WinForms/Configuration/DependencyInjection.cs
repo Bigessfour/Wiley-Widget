@@ -526,7 +526,6 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
             services.AddScoped<QuickBooksViewModel>();
             services.AddScoped<InsightFeedViewModel>();
-            services.AddScoped<ChatPanelViewModel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
             services.AddTransient<JARVISChatHostForm>();
 
@@ -553,7 +552,6 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ChatPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

@@ -32,7 +32,8 @@ Note: Intuit requires a public HTTPS endpoint. Use Cloudflare Tunnel (recommende
 ## Signature verification
 
 - Set environment variable `QBO_WEBHOOKS_VERIFIER` to your Webhooks key from the Intuit portal
-- Implement the TODO in Program.cs to validate `X-Intuit-Signature` as HMACSHA256(body, verifier)
+- Signature validation is implemented in Program.cs: validates `X-Intuit-Signature` header as HMACSHA256(body, verifier) using constant-time comparison
+- Requests without a valid signature are rejected with 401 Unauthorized
 
 ## Production
 

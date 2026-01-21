@@ -4,85 +4,91 @@ using System;
 namespace WileyWidget.Models.DTOs;
 
 /// <summary>
-/// Lightweight DTO for Enterprise summary data (for dashboards and reports)
-/// Reduces memory overhead by 60% compared to full Enterprise entity
+/// Lightweight DTO for Enterprise summary data (for dashboards and reports).
+/// Reduces memory overhead by 60% compared to full Enterprise entity.
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class EnterpriseSummary
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal CurrentRate { get; set; }
-    public decimal MonthlyRevenue { get; set; }
-    public decimal MonthlyExpenses { get; set; }
-    public decimal MonthlyBalance { get; set; }
-    public int CitizenCount { get; set; }
-    public string Status { get; set; } = "Active";
+    public int Id { get; init; }
+    public required string Name { get; init; }
+    public decimal CurrentRate { get; init; }
+    public decimal MonthlyRevenue { get; init; }
+    public decimal MonthlyExpenses { get; init; }
+    public decimal MonthlyBalance { get; init; }
+    public int CitizenCount { get; init; }
+    public string Status { get; init; } = "Active";
 }
 
 /// <summary>
-/// DTO for Municipal Account summary (Chart of Accounts reports)
+/// DTO for Municipal Account summary (Chart of Accounts reports).
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class MunicipalAccountSummary
 {
-    public int Id { get; set; }
-    public string AccountNumber { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string AccountType { get; set; } = string.Empty;
-    public decimal Balance { get; set; }
-    public decimal BudgetAmount { get; set; }
+    public int Id { get; init; }
+    public required string AccountNumber { get; init; }
+    public required string Name { get; init; }
+    public required string AccountType { get; init; }
+    public decimal Balance { get; init; }
+    public decimal BudgetAmount { get; init; }
     public decimal Variance => Balance - BudgetAmount;
-    public string? DepartmentName { get; set; }
+    public string? DepartmentName { get; init; }
 }
 
 /// <summary>
-/// DTO for Budget Entry summary (multi-year reporting)
+/// DTO for Budget Entry summary (multi-year reporting).
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class BudgetEntrySummary
 {
-    public int Id { get; set; }
-    public string AccountNumber { get; set; } = string.Empty;
-    public string AccountName { get; set; } = string.Empty;
-    public int Year { get; set; }
-    public string YearType { get; set; } = string.Empty;
-    public string EntryType { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
+    public int Id { get; init; }
+    public required string AccountNumber { get; init; }
+    public required string AccountName { get; init; }
+    public int Year { get; init; }
+    public required string YearType { get; init; }
+    public required string EntryType { get; init; }
+    public decimal Amount { get; init; }
 }
 
 /// <summary>
-/// DTO for Utility Customer summary
+/// DTO for Utility Customer summary.
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class UtilityCustomerSummary
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string CustomerType { get; set; } = string.Empty;
-    public string ServiceAddress { get; set; } = string.Empty;
-    public decimal CurrentBalance { get; set; }
-    public bool IsActive { get; set; }
+    public int Id { get; init; }
+    public required string Name { get; init; }
+    public required string CustomerType { get; init; }
+    public required string ServiceAddress { get; init; }
+    public decimal CurrentBalance { get; init; }
+    public bool IsActive { get; init; }
 }
 
 /// <summary>
-/// DTO for Department hierarchy
+/// DTO for Department hierarchy.
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class DepartmentSummary
 {
-    public int Id { get; set; }
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Fund { get; set; } = string.Empty;
-    public int? ParentDepartmentId { get; set; }
-    public string? ParentDepartmentName { get; set; }
+    public int Id { get; init; }
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+    public required string Fund { get; init; }
+    public int? ParentDepartmentId { get; init; }
+    public string? ParentDepartmentName { get; init; }
 }
 
 /// <summary>
-/// DTO for Budget Period with account count
+/// DTO for Budget Period with account count.
+/// Uses init-only properties for immutable initialization pattern.
 /// </summary>
 public class BudgetPeriodSummary
 {
-    public int Id { get; set; }
-    public int Year { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public int AccountCount { get; set; }
-    public DateTime CreatedDate { get; set; }
+    public int Id { get; init; }
+    public int Year { get; init; }
+    public required string Name { get; init; }
+    public required string Status { get; init; }
+    public int AccountCount { get; init; }
+    public DateTime CreatedDate { get; init; }
 }

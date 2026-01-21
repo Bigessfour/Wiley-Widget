@@ -21,6 +21,7 @@ public sealed class QuickBooksAccountService : IQuickBooksAccountService
     private readonly IQuickBooksAuthService _authService;
     private readonly ILogger<QuickBooksAccountService> _logger;
     private readonly IMemoryCache _cache;
+    private readonly QuickBooksTokenStore _tokenStore;
     private readonly JsonSerializerOptions _jsonOptions;
 
     private const string AccountsCacheKey = "qb_accounts";
@@ -30,12 +31,14 @@ public sealed class QuickBooksAccountService : IQuickBooksAccountService
         HttpClient httpClient,
         IQuickBooksAuthService authService,
         ILogger<QuickBooksAccountService> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        QuickBooksTokenStore tokenStore)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _tokenStore = tokenStore ?? throw new ArgumentNullException(nameof(tokenStore));
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -229,14 +232,15 @@ public sealed class QuickBooksAccountService : IQuickBooksAccountService
 
     /// <summary>
     /// Gets the QuickBooks realm ID (company ID).
-    /// This is typically stored after OAuth callback in company info service.
-    /// TODO: Integrate with IQuickBooksCompanyInfoService to get realm ID.
+    /// Retrieved from token store which is populated during OAuth callback.
     /// </summary>
-    private async Task<string?> GetRealmIdAsync(CancellationToken cancellationToken = default)
+    private Task<string?> GetRealmIdAsync(CancellationToken cancellationToken = default)
     {
-        // TODO: This should call IQuickBooksCompanyInfoService.GetCompanyInfoAsync()
-        // For now, return null - integration happens when company info service is wired
-        await Task.CompletedTask;
-        return null;
+        var realmId = _tokenStore.GetRealmId();
+        if (string.IsNullOrEmpty(realmId))
+        {
+            _logger.LogWarning("RealmId not available in token store; ensure OAuth flow has completed");
+        }
+        return Task.FromResult(realmId);
     }
 }

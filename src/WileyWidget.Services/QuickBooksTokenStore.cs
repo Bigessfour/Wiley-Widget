@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -134,8 +136,50 @@ public sealed class QuickBooksTokenStore : IDisposable
                 return null;
             }
 
-            var json = await File.ReadAllTextAsync(path);
-            var token = JsonSerializer.Deserialize<QuickBooksOAuthToken>(json);
+            var content = await File.ReadAllTextAsync(path);
+            
+            // Try to decrypt if a secret vault is available and content looks like base64
+            if (_secretVault is not null && IsBase64String(content))
+            {
+                try
+                {
+                    // Decrypt using DPAPI
+                    var encryptedBytes = Convert.FromBase64String(content);
+                    byte[]? entropy = null;
+
+                    // Try to get entropy from secret vault if available
+                    try
+                    {
+                        var entropyValue = await _secretVault.GetSecretAsync("QuickBooksTokenStore_Entropy");
+                        if (!string.IsNullOrEmpty(entropyValue))
+                        {
+                            entropy = Encoding.UTF8.GetBytes(entropyValue);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Could not retrieve entropy from secret vault - proceeding without additional entropy");
+                    }
+
+                    // Decrypt
+                    var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, entropy, DataProtectionScope.CurrentUser);
+                    content = Encoding.UTF8.GetString(decryptedBytes);
+                    _logger.LogDebug("Decrypted OAuth token from disk");
+                }
+                catch (CryptographicException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to decrypt OAuth token - it may be corrupted or encrypted with different credentials. Treating as unencrypted.");
+                    // Fall through - content remains as-is, attempt to deserialize as JSON
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to decrypt OAuth token");
+                    return null;
+                }
+            }
+
+            // Deserialize JSON
+            var token = JsonSerializer.Deserialize<QuickBooksOAuthToken>(content);
 
             if (token?.IsValid == true && !token.IsExpired)
             {
@@ -151,6 +195,18 @@ public sealed class QuickBooksTokenStore : IDisposable
             _logger.LogError(ex, "Failed to load OAuth token from disk cache");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Helper to determine if a string is likely base64-encoded.
+    /// </summary>
+    private static bool IsBase64String(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return false;
+
+        // Check if string contains only valid base64 characters
+        return value.All(c => char.IsLetterOrDigit(c) || c == '+' || c == '/' || c == '=');
     }
 
     private async Task SaveToDiskAsync(QuickBooksOAuthToken token)
@@ -179,14 +235,34 @@ public sealed class QuickBooksTokenStore : IDisposable
             {
                 try
                 {
-                    // In a real implementation, encrypt the JSON using _secretVault
-                    // For now, just save as-is (TODO: implement encryption)
-                    _logger.LogWarning("Token persistence: encryption not yet implemented");
+                    // Encrypt the JSON using DPAPI with optional entropy from secret vault
+                    var jsonBytes = Encoding.UTF8.GetBytes(json);
+                    byte[]? entropy = null;
+
+                    // Try to get entropy from secret vault if available
+                    try
+                    {
+                        var entropyValue = await _secretVault.GetSecretAsync("QuickBooksTokenStore_Entropy");
+                        if (!string.IsNullOrEmpty(entropyValue))
+                        {
+                            entropy = Encoding.UTF8.GetBytes(entropyValue);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Could not retrieve entropy from secret vault - proceeding without additional entropy");
+                    }
+
+                    // Encrypt using Windows DPAPI
+                    var encryptedBytes = ProtectedData.Protect(jsonBytes, entropy, DataProtectionScope.CurrentUser);
+                    content = Convert.ToBase64String(encryptedBytes);
+                    _logger.LogInformation("OAuth token encrypted using DPAPI before disk persistence");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to encrypt OAuth token");
-                    throw;
+                    _logger.LogError(ex, "Failed to encrypt OAuth token - saving unencrypted as fallback");
+                    // Fall back to unencrypted storage to avoid losing the token
+                    content = json;
                 }
             }
 

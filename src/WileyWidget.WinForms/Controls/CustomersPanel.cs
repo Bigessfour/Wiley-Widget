@@ -163,7 +163,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                 {
                     if (e.Column != null)
                     {
-                        // Alternating row styling removed - let SkinManager handle theming
+                        // Alternating row styling removed - let SFSkinManager handle theming
                     }
                 };
 
@@ -217,7 +217,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Dock = DockStyle.Fill,
             RowCount = 4,
             ColumnCount = 1
-            // BackColor removed - let SkinManager handle theming
+            // BackColor removed - let SFSkinManager handle theming
         };
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 130));  // Toolbar - increased for 2 button rows
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Summary
@@ -733,7 +733,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _statusStrip = new StatusStrip
         {
             Dock = DockStyle.Fill
-            // BackColor removed - let SkinManager handle theming
+            // BackColor removed - let SFSkinManager handle theming
         };
 
         _statusLabel = new ToolStripStatusLabel

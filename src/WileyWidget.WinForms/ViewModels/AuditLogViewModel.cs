@@ -725,12 +725,12 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
         /// <summary>
         /// The start of the period this point represents (date for day, week-start for week, first-of-month for month).
         /// </summary>
-        public DateTime Period { get; set; }
+        public required DateTime Period { get; init; }
 
         /// <summary>
         /// Number of events in the period.
         /// </summary>
-        public int Count { get; set; }
+        public required int Count { get; init; }
 
         /// <summary>
         /// Friendly label for display; consumer may ignore and format axis labels instead.

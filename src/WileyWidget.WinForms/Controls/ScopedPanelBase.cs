@@ -31,7 +31,6 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
     // ICompletablePanel backing fields
     protected bool _isLoaded;
-    protected bool _isBusy;
     protected bool _hasUnsavedChanges;
     protected PanelMode? _mode = PanelMode.View;
     protected readonly List<ValidationItem> _validationErrors = new();
@@ -63,11 +62,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public bool IsBusy
     {
-        get => _isBusy;
+        get => field;
         set
         {
-            if (_isBusy == value) return;
-            _isBusy = value;
+            if (field == value) return;
+            field = value;
             OnPropertyChanged(nameof(IsBusy));
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -249,6 +248,59 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     public virtual Task LoadAsync(CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
+    /// Safe wrapper for fire-and-forget LoadAsync calls.
+    /// Handles cross-thread exceptions and ensures UI operations are properly marshaled.
+    /// Use this for background panel load calls that don't need to be awaited.
+    /// </summary>
+    protected async Task LoadAsyncSafe()
+    {
+        try
+        {
+            await LoadAsync(CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger.LogDebug("LoadAsyncSafe canceled - control disposed");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Cross-thread"))
+        {
+            _logger.LogError(ex, "Cross-thread operation detected in LoadAsync - UI operation must be marshaled to UI thread");
+            // Don't rethrow - this exception indicates a threading issue that should be fixed elsewhere
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "LoadAsyncSafe failed for {PanelType}", GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// Safely invokes an action on the UI thread if required.
+    /// Use this when updating UI controls from background threads in async operations.
+    /// </summary>
+    protected void InvokeOnUiThread(Action action)
+    {
+        if (InvokeRequired)
+        {
+            try
+            {
+                Invoke(action);
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogDebug("InvokeOnUiThread canceled - control disposed");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Cross-thread"))
+            {
+                _logger.LogError(ex, "Cross-thread operation in InvokeOnUiThread");
+            }
+        }
+        else
+        {
+            action?.Invoke();
+        }
+    }
+
+    /// <summary>
     /// Helper to register a new operation token; cancels any previous operation.
     /// </summary>
     protected CancellationToken RegisterOperation()
@@ -336,7 +388,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     {
         try
         {
-            // Get current application theme - SkinManager cascade should handle this automatically
+            // Get current application theme - SFSkinManager cascade should handle this automatically
             // Only apply explicitly if control was created after theme initialization
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, currentTheme);

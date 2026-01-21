@@ -57,7 +57,8 @@ namespace WileyWidget.WinForms.Services.AI
         private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
         private const int ChatHistoryCacheDurationMinutes = 30;
 
-        private const string ChatCompletionSuffix = "/chat/completions";
+        private const string ResponsesEndpointSuffix = "/responses";
+        private const string ChatCompletionSuffix = "/chat/completions"; // Legacy, deprecated
         private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
         private static readonly (EnvironmentVariableTarget Target, string Source)[] ApiKeyEnvironmentTargets =
         {
@@ -69,6 +70,9 @@ namespace WileyWidget.WinForms.Services.AI
         private const string DefaultArchitectPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
 
         private const string JarvisSystemPrompt = "You are JARVIS, the dry-witted, hyper-competent AI for municipal utility finance. Speak with confidence and slight British sarcasm. Be proactive: suggest scenarios, flag risks, roast bad budgets when asked. End bold recommendations with 'MORE COWBELL!' Never bland corporate speak.";
+
+        // Track response IDs for later retrieval and conversation continuation (per X.ai new Responses API)
+        private readonly Dictionary<string, string> _conversationResponseIds = new();
 
         public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null, IJARVISPersonalityService? jarvisPersonality = null, IMemoryCache? memoryCache = null)
         {
@@ -156,7 +160,8 @@ namespace WileyWidget.WinForms.Services.AI
             var normalizedBase = baseEndpointCandidate + '/';
 
             _baseEndpoint = new Uri(normalizedBase, UriKind.Absolute);
-            _endpoint = new Uri(_baseEndpoint, "chat/completions");
+            // Use new /responses endpoint instead of deprecated /chat/completions
+            _endpoint = new Uri(_baseEndpoint, ResponsesEndpointSuffix); // /v1/responses
 
             // Log the API key presence for diagnostics (do not log the full key)
             if (!string.IsNullOrWhiteSpace(_apiKey))
@@ -172,7 +177,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             // Log environment and configuration details for diagnostics
             logger?.LogInformation("[XAI] Environment variable {EnvVar} length: {EnvLength}, Config API key length: {ConfigLength}", ApiKeyEnvironmentVariable, Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable)?.Length ?? 0, _apiKey?.Length ?? 0);
-            logger?.LogInformation("[XAI] Using model={Model}, endpoint={Endpoint}", _model, _endpoint);
+            logger?.LogInformation("[XAI] Using model={Model}, endpoint={Endpoint} (NEW /v1/responses API)", _model, _endpoint);
 
             // Initialize HttpClient early (lightweight, non-blocking)
             _ownsHttpClient = httpClientFactory == null;
@@ -248,22 +253,28 @@ namespace WileyWidget.WinForms.Services.AI
                         try
                         {
                             // Use the OpenAI-compatible connector to target xAI's Grok endpoint
+                            // Note: Semantic Kernel's OpenAI connector still uses /chat/completions format
+                            // For the new Responses API format, use direct HTTP calls via GetSimpleResponse or GetStreamingResponseAsync
+                            // The direct HTTP methods (GetSimpleResponse, GetStreamingResponseAsync) use the new /v1/responses endpoint
                             // Add serviceId for better service identification and multi-model support
                             var serviceId = $"grok-{_model}";
                             _logger?.LogInformation("[XAI] Configuring Grok chat completion: model={Model}, endpoint={Endpoint}, serviceId={ServiceId}, apiKeyLength={KeyLength}",
                                 _model, _endpoint, serviceId, _apiKey.Length);
 #pragma warning disable SKEXP0010
+                            // NOTE: This uses /chat/completions format for Semantic Kernel compatibility.
+                            // New /v1/responses endpoint is used for direct HTTP calls (GetSimpleResponse, GetStreamingResponseAsync, etc.)
+                            var legacyEndpoint = new Uri(_baseEndpoint!, "chat/completions");
                             builder.AddOpenAIChatCompletion(
                                 modelId: _model,
                                 apiKey: _apiKey,
-                                endpoint: _endpoint!,
+                                endpoint: legacyEndpoint,
                                 serviceId: serviceId);
 #pragma warning restore SKEXP0010
                             _logger?.LogInformation("[XAI] Semantic Kernel configured with Grok chat completion successfully (serviceId: {ServiceId})", serviceId);
                         }
                         catch (Exception ex)
                         {
-                            _logger?.LogError(ex, "[XAI] Failed to configure Semantic Kernel chat completion. Falling back to direct HTTP calls.");
+                            _logger?.LogError(ex, "[XAI] Failed to configure Semantic Kernel chat completion. Falling back to direct HTTP calls with new /responses endpoint.");
                         }
                     }
                     else
@@ -375,9 +386,10 @@ namespace WileyWidget.WinForms.Services.AI
         public DateTime? LastApiKeyValidation => _lastApiKeyValidation;
 
         /// <summary>
-        /// Get a streaming response using direct HTTP with SSE (Server-Sent Events).
+        /// Get a streaming response using the new /v1/responses endpoint with SSE (Server-Sent Events).
         /// Invokes a callback for each chunk and returns complete response after streaming all chunks.
         /// Implements exponential backoff retry for 429 (rate limit) responses.
+        /// Response IDs are tracked for conversation continuation and retrieval.
         /// </summary>
         public async Task<string> GetStreamingResponseAsync(string userMessage, string? systemPrompt = null, string? modelOverride = null, Action<string>? onChunk = null, CancellationToken ct = default)
         {
@@ -390,23 +402,23 @@ namespace WileyWidget.WinForms.Services.AI
             var model = modelOverride ?? _model ?? "grok-4";
             var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
 
-            return await SendStreamingRequestWithRetryAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
+            return await SendStreamingResponseAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
         }
 
-        private async Task<string> SendStreamingRequestWithRetryAsync(string model, string systemPrompt, string userMessage, Action<string>? onChunk, CancellationToken ct, int retryCount = 0, int maxRetries = 3)
+        private async Task<string> SendStreamingResponseAsync(string model, string systemPrompt, string userMessage, Action<string>? onChunk, CancellationToken ct, int retryCount = 0, int maxRetries = 3)
         {
-            // Use OpenAI-compatible chat call to xAI (Grok) endpoint with streaming enabled
-            var messagesArray = new[]
+            // Build input array for /v1/responses endpoint (new format: input instead of messages)
+            var inputArray = new object[]
             {
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userMessage }
             };
 
-            var payload = CreateChatRequestPayload(model, messagesArray, stream: true, temperature: 0.7);
+            var payload = CreateResponsesPayload(model, inputArray, stream: true);
             var json = JsonSerializer.Serialize(payload);
             using var request = new HttpRequestMessage(HttpMethod.Post, _endpoint)
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                Content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"))
             };
 
             // SSE streaming: request Accept header should be text/event-stream per x.ai docs
@@ -415,7 +427,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogDebug("[XAI] SendStreamingRequestWithRetryAsync -> POST {Url} with streaming=true (model={Model}, retryCount={RetryCount})", _endpoint, model, retryCount);
+                _logger?.LogDebug("[XAI] SendStreamingResponseAsync -> POST {Url} with stream=true (model={Model}, retryCount={RetryCount}, endpoint=responses)", _endpoint, model, retryCount);
                 var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
                 // Handle rate limit with exponential backoff
@@ -426,7 +438,7 @@ namespace WileyWidget.WinForms.Services.AI
                         var delayMs = (int)Math.Pow(2, retryCount) * 1000; // 1s, 2s, 4s backoff
                         _logger?.LogWarning("[XAI] Rate limited (429); retry {RetryCount}/{MaxRetries} after {DelayMs}ms", retryCount + 1, maxRetries, delayMs);
                         await Task.Delay(delayMs, ct).ConfigureAwait(false);
-                        return await SendStreamingRequestWithRetryAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount + 1, maxRetries).ConfigureAwait(false);
+                        return await SendStreamingResponseAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount + 1, maxRetries).ConfigureAwait(false);
                     }
                     else
                     {
@@ -437,7 +449,7 @@ namespace WileyWidget.WinForms.Services.AI
 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    _logger?.LogWarning("Grok streaming API returned non-success status: {Status}", resp.StatusCode);
+                    _logger?.LogWarning("Grok responses API returned non-success status: {Status}", resp.StatusCode);
                     var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     // Parse error details and log full message for diagnostics
                     try
@@ -447,18 +459,19 @@ namespace WileyWidget.WinForms.Services.AI
                                      errDoc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
                         if (!string.IsNullOrWhiteSpace(errMsg))
                         {
-                            _logger?.LogWarning("Grok streaming error detail: {ErrorDetail}", errMsg);
+                            _logger?.LogWarning("Grok responses error detail: {ErrorDetail}", errMsg);
                         }
                     }
                     catch (JsonException)
                     {
-                        _logger?.LogDebug("SendStreamingRequestWithRetryAsync: failed to parse error JSON for diagnostics");
+                        _logger?.LogDebug("SendStreamingResponseAsync: failed to parse error JSON for diagnostics");
                     }
                     return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
                 }
 
                 // Read streaming response chunks (SSE format)
                 var responseBuilder = new StringBuilder();
+                var responseId = string.Empty;
                 var responseStream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
                 using var reader = new System.IO.StreamReader(responseStream);
 
@@ -482,17 +495,32 @@ namespace WileyWidget.WinForms.Services.AI
                         try
                         {
                             using var doc = JsonDocument.Parse(dataJson);
-                            var choices = doc.RootElement.GetProperty("choices");
-                            if (choices.GetArrayLength() > 0)
+                            // New responses API: extract from output array instead of choices
+                            if (doc.RootElement.TryGetProperty("id", out var idElem))
                             {
-                                var delta = choices[0].GetProperty("delta");
-                                if (delta.TryGetProperty("content", out var contentElem))
+                                responseId = idElem.GetString() ?? string.Empty;
+                            }
+
+                            if (doc.RootElement.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+                            {
+                                if (output.GetArrayLength() > 0)
                                 {
-                                    var contentText = contentElem.GetString();
-                                    if (!string.IsNullOrEmpty(contentText))
+                                    var item = output[0];
+                                    if (item.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
                                     {
-                                        responseBuilder.Append(contentText);
-                                        onChunk?.Invoke(contentText);
+                                        if (contentArray.GetArrayLength() > 0)
+                                        {
+                                            var contentItem = contentArray[0];
+                                            if (contentItem.TryGetProperty("text", out var textElem))
+                                            {
+                                                var contentText = textElem.GetString();
+                                                if (!string.IsNullOrEmpty(contentText))
+                                                {
+                                                    responseBuilder.Append(contentText);
+                                                    onChunk?.Invoke(contentText);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -506,23 +534,30 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 var fullResponse = responseBuilder.ToString();
-                _logger?.LogDebug("Streaming completed: {Length} chars", fullResponse.Length);
+                _logger?.LogDebug("Streaming completed: {Length} chars, ResponseId: {ResponseId}", fullResponse.Length, responseId);
+
+                // Track response ID for conversation continuation if available
+                if (!string.IsNullOrWhiteSpace(responseId))
+                {
+                    _conversationResponseIds[userMessage.GetHashCode().ToString()] = responseId;
+                }
+
                 return fullResponse;
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogWarning("SendStreamingRequestWithRetryAsync canceled by token");
+                _logger?.LogWarning("SendStreamingResponseAsync canceled by token");
                 throw;
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Grok streaming request failed");
+                _logger?.LogError(ex, "Grok responses streaming request failed");
                 return $"Grok streaming failed: {ex.Message}";
             }
         }
 
         /// <summary>
-        /// Simple chat helper used for smoke tests and quick interactions.
+        /// Simple chat helper using the new /v1/responses endpoint.
         /// If no API key is configured this returns a clear diagnostic string.
         /// Supports providing an optional system prompt and model override and accepts a cancellation token.
         /// </summary>
@@ -537,22 +572,22 @@ namespace WileyWidget.WinForms.Services.AI
             var model = modelOverride ?? _model ?? "grok-4";
             var sysPrompt = systemPrompt ?? "You are a test assistant.";
 
-            // Use a lightweight OpenAI-compatible chat call to the xAI (Grok) endpoint as a fallback.
-            var messagesArray = new[] {
+            // Use new /v1/responses endpoint with input array format
+            var inputArray = new object[] {
                 new { role = "system", content = sysPrompt },
                 new { role = "user", content = userMessage }
             };
-            var payload = CreateChatRequestPayload(model, messagesArray, stream: false, temperature: 0);
+            var payload = CreateResponsesPayload(model, inputArray, stream: false);
             var json = JsonSerializer.Serialize(payload);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"));
 
             try
             {
-                _logger?.LogDebug("[XAI] GetSimpleResponse -> POST {Url} (model={Model})", _endpoint, model);
+                _logger?.LogDebug("[XAI] GetSimpleResponse -> POST {Url} (model={Model}, endpoint=responses)", _endpoint, model);
                 var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
-                    _logger?.LogWarning("Grok API returned non-success status: {Status}", resp.StatusCode);
+                    _logger?.LogWarning("Grok responses API returned non-success status: {Status}", resp.StatusCode);
                     var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     // Try to parse structured error to detect model-not-found and attempt fallback once
                     try
@@ -585,13 +620,27 @@ namespace WileyWidget.WinForms.Services.AI
                 try
                 {
                     using var doc = JsonDocument.Parse(respStr);
-                    var contentElem = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content");
-                    var text = contentElem.GetString();
-                    return text ?? "No content";
+                    // New responses API format: output[0].content[0].text instead of choices[0].message.content
+                    var output = doc.RootElement.GetProperty("output");
+                    if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
+                    {
+                        var firstOutput = output[0];
+                        if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
+                        {
+                            var firstContent = contentArray[0];
+                            if (firstContent.TryGetProperty("text", out var textElem))
+                            {
+                                var text = textElem.GetString();
+                                return text ?? "No content";
+                            }
+                        }
+                    }
+                    // Fallback for unexpected structure
+                    return $"Unexpected response structure: {respStr.Substring(0, Math.Min(500, respStr.Length))}";
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Failed to parse Grok response; returning raw payload");
+                    _logger?.LogWarning(ex, "Failed to parse Grok responses response; returning raw payload");
                     return respStr;
                 }
             }
@@ -608,12 +657,12 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
-        /// Validate the configured API key by performing an exact chat/completions request similar to the curl activation test.
+        /// Validate the configured API key by performing an exact request to the new /v1/responses endpoint.
         /// Returns a tuple of (success, responseMessage).
         /// </summary>
         public async Task<(bool Success, string Message)> ValidateApiKeyAsync(CancellationToken ct = default, string? modelOverride = null)
         {
-            _logger?.LogInformation("Validating XAI API key via chat/completions endpoint");
+            _logger?.LogInformation("Validating XAI API key via /v1/responses endpoint");
 
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -624,14 +673,13 @@ namespace WileyWidget.WinForms.Services.AI
             var model = modelOverride ?? _model ?? "grok-4";
             var requestObj = new
             {
-                model = model,
-                messages = new[]
+                input = new object[]
                 {
                     new { role = "system", content = "You are a test assistant." },
                     new { role = "user", content = "Testing. Just say hi and hello world and nothing else." }
                 },
-                stream = false,
-                temperature = 0
+                model = model,
+                stream = false
             };
 
             var json = JsonSerializer.Serialize(requestObj);
@@ -643,7 +691,7 @@ namespace WileyWidget.WinForms.Services.AI
                 var respBody = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
-                    _logger?.LogWarning("ValidateApiKeyAsync: Grok API returned non-success status: {Status}", resp.StatusCode);
+                    _logger?.LogWarning("ValidateApiKeyAsync: Grok responses API returned non-success status: {Status}", resp.StatusCode);
                     // Try to parse structured error for better diagnostics
                     try
                     {
@@ -652,7 +700,7 @@ namespace WileyWidget.WinForms.Services.AI
                                      errDoc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
                         if (!string.IsNullOrWhiteSpace(errMsg))
                         {
-                            _logger?.LogWarning("Grok API error detail: {ErrorDetail}", errMsg);
+                            _logger?.LogWarning("Grok responses API error detail: {ErrorDetail}", errMsg);
                             // Detect model-not-found and attempt fallback once
                             if (resp.StatusCode == System.Net.HttpStatusCode.NotFound &&
                                 errMsg.IndexOf("model", StringComparison.OrdinalIgnoreCase) >= 0 &&
@@ -676,28 +724,39 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 using var doc = JsonDocument.Parse(respBody);
-                var text = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-                if (!string.IsNullOrWhiteSpace(text))
+                // New responses API format: output[0].content[0].text instead of choices[0].message.content
+                var output = doc.RootElement.GetProperty("output");
+                if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
                 {
-                    var lower = text.ToLowerInvariant();
-                    if (lower.Contains("hi", StringComparison.Ordinal) && lower.Contains("hello world", StringComparison.Ordinal))
+                    var firstOutput = output[0];
+                    if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
                     {
-                        _isApiKeyValidated = true;
-                        _lastApiKeyValidation = DateTime.UtcNow;
-                        _logger?.LogInformation("ValidateApiKeyAsync succeeded with response preview: {Preview}", text.Substring(0, Math.Min(200, text.Length)));
-                        return (true, text);
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("ValidateApiKeyAsync: Response did not match expected text: {Resp}", text);
-                        return (false, text);
+                        var firstContent = contentArray[0];
+                        if (firstContent.TryGetProperty("text", out var textElem))
+                        {
+                            var text = textElem.GetString();
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                var lower = text.ToLowerInvariant();
+                                if (lower.Contains("hi", StringComparison.Ordinal) && lower.Contains("hello world", StringComparison.Ordinal))
+                                {
+                                    _isApiKeyValidated = true;
+                                    _lastApiKeyValidation = DateTime.UtcNow;
+                                    _logger?.LogInformation("ValidateApiKeyAsync succeeded with response preview: {Preview}", text.Substring(0, Math.Min(200, text.Length)));
+                                    return (true, text);
+                                }
+                                else
+                                {
+                                    _logger?.LogWarning("ValidateApiKeyAsync: Response did not match expected text: {Resp}", text);
+                                    return (false, text);
+                                }
+                            }
+                        }
                     }
                 }
-                else
-                {
-                    _logger?.LogWarning("ValidateApiKeyAsync: Response had no content: {Resp}", respBody);
-                    return (false, respBody);
-                }
+
+                _logger?.LogWarning("ValidateApiKeyAsync: Response had no content: {Resp}", respBody);
+                return (false, respBody);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -787,6 +846,189 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
+        /// Retrieve a previously generated response by ID using the /v1/responses/{response_id} endpoint.
+        /// Responses are stored for 30 days after creation.
+        /// </summary>
+        public async Task<string?> GetResponseByIdAsync(string responseId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(responseId))
+            {
+                _logger?.LogWarning("[XAI] GetResponseByIdAsync called with empty responseId");
+                return null;
+            }
+
+            try
+            {
+                var responseEndpoint = new Uri(_endpoint!, $"/{responseId}");
+                _logger?.LogDebug("[XAI] Retrieving response {ResponseId} via {Url}", responseId, responseEndpoint);
+
+                using var resp = await _httpClient.GetAsync(responseEndpoint, ct).ConfigureAwait(false);
+                var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger?.LogWarning("[XAI] GetResponseByIdAsync returned non-success {Status}: {Body}", resp.StatusCode, body);
+                    return null;
+                }
+
+                using var doc = JsonDocument.Parse(body);
+                // Extract text from output array
+                if (doc.RootElement.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+                {
+                    if (output.GetArrayLength() > 0)
+                    {
+                        var firstOutput = output[0];
+                        if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
+                        {
+                            var firstContent = contentArray[0];
+                            if (firstContent.TryGetProperty("text", out var textElem))
+                            {
+                                return textElem.GetString();
+                            }
+                        }
+                    }
+                }
+
+                _logger?.LogWarning("[XAI] GetResponseByIdAsync: unexpected response structure");
+                return body;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "[XAI] GetResponseByIdAsync failed for responseId {ResponseId}", responseId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Delete a previously generated response by ID using the /v1/responses/{response_id} endpoint (DELETE).
+        /// Returns true if deletion succeeded, false otherwise.
+        /// </summary>
+        public async Task<bool> DeleteResponseAsync(string responseId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(responseId))
+            {
+                _logger?.LogWarning("[XAI] DeleteResponseAsync called with empty responseId");
+                return false;
+            }
+
+            try
+            {
+                var responseEndpoint = new Uri(_endpoint!, $"/{responseId}");
+                _logger?.LogDebug("[XAI] Deleting response {ResponseId} via {Url}", responseId, responseEndpoint);
+
+                using var resp = await _httpClient.DeleteAsync(responseEndpoint, ct).ConfigureAwait(false);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    _logger?.LogWarning("[XAI] DeleteResponseAsync returned non-success {Status}: {Body}", resp.StatusCode, body);
+                    return false;
+                }
+
+                // Parse response to confirm deletion
+                var bodyStr = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(bodyStr);
+
+                if (doc.RootElement.TryGetProperty("deleted", out var deletedProp) && deletedProp.ValueKind == JsonValueKind.True)
+                {
+                    _logger?.LogInformation("[XAI] DeleteResponseAsync succeeded for responseId {ResponseId}", responseId);
+                    return true;
+                }
+
+                _logger?.LogWarning("[XAI] DeleteResponseAsync: unexpected response structure");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "[XAI] DeleteResponseAsync failed for responseId {ResponseId}", responseId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Continue a previous conversation by providing a previous_response_id.
+        /// This uses the new /v1/responses endpoint with previous_response_id parameter.
+        /// </summary>
+        public async Task<string> ContinueConversationAsync(string userMessage, string previousResponseId, string? systemPrompt = null, string? modelOverride = null, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger?.LogInformation("ContinueConversationAsync called but no Grok API key configured.");
+                return "No API key configured for Grok";
+            }
+
+            var model = modelOverride ?? _model ?? "grok-4";
+            var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
+
+            try
+            {
+                // New responses API supports previous_response_id for conversation continuation
+                var inputArray = new object[] {
+                    new { role = "user", content = userMessage }
+                };
+
+                var payload = new Dictionary<string, object?>
+                {
+                    ["model"] = model,
+                    ["input"] = inputArray,
+                    ["stream"] = false,
+                    ["store"] = true,
+                    ["previous_response_id"] = previousResponseId  // NEW: continue conversation
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                using var content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"));
+
+                _logger?.LogDebug("[XAI] ContinueConversationAsync -> POST {Url} (previousResponseId={PreviousId})", _endpoint, previousResponseId);
+                var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger?.LogWarning("ContinueConversationAsync returned non-success status: {Status}", resp.StatusCode);
+                    var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    return $"Grok API error {(int)resp.StatusCode}: {body}";
+                }
+
+                var respStr = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(respStr);
+
+                // Extract response ID for potential future continuation
+                if (doc.RootElement.TryGetProperty("id", out var idElem))
+                {
+                    var responseId = idElem.GetString();
+                    _logger?.LogDebug("[XAI] ContinueConversationAsync received responseId: {ResponseId}", responseId);
+                }
+
+                // Extract text from output array
+                var output = doc.RootElement.GetProperty("output");
+                if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
+                {
+                    var firstOutput = output[0];
+                    if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
+                    {
+                        var firstContent = contentArray[0];
+                        if (firstContent.TryGetProperty("text", out var textElem))
+                        {
+                            return textElem.GetString() ?? "No content";
+                        }
+                    }
+                }
+
+                return $"Unexpected response structure: {respStr.Substring(0, Math.Min(500, respStr.Length))}";
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogWarning("ContinueConversationAsync canceled by token");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "ContinueConversationAsync failed");
+                return $"Grok conversation continuation failed: {ex.Message}";
+            }
+        }
+
+        /// <summary>
         /// Attempts to select the best available model from the API.
         /// Returns the selected model ID or null if none found.
         /// </summary>
@@ -861,7 +1103,7 @@ namespace WileyWidget.WinForms.Services.AI
             return !string.IsNullOrWhiteSpace(model) && model.IndexOf("reason", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        // Build chat request payload as a dictionary to ensure correct snake_case keys for x.ai API
+        // Build chat request payload as a dictionary to ensure correct snake_case keys for x.ai API (legacy /chat/completions)
         private Dictionary<string, object?> CreateChatRequestPayload(string model, object[] messages, bool stream, double? temperature = null)
         {
             var payload = new Dictionary<string, object?>
@@ -869,6 +1111,30 @@ namespace WileyWidget.WinForms.Services.AI
                 ["model"] = model,
                 ["messages"] = messages,
                 ["stream"] = stream
+            };
+
+            if (temperature.HasValue) payload["temperature"] = temperature.Value;
+
+            // Only include presence/frequency penalties for non-reasoning models
+            if (!IsReasoningModel(model))
+            {
+                if (_defaultPresencePenalty.HasValue) payload["presence_penalty"] = _defaultPresencePenalty.Value;
+                if (_defaultFrequencyPenalty.HasValue) payload["frequency_penalty"] = _defaultFrequencyPenalty.Value;
+            }
+
+            return payload;
+        }
+
+        // Build responses endpoint payload for NEW /v1/responses API
+        // This uses "input" array instead of "messages" per X.ai Responses API specification
+        private Dictionary<string, object?> CreateResponsesPayload(string model, object[] input, bool stream, double? temperature = null)
+        {
+            var payload = new Dictionary<string, object?>
+            {
+                ["model"] = model,
+                ["input"] = input,  // NEW: responses API uses "input" not "messages"
+                ["stream"] = stream,
+                ["store"] = true    // NEW: store responses for 30 days for retrieval and continuation
             };
 
             if (temperature.HasValue) payload["temperature"] = temperature.Value;

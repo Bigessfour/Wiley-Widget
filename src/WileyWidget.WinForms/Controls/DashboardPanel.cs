@@ -495,7 +495,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch { }
 
-            // Theme applied automatically by SkinManager cascade from parent form
+            // Theme applied automatically by SFSkinManager cascade from parent form
 
             rightPanel.Controls.Add(_detailsGrid, 0, 0);
 
