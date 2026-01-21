@@ -29,6 +29,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Diagnostics;
+using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
@@ -245,117 +246,7 @@ public partial class MainForm
     /// </summary>
     private void ValidateAndConvertRibbonImages(RibbonControlAdv ribbon)
     {
-        try
-        {
-            int convertedCount = 0;
-
-            // Iterate through all ribbon tabs
-            foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
-            {
-                if (tab.Panel != null)
-                {
-                    // Iterate through all toolstrips in the tab panel
-                    foreach (Control control in tab.Panel.Controls)
-                    {
-                        if (control is ToolStripEx toolStrip)
-                        {
-                            // Check each item in the toolstrip
-                            foreach (ToolStripItem item in toolStrip.Items)
-                            {
-                                if (item.Image != null)
-                                {
-                                    // Check if image is animated or invalid/disposed
-                                    bool needsConversion = false;
-                                    try
-                                    {
-                                        needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // Image is invalid/corrupted - needs conversion/removal
-                                        _logger?.LogWarning(ex, "Image validation failed for ribbon item {ItemName} - treating as invalid", item.Name);
-                                        needsConversion = true;
-                                    }
-
-                                    if (needsConversion)
-                                    {
-                                        // Convert animated/invalid image to static bitmap or remove it
-                                        var staticBitmap = ConvertToStaticBitmap(item.Image);
-                                        if (staticBitmap != null)
-                                        {
-                                            item.Image = staticBitmap;
-                                            convertedCount++;
-                                            _logger?.LogDebug("Converted/validated image for ribbon item: {ItemName}", item.Name);
-                                        }
-                                        else
-                                        {
-                                            // If conversion failed, remove the invalid image
-                                            item.Image = null;
-                                            _logger?.LogWarning("Removed invalid image from ribbon item: {ItemName}", item.Name);
-                                        }
-                                    }
-                                }
-
-                                // Check nested items in ToolStripPanelItem containers
-                                if (item is ToolStripPanelItem panelItem)
-                                {
-                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
-                                    {
-                                        if (panelSubItem.Image != null)
-                                        {
-                                            // Check if image is animated or invalid/disposed
-                                            bool needsConversion = false;
-                                            try
-                                            {
-                                                needsConversion = ImageAnimator.CanAnimate(panelSubItem.Image) || !IsImageValid(panelSubItem.Image);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                // Image is invalid/corrupted - needs conversion/removal
-                                                _logger?.LogWarning(ex, "Image validation failed for panel item {ItemName} - treating as invalid", panelSubItem.Name);
-                                                needsConversion = true;
-                                            }
-
-                                            if (needsConversion)
-                                            {
-                                                var staticBitmap = ConvertToStaticBitmap(panelSubItem.Image);
-                                                if (staticBitmap != null)
-                                                {
-                                                    panelSubItem.Image = staticBitmap;
-                                                    convertedCount++;
-                                                    _logger?.LogDebug("Converted/validated image for panel item: {ItemName}", panelSubItem.Name);
-                                                }
-                                                else
-                                                {
-                                                    // If conversion failed, remove the invalid image
-                                                    panelSubItem.Image = null;
-                                                    _logger?.LogWarning("Removed invalid image from panel item: {ItemName}", panelSubItem.Name);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (convertedCount > 0)
-            {
-                _logger?.LogInformation("Converted {Count} animated images to static bitmaps in ribbon to prevent ImageAnimator exceptions", convertedCount);
-                Console.WriteLine($"[DIAGNOSTIC] Converted {convertedCount} animated images to static bitmaps in ribbon");
-            }
-            else
-            {
-                _logger?.LogDebug("No animated images found in ribbon - all images are static");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to validate and convert ribbon images");
-            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertRibbonImages failed: {ex.Message}");
-        }
+        ribbon.ValidateAndConvertImages(_logger);
     }
 
     /// <summary>
@@ -364,192 +255,7 @@ public partial class MainForm
     /// </summary>
     private void ValidateAndConvertMenuBarImages(MenuStrip menuStrip)
     {
-        try
-        {
-            int convertedCount = 0;
-
-            // Iterate through all menu items in the menu strip
-            foreach (ToolStripItem menuItem in menuStrip.Items)
-            {
-                if (menuItem is ToolStripMenuItem toolStripMenuItem)
-                {
-                    // Check the main menu item
-                    if (menuItem.Image != null)
-                    {
-                        bool needsConversion = false;
-                        try
-                        {
-                            needsConversion = ImageAnimator.CanAnimate(menuItem.Image) || !IsImageValid(menuItem.Image);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Image is invalid/corrupted - needs conversion/removal
-                            _logger?.LogWarning(ex, "Image validation failed for menu item {ItemName} - treating as invalid", menuItem.Name);
-                            needsConversion = true;
-                        }
-
-                        if (needsConversion)
-                        {
-                            var staticBitmap = ConvertToStaticBitmap(menuItem.Image);
-                            if (staticBitmap != null)
-                            {
-                                menuItem.Image = staticBitmap;
-                                convertedCount++;
-                                _logger?.LogDebug("Converted/validated image for menu item: {ItemName}", menuItem.Name);
-                            }
-                            else
-                            {
-                                // If conversion failed, remove the invalid image
-                                menuItem.Image = null;
-                                _logger?.LogWarning("Removed invalid image from menu item: {ItemName}", menuItem.Name);
-                            }
-                        }
-                    }
-
-                    // Recursively check all dropdown items
-                    ValidateMenuItemImages(toolStripMenuItem.DropDownItems, ref convertedCount);
-                }
-            }
-
-            if (convertedCount > 0)
-            {
-                _logger?.LogInformation("Converted/validated {Count} images in menu bar to prevent ImageAnimator exceptions", convertedCount);
-                Console.WriteLine($"[DIAGNOSTIC] Converted/validated {convertedCount} images in menu bar");
-            }
-            else
-            {
-                _logger?.LogDebug("No invalid images found in menu bar - all images are valid");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to validate and convert menu bar images");
-            Console.WriteLine($"[DIAGNOSTIC ERROR] ValidateAndConvertMenuBarImages failed: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Recursively validates images in menu item dropdown collections.
-    /// </summary>
-    private void ValidateMenuItemImages(ToolStripItemCollection items, ref int convertedCount)
-    {
-        foreach (ToolStripItem item in items)
-        {
-            if (item.Image != null)
-            {
-                bool needsConversion = false;
-                try
-                {
-                    needsConversion = ImageAnimator.CanAnimate(item.Image) || !IsImageValid(item.Image);
-                }
-                catch (Exception ex)
-                {
-                    // Image is invalid/corrupted - needs conversion/removal
-                    _logger?.LogWarning(ex, "Image validation failed for dropdown item {ItemName} - treating as invalid", item.Name);
-                    needsConversion = true;
-                }
-
-                if (needsConversion)
-                {
-                    var staticBitmap = ConvertToStaticBitmap(item.Image);
-                    if (staticBitmap != null)
-                    {
-                        item.Image = staticBitmap;
-                        convertedCount++;
-                        _logger?.LogDebug("Converted/validated image for dropdown item: {ItemName}", item.Name);
-                    }
-                    else
-                    {
-                        // If conversion failed, remove the invalid image
-                        item.Image = null;
-                        _logger?.LogWarning("Removed invalid image from dropdown item: {ItemName}", item.Name);
-                    }
-                }
-            }
-
-            // Recursively check nested dropdown items
-            if (item is ToolStripMenuItem subMenuItem)
-            {
-                ValidateMenuItemImages(subMenuItem.DropDownItems, ref convertedCount);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Checks if an image is valid and not disposed.
-    /// </summary>
-    private static bool IsImageValid(Image image)
-    {
-        if (image == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            // Try to access image properties to check if it's valid
-            _ = image.Width;
-            _ = image.Height;
-            _ = image.PixelFormat;
-
-            // CRITICAL: Safely check if image can be animated without crashing
-            // This can throw "Parameter is not valid" if image is disposed/corrupted
-            try
-            {
-                _ = ImageAnimator.CanAnimate(image);
-            }
-            catch (ArgumentException)
-            {
-                // Image is corrupted and will crash ImageAnimator
-                return false;
-            }
-
-            return true;
-        }
-        catch
-        {
-            // Image is disposed or corrupted
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Converts an animated image to a static bitmap by drawing the first frame.
-    /// </summary>
-    private static Image? ConvertToStaticBitmap(Image animatedImage)
-    {
-        if (animatedImage == null || !ImageAnimator.CanAnimate(animatedImage))
-        {
-            return animatedImage;
-        }
-
-        try
-        {
-            // Create a new bitmap with the same dimensions
-            var staticBitmap = new Bitmap(animatedImage.Width, animatedImage.Height);
-
-            // Draw the animated image onto the static bitmap (this captures the current/first frame)
-            using (var g = Graphics.FromImage(staticBitmap))
-            {
-                g.DrawImage(animatedImage, 0, 0, animatedImage.Width, animatedImage.Height);
-            }
-
-            return staticBitmap;
-        }
-        catch (Exception ex)
-        {
-            // If conversion fails, dispose the animated image and return null to prevent ImageAnimator exceptions
-            System.Diagnostics.Debug.WriteLine($"Failed to convert animated image to static bitmap: {ex.Message}");
-            try
-            {
-                animatedImage.Dispose();
-            }
-            catch
-            {
-                // Ignore disposal errors
-            }
-            return null;
-        }
+        menuStrip.ValidateAndConvertImages(_logger);
     }
 
     /// <summary>
@@ -558,63 +264,7 @@ public partial class MainForm
     /// </summary>
     private void LateValidateMenuBarImages()
     {
-        if (_menuStrip == null)
-        {
-            return;
-        }
-
-        try
-        {
-            int invalidCount = 0;
-            int totalChecked = 0;
-
-            foreach (ToolStripItem topLevelItem in _menuStrip.Items)
-            {
-                if (topLevelItem is ToolStripMenuItem topLevelMenu)
-                {
-                    // Check top-level menu item image
-                    if (topLevelMenu.Image != null)
-                    {
-                        totalChecked++;
-                        if (!IsImageValid(topLevelMenu.Image))
-                        {
-                            _logger?.LogWarning("Late validation: Removing invalid image from top-level menu item: {ItemName}", topLevelMenu.Name);
-                            topLevelMenu.Image = null;
-                            invalidCount++;
-                        }
-                    }
-
-                    // Check all sub-menu items
-                    foreach (ToolStripItem subItem in topLevelMenu.DropDownItems)
-                    {
-                        if (subItem.Image != null)
-                        {
-                            totalChecked++;
-                            if (!IsImageValid(subItem.Image))
-                            {
-                                _logger?.LogWarning("Late validation: Removing invalid image from menu item: {ItemName}", subItem.Name);
-                                subItem.Image = null;
-                                invalidCount++;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (invalidCount > 0)
-            {
-                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from menu bar (checked {TotalCount} images)", invalidCount, totalChecked);
-                _menuStrip.Refresh(); // Force repaint with valid images only
-            }
-            else
-            {
-                _logger?.LogDebug("Late validation: All {TotalCount} menu bar images are valid", totalChecked);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Late validation: Failed to validate menu bar images");
-        }
+        _menuStrip?.ValidateAndConvertImages(_logger);
     }
 
     /// <summary>
@@ -623,74 +273,7 @@ public partial class MainForm
     /// </summary>
     private void LateValidateRibbonImages()
     {
-        if (_ribbon == null)
-        {
-            return;
-        }
-
-        try
-        {
-            int invalidCount = 0;
-            int totalChecked = 0;
-
-            foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
-            {
-                if (tab.Panel != null)
-                {
-                    foreach (Control control in tab.Panel.Controls)
-                    {
-                        if (control is ToolStripEx toolStrip)
-                        {
-                            foreach (ToolStripItem item in toolStrip.Items)
-                            {
-                                if (item.Image != null)
-                                {
-                                    totalChecked++;
-                                    if (!IsImageValid(item.Image))
-                                    {
-                                        _logger?.LogWarning("Late validation: Removing invalid image from ribbon item: {ItemName}", item.Name);
-                                        item.Image = null;
-                                        invalidCount++;
-                                    }
-                                }
-
-                                // Check nested items in panels
-                                if (item is ToolStripPanelItem panelItem)
-                                {
-                                    foreach (ToolStripItem panelSubItem in panelItem.Items)
-                                    {
-                                        if (panelSubItem.Image != null)
-                                        {
-                                            totalChecked++;
-                                            if (!IsImageValid(panelSubItem.Image))
-                                            {
-                                                _logger?.LogWarning("Late validation: Removing invalid image from ribbon panel item: {ItemName}", panelSubItem.Name);
-                                                panelSubItem.Image = null;
-                                                invalidCount++;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (invalidCount > 0)
-            {
-                _logger?.LogWarning("Late validation: Removed {InvalidCount} invalid images from ribbon (checked {TotalCount} images)", invalidCount, totalChecked);
-                _ribbon.Refresh(); // Force repaint with valid images only
-            }
-            else
-            {
-                _logger?.LogDebug("Late validation: All {TotalCount} ribbon images are valid", totalChecked);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Late validation: Failed to validate ribbon images");
-        }
+        _ribbon?.ValidateAndConvertImages(_logger);
     }
 
     /// <summary>
@@ -2481,17 +2064,7 @@ public partial class MainForm
     /// </summary>
     private void EnsureDockingZOrder()
     {
-        try
-        {
-            // Phase 1 Simplification: Docking always enabled - delegate to layout manager
-            if (_dockingManager == null) return;
-
-            try { if (_dockingManager.HostControl is Control host) { host.BringToFront(); } } catch (Exception ex) { _logger?.LogDebug(ex, "Failed to BringToFront on DockingManager host control during EnsureDockingZOrder"); }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to ensure docking z-order");
-        }
+        _dockingManager?.EnsureZOrder();
     }
 
     /// <summary>
@@ -3550,17 +3123,7 @@ public partial class MainForm
         {
             var mgr = _dockingManager;
             _dockingManager = null;
-
-            try
-            {
-                mgr.PersistState = false;
-                mgr.HostControl = null;
-                mgr.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Exception while disposing DockingManager");
-            }
+            mgr.DisposeSafely();
         }
 
         _logger?.LogDebug("DisposeSyncfusionDockingResources completed - all resources delegated to DockingLayoutManager");

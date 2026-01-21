@@ -242,8 +242,8 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Panel {PanelType} not registered in DI container", typeof(TPanel).Name);
                 if (!IsDisposed && IsHandleCreated)
                 {
-                    MessageBox.Show($"Panel '{displayName}' ({typeof(TPanel).Name}) is not registered in the service container. Please verify DependencyInjection.cs.",
-                        "DI Registration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    UIHelper.ShowErrorOnUI(this, $"Panel '{displayName}' ({typeof(TPanel).Name}) is not registered in the service container. Please verify DependencyInjection.cs.",
+                        "DI Registration Error", _logger);
                 }
             }
             catch (Exception ex)
@@ -252,7 +252,7 @@ namespace WileyWidget.WinForms.Forms
                 // Safe fall-through - PanelNavigationService also has error handling/logging
                 if (!IsDisposed && IsHandleCreated)
                 {
-                    try { MessageBox.Show("Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); } catch { }
+                    try { UIHelper.ShowMessageOnUI(this, "Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning, _logger); } catch { }
                 }
             }
         }
@@ -338,7 +338,7 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogError(ex, "Failed to add panel {PanelName} async in MainForm", panelName);
                 if (!IsDisposed && IsHandleCreated)
                 {
-                    try { MessageBox.Show("Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); } catch { }
+                    try { UIHelper.ShowMessageOnUI(this, "Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning, _logger); } catch { }
                 }
             }
         }
@@ -637,8 +637,7 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error processing dropped files");
-                MessageBox.Show($"Error processing files: {ex.Message}", "Drag-Drop Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                try { UIHelper.ShowErrorOnUI(this, $"Error processing files: {ex.Message}", "Drag-Drop Error", _logger); } catch { }
             }
         }
 
@@ -711,8 +710,8 @@ namespace WileyWidget.WinForms.Forms
             {
                 var count = (result.Data as System.Collections.IDictionary)?.Count ?? 0;
                 _logger.LogInformation("Successfully imported {File}: {Count} properties", Path.GetFileName(file), count);
-                MessageBox.Show($"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
-                    "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
+                    "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger); } catch { }
             }
             else
             {
@@ -1197,11 +1196,7 @@ public void ToggleTheme()
                 {
                     _logger?.LogError(valEx, "OnShown: Initialization state validation failed");
                     _asyncLogger?.Error($"Validation Error: {valEx.Message}");
-                    MessageBox.Show(
-                        $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
-                        "Initialization Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                    UIHelper.ShowErrorOnUI(this, $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.", "Initialization Error", _logger);
                     Application.Exit();
                     return;
                 }
@@ -1413,25 +1408,12 @@ public void ToggleTheme()
                         {
                             try
                             {
-                                if (this.InvokeRequired)
-                                {
-                                    this.Invoke(() =>
-                                    {
-                                        MessageBox.Show(this,
-                                            $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
-                                            "Initialization Error",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-                                    });
-                                }
-                                else
-                                {
-                                    MessageBox.Show(this,
-                                        $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
-                                        "Initialization Error",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Warning);
-                                }
+                                UIHelper.ShowMessageOnUI(this,
+                                    $"Failed to load dashboard data: {ex.Message}\n\nThe application will continue but dashboard may not display correctly.",
+                                    "Initialization Error",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning,
+                                    _logger);
                             }
                             catch { }
                         }
@@ -1490,25 +1472,10 @@ public void ToggleTheme()
                 {
                     try
                     {
-                        if (this.InvokeRequired)
-                        {
-                            this.Invoke(() =>
-                            {
-                                MessageBox.Show(this,
-                                    $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
-                                    "Critical Error",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Error);
-                            });
-                        }
-                        else
-                        {
-                            MessageBox.Show(this,
-                                $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
-                                "Critical Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-                        }
+                        UIHelper.ShowErrorOnUI(this, 
+                            $"An unexpected error occurred during initialization: {ex.Message}\n\nPlease check the logs for details.",
+                            "Critical Error", 
+                            _logger);
                     }
                     catch { }
                 }
@@ -1878,13 +1845,13 @@ public void ToggleTheme()
 
         private void ShowErrorDialog(string title, string message)
         {
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            UIHelper.ShowErrorOnUI(this, message, title, _logger);
         }
 
         private void ShowErrorDialog(string title, string message, Exception ex)
         {
             _logger?.LogError(ex, "Error: {Message}", message);
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            UIHelper.ShowErrorOnUI(this, message, title, _logger);
         }
 
         private void UpdateMruMenu(ToolStripMenuItem menu)
