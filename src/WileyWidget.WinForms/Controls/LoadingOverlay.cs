@@ -14,7 +14,7 @@ namespace WileyWidget.WinForms.Controls
     /// A lightweight semi-transparent loading overlay with a marquee progress indicator and optional message.
     /// Designed to be docked Fill inside panels and toggled visible when panels are loading.
     /// </summary>
-    public class LoadingOverlay : Syncfusion.Windows.Forms.Tools.GradientPanelExt
+    public class LoadingOverlay : GradientPanelExt
     {
         private Label? _messageLabel;
         private ProgressBarAdv? _progress;

@@ -10,7 +10,7 @@ using FastReport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using DockingManager = Syncfusion.Windows.Forms.Tools.DockingManager;
-using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -741,10 +741,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             // Load parameters for the selected report
             // In production, parameters should be loaded from the FastReport file metadata or
             // from a database configuration service based on the report name
-            
+
             var parameters = new List<ReportParameter>();
             var selectedReport = _reportSelector?.SelectedItem as string;
-            
+
             // Example: Load parameters based on report type
             if (selectedReport != null)
             {

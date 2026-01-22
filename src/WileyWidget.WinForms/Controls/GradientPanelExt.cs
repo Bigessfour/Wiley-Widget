@@ -1,12 +1,10 @@
-using Syncfusion.Windows.Forms.Tools;
-
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
 /// Project-standard gradient panel.
 /// This is the preferred replacement for WinForms <see cref="System.Windows.Forms.Panel"/> in UI layout.
 /// </summary>
-public class GradientPanelExt : Syncfusion.Windows.Forms.Tools.GradientPanelExt
+public class GradientPanelExt : SafeGradientPanel
 {
     public GradientPanelExt()
     {

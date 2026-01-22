@@ -9,7 +9,7 @@ using System.Windows.Forms;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using ProgressBarAdv = Syncfusion.Windows.Forms.Tools.ProgressBarAdv;
 using ProgressBarStyles = Syncfusion.Windows.Forms.Tools.ProgressBarStyles;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
@@ -252,25 +252,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Loads the panel and initializes the ViewModel.
     /// </summary>
-    protected override async void OnLoad(EventArgs e)
+    protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
         if (ViewModel != null && !DesignMode)
         {
-            try
+            // Queue async initialization on the UI thread
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await ViewModel.InitializeAsync();
-                UpdateLoadingState();
-                UpdateNoDataOverlay();
+                try
+                {
+                    await ViewModel.InitializeAsync();
+                    UpdateLoadingState();
+                    UpdateNoDataOverlay();
 
-                // Defer sizing validation - QuickBooks panel has nested SplitContainers and grids
-                DeferSizeValidation();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to initialize QuickBooksPanel");
-            }
+                    // Defer sizing validation - QuickBooks panel has nested SplitContainers and grids
+                    DeferSizeValidation();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to initialize QuickBooksPanel");
+                }
+            }));
         }
     }
 

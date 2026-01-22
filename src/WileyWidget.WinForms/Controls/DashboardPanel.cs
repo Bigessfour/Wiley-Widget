@@ -42,7 +42,7 @@ namespace WileyWidget.WinForms.Controls
         private FormsMainViewModel? _vm => ViewModel;
 
         // controls
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt _topPanel = null!;
+        private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
@@ -1266,16 +1266,19 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Named handler for PanelHeader.RefreshClicked event (enables proper unsubscription).
         /// </summary>
-        private async void OnPanelHeaderRefreshClicked(object? sender, EventArgs e)
+        private void OnPanelHeaderRefreshClicked(object? sender, EventArgs e)
         {
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await (_vm?.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Warning(ex, "DashboardPanel: Refresh failed");
-            }
+                try
+                {
+                    await (_vm?.RefreshCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "DashboardPanel: Refresh failed");
+                }
+            }));
         }
 
         /// <summary>

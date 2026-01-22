@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
 using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
 using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
-using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -161,7 +161,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         try
         {
             IsBusy = true;
-            
+
             // Clear existing error indicators before validation
             if (_errorProvider != null)
             {
@@ -170,7 +170,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
                 else
                     ClearErrorIndicators();
             }
-            
+
             var errors = new List<ValidationItem>();
             if (ViewModel == null)
             {
@@ -248,7 +248,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private void ClearErrorIndicators()
     {
         if (_errorProvider == null) return;
-        
+
         if (_rateIncreaseTextBox != null)
             _errorProvider.SetError(_rateIncreaseTextBox, "");
         if (_expenseIncreaseTextBox != null)

@@ -13,7 +13,7 @@ namespace WileyWidget.WinForms.Controls
     /// Simple centered message for no-data states. Designed to be docked Fill and shown when the panel's collection is empty.
     /// Can optionally display an action button.
     /// </summary>
-    public class NoDataOverlay : Syncfusion.Windows.Forms.Tools.GradientPanelExt
+    public class NoDataOverlay : GradientPanelExt
     {
         private Label _messageLabel = null!;
         private SfButton? _actionButton;

@@ -48,7 +48,7 @@ namespace WileyWidget.WinForms.Controls
 
         // Controls
         private PanelHeader? _panelHeader;
-        private Syncfusion.Windows.Forms.Tools.GradientPanelExt? _mainPanel;
+        private GradientPanelExt? _mainPanel;
         private GradientPanelExt? _themeGroup;
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
         private Syncfusion.WinForms.ListView.SfComboBox? _fontCombo;
@@ -310,7 +310,7 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
             Controls.Add(_panelHeader);
 
-            _mainPanel = new Syncfusion.Windows.Forms.Tools.GradientPanelExt
+            _mainPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(padding),

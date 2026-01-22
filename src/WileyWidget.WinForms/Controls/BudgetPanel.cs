@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using GridCheckBoxColumn = Syncfusion.WinForms.DataGrid.GridCheckBoxColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
-using GradientPanelExt = Syncfusion.Windows.Forms.Tools.GradientPanelExt;
+using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -1238,7 +1238,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private async void AddEntryButton_Click(object? sender, EventArgs e)
+    private void AddEntryButton_Click(object? sender, EventArgs e)
     {
         try
         {
@@ -1345,36 +1345,39 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     CreatedAt = DateTime.UtcNow
                 };
 
-                var operationToken = RegisterOperation();
-                IsBusy = true;
-                try
+                BeginInvoke(new Func<Task>(async () =>
                 {
-                    var panelValidation = await ValidateAsync(operationToken);
-                    if (!panelValidation.IsValid)
+                    var operationToken = RegisterOperation();
+                    IsBusy = true;
+                    try
                     {
-                        ShowValidationDialog(panelValidation);
-                        return;
-                    }
+                        var panelValidation = await ValidateAsync(operationToken);
+                        if (!panelValidation.IsValid)
+                        {
+                            ShowValidationDialog(panelValidation);
+                            return;
+                        }
 
-                    var entryValidation = ValidateBudgetEntry(entry, txtAccountNumber, txtDescription, txtBudgeted, txtActual, txtDepartmentId);
-                    if (!entryValidation.IsValid)
+                        var entryValidation = ValidateBudgetEntry(entry, txtAccountNumber, txtDescription, txtBudgeted, txtActual, txtDepartmentId);
+                        if (!entryValidation.IsValid)
+                        {
+                            ShowValidationDialog(entryValidation);
+                            return;
+                        }
+
+                        await viewModel.AddEntryAsync(entry, operationToken);
+                        SetHasUnsavedChanges(false);
+                        UpdateStatus("Budget entry added successfully");
+                    }
+                    catch (OperationCanceledException)
                     {
-                        ShowValidationDialog(entryValidation);
-                        return;
+                        Logger.LogDebug("Add entry operation cancelled");
                     }
-
-                    await viewModel.AddEntryAsync(entry, operationToken);
-                    SetHasUnsavedChanges(false);
-                    UpdateStatus("Budget entry added successfully");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogDebug("Add entry operation cancelled");
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                }));
             }
         }
         catch (Exception ex)
@@ -1438,7 +1441,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         return errors.Count == 0 ? WileyWidget.WinForms.Controls.ValidationResult.Success : WileyWidget.WinForms.Controls.ValidationResult.Failed(errors.ToArray());
     }
 
-    private async void EditEntryButton_Click(object? sender, EventArgs e)
+    private void EditEntryButton_Click(object? sender, EventArgs e)
     {
         try
         {
@@ -1531,22 +1534,25 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.Variance = budgeted - actual;
                 selectedEntry.UpdatedAt = DateTime.UtcNow;
 
-                var operationToken = RegisterOperation();
-                IsBusy = true;
-                try
+                BeginInvoke(new Func<Task>(async () =>
                 {
-                    await ViewModel!.UpdateEntryAsync(selectedEntry, operationToken);
-                    SetHasUnsavedChanges(false);
-                    UpdateStatus("Budget entry updated successfully");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogDebug("Update entry operation cancelled");
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
+                    var operationToken = RegisterOperation();
+                    IsBusy = true;
+                    try
+                    {
+                        await ViewModel!.UpdateEntryAsync(selectedEntry, operationToken);
+                        SetHasUnsavedChanges(false);
+                        UpdateStatus("Budget entry updated successfully");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Logger.LogDebug("Update entry operation cancelled");
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                }));
             }
         }
         catch (Exception ex)
@@ -1631,7 +1637,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private async void ExportCsvButton_Click(object? sender, EventArgs e)
+    private void ExportCsvButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1644,53 +1650,59 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            var operationToken = RegisterOperation();
-            IsBusy = true;
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
-                UpdateStatus("CSV export completed successfully");
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogDebug("CSV export cancelled");
-                UpdateStatus("CSV export cancelled");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "CSV export failed");
-                UpdateStatus($"CSV export failed: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    await ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
+                    UpdateStatus("CSV export completed successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("CSV export cancelled");
+                    UpdateStatus("CSV export cancelled");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "CSV export failed");
+                    UpdateStatus($"CSV export failed: {ex.Message}");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
+            }));
         }
     }
 
-    private async void MappingWizardPanel_MappingApplied(object? sender, MappingAppliedEventArgs e)
+    private void MappingWizardPanel_MappingApplied(object? sender, MappingAppliedEventArgs e)
     {
         if (ViewModel == null) return;
 
-        try
+        BeginInvoke(new Func<Task>(async () =>
         {
-            UpdateStatus($"Importing {Path.GetFileName(e.FilePath)}...");
-            var progress = new Progress<string>(s => UpdateStatus(s));
-            var selectedEntity = string.IsNullOrWhiteSpace(e.SelectedEntity) || e.SelectedEntity == "(None)" ? null : e.SelectedEntity;
-            await ViewModel.ImportFromCsvWithMappingAsync(e.FilePath, e.ColumnMap, selectedEntity, e.FiscalYear, progress);
-            await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
-            UpdateStatus("Import completed");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Import with mapping failed");
-            UpdateStatus("Import failed");
-            MessageBox.Show($"Import failed: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally
-        {
-            if (_mappingContainer != null) _mappingContainer.Visible = false;
-        }
+            try
+            {
+                UpdateStatus($"Importing {Path.GetFileName(e.FilePath)}...");
+                var progress = new Progress<string>(s => UpdateStatus(s));
+                var selectedEntity = string.IsNullOrWhiteSpace(e.SelectedEntity) || e.SelectedEntity == "(None)" ? null : e.SelectedEntity;
+                await ViewModel.ImportFromCsvWithMappingAsync(e.FilePath, e.ColumnMap, selectedEntity, e.FiscalYear, progress);
+                await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
+                UpdateStatus("Import completed");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Import with mapping failed");
+                UpdateStatus("Import failed");
+                MessageBox.Show($"Import failed: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (_mappingContainer != null) _mappingContainer.Visible = false;
+            }
+        }));
     }
 
     private void MappingWizardPanel_Cancelled(object? sender, EventArgs e)
@@ -1699,7 +1711,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         UpdateStatus("Import cancelled");
     }
 
-    private async void ExportPdfButton_Click(object? sender, EventArgs e)
+    private void ExportPdfButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1712,31 +1724,34 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            var operationToken = RegisterOperation();
-            IsBusy = true;
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
-                UpdateStatus("PDF export completed successfully");
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogDebug("PDF export cancelled");
-                UpdateStatus("PDF export cancelled");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "PDF export failed");
-                UpdateStatus($"PDF export failed: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    await ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
+                    UpdateStatus("PDF export completed successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("PDF export cancelled");
+                    UpdateStatus("PDF export cancelled");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "PDF export failed");
+                    UpdateStatus($"PDF export failed: {ex.Message}");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
+            }));
         }
     }
 
-    private async void ExportExcelButton_Click(object? sender, EventArgs e)
+    private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
@@ -1749,27 +1764,30 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         if (saveFileDialog.ShowDialog() == DialogResult.OK)
         {
-            var operationToken = RegisterOperation();
-            IsBusy = true;
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
-                UpdateStatus("Excel export completed successfully");
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogDebug("Excel export cancelled");
-                UpdateStatus("Excel export cancelled");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Excel export failed");
-                UpdateStatus($"Excel export failed: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
+                var operationToken = RegisterOperation();
+                IsBusy = true;
+                try
+                {
+                    await ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
+                    UpdateStatus("Excel export completed successfully");
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("Excel export cancelled");
+                    UpdateStatus("Excel export cancelled");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Excel export failed");
+                    UpdateStatus($"Excel export failed: {ex.Message}");
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
+            }));
         }
     }
 
@@ -1894,10 +1912,10 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private async void OnLoadBudgetsButtonClick(object? sender, EventArgs e)
+    private void OnLoadBudgetsButtonClick(object? sender, EventArgs e)
     {
         if (ViewModel != null)
-            await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
+            BeginInvoke(new Func<Task>(async () => await ViewModel.LoadBudgetsCommand.ExecuteAsync(null)));
     }
 
     /// <summary>
