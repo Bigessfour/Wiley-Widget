@@ -369,3 +369,10 @@ tests/WileyWidget.Docker.Tests/
 **/Behaviors/*Region*.cs
 **/Regions/
 **/*RegionAdapter*.cs
+
+# Diagnostic dumps (process memory dumps, traces)
+dumps/
+*.dmp
+*.nettrace
+*.etlx
+*.bundle
