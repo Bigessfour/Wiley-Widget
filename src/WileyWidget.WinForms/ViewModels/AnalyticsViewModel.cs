@@ -485,7 +485,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 UpdateSummaries();
                 UpdateFilteredCollections();
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -515,7 +515,7 @@ namespace WileyWidget.WinForms.ViewModels
                 Recommendations.Add("Monitor expense growth carefully");
 
                 RecommendationExplanation = "Sample scenario shows balanced growth with moderate risk.";
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -539,7 +539,7 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 RecommendationExplanation = "Sample forecast indicates stable reserve levels with low risk.";
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private void ApplyAvailableEntities(IEnumerable<string> availableEntitiesFromResult)

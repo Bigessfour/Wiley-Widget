@@ -344,9 +344,9 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Transforms BudgetVarianceAnalysis from repository into chart-ready collections.
         /// </summary>
-        private Task TransformBudgetAnalysisToChartsAsync(BudgetVarianceAnalysis analysis, CancellationToken cancellationToken)
+        private async Task TransformBudgetAnalysisToChartsAsync(BudgetVarianceAnalysis analysis, CancellationToken cancellationToken)
         {
-            return Task.Run(() =>
+            await Task.Run(() =>
             {
                 // Clear existing data
                 ChartData.Clear();
@@ -403,7 +403,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _logger.LogInformation("Transformed budget analysis: {ChartPoints} chart points, {DeptCount} departments",
                     ChartData.Count, DepartmentDetails.Count);
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -556,7 +556,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _logger.LogInformation("Generated sample data: {DeptCount} departments, Budget: {Budget:C}, Actual: {Actual:C}",
                     departments.Length, totalBudgeted, totalActual);
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         #endregion

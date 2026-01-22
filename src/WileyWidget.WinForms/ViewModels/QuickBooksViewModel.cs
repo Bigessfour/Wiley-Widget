@@ -911,11 +911,11 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// </summary>
     private void StartConnectionPolling()
     {
+
         _cancellationTokenSource = new CancellationTokenSource();
         _connectionPollingTimer = new System.Threading.Timer(
             async _ =>
             {
-                // CRITICAL: Check disposal state before executing callback to prevent disposed scope access
                 if (_disposed || _cancellationTokenSource?.IsCancellationRequested == true)
                 {
                     _logger.LogDebug("Connection polling callback skipped (disposed or cancelled)");
@@ -924,7 +924,33 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
 
                 try
                 {
-                    await CheckConnectionAsync();
+                    // Use SynchronizationContext to marshal to UI thread
+                    SynchronizationContext syncContext = SynchronizationContext.Current;
+                    if (syncContext != null)
+                    {
+                        syncContext.Post(async __ =>
+                        {
+                            try
+                            {
+                                await CheckConnectionAsync();
+                            }
+                            catch (ObjectDisposedException ex)
+                            {
+                                _logger.LogWarning(ex, "Connection polling caught ObjectDisposedException - stopping timer");
+                                StopConnectionPolling();
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Connection polling callback failed");
+                            }
+                        }, null);
+                    }
+                    else
+                    {
+                        // If SynchronizationContext is null, log warning and skip polling (safety-first)
+                        // This should not happen in WinForms, but defensive check prevents thread-unsafe execution
+                        _logger.LogWarning("SynchronizationContext is null in connection polling callback - skipping to prevent cross-thread exception");
+                    }
                 }
                 catch (ObjectDisposedException ex)
                 {

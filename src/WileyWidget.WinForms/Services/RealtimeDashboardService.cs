@@ -74,6 +74,7 @@ namespace WileyWidget.WinForms.Services
 
         /// <summary>
         /// Updates dashboard metrics in real-time.
+        /// System.Threading.Timer callback runs on thread-pool, so we need async marshaling.
         /// </summary>
         private void UpdateDashboard(object? state)
         {
@@ -82,19 +83,24 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                _ = UpdateDashboardAsync();
+                // Fire-and-forget with proper async handling and ConfigureAwait
+                _ = UpdateDashboardAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Dashboard update failed");
-                ErrorOccurred?.Invoke(this, new DashboardErrorEventArgs { Exception = ex });
+                // Marshal error event to UI thread to prevent cross-thread exceptions on subscribers
+                SynchronizationContext.Current?.Post(_ =>
+                {
+                    ErrorOccurred?.Invoke(this, new DashboardErrorEventArgs { Exception = ex });
+                }, null);
             }
         }
 
         private async Task UpdateDashboardAsync(CancellationToken cancellationToken = default)
         {
             // Simulate fetching updated data
-            await Task.Delay(100);
+            await Task.Delay(100).ConfigureAwait(false);
 
             var metrics = GenerateDashboardMetrics();
 
@@ -102,11 +108,15 @@ namespace WileyWidget.WinForms.Services
             {
                 if (metrics.TryGetValue(subscription.MetricId, out var data))
                 {
-                    DataUpdated?.Invoke(this, new DashboardDataUpdatedEventArgs
+                    // Marshal DataUpdated event to UI thread to prevent cross-thread exceptions on subscribers
+                    SynchronizationContext.Current?.Post(_ =>
                     {
-                        MetricId = subscription.MetricId,
-                        Data = data
-                    });
+                        DataUpdated?.Invoke(this, new DashboardDataUpdatedEventArgs
+                        {
+                            MetricId = subscription.MetricId,
+                            Data = data
+                        });
+                    }, null);
 
                     foreach (var callback in subscription.Callbacks)
                     {

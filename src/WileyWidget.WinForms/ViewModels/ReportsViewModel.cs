@@ -737,10 +737,12 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                         dataSources["VarianceData"] = GenerateSampleVarianceData();
                         break;
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         // Apply preview data to UI-bound collection on the calling context (UI thread)
+        // Note: ConfigureAwait(false) means we may not be on UI thread, so don't touch PreviewData here
+        // Instead, only update previewTx list in the Task.Run above and clear it now
         try
         {
             PreviewData.Clear();

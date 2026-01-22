@@ -549,7 +549,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                 {
                     await FilterAccountsAsync();
                 }
-            });
+            }).ConfigureAwait(false);
         }
 
         /// <summary>

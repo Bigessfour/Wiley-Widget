@@ -3,9 +3,9 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Collections.Concurrent;
-using System.Timers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +29,7 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
     private readonly IConfiguration _configuration;
     private readonly IServiceProvider _serviceProvider;
     private readonly ConcurrentQueue<TelemetryLog> _telemetryQueue = new();
-    private readonly System.Timers.Timer _flushTimer;
+    private readonly System.Windows.Forms.Timer _flushTimer;
 
     public static readonly ActivitySource ActivitySource = new("WileyWidget");
     public static readonly string ServiceName = "wiley-widget";
@@ -42,8 +42,9 @@ public class SigNozTelemetryService : IDisposable, ITelemetryService
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         // Set up periodic flush timer (every 30 seconds)
-        _flushTimer = new System.Timers.Timer(30000);
-        _flushTimer.Elapsed += async (sender, e) =>
+        // Using System.Windows.Forms.Timer ensures Tick handler runs on UI thread (thread-safe for WinForms)
+        _flushTimer = new System.Windows.Forms.Timer { Interval = 30000 };
+        _flushTimer.Tick += async (sender, e) =>
         {
             try
             {

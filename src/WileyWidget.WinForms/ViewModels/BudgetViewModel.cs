@@ -865,7 +865,7 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 return filtered.ToList();
-            });
+            }, cancellationToken).ConfigureAwait(false);
 
             FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
             StatusText = $"{FilteredBudgetEntries.Count} of {BudgetEntries.Count} entries match filters";
@@ -923,7 +923,7 @@ namespace WileyWidget.WinForms.ViewModels
                 var entriesOverBudget = list.Count(e => e.ActualAmount > e.BudgetedAmount);
                 var entriesUnderBudget = list.Count(e => e.ActualAmount <= e.BudgetedAmount);
                 return (totalBudgeted, totalActual, totalVariance, totalEncumbrance, percentUsed, entriesOverBudget, entriesUnderBudget);
-            });
+            }, cancellationToken).ConfigureAwait(false);
 
             // Assign computed values to properties on UI thread
             TotalBudgeted = totals.totalBudgeted;
