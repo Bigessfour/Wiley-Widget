@@ -41,7 +41,7 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 // Run validation in a background task to avoid blocking the caller (e.g. Program.cs or UI thread)
-                var result = await Task.Run(() => _validator.ValidateAll(serviceProvider));
+                var result = await Task.Run(() => _validator.ValidateAll(serviceProvider)).ConfigureAwait(false);
 
                 if (!result.IsValid)
                 {

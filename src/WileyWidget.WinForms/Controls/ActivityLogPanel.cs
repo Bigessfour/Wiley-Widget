@@ -343,8 +343,24 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (ViewModel != null && _chkAutoRefresh?.Checked == true)
                 {
-                    await ViewModel.RefreshActivityEntriesAsync();
+                    // ConfigureAwait(false) ensures continuation may run on thread pool.
+                    // Wrap grid updates in UI thread marshal for safety.
+                    await ViewModel.RefreshActivityEntriesAsync().ConfigureAwait(false);
+                    
+                    // Notify UI thread that grid needs refresh
+                    if (!IsDisposed && InvokeRequired)
+                    {
+                        BeginInvoke(new Action(() => _bindingSource?.ResetBindings(false)));
+                    }
+                    else if (!IsDisposed)
+                    {
+                        _bindingSource?.ResetBindings(false);
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger?.LogDebug("Auto-refresh cancelled");
             }
             catch (Exception ex)
             {
