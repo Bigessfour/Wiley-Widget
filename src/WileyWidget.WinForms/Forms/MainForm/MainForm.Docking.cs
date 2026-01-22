@@ -132,7 +132,7 @@ public partial class MainForm
 
             // Create and attach layout manager for state management
             var layoutPath = GetDockingLayoutPath();
-            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger, layoutPath);
+            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger, layoutPath, this);
             _logger?.LogDebug("DockingLayoutManager created successfully with path {LayoutPath}", layoutPath);
 
             // Transfer ownership of panels and fonts to the layout manager

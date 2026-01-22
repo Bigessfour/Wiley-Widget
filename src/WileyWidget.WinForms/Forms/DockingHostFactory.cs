@@ -172,7 +172,7 @@ public static class DockingHostFactory
             // Create Layout Manager
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath);
+            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm);
 
             logger?.LogInformation("Docking layout complete - Dashboard fills remaining central space (Left=300px, Right=350px)");
 

@@ -15,6 +15,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utils;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
 namespace WileyWidget.WinForms.Forms;
@@ -32,6 +33,7 @@ public class DockingLayoutManager : IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IPanelNavigationService? _panelNavigator;
     private readonly string _layoutPath;  // Added: Path for layout persistence
+    private readonly Control _uiControl;  // Added: UI control for thread marshaling
 
     private const string LayoutVersionAttributeName = "LayoutVersion";
     private const string CurrentLayoutVersion = "1.0";
@@ -52,12 +54,13 @@ public class DockingLayoutManager : IDisposable
     // Dynamic panels tracking
     private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();  // Made non-static for instance safety
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath)
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
         _logger = logger;
         _layoutPath = layoutPath ?? throw new ArgumentNullException(nameof(layoutPath));
+        _uiControl = uiControl ?? throw new ArgumentNullException(nameof(uiControl));
 
         // Setup save timer with tick handler
         _dockingLayoutSaveTimer = new System.Windows.Forms.Timer
@@ -72,10 +75,16 @@ public class DockingLayoutManager : IDisposable
     /// <summary>
     /// Asynchronously loads docking layout with timeout and fallback to defaults.
     /// Uses in-memory cache first, then disk, with performance profiling.
+    /// File I/O runs async (background-safe), then marshals LoadDockState to UI thread.
     /// </summary>
     public async Task LoadDockingLayoutAsync(DockingManager dockingManager, CancellationToken cancellationToken = default)
     {
         if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
+        if (_uiControl.IsDisposed || !_uiControl.IsHandleCreated)
+        {
+            _logger?.LogWarning("UI control is disposed or handle not created - skipping layout load");
+            return;
+        }
 
         var sw = Stopwatch.StartNew();
         try
@@ -91,7 +100,7 @@ public class DockingLayoutManager : IDisposable
                 }
             }
 
-            // 2. Fallback to disk if cache miss
+            // 2. Fallback to disk if cache miss (async I/O, background-safe)
             if (layoutData == null)
             {
                 if (!File.Exists(_layoutPath))
@@ -112,23 +121,21 @@ public class DockingLayoutManager : IDisposable
                 }
             }
 
-            // 3. Apply layout with timeout to prevent UI block
-            var applyTask = Task.Run(() =>
+            // 3. Marshal application to UI thread (UI-sensitive)
+            await UIThreadHelper.ExecuteOnUIThreadAsync(_uiControl, async () =>
             {
+                if (dockingManager.HostControl?.IsDisposed ?? true)
+                {
+                    _logger?.LogWarning("Host control disposed during layout apply - aborting");
+                    return;
+                }
+
                 using var ms = new MemoryStream(layoutData);
                 var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
                 dockingManager.LoadDockState(serializer);
-            }, cancellationToken);
 
-            if (await Task.WhenAny(applyTask, Task.Delay(LayoutLoadTimeoutMs, cancellationToken)) == applyTask)
-            {
-                await applyTask;  // Propagate any exceptions
-                _logger?.LogInformation("Docking layout applied successfully in {ElapsedMs}ms total", sw.ElapsedMilliseconds);
-            }
-            else
-            {
-                _logger?.LogWarning("Layout application timed out after {TimeoutMs}ms - falling back to defaults", LayoutLoadTimeoutMs);
-            }
+                _logger?.LogInformation("Docking layout applied on UI thread");
+            }, _logger);
         }
         catch (OperationCanceledException)
         {
@@ -143,7 +150,7 @@ public class DockingLayoutManager : IDisposable
             sw.Stop();
             if (sw.ElapsedMilliseconds > LayoutLoadWarningMs)
             {
-                _logger?.LogWarning("Slow docking layout load detected ({ElapsedMs}ms) - consider optimizing XML or using binary serialization", sw.ElapsedMilliseconds);
+                _logger?.LogWarning("Slow docking layout load detected ({ElapsedMs}ms) - consider optimizing serialization", sw.ElapsedMilliseconds);
             }
         }
     }
