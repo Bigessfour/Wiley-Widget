@@ -130,10 +130,9 @@ public partial class MainForm
             // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
             EnsurePanelNavigatorInitialized();
 
-            // Create and attach layout manager for state management
+            // Layout manager is now created by DockingHostFactory
             var layoutPath = GetDockingLayoutPath();
-            _dockingLayoutManager = new DockingLayoutManager(_serviceProvider, _panelNavigator, _logger, layoutPath, this);
-            _logger?.LogDebug("DockingLayoutManager created successfully with path {LayoutPath}", layoutPath);
+            _logger?.LogDebug("DockingLayoutManager provided by factory with path {LayoutPath}", layoutPath);
 
             // Transfer ownership of panels and fonts to the layout manager
             var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
@@ -141,7 +140,7 @@ public partial class MainForm
 
             // Note: DockingLayoutManager initialization deferred - methods will be available in future
             // For now, panels are managed directly by DockingManager
-            _logger?.LogDebug("DockingLayoutManager created but initialization deferred");
+            _logger?.LogDebug("DockingLayoutManager from factory - initialization deferred");
 
             HideStandardPanelsForDocking();
 
@@ -150,15 +149,15 @@ public partial class MainForm
             // Without this, ArgumentOutOfRangeException occurs in DockHost.GetPaintInfo()
             try
             {
-                CreateDockingPanels();
+                // Panels are now created by DockingHostFactory - just ensure they're properly configured
                 var dynamicPanelCount = _dynamicDockPanels?.Count ?? 0;
                 var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null) + dynamicPanelCount;
-                _logger?.LogInformation("Docking panels created and docked — count={PanelCount}, dynamicPanels={DynamicCount}, layoutManagerReady={LayoutManagerReady}",
+                _logger?.LogInformation("Docking panels created by factory — count={PanelCount}, dynamicPanels={DynamicCount}, layoutManagerReady={LayoutManagerReady}",
                     createdPanelCount, dynamicPanelCount, _dockingLayoutManager != null);
             }
             catch (Exception panelEx)
             {
-                _logger?.LogError(panelEx, "Failed to create docking panels - paint exceptions may occur");
+                _logger?.LogError(panelEx, "Failed to configure docking panels - paint exceptions may occur");
             }
 
             // Reduce flicker during layout load + theme application (best-effort).
@@ -427,345 +426,7 @@ public partial class MainForm
         catch { }
     }
 
-    /// <summary>
-    /// Create all docking panels (left, center, right)
-    /// </summary>
-    private void CreateDockingPanels()
-    {
-        CreateLeftDockPanel();
-        CreateCentralDocumentPanel();
-        CreateRightDockPanel();
-    }
-
-    /// <summary>
-    /// Create left dock panel with navigation buttons (collapsible, auto-hide enabled)
-    /// </summary>
-    private void CreateLeftDockPanel()
-    {
-        if (_dockingManager == null) return;
-
-        _leftDockPanel = new Panel
-        {
-            Name = "LeftDockPanel",
-            AccessibleName = "LeftDockPanel",
-            AutoScroll = true,
-            BorderStyle = BorderStyle.None,
-            Padding = new Padding(8, 8, 8, 8)
-        };
-
-        // Create navigation buttons for left panel
-        var navPanel = CreateNavigationButtonsPanel();
-        _leftDockPanel.Controls.Add(navPanel);
-
-        ConfigurePanelDocking(_leftDockPanel, DockingStyle.Left, 280, "Navigation");
-
-        _logger?.LogDebug("Left dock panel created with navigation buttons");
-    }
-
-    /// <summary>
-    /// Create a panel containing navigation buttons for the left dock
-    /// </summary>
-    private Panel CreateNavigationButtonsPanel()
-    {
-        var navPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
-            Padding = new Padding(5),
-            Name = "NavigationButtonsPanel"
-        };
-
-         // Create navigation buttons
-        var navButtons = new (string Label, string Name, Type PanelType, DockingStyle DockStyle)[]
-        {
-            ("Dashboard", "Nav_Dash", typeof(DashboardPanel), DockingStyle.Top),
-            ("Accounts", "Nav_Accts", typeof(AccountsPanel), DockingStyle.Left),
-            ("Budget", "Nav_Budget", typeof(BudgetOverviewPanel), DockingStyle.Bottom),
-            ("Charts", "Nav_Charts", typeof(BudgetAnalyticsPanel), DockingStyle.Right),
-            ("Reports", "Nav_Reports", typeof(ReportsPanel), DockingStyle.Right),
-            ("QuickBooks", "Nav_QB", typeof(QuickBooksPanel), DockingStyle.Right),
-            ("Settings", "Nav_Settings", typeof(SettingsPanel), DockingStyle.Right),
-        };
-
-        foreach (var (label, name, panelType, dockStyle) in navButtons)
-        {
-            var btn = new Button
-            {
-                Text = label,
-                Name = name,
-                Width = 220,
-                Height = 32,
-                Margin = new Padding(5, 5, 5, 5),
-                AccessibleName = label,
-                AccessibleDescription = $"Navigate to {label} panel",
-                TabIndex = 0,
-                Font = new Font("Segoe UI", 9F)
-            };
-
-            // Wire up click handler using reflection to avoid hard-coding ShowPanel<T>
-            btn.Click += (s, e) =>
-            {
-                try
-                {
-                    if (_panelNavigator != null)
-                    {
-                        // Use reflection to call ShowPanel<T> with the correct panel type
-                        var method = _panelNavigator.GetType().GetMethod("ShowPanel");
-                        if (method != null)
-                        {
-                            var genericMethod = method.MakeGenericMethod(panelType);
-                            genericMethod.Invoke(_panelNavigator, new object[] { label, dockStyle, true });
-                        }
-                    }
-                    _logger?.LogDebug("Navigation button '{ButtonName}' clicked", name);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to navigate to panel from button {ButtonName}", name);
-                }
-            };
-
-            navPanel.Controls.Add(btn);
-        }
-
-        return navPanel;
-    }
-
-    /// <summary>
-    /// Create central document panel for main content area
-    /// </summary>
-    private void CreateCentralDocumentPanel()
-    {
-        if (_dockingManager != null) return; // Skip central panel when docking is enabled
-
-        _centralDocumentPanel = new Panel
-        {
-            Name = "CentralDocumentPanel",
-            AccessibleName = "CentralDocumentPanel",
-            Dock = DockStyle.Fill,
-            Visible = true
-        };
-
-        AddCentralPanelToForm();
-        EnsureCentralPanelVisible();
-
-        _logger?.LogDebug("Central document panel created (standard Fill docking)");
-    }
-
-    /// <summary>
-    /// Add central panel to form with proper styling
-    /// </summary>
-    private void AddCentralPanelToForm()
-    {
-        if (_centralDocumentPanel == null) return;
-
-        Controls.Add(_centralDocumentPanel);
-
-        try
-        {
-            _centralDocumentPanel.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to bring central panel to front");
-        }
-    }
-
-    /// <summary>
-    /// Create right dock panel with activity grid (collapsible, auto-hide enabled)
-    /// </summary>
-    private void CreateRightDockPanel()
-    {
-         if (_dockingManager == null) return;
-
-        _rightDockPanel = new Panel
-        {
-            Name = "RightDockPanel",
-            AccessibleName = "RightDockPanel",
-            AccessibleDescription = "Docked panel containing recent activity",
-            AccessibleRole = AccessibleRole.Pane,
-            Padding = new Padding(8, 8, 8, 8),
-            BorderStyle = BorderStyle.None,
-            TabIndex = 12,
-            TabStop = false
-        };
-
-        var activityContent = CreateActivityGridPanel();
-        _rightDockPanel.Controls.Add(activityContent);
-
-        ConfigurePanelDocking(_rightDockPanel, DockingStyle.Right, 280, "Activity");
-
-        _logger?.LogDebug("Right dock panel created with activity grid");
-    }
-
-    /// <summary>
-    /// Configure docking behavior for a panel
-    /// </summary>
-    private void ConfigurePanelDocking(Panel panel, DockingStyle style, int size, string label)
-    {
-        if (_dockingManager == null) return;
-
-        _dockingManager.SetEnableDocking(panel, true);
-        _dockingManager.DockControl(panel, this, style, size);
-        _dockingManager.SetAutoHideMode(panel, true);
-        _dockingManager.SetDockLabel(panel, label);
-        _dockingManager.SetAllowFloating(panel, true);
-
-        try
-        {
-            _dockingManager.SetControlMinimumSize(panel, new Size(200, 0));
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to set minimum size for panel {PanelName}", panel.Name);
-        }
-    }
-
-    /// <summary>
-    /// Create dashboard cards panel (extracted for reuse in docking)
-    /// </summary>
-    private Panel CreateDashboardCardsPanel()
-    {
-        var dashboardPanel = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 5,
-            Padding = new Padding(12, 12, 12, 12),
-            CellBorderStyle = TableLayoutPanelCellBorderStyle.None
-        };
-
-        AddDashboardPanelRows(dashboardPanel);
-        AddDashboardCards(dashboardPanel);
-
-        return dashboardPanel;
-    }
-
-    private static void AddDashboardPanelRows(TableLayoutPanel dashboardPanel)
-    {
-        for (int i = 0; i < 5; i++)
-        {
-            dashboardPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-        }
-    }
-
-    private void AddDashboardCards(TableLayoutPanel dashboardPanel)
-    {
-        var accountsCard = CreateDashboardCard("Accounts", MainFormResources.LoadingText).Panel;
-        SetupCardClickHandler(accountsCard, () =>
-        {
-            if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
-        });
-
-        accountsCard.TabIndex = 30;
-
-        var chartsCard = CreateDashboardCard("Charts", "Analytics Ready").Panel;
-         SetupCardClickHandler(chartsCard, () =>
-        {
-            if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
-        });
-
-        chartsCard.TabIndex = 31;
-
-        var settingsCard = CreateDashboardCard("Settings", "System Config").Panel;
-         SetupCardClickHandler(settingsCard, () =>
-        {
-            if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
-        });
-
-        settingsCard.TabIndex = 32;
-
-        var reportsCard = CreateDashboardCard("Reports", "Generate Now").Panel;
-         SetupCardClickHandler(reportsCard, () =>
-        {
-            if (_panelNavigator != null)
-                _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true);
-        });
-
-        reportsCard.TabIndex = 33;
-
-        var infoCard = CreateDashboardCard("Budget Status", MainFormResources.LoadingText).Panel;
-
-        infoCard.TabIndex = 34;
-
-        dashboardPanel.Controls.Add(accountsCard, 0, 0);
-        dashboardPanel.Controls.Add(chartsCard, 0, 1);
-        dashboardPanel.Controls.Add(settingsCard, 0, 2);
-        dashboardPanel.Controls.Add(reportsCard, 0, 3);
-        dashboardPanel.Controls.Add(infoCard, 0, 4);
-    }
-
-    private Panel CreateActivityGridPanel()
-    {
-         var activityPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(10),
-            Name = "ActivityPanel",
-            AccessibleName = "Activity Panel",
-            AccessibleDescription = "Container showing recent activity and live updates",
-            AccessibleRole = AccessibleRole.Pane,
-            TabIndex = 20,
-            TabStop = false
-        };
-
-        var activityHeader = new Label
-        {
-            Text = "Recent Activity",
-            Dock = DockStyle.Top,
-            Height = 35,
-            Padding = new Padding(5, 8, 0, 0),
-            Name = "ActivityHeader",
-            AccessibleName = "Recent Activity heading",
-            AccessibleDescription = "Heading for the recent activity section",
-            TabStop = false
-        };
-
-        var placeholderLabel = new Label
-        {
-            Text = "Activity logging handled by ActivityLogPanel",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 10),
-            Name = "ActivityPlaceholder"
-        };
-
-        activityPanel.Controls.Add(placeholderLabel);
-        activityPanel.Controls.Add(activityHeader);
-
-        return activityPanel;
-    }
-
-    private void HideStandardPanelsForDocking()
-    {
-         foreach (Control control in Controls)
-        {
-            if (control is SplitContainer)
-            {
-                try
-                {
-                    control.Visible = false;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to hide standard panel {ControlName} during docking initialization", control.Name);
-                }
-            }
-        }
-        _logger?.LogDebug("Standard panels hidden for Syncfusion docking");
-    }
-
-    private void EnsureDockingZOrder()
-    {
-        _dockingManager?.EnsureZOrder();
-    }
-
-    private async void LoadAndApplyDockingLayout(string layoutPath, CancellationToken cancellationToken = default)
+    private async Task LoadAndApplyDockingLayout(string layoutPath, CancellationToken cancellationToken = default)
     {
         if (_dockingManager == null)
         {
@@ -874,7 +535,7 @@ public partial class MainForm
         catch (Exception ex) { return Task.FromException(ex); }
     }
 
-    private async void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
+    private void DockingManager_DockStateChanged(object? sender, DockStateChangeEventArgs e)
     {
         if (e.Controls == null) return;
 
@@ -882,7 +543,8 @@ public partial class MainForm
         {
             if (control == null) continue;
             _logger?.LogDebug("Dock state changed: Control={Control}, NewState={NewState}, OldState={OldState}", control.Name, e.NewState, e.OldState);
-            await NotifyPanelVisibilityChangedAsync(control);
+            // Queue async work on UI thread - don't use await in event handler
+            BeginInvoke(new Func<Task>(async () => await NotifyPanelVisibilityChangedAsync(control)));
         }
 
         if (_dockingLayoutManager != null)
@@ -902,13 +564,14 @@ public partial class MainForm
         _logger?.LogDebug("Dock control activated: {Control}", e.Control.Name);
     }
 
-    private async void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
+    private void DockingManager_DockVisibilityChanged(object? sender, DockVisibilityChangedEventArgs e)
     {
         _logger?.LogDebug("Dock visibility changed: Control={Control}", e.Control?.Name);
 
         if (e.Control != null)
         {
-            await NotifyPanelVisibilityChangedAsync(e.Control);
+            // Queue async work on UI thread - don't use await in event handler
+            BeginInvoke(new Func<Task>(async () => await NotifyPanelVisibilityChangedAsync(e.Control)));
         }
 
         try
@@ -1205,5 +868,29 @@ public partial class MainForm
         {
             System.Diagnostics.Debug.WriteLine($"Failed to cleanup temporary file: {filePath}, Error: {ex.Message}");
         }
+    }
+
+    private void HideStandardPanelsForDocking()
+    {
+         foreach (Control control in Controls)
+        {
+            if (control is SplitContainer)
+            {
+                try
+                {
+                    control.Visible = false;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to hide standard panel {ControlName} during docking initialization", control.Name);
+                }
+            }
+        }
+        _logger?.LogDebug("Standard panels hidden for Syncfusion docking");
+    }
+
+    private void EnsureDockingZOrder()
+    {
+        _dockingManager?.EnsureZOrder();
     }
 }

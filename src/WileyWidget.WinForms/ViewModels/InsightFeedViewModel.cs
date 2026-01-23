@@ -51,6 +51,7 @@ namespace WileyWidget.WinForms.ViewModels
     {
         private readonly ProactiveInsightsService? _insightsService;
         private readonly ILogger<InsightFeedViewModel> _logger;
+        private readonly SynchronizationContext? _uiContext;
 
         [ObservableProperty]
         private ObservableCollection<InsightCardModel> insightCards = new();
@@ -90,6 +91,7 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger = logger ?? CreateNullLogger();
             _insightsService = insightsService;
+            _uiContext = SynchronizationContext.Current;
 
             _logger.LogInformation("InsightFeedViewModel initialized");
 
@@ -117,6 +119,17 @@ namespace WileyWidget.WinForms.ViewModels
         /// Updates priority counts (High/Medium/Low) and status messages.
         /// </summary>
         private void OnInsightsChanged()
+        {
+            if (_uiContext != null && _uiContext != SynchronizationContext.Current)
+            {
+                _uiContext.Post(_ => OnInsightsChangedCore(), null);
+                return;
+            }
+
+            OnInsightsChangedCore();
+        }
+
+        private void OnInsightsChangedCore()
         {
             try
             {

@@ -524,6 +524,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RevenueTrendsViewModel>();
             services.AddScoped<AuditLogViewModel>();
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
+            services.AddScoped<IQuickBooksViewModel, QuickBooksViewModel>();
             services.AddScoped<QuickBooksViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();

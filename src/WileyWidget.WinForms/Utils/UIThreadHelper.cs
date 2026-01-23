@@ -370,6 +370,52 @@ public static class UIThreadHelper
     }
 
     /// <summary>
+    /// Safely executes an async function returning Task on the UI thread asynchronously without blocking.
+    /// Overload for Func&lt;CancellationToken, Task&gt; (async delegates that return Task instead of ValueTask).
+    /// Uses Control.InvokeAsync() (.NET 10+) for non-blocking marshalling.
+    /// </summary>
+    /// <param name="control">The control that owns the UI thread.</param>
+    /// <param name="asyncFunc">The async function to execute on the UI thread (Func&lt;CancellationToken, Task&gt;).</param>
+    /// <param name="logger">Optional logger for diagnostics.</param>
+    /// <returns>A Task that completes when the async operation finishes.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if control or asyncFunc is null.</exception>
+    public static async System.Threading.Tasks.Task InvokeAsyncNonBlockingTask(
+        this Control control,
+        Func<System.Threading.CancellationToken, System.Threading.Tasks.Task> asyncFunc,
+        ILogger? logger = null)
+    {
+        if (control == null) throw new ArgumentNullException(nameof(control));
+        if (asyncFunc == null) throw new ArgumentNullException(nameof(asyncFunc));
+
+        try
+        {
+            // Convert Func<CancellationToken, Task> to Func<CancellationToken, ValueTask>
+            // by wrapping the Task result in a ValueTask
+            await control.InvokeAsync(
+                async (ct) => 
+                {
+                    var task = asyncFunc(ct);
+                    if (task != null)
+                        await task;
+                },
+                System.Threading.CancellationToken.None);
+        }
+        catch (ObjectDisposedException ex)
+        {
+            logger?.LogWarning(ex, "Control {ControlName} is disposed during async execution", control.Name);
+        }
+        catch (OperationCanceledException ex)
+        {
+            logger?.LogInformation(ex, "Async function cancelled on UI thread for {ControlName}", control.Name);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger?.LogError(ex, "Invalid operation executing async function on UI thread for {ControlName}", control.Name);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Waits for a control's handle to be created, with timeout protection.
     /// Useful for deferred operations that require a window handle.
     /// </summary>

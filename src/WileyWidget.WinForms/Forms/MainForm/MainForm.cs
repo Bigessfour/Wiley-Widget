@@ -395,6 +395,15 @@ namespace WileyWidget.WinForms.Forms
                     InitializeSyncfusionDocking();
                     _syncfusionDockingInitialized = true;
                     this.Refresh();
+
+                    // Defer docking layout loading to OnShown for better timing
+                    if (_uiConfig?.UseSyncfusionDocking == true)
+                    {
+                        var layoutPath = GetDockingLayoutPath();
+                        _ = LoadAndApplyDockingLayout(layoutPath, cancellationToken);
+                        _dockingManager?.EnsureZOrder();
+                        ApplyThemeToDockingPanels();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -562,21 +571,24 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Helper: Drag-drop event for file import.
         /// </summary>
-        private async void MainForm_DragDrop(object? sender, DragEventArgs e)
+        private void MainForm_DragDrop(object? sender, DragEventArgs e)
         {
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                try
                 {
-                    _logger?.LogInformation("Dropped {Count} file(s)", files.Length);
-                    await ProcessDroppedFiles(files);
+                    if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                    {
+                        _logger?.LogInformation("Dropped {Count} file(s)", files.Length);
+                        await ProcessDroppedFiles(files);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing dropped files");
-                try { UIHelper.ShowErrorOnUI(this, $"Error: {ex.Message}", "Drag-Drop Error", _logger); } catch { }
-            }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error processing dropped files");
+                    try { UIHelper.ShowErrorOnUI(this, $"Error: {ex.Message}", "Drag-Drop Error", _logger); } catch { }
+                }
+            }));
         }
 
         /// <summary>

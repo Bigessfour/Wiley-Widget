@@ -19,7 +19,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// Provides connection management, data synchronization, import operations, and sync history tracking.
 /// Follows full MVVM pattern with async commands, observable collections, and comprehensive error handling.
 /// </summary>
-public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
+public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksViewModel, IDisposable
 {
     private readonly ILogger<QuickBooksViewModel> _logger;
     private readonly IQuickBooksService _quickBooksService;
@@ -53,6 +53,10 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     /// <summary>Gets or sets the last sync timestamp.</summary>
     [ObservableProperty]
     private string? lastSyncTime;
+
+    /// <summary>Gets or sets the connection status message.</summary>
+    [ObservableProperty]
+    private string connectionStatus = "Checking connection...";
 
     /// <summary>Gets or sets the connection status message.</summary>
     [ObservableProperty]
@@ -227,12 +231,14 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
 
             if (status.IsConnected)
             {
+                ConnectionStatus = $"Connected to {status.CompanyName ?? "QuickBooks"}";
                 ConnectionStatusMessage = $"Connected to {status.CompanyName ?? "QuickBooks"}";
                 StatusText = $"Connected. Last sync: {status.LastSyncTime ?? "Never"}";
                 _logger.LogInformation("QuickBooks connected: {CompanyName}", status.CompanyName);
             }
             else
             {
+                ConnectionStatus = "Not connected";
                 ConnectionStatusMessage = "Not connected";
                 StatusText = "Not connected. Click 'Connect' to establish connection.";
                 _logger.LogInformation("QuickBooks not connected");
@@ -247,6 +253,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check connection status");
+            ConnectionStatus = "Error checking status";
             ConnectionStatusMessage = "Error checking status";
             StatusText = "Connection check failed";
             ErrorMessage = $"Connection check failed: {ex.Message}";
@@ -907,12 +914,15 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
     #region Connection Polling
 
     /// <summary>
-    /// Starts polling the connection status every 30 seconds.
+    /// Starts polling the connection status every 30 seconds with structured error handling.
+    /// Uses background thread timer with SynchronizationContext marshaling for UI updates.
+    /// CRITICAL: Captures UI context at startup and uses it to marshal observable property updates.
     /// </summary>
     private void StartConnectionPolling()
     {
-
         _cancellationTokenSource = new CancellationTokenSource();
+        var uiContext = SynchronizationContext.Current; // Capture UI context once
+        
         _connectionPollingTimer = new System.Threading.Timer(
             async _ =>
             {
@@ -924,42 +934,39 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IDisposable
 
                 try
                 {
-                    // Use SynchronizationContext to marshal to UI thread
-                    SynchronizationContext syncContext = SynchronizationContext.Current;
-                    if (syncContext != null)
+                    // Timer callback runs on background thread
+                    // Marshal CheckConnectionAsync to UI context to update observable properties safely
+                    if (uiContext != null)
                     {
-                        syncContext.Post(async __ =>
+                        uiContext.Post(async _ =>
                         {
                             try
                             {
-                                await CheckConnectionAsync();
+                                await CheckConnectionAsync(_cancellationTokenSource.Token);
                             }
-                            catch (ObjectDisposedException ex)
+                            catch (ObjectDisposedException)
                             {
-                                _logger.LogWarning(ex, "Connection polling caught ObjectDisposedException - stopping timer");
-                                StopConnectionPolling();
+                                _logger.LogDebug("Connection polling skipped (ViewModel disposed)");
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                _logger.LogDebug("Connection polling cancelled");
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex, "Connection polling callback failed");
+                                _logger.LogError(ex, "Connection polling failed: {ErrorMessage}", ex.Message);
                             }
                         }, null);
                     }
                     else
                     {
-                        // If SynchronizationContext is null, log warning and skip polling (safety-first)
-                        // This should not happen in WinForms, but defensive check prevents thread-unsafe execution
-                        _logger.LogWarning("SynchronizationContext is null in connection polling callback - skipping to prevent cross-thread exception");
+                        // Fallback: no UI context available (shouldn't happen in normal WinForms)
+                        await CheckConnectionAsync(_cancellationTokenSource.Token);
                     }
-                }
-                catch (ObjectDisposedException ex)
-                {
-                    _logger.LogWarning(ex, "Connection polling caught ObjectDisposedException - stopping timer");
-                    StopConnectionPolling();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Connection polling callback failed");
+                    _logger.LogError(ex, "Connection polling outer handler failed: {ErrorMessage}", ex.Message);
                 }
             },
             null,

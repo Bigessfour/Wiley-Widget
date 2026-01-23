@@ -222,28 +222,32 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Loads the panel and initializes the ViewModel.
         /// </summary>
-        protected override async void OnLoad(EventArgs e)
+        protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
 
             if (ViewModel != null && !DesignMode)
             {
-                try
+                // Queue async loading on the UI thread
+                BeginInvoke(new Func<Task>(async () =>
                 {
-                    if (ViewModel.LoadDataCommand.CanExecute(null))
+                    try
                     {
-                        await ViewModel.LoadDataCommand.ExecuteAsync(null);
-                    }
-                    UpdateUI();
-                    UpdateNoDataOverlay();
+                        if (ViewModel.LoadDataCommand.CanExecute(null))
+                        {
+                            await ViewModel.LoadDataCommand.ExecuteAsync(null);
+                        }
+                        UpdateUI();
+                        UpdateNoDataOverlay();
 
-                    // Defer sizing validation
-                    DeferSizeValidation();
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to initialize BudgetAnalyticsPanel");
-                }
+                        // Defer sizing validation
+                        DeferSizeValidation();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize BudgetAnalyticsPanel");
+                    }
+                }));
             }
         }
 

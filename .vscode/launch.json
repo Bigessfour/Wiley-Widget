@@ -6,7 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -23,8 +23,8 @@
       "symbolOptions": {
         "searchPaths": [
           "${workspaceFolder}/.symbols",
-          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
-          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows",
           "${workspaceFolder}/src/WileyWidget.Business/bin/Debug/net10.0",
           "${workspaceFolder}/src/WileyWidget.Data/bin/Debug/net10.0",
           "${workspaceFolder}/src/WileyWidget.Models/bin/Debug/net10.0"
@@ -59,7 +59,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -76,8 +76,8 @@
       "symbolOptions": {
         "searchPaths": [
           "${workspaceFolder}/.symbols",
-          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
-          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0",
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows",
           "${workspaceFolder}/src/WileyWidget.Business/bin/Debug/net10.0",
           "${workspaceFolder}/src/WileyWidget.Data/bin/Debug/net10.0",
           "${workspaceFolder}/src/WileyWidget.Models/bin/Debug/net10.0"
@@ -113,7 +113,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -132,8 +132,8 @@
       "symbolOptions": {
         "searchPaths": [
           "${workspaceFolder}/.symbols",
-          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0",
-          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows10.0.26100.0"
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows",
+          "${workspaceFolder}/src/WileyWidget.Services/bin/Debug/net10.0-windows"
         ],
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true,
@@ -185,7 +185,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -201,7 +201,7 @@
       "symbolOptions": {
         "searchPaths": [
           "${workspaceFolder}/.symbols",
-          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0"
+          "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows"
         ],
         "searchMicrosoftSymbolServer": true,
         "searchNuGetOrgSymbolServer": true
@@ -218,7 +218,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -242,7 +242,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -267,7 +267,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -293,7 +293,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -319,7 +319,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build + DI Validation",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
@@ -348,7 +348,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "🔨 Debug Build",
-      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows10.0.26100.0/WileyWidget.WinForms.exe",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,

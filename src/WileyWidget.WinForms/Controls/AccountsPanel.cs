@@ -45,9 +45,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     }
 
     /// <summary>
-    /// Called when the panel is loaded; delegates to async initialization if needed.
+    /// Called when the panel is loaded; data loading is handled by ILazyLoadViewModel.
     /// </summary>
-    private async void AccountsPanel_Load(object? sender, EventArgs e)
+    private void AccountsPanel_Load(object? sender, EventArgs e)
     {
         // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
         // ViewModel is resolved in OnViewModelResolved after scope creation

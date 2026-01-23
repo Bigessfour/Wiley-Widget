@@ -84,7 +84,6 @@ public static class DockingHostFactory
             {
                 Dock = DockStyle.Left,
                 Width = 300,
-                MinimumSize = new Size(280, 0),  // Prevent collapse
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(Color.WhiteSmoke),
                 Name = "LeftDockPanel"
@@ -172,7 +171,7 @@ public static class DockingHostFactory
             // Create Layout Manager
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm);
+            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm, dockingManager, leftDockPanel, rightDockPanel, activityLogPanel);
 
             logger?.LogInformation("Docking layout complete - Dashboard fills remaining central space (Left=300px, Right=350px)");
 
@@ -306,7 +305,18 @@ public static class DockingHostFactory
     /// <summary>
     /// Asynchronously load activity data into the grid.
     /// </summary>
-    private static async void LoadActivityDataAsync(
+    private static Task LoadActivityDataAsync(
+        SfDataGrid activityGrid,
+        IServiceProvider serviceProvider,
+        ILogger? logger)
+    {
+        return LoadActivityDataAsyncInternal(activityGrid, serviceProvider, logger);
+    }
+
+    /// <summary>
+    /// Internal async implementation for loading activity data.
+    /// </summary>
+    private static async Task LoadActivityDataAsyncInternal(
         SfDataGrid activityGrid,
         IServiceProvider serviceProvider,
         ILogger? logger)

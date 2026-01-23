@@ -28,7 +28,7 @@ namespace WileyWidget.WinForms.Controls
     /// <summary>
     /// Panel for creating or editing municipal accounts with full validation, data binding, and MVVM support.
     /// Inherits from ScopedPanelBase to support proper DI and ICompletablePanel lifecycle.
-    /// 
+    ///
     /// ARCHITECTURE:
     /// - Theme: 100% delegated to SfSkinManager (no manual colors, no Font assignments)
     /// - Layout: TableLayoutPanel for responsive resize support
@@ -788,9 +788,9 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Handles the Save button click to validate and save the account.
         /// </summary>
-        private async void BtnSave_Click(object? sender, EventArgs e)
+        private void BtnSave_Click(object? sender, EventArgs e)
         {
-            await BtnSave_ClickAsync();
+            BeginInvoke(new Func<Task>(BtnSave_ClickAsync));
         }
 
         /// <summary>

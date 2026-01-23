@@ -1153,7 +1153,7 @@ namespace WileyWidget.WinForms.Services.AI
         /// Event handler for chat bridge prompt submissions.
         /// Routes prompts from Blazor through the agent and streams responses back via the bridge.
         /// </summary>
-        private async void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
+        private void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
             {
@@ -1163,8 +1163,23 @@ namespace WileyWidget.WinForms.Services.AI
 
             _logger?.LogInformation("[XAI] Chat bridge prompt received: {PromptLength} chars (ConversationId: {ConversationId})", e.Prompt.Length, e.ConversationId ?? "N/A");
 
-            // Fire-and-forget with linked cancellation token
-            _ = RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, _serviceCts.Token);
+            // Queue async work on the thread pool with proper error handling
+            // Don't use fire-and-forget - wrap in try/catch to log errors
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, _serviceCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogInformation("[XAI] Chat bridge operation cancelled");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "[XAI] Error in chat bridge prompt handler");
+                }
+            });
         }
 
         /// <summary>

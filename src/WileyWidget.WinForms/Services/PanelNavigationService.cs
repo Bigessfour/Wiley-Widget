@@ -285,6 +285,25 @@ namespace WileyWidget.WinForms.Services
             // Dock the panel with calculated size
             _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
 
+            // QuickBooksPanel: Prevent resizing due to explicit internal sizing (prevents StackOverflow)
+            // Since all controls in QuickBooksPanel have explicit AutoSize=false + Heights,
+            // user resizing the panel would break the layout stability guarantees.
+            // Lock the panel to its initial size.
+            if (panel.GetType() == typeof(QuickBooksPanel))
+            {
+                try
+                {
+                    // Set MaximumSize equal to initial size to prevent resize
+                    var currentSize = panel.Size;
+                    panel.MaximumSize = new Size(currentSize.Width, currentSize.Height);
+                    Logger.LogDebug("QuickBooksPanel locked to size {Width}x{Height} to preserve explicit control sizing", currentSize.Width, currentSize.Height);
+                }
+                catch (Exception lockEx)
+                {
+                    Logger.LogDebug(lockEx, "Failed to lock QuickBooksPanel size (non-critical), continuing");
+                }
+            }
+
             // Apply minimum size to ensure usable bounds (Syncfusion API - no reflection needed)
             var (_, minimumSize) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
             if (minimumSize.Width > 0 || minimumSize.Height > 0)

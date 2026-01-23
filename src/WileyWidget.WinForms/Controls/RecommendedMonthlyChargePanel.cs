@@ -1042,20 +1042,24 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         catch { /* Best-effort only */ }
     }
 
-    protected override async void OnLoad(EventArgs e)
+    protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
         if (ViewModel != null && !DesignMode)
         {
-            try
+            // Queue async loading on the UI thread
+            BeginInvoke(new Func<Task>(async () =>
             {
-                await LoadAsync(RegisterOperation());
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogError(ex, "Error loading panel data");
-            }
+                try
+                {
+                    await LoadAsync(RegisterOperation());
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "Error loading panel data");
+                }
+            }));
         }
     }
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -20,6 +21,7 @@ namespace WileyWidget.WinForms.Services
         private readonly System.Threading.Timer _updateTimer;
         private readonly Dictionary<string, DashboardSubscription> _subscriptions = new();
         private volatile bool _disposed;
+        private readonly SynchronizationContext? _uiContext; // Capture UI context at startup
 
         public event EventHandler<DashboardDataUpdatedEventArgs>? DataUpdated;
         public event EventHandler<DashboardErrorEventArgs>? ErrorOccurred;
@@ -27,6 +29,7 @@ namespace WileyWidget.WinForms.Services
         public RealtimeDashboardService(ILogger<RealtimeDashboardService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _uiContext = SynchronizationContext.Current; // Capture the UI context once during construction
 
             // Update dashboard every 5 seconds if subscribed
             _updateTimer = new System.Threading.Timer(UpdateDashboard, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
@@ -73,8 +76,9 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
-        /// Updates dashboard metrics in real-time.
-        /// System.Threading.Timer callback runs on thread-pool, so we need async marshaling.
+        /// Updates dashboard metrics in real-time with structured error handling.
+        /// System.Threading.Timer callback runs on thread-pool, so we marshal to UI context.
+        /// CRITICAL: Uses captured UI context from constructor to ensure event handlers are invoked safely.
         /// </summary>
         private void UpdateDashboard(object? state)
         {
@@ -83,14 +87,34 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                // Fire-and-forget with proper async handling and ConfigureAwait
-                _ = UpdateDashboardAsync().ConfigureAwait(false);
+                if (_uiContext != null)
+                {
+                    // Queue the async work on the captured UI thread's synchronization context
+                    // This ensures we stay on the UI thread for event invocations with proper error handling
+                    _uiContext.Post(async _ =>
+                    {
+                        try
+                        {
+                            await UpdateDashboardAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Dashboard update failed");
+                            ErrorOccurred?.Invoke(this, new DashboardErrorEventArgs { Exception = ex });
+                        }
+                    }, null);
+                }
+                else
+                {
+                    // Fallback: no UI context available (service running outside WinForms context)
+                    _logger.LogDebug("No UI context available for dashboard update - skipping");
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Dashboard update failed");
+                _logger.LogError(ex, "Dashboard update outer handler failed");
                 // Marshal error event to UI thread to prevent cross-thread exceptions on subscribers
-                SynchronizationContext.Current?.Post(_ =>
+                _uiContext?.Post(_ =>
                 {
                     ErrorOccurred?.Invoke(this, new DashboardErrorEventArgs { Exception = ex });
                 }, null);
@@ -100,7 +124,8 @@ namespace WileyWidget.WinForms.Services
         private async Task UpdateDashboardAsync(CancellationToken cancellationToken = default)
         {
             // Simulate fetching updated data
-            await Task.Delay(100).ConfigureAwait(false);
+            // DO NOT use ConfigureAwait(false) - we NEED to be on the UI thread
+            await Task.Delay(100);
 
             var metrics = GenerateDashboardMetrics();
 

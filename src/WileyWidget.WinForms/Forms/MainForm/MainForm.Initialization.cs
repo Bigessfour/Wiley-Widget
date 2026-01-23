@@ -63,8 +63,7 @@ public partial class MainForm
 
             if (_uiConfig.UseSyncfusionDocking)
             {
-                var layoutPath = GetDockingLayoutPath();
-                LoadAndApplyDockingLayout(layoutPath, cancellationToken);
+                // Docking layout loading moved to OnShown for better timing
             }
 
             // Phase 1: Show priority panels for faster startup

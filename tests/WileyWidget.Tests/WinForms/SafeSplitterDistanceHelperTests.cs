@@ -317,6 +317,9 @@ namespace WileyWidget.Tests.WinForms
                 // Add to parent (may or may not create handle depending on layout state)
                 parentPanel.Controls.Add(splitContainer);
 
+                // Force handle creation for the SplitContainer
+                splitContainer.CreateControl();
+
                 // Monitor when child handle gets created
                 splitContainer.HandleCreated += (sender, args) => splitContainerHandleCreated = true;
 

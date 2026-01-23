@@ -1052,41 +1052,45 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         }
     }
 
-    private async void ExportExcelButton_Click(object? sender, EventArgs e)
+    private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
-        try
+        // Queue async export on the UI thread
+        BeginInvoke(new Func<Task>(async () =>
         {
-            if (_billsGrid == null) return;
-
-            using var saveDialog = new SaveFileDialog
+            try
             {
-                Filter = "Excel Files|*.xlsx",
-                Title = "Export Utility Bills",
-                FileName = $"UtilityBills_{DateTime.Now:yyyyMMdd}.xlsx"
-            };
+                if (_billsGrid == null) return;
 
-            if (saveDialog.ShowDialog() == DialogResult.OK)
-            {
-                UpdateStatus("Exporting to Excel...");
-                await ExportService.ExportGridToExcelAsync(_billsGrid, saveDialog.FileName);
-                UpdateStatus("Export completed successfully");
+                using var saveDialog = new SaveFileDialog
+                {
+                    Filter = "Excel Files|*.xlsx",
+                    Title = "Export Utility Bills",
+                    FileName = $"UtilityBills_{DateTime.Now:yyyyMMdd}.xlsx"
+                };
 
-                MessageBox.Show(
-                    $"Bills exported successfully to:\n{saveDialog.FileName}",
-                    "Export Successful",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    UpdateStatus("Exporting to Excel...");
+                    await ExportService.ExportGridToExcelAsync(_billsGrid, saveDialog.FileName);
+                    UpdateStatus("Export completed successfully");
+
+                    MessageBox.Show(
+                        $"Bills exported successfully to:\n{saveDialog.FileName}",
+                        "Export Successful",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error exporting to Excel");
-            MessageBox.Show(
-                $"Error exporting to Excel: {ex.Message}",
-                "Export Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-        }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error exporting to Excel");
+                MessageBox.Show(
+                    $"Error exporting to Excel: {ex.Message}",
+                    "Export Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }));
     }
 
     #region Helper Methods

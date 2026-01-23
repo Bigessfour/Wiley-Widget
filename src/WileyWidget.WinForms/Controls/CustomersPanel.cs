@@ -1228,28 +1228,31 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// <summary>
     /// Edits the selected customer in a dialog.
     /// </summary>
-    private async void EditSelectedCustomer()
+    private void EditSelectedCustomer()
     {
         if (_viewModel.SelectedCustomer == null) return;
 
-        try
+        BeginInvoke(new Func<Task>(async () =>
         {
-            _logger.LogDebug("Editing customer {Account}", _viewModel.SelectedCustomer.AccountNumber);
-
-            using var dialog = new CustomerEditDialog(_viewModel.SelectedCustomer, _logger);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
+            try
             {
-                // Save the changes to the database
-                await _viewModel.SaveCustomerAsync(_viewModel.SelectedCustomer);
-                _logger.LogInformation("Customer {Account} updated successfully", _viewModel.SelectedCustomer.AccountNumber);
+                _logger.LogDebug("Editing customer {Account}", _viewModel.SelectedCustomer.AccountNumber);
+
+                using var dialog = new CustomerEditDialog(_viewModel.SelectedCustomer, _logger);
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Save the changes to the database
+                    await _viewModel.SaveCustomerAsync(_viewModel.SelectedCustomer);
+                    _logger.LogInformation("Customer {Account} updated successfully", _viewModel.SelectedCustomer.AccountNumber);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to edit customer");
-            MessageBox.Show($"Failed to edit customer: {ex.Message}", "Error",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to edit customer");
+                MessageBox.Show($"Failed to edit customer: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }));
     }
 
     /// <summary>

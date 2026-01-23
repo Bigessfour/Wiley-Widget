@@ -61,6 +61,10 @@
     // === Code Execution ===
     "formulahendry.code-runner",
 
+    // === WinForms / UI debugging & layout helpers ===
+    "formulahendry.dotnet",
+    "ms-dotnettools.dotnet-interactive-vscode",
+
     // === REST API Testing ===
     "humao.rest-client",
 
@@ -73,4 +77,4 @@
     "ms-vscode.csharp",  // csdevkit replaces the old csharp extension
     "littlefoxteam.vscode-python-test-adapter"  // Causing crashes, not needed for .NET project
   ]
-  }
+}

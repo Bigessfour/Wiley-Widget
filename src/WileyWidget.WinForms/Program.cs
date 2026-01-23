@@ -209,6 +209,9 @@ namespace WileyWidget.WinForms
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Startup timeout ({timeoutSeconds}s) exceeded after {elapsedMs:F0}ms (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 📋 Diagnostic: Check logs for slow phases (Docking, ViewModel, Data Load)");
 
+                    // Flush logs before cancelling to avoid OperationCanceledException in async sinks
+                    Log.CloseAndFlush();
+
                     cts.Cancel();
 
                     try
@@ -281,6 +284,7 @@ namespace WileyWidget.WinForms
 
             // Set application-level theme
             SfSkinManager.ApplicationVisualTheme = themeName;
+            // Note: SfSkinManager.ApplyStylesOnApplication does not exist in this version.
             Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
         }
     }

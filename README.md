@@ -1457,7 +1457,7 @@ Sample `appsettings.json` snippet:
   "XAI": {
     "Enabled": true,
     "ApiKey": "YOUR_API_KEY",
-    "Endpoint": "https://api.x.ai/v1/chat/completions",
+    "Endpoint": "https://api.x.ai/v1/responses",
     "Model": "grok-beta"
   }
 }

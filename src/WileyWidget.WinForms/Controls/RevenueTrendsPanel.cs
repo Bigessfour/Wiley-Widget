@@ -15,7 +15,6 @@ using ChartDock = Syncfusion.Windows.Forms.Chart.ChartDock;
 using ChartSymbolShape = Syncfusion.Windows.Forms.Chart.ChartSymbolShape;
 using ChartValueType = Syncfusion.Windows.Forms.Chart.ChartValueType;
 using CategoryAxisDataBindModel = Syncfusion.Windows.Forms.Chart.CategoryAxisDataBindModel;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
@@ -57,7 +56,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
-    private GradientPanelExt? _summaryPanel;
+    private Panel? _summaryPanel;
     private ChartControl? _chartControl;
     private SfDataGrid? _metricsGrid;
     private SplitContainer? _mainSplit;
@@ -134,31 +133,31 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // SUMMARY CARDS PANEL (Dock.Top, auto-height with minimum)
+        // SUMMARY CARDS PANEL (Dock.Top, fixed height with minimum)
         // ══════════════════════════════════════════════════════════════
-        // CHANGE 3: Replaced fixed Height=100 with AutoSize=true
-        // and MinimumSize to ensure cards don't collapse
-        _summaryPanel = new GradientPanelExt
+        // CHANGE 3: Replaced GradientPanelExt with standard Panel
+        // Set explicit Height to prevent measurement loops
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f)),  // CHANGE: MinHeight instead of fixed Height
+            AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
+            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f),
+            MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f)),
             // CHANGE 4: Added consistent padding (10px) to summary panel
             Padding = new Padding(10),
             AccessibleName = "Revenue summary metrics panel",
             AccessibleDescription = "Panel displaying key revenue metrics: total revenue, average monthly revenue, peak month, and growth rate"
         };
-        // Theme cascade from parent (no per-control theme override per project rules)
+        // Theme cascade from parent via SfSkinManager
+        SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-        // CHANGE 5: TableLayoutPanel configured for auto-sizing rows
+        // CHANGE 5: TableLayoutPanel configured for proper layout
         _summaryCardsPanel = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 1,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
             // CHANGE 6: Added padding to summary cards layout
             Padding = new Padding(4),
             AccessibleName = "Summary metric cards container",
@@ -170,8 +169,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         {
             _summaryCardsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
         }
-        // CHANGE 7: Row configured for auto-size instead of fixed
-        _summaryCardsPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        // CHANGE 7: Row configured with absolute sizing
+        _summaryCardsPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90f));
 
         // Create summary cards
         _lblTotalRevenueValue = CreateSummaryCard(_summaryCardsPanel, "Total Revenue", "$0", 0, "Total cumulative revenue across all months in the selected period");

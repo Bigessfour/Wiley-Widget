@@ -1,7 +1,9 @@
+using System.Threading.Tasks;
+
 namespace WileyWidget.Services.Abstractions
 {
     public interface IBudgetImporter
     {
-        void Import(string sourcePath);
+        Task ImportAsync(string sourcePath);
     }
 }

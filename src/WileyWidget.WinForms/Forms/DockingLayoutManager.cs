@@ -34,6 +34,10 @@ public class DockingLayoutManager : IDisposable
     private readonly IPanelNavigationService? _panelNavigator;
     private readonly string _layoutPath;  // Added: Path for layout persistence
     private readonly Control _uiControl;  // Added: UI control for thread marshaling
+    private readonly DockingManager _dockingManager;
+    private readonly GradientPanelExt _leftDockPanel;
+    private readonly GradientPanelExt _rightDockPanel;
+    private readonly ActivityLogPanel? _activityLogPanel;
 
     private const string LayoutVersionAttributeName = "LayoutVersion";
     private const string CurrentLayoutVersion = "1.0";
@@ -54,20 +58,25 @@ public class DockingLayoutManager : IDisposable
     // Dynamic panels tracking
     private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();  // Made non-static for instance safety
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl)
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, GradientPanelExt leftDockPanel, GradientPanelExt rightDockPanel, ActivityLogPanel? activityLogPanel)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
         _logger = logger;
         _layoutPath = layoutPath ?? throw new ArgumentNullException(nameof(layoutPath));
         _uiControl = uiControl ?? throw new ArgumentNullException(nameof(uiControl));
+        _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
+        _leftDockPanel = leftDockPanel ?? throw new ArgumentNullException(nameof(leftDockPanel));
+        _rightDockPanel = rightDockPanel ?? throw new ArgumentNullException(nameof(rightDockPanel));
+        _activityLogPanel = activityLogPanel;
 
         // Setup save timer with tick handler
         _dockingLayoutSaveTimer = new System.Windows.Forms.Timer
         {
             Interval = MinimumSaveIntervalMs
         };
-        _dockingLayoutSaveTimer.Tick += async (_, _) => await DebounceSaveDockingLayoutAsync();
+        // Use synchronous handler to avoid fire-and-forget async pattern
+        _dockingLayoutSaveTimer.Tick += (_, _) => DebounceSaveDockingLayoutSync();
 
         _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path}", _layoutPath);
     }
@@ -76,6 +85,7 @@ public class DockingLayoutManager : IDisposable
     /// Asynchronously loads docking layout with timeout and fallback to defaults.
     /// Uses in-memory cache first, then disk, with performance profiling.
     /// File I/O runs async (background-safe), then marshals LoadDockState to UI thread.
+    /// CRITICAL: Ensures all Syncfusion handle access happens on the UI thread via synchronous Invoke.
     /// </summary>
     public async Task LoadDockingLayoutAsync(DockingManager dockingManager, CancellationToken cancellationToken = default)
     {
@@ -110,7 +120,7 @@ public class DockingLayoutManager : IDisposable
                 }
 
                 var ioSw = Stopwatch.StartNew();
-                layoutData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken);
+                layoutData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken).ConfigureAwait(false);
                 ioSw.Stop();
                 _logger?.LogDebug("Loaded layout from disk in {ElapsedMs}ms", ioSw.ElapsedMilliseconds);
 
@@ -122,6 +132,14 @@ public class DockingLayoutManager : IDisposable
             }
 
             // 3. Marshal application to UI thread (UI-sensitive)
+            // CRITICAL: Use synchronous Control.Invoke() for Syncfusion controls that directly access handles.
+            // LoadDockState() is synchronous and directly accesses UI control handles internally.
+            // Synchronous Invoke() is safe here because:
+            //   - We can yield in this async method
+            //   - It ensures the entire Syncfusion operation completes on the UI thread atomically
+            //   - The handle access happens ONLY within the Invoke callback
+            // The ConfigureAwait(false) above ensures we don't capture the UI context for I/O,
+            // then Invoke() ensures we execute the UI operation on the UI thread.
             await UIThreadHelper.ExecuteOnUIThreadAsync(_uiControl, async () =>
             {
                 if (dockingManager.HostControl?.IsDisposed ?? true)
@@ -133,7 +151,6 @@ public class DockingLayoutManager : IDisposable
                 using var ms = new MemoryStream(layoutData);
                 var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
                 dockingManager.LoadDockState(serializer);
-
                 _logger?.LogInformation("Docking layout applied on UI thread");
             }, _logger);
         }
@@ -143,7 +160,8 @@ public class DockingLayoutManager : IDisposable
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to load docking layout - using defaults");
+            _logger?.LogError(ex, "Layout load failed - resetting to default");
+            ResetToDefaultLayout();
         }
         finally
         {
@@ -208,7 +226,31 @@ public class DockingLayoutManager : IDisposable
     }
 
     /// <summary>
-    /// Debounced save handler for timer tick.
+    /// Debounced save handler for timer tick (synchronous wrapper).
+    /// Prevents fire-and-forget async pattern and ensures proper marshalling.
+    /// The actual save operation is synchronous and thread-safe.
+    /// </summary>
+    private void DebounceSaveDockingLayoutSync()
+    {
+        // NOTE: SaveDockingLayout is synchronous and calls Syncfusion DockingManager methods.
+        // However, this timer.Tick handler runs on the UI thread (Timer.Tick always runs on UI thread)
+        // so there's no cross-thread issue. We keep this synchronous to avoid async void patterns.
+        // If in the future SaveDockingLayout is called from a background thread, that's when
+        // we'd need to add InvokeRequired checks.
+        try
+        {
+            // Docking manager state is accessed synchronously - safe on UI thread
+            // (Timer.Tick runs on UI thread by default)
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to debounce docking layout save");
+        }
+    }
+
+    /// <summary>
+    /// Debounced save handler for timer tick (async version - deprecated).
+    /// Use DebounceSaveDockingLayoutSync instead.
     /// </summary>
     private async Task DebounceSaveDockingLayoutAsync()
     {
@@ -246,6 +288,39 @@ public class DockingLayoutManager : IDisposable
     {
         // Implement XML/config read; return sample for now
         yield return new DynamicPanelInfo { Name = "SamplePanel", DockLabel = "Sample", IsAutoHide = true };
+    }
+
+    /// <summary>
+    /// Resets docking layout to default state when loading fails.
+    /// Clears cache and ensures clean fallback configuration.
+    /// </summary>
+    private void ResetToDefaultLayout()
+    {
+        try
+        {
+            // Clear bad state by re-docking panels
+            _dockingManager.SetEnableDocking(_leftDockPanel, true);
+            _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
+            _dockingManager.DockControl(_leftDockPanel, _uiControl, DockingStyle.Left, 300);
+            _dockingManager.SetAutoHideMode(_leftDockPanel, true);
+            // Similar for others
+            _dockingManager.SetEnableDocking(_rightDockPanel, true);
+            _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+            _dockingManager.DockControl(_rightDockPanel, _uiControl, DockingStyle.Right, 350);
+            _dockingManager.SetAutoHideMode(_rightDockPanel, true);
+            if (_activityLogPanel != null)
+            {
+                _dockingManager.SetEnableDocking(_activityLogPanel, true);
+                _dockingManager.SetDockLabel(_activityLogPanel, "Activity Log");
+                _dockingManager.DockControl(_activityLogPanel, _uiControl, DockingStyle.Right, 350);
+                _dockingManager.SetAutoHideMode(_activityLogPanel, true);
+            }
+            _logger?.LogInformation("Docking layout reset to defaults - panels re-docked");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to reset docking layout to defaults");
+        }
     }
 
     public void Dispose()

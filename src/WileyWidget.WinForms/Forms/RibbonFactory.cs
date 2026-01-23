@@ -390,7 +390,16 @@ public static class RibbonFactory
     /// Logs navigation activities to the activity service for audit trail and activity dashboard.
     /// Integrates with IActivityLogService if available via DI.
     /// </summary>
-    private static async void LogNavigationActivity(WileyWidget.WinForms.Forms.MainForm? form, string actionName, string panelName, ILogger? logger)
+    private static void LogNavigationActivity(WileyWidget.WinForms.Forms.MainForm? form, string actionName, string panelName, ILogger? logger)
+    {
+        // Fire-and-forget pattern: start async task without awaiting
+        _ = LogNavigationActivityAsync(form, actionName, panelName, logger);
+    }
+
+    /// <summary>
+    /// Internal async implementation for logging navigation activities.
+    /// </summary>
+    private static async Task LogNavigationActivityAsync(WileyWidget.WinForms.Forms.MainForm? form, string actionName, string panelName, ILogger? logger)
     {
         try
         {

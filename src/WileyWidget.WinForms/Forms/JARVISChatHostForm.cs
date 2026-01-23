@@ -73,7 +73,7 @@ namespace WileyWidget.WinForms.Forms
             _logger.LogDebug("JARVISChatHostForm components initialized");
         }
 
-        protected override async void OnShown(EventArgs e)
+        protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
 
@@ -83,30 +83,33 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
-            try
+            BeginInvoke(new Func<Task>(async () =>
             {
-                _logger.LogInformation("Sending initial prompt to JARVIS: {PromptLength} chars", prompt.Length);
-
-                // Small delay to ensure Blazor WebView is fully ready and JARVISAssist is initialized
-                await Task.Delay(1500).ConfigureAwait(true);
-
-                if (IsDisposed || Disposing)
+                try
                 {
-                    return;
-                }
+                    _logger.LogInformation("Sending initial prompt to JARVIS: {PromptLength} chars", prompt.Length);
 
-                var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetRequiredService<IChatBridgeService>(_serviceProvider);
-                await chatBridge.RequestExternalPromptAsync(prompt).ConfigureAwait(true);
-            }
-            catch (ObjectDisposedException)
-            {
-                _logger.LogDebug("JARVISChatHostForm disposed before initial prompt could be sent");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send initial prompt to JARVIS");
-            }
+                    // Small delay to ensure Blazor WebView is fully ready and JARVISAssist is initialized
+                    await Task.Delay(1500).ConfigureAwait(true);
+
+                    if (IsDisposed || Disposing)
+                    {
+                        return;
+                    }
+
+                    var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetRequiredService<IChatBridgeService>(_serviceProvider);
+                    await chatBridge.RequestExternalPromptAsync(prompt).ConfigureAwait(true);
+                }
+                catch (ObjectDisposedException)
+                {
+                    _logger.LogDebug("JARVISChatHostForm disposed before initial prompt could be sent");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send initial prompt to JARVIS");
+                }
+            }));
         }
 
         private void ApplyTheme()

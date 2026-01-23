@@ -129,13 +129,13 @@ namespace WileyWidget.WinForms.Controls
             // Validate that fiscal years are available
             if (ViewModel == null)
                 return await Task.FromResult(ValidationResult.Failed(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error)));
-            
+
             if (!ViewModel.AvailableFiscalYears.Any())
                 return await Task.FromResult(ValidationResult.Failed(new ValidationItem("FiscalYear", "No fiscal year data available", ValidationSeverity.Error)));
-            
+
             if (!ViewModel.Metrics.Any())
                 return await Task.FromResult(ValidationResult.Failed(new ValidationItem("Metrics", "No budget metrics available", ValidationSeverity.Warning)));
-            
+
             return await Task.FromResult(ValidationResult.Success);
         }
 
@@ -770,7 +770,7 @@ namespace WileyWidget.WinForms.Controls
             try
             {
                 var fi = new FileInfo(path);
-                return fi.DirectoryName != null && Directory.Exists(fi.DirectoryName) && 
+                return fi.DirectoryName != null && Directory.Exists(fi.DirectoryName) &&
                        !Path.GetInvalidPathChars().Any(c => fi.Name.Contains(c));
             }
             catch
@@ -799,14 +799,14 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private async void OnRefreshButtonClick(object? sender, EventArgs e)
+        private void OnRefreshButtonClick(object? sender, EventArgs e)
         {
-            await RefreshDataAsync();
+            BeginInvoke(new Func<Task>(async () => await RefreshDataAsync()));
         }
 
-        private async void OnExportCsvClick(object? sender, EventArgs e)
+        private void OnExportCsvClick(object? sender, EventArgs e)
         {
-            await ExportToCsvAsync();
+            BeginInvoke(new Func<Task>(async () => await ExportToCsvAsync()));
         }
 
         private void OnThemeChanged(object? sender, string theme)

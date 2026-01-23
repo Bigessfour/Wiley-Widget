@@ -27,6 +27,7 @@ namespace WileyWidget.WinForms.Services
         private readonly ObservableCollection<AIInsight> _insights;
         private readonly TimeSpan _initialDelayAfterStartup;
         private readonly TimeSpan _refreshInterval;
+        private readonly SynchronizationContext? _uiContext;
 
         /// <summary>
         /// Gets the observable collection of proactive insights. Thread-safe for UI binding.
@@ -56,6 +57,8 @@ namespace WileyWidget.WinForms.Services
                 "ProactiveInsightsService initialized (initial delay: {InitialDelaySeconds}s, refresh: {RefreshSeconds}s)",
                 initialDelaySeconds,
                 refreshIntervalSeconds);
+
+            _uiContext = SynchronizationContext.Current;
         }
 
         /// <summary>
@@ -151,14 +154,13 @@ namespace WileyWidget.WinForms.Services
 
                 _logger?.LogDebug("Parsing proactive insights from Grok response (length: {ResponseLength})", response.Length);
 
-                // Parse response into insight cards
-                var insights = ParseInsightsFromResponse(response);
+                    // Parse response into insight cards
+                    var insights = ParseInsightsFromResponse(response);
 
-                // Update UI collection on the UI thread if needed
-                // ObservableCollection is typically accessed from the UI thread, so this is safe
-                ClearAndUpdateInsights(insights);
+                    // Update UI collection on the UI thread if needed
+                    UpdateInsightsOnUiThread(insights);
 
-                _logger?.LogInformation("Successfully generated {InsightCount} proactive insights", insights.Count);
+                    _logger?.LogInformation("Successfully generated {InsightCount} proactive insights", insights.Count);
             }
             catch (Exception ex)
             {
@@ -357,6 +359,25 @@ namespace WileyWidget.WinForms.Services
         /// Clears the current insights and adds new ones.
         /// Uses lock to ensure thread-safe access to the observable collection.
         /// </summary>
+        private void UpdateInsightsOnUiThread(List<AIInsight> insights)
+        {
+            if (_uiContext != null)
+            {
+                try
+                {
+                    _uiContext.Post(_ => ClearAndUpdateInsights(insights), null);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to marshal insights update to UI thread");
+                }
+            }
+
+            // Fallback to synchronous update when UI context is unavailable or Post fails
+            ClearAndUpdateInsights(insights);
+        }
+
         private void ClearAndUpdateInsights(List<AIInsight> newInsights)
         {
             lock (_insights)

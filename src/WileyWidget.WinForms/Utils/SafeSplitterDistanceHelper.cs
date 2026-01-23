@@ -48,26 +48,29 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="panel1MinSize">Desired Panel1MinSize (will be deferred until control is sized)</param>
         /// <param name="panel2MinSize">Desired Panel2MinSize (will be deferred until control is sized)</param>
         /// <param name="desiredDistance">Desired SplitterDistance (will be deferred until control is sized)</param>
-        public static void ConfigureSafeSplitContainer(SplitContainer splitContainer, int panel1MinSize, int panel2MinSize, int desiredDistance)
+        public static void ConfigureSafeSplitContainer(dynamic splitContainer, int panel1MinSize, int panel2MinSize, int desiredDistance)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
 
+            Control control = splitContainer;
+            dynamic sc = splitContainer;
+
             bool initialized = false;
-            int minDimension = splitContainer.Orientation == Orientation.Horizontal
-                ? splitContainer.Height
-                : splitContainer.Width;
+            int minDimension = sc.Orientation == Orientation.Horizontal
+                ? control.Height
+                : control.Width;
 
             // Use SizeChanged to defer initialization until control has real dimensions
-            splitContainer.SizeChanged += (s, e) =>
+            control.SizeChanged += (s, e) =>
             {
                 if (!initialized)
                 {
                     // Calculate minimum dimension needed
-                    int requiredDimension = panel1MinSize + panel2MinSize + splitContainer.SplitterWidth;
-                    minDimension = splitContainer.Orientation == Orientation.Horizontal
-                        ? splitContainer.Height
-                        : splitContainer.Width;
+                    int requiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
+                    minDimension = sc.Orientation == Orientation.Horizontal
+                        ? control.Height
+                        : control.Width;
 
                     // Only initialize if we have enough space
                     if (minDimension >= requiredDimension)
@@ -75,9 +78,9 @@ namespace WileyWidget.WinForms.Utils
                         initialized = true;
                         try
                         {
-                            splitContainer.Panel1MinSize = panel1MinSize;
-                            splitContainer.Panel2MinSize = panel2MinSize;
-                            TrySetSplitterDistance(splitContainer, desiredDistance);
+                            sc.Panel1MinSize = panel1MinSize;
+                            sc.Panel2MinSize = panel2MinSize;
+                            TrySetSplitterDistance(sc, desiredDistance);
                         }
                         catch
                         {
@@ -100,31 +103,34 @@ namespace WileyWidget.WinForms.Utils
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to configure</param>
         /// <param name="desiredDistance">The desired splitter position</param>
-        public static void SetSplitterDistanceDeferred(SplitContainer splitContainer, int desiredDistance)
+        public static void SetSplitterDistanceDeferred(dynamic splitContainer, int desiredDistance)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
+
+            Control control = splitContainer;
+            dynamic sc = splitContainer;
 
             // CRITICAL FIX: Wait for handle to exist before invoking
             // BeginInvoke requires a valid window handle; calling it before the handle
             // is created throws InvalidOperationException. This commonly happens when
             // controls are created in InitializeControls() during parent's OnHandleCreated.
-            if (!splitContainer.IsHandleCreated)
+            if (!control.IsHandleCreated)
             {
                 // Defer until handle is created (one-shot handler)
                 EventHandler? handleCreatedHandler = null;
                 handleCreatedHandler = (s, e) =>
                 {
                     // Unsubscribe immediately (one-shot pattern)
-                    splitContainer.HandleCreated -= handleCreatedHandler;
+                    control.HandleCreated -= handleCreatedHandler;
 
                     // Verify control wasn't disposed during handle creation
-                    if (splitContainer.IsDisposed)
+                    if (control.IsDisposed)
                         return;
 
                     try
                     {
-                        TrySetSplitterDistance(splitContainer, desiredDistance);
+                        TrySetSplitterDistance(sc, desiredDistance);
                     }
                     catch (Exception ex)
                     {
@@ -132,16 +138,16 @@ namespace WileyWidget.WinForms.Utils
                     }
                 };
 
-                splitContainer.HandleCreated += handleCreatedHandler;
+                control.HandleCreated += handleCreatedHandler;
                 return;
             }
 
             // Handle already exists - safe to invoke immediately
-            splitContainer.BeginInvoke(new Action(() =>
+            control.BeginInvoke(new Action(() =>
             {
                 try
                 {
-                    TrySetSplitterDistance(splitContainer, desiredDistance);
+                    TrySetSplitterDistance(sc, desiredDistance);
                 }
                 catch
                 {
@@ -157,14 +163,14 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="splitContainer">The SplitContainer to configure</param>
         /// <param name="desiredDistance">The desired splitter position</param>
         /// <returns>True if successful, false if out of bounds</returns>
-        public static bool TrySetSplitterDistance(SplitContainer splitContainer, int desiredDistance)
+        public static bool TrySetSplitterDistance(dynamic splitContainer, int desiredDistance)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return false;
 
             try
             {
-                if (!TryGetBounds(splitContainer, out var minDistance, out var maxDistance))
+                if (!TryGetBounds(splitContainer, out int minDistance, out int maxDistance))
                 {
                     return false; // Not enough room to satisfy min-size constraints
                 }
@@ -198,12 +204,12 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="splitContainer">The SplitContainer to measure</param>
         /// <param name="percentage">The desired percentage for Panel1 (0.0 to 1.0). Default: 0.5 (50%)</param>
         /// <returns>A safe SplitterDistance value within valid bounds</returns>
-        public static int CalculateSafeDistance(SplitContainer splitContainer, double percentage = 0.5)
+        public static int CalculateSafeDistance(dynamic splitContainer, double percentage = 0.5)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return 100;
 
-            if (!TryGetBounds(splitContainer, out var minDistance, out var maxDistance))
+            if (!TryGetBounds(splitContainer, out int minDistance, out int maxDistance))
             {
                 return minDistance; // Return the minimum to keep callers within the tightest bound
             }
@@ -241,7 +247,7 @@ namespace WileyWidget.WinForms.Utils
         /// Returns false when the available dimension is smaller than the sum of both minima plus the splitter, in which case no
         /// valid SplitterDistance can be applied per WinForms/Syncfusion SplitContainer rules.
         /// </summary>
-        private static bool TryGetBounds(SplitContainer splitContainer, out int minDistance, out int maxDistance)
+        private static bool TryGetBounds(dynamic splitContainer, out int minDistance, out int maxDistance)
         {
             minDistance = splitContainer?.Panel1MinSize ?? 0;
             maxDistance = minDistance;
@@ -273,17 +279,20 @@ namespace WileyWidget.WinForms.Utils
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to configure</param>
         /// <param name="proportionForPanel1">The proportion for Panel1 (0.5 = 50%)</param>
-        public static void SetupProportionalResizing(SplitContainer splitContainer, double proportionForPanel1 = 0.5)
+        public static void SetupProportionalResizing(dynamic splitContainer, double proportionForPanel1 = 0.5)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
 
-            splitContainer.Resize += (sender, e) =>
+            Control control = splitContainer;
+            dynamic sc = splitContainer;
+
+            control.Resize += (sender, e) =>
             {
                 try
                 {
-                    var safeDist = CalculateSafeDistance(splitContainer, proportionForPanel1);
-                    TrySetSplitterDistance(splitContainer, safeDist);
+                    var safeDist = CalculateSafeDistance(sc, proportionForPanel1);
+                    TrySetSplitterDistance(sc, safeDist);
                 }
                 catch
                 {
@@ -304,7 +313,7 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="desiredDistance">Desired splitter position</param>
         /// <param name="splitterWidth">Optional custom splitter width in pixels</param>
         public static void ConfigureSafeSplitContainerAdvanced(
-            SplitContainer splitContainer,
+            dynamic splitContainer,
             int panel1MinSize = 0,
             int panel2MinSize = 0,
             int desiredDistance = 100,
@@ -313,27 +322,30 @@ namespace WileyWidget.WinForms.Utils
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
 
+            Control control = splitContainer;
+            dynamic sc = splitContainer;
+
             bool initialized = false;
             int minRequiredDimension = 0;
 
             // Store SplitterWidth if provided
             if (splitterWidth.HasValue && splitterWidth.Value > 0)
             {
-                try { splitContainer.SplitterWidth = splitterWidth.Value; } catch { }
+                try { sc.SplitterWidth = splitterWidth.Value; } catch { }
             }
 
             // Use SizeChanged to defer initialization until control has real dimensions
-            splitContainer.SizeChanged += (s, e) =>
+            control.SizeChanged += (s, e) =>
             {
                 if (!initialized)
                 {
                     // Calculate current dimension based on orientation
-                    int currentDimension = splitContainer.Orientation == Orientation.Horizontal
-                        ? splitContainer.Height
-                        : splitContainer.Width;
+                    int currentDimension = sc.Orientation == Orientation.Horizontal
+                        ? control.Height
+                        : control.Width;
 
                     // Calculate minimum required dimension
-                    minRequiredDimension = panel1MinSize + panel2MinSize + splitContainer.SplitterWidth;
+                    minRequiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
 
                     // Only initialize if we have enough space
                     if (currentDimension >= minRequiredDimension)
@@ -343,20 +355,20 @@ namespace WileyWidget.WinForms.Utils
                         {
                             // Set min sizes safely
                             if (panel1MinSize > 0)
-                                splitContainer.Panel1MinSize = panel1MinSize;
+                                sc.Panel1MinSize = panel1MinSize;
                             if (panel2MinSize > 0)
-                                splitContainer.Panel2MinSize = panel2MinSize;
+                                sc.Panel2MinSize = panel2MinSize;
 
                             // Set splitter distance with bounds enforcement
-                            TrySetSplitterDistance(splitContainer, desiredDistance);
+                            TrySetSplitterDistance(sc, desiredDistance);
 
                             // Log initialization for debugging
                             System.Diagnostics.Debug.WriteLine(
                                 $"[SafeSplitterDistanceHelper] SplitContainer configured: " +
-                                $"Orientation={splitContainer.Orientation}, " +
-                                $"Panel1Min={splitContainer.Panel1MinSize}, " +
-                                $"Panel2Min={splitContainer.Panel2MinSize}, " +
-                                $"Distance={splitContainer.SplitterDistance}, " +
+                                $"Orientation={sc.Orientation}, " +
+                                $"Panel1Min={sc.Panel1MinSize}, " +
+                                $"Panel2Min={sc.Panel2MinSize}, " +
+                                $"Distance={sc.SplitterDistance}, " +
                                 $"Dimension={currentDimension}");
                         }
                         catch (Exception ex)
@@ -375,7 +387,7 @@ namespace WileyWidget.WinForms.Utils
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to validate</param>
         /// <returns>Validation result with diagnostic info</returns>
-        public static SplitterValidationResult Validate(SplitContainer splitContainer)
+        public static SplitterValidationResult Validate(dynamic splitContainer)
         {
             var result = new SplitterValidationResult();
 
@@ -432,7 +444,7 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="splitContainer">The SplitContainer to diagnose</param>
         /// <param name="label">Optional label for identification in output</param>
         /// <returns>Detailed diagnostic string</returns>
-        public static string GetDiagnostics(SplitContainer splitContainer, string label = "SplitContainer")
+        public static string GetDiagnostics(dynamic splitContainer, string label = "SplitContainer")
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return $"{label}: NULL or DISPOSED";
@@ -457,7 +469,7 @@ namespace WileyWidget.WinForms.Utils
         /// <param name="minValid">Output: minimum valid distance</param>
         /// <param name="maxValid">Output: maximum valid distance</param>
         /// <returns>True if range is valid (has non-zero width), false if not enough space</returns>
-        public static bool TryGetValidDistanceRange(SplitContainer splitContainer, out int minValid, out int maxValid)
+        public static bool TryGetValidDistanceRange(dynamic splitContainer, out int minValid, out int maxValid)
         {
             minValid = 0;
             maxValid = 0;

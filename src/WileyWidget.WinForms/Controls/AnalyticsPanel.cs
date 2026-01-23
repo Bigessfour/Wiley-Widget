@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
 using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
 using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;

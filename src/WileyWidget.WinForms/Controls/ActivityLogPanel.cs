@@ -9,10 +9,12 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -31,6 +33,7 @@ namespace WileyWidget.WinForms.Controls
         private SfButton? _btnExport;
         private CheckBoxAdv? _chkAutoRefresh;
         private BindingSource? _bindingSource;
+        private CancellationTokenSource? _autoRefreshCancellationTokenSource;
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -215,6 +218,7 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeAutoRefresh()
         {
+            _autoRefreshCancellationTokenSource = new CancellationTokenSource();
             _autoRefreshTimer = new System.Windows.Forms.Timer
             {
                 Interval = 5000 // Refresh every 5 seconds
@@ -337,25 +341,41 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private async void OnAutoRefreshTick(object? sender, EventArgs e)
+        private void OnAutoRefreshTick(object? sender, EventArgs e)
+        {
+            // Use AsyncEventHelper to wrap async operation with proper error handling and cancellation support
+            if (!IsDisposed)
+            {
+                // Queue the async refresh work using AsyncEventHelper for structured error handling
+                _ = AsyncEventHelper.ExecuteAsync(
+                    async ct => await RefreshActivityLogsAsync(),
+                    _autoRefreshCancellationTokenSource,
+                    this,
+                    Logger,
+                    "Activity Log Auto-Refresh",
+                    showErrorDialog: false, // Don't show dialog for background timer refreshes
+                    statusLabel: null);
+            }
+        }
+
+        /// <summary>
+        /// Performs async activity log refresh on the UI thread.
+        /// Accepts CancellationToken to allow cancellation during panel disposal.
+        /// </summary>
+        private async Task RefreshActivityLogsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                if (ViewModel != null && _chkAutoRefresh?.Checked == true)
+                if (IsDisposed || ViewModel == null || _chkAutoRefresh?.Checked != true)
+                    return;
+
+                // Refresh data on UI thread context (no ConfigureAwait needed)
+                await ViewModel.RefreshActivityEntriesAsync();
+
+                // Update grid binding on UI thread
+                if (!IsDisposed)
                 {
-                    // ConfigureAwait(false) ensures continuation may run on thread pool.
-                    // Wrap grid updates in UI thread marshal for safety.
-                    await ViewModel.RefreshActivityEntriesAsync().ConfigureAwait(false);
-                    
-                    // Notify UI thread that grid needs refresh
-                    if (!IsDisposed && InvokeRequired)
-                    {
-                        BeginInvoke(new Action(() => _bindingSource?.ResetBindings(false)));
-                    }
-                    else if (!IsDisposed)
-                    {
-                        _bindingSource?.ResetBindings(false);
-                    }
+                    _bindingSource?.ResetBindings(false);
                 }
             }
             catch (OperationCanceledException)
@@ -424,6 +444,9 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
+                // Cancel any pending auto-refresh operations
+                AsyncEventHelper.CancelAndDispose(ref _autoRefreshCancellationTokenSource);
+
                 // Cleanup timer with stored handler reference
                 if (_autoRefreshTimer != null)
                 {
@@ -520,7 +543,7 @@ namespace WileyWidget.WinForms.Controls
                     // Load from repository/database
                     var activities = await _repository.GetRecentActivitiesAsync(skip: 0, take: 500);
                     ActivityEntries.Clear();
-                    
+
                     // Convert ActivityItem to ActivityLog for display in grid
                     foreach (var activity in activities.OrderByDescending(a => a.Timestamp))
                     {

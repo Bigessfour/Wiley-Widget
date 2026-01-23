@@ -12,25 +12,26 @@ The xAI Grok endpoint has transitioned from the legacy `/v1/chat/completions` en
 
 ### 1. **Endpoint Migration**
 
-| Aspect | Old (/chat/completions) | New (/responses) |
-|--------|------------------------|------------------|
-| **Endpoint** | `POST /v1/chat/completions` | `POST /v1/responses` |
-| **Request field** | `messages` (array) | `input` (array) |
-| **Response structure** | `choices[0].message.content` | `output[0].content[0].text` |
-| **Storage** | Not available | 30-day retention |
-| **Conversation continuation** | Not available | Via `previous_response_id` |
-| **Response deletion** | Not available | Via `DELETE /v1/responses/{id}` |
-| **Response retrieval** | Not available | Via `GET /v1/responses/{id}` |
+| Aspect                        | Old (/chat/completions)      | New (/responses)                |
+| ------------------------------ | ----------------------------- | -------------------------------- |
+| **Endpoint**                  | `POST /v1/chat/completions`  | `POST /v1/responses`            |
+| **Request field**             | `messages` (array)           | `input` (array)                 |
+| **Response structure**        | `choices[0].message.content` | `output[0].content[0].text`     |
+| **Storage**                   | Not available                | 30-day retention                |
+| **Conversation continuation** | Not available                | Via `previous_response_id`      |
+| **Response deletion**         | Not available                | Via `DELETE /v1/responses/{id}` |
+| **Response retrieval**        | Not available                | Via `GET /v1/responses/{id}`    |
 
 ### 2. **Request Format Comparison**
 
 **Old Format (/chat/completions):**
+
 ```json
 {
   "model": "grok-4",
   "messages": [
-    {"role": "system", "content": "You are helpful."},
-    {"role": "user", "content": "Hello!"}
+    { "role": "system", "content": "You are helpful." },
+    { "role": "user", "content": "Hello!" }
   ],
   "stream": false,
   "temperature": 0.7
@@ -38,12 +39,13 @@ The xAI Grok endpoint has transitioned from the legacy `/v1/chat/completions` en
 ```
 
 **New Format (/responses):**
+
 ```json
 {
   "model": "grok-4",
   "input": [
-    {"role": "system", "content": "You are helpful."},
-    {"role": "user", "content": "Hello!"}
+    { "role": "system", "content": "You are helpful." },
+    { "role": "user", "content": "Hello!" }
   ],
   "stream": false,
   "store": true,
@@ -54,6 +56,7 @@ The xAI Grok endpoint has transitioned from the legacy `/v1/chat/completions` en
 ### 3. **Response Format Comparison**
 
 **Old Format (/chat/completions):**
+
 ```json
 {
   "id": "...",
@@ -69,6 +72,7 @@ The xAI Grok endpoint has transitioned from the legacy `/v1/chat/completions` en
 ```
 
 **New Format (/responses):**
+
 ```json
 {
   "id": "ad5663da-...",
@@ -93,6 +97,7 @@ The xAI Grok endpoint has transitioned from the legacy `/v1/chat/completions` en
 ### Core HTTP Methods
 
 #### 1. **GetSimpleResponse** (Non-streaming)
+
 - **Before**: Posted to `/v1/chat/completions` with `messages` array
 - **After**: Posts to `/v1/responses` with `input` array
 - **Response parsing**: Changed from `choices[0].message.content` to `output[0].content[0].text`
@@ -107,6 +112,7 @@ var response = await grokService.GetSimpleResponse(
 ```
 
 #### 2. **GetStreamingResponseAsync** (Streaming with SSE)
+
 - **Before**: Streamed from `/v1/chat/completions` with `delta.content`
 - **After**: Streams from `/v1/responses` with `output[0].content[0].text`
 - **Response tracking**: Now captures and stores response IDs for conversation continuation
@@ -121,6 +127,7 @@ var response = await grokService.GetStreamingResponseAsync(
 ```
 
 #### 3. **ValidateApiKeyAsync** (API key validation)
+
 - **Before**: Validated against `/v1/chat/completions`
 - **After**: Validates against `/v1/responses` endpoint
 - **Structure**: Now uses `input` field instead of `messages`
@@ -135,6 +142,7 @@ if (success)
 ### New Methods (Responses API Features)
 
 #### 4. **GetResponseByIdAsync** - Retrieve stored responses
+
 Retrieve a previously generated response by ID (available for 30 days).
 
 ```csharp
@@ -144,6 +152,7 @@ var responseText = await grokService.GetResponseByIdAsync("response-id-here");
 **Endpoint**: `GET /v1/responses/{response_id}`
 
 #### 5. **DeleteResponseAsync** - Delete stored responses
+
 Delete a previously stored response (useful for cleanup and privacy).
 
 ```csharp
@@ -155,6 +164,7 @@ if (deleted)
 **Endpoint**: `DELETE /v1/responses/{response_id}`
 
 #### 6. **ContinueConversationAsync** - Continue conversations
+
 Continue a previous conversation without repeating context.
 
 ```csharp
@@ -175,6 +185,7 @@ var response2 = await grokService.ContinueConversationAsync(
 **Endpoint**: `POST /v1/responses` with `previous_response_id` parameter
 
 #### 7. **ListAvailableModelsAsync** - List available models
+
 Lists all models available through the xAI API.
 
 ```csharp
@@ -192,13 +203,14 @@ foreach (var model in models)
 ### Payload Builders
 
 #### **CreateResponsesPayload** (NEW)
+
 Builds request payloads for the `/v1/responses` endpoint with proper field names and structure.
 
 ```csharp
 private Dictionary<string, object?> CreateResponsesPayload(
-    string model, 
-    object[] input, 
-    bool stream, 
+    string model,
+    object[] input,
+    bool stream,
     double? temperature = null)
 {
     var payload = new Dictionary<string, object?>
@@ -208,24 +220,25 @@ private Dictionary<string, object?> CreateResponsesPayload(
         ["stream"] = stream,
         ["store"] = true                // New: persist responses for 30 days
     };
-    
-    if (temperature.HasValue) 
+
+    if (temperature.HasValue)
         payload["temperature"] = temperature.Value;
-    
+
     // Penalties excluded for reasoning models
     if (!IsReasoningModel(model))
     {
-        if (_defaultPresencePenalty.HasValue) 
+        if (_defaultPresencePenalty.HasValue)
             payload["presence_penalty"] = _defaultPresencePenalty.Value;
-        if (_defaultFrequencyPenalty.HasValue) 
+        if (_defaultFrequencyPenalty.HasValue)
             payload["frequency_penalty"] = _defaultFrequencyPenalty.Value;
     }
-    
+
     return payload;
 }
 ```
 
 #### **CreateChatRequestPayload** (LEGACY)
+
 Retained for Semantic Kernel compatibility. Semantic Kernel's OpenAI connector still uses `/chat/completions` format. Direct HTTP methods use the new payload builder.
 
 ### Response ID Tracking
@@ -260,6 +273,7 @@ builder.AddOpenAIChatCompletion(
 ```
 
 **For new code**, prefer direct HTTP methods:
+
 - `GetSimpleResponse()` - Non-streaming
 - `GetStreamingResponseAsync()` - Streaming with SSE
 - `ContinueConversationAsync()` - Conversation continuation
@@ -274,9 +288,9 @@ All existing configuration keys continue to work:
 
 ```json
 {
-  "Grok:ApiKey": "xai-...",        // or XAI:ApiKey
-  "Grok:Model": "grok-4",          // or XAI:Model (default: grok-4)
-  "Grok:Endpoint": "https://api.x.ai/v1",  // or XAI:Endpoint
+  "Grok:ApiKey": "xai-...", // or XAI:ApiKey
+  "Grok:Model": "grok-4", // or XAI:Model (default: grok-4)
+  "Grok:Endpoint": "https://api.x.ai/v1", // or XAI:Endpoint
   "Grok:DefaultPresencePenalty": "0.0",
   "Grok:DefaultFrequencyPenalty": "0.0",
   "Grok:AutoSelectModelOnStartup": "false",
@@ -293,6 +307,7 @@ All existing configuration keys continue to work:
 Any code that manually parses responses from the old endpoint will break:
 
 **Old (BROKEN):**
+
 ```csharp
 // ❌ This no longer works with /responses endpoint
 var choices = doc.RootElement.GetProperty("choices");
@@ -300,6 +315,7 @@ var content = choices[0].GetProperty("message").GetProperty("content");
 ```
 
 **New (CORRECT):**
+
 ```csharp
 // ✅ Use the refactored GetSimpleResponse or GetStreamingResponseAsync
 var content = await grokService.GetSimpleResponse(userMessage);
@@ -312,6 +328,7 @@ var content = output[0].GetProperty("content")[0].GetProperty("text");
 ### ✅ Non-Breaking
 
 All public method signatures remain compatible:
+
 - `GetSimpleResponse()` - same parameters and return type
 - `GetStreamingResponseAsync()` - same parameters and return type
 - `ValidateApiKeyAsync()` - same parameters and return type
@@ -387,16 +404,18 @@ await grokService.DeleteResponseAsync("response-id-from-step-2");
 If your tests mock `GrokAgentService` responses, update test data:
 
 **Old test data (BROKEN):**
+
 ```json
 {
-  "choices": [{"message": {"content": "test response"}}]
+  "choices": [{ "message": { "content": "test response" } }]
 }
 ```
 
 **New test data (CORRECT):**
+
 ```json
 {
-  "output": [{"content": [{"text": "test response"}]}],
+  "output": [{ "content": [{ "text": "test response" }] }],
   "id": "test-response-id",
   "status": "completed"
 }
@@ -405,6 +424,7 @@ If your tests mock `GrokAgentService` responses, update test data:
 ### Integration Tests
 
 Run the existing test suite to validate:
+
 ```bash
 dotnet test tests/WileyWidget.WinForms.Tests -k Grok
 ```
@@ -428,6 +448,7 @@ The service maintains existing error handling patterns:
 ### Response Storage
 
 The `/v1/responses` endpoint stores responses for **30 days**. This enables:
+
 - ✅ Conversation continuation without full context re-transmission
 - ✅ Response retrieval for audit/logging
 - ✅ Reduced token usage for long conversations
@@ -435,6 +456,7 @@ The `/v1/responses` endpoint stores responses for **30 days**. This enables:
 ### Streaming
 
 Streaming behavior is identical to the old endpoint:
+
 - ✅ Real-time chunks via Server-Sent Events (SSE)
 - ✅ Callbacks invoked per chunk
 - ✅ Full response assembled in memory
@@ -469,16 +491,15 @@ Streaming behavior is identical to the old endpoint:
 
 ## References
 
-- **X.ai Documentation**: https://docs.x.ai/docs/api-reference#create-new-response
-- **Responses API Spec**: https://docs.x.ai/docs/api-reference#create-new-response
+- **X.ai Documentation**: <https://docs.x.ai/docs/api-reference#create-new-response>
+- **Responses API Spec**: <https://docs.x.ai/docs/api-reference#create-new-response>
 - **GrokAgentService Source**: `src/WileyWidget.WinForms/Services/AI/GrokAgentService.cs`
 
 ---
 
 ## Version History
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2026-01-21 | 2.0.0 | Complete migration to /v1/responses endpoint, added response management, improved streaming |
-| 2025-XX-XX | 1.0.0 | Original /v1/chat/completions implementation |
-
+| Date       | Version | Changes                                                                                     |
+| ---------- | ------- | ------------------------------------------------------------------------------------------- |
+| 2026-01-21 | 2.0.0   | Complete migration to /v1/responses endpoint, added response management, improved streaming |
+| 2025-XX-XX | 1.0.0   | Original /v1/chat/completions implementation                                                |

@@ -76,7 +76,7 @@ public class XAIService : IAIService, IDisposable
         Console.WriteLine($"[XAISERVICE DEBUG] Config type = {configuration.GetType().FullName}");
 
         _enabled = bool.Parse(configuration["XAI:Enabled"] ?? "false");
-        _endpoint = configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/chat/completions";
+        _endpoint = configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/responses";
         _model = configuration["XAI:Model"] ?? "grok-4";
         _temperature = double.Parse(configuration["XAI:Temperature"] ?? "0.3", CultureInfo.InvariantCulture);
         _maxTokens = int.Parse(configuration["XAI:MaxTokens"] ?? "800", CultureInfo.InvariantCulture);
@@ -237,7 +237,7 @@ public class XAIService : IAIService, IDisposable
 
             var request = new
             {
-                messages = new[]
+                input = new[]
                 {
                     new
                     {
@@ -253,7 +253,8 @@ public class XAIService : IAIService, IDisposable
                 model = _model,
                 stream = false,
                 temperature = _temperature,
-                max_tokens = _maxTokens
+                max_tokens = _maxTokens,
+                store = true
             };
 
             // Execute HTTP request with resilient HttpClient
@@ -289,9 +290,9 @@ public class XAIService : IAIService, IDisposable
                 return $"API error: {result.error.message}";
             }
 
-            if (result?.choices?.Length > 0)
+            if (result?.output?.Length > 0 && result.output[0]?.content?.Length > 0)
             {
-                var content = result.choices[0].message?.content;
+                var content = result.output[0].content[0]?.text;
                 if (!string.IsNullOrEmpty(content))
                 {
                     var totalTokens = result.usage?.TotalTokens ?? 0;
@@ -500,7 +501,7 @@ public class XAIService : IAIService, IDisposable
 
         var request = new
         {
-            messages = new[]
+            input = new[]
             {
                 new
                 {
@@ -516,7 +517,8 @@ public class XAIService : IAIService, IDisposable
             model = _model,
             stream = false,
             temperature = _temperature,
-            max_tokens = _maxTokens
+            max_tokens = _maxTokens,
+            store = true
         };
 
         // Execute HTTP request with resilient HttpClient
@@ -550,9 +552,9 @@ public class XAIService : IAIService, IDisposable
             return $"API error: {result.error.message}";
         }
 
-        if (result?.choices?.Length > 0)
+        if (result?.output?.Length > 0 && result.output[0]?.content?.Length > 0)
         {
-            var content = result.choices[0].message?.content;
+            var content = result.output[0].content[0]?.text;
             if (!string.IsNullOrEmpty(content))
             {
                 var totalTokens = result.usage?.TotalTokens ?? 0;
@@ -646,7 +648,7 @@ public class XAIService : IAIService, IDisposable
             return new AIResponseResult($"API error: {xaiResponse.error.message}", 500, xaiResponse.error.type, xaiResponse.error.message);
         }
 
-        var content = xaiResponse?.choices?.Length > 0 ? xaiResponse.choices[0].message?.content : null;
+        var content = xaiResponse?.output?.Length > 0 && xaiResponse.output[0]?.content?.Length > 0 ? xaiResponse.output[0].content[0]?.text : null;
 
         if (!string.IsNullOrEmpty(content))
         {
@@ -718,7 +720,7 @@ public class XAIService : IAIService, IDisposable
                 return new AIResponseResult(xaiResponse.error.message ?? "API error", 500, xaiResponse.error.type, xaiResponse.error.message);
             }
 
-            var content = xaiResponse?.choices?.Length > 0 ? xaiResponse.choices[0].message?.content : null;
+            var content = xaiResponse?.output?.Length > 0 && xaiResponse.output[0]?.content?.Length > 0 ? xaiResponse.output[0].content[0]?.text : null;
             return new AIResponseResult(content ?? "OK", 200, null, null);
         }
         catch (HttpRequestException ex)
@@ -761,17 +763,19 @@ public class XAIService : IAIService, IDisposable
     /// </summary>
     private class XAIResponse
     {
-        public Choice[] choices { get; set; }
+        public OutputItem[] output { get; set; }
         public XAIError error { get; set; }
 
-        public class Choice
+        public class OutputItem
         {
-            public Message message { get; set; }
+            public ContentItem[] content { get; set; }
+            public string role { get; set; }
         }
 
-        public class Message
+        public class ContentItem
         {
-            public string content { get; set; }
+            public string type { get; set; }
+            public string text { get; set; }
         }
 
         public class XAIError
@@ -887,14 +891,15 @@ public class XAIService : IAIService, IDisposable
 
             var request = new
             {
-                messages = new[]
+                input = new[]
                 {
                     new { role = "user", content = prompt }
                 },
                 model = _model,
                 stream = false,
                 temperature = _temperature,
-                max_tokens = _maxTokens
+                max_tokens = _maxTokens,
+                store = true
             };
 
             var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken: cancellationToken);
@@ -902,7 +907,7 @@ public class XAIService : IAIService, IDisposable
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<XAIResponse>();
-                var message = result?.choices?.FirstOrDefault()?.message?.content ?? "No response content";
+                var message = result?.output?.Length > 0 && result.output[0]?.content?.Length > 0 ? result.output[0].content[0]?.text : "No response content";
 
                 _logger.LogInformation("Successfully received response from xAI");
                 return new AIResponseResult(message, (int)response.StatusCode);

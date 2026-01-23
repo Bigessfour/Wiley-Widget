@@ -256,9 +256,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Text = "Report Parameters",
             Dock = DockStyle.Top,
-            AutoSize = true,
+            AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
+            Height = 24, // Fixed height for label
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 10)
+            Margin = new Padding(0, 0, 0, 10),
+            TextAlign = ContentAlignment.MiddleLeft
         };
         parametersLayout.Controls.Add(parametersLabel, 0, 0);
 

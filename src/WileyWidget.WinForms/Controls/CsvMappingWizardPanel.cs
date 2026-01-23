@@ -318,16 +318,20 @@ namespace WileyWidget.WinForms.Controls
 
         private void OnMappingChanged(object? sender, EventArgs e) => SetHasUnsavedChanges(true);
 
-        private async void BtnApply_Click(object? sender, EventArgs e)
+        private void BtnApply_Click(object? sender, EventArgs e)
         {
-            var validation = await ValidateAsync(CancellationToken.None);
-            if (!validation.IsValid)
+            // Queue async validation and save on the UI thread
+            BeginInvoke(new Func<Task>(async () =>
             {
-                _logger?.LogInformation("CSV mapping validation failed");
-                return;
-            }
+                var validation = await ValidateAsync(CancellationToken.None);
+                if (!validation.IsValid)
+                {
+                    _logger?.LogInformation("CSV mapping validation failed");
+                    return;
+                }
 
-            await SaveAsync(CancellationToken.None);
+                await SaveAsync(CancellationToken.None);
+            }));
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)

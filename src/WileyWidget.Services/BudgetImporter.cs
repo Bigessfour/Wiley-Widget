@@ -176,7 +176,7 @@ public class BudgetImporter : IBudgetImporter
     }
 
     /// <inheritdoc/>
-    public async void Import(string sourcePath)
+    public async Task ImportAsync(string sourcePath)
     {
         if (string.IsNullOrWhiteSpace(sourcePath))
             throw new ArgumentException("Source path cannot be null or empty", nameof(sourcePath));
