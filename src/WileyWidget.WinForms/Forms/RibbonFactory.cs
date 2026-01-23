@@ -645,7 +645,31 @@ public static class RibbonFactory
             () => form.ShowPanel<QuickBooksPanel>("QuickBooks Synchronization", DockingStyle.Right),
             logger);
 
-        group.Items.AddRange(new ToolStripItem[] { settingsBtn, quickBooksBtn });
+        var jarvisBtn = CreateLargeNavButton(
+            "Nav_JARVIS",
+            "JARVIS AI",
+            "jarvis",
+            themeName,
+            () =>
+            {
+                try
+                {
+                    var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatHostForm>(Program.Services);
+                    if (chatForm != null)
+                    {
+                        logger?.LogInformation("[RIBBON_TOOLS] Opening JARVIS Chat from Tools group");
+                        chatForm.ShowDialog(form);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "[RIBBON_TOOLS] Failed to open JARVIS Chat");
+                    MessageBox.Show($"Failed to open JARVIS: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            },
+            logger);
+
+        group.Items.AddRange(new ToolStripItem[] { settingsBtn, quickBooksBtn, jarvisBtn });
         TrySetThemeName(group, themeName, logger);
 
         return (group, quickBooksBtn);

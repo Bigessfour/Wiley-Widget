@@ -520,8 +520,19 @@ namespace WileyWidget.WinForms.Forms
                 components?.Dispose();
                 (_logger as IDisposable)?.Dispose();
 
-                // [PERF] Cancel pending initialization
-                try { _initializationCts?.Cancel(); } catch { }
+                // [PERF] Cancel pending initialization (safe if already disposed)
+                try 
+                { 
+                    if (_initializationCts != null && !_initializationCts.IsCancellationRequested)
+                    {
+                        _initializationCts.Cancel(); 
+                    }
+                } 
+                catch (ObjectDisposedException) 
+                { 
+                    // Token source already disposed - this is fine during cleanup
+                }
+                catch { }
 
                 // [PERF] Dispose async logger before token source
                 if (_asyncLogger is IDisposable asyncDisposable)

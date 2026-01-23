@@ -108,6 +108,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SelectionChangedEventHandler? _gridSelectionChangedHandler;
     private MouseEventHandler? _gridMouseDoubleClickHandler;
     private QueryCellStyleEventHandler? _gridQueryCellStyleHandler;
+    private Syncfusion.Windows.Forms.Tools.Events.SplitterMoveEventHandler? _splitterMovingHandler;
 
     #endregion
 
@@ -283,7 +284,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         base.OnViewModelResolved(viewModel);
 
-        // Configure panels (designer created base panels via InitializeComponent)
         CreateConnectionPanel();
         CreateOperationsPanel();
         CreateSummaryPanel();
@@ -292,40 +292,16 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         BindViewModel();
         ApplySyncfusionTheme();
 
-        // Set initial splitter distances to ensure proper panel layout (prevents buttons from being blocked)
-        // Must be done after panels are created but before the control is shown
-        if (_splitContainerMain != null && Height > 0)
-        {
-            // Main: ~40% top (connection/ops), ~60% bottom (summary/history)
-            // Ensures top panels are visible without being collapsed
-            int mainSplitterDist = Math.Max(DpiHeight(200f), (int)(Height * 0.40f));
-            _splitContainerMain.SplitterDistance = mainSplitterDist;
-        }
+        // === NEW: Safe SplitContainerAdv configuration using SafeSplitterDistanceHelper ===
+        ConfigureSplitContainersSafely();
 
-        if (_splitContainerTop != null && Width > 0)
-        {
-            // Top: ~45% connection, ~55% operations (side-by-side panels)
-            // Ensures both panels are equally visible
-            int topSplitterDist = Math.Max(DpiHeight(250f), (int)(Width * 0.45f));
-            _splitContainerTop.SplitterDistance = topSplitterDist;
-        }
+        // Attach a single shared SplitterMoving handler for clamping (prevents user drag exceptions)
+        _splitterMovingHandler = OnSplitterMoving;
+        _splitContainerMain!.SplitterMoving += _splitterMovingHandler;
+        _splitContainerTop!.SplitterMoving += _splitterMovingHandler;
+        _splitContainerBottom!.SplitterMoving += _splitterMovingHandler;
 
-        if (_splitContainerBottom != null && Height > 0)
-        {
-            // Bottom: Summary panel minimum height + padding
-            // Prevents summary panel from being collapsed or too small
-            var summaryMin = CalculateSummaryPanelMinHeight();
-            _splitContainerBottom.SplitterDistance = summaryMin + DpiHeight(20f);
-        }
-
-        // Force immediate layout after splitter distances are set
-        // This ensures all controls are properly sized before display
-        this.PerformLayout();
-        _splitContainerMain?.PerformLayout();
-        _splitContainerTop?.PerformLayout();
-        _splitContainerBottom?.PerformLayout();
-
-        Logger.LogDebug("QuickBooksPanel: ViewModel resolved and UI initialized with splitter distances set");
+        Logger.LogDebug("QuickBooksPanel: ViewModel resolved and UI initialized with safe splitter configuration");
     }
 
     /// <summary>
@@ -367,7 +343,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     /// <summary>
     /// Handles resize events with responsive SfDataGrid layout and SplitContainerAdv adaptation.
-    /// Includes recursion prevention and SfDataGrid layout refresh per Syncfusion documentation.
+    /// Includes recursion prevention and dynamic min-size clamping for narrow containers.
+    /// Syncfusion constraint enforcement per: https://help.syncfusion.com/windowsforms/overview
     /// </summary>
     protected override void OnResize(EventArgs e)
     {
@@ -387,42 +364,65 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
             base.OnResize(e);
 
+            // DYNAMICALLY CLAMP MIN SIZES: Syncfusion SplitContainerAdv constraint:
+            // Panel1MinSize + Panel2MinSize + SplitterWidth must not exceed container dimension
+            // When container is very narrow (< 300px), reduce min sizes to prevent InvalidOperationException
+            ClampMinSizesIfNeeded(_splitContainerMain);
+            ClampMinSizesIfNeeded(_splitContainerTop);
+            ClampMinSizesIfNeeded(_splitContainerBottom);
+
+            // Adjust min sizes responsively based on current width (wide/medium/narrow)
+            AdjustMinSizesForCurrentWidth();
+
             // Refresh all split containers to ensure they respect minimum sizes
             if (_splitContainerMain != null)
             {
                 _splitContainerMain.Height = Height - (_panelHeader?.Height ?? 0) - (_statusStrip?.Height ?? 0) - Padding.Vertical;
 
-                int max = _splitContainerMain.Height - _splitContainerMain.Panel2MinSize - _splitContainerMain.SplitterWidth;
-                if (_splitContainerMain.SplitterDistance > max && max > _splitContainerMain.Panel1MinSize)
+                // Safely adjust splitter distance within bounds
+                if (!SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerMain, _splitContainerMain.SplitterDistance))
                 {
-                    _splitContainerMain.SplitterDistance = max;
+                    // If TrySet fails, calculate a safe fallback distance
+                    int max = _splitContainerMain.Height - _splitContainerMain.Panel2MinSize - _splitContainerMain.SplitterWidth;
+                    if (max > _splitContainerMain.Panel1MinSize)
+                    {
+                        _splitContainerMain.SplitterDistance = max;
+                    }
                 }
                 _splitContainerMain.PerformLayout();
             }
 
             if (_splitContainerTop != null)
             {
-                // Only adjust SplitterDistance if it's out of bounds - Panel2MinSize is set by SafeSplitterDistanceHelper
-                int max = _splitContainerTop.Width - _splitContainerTop.Panel2MinSize - _splitContainerTop.SplitterWidth;
-                if (_splitContainerTop.SplitterDistance > max && max > _splitContainerTop.Panel1MinSize)
+                // Safely adjust splitter distance within bounds
+                if (!SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerTop, _splitContainerTop.SplitterDistance))
                 {
-                    _splitContainerTop.SplitterDistance = max;
+                    // If TrySet fails, calculate a safe fallback distance
+                    int max = _splitContainerTop.Width - _splitContainerTop.Panel2MinSize - _splitContainerTop.SplitterWidth;
+                    if (max > _splitContainerTop.Panel1MinSize)
+                    {
+                        _splitContainerTop.SplitterDistance = max;
+                    }
                 }
                 _splitContainerTop.PerformLayout();
             }
 
             if (_splitContainerBottom != null)
             {
-                // Only adjust SplitterDistance if it's out of bounds - Panel2MinSize is set by SafeSplitterDistanceHelper
+                // Safely adjust splitter distance within bounds
                 var summaryMin = CalculateSummaryPanelMinHeight();
-                int max = _splitContainerBottom.Height - _splitContainerBottom.Panel2MinSize - _splitContainerBottom.SplitterWidth;
-                if (_splitContainerBottom.SplitterDistance > max && max > summaryMin)
+                if (!SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerBottom, _splitContainerBottom.SplitterDistance))
                 {
-                    _splitContainerBottom.SplitterDistance = max;
-                }
-                else if (_splitContainerBottom.SplitterDistance < summaryMin)
-                {
-                    _splitContainerBottom.SplitterDistance = summaryMin;
+                    // If TrySet fails, calculate a safe fallback distance
+                    int max = _splitContainerBottom.Height - _splitContainerBottom.Panel2MinSize - _splitContainerBottom.SplitterWidth;
+                    if (max > summaryMin)
+                    {
+                        _splitContainerBottom.SplitterDistance = max;
+                    }
+                    else if (_splitContainerBottom.SplitterDistance < summaryMin)
+                    {
+                        _splitContainerBottom.SplitterDistance = summaryMin;
+                    }
                 }
                 _splitContainerBottom.PerformLayout();
             }
@@ -525,6 +525,69 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
     }
 
+    /// <summary>
+    /// Dynamically clamps Panel1MinSize and Panel2MinSize to prevent Syncfusion constraint violations.
+    ///
+    /// Syncfusion constraint: Panel1MinSize + Panel2MinSize + SplitterWidth ≤ container dimension
+    ///
+    /// When container is too narrow (< 300px for vertical, < 200px for horizontal),
+    /// reduces min sizes to 50% of their current value to allow the splitter to remain functional.
+    /// This prevents ArgumentOutOfRangeException during resize cycles.
+    /// </summary>
+    private void ClampMinSizesIfNeeded(SplitContainerAdv? splitter)
+    {
+        if (splitter == null || !splitter.IsHandleCreated)
+            return;
+
+        // Determine available dimension based on orientation
+        int availableDimension = splitter.Orientation == Orientation.Horizontal
+            ? splitter.Height
+            : splitter.Width;
+
+        int min1 = splitter.Panel1MinSize;
+        int min2 = splitter.Panel2MinSize;
+        int splitterWidth = splitter.SplitterWidth;
+
+        // Threshold: if container is very narrow, reduce min sizes
+        // Horizontal splitters need less width threshold; vertical can handle more
+        int narrowThreshold = splitter.Orientation == Orientation.Horizontal ? 200 : 300;
+
+        // Check if total minimum space exceeds available dimension
+        int totalMinRequired = min1 + min2 + splitterWidth;
+
+        if (availableDimension < narrowThreshold || availableDimension < totalMinRequired)
+        {
+            // Emergency: reduce min sizes to make splitter functional
+            // New min size = 50% of original, with floor of 50px to keep panels hit-testable
+            int reducedMin1 = Math.Max(50, min1 / 2);
+            int reducedMin2 = Math.Max(50, min2 / 2);
+
+            try
+            {
+                if (splitter.Panel1MinSize != reducedMin1)
+                    splitter.Panel1MinSize = reducedMin1;
+                if (splitter.Panel2MinSize != reducedMin2)
+                    splitter.Panel2MinSize = reducedMin2;
+
+                Logger.LogDebug(
+                    "ClampMinSizesIfNeeded: {Orientation} splitter reduced min sizes. " +
+                    "Old: Panel1Min={OldMin1}px, Panel2Min={OldMin2}px. " +
+                    "New: Panel1Min={NewMin1}px, Panel2Min={NewMin2}px. " +
+                    "Available={AvailableDim}px",
+                    splitter.Orientation, min1, min2, reducedMin1, reducedMin2, availableDimension);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Syncfusion threw due to constraint violation - log and continue
+                // The next ClampSplitterSafely call will handle emergency fallback
+                Logger.LogWarning(
+                    "ClampMinSizesIfNeeded: Failed to reduce min sizes for {Orientation} splitter. " +
+                    "Constraint violation detected. Will rely on ClampSplitterSafely fallback.",
+                    splitter.Orientation);
+            }
+        }
+    }
+
     private void ClampSplitterSafely(SplitContainerAdv? splitter)
     {
         if (splitter == null) return;
@@ -550,6 +613,142 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.SplitterDistance = min1;
         if (splitter.SplitterDistance > available - min2)
             splitter.SplitterDistance = available - min2;
+    }
+
+    /// <summary>
+    /// Adjusts minimum sizes of all three splitters based on current panel width.
+    /// Implements responsive behavior: wider container → larger min sizes; narrower → smaller min sizes.
+    ///
+    /// Thresholds (in logical pixels, DPI-aware):
+    /// - Wide (≥800px):  Standard min sizes for professional appearance
+    /// - Medium (500-799px): Reduced min sizes, 75% of standard
+    /// - Narrow (<500px):   Minimal sizes, 50% of standard, but never below 50px
+    ///
+    /// Constraint-aware: Before setting Panel1MinSize, validates that the container can fit
+    /// both Panel1MinSize + Panel2MinSize + SplitterWidth. If not, scales both down proportionally.
+    /// This prevents ArgumentOutOfRangeException on extremely narrow containers.
+    /// Called every OnResize to maintain responsive behavior during window resizing.
+    /// </summary>
+    private void AdjustMinSizesForCurrentWidth()
+    {
+        if (_splitContainerTop == null || _splitContainerBottom == null || _splitContainerMain == null)
+            return;
+
+        // Current container width (use Main width as reference)
+        int currentWidth = _splitContainerMain.Width;
+
+        // Define responsive thresholds (in DPI-aware logical pixels)
+        // These values scale with DPI, so the responsive behavior is consistent across monitors
+        int wideThreshold = DpiHeight(800f);     // ≥800px = wide
+        int mediumThreshold = DpiHeight(500f);   // 500-799px = medium
+        // Narrow is <500px
+
+        // MODEST MIN SIZES for professional appearance (per Syncfusion SplitContainerAdv best practices)
+        // These are starting sizes; responsive scaling (wide/medium/narrow) adjusts them as needed
+        const int standardMinSize = 100;         // Base: main splitter top/bottom panels
+        const int connectionMinSize = 110;       // Connection panel: shows status + 3 buttons
+        const int operationMinSize = 110;        // Operations panel: shows sync buttons + progress
+        const int summaryMinSize = 100;          // Summary panel: shows KPI cards (min height enforced separately)
+        const int historyMinSize = 100;          // History panel: shows grid (min height enforced separately)
+
+        // Calculate adjusted sizes based on width
+        int topMin1, topMin2, bottomMin1, bottomMin2, mainMin1, mainMin2;
+
+        if (currentWidth >= wideThreshold)
+        {
+            // WIDE: Use standard sizes
+            topMin1 = connectionMinSize;
+            topMin2 = operationMinSize;
+            bottomMin1 = summaryMinSize;
+            bottomMin2 = historyMinSize;
+            mainMin1 = standardMinSize;
+            mainMin2 = standardMinSize;
+        }
+        else if (currentWidth >= mediumThreshold)
+        {
+            // MEDIUM: 75% of standard
+            topMin1 = Math.Max(50, (int)(connectionMinSize * 0.75f));
+            topMin2 = Math.Max(50, (int)(operationMinSize * 0.75f));
+            bottomMin1 = Math.Max(50, (int)(summaryMinSize * 0.75f));
+            bottomMin2 = Math.Max(50, (int)(historyMinSize * 0.75f));
+            mainMin1 = Math.Max(50, (int)(standardMinSize * 0.75f));
+            mainMin2 = Math.Max(50, (int)(standardMinSize * 0.75f));
+        }
+        else
+        {
+            // NARROW: 50% of standard, minimum 50px
+            topMin1 = Math.Max(50, (int)(connectionMinSize * 0.5f));
+            topMin2 = Math.Max(50, (int)(operationMinSize * 0.5f));
+            bottomMin1 = Math.Max(50, (int)(summaryMinSize * 0.5f));
+            bottomMin2 = Math.Max(50, (int)(historyMinSize * 0.5f));
+            mainMin1 = Math.Max(50, (int)(standardMinSize * 0.5f));
+            mainMin2 = Math.Max(50, (int)(standardMinSize * 0.5f));
+        }
+
+        // Apply adjusted min sizes with constraint checking
+        try
+        {
+            // Helper: Safely set both Panel1MinSize and Panel2MinSize while respecting constraints
+            ApplySplitterMinSizesWithConstraintCheck(_splitContainerTop, topMin1, topMin2, "Top");
+            ApplySplitterMinSizesWithConstraintCheck(_splitContainerBottom, bottomMin1, bottomMin2, "Bottom");
+            ApplySplitterMinSizesWithConstraintCheck(_splitContainerMain, mainMin1, mainMin2, "Main");
+
+            // Log in debug mode for responsive behavior verification
+            Logger.LogDebug(
+                "AdjustMinSizesForCurrentWidth: Width={CurrentWidth}px. " +
+                "TopSplitter=[{TopMin1}, {TopMin2}], BottomSplitter=[{BottomMin1}, {BottomMin2}], MainSplitter=[{MainMin1}, {MainMin2}]",
+                currentWidth, topMin1, topMin2, bottomMin1, bottomMin2, mainMin1, mainMin2);
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            // If constraint violation occurs, log and rely on ClampMinSizesIfNeeded to handle it
+            Logger.LogWarning(ex,
+                "AdjustMinSizesForCurrentWidth: Constraint violation detected at width {Width}px. " +
+                "Falling back to emergency clamping. This typically indicates a very narrow container.",
+                currentWidth);
+
+            // Emergency fallback: clamp all splitters to safe values
+            ClampSplitterSafely(_splitContainerTop);
+            ClampSplitterSafely(_splitContainerBottom);
+            ClampSplitterSafely(_splitContainerMain);
+        }
+    }
+
+    /// <summary>
+    /// Safely applies Panel1MinSize and Panel2MinSize to a splitter while respecting Syncfusion constraints.
+    /// Constraint: Panel1MinSize + Panel2MinSize + SplitterWidth ≤ container dimension
+    /// If the constraint would be violated, scales both sizes down proportionally.
+    /// </summary>
+    private void ApplySplitterMinSizesWithConstraintCheck(SplitContainerAdv splitter, int requestedMin1, int requestedMin2, string splitterName)
+    {
+        if (splitter == null || !splitter.IsHandleCreated)
+            return;
+
+        int containerDim = splitter.Orientation == Orientation.Horizontal ? splitter.Height : splitter.Width;
+        int totalRequired = requestedMin1 + requestedMin2 + splitter.SplitterWidth;
+
+        // If constraint violated, scale both down proportionally
+        int actualMin1 = requestedMin1;
+        int actualMin2 = requestedMin2;
+
+        if (totalRequired > containerDim)
+        {
+            // Calculate reduction ratio
+            float scale = (float)containerDim / totalRequired;
+            actualMin1 = Math.Max(30, (int)(requestedMin1 * scale * 0.9f)); // 0.9f adds safety margin
+            actualMin2 = Math.Max(30, (int)(requestedMin2 * scale * 0.9f));
+
+            Logger.LogDebug(
+                "ApplySplitterMinSizesWithConstraintCheck: {Name} splitter constraint violated. " +
+                "Requested=[{Req1}, {Req2}], Container={Container}, Adjusted=[{Act1}, {Act2}]",
+                splitterName, requestedMin1, requestedMin2, containerDim, actualMin1, actualMin2);
+        }
+
+        // Set Panel2MinSize first so Panel1MinSize has valid context
+        if (splitter.Panel2MinSize != actualMin2)
+            splitter.Panel2MinSize = actualMin2;
+        if (splitter.Panel1MinSize != actualMin1)
+            splitter.Panel1MinSize = actualMin1;
     }
 
     private void DeferSizeValidation()
@@ -713,16 +912,18 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Use SafeSplitterDistanceHelper to defer SplitterDistance setting until controls are properly sized
         // Initialize inner splitters first (bottom-up for nesting)
-        // Use conservative minimum sizes initially - OnResize will scale them up as needed
+        // MODEST MIN SIZES: Professional appearance with responsive scaling via AdjustMinSizesForCurrentWidth()
+        // Syncfusion constraint: Panel1MinSize + Panel2MinSize + SplitterWidth ≤ container dimension
+        // These are modest starting sizes; responsive scaling kicks in during OnResize for narrow containers
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
-            _splitContainerTop, panel1MinSize: 80, panel2MinSize: 80, desiredDistance: DpiHeight(400f));
+            _splitContainerTop, panel1MinSize: 110, panel2MinSize: 110, desiredDistance: DpiHeight(400f));
 
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
-            _splitContainerBottom, panel1MinSize: 60, panel2MinSize: 60, desiredDistance: CalculateSummaryPanelMinHeight());
+            _splitContainerBottom, panel1MinSize: 100, panel2MinSize: 100, desiredDistance: CalculateSummaryPanelMinHeight());
 
-        // Now outer main
+        // Outer main splitter with modest min sizes for top/bottom balance
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
-            _splitContainerMain, panel1MinSize: 60, panel2MinSize: 60, desiredDistance: DpiHeight(350f));
+            _splitContainerMain, panel1MinSize: 100, panel2MinSize: 100, desiredDistance: DpiHeight(350f));
 
         // SizeChanged handlers are handled by SafeSplitterDistanceHelper for automatic clamping
 
@@ -1243,24 +1444,24 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         };
 
         // Row styles: Absolute for fixed heights (prevents undersizing)
-        tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, DpiHeight(36f))); // Button row
+        tableLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize, 0)); // Button row - auto-size to fit wrapped buttons
         tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, DpiHeight(25f))); // Progress bar
 
         // Operations buttons in FlowLayoutPanel for responsive layout
         var buttonPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            AutoSize = false, // Explicit false: TableLayoutPanel row height controls button row
-            Height = DpiHeight(36f),
+            AutoSize = true, // Allow panel to grow when buttons wrap
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
+            WrapContents = true,
             Padding = new Padding(0, 0, 0, 0)
         };
 
         _syncDataButton = new SfButton
         {
             Text = "🔄 Sync Data",
-            Size = new Size(DpiHeight(130f), DpiHeight(36f)),
+            Size = new Size(DpiHeight(120f), DpiHeight(36f)),
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             Anchor = AnchorStyles.Left | AnchorStyles.Top,
             AccessibleName = "Sync Data with QuickBooks",
@@ -1282,7 +1483,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _importAccountsButton = new SfButton
         {
             Text = "📥 Import Chart of Accounts",
-            Size = new Size(DpiHeight(180f), DpiHeight(36f)),
+            Size = new Size(DpiHeight(170f), DpiHeight(36f)),
             Anchor = AnchorStyles.Left | AnchorStyles.Top,
             AccessibleName = "Import Chart of Accounts",
             AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online",
@@ -2187,6 +2388,348 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #endregion
 
+    #region SplitContainerAdv Configuration Methods
+
+    /// <summary>
+    /// Configures all SplitContainerAdv instances using SafeSplitterDistanceHelper.
+    /// Sets reasonable min sizes, preferred initial distances, and proportional resizing where appropriate.
+    /// </summary>
+    private void ConfigureSplitContainersSafely()
+    {
+        if (_splitContainerMain == null || _splitContainerTop == null || _splitContainerBottom == null)
+            return;
+
+        // ------------------------------------------------------------------
+        // Main horizontal splitter (top section vs bottom section)
+        // Preferred top height ~260 DPI-aware pixels (connection + operations)
+        // Not proportional – extra height goes to the history grid
+        // ------------------------------------------------------------------
+        int mainTopPreferred = DpiHeight(260f);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+            _splitContainerMain,
+            panel1MinSize: DpiHeight(180f),     // Minimum top section height
+            panel2MinSize: DpiHeight(280f),     // Minimum bottom section (grid needs space)
+            desiredDistance: mainTopPreferred,
+            splitterWidth: 6);
+
+        // Force the preferred distance even if the control is already sized
+        SafeSplitterDistanceHelper.SetSplitterDistanceDeferred(_splitContainerMain, mainTopPreferred);
+
+        // ------------------------------------------------------------------
+        // Top vertical splitter (connection panel | operations panel)
+        // Proportional – maintains ~45% / 55% split when width changes
+        // ------------------------------------------------------------------
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+            _splitContainerTop,
+            panel1MinSize: DpiHeight(240f),
+            panel2MinSize: DpiHeight(280f),
+            desiredDistance: 0,                  // Ignored – proportion handler will set it
+            splitterWidth: 6);
+
+        SafeSplitterDistanceHelper.SetupProportionalResizing(_splitContainerTop, 0.45);
+
+        // Initial proportion (in case SizeChanged hasn't fired yet)
+        int topInitial = SafeSplitterDistanceHelper.CalculateSafeDistance(_splitContainerTop, 0.45);
+        SafeSplitterDistanceHelper.SetSplitterDistanceDeferred(_splitContainerTop, topInitial);
+
+        // ------------------------------------------------------------------
+        // Bottom horizontal splitter (summary panel | history panel)
+        // Preferred summary height based on KPI cards + small buffer
+        // Not proportional – extra height goes to the history grid
+        // ------------------------------------------------------------------
+        int summaryPreferred = CalculateSummaryPanelMinHeight() + DpiHeight(20f);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
+            _splitContainerBottom,
+            panel1MinSize: summaryPreferred - DpiHeight(40f), // Slightly flexible min
+            panel2MinSize: DpiHeight(180f),
+            desiredDistance: summaryPreferred,
+            splitterWidth: 6);
+
+        SafeSplitterDistanceHelper.SetSplitterDistanceDeferred(_splitContainerBottom, summaryPreferred);
+    }
+
+    /// <summary>
+    /// Shared SplitterMoving handler – clamps the distance to valid bounds during user drag.
+    /// Prevents user from dragging the splitter beyond min/max constraints.
+    /// </summary>
+    private void OnSplitterMoving(object? sender, EventArgs e)
+    {
+        if (sender is Syncfusion.Windows.Forms.Tools.SplitContainerAdv sc)
+        {
+            try
+            {
+                // Recalculate bounds based on current container size and min sizes
+                int containerDim = sc.Orientation == Orientation.Horizontal ? sc.Height : sc.Width;
+                int min1 = sc.Panel1MinSize;
+                int min2 = sc.Panel2MinSize;
+                int minDistance = min1;
+                int maxDistance = Math.Max(min1, containerDim - min2 - sc.SplitterWidth);
+
+                // Validate the splitter state to prevent constraint violations
+                if (sc.SplitterDistance < minDistance)
+                    sc.SplitterDistance = minDistance;
+                else if (sc.SplitterDistance > maxDistance)
+                    sc.SplitterDistance = maxDistance;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error in OnSplitterMoving handler");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enables or disables double-click splitter toggle behavior on a SplitContainerAdv.
+    /// Configures Panel1Collapsed property for collapse control.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control to configure</param>
+    /// <param name="toggleOnDoubleClick">Enable double-click to toggle (default true)</param>
+    public void EnableSplitterToggleOnDoubleClick(SplitContainerAdv? splitter, bool toggleOnDoubleClick = true)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            // Use Panel1Collapsed for collapse control
+            if (!toggleOnDoubleClick)
+            {
+                splitter.Panel1Collapsed = false;
+            }
+            Logger.LogDebug("Splitter toggle: {State}", toggleOnDoubleClick ? "enabled" : "disabled");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to enable splitter toggle");
+        }
+    }
+
+    /// <summary>
+    /// Manually collapses or expands a panel.
+    /// Allows programmatic control of panel visibility.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control</param>
+    /// <param name="collapsePanel1">True to collapse Panel1, false to expand</param>
+    public void SetPanelCollapsedState(SplitContainerAdv? splitter, bool collapsePanel1)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            splitter.Panel1Collapsed = collapsePanel1;
+            Logger.LogDebug("Panel1 {State}", collapsePanel1 ? "collapsed" : "expanded");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to set panel collapsed state");
+        }
+    }
+
+    /// <summary>
+    /// Fixes one panel size while allowing the other to be resizable.
+    /// Useful for history grid: fix history size while letting other panels adjust.
+    /// Per Syncfusion documentation: FixedPanel prevents resizing one panel.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control</param>
+    /// <param name="fixedPanel">Which panel to keep fixed (Panel1 or Panel2)</param>
+    public void SetFixedPanel(SplitContainerAdv? splitter, Syncfusion.Windows.Forms.Tools.Enums.FixedPanel fixedPanel)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            splitter.FixedPanel = fixedPanel;
+            var panelName = fixedPanel == Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.Panel1 ? "Panel1" :
+                           fixedPanel == Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.Panel2 ? "Panel2" : "None";
+            Logger.LogDebug("Fixed panel set: {Panel} size is locked", panelName);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to set fixed panel");
+        }
+    }
+
+    /// <summary>
+    /// Configures the splitter increment for smooth, granular resizing.
+    /// Controls how many pixels the splitter moves per keyboard event.
+    /// Default is 1 pixel; higher values allow coarser adjustment.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control</param>
+    /// <param name="incrementPixels">Number of pixels to move per increment (default 5)</param>
+    public void SetSplitterIncrement(SplitContainerAdv? splitter, int incrementPixels = 5)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            splitter.SplitterIncrement = incrementPixels;
+            Logger.LogDebug("Splitter increment set to {Pixels} pixels", incrementPixels);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to set splitter increment");
+        }
+    }
+
+    /// <summary>
+    /// Applies Office2016Colorful style to all splitters for modern appearance.
+    /// Synchronizes with SfSkinManager theme when available.
+    /// Per Syncfusion documentation: Style property controls visual appearance.
+    /// </summary>
+    public void ApplySplitterStyleToAllContainers()
+    {
+        try
+        {
+            if (_splitContainerMain != null)
+            {
+                _splitContainerMain.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+            }
+            if (_splitContainerTop != null)
+            {
+                _splitContainerTop.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+            }
+            if (_splitContainerBottom != null)
+            {
+                _splitContainerBottom.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+            }
+
+            Logger.LogDebug("Office2016Colorful style applied to all splitters");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to apply splitter style");
+        }
+    }
+
+    /// <summary>
+    /// Customizes the splitter grip and arrow appearance with hover colors.
+    /// Enhances visual feedback when mouse hovers over splitter.
+    /// Per Syncfusion documentation: HotGripDark, HotGripLight, HotExpandFill, HotExpandLine.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control to customize</param>
+    public void CustomizeSplitterGripAppearance(SplitContainerAdv? splitter)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            // Office2019Colorful palette
+            const int blueAccent = 0x007ACC;      // RGB(0, 122, 204)
+            const int lightBlue = 0xE8F4F8;       // Light background
+
+            // Normal grip colors (subtle)
+            splitter.GripDark = new BrushInfo(Color.FromArgb(117, 117, 117));
+            splitter.GripLight = new BrushInfo(Color.FromArgb(200, 200, 200));
+
+            // Expand arrow colors (normal)
+            splitter.ExpandFill = new BrushInfo(Color.FromArgb(blueAccent));
+            splitter.ExpandLine = Color.White;
+
+            // Hover colors (more pronounced)
+            splitter.HotGripDark = new BrushInfo(Color.FromArgb(blueAccent));
+            splitter.HotGripLight = new BrushInfo(Color.FromArgb(lightBlue));
+            splitter.HotExpandFill = new BrushInfo(Color.FromArgb(0, 122, 204)); // Blue highlight
+            splitter.HotExpandLine = Color.White;
+
+            Logger.LogDebug("Splitter grip appearance customized with Office2019 colors");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to customize splitter grip appearance");
+        }
+    }
+
+    /// <summary>
+    /// Applies professional 3D border styling to all splitters.
+    /// Provides visual depth and separation between panels.
+    /// Per Syncfusion documentation: BorderStyle can be FixedSingle or Fixed3D.
+    /// </summary>
+    public void ApplyBorderStyleToAllSplitters()
+    {
+        try
+        {
+            if (_splitContainerMain != null)
+            {
+                _splitContainerMain.BorderStyle = BorderStyle.Fixed3D;
+            }
+            if (_splitContainerTop != null)
+            {
+                _splitContainerTop.BorderStyle = BorderStyle.Fixed3D;
+            }
+            if (_splitContainerBottom != null)
+            {
+                _splitContainerBottom.BorderStyle = BorderStyle.Fixed3D;
+            }
+
+            Logger.LogDebug("Fixed3D border style applied to all splitters");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to apply border style to splitters");
+        }
+    }
+
+    /// <summary>
+    /// Enables proportional resizing on a splitter.
+    /// When user resizes, both panels maintain their proportion relative to container.
+    /// Useful for balanced layouts that scale gracefully.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control</param>
+    /// <param name="proportionForPanel1">Target proportion for Panel1 (0.0-1.0, typically 0.5 for 50/50)</param>
+    public void EnableProportionalResizing(SplitContainerAdv? splitter, float proportionForPanel1 = 0.5f)
+    {
+        if (splitter == null || !splitter.IsHandleCreated) return;
+
+        try
+        {
+            // Calculate desired distance based on proportion
+            int containerSize = splitter.Orientation == Orientation.Horizontal
+                ? splitter.Height
+                : splitter.Width;
+
+            int desiredDistance = (int)(containerSize * proportionForPanel1);
+
+            // Clamp to valid range
+            desiredDistance = Math.Max(splitter.Panel1MinSize,
+                Math.Min(desiredDistance, containerSize - splitter.Panel2MinSize - splitter.SplitterWidth));
+
+            splitter.SplitterDistance = desiredDistance;
+            Logger.LogDebug("Proportional resizing enabled: Panel1={Proportion:P0}", proportionForPanel1);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to enable proportional resizing");
+        }
+    }
+
+    /// <summary>
+    /// Resets a splitter to its default configuration.
+    /// Useful for resetting layout after user customization or theme change.
+    /// </summary>
+    /// <param name="splitter">The SplitContainerAdv control to reset</param>
+    public void ResetSplitterToDefaults(SplitContainerAdv? splitter)
+    {
+        if (splitter == null) return;
+
+        try
+        {
+            // Reset to Syncfusion defaults
+            splitter.Panel1MinSize = 25;  // Syncfusion default
+            splitter.Panel2MinSize = 25;  // Syncfusion default
+            splitter.FixedPanel = Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.None;  // Both panels resizable
+            splitter.IsSplitterFixed = false;  // Allow splitter movement
+            splitter.Panel1Collapsed = false;  // Both panels visible
+            splitter.Panel2Collapsed = false;
+
+            Logger.LogDebug("Splitter reset to defaults");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to reset splitter to defaults");
+        }
+    }
+
+    #endregion
+
     #region CRUD Operations & Dialogs
 
     /// <summary>
@@ -2526,6 +3069,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                     _syncHistoryGrid.MouseDoubleClick -= _gridMouseDoubleClickHandler;
                 if (_gridQueryCellStyleHandler != null)
                     _syncHistoryGrid.QueryCellStyle -= _gridQueryCellStyleHandler;
+            }
+
+            // Unsubscribe splitter events
+            if (_splitterMovingHandler != null)
+            {
+                _splitContainerMain?.SplitterMoving -= _splitterMovingHandler;
+                _splitContainerTop?.SplitterMoving -= _splitterMovingHandler;
+                _splitContainerBottom?.SplitterMoving -= _splitterMovingHandler;
+                _splitterMovingHandler = null;
             }
 
             // Dispose controls

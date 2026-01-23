@@ -159,30 +159,62 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Attempts to set SplitterDistance with automatic bounds checking.
         /// Returns true if successful, false if the desired distance is out of bounds.
+        /// 
+        /// CRITICAL VALIDATIONS:
+        /// 1. Control must not be null or disposed
+        /// 2. Control must have a created window handle (IsHandleCreated)
+        /// 3. Dimension must be sufficient for min size constraints
+        /// 4. Proposed distance must be within valid bounds
+        /// 5. Min sizes must not exceed available dimension
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to configure</param>
         /// <param name="desiredDistance">The desired splitter position</param>
-        /// <returns>True if successful, false if out of bounds</returns>
+        /// <returns>True if successful, false if out of bounds or unable to set</returns>
         public static bool TrySetSplitterDistance(dynamic splitContainer, int desiredDistance)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return false;
 
+            // CRITICAL: Control must have a window handle to set properties safely
+            // Attempting to set SplitterDistance on a control without a handle can cause
+            // InvalidOperationException or underlying constraint violations
             try
             {
+                Control control = splitContainer;
+                if (!control.IsHandleCreated)
+                    return false;
+
+                // Get valid bounds based on current dimension and min sizes
                 if (!TryGetBounds(splitContainer, out int minDistance, out int maxDistance))
                 {
                     return false; // Not enough room to satisfy min-size constraints
                 }
 
+                // Clamp desired distance to valid bounds
                 var safeDist = EnforceBounds(desiredDistance, minDistance, maxDistance);
 
-                if (splitContainer.SplitterDistance != safeDist)
+                // Pre-validate: ensure the clamped distance is still within bounds
+                // This catches race conditions where the container dimension changed
+                if (safeDist < minDistance || safeDist > maxDistance)
+                {
+                    return false;
+                }
+
+                // Only set if value actually changed (avoid unnecessary setter calls)
+                int currentDistance = splitContainer.SplitterDistance;
+                if (currentDistance != safeDist)
                 {
                     splitContainer.SplitterDistance = safeDist;
                 }
 
                 return true;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Syncfusion SplitContainerAdv threw due to constraint violation
+                // This can happen when Panel1MinSize > available dimension
+                // Return false to allow caller to handle gracefully
+                return false;
             }
             catch (ArgumentException)
             {
@@ -192,6 +224,11 @@ namespace WileyWidget.WinForms.Utils
             catch (InvalidOperationException)
             {
                 // Underlying control rejected the value (likely due to layout race); caller can retry later
+                return false;
+            }
+            catch (Exception)
+            {
+                // Any other exception during property reads or sets - fail gracefully
                 return false;
             }
         }
@@ -249,28 +286,41 @@ namespace WileyWidget.WinForms.Utils
         /// </summary>
         private static bool TryGetBounds(dynamic splitContainer, out int minDistance, out int maxDistance)
         {
-            minDistance = splitContainer?.Panel1MinSize ?? 0;
-            maxDistance = minDistance;
+            minDistance = 0;
+            maxDistance = 0;
 
-            if (splitContainer == null || splitContainer.IsDisposed)
+            try
             {
+                if (splitContainer == null || splitContainer.IsDisposed)
+                {
+                    return false;
+                }
+
+                // Read properties with defensive null coalescing
+                minDistance = splitContainer.Panel1MinSize ?? 0;
+                int panel2Min = splitContainer.Panel2MinSize ?? 0;
+                int splitterWidth = splitContainer.SplitterWidth ?? 5;
+
+                int dimension = splitContainer.Orientation == Orientation.Horizontal
+                    ? splitContainer.Height
+                    : splitContainer.Width;
+
+                // Documented constraint: Panel1MinSize <= SplitterDistance <= ClientSize - SplitterWidth - Panel2MinSize
+                // (refer to SplitContainer/SplitContainerAdv API docs)
+                int required = minDistance + panel2Min + splitterWidth;
+                if (dimension < required)
+                {
+                    return false;
+                }
+
+                maxDistance = dimension - panel2Min - splitterWidth;
+                return maxDistance >= minDistance;  // Ensure max >= min
+            }
+            catch
+            {
+                // If we can't even read the properties, we can't proceed safely
                 return false;
             }
-
-            int dimension = splitContainer.Orientation == Orientation.Horizontal
-                ? splitContainer.Height
-                : splitContainer.Width;
-
-            // Documented constraint: Panel1MinSize <= SplitterDistance <= ClientSize - SplitterWidth - Panel2MinSize
-            // (refer to SplitContainer/SplitContainerAdv API docs)
-            int required = splitContainer.Panel1MinSize + splitContainer.Panel2MinSize + splitContainer.SplitterWidth;
-            if (dimension < required)
-            {
-                return false;
-            }
-
-            maxDistance = dimension - splitContainer.Panel2MinSize - splitContainer.SplitterWidth;
-            return true;
         }
 
         /// <summary>

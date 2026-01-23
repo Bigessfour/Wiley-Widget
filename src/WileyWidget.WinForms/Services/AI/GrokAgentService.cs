@@ -1169,7 +1169,21 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 try
                 {
-                    await RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, _serviceCts.Token);
+                    // Use safe token access - check if disposed first
+                    var token = CancellationToken.None;
+                    try
+                    {
+                        if (!_disposed && _serviceCts != null)
+                        {
+                            token = _serviceCts.Token;
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Service already disposed, use default token
+                    }
+
+                    await RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1564,8 +1578,22 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 if (disposing)
                 {
-                    _serviceCts.Cancel();
-                    _serviceCts.Dispose();
+                    // Safely cancel and dispose the CancellationTokenSource
+                    try
+                    {
+                        if (_serviceCts != null && !_serviceCts.IsCancellationRequested)
+                        {
+                            _serviceCts.Cancel();
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Token source already disposed - this is fine during cleanup
+                    }
+                    finally
+                    {
+                        _serviceCts?.Dispose();
+                    }
 
                     if (_chatBridge != null)
                     {

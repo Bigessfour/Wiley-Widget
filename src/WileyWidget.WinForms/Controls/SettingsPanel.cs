@@ -313,11 +313,11 @@ namespace WileyWidget.WinForms.Controls
             _mainPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(padding),
+                Padding = new Padding(padding, padding, padding, padding),
                 BorderStyle = BorderStyle.None,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                 AutoScroll = true,
-                AutoScrollMinSize = new Size(480, 1200)
+                AutoScrollMinSize = new Size(500, 2000)
             };
             SfSkinManager.SetVisualStyle(_mainPanel, _themeName);
 
@@ -345,7 +345,7 @@ namespace WileyWidget.WinForms.Controls
             _txtToolTip.SetToolTip(_txtAppTitle, "Enter a custom title for the application window");
             _mainPanel.Controls.Add(lblAppTitle);
             _mainPanel.Controls.Add(_txtAppTitle);
-            y += 40;
+            y += 50;
 
             // Appearance group
             _themeGroup = new GradientPanelExt
@@ -402,7 +402,7 @@ namespace WileyWidget.WinForms.Controls
             _themeGroup.Controls.Add(lblFont);
             _themeGroup.Controls.Add(_fontCombo);
             _mainPanel.Controls.Add(_themeGroup);
-            y += 160;
+            y += 200;
 
             // Behavior settings
             _chkOpenEditFormsDocked = new CheckBoxAdv
@@ -420,7 +420,7 @@ namespace WileyWidget.WinForms.Controls
             _chkOpenEditFormsDockedHandler = (s, e) => { if (ViewModel != null) ViewModel.OpenEditFormsDocked = _chkOpenEditFormsDocked.Checked; SetHasUnsavedChanges(true); };
             _chkOpenEditFormsDocked.CheckedChanged += _chkOpenEditFormsDockedHandler;
             _mainPanel.Controls.Add(_chkOpenEditFormsDocked);
-            y += 30;
+            y += 40;
 
             // Demo mode toggle
             _chkUseDemoData = new CheckBoxAdv
@@ -438,7 +438,7 @@ namespace WileyWidget.WinForms.Controls
             _chkUseDemoDataHandler = (s, e) => { if (ViewModel != null) ViewModel.UseDemoData = _chkUseDemoData.Checked; SetHasUnsavedChanges(true); };
             _chkUseDemoData.CheckedChanged += _chkUseDemoDataHandler;
             _mainPanel.Controls.Add(_chkUseDemoData);
-            y += 35;
+            y += 45;
 
             // Data Export group
             var exportGroup = new GradientPanelExt { Location = new Point(padding, y), Size = new Size(440, 70) };

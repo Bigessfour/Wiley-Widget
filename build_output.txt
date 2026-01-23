@@ -1,0 +1,15 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  WileyWidget.Abstractions -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Abstractions\bin\Debug\net10.0\WileyWidget.Abstractions.dll
+  WileyWidget.Models -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Models\bin\Debug\net10.0\WileyWidget.Models.dll
+  WileyWidget.Services.Abstractions -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Services.Abstractions\bin\Debug\net10.0\WileyWidget.Services.Abstractions.dll
+  WileyWidget.Business -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Business\bin\Debug\net10.0\WileyWidget.Business.dll
+  WileyWidget.Data -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Data\bin\Debug\net10.0\WileyWidget.Data.dll
+  WileyWidget.Services -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Services\bin\Debug\net10.0-windows\WileyWidget.Services.dll
+  WileyWidget.WinForms -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\bin\Debug\net10.0-windows\WileyWidget.WinForms.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:14.85

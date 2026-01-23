@@ -370,23 +370,23 @@ namespace WileyWidget.WinForms.Controls
                 ColumnCount = 2,
                 Padding = new Padding(8)
             };
-            // Row allocation: 20% gauges at top, 80% content below
-            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 20)); // Gauge row
-            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 80)); // Content area (chart + grid)
-            // Column split: 60% chart / 40% grid for balanced visibility
-            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            // Row allocation: 22% gauges at top, 78% content below
+            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 22)); // Gauge row
+            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 78)); // Content area (chart + grid)
+            // Column split: 50% chart / 50% grid for balanced visibility
+            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
             // Gauge metrics panel - 4 RadialGauges in horizontal layout
             // Replaces separate KPI list for cleaner, more visual dashboard
             var gaugePanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                MinimumSize = new Size(600, 120),
+                MinimumSize = new Size(600, 140),
                 AutoScroll = false,
                 WrapContents = false,
                 FlowDirection = FlowDirection.LeftToRight,
-                Padding = new Padding(4)
+                Padding = new Padding(8)
             };
 
             // Create 4 gauge panels for metrics
@@ -917,30 +917,31 @@ namespace WileyWidget.WinForms.Controls
                 }
                 catch { }
 
-                // Show no-data overlay when not loading and there are no metrics.
+                // Show no-data overlay only when truly no data exists across primary collections.
+                // Sample data in Metrics or ActivityItems will prevent overlay display.
                 // Keep this synchronous and avoid repeated PropertyChanged subscriptions.
                 try
                 {
                     if (_noDataOverlay != null)
                     {
-                        bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
-                        _noDataOverlay.Visible = show;
-                        if (show) _noDataOverlay.BringToFront();
+                        UpdateOverlays();
                     }
 
                     _vm.PropertyChanged += (s, e) =>
                     {
-                        if (e.PropertyName == nameof(FormsMainViewModel.IsLoading) || e.PropertyName == nameof(FormsMainViewModel.Metrics))
+                        if (e.PropertyName == nameof(FormsMainViewModel.IsLoading) ||
+                            e.PropertyName == nameof(FormsMainViewModel.Metrics) ||
+                            e.PropertyName == nameof(FormsMainViewModel.ActivityItems))
                         {
                             try
                             {
-                                if (this.InvokeRequired) BeginInvoke(new System.Action(UpdateNoData)); else UpdateNoData();
+                                if (this.InvokeRequired) BeginInvoke(new System.Action(UpdateOverlays)); else UpdateOverlays();
                             }
                             catch { }
                         }
                     };
 
-                    UpdateNoData();
+                    UpdateOverlays();
                 }
                 catch { }
 
@@ -1099,15 +1100,36 @@ namespace WileyWidget.WinForms.Controls
 
         }
 
-        private void UpdateNoData()
+        /// <summary>
+        /// Updates overlay visibility based on data state.
+        /// Shows loading overlay when IsLoading = true.
+        /// Shows "No Data" overlay only when truly no data exists (Metrics collection empty) and not loading.
+        /// Sample data in Metrics collection prevents overlay display.
+        /// </summary>
+        private void UpdateOverlays()
         {
             try
             {
-                if (_noDataOverlay != null && _vm != null)
+                if (_vm == null) return;
+
+                // Loading overlay: visible when ViewModel is loading
+                if (_loadingOverlay != null)
                 {
-                    bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
-                    _noDataOverlay.Visible = show;
-                    if (show) _noDataOverlay.BringToFront();
+                    _loadingOverlay.Visible = _vm.IsLoading;
+                }
+
+                // No-data overlay: visible only when NOT loading AND truly no data exists
+                if (_noDataOverlay != null)
+                {
+                    // Check if data collection has content (Metrics is the primary data source for MainViewModel)
+                    bool hasMetrics = _vm.Metrics?.Count > 0;
+                    bool hasActivityItems = _vm.ActivityItems?.Count > 0;
+
+                    bool trulyNoData = !hasMetrics && !hasActivityItems;
+                    bool shouldShowOverlay = !_vm.IsLoading && trulyNoData;
+
+                    _noDataOverlay.Visible = shouldShowOverlay;
+                    if (shouldShowOverlay) _noDataOverlay.BringToFront();
                 }
             }
             catch (ObjectDisposedException)
@@ -1115,6 +1137,14 @@ namespace WileyWidget.WinForms.Controls
                 // Control was disposed during update
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Legacy method - preserved for compatibility. Use UpdateOverlays() instead.
+        /// </summary>
+        private void UpdateNoData()
+        {
+            UpdateOverlays();
         }
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1139,29 +1169,22 @@ namespace WileyWidget.WinForms.Controls
                 {
                     try
                     {
-                        if (_loadingOverlay != null) _loadingOverlay.Visible = _vm.IsLoading;
-
-                        if (_noDataOverlay != null)
-                        {
-                            bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
-                            _noDataOverlay.Visible = show;
-                            if (show) _noDataOverlay.BringToFront();
-                        }
+                        UpdateOverlays();
                     }
                     catch { }
                 }
 
-                if (e.PropertyName == nameof(_vm.Metrics) || e.PropertyName == nameof(_vm.TotalBudget) || e.PropertyName == nameof(_vm.TotalExpenditure) || e.PropertyName == nameof(_vm.RemainingBudget) || e.PropertyName == nameof(_vm.LastUpdateTime))
+                if (e.PropertyName == nameof(_vm.Metrics) ||
+                    e.PropertyName == nameof(_vm.ActivityItems) ||
+                    e.PropertyName == nameof(_vm.TotalBudget) ||
+                    e.PropertyName == nameof(_vm.TotalExpenditure) ||
+                    e.PropertyName == nameof(_vm.RemainingBudget) ||
+                    e.PropertyName == nameof(_vm.LastUpdateTime))
                 {
                     TryApplyViewModelBindings();
                     try
                     {
-                        if (_noDataOverlay != null)
-                        {
-                            bool show = !_vm.IsLoading && (_vm.Metrics == null || !_vm.Metrics.Any());
-                            _noDataOverlay.Visible = show;
-                            if (show) _noDataOverlay.BringToFront();
-                        }
+                        UpdateOverlays();
                     }
                     catch { }
                 }

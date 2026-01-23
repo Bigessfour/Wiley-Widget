@@ -29,7 +29,9 @@ public partial class MainForm
     private WileyWidget.WinForms.Controls.ActivityLogPanel? _activityLogPanel;
     private DockingLayoutManager? _dockingLayoutManager;
     private Panel? _leftDockPanel;
+    #pragma warning disable CS0649
     private Panel? _centralDocumentPanel;
+    #pragma warning restore CS0649
     private Panel? _rightDockPanel;
     private Dictionary<string, Control>? _dynamicDockPanels;
 

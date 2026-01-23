@@ -117,6 +117,11 @@ public interface IBudgetRepository
     Task<int> GetExpenseAccountCountAsync(int fiscalYear, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns all persisted Town of Wiley 2026 budget data (from CSVs + Sanitation PDF)
+    /// </summary>
+    Task<IReadOnlyList<TownOfWileyBudget2026>> GetTownOfWileyBudgetDataAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Bulk update ActualAmount and Variance for budget entries by account number for a fiscal year.
     /// Returns the number of budget rows updated.
     /// </summary>

@@ -154,6 +154,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
 
             // Optimization: Defer data loading until the associated panel becomes visible.
             // This is handled by ILazyLoadViewModel via OnVisibilityChangedAsync.
+            // If no data is available, sample data will load as fallback in LoadAccountsAsync.
         }
 
         /// <summary>
@@ -210,6 +211,15 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                         .ToList();
                 }
 
+                // Check if repository returned any data
+                if (accountsList == null || !accountsList.Any())
+                {
+                    _logger.LogInformation("Repository returned no data - falling back to sample data");
+                    LoadSampleData();
+                    StatusText = "No database records found. Showing sample data.";
+                    return;
+                }
+
                 // Clear and repopulate accounts collection
                 Accounts.Clear();
 
@@ -247,9 +257,9 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load municipal accounts");
-                ErrorMessage = $"Error loading accounts: {ex.Message}";
-                StatusText = "Error loading accounts";
+                _logger.LogError(ex, "Failed to load municipal accounts - falling back to sample data");
+                ErrorMessage = $"Failed to load from database. Showing sample data. Error: {ex.Message}";
+                StatusText = "Error loading accounts - showing sample data";
 
                 // Fallback to sample data for better UX
                 LoadSampleData();
@@ -257,6 +267,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             finally
             {
                 IsLoading = false;
+                IsDataLoaded = true;
             }
         }
 
@@ -439,101 +450,206 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         }
 
         /// <summary>
-        /// Loads realistic sample data when the repository fails.
+        /// Loads realistic sample municipal accounts data (focused on utility/enterprise funds).
         /// </summary>
         private void LoadSampleData()
         {
-            try
+            _logger.LogInformation("Loading sample municipal accounts data (focused on utility/enterprise funds)");
+
+            Accounts.Clear();
+
+            var sampleAccounts = new[]
             {
-                _logger.LogWarning("Loading sample data as fallback");
-                Accounts.Clear();
-
-                var sampleAccounts = new[]
+                // === General Fund Examples ===
+                new MunicipalAccountDisplay
                 {
-                    new MunicipalAccountDisplay
-                    {
-                        Id = 1,
-                        AccountNumber = "1000",
-                        AccountName = "Cash - General Fund",
-                        Description = "Primary operating cash account",
-                        AccountType = "Asset",
-                        FundName = "General",
-                        CurrentBalance = 125000.00m,
-                        BudgetAmount = 150000.00m,
-                        Department = "Finance",
-                        IsActive = true,
-                        HasParent = false
-                    },
-                    new MunicipalAccountDisplay
-                    {
-                        Id = 2,
-                        AccountNumber = "4000",
-                        AccountName = "Property Tax Revenue",
-                        Description = "Property tax collections",
-                        AccountType = "Revenue",
-                        FundName = "General",
-                        CurrentBalance = 850000.00m,
-                        BudgetAmount = 900000.00m,
-                        Department = "Tax Collector",
-                        IsActive = true,
-                        HasParent = false
-                    },
-                    new MunicipalAccountDisplay
-                    {
-                        Id = 3,
-                        AccountNumber = "5100",
-                        AccountName = "Salaries & Wages",
-                        Description = "Employee compensation",
-                        AccountType = "Expense",
-                        FundName = "General",
-                        CurrentBalance = 450000.00m,
-                        BudgetAmount = 500000.00m,
-                        Department = "Human Resources",
-                        IsActive = true,
-                        HasParent = false
-                    },
-                    new MunicipalAccountDisplay
-                    {
-                        Id = 4,
-                        AccountNumber = "2100",
-                        AccountName = "Water Utility Equipment",
-                        Description = "Capital equipment for water department",
-                        AccountType = "Asset",
-                        FundName = "Enterprise",
-                        CurrentBalance = 2500000.00m,
-                        BudgetAmount = 3000000.00m,
-                        Department = "Water Dept",
-                        IsActive = true,
-                        HasParent = false
-                    },
-                    new MunicipalAccountDisplay
-                    {
-                        Id = 5,
-                        AccountNumber = "6200",
-                        AccountName = "Infrastructure Repairs",
-                        Description = "Capital project expenses",
-                        AccountType = "Expense",
-                        FundName = "CapitalProjects",
-                        CurrentBalance = 175000.00m,
-                        BudgetAmount = 250000.00m,
-                        Department = "Public Works",
-                        IsActive = true,
-                        HasParent = false
-                    }
-                };
-
-                foreach (var account in sampleAccounts)
+                    Id = 1,
+                    AccountNumber = "1010",
+                    AccountName = "General Fund Cash",
+                    Description = "Primary operating cash account",
+                    AccountType = "Asset",
+                    FundName = "General",
+                    CurrentBalance = 1_250_000.00m,
+                    BudgetAmount = 0m,
+                    Department = "Finance",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
                 {
-                    Accounts.Add(account);
+                    Id = 2,
+                    AccountNumber = "4010",
+                    AccountName = "Property Tax Revenue",
+                    Description = "Ad valorem property taxes",
+                    AccountType = "Revenue",
+                    FundName = "General",
+                    CurrentBalance = 850_000.00m,
+                    BudgetAmount = 900_000.00m,
+                    Department = "Tax Collector",
+                    IsActive = true
+                },
+
+                // === Water Utility (Enterprise Fund) ===
+                new MunicipalAccountDisplay
+                {
+                    Id = 10,
+                    AccountNumber = "2100",
+                    AccountName = "Water Utility Equipment",
+                    Description = "Fixed assets - pumps, pipes, treatment plant",
+                    AccountType = "Asset",
+                    FundName = "Enterprise",
+                    CurrentBalance = 2_500_000.00m,
+                    BudgetAmount = 3_000_000.00m,
+                    Department = "Water",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 11,
+                    AccountNumber = "4500",
+                    AccountName = "Water Sales Revenue",
+                    Description = "Customer water billings",
+                    AccountType = "Revenue",
+                    FundName = "Enterprise",
+                    CurrentBalance = 1_850_000.00m,
+                    BudgetAmount = 1_900_000.00m,
+                    Department = "Water",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 12,
+                    AccountNumber = "6200",
+                    AccountName = "Water Treatment Expenses",
+                    Description = "Chemicals, power, maintenance",
+                    AccountType = "Expense",
+                    FundName = "Enterprise",
+                    CurrentBalance = 720_000.00m,
+                    BudgetAmount = 800_000.00m,
+                    Department = "Water",
+                    IsActive = true
+                },
+
+                // === Sewer Utility (Enterprise Fund) ===
+                new MunicipalAccountDisplay
+                {
+                    Id = 20,
+                    AccountNumber = "2200",
+                    AccountName = "Sewer System Infrastructure",
+                    Description = "Collection lines and lift stations",
+                    AccountType = "Asset",
+                    FundName = "Enterprise",
+                    CurrentBalance = 3_200_000.00m,
+                    BudgetAmount = 3_500_000.00m,
+                    Department = "Sewer",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 21,
+                    AccountNumber = "4510",
+                    AccountName = "Sewer Service Charges",
+                    Description = "Monthly sewer fees",
+                    AccountType = "Revenue",
+                    FundName = "Enterprise",
+                    CurrentBalance = 1_400_000.00m,
+                    BudgetAmount = 1_450_000.00m,
+                    Department = "Sewer",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 22,
+                    AccountNumber = "6300",
+                    AccountName = "Sewer Maintenance",
+                    Description = "Line cleaning and repairs",
+                    AccountType = "Expense",
+                    FundName = "Enterprise",
+                    CurrentBalance = 380_000.00m,
+                    BudgetAmount = 400_000.00m,
+                    Department = "Sewer",
+                    IsActive = true
+                },
+
+                // === Trash Collection (Enterprise Fund) ===
+                new MunicipalAccountDisplay
+                {
+                    Id = 30,
+                    AccountNumber = "4600",
+                    AccountName = "Solid Waste Revenue",
+                    Description = "Trash pickup fees",
+                    AccountType = "Revenue",
+                    FundName = "Enterprise",
+                    CurrentBalance = 920_000.00m,
+                    BudgetAmount = 950_000.00m,
+                    Department = "Trash",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 31,
+                    AccountNumber = "6400",
+                    AccountName = "Trash Collection Contracts",
+                    Description = "Third-party hauling contracts",
+                    AccountType = "Expense",
+                    FundName = "Enterprise",
+                    CurrentBalance = 680_000.00m,
+                    BudgetAmount = 700_000.00m,
+                    Department = "Trash",
+                    IsActive = true
+                },
+
+                // === Apartments / Housing (could be Enterprise or Special Revenue) ===
+                new MunicipalAccountDisplay
+                {
+                    Id = 40,
+                    AccountNumber = "4700",
+                    AccountName = "Rental Income - Municipal Housing",
+                    Description = "Apartment complex rentals",
+                    AccountType = "Revenue",
+                    FundName = "Enterprise",
+                    CurrentBalance = 1_100_000.00m,
+                    BudgetAmount = 1_200_000.00m,
+                    Department = "Apartments",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 41,
+                    AccountNumber = "2300",
+                    AccountName = "Apartment Buildings",
+                    Description = "Municipal-owned housing assets",
+                    AccountType = "Asset",
+                    FundName = "Enterprise",
+                    CurrentBalance = 4_800_000.00m,
+                    BudgetAmount = 5_000_000.00m,
+                    Department = "Apartments",
+                    IsActive = true
+                },
+                new MunicipalAccountDisplay
+                {
+                    Id = 42,
+                    AccountNumber = "6500",
+                    AccountName = "Housing Maintenance",
+                    Description = "Repairs and utilities for apartments",
+                    AccountType = "Expense",
+                    FundName = "Enterprise",
+                    CurrentBalance = 420_000.00m,
+                    BudgetAmount = 450_000.00m,
+                    Department = "Apartments",
+                    IsActive = true
                 }
+            };
 
-                UpdateSummaries();
-                StatusText = "Showing sample data (repository unavailable)";
-            }
-            catch (Exception ex)
+            foreach (var account in sampleAccounts)
             {
-                _logger.LogError(ex, "Error loading sample data");
+                Accounts.Add(account);
             }
+
+            UpdateSummaries();
+            ActiveAccountCount = Accounts.Count(a => a.IsActive);
+            StatusText = $"Sample data loaded – {Accounts.Count} municipal accounts (Water, Sewer, Trash, Apartments focus)";
+            _logger.LogInformation("Sample data loaded successfully - {Count} accounts added, Total Balance: {Balance:C}, Active: {Active}",
+                Accounts.Count, TotalBalance, ActiveAccountCount);
         }
 
         /// <summary>

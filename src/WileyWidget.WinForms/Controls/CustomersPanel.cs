@@ -95,10 +95,45 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         : base(scopeFactory, logger)
     {
         InitializeControls();
-        BindViewModel();
         ApplySyncfusionTheme();
 
         _logger?.LogDebug("CustomersPanel initialized");
+    }
+
+    /// <summary>
+    /// Called after the ViewModel has been resolved from DI. Binds the ViewModel to UI controls.
+    /// </summary>
+    protected override void OnViewModelResolved(CustomersViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+
+        // Wire up toolbar event handlers now that ViewModel is available
+        WireupToolbarEventHandlers();
+
+        BindViewModel();
+    }
+
+    /// <summary>
+    /// Wires up toolbar event handlers that depend on the ViewModel.
+    /// Must be called after ViewModel is resolved.
+    /// </summary>
+    private void WireupToolbarEventHandlers()
+    {
+        if (_clearFiltersButton != null)
+        {
+            _clearFiltersClickHandler = (s, e) => _viewModel?.ClearFiltersCommand.Execute(null);
+            _clearFiltersButton.Click += _clearFiltersClickHandler;
+        }
+
+        if (_showActiveOnlyCheckBox != null)
+        {
+            _showActiveOnlyChangedHandler = (s, e) =>
+            {
+                if (_viewModel != null)
+                    _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
+            };
+            _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
+        }
     }
 
     public override async Task LoadAsync(CancellationToken ct = default)
@@ -358,8 +393,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _clearFiltersButton.AccessibleName = "Clear Filters";
         _clearFiltersButton.TabIndex = 12;
         _toolTip?.SetToolTip(_clearFiltersButton, "Clear all filters");
-        _clearFiltersClickHandler = (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
-        _clearFiltersButton.Click += _clearFiltersClickHandler;
+        // NOTE: Event handler will be wired up in WireupToolbarEventHandlers() after ViewModel is resolved
         searchFilterRow.Controls.Add(_clearFiltersButton);
 
         // Separator
@@ -434,8 +468,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _showActiveOnlyCheckBox.AccessibleName = "Show active only";
         _showActiveOnlyCheckBox.TabIndex = 15;
         _toolTip?.SetToolTip(_showActiveOnlyCheckBox, "Toggle to show only active customers");
-        _showActiveOnlyChangedHandler = (s, e) => _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
-        _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
+        // NOTE: Event handler will be wired up in WireupToolbarEventHandlers() after ViewModel is resolved
         searchFilterRow.Controls.Add(_showActiveOnlyCheckBox);
 
         toolbarLayout.Controls.Add(searchFilterRow, 0, 0);
@@ -767,9 +800,19 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
     /// <summary>
     /// Binds the view model to UI controls using DataBindings for two-way binding.
+    /// Called after ViewModel is resolved and toolbar event handlers are wired up.
     /// </summary>
     private void BindViewModel()
     {
+        // ViewModel is guaranteed non-null at this point because OnViewModelResolved only calls this after resolution
+        // ViewModel property is set in base class and never null after OnViewModelResolved
+
+        if (ViewModel == null)
+        {
+            _logger?.LogWarning("BindViewModel called with null ViewModel");
+            return;
+        }
+
         // Create BindingSource for the ViewModel
         var viewModelBinding = new BindingSource
         {
@@ -777,9 +820,14 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         };
 
         // Bind grid to filtered customers collection
-        if (_customersGrid != null)
+        if (_customersGrid != null && _viewModel?.FilteredCustomers != null)
         {
             _customersGrid.DataSource = _viewModel.FilteredCustomers;
+        }
+        else if (_customersGrid != null)
+        {
+            _logger?.LogWarning("CustomersPanel: FilteredCustomers is null, initializing with empty collection");
+            _customersGrid.DataSource = new List<UtilityCustomer>();
         }
 
         // Bind search text box to ViewModel.SearchText with two-way binding
@@ -864,8 +912,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                 "{0} customers");
         }
 
-        // Subscribe to property changes for complex UI updates
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Subscribe to property changes for complex UI updates (only once)
+        // ViewModel is guaranteed non-null at this point
+        ViewModel!.PropertyChanged += ViewModel_PropertyChanged;
 
         _logger?.LogDebug("CustomersPanel ViewModel bound with DataBindings");
 

@@ -616,6 +616,94 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "🔌 Setup MSSQL MCP (Windows Auth)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/setup-mssql-mcp.ps1",
+				"-AuthType",
+				"windows",
+				"-Server",
+				"localhost",
+				"-Database",
+				"WileyWidget"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "🔌 Setup MSSQL MCP (SQL Auth)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/setup-mssql-mcp.ps1",
+				"-AuthType",
+				"sql",
+				"-UserId",
+				"sa"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "🧪 Test MSSQL Connection",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"$cs = $env:MSSQL_CONNECTION_STRING; if (-not $cs) { Write-Host '❌ MSSQL_CONNECTION_STRING not set. Run setup task first.' -ForegroundColor Red; exit 1 } else { Write-Host '✅ MSSQL_CONNECTION_STRING is set' -ForegroundColor Green; Write-Host \"Connection: $cs\" -ForegroundColor Gray }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "📊 View MSSQL MCP Setup Guide",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"code -g docs/MSSQL_MCP_SETUP_GUIDE.md"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"group": "test",
+			"problemMatcher": []
 		}
 	]
 }

@@ -44,7 +44,10 @@ public partial class QuickBooksIntegrationTests
         services.AddSingleton<IConfiguration>(configuration);
 
         // Register all required services
-        services.AddSingleton<ISettingsService, SettingsService>();
+        // IMPORTANT: Register concrete SettingsService first, then interface
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
+
         // Use the production EncryptedLocalSecretVaultService implementation for tests
         services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
         // Register QuickBooksClient with resilience handler via DependencyInjection
@@ -82,6 +85,9 @@ public partial class QuickBooksIntegrationTests
         // services.AddScoped<QuickBooksAuthService>(); // Internal class, not accessible in tests
         services.AddScoped<IQuickBooksApiClient, QuickBooksApiClient>();
         services.AddScoped<IQuickBooksService, QuickBooksService>();
+
+        // Register QuickBooksViewModel and its dependencies
+        services.AddScoped<WileyWidget.WinForms.ViewModels.QuickBooksViewModel>();
 
         _serviceProvider = services.BuildServiceProvider();
     }

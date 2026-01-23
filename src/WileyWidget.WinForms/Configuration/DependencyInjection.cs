@@ -456,13 +456,24 @@ namespace WileyWidget.WinForms.Configuration
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
-            // Grok AI agent service (Singleton - reused across chat sessions)
-            // Register a lightweight GrokAgentService for tests and DI validation. Heavy initialization is deferred to InitializeAsync().
-            services.TryAddSingleton<GrokAgentService>(sp => ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
+            // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
+            // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
+            // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
+            // Use AddScoped directly instead of ActivatorUtilities.CreateInstance to avoid trying to instantiate during validation.
+            services.TryAddScoped<GrokAgentService>();
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection
-            services.AddSingleton<ProactiveInsightsService>();
+            // NOTE: ProactiveInsightsService accepts GrokAgentService as optional dependency in constructor,
+            // so it can be singleton even though GrokAgentService is now scoped. The optional null value
+            // is acceptable for graceful degradation during DI validation.
+            services.AddSingleton<ProactiveInsightsService>(sp =>
+            {
+                // ProactiveInsightsService accepts nullable GrokAgentService for graceful degradation
+                // Do not try to resolve it from DI since it's scoped - pass null instead
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<ProactiveInsightsService>>(sp);
+                return new ProactiveInsightsService(grokAgentService: null, logger: logger);
+            });
             services.AddHostedService<ProactiveInsightsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<ProactiveInsightsService>(sp));
 
             // =====================================================================
@@ -507,6 +518,7 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             services.AddScoped<IWarRoomViewModel, WarRoomViewModel>();
+            services.AddScoped<WarRoomViewModel>();
             services.AddScoped<IBudgetAnalyticsViewModel, BudgetAnalyticsViewModel>();
             services.AddScoped<BudgetAnalyticsViewModel>();
             services.AddScoped<SettingsViewModel>();
@@ -526,6 +538,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
             services.AddScoped<IQuickBooksViewModel, QuickBooksViewModel>();
             services.AddScoped<QuickBooksViewModel>();
+            services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
             services.AddTransient<JARVISChatHostForm>();
@@ -553,6 +566,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

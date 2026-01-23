@@ -1,0 +1,166 @@
+{
+  "timestamp": "2026-01-23T09:06:34.316684",
+  "environment": {
+    "python_version": "3.14.0",
+    "platform": "win32",
+    "workspace": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
+    "timestamp": "2026-01-23T09:06:34.316731"
+  },
+  "results": [
+    {
+      "name": "Database Connectivity",
+      "status": "\u2705 PASS",
+      "message": "Connected to WileyWidgetDev on localhost\\SQLEXPRESS",
+      "details": {
+        "connection_string": "localhost\\SQLEXPRESS.WileyWidgetDev"
+      },
+      "timestamp": "2026-01-23T09:06:34.362447"
+    },
+    {
+      "name": "Table Schema",
+      "status": "\u2705 PASS",
+      "message": "TownOfWileyBudget2026 has all 10 expected columns",
+      "details": {
+        "columns": [
+          "Id",
+          "SourceFile",
+          "FundOrDepartment",
+          "AccountCode",
+          "Description",
+          "PriorYearActual",
+          "SevenMonthActual",
+          "EstimateCurrentYr",
+          "BudgetYear",
+          "MappedDepartment"
+        ]
+      },
+      "timestamp": "2026-01-23T09:06:34.397314"
+    },
+    {
+      "name": "Data Population",
+      "status": "\u2705 PASS",
+      "message": "Table has 317 rows (expected \u2265250)",
+      "details": {
+        "row_count": 317,
+        "status": "data_present"
+      },
+      "timestamp": "2026-01-23T09:06:34.400181"
+    },
+    {
+      "name": "MappedDepartment Population",
+      "status": "\u26a0\ufe0f  WARN",
+      "message": "1 rows have NULL MappedDepartment (out of 317)",
+      "details": {
+        "total_rows": 317,
+        "null_values": 1,
+        "coverage": "99.7%"
+      },
+      "timestamp": "2026-01-23T09:06:34.408427"
+    },
+    {
+      "name": "Budget Values",
+      "status": "\u2705 PASS",
+      "message": "Total budget across 205 rows: $28,206,964.00",
+      "details": {
+        "total_budget": "$28,206,964.00",
+        "rows_with_budget": 205,
+        "rows_with_actual": 142,
+        "max_budget": "$5,879,527.00",
+        "min_budget": "$5.00"
+      },
+      "timestamp": "2026-01-23T09:06:34.417213"
+    },
+    {
+      "name": "Data Distribution (Top 5 Departments)",
+      "status": "\u2705 PASS",
+      "message": "Top 5 departments identified",
+      "details": {
+        "departments": {
+          "Sanitation": {
+            "count": 40,
+            "budget": "$23,815,709.00"
+          },
+          "General Fund": {
+            "count": 32,
+            "budget": "$1,763,169.00"
+          },
+          "General Gov": {
+            "count": 30,
+            "budget": "$276,554.00"
+          },
+          "Water/Trash/Admin": {
+            "count": 21,
+            "budget": "$273,628.00"
+          },
+          "Recreation": {
+            "count": 14,
+            "budget": "$81,300.00"
+          }
+        }
+      },
+      "timestamp": "2026-01-23T09:06:34.424018"
+    },
+    {
+      "name": "EF Core Migrations",
+      "status": "\u2705 PASS",
+      "message": "__EFMigrationsHistory table exists (migrations applied)",
+      "details": {
+        "status": "migrations_applied"
+      },
+      "timestamp": "2026-01-23T09:06:34.439741"
+    },
+    {
+      "name": "Entity Mapping (TownOfWileyBudget2026)",
+      "status": "\u2705 PASS",
+      "message": "Entity model in sync with database schema (from earlier schema check)",
+      "details": {
+        "entity": "TownOfWileyBudget2026",
+        "mapped": true
+      },
+      "timestamp": "2026-01-23T09:06:34.440716"
+    },
+    {
+      "name": "DashboardService Implementation",
+      "status": "\u2705 PASS",
+      "message": "Service has PopulateDashboardMetricsFromWileyDataAsync and calls repository",
+      "details": {
+        "file": "src\\WileyWidget.Services\\DashboardService.cs",
+        "has_method": true,
+        "calls_repository": true
+      },
+      "timestamp": "2026-01-23T09:06:34.442950"
+    },
+    {
+      "name": "ViewModel Data Population",
+      "status": "\u2705 PASS",
+      "message": "ViewModel has LoadDataAsync, calls service, populates collections",
+      "details": {
+        "file": "src\\WileyWidget.WinForms\\ViewModels\\DashboardViewModel.cs",
+        "has_load_data": true,
+        "calls_service": true,
+        "has_collections": true
+      },
+      "timestamp": "2026-01-23T09:06:34.445082"
+    },
+    {
+      "name": "Cache Configuration",
+      "status": "\u2705 PASS",
+      "message": "Repository caches data with proper TTL (1 hour default)",
+      "details": {
+        "file": "src\\WileyWidget.Data\\BudgetRepository.cs",
+        "caching_enabled": true,
+        "cache_key": true,
+        "ttl": true,
+        "note": "Cache may contain stale data on app restart - data refreshes after 1h or restart"
+      },
+      "timestamp": "2026-01-23T09:06:34.447696"
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0,
+    "warnings": 1,
+    "skipped": 0
+  },
+  "total_tests": 11
+}
