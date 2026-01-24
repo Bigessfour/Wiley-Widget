@@ -49,6 +49,10 @@ namespace WileyWidget.WinForms.Controls
         private SfButton? _btnReset;
         private SfButton? _btnExportReport;
 
+        // Binding adapters (bridge ObservableCollection to WinForms BindingList)
+        private ObservableCollectionToBindingListAdapter<string>? _departmentAdapter;
+        private ObservableCollectionToBindingListAdapter<string>? _dateRangeAdapter;
+
         // Analytics controls
         private ChartControl? _trendChart;
         private ChartControl? _departmentChart;
@@ -345,7 +349,8 @@ namespace WileyWidget.WinForms.Controls
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = "Ready",
                 Font = new Font("Segoe UI", 8F, FontStyle.Italic),
-                Padding = new Padding(0, 0, 8, 0)
+                Padding = new Padding(0, 0, 8, 0),
+                BorderStyle = BorderStyle.FixedSingle  // Added: visual border separation for status bar
             };
             Controls.Add(_summaryLabel);
 
@@ -374,9 +379,9 @@ namespace WileyWidget.WinForms.Controls
             _filterPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 100,
                 Padding = new Padding(8),
-                BorderStyle = BorderStyle.None,
+                BorderStyle = BorderStyle.FixedSingle,  // Added: visible border for better UI separation
                 CornerRadius = 2,
                 BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
@@ -407,7 +412,8 @@ namespace WileyWidget.WinForms.Controls
 
             _comboDepartment = new SfComboBox
             {
-                Width = 150,
+                Width = 180,
+                Height = 28,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AccessibleName = "Department filter",
                 AccessibleDescription = "Filter analytics by department"
@@ -430,7 +436,8 @@ namespace WileyWidget.WinForms.Controls
 
             _comboDateRange = new SfComboBox
             {
-                Width = 150,
+                Width = 180,
+                Height = 28,
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AccessibleName = "Date range filter",
                 AccessibleDescription = "Filter analytics by date range"
@@ -445,14 +452,16 @@ namespace WileyWidget.WinForms.Controls
             {
                 Dock = DockStyle.Right,
                 FlowDirection = FlowDirection.LeftToRight,
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(320, 88),
                 WrapContents = false
             };
 
             _btnApplyFilter = new SfButton
             {
                 Text = "Apply Filter",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(95, 32),
                 Margin = new Padding(3),
                 AccessibleName = "Apply analytics filter",
                 AccessibleDescription = "Apply selected filters to analytics"
@@ -465,7 +474,8 @@ namespace WileyWidget.WinForms.Controls
             _btnReset = new SfButton
             {
                 Text = "Reset",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(70, 32),
                 Margin = new Padding(3),
                 AccessibleName = "Reset analytics filters",
                 AccessibleDescription = "Clear all filter selections"
@@ -499,13 +509,28 @@ namespace WileyWidget.WinForms.Controls
 
             ChartControlDefaults.Apply(_trendChart, logger: _logger);
             _trendChart.ShowLegend = true;
-            _trendChart.LegendsPlacement = ChartPlacement.Outside;
-            _trendChart.Title.Text = "Budget Trend";
+            _trendChart.LegendsPlacement = ChartPlacement.Outside;  // Legend below the chart for better readability
+            _trendChart.Title.Text = "Budget Trend (Currency $)";
+            _trendChart.Title.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             _trendChart.PrimaryXAxis.Title = "Period";
             _trendChart.PrimaryXAxis.Font = new Font("Segoe UI", 9F);
             _trendChart.PrimaryXAxis.DrawGrid = false;
-            _trendChart.PrimaryYAxis.Title = "Amount";
+            _trendChart.PrimaryYAxis.Title = "Amount ($)";
             _trendChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
+            _trendChart.PrimaryYAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
+            
+            // Configure Y-axis to display currency formatting
+            try
+            {
+                var yAxis = _trendChart.PrimaryYAxis;
+                var propNumFormat = yAxis.GetType().GetProperty("NumberFormat");
+                if (propNumFormat != null && propNumFormat.CanWrite)
+                {
+                    propNumFormat.SetValue(yAxis, "C0");  // Currency format like $100K
+                }
+            }
+            catch { /* Gracefully handle if property doesn't exist */ }
+            
             _trendChart.TabIndex = 10;
         }
 
@@ -515,13 +540,28 @@ namespace WileyWidget.WinForms.Controls
 
             ChartControlDefaults.Apply(_departmentChart, logger: _logger);
             _departmentChart.ShowLegend = true;
-            _departmentChart.LegendsPlacement = ChartPlacement.Outside;
+            _departmentChart.LegendsPlacement = ChartPlacement.Outside;  // Legend below the chart for consistency
             _departmentChart.Title.Text = "Department Performance";
+            _departmentChart.Title.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             _departmentChart.PrimaryXAxis.Title = "Department";
             _departmentChart.PrimaryXAxis.Font = new Font("Segoe UI", 9F);
             _departmentChart.PrimaryXAxis.DrawGrid = false;
             _departmentChart.PrimaryYAxis.Title = "Variance %";
             _departmentChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
+            _departmentChart.PrimaryYAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
+            
+            // Configure Y-axis to display percentage formatting
+            try
+            {
+                var yAxis = _departmentChart.PrimaryYAxis;
+                var propNumFormat = yAxis.GetType().GetProperty("NumberFormat");
+                if (propNumFormat != null && propNumFormat.CanWrite)
+                {
+                    propNumFormat.SetValue(yAxis, "P0");  // Percentage format like 5%
+                }
+            }
+            catch { /* Gracefully handle if property doesn't exist */ }
+            
             _departmentChart.TabIndex = 11;
         }
 
@@ -529,57 +569,77 @@ namespace WileyWidget.WinForms.Controls
         {
             if (_analyticsGrid == null) return;
 
+            // Department column - Text, left aligned
             _analyticsGrid.Columns.Add(new GridTextColumn
             {
                 MappingName = "DepartmentName",
                 HeaderText = "Department",
                 MinimumWidth = 150,
-                AllowSorting = true
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Period column - Text, left aligned
             _analyticsGrid.Columns.Add(new GridTextColumn
             {
                 MappingName = "PeriodName",
                 HeaderText = "Period",
-                MinimumWidth = 120,
-                AllowSorting = true
+                MinimumWidth = 100,
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Budgeted Amount - Currency, right aligned
             _analyticsGrid.Columns.Add(new GridNumericColumn
             {
                 MappingName = "BudgetedAmount",
                 HeaderText = "Budgeted",
-                MinimumWidth = 120,
+                MinimumWidth = 140,
                 Format = "C2",
-                AllowSorting = true
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Actual Amount - Currency, right aligned
             _analyticsGrid.Columns.Add(new GridNumericColumn
             {
                 MappingName = "ActualAmount",
                 HeaderText = "Actual",
-                MinimumWidth = 120,
+                MinimumWidth = 140,
                 Format = "C2",
-                AllowSorting = true
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Variance Amount - Currency, right aligned
             _analyticsGrid.Columns.Add(new GridNumericColumn
             {
                 MappingName = "VarianceAmount",
-                HeaderText = "Variance",
-                MinimumWidth = 120,
+                HeaderText = "Variance ($)",
+                MinimumWidth = 140,
                 Format = "C2",
-                AllowSorting = true
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Variance Percent - Text, center aligned (status indicator)
             _analyticsGrid.Columns.Add(new GridTextColumn
             {
                 MappingName = "VariancePercent",
                 HeaderText = "Variance %",
-                MinimumWidth = 100,
-                AllowSorting = true
+                MinimumWidth = 110,
+                AllowSorting = true,
+                AllowResizing = true
             });
+
+            // Status column - Text, center aligned
             _analyticsGrid.Columns.Add(new GridTextColumn
             {
                 MappingName = "Status",
                 HeaderText = "Status",
-                MinimumWidth = 100,
-                AllowSorting = true
+                MinimumWidth = 120,
+                AllowSorting = true,
+                AllowResizing = true
             });
 
             _analyticsGrid.TabIndex = 12;
@@ -595,15 +655,22 @@ namespace WileyWidget.WinForms.Controls
                 _bindingSource = new BindingSource { DataSource = ViewModel };
                 if (_analyticsGrid != null) _analyticsGrid.DataSource = _bindingSource;
 
-                // Bind filter dropdowns to static lists
-                if (_comboDepartment != null && ViewModel.AvailableDepartments.Any())
+                // Bind filter dropdowns using adapters for live collection updates
+                // When ObservableCollection items are added/removed in ViewModel, UI automatically updates
+                if (_comboDepartment != null)
                 {
-                    _comboDepartment.DataSource = ViewModel.AvailableDepartments.ToList();
+                    _departmentAdapter = new ObservableCollectionToBindingListAdapter<string>(ViewModel.AvailableDepartments);
+                    _comboDepartment.DataSource = _departmentAdapter;
+                    _comboDepartment.DisplayMember = ""; // Strings don't need member binding
+                    _comboDepartment.ValueMember = "";
                 }
 
-                if (_comboDateRange != null && ViewModel.AvailableDateRanges.Any())
+                if (_comboDateRange != null)
                 {
-                    _comboDateRange.DataSource = ViewModel.AvailableDateRanges.ToList();
+                    _dateRangeAdapter = new ObservableCollectionToBindingListAdapter<string>(ViewModel.AvailableDateRanges);
+                    _comboDateRange.DataSource = _dateRangeAdapter;
+                    _comboDateRange.DisplayMember = "";
+                    _comboDateRange.ValueMember = "";
                 }
             }
             catch (Exception ex)
@@ -810,6 +877,12 @@ namespace WileyWidget.WinForms.Controls
 
                 if (_comboDateRange?.SelectedItem is string range)
                     ViewModel.SelectedDateRange = range;
+                
+                // Reload data with applied filters
+                if (ViewModel.LoadDataCommand.CanExecute(null))
+                {
+                    _ = ViewModel.LoadDataCommand.ExecuteAsync(null);
+                }
             }
             catch (Exception ex)
             {
@@ -1033,6 +1106,10 @@ namespace WileyWidget.WinForms.Controls
                         _btnExportReport.Click -= _btnExportReportClickHandler;
                 }
                 catch { }
+
+                // Dispose binding adapters (must be before control disposal)
+                try { _departmentAdapter?.Dispose(); } catch { }
+                try { _dateRangeAdapter?.Dispose(); } catch { }
 
                 // Dispose controls
                 try { _bindingSource?.Dispose(); } catch { }

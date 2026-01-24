@@ -77,6 +77,9 @@ namespace WileyWidget.WinForms.Services
             var mainForm = scope.ServiceProvider.GetService(typeof(MainForm)) as MainForm
                 ?? throw new InvalidOperationException("MainForm is not registered.");
 
+            // Store reference to MainFormInstance for programmatic access
+            Program.MainFormInstance = mainForm;
+
             // If MainForm implements IAsyncInitializable, initialize it after it's shown
             if (mainForm is IAsyncInitializable asyncInit)
             {

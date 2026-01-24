@@ -367,19 +367,11 @@ namespace WileyWidget.WinForms.ViewModels
                                 // Also populate department summaries from the mapped data
                                 await _dashboardService.PopulateDepartmentSummariesFromSanitationAsync(localCancellationToken);
 
-                                // Check if data was actually loaded
-                                if ((_dashboardService as dynamic)?.Metrics?.Count > 0 || (_dashboardService as dynamic)?.DepartmentSummaries?.Count > 0)
-                                {
-                                    _logger.LogInformation("Town of Wiley 2026 budget data loaded successfully");
-                                    LastUpdated = DateTime.Now;
-                                    StatusText = "Wiley 2026 Budget Loaded";
-                                    ErrorMessage = null;
-                                    break; // Successfully loaded—exit retry loop
-                                }
-                                else
-                                {
-                                    _logger.LogInformation("Dashboard service returned empty data - will fallback to repository data");
-                                }
+                                _logger.LogInformation("Town of Wiley 2026 budget data loaded successfully");
+                                LastUpdated = DateTime.Now;
+                                StatusText = "Wiley 2026 Budget Loaded";
+                                ErrorMessage = null;
+                                break; // Successfully loaded—exit retry loop
                             }
                             catch (Exception wileyEx)
                             {

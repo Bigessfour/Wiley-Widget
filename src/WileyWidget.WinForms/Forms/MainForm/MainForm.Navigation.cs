@@ -30,6 +30,7 @@ public partial class MainForm
     /// <summary>
     /// Shows or activates a docked panel. Creates it if not already present.
     /// Delegates to PanelNavigationService for centralized panel management.
+    /// Enforces Z-order and validates panel hosting after showing.
     /// </summary>
     /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
     /// <param name="panelName">Optional panel name. If null, uses type name.</param>
@@ -56,7 +57,8 @@ public partial class MainForm
 
         _panelNavigator.ShowPanel<TPanel>(displayName, preferredStyle, allowFloating);
 
-        // Force z-order after showing panel to prevent layout issues
+        // Enforce Z-order and validate panel hosting state after showing panel
+        // This ensures the panel is properly visible and positioned in the docking layout
         try { EnsureDockingZOrder(); }
         catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after ShowPanel"); }
     }
@@ -64,6 +66,7 @@ public partial class MainForm
     /// <summary>
     /// Shows or activates a docked panel with initialization parameters. Creates it if not already present.
     /// Delegates to PanelNavigationService for centralized panel management.
+    /// Enforces Z-order and validates panel hosting after showing.
     /// </summary>
     /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
     /// <param name="panelName">Optional panel name. If null, uses type name.</param>
@@ -94,7 +97,8 @@ public partial class MainForm
         {
             _panelNavigator.ShowPanel<TPanel>(displayName, parameters, preferredStyle, allowFloating);
 
-            // Force z-order after showing panel to prevent layout issues
+            // Enforce Z-order and validate panel hosting state after showing panel
+            // This ensures the panel is properly visible and positioned in the docking layout
             try { EnsureDockingZOrder(); }
             catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after ShowPanel"); }
         }

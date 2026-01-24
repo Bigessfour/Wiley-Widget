@@ -1,0 +1,80 @@
+
+
+## 📋 Complete TODO List (47 Items)
+
+### Category 1: Compilation & Critical Fixes (Priority: Urgent)
+
+- [ ] **TODO-001**: Declare `private bool _isBusy;` field at line 45 in ScopedPanelBase.cs
+- [ ] **TODO-002**: Verify `private TViewModel? _dataContext;` field exists (line ~42) or add if missing
+- [ ] **TODO-003**: Enable `#nullable enable` directive at file top for stricter null safety
+- [ ] **TODO-004**: Add compile-time test: create new derived test panel, force handle creation, verify no compilation errors
+
+### Category 2: Async Initialization (Priority: High)
+
+- [ ] **TODO-005**: Add `protected virtual Task OnHandleCreatedAsync()` method returning `Task.CompletedTask` by default
+- [ ] **TODO-006**: In `OnHandleCreated` (line ~155), add `BeginInvoke(new Action(async () => await OnHandleCreatedAsync().ConfigureAwait(true)));` after existing code
+- [ ] **TODO-007**: Move heavy ViewModel resolution logic to `OnHandleCreatedAsync` for opt-in async loading by derived classes
+- [ ] **TODO-008**: Add `[Obsolete]` comment to `OnHandleCreated` documenting async alternative for heavy operations
+- [ ] **TODO-009**: Create example derived panel (`AsyncLoadingPanel`) demonstrating `OnHandleCreatedAsync` usage with progress indicator
+- [ ] **TODO-010**: Update 20 derived panels to assess if any need migration to `OnHandleCreatedAsync` (check for database calls in constructors/OnViewModelResolved)
+- [ ] **TODO-011**: Add integration test: verify `OnHandleCreatedAsync` fires after `OnHandleCreated` and before first user interaction
+
+### Category 3: Reflection Caching (Priority: High)
+
+- [ ] **TODO-012**: Add `private static readonly ConcurrentDictionary<Type, PropertyInfo?> DataContextPropertyCache = new();` field at class level
+- [ ] **TODO-013**: In `TrySetDataContext` (line ~135), wrap reflection lookup with `DataContextPropertyCache.GetOrAdd(GetType(), type => type.GetProperty("DataContext", ...))`
+- [ ] **TODO-014**: Add XML doc to cache field explaining one-time lookup per derived type
+- [ ] **TODO-015**: Add unit test: create 100 panel instances, verify only 1 reflection call per type via mock ILogger inspection
+
+### Category 4: Validation Helpers (Priority: High)
+
+- [ ] **TODO-016**: Add `protected void AddValidationError(ValidationItem error)` method with body: `_validationErrors.Add(error); OnPropertyChanged(nameof(IsValid)); OnPropertyChanged(nameof(ValidationErrors)); StateChanged?.Invoke(this, EventArgs.Empty);`
+- [ ] **TODO-017**: Add `protected void ClearValidationErrors()` method with body: `_validationErrors.Clear(); OnPropertyChanged(nameof(IsValid)); OnPropertyChanged(nameof(ValidationErrors)); StateChanged?.Invoke(this, EventArgs.Empty);`
+- [ ] **TODO-018**: Add `protected void RemoveValidationError(string fieldName)` method filtering `_validationErrors.RemoveAll(e => e.FieldName == fieldName)` and triggering property changes
+- [ ] **TODO-019**: Add `protected void SetValidationErrors(IEnumerable<ValidationItem> errors)` bulk replacement method
+- [ ] **TODO-020**: Update all 20 derived panels to replace manual `_validationErrors.Add/Clear` calls with new helper methods
+- [ ] **TODO-021**: Add XML documentation to helpers explaining automatic event triggering
+- [ ] **TODO-022**: Add unit test: call `AddValidationError`, verify `IsValid` changes from true→false and `StateChanged` event fires
+
+### Category 5: Handle Recreation (Priority: Medium)
+
+- [ ] **TODO-023**: Add `private bool _handleCreatedOnce = false;` field at line ~46
+- [ ] **TODO-024**: In `OnHandleCreated` (line ~155), change `if (_scope != null)` block to: log warning, call `_scope.Dispose()`, set `_scope = null`, then proceed with normal creation
+- [ ] **TODO-025**: Set `_handleCreatedOnce = true` at end of `OnHandleCreated` method
+- [ ] **TODO-026**: Update warning message to: `"Handle recreated for {PanelType} - disposing old scope #{OldScopeId} and creating new scope"`
+- [ ] **TODO-027**: Add integration test: create panel, force handle recreation via `RecreateHandle()` method, verify new scope created and old disposed
+
+### Category 6: Theme Change Events (Priority: Medium)
+
+- [ ] **TODO-028**: Research Syncfusion 32.1.19 docs for `SfSkinManager` theme change events at <https://help.syncfusion.com/windowsforms/overview>
+- [ ] **TODO-029**: If Syncfusion provides event, subscribe in constructor: `SfSkinManager.ThemeChanged += (s,e) => InvokeOnUiThread(ApplyThemeCascade);`
+- [ ] **TODO-030**: If no built-in event, inject `IThemeService` (optional, nullable) and subscribe to `ThemeService.ThemeChanged` if available
+- [ ] **TODO-031**: Add `private void OnThemeChanged(object? sender, EventArgs e)` handler wrapping `ApplyThemeCascade()` with try-catch
+- [ ] **TODO-032**: Unsubscribe theme events in `Dispose` method to prevent leaks
+- [ ] **TODO-033**: Add manual test: run app, open panel, change theme via SettingsPanel, verify panel updates without restart
+
+### Category 7: XML Documentation (Priority: Medium)
+
+- [ ] **TODO-034**: Add `<summary>` tags to: `IsBusy`, `RegisterOperation`, `LoadAsyncSafe`, `InvokeOnUiThread`, `ApplyThemeCascade`, `TrySetDataContext`, `FocusFirstError`, `OnViewModelResolved`, `OnHandleCreatedAsync`, all helper methods (15 total members)
+- [ ] **TODO-035**: Add `<exception cref="ObjectDisposedException">` tags to methods that check `_isDisposed` or throw on disposed state
+- [ ] **TODO-036**: Add `<remarks>` section to class explaining DI scope lifecycle and ViewModel resolution timing
+- [ ] **TODO-037**: Add `<example>` block showing minimal derived class implementation
+- [ ] **TODO-038**: Run `dotnet build /p:GenerateDocumentationFile=true` and fix any XML doc warnings
+
+### Category 8: Test Infrastructure (Priority: High)
+
+- [ ] **TODO-039**: Create ScopedPanelTestHelpers.cs with `GetViewModelForTesting<TViewModel>` method using reflection on `_viewModel` field
+- [ ] **TODO-040**: Add `GetServiceProviderForTesting` method to access `_scope.ServiceProvider` for tests
+- [ ] **TODO-041**: Add `SimulateHandleCreation` method wrapping `var _ = panel.Handle;` for explicit test triggering
+- [ ] **TODO-042**: In ScopedPanelBase.cs, add `[assembly: InternalsVisibleTo("WileyWidget.Tests")]` to enable internal test helpers
+
+### Category 9: Progress Reporting (Priority: Low)
+
+- [ ] **TODO-043**: Add optional `IProgress<string>? progress = null` parameter to `LoadAsync`, `SaveAsync`, `ValidateAsync` method signatures (breaking change - consider overload instead)
+- [ ] **TODO-044**: In each async method, add `progress?.Report("Loading data...")` at key stages
+- [ ] **TODO-045**: Update 3-5 derived panels with long operations to implement progress reporting
+- [ ] **TODO-046**: Add integration test with `Progress<string>` capturing reports to verify callbacks fire
+
+### Category 10: Designer Mode & Misc (Priority: Low)
+
+- [ ] **TODO-047**: Wrap scope creation in `OnHandleCreated` with `if (!DesignMode) { ... }` check; add `else { ViewModel = CreateDesignerViewModel(); }` where `CreateDesignerViewModel()` returns mock ViewModel for designer

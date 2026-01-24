@@ -145,17 +145,21 @@ public static class RibbonFactory
         {
             try
             {
-                var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatHostForm>(Program.Services);
-                if (chatForm != null)
+                // Switch to JARVIS Chat tab in right dock panel
+                if (form is MainForm mainForm)
                 {
-                    logger?.LogInformation("[RIBBON_JARVIS] Opening JARVIS Chat modal dialog");
-                    chatForm.ShowDialog(form);
-                    logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat modal closed");
+                    logger?.LogInformation("[RIBBON_JARVIS] Switching to JARVIS Chat tab");
+                    mainForm.SwitchRightPanel(RightDockPanelFactory.RightPanelMode.JarvisChat);
+                    logger?.LogInformation("[RIBBON_JARVIS] JARVIS Chat tab activated");
+                }
+                else
+                {
+                    logger?.LogWarning("[RIBBON_JARVIS] Parent form is not MainForm - cannot switch to JARVIS Chat");
                 }
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_JARVIS] Failed to open JARVIS Chat modal");
+                logger?.LogError(ex, "[RIBBON_JARVIS] Failed to switch to JARVIS Chat tab");
                 MessageBox.Show($"Failed to open JARVIS Chat: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         };
@@ -654,16 +658,20 @@ public static class RibbonFactory
             {
                 try
                 {
-                    var chatForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatHostForm>(Program.Services);
-                    if (chatForm != null)
+                    // Switch to JARVIS Chat tab in right dock panel
+                    if (form is MainForm mainForm)
                     {
-                        logger?.LogInformation("[RIBBON_TOOLS] Opening JARVIS Chat from Tools group");
-                        chatForm.ShowDialog(form);
+                        logger?.LogInformation("[RIBBON_TOOLS] Switching to JARVIS Chat tab from Tools group");
+                        mainForm.SwitchRightPanel(RightDockPanelFactory.RightPanelMode.JarvisChat);
+                    }
+                    else
+                    {
+                        logger?.LogWarning("[RIBBON_TOOLS] Parent form is not MainForm - cannot switch to JARVIS Chat");
                     }
                 }
                 catch (Exception ex)
                 {
-                    logger?.LogError(ex, "[RIBBON_TOOLS] Failed to open JARVIS Chat");
+                    logger?.LogError(ex, "[RIBBON_TOOLS] Failed to switch to JARVIS Chat tab");
                     MessageBox.Show($"Failed to open JARVIS: {ex.Message}", "JARVIS Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             },

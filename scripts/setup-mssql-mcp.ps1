@@ -6,20 +6,20 @@
 param(
     [ValidateSet('windows', 'sql')]
     [string]$AuthType = 'windows',
-    
+
     [string]$Server = 'localhost',
-    
+
     [string]$Database = 'WileyWidget',
-    
+
     [string]$UserId = '',
-    
+
     [string]$Password = '',
-    
+
     [ValidateSet('User', 'Machine')]
     [string]$Scope = 'User',
-    
+
     [switch]$Test,
-    
+
     [switch]$Help
 )
 
@@ -140,8 +140,12 @@ try {
         $connectionString,
         [System.EnvironmentVariableTarget]::$Scope
     )
+    # Sanitize connection string for logging to avoid exposing credentials
+    $sanitizedConnectionString = $connectionString
+    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Password\s*=\s*)([^;]+)', '$1********'
+    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Pwd\s*=\s*)([^;]+)', '$1********'
     Write-Host "✅ Environment variable set: MSSQL_CONNECTION_STRING ($Scope scope)" -ForegroundColor Green
-    Write-Host "   Value: $connectionString" -ForegroundColor Gray
+    Write-Host "   Value: $sanitizedConnectionString" -ForegroundColor Gray
 }
 catch {
     Write-Host "❌ Error setting environment variable: $_" -ForegroundColor Red
@@ -165,7 +169,7 @@ Write-Host ""
 # Optional: Test the connection
 if ($Test) {
     Write-Host "Testing connection..." -ForegroundColor Yellow
-    
+
     # Try to import SqlServer module (if available)
     try {
         # Import the module, suppress warnings if not installed
@@ -185,7 +189,7 @@ if ($Test) {
                 $testQuery = "SELECT DB_NAME() AS CurrentDatabase, @@VERSION AS SqlVersion"
                 $result = Invoke-Sqlcmd -ServerInstance $Server -Database $Database -Query $testQuery -Credential $credential
             }
-            
+
             Write-Host "✅ Connection successful!" -ForegroundColor Green
             Write-Host "   Database: $($result.CurrentDatabase)" -ForegroundColor Gray
         }

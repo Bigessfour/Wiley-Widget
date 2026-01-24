@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
@@ -22,8 +23,15 @@ namespace WileyWidget.WinForms
     static class Program
     {
         private static IServiceProvider? _services;
+        private static MainForm? _mainFormInstance;
 
         public static IServiceProvider Services => _services ?? throw new InvalidOperationException("Services not initialized");
+
+        public static MainForm? MainFormInstance
+        {
+            get => _mainFormInstance;
+            set => _mainFormInstance = value;
+        }
 
         public static async Task RunStartupHealthCheckAsync(IServiceProvider services)
         {

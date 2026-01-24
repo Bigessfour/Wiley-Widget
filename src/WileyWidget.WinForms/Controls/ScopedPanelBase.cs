@@ -1,4 +1,7 @@
+#nullable enable
+
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -11,6 +14,9 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Services;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WileyWidget.Tests")]
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -18,6 +24,30 @@ namespace WileyWidget.WinForms.Controls;
 /// Abstract base class for panels that require scoped ViewModels with dependencies on scoped services (e.g., DbContext, repositories).
 /// Handles proper scope creation, ViewModel resolution, and disposal to prevent DI lifetime violations.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class manages the complete lifecycle of a scoped DI container for each panel instance:
+/// 1. <strong>Scope Creation:</strong> Created in OnHandleCreated (when WinForms handle is created) to tie lifecycle to control's lifetime.
+/// 2. <strong>ViewModel Resolution:</strong> TViewModel is resolved from the scoped provider; if not manually assigned, resolution is automatic.
+/// 3. <strong>Initialization Hook:</strong> OnViewModelResolved is called for derived classes to perform custom initialization.
+/// 4. <strong>Async Initialization:</strong> OnHandleCreatedAsync allows heavy operations (DB queries, network calls) without blocking the UI thread.
+/// 5. <strong>Theme Management:</strong> Automatically applies SfSkinManager theme cascade to this panel and all children.
+/// 6. <strong>Disposal:</strong> Scope is disposed in Dispose, releasing all scoped services including DbContext.
+/// </para>
+/// <para>
+/// Implements ICompletablePanel to support state tracking (IsLoaded, IsBusy, HasUnsavedChanges, IsValid, ValidationErrors).
+/// Integrates with IThemeService for runtime theme switching without requiring panel reload.
+/// Uses reflection caching to optimize DataContext property lookups per derived type.
+/// </para>
+/// <para>
+/// Best Practices:
+/// - Keep constructors lightweight; defer heavy initialization to OnHandleCreatedAsync.
+/// - Use AddValidationError, ClearValidationErrors, and similar helpers for consistent validation management.
+/// - Subscribe to ViewModel events in OnViewModelResolved; unsubscribe in Dispose to prevent leaks.
+/// - Use InvokeOnUiThread when updating UI from background threads to ensure thread safety.
+/// - Use RegisterOperation to manage concurrent async operations; only one operation can run at a time.
+/// </para>
+/// </remarks>
 /// <typeparam name="TViewModel">The ViewModel type to resolve from the scoped service provider.</typeparam>
 public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePanel, INotifyPropertyChanged
     where TViewModel : class
@@ -28,6 +58,8 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     protected TViewModel? _viewModel;
     private object? _dataContext;
     private bool _disposed;
+    private bool _isBusy;
+    private IThemeService? _themeService;
 
     // ICompletablePanel backing fields
     protected bool _isLoaded;
@@ -36,6 +68,11 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     protected readonly List<ValidationItem> _validationErrors = new();
     protected CancellationTokenSource? _currentOperationCts;
     private DateTimeOffset? _lastSavedAt = null;
+
+    // Reflection caching for DataContext property lookups per derived type
+    // This cache ensures reflection is performed only once per derived class type,
+    // improving performance when multiple instances of the same panel are created.
+    private static readonly ConcurrentDictionary<Type, PropertyInfo?> DataContextPropertyCache = new();
 
     /// <summary>
     /// Gets or sets the ViewModel instance.
@@ -57,16 +94,17 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
     /// <summary>
     /// ICompletablePanel: whether the panel is performing a long-running operation.
+    /// Automatically notifies subscribers of property and state changes when modified.
     /// </summary>
     [Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public bool IsBusy
     {
-        get => field;
+        get => _isBusy;
         set
         {
-            if (field == value) return;
-            field = value;
+            if (_isBusy == value) return;
+            _isBusy = value;
             OnPropertyChanged(nameof(IsBusy));
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -145,15 +183,43 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
     /// <summary>
     /// Called when the panel handle is created. Creates a service scope and resolves the ViewModel.
+    /// For heavy initialization, consider overriding OnHandleCreatedAsync() for non-blocking async work.
     /// </summary>
+    /// <remarks>
+    /// In designer mode, calls CreateDesignerViewModel() instead of using DI.
+    /// On handle recreation, disposes the old scope before creating a new one.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Caught and logged if the service provider is disposed during initialization.</exception>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
 
+        // Skip DI initialization in designer mode
+        if (DesignMode)
+        {
+            try
+            {
+                _viewModel = CreateDesignerViewModel();
+                if (_viewModel != null)
+                {
+                    TrySetDataContext(_viewModel);
+                    OnViewModelResolved(_viewModel);
+                    _logger.LogDebug("Initialized designer ViewModel for {PanelType}", GetType().Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to create designer ViewModel for {PanelType}", GetType().Name);
+            }
+            return;
+        }
+
         if (_scope != null)
         {
-            _logger.LogWarning("Scope already exists in OnHandleCreated - handle may have been recreated");
-            return;
+            _logger.LogWarning("Handle recreated for {PanelType} - disposing old scope and creating new scope", GetType().Name);
+            _scope.Dispose();
+            _scope = null;
+            _viewModel = null;
         }
 
         // Skip initialization if the control is being disposed or disposed
@@ -189,10 +255,28 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
             // Allow derived classes to perform additional initialization with the resolved ViewModel
             OnViewModelResolved(_viewModel);
 
+            // Subscribe to theme changes for runtime theme switching
+            try
+            {
+                _themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeService>(_scope.ServiceProvider);
+                if (_themeService != null)
+                {
+                    _themeService.ThemeChanged += OnThemeChanged;
+                    _logger.LogDebug("Subscribed to theme change events for {PanelType}", GetType().Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to subscribe to theme change events for {PanelType}", GetType().Name);
+            }
+
             // Mark panel as loaded for consumers (tests, automation, commands)
             _isLoaded = true;
             OnPropertyChanged(nameof(IsLoaded));
             StateChanged?.Invoke(this, EventArgs.Empty);
+
+            // Defer heavy async initialization to avoid blocking UI thread
+            BeginInvoke(new Action(async () => await OnHandleCreatedAsync().ConfigureAwait(true)));
         }
         catch (ObjectDisposedException ex)
         {
@@ -214,6 +298,34 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     }
 
     /// <summary>
+    /// Called to create a mock ViewModel for Visual Studio designer support.
+    /// Override this method to provide design-time data for the designer.
+    /// </summary>
+    /// <returns>A mock ViewModel instance, or null if no designer support is needed.</returns>
+    /// <remarks>
+    /// This method is only called when DesignMode is true (i.e., in Visual Studio designer).
+    /// Default implementation returns null, which skips ViewModel setup in the designer.
+    /// Override to provide a lightweight mock ViewModel that displays sample data in the designer.
+    /// Do NOT perform expensive operations (database queries, network calls) in this method;
+    /// the designer may call it repeatedly, and it should return quickly.
+    /// Example:
+    /// <code>
+    /// protected override MyViewModel? CreateDesignerViewModel()
+    /// {
+    ///     return new MyViewModel
+    ///     {
+    ///         Items = new() { new Item { Id = 1, Name = "Sample Item" } },
+    ///         IsLoading = false
+    ///     };
+    /// }
+    /// </code>
+    /// </remarks>
+    protected virtual TViewModel? CreateDesignerViewModel()
+    {
+        return null;
+    }
+
+    /// <summary>
     /// Called after the ViewModel has been successfully resolved from the scoped service provider.
     /// Override this method to perform additional initialization logic with the ViewModel.
     /// </summary>
@@ -225,16 +337,63 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     }
 
     /// <summary>
-    /// Default (no-op) async validation hook. Panels may override to perform server-side checks.
+    /// Virtual async hook called after OnHandleCreated completes. Useful for heavy initialization (database queries, network calls) without blocking the UI thread.
+    /// Override this method in derived classes to perform long-running operations after the ViewModel is resolved.
+    /// This method fires asynchronously via BeginInvoke, so the panel is already displayed and responsive.
     /// </summary>
+    /// <remarks>
+    /// Default implementation is a no-op. Derived classes should override if they need to load data or perform expensive setup after the panel is visible.
+    /// Exceptions in this method are logged but not thrown to prevent crashing the panel after display.
+    /// </remarks>
+    protected virtual Task OnHandleCreatedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Virtual async validation hook. Override to perform server-side validation checks (e.g., checking for duplicate accounts).
+    /// </summary>
+    /// <param name="ct">Cancellation token to cancel the validation operation.</param>
+    /// <returns>
+    /// A ValidationResult indicating whether validation succeeded and any errors found.
+    /// Return ValidationResult.Success if validation passes; ValidationResult.Failed(...) if validation fails.
+    /// </returns>
+    /// <remarks>
+    /// Default implementation returns ValidationResult.Success (no validation errors).
+    /// Override this method to add async validation rules that require server-side checks.
+    /// Client-side validation (UI field rules) should be handled in OnViewModelResolved via binding or property change handlers.
+    /// Always use CancellationToken to support operation cancellation and timeouts.
+    /// </remarks>
     public virtual Task<ValidationResult> ValidateAsync(CancellationToken ct)
     {
         return Task.FromResult(ValidationResult.Success);
     }
 
     /// <summary>
-    /// Focus the first control referenced in the validation list.
+    /// Virtual async validation hook with progress reporting. Override to perform server-side validation checks.
     /// </summary>
+    /// <param name="ct">Cancellation token to cancel the validation operation.</param>
+    /// <param name="progress">Optional progress reporter for tracking validation stages.</param>
+    /// <returns>
+    /// A ValidationResult indicating whether validation succeeded and any errors found.
+    /// Return ValidationResult.Success if validation passes; ValidationResult.Failed(...) if validation fails.
+    /// </returns>
+    /// <remarks>
+    /// Override this method in derived classes to report progress during validation (e.g., "Checking for duplicates...").
+    /// If progress is null, report calls are safely ignored. Default implementation reports no progress.
+    /// </remarks>
+    public virtual Task<ValidationResult> ValidateAsync(CancellationToken ct, IProgress<string>? progress)
+    {
+        return ValidateAsync(ct);
+    }
+
+    /// <summary>
+    /// Focus the first control referenced in the validation list and optionally scroll it into view.
+    /// </summary>
+    /// <remarks>
+    /// If no validation errors exist, this method is a no-op.
+    /// Useful in UI handlers to direct user attention to the first field with an error.
+    /// </remarks>
     public virtual void FocusFirstError()
     {
         var item = _validationErrors.FirstOrDefault();
@@ -242,16 +401,62 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     }
 
     /// <summary>
-    /// Default save/load hooks - derived panels should implement real logic.
+    /// Default save hook - derived panels should override to persist data to the database or service.
     /// </summary>
+    /// <param name="ct">Cancellation token to cancel the save operation.</param>
+    /// <remarks>
+    /// Override this method in derived panels to save ViewModel state (e.g., via repository or DbContext).
+    /// Call StateChanged event after successful save. Use RegisterOperation(out ct) to track the operation.
+    /// If save fails, log the error and consider adding validation errors for user feedback.
+    /// </remarks>
     public virtual Task SaveAsync(CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>
+    /// Save hook with progress reporting - derived panels can override to persist data with progress updates.
+    /// </summary>
+    /// <param name="ct">Cancellation token to cancel the save operation.</param>
+    /// <param name="progress">Optional progress reporter for tracking save stages (e.g., "Saving account...", "Updating ledger...").</param>
+    /// <remarks>
+    /// Override this method to report save progress to the UI (e.g., via a progress bar).
+    /// If progress is null, report calls are safely ignored.
+    /// Default implementation delegates to SaveAsync(ct) without progress reporting.
+    /// </remarks>
+    public virtual Task SaveAsync(CancellationToken ct, IProgress<string>? progress) => SaveAsync(ct);
+
+    /// <summary>
+    /// Default load hook - derived panels should override to fetch data from the database or service.
+    /// </summary>
+    /// <param name="ct">Cancellation token to cancel the load operation.</param>
+    /// <remarks>
+    /// Override this method in derived panels to load ViewModel state (e.g., from repository or DbContext).
+    /// This is called automatically via OnHandleCreatedAsync, or manually by derived classes for refresh operations.
+    /// If load fails, log the error and consider updating HasUnsavedChanges to false.
+    /// </remarks>
     public virtual Task LoadAsync(CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>
+    /// Load hook with progress reporting - derived panels can override to fetch data with progress updates.
+    /// </summary>
+    /// <param name="ct">Cancellation token to cancel the load operation.</param>
+    /// <param name="progress">Optional progress reporter for tracking load stages (e.g., "Loading accounts...", "Loading transactions...").</param>
+    /// <remarks>
+    /// Override this method to report load progress to the UI (e.g., via a progress bar or spinner).
+    /// If progress is null, report calls are safely ignored.
+    /// Default implementation delegates to LoadAsync(ct) without progress reporting.
+    /// Useful for panels with multiple data sources or large datasets that take time to retrieve.
+    /// </remarks>
+    public virtual Task LoadAsync(CancellationToken ct, IProgress<string>? progress) => LoadAsync(ct);
 
     /// <summary>
     /// Safe wrapper for fire-and-forget LoadAsync calls.
     /// Handles cross-thread exceptions and ensures UI operations are properly marshaled.
     /// Use this for background panel load calls that don't need to be awaited.
     /// </summary>
+    /// <remarks>
+    /// Exceptions are logged but not thrown, allowing the panel to remain functional even if loading fails.
+    /// This is useful for non-critical background data loading after the panel is displayed.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Silently caught and logged; does not propagate.</exception>
     protected async Task LoadAsyncSafe()
     {
         try
@@ -277,6 +482,13 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// Safely invokes an action on the UI thread if required.
     /// Use this when updating UI controls from background threads in async operations.
     /// </summary>
+    /// <param name="action">The action to invoke on the UI thread.</param>
+    /// <remarks>
+    /// If the current thread is already the UI thread (InvokeRequired is false), the action is executed directly.
+    /// If a different thread, the action is marshaled to the UI thread using Invoke().
+    /// ObjectDisposedException is silently handled if the control has been disposed.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown if the control handle is invalid or disposed during marshaling.</exception>
     protected void InvokeOnUiThread(Action action)
     {
         if (InvokeRequired)
@@ -302,7 +514,9 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
     /// <summary>
     /// Helper to register a new operation token; cancels any previous operation.
+    /// Use this when starting a long-running async operation to ensure only one operation runs at a time.
     /// </summary>
+    /// <returns>A CancellationToken that can be passed to async methods to support cancellation.</returns>
     protected CancellationToken RegisterOperation()
     {
         CancelCurrentOperation();
@@ -328,9 +542,72 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     }
 
     /// <summary>
+    /// Adds a validation error to the panel's error list and notifies subscribers of validation state changes.
+    /// Automatically triggers OnPropertyChanged for IsValid and ValidationErrors, and raises StateChanged event.
+    /// </summary>
+    /// <param name="error">The ValidationItem to add.</param>
+    protected void AddValidationError(ValidationItem error)
+    {
+        if (error is null) return;
+        _validationErrors.Add(error);
+        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(ValidationErrors));
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Clears all validation errors from the panel and notifies subscribers of validation state changes.
+    /// Automatically triggers OnPropertyChanged for IsValid and ValidationErrors, and raises StateChanged event.
+    /// </summary>
+    protected void ClearValidationErrors()
+    {
+        if (_validationErrors.Count == 0) return;
+        _validationErrors.Clear();
+        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(ValidationErrors));
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Removes validation errors for a specific field by field name and notifies subscribers of validation state changes.
+    /// Automatically triggers OnPropertyChanged for IsValid and ValidationErrors, and raises StateChanged event.
+    /// </summary>
+    /// <param name="fieldName">The name of the field whose errors should be removed.</param>
+    protected void RemoveValidationError(string fieldName)
+    {
+        if (string.IsNullOrEmpty(fieldName) || !_validationErrors.Any(e => e.FieldName == fieldName)) return;
+        _validationErrors.RemoveAll(e => e.FieldName == fieldName);
+        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(ValidationErrors));
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Replaces all validation errors with the provided collection and notifies subscribers of validation state changes.
+    /// Automatically triggers OnPropertyChanged for IsValid and ValidationErrors, and raises StateChanged event.
+    /// </summary>
+    /// <param name="errors">The collection of ValidationItems to set. If null or empty, clears all errors.</param>
+    protected void SetValidationErrors(IEnumerable<ValidationItem>? errors)
+    {
+        _validationErrors.Clear();
+        if (errors != null)
+        {
+            _validationErrors.AddRange(errors);
+        }
+        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(ValidationErrors));
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
     /// Disposes the service scope and releases all managed resources.
     /// </summary>
     /// <param name="disposing">True if called from Dispose(); false if called from finalizer.</param>
+    /// <remarks>
+    /// Cancels any running operations, disposes the ViewModel if it implements IDisposable, and disposes the service scope.
+    /// Safe to call multiple times; subsequent calls are no-ops.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">May be thrown by underlying resources during disposal, but is caught and logged.</exception>
     protected override void Dispose(bool disposing)
     {
         if (!_disposed)
@@ -338,6 +615,21 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
             if (disposing)
             {
                 _logger.LogDebug("Disposing scope for {PanelType}", GetType().Name);
+
+                // Unsubscribe from theme change events to prevent leaks
+                if (_themeService != null)
+                {
+                    try
+                    {
+                        _themeService.ThemeChanged -= OnThemeChanged;
+                        _logger.LogDebug("Unsubscribed from theme change events for {PanelType}", GetType().Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error unsubscribing from theme change events for {PanelType}", GetType().Name);
+                    }
+                    _themeService = null;
+                }
 
                 // Cancel any running operations (async work)
                 CancelCurrentOperation();
@@ -361,6 +653,16 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
         base.Dispose(disposing);
     }
 
+    /// <summary>
+    /// Attempts to set the DataContext property on this panel to the ViewModel instance (if a DataContext property exists).
+    /// </summary>
+    /// <param name="viewModel">The ViewModel instance to set as DataContext, or null to clear.</param>
+    /// <remarks>
+    /// Uses reflection to locate a public or private DataContext property on the derived panel type.
+    /// Results are cached per derived type to avoid repeated reflection calls.
+    /// If no DataContext property exists or is read-only, this method is silently skipped (no exception thrown).
+    /// This enables XAML or binding scenarios where panels expose a typed DataContext property.
+    /// </remarks>
     private void TrySetDataContext(TViewModel? viewModel)
     {
         _dataContext = viewModel;
@@ -372,10 +674,14 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
         try
         {
-            var dataContextProperty = GetType().GetProperty("DataContext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (dataContextProperty?.CanWrite == true)
+            // Use static cache to avoid repeated reflection per derived type
+            var cachedProperty = DataContextPropertyCache.GetOrAdd(
+                GetType(),
+                type => type.GetProperty("DataContext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
+
+            if (cachedProperty?.CanWrite == true)
             {
-                dataContextProperty.SetValue(this, viewModel);
+                cachedProperty.SetValue(this, viewModel);
             }
         }
         catch (Exception ex)
@@ -384,6 +690,15 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
         }
     }
 
+    /// <summary>
+    /// Applies the current SfSkinManager theme cascade to this panel and all child controls recursively.
+    /// Called automatically during OnHandleCreated, but can also be invoked manually when the theme changes at runtime.
+    /// </summary>
+    /// <remarks>
+    /// SfSkinManager is the single source of truth for theming in this application.
+    /// This method ensures all Syncfusion controls and children inherit the active theme.
+    /// Best-effort approach: controls that don't support theming are silently skipped.
+    /// </remarks>
     private void ApplyThemeCascade()
     {
         try
@@ -403,6 +718,26 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     protected void OnPropertyChanged(string propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    /// <summary>
+    /// Handles theme change notifications from the application theme service.
+    /// Re-applies the current theme cascade to this panel and all children.
+    /// </summary>
+    private void OnThemeChanged(object? sender, string themeName)
+    {
+        try
+        {
+            InvokeOnUiThread(() =>
+            {
+                _logger.LogDebug("Theme changed to {ThemeName} for {PanelType} - reapplying theme cascade", themeName, GetType().Name);
+                ApplyThemeCascade();
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error handling theme change for {PanelType}", GetType().Name);
+        }
     }
 
     private static void ApplyThemeRecursively(Control control, string themeName)

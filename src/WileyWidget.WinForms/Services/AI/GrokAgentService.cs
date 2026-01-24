@@ -34,6 +34,7 @@ namespace WileyWidget.WinForms.Services.AI
     {
         private Kernel? _kernel;
         private readonly IXaiModelDiscoveryService? _modelDiscoveryService;
+        private readonly IGrokApiKeyProvider? _apiKeyProvider;  // ✅ NEW: Inject the centralized provider
         private string? _apiKey;
         private readonly Uri? _baseEndpoint;
         private readonly Uri? _endpoint;
@@ -74,9 +75,21 @@ namespace WileyWidget.WinForms.Services.AI
         // Track response IDs for later retrieval and conversation continuation (per X.ai new Responses API)
         private readonly Dictionary<string, string> _conversationResponseIds = new();
 
-        public GrokAgentService(IConfiguration config, ILogger<GrokAgentService>? logger = null, IHttpClientFactory? httpClientFactory = null, IXaiModelDiscoveryService? modelDiscoveryService = null, IChatBridgeService? chatBridge = null, IServiceProvider? serviceProvider = null, IJARVISPersonalityService? jarvisPersonality = null, IMemoryCache? memoryCache = null)
+        public GrokAgentService(
+            IGrokApiKeyProvider apiKeyProvider,  // ✅ NEW: Inject centralized provider first
+            IConfiguration config,
+            ILogger<GrokAgentService>? logger = null,
+            IHttpClientFactory? httpClientFactory = null,
+            IXaiModelDiscoveryService? modelDiscoveryService = null,
+            IChatBridgeService? chatBridge = null,
+            IServiceProvider? serviceProvider = null,
+            IJARVISPersonalityService? jarvisPersonality = null,
+            IMemoryCache? memoryCache = null)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
+            if (apiKeyProvider == null) throw new ArgumentNullException(nameof(apiKeyProvider));
+            
+            _apiKeyProvider = apiKeyProvider;  // ✅ Store provider reference
             _logger = logger;
             _config = config;
             _httpClientFactory = httpClientFactory;
@@ -93,35 +106,14 @@ namespace WileyWidget.WinForms.Services.AI
                 _logger?.LogInformation("[XAI] ChatBridgeService subscribed for prompt events");
             }
 
-            // Read API key candidates
-            var configApiKey = config["Grok:ApiKey"] ?? config["XAI:ApiKey"] ?? config[ApiKeyEnvironmentVariable];
-            var (envApiKey, envSource) = TryGetEnvironmentScopedApiKey();
-            var selectedKey = configApiKey;
-            var selectedSource = "config";
-
-            if (!string.IsNullOrWhiteSpace(envApiKey))
-            {
-                if (string.IsNullOrWhiteSpace(configApiKey))
-                {
-                    selectedKey = envApiKey;
-                    selectedSource = envSource;
-                }
-                else if (envApiKey.Length != configApiKey.Length)
-                {
-                    _logger?.LogWarning("XAI API key length mismatch: config={ConfigLength}, env={EnvLength}. Using env value from {EnvSource}.", configApiKey.Length, envApiKey.Length, envSource);
-                    selectedKey = envApiKey;
-                    selectedSource = envSource;
-                }
-                else
-                {
-                    _logger?.LogDebug("XAI API key lengths match between config and env ({Length}).", envApiKey.Length);
-                }
-            }
-
-            _logger?.LogInformation("[XAI] Environment variable length: {EnvLength}, Config API key length: {ConfigLength}", envApiKey?.Length ?? 0, configApiKey?.Length ?? 0);
-            _logger?.LogInformation("[XAI] Using API key from {Source}", selectedSource);
-
-            _apiKey = string.IsNullOrWhiteSpace(selectedKey) ? null : selectedKey.Trim().Trim('"');
+            // ✅ FIXED: Use injected IGrokApiKeyProvider instead of reading environment variables directly
+            _apiKey = apiKeyProvider.ApiKey;  // Get API key from centralized provider
+            var source = apiKeyProvider.GetConfigurationSource();
+            _logger?.LogInformation(
+                "[XAI] Using API key from {Source} (length: {Length}, validated: {IsValidated})",
+                source,
+                _apiKey?.Length ?? 0,
+                apiKeyProvider.IsValidated);
 
             _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4";
 

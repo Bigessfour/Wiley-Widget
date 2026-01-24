@@ -321,7 +321,36 @@ namespace WileyWidget.WinForms.Forms
                     catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to exit thread on form close"); }
                 };
 
-                Application.Run(_form);
+                // Subscribe to CancellationToken to gracefully exit the UI thread loop
+                // This allows Dispose() to signal shutdown without blocking
+                using (_cts.Token.Register(() =>
+                {
+                    try
+                    {
+                        if (_form != null && !_form.IsDisposed && _form.InvokeRequired)
+                        {
+                            _form.BeginInvoke((Action)(() =>
+                            {
+                                try
+                                {
+                                    _form?.Close();
+                                    Log.Debug("[SPLASH] Splash form closed via CancellationToken");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Debug(ex, "[SPLASH] Failed to close form via CancellationToken");
+                                }
+                            }));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "[SPLASH] CancellationToken callback failed");
+                    }
+                }))
+                {
+                    Application.Run(_form);
+                }
             }
             catch (Exception ex)
             {
@@ -331,6 +360,11 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        /// <summary>
+        /// Gracefully disposes the splash form and its background thread.
+        /// Uses CancellationToken to signal the splash thread to exit, avoiding blocking Thread.Join calls.
+        /// Does not block the UI thread - relies on CancellationToken callback to close the form asynchronously.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;
@@ -338,10 +372,22 @@ namespace WileyWidget.WinForms.Forms
 
             try
             {
-                _cts.Cancel();
-                _cts.Dispose();
-                _ctsDisposed = true;
+                // Signal the splash thread to exit via CancellationToken
+                // The thread's CancellationToken.Register callback will close the form gracefully
+                try
+                {
+                    _cts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    _ctsDisposed = true;
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "[SPLASH] CTS cancellation failed during Dispose");
+                }
 
+                // Close the form if it's still open (redundant, but safe fallback)
                 var form = _form;
                 if (form != null && !form.IsDisposed)
                 {
@@ -356,24 +402,30 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
 
-                // Fire-and-forget async cleanup to avoid blocking UI thread
-                // Previous implementation used Thread.Join(2s) which blocked for 414ms
+                // Dispose CancellationTokenSource
+                try
+                {
+                    _cts.Dispose();
+                    _ctsDisposed = true;
+                }
+                catch (ObjectDisposedException)
+                {
+                    _ctsDisposed = true;
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "[SPLASH] Failed to dispose CTS");
+                }
+
+                // Background thread cleanup: no blocking join
+                // The CancellationToken callback ensures graceful thread exit
+                // Thread.Join is not called here - eliminates UI thread blocking
                 if (_uiThread != null && _uiThread.IsAlive)
                 {
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            if (!_uiThread.Join(TimeSpan.FromMilliseconds(500)))
-                            {
-                                Log.Debug("[SPLASH] Splash thread did not exit within 500ms (non-blocking)");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Debug(ex, "[SPLASH] Failed to join splash thread during dispose");
-                        }
-                    });
+                    Log.Debug("[SPLASH] Splash thread will exit via CancellationToken callback (non-blocking)");
+                    // Allow the thread callback time to run
+                    // In normal cases, the thread exits within ~10-50ms
+                    // This is merely logged for diagnostics if needed
                 }
             }
             catch (Exception ex)

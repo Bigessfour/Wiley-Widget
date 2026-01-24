@@ -60,6 +60,11 @@ namespace WileyWidget.Data
 
             base.OnModelCreating(modelBuilder);
 
+            // Constants for seed data dates to reduce repetition
+            var fy2026Start = new DateTime(2025, 7, 1);
+            var fy2026End = new DateTime(2026, 6, 30);
+            var seedTimestamp = DateTime.UtcNow; // Use current time for CreatedAt/UpdatedAt instead of future dates
+
             // EF Core 10: Enable named default constraints for better migration control
             // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
 
@@ -240,6 +245,21 @@ namespace WileyWidget.Data
                 entity.Property(e => e.BudgetYearAmount).HasPrecision(19, 4);
                 entity.Property(e => e.IncDecLevy).HasPrecision(19, 4);
                 entity.Property(e => e.IncDecAmount).HasPrecision(19, 4);
+            });
+
+            // TownOfWileyBudget2026 configuration
+            modelBuilder.Entity<TownOfWileyBudget2026>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SourceFile).HasMaxLength(500);
+                entity.Property(e => e.FundOrDepartment).HasMaxLength(100);
+                entity.Property(e => e.AccountCode).HasMaxLength(20);
+                entity.Property(e => e.Description).HasMaxLength(200);
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.MappedDepartment).HasMaxLength(50);
+                entity.HasIndex(e => e.AccountCode);
+                entity.HasIndex(e => e.FundOrDepartment);
+                entity.HasIndex(e => e.MappedDepartment);
             });
 
             // New: BudgetInteraction relationships
@@ -428,7 +448,7 @@ namespace WileyWidget.Data
             // Note: FY 2026 runs from July 1, 2025 to June 30, 2026
             modelBuilder.Entity<BudgetEntry>().HasData(
                 // Intergovernmental Revenue
-                new BudgetEntry { Id = 1, AccountNumber = "332.1", Description = "Federal: Mineral Lease", FiscalYear = 2026, BudgetedAmount = 360m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 1, AccountNumber = "332.1", Description = "Federal: Mineral Lease", FiscalYear = 2026, BudgetedAmount = 360m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = seedTimestamp, UpdatedAt = seedTimestamp, MunicipalAccountId = null, StartPeriod = fy2026Start, EndPeriod = fy2026End },
                 new BudgetEntry { Id = 2, AccountNumber = "333.00", Description = "State: Cigarette Taxes", FiscalYear = 2026, BudgetedAmount = 240m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
                 new BudgetEntry { Id = 3, AccountNumber = "334.31", Description = "Highways Users", FiscalYear = 2026, BudgetedAmount = 18153m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
                 new BudgetEntry { Id = 4, AccountNumber = "313.00", Description = "Additional MV", FiscalYear = 2026, BudgetedAmount = 1775m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },

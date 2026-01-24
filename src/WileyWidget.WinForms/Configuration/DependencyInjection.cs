@@ -456,6 +456,23 @@ namespace WileyWidget.WinForms.Configuration
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
+            // =====================================================================
+            // XAI GROK AI AGENT CONFIGURATION
+            // =====================================================================
+
+            // Grok API Key Provider (Singleton - loads from user.secrets, env vars, config)
+            // Follows Microsoft configuration hierarchy:
+            // 1. User Secrets (XAI:ApiKey) - highest priority, secure
+            // 2. Environment Variables (XAI_API_KEY) - CI/CD friendly
+            // 3. appsettings.json (XAI:ApiKey) - lowest priority, public
+            services.AddSingleton<IGrokApiKeyProvider, GrokApiKeyProvider>();
+
+            // Grok Health Checks (registered with health check service)
+            services.AddHealthChecks()
+                .AddCheck<GrokHealthCheck>("grok-api", tags: new[] { "startup", "ai" });
+                // TODO: Add ChatHistoryHealthCheck after IConversationRepository is fully integrated
+                // .AddCheck<ChatHistoryHealthCheck>("chat-history", tags: new[] { "startup", "persistence" });
+
             // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
             // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
             // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
@@ -541,7 +558,6 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
-            services.AddTransient<JARVISChatHostForm>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
