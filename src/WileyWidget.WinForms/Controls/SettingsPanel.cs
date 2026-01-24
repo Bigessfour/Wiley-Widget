@@ -95,6 +95,7 @@ namespace WileyWidget.WinForms.Controls
 
         // Buttons
         private Syncfusion.WinForms.Controls.SfButton? _btnClose;
+        private Syncfusion.WinForms.Controls.SfButton? _btnSave;
 
         // Validation and binding
         private ErrorProvider? _errorProvider;
