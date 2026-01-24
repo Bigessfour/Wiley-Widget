@@ -37,6 +37,9 @@ except ImportError:
     print("⚠️  WARNING: pyodbc not installed. Install with: pip install pyodbc")
 
 
+# Remove unused Tuple and subprocess imports - handled above
+
+
 class DiagnosticStatus(Enum):
     """Status indicators for diagnostic checks."""
     PASS = "✅ PASS"

@@ -53,8 +53,9 @@
         flex-direction: column;
         height: 100%;
         width: 100%;
-        background: #f5f5f5;
-        color: #333333;
+        /* Theme colors from SfSkinManager - injected via parent form */
+        background: var(--sf-surface-color, #f5f5f5);
+        color: var(--sf-text-color, #333333);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
@@ -79,7 +80,7 @@
 
     .message.user {
         align-self: flex-end;
-        background: #0078d4;
+        background: var(--sf-primary-color, #0078d4);
         color: white;
         margin-left: auto;
         border-bottom-right-radius: 2px;
@@ -87,9 +88,9 @@
 
     .message.assistant {
         align-self: flex-start;
-        background: white;
-        color: #333333;
-        border: 1px solid #e0e0e0;
+        background: var(--sf-surface-color, white);
+        color: var(--sf-text-color, #333333);
+        border: 1px solid var(--sf-border-color, #e0e0e0);
         border-bottom-left-radius: 2px;
     }
 
@@ -131,8 +132,8 @@
 
     .input-area {
         padding: 20px;
-        background: #ffffff;
-        border-top: 1px solid #e0e0e0;
+        background: var(--sf-surface-color, #ffffff);
+        border-top: 1px solid var(--sf-border-color, #e0e0e0);
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -143,9 +144,9 @@
     .input-area ::deep .e-textarea,
     .input-area ::deep .e-input-group,
     .input-area ::deep .e-input {
-        background: #ffffff !important;
-        border: 1px solid #cccccc !important;
-        color: #333333 !important;
+        background: var(--sf-surface-color, #ffffff) !important;
+        border: 1px solid var(--sf-border-color, #cccccc) !important;
+        color: var(--sf-text-color, #333333) !important;
         border-radius: 4px;
         padding: 10px;
         font-family: 'Segoe UI', sans-serif;
@@ -153,13 +154,13 @@
 
     .input-area ::deep .e-textarea:focus,
     .input-area ::deep .e-input:focus {
-        border-color: #0078d4 !important;
+        border-color: var(--sf-primary-color, #0078d4) !important;
         box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
         outline: none;
     }
 
     .input-area ::deep .e-btn {
-        background: #0078d4 !important;
+        background: var(--sf-primary-color, #0078d4) !important;
         color: white !important;
         border: none !important;
         padding: 10px 24px !important;
@@ -169,22 +170,22 @@
     }
 
     .input-area ::deep .e-btn:hover:not(:disabled) {
-        background: #005a9e !important;
+        background: var(--sf-primary-hover, #005a9e) !important;
     }
 
     .input-area ::deep .e-btn:disabled {
-        background: #cccccc !important;
+        background: var(--sf-disabled-color, #cccccc) !important;
         cursor: not-allowed;
         opacity: 0.6;
     }
 
     .error-message {
-        color: #d32f2f;
+        color: var(--sf-error-color, #d32f2f);
         font-size: 0.9em;
         padding: 8px;
-        background: #ffebee;
+        background: var(--sf-error-bg, #ffebee);
         border-radius: 4px;
-        border-left: 4px solid #d32f2f;
+        border-left: 4px solid var(--sf-error-color, #d32f2f);
     }
 </style>
 

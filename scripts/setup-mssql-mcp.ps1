@@ -135,15 +135,16 @@ if ($Scope -eq 'Machine') {
 
 # Set the environment variable
 try {
+    # Sanitize connection string for logging to avoid exposing credentials
+    $sanitizedConnectionString = $connectionString
+    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Password\s*=\s*)([^;]+)', '$1********'
+    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Pwd\s*=\s*)([^;]+)', '$1********'
+    
     [System.Environment]::SetEnvironmentVariable(
         'MSSQL_CONNECTION_STRING',
         $connectionString,
         [System.EnvironmentVariableTarget]::$Scope
     )
-    # Sanitize connection string for logging to avoid exposing credentials
-    $sanitizedConnectionString = $connectionString
-    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Password\s*=\s*)([^;]+)', '$1********'
-    $sanitizedConnectionString = $sanitizedConnectionString -replace '(?i)(Pwd\s*=\s*)([^;]+)', '$1********'
     Write-Host "✅ Environment variable set: MSSQL_CONNECTION_STRING ($Scope scope)" -ForegroundColor Green
     Write-Host "   Value: $sanitizedConnectionString" -ForegroundColor Gray
 }
