@@ -26,6 +26,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -276,13 +277,20 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// </summary>
     private void InitializeControls()
     {
+        // Suspend layout during initialization to prevent flickering and layout thrashing
+        this.SuspendLayout();
+
         // Apply Syncfusion theme via SfSkinManager (single source of truth)
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         // Set up form properties
         Text = "Budget Analytics";
         Size = new Size(1400, 900);
-        MinimumSize = new Size(1000, 600);
+        // Enforce minimum panel size to prevent cramped layouts (DPI-aware)
+        MinimumSize = new Size(
+            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200.0f),
+            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(700.0f)
+        );
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
@@ -292,13 +300,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // Main split container
+        // Main split container - proportional sizing per Syncfusion demos (Option B)
+        // Ensures top controls panel ≥300px, bottom results panel ≥400px
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(300.0f)
         };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 300);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplitContainer, 300, 400, 300);
 
         // Top panel - Controls and scenario input
         InitializeTopPanel();
@@ -348,6 +358,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         // Set tab order
         SetTabOrder();
 
+        // Explicit overlay Z-order management: LoadingOverlay on bottom, NoDataOverlay on top
+        // Per Syncfusion demos: explicit SendToBack/BringToFront more robust than reliance on add order
+        _loadingOverlay?.SendToBack();
+        _noDataOverlay?.BringToFront();
+
+        // Resume layout after all controls added
+        this.ResumeLayout(false);
         this.PerformLayout();
         this.Refresh();
 
@@ -368,14 +385,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(topPanel, currentTheme);
 
-        // Button panel
+        // Button panel - now with AutoScroll to handle overflow on small screens (Option C)
         _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Top,
             Height = 50,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            AutoScroll = true  // Enable horizontal scroll if buttons overflow at <900px width
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, currentTheme);
 
@@ -383,11 +401,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         {
             Dock = DockStyle.Fill,
             ColumnCount = 7,
-            RowCount = 1
+            RowCount = 1,
+            AutoSize = false,
+            MinimumSize = new Size(800, 30)  // Prevent button table from collapsing
         };
 
         for (int i = 0; i < 7; i++)
-            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14.28f));
+            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));  // Fixed 120px per button
 
         _performAnalysisButton = new SfButton
         {
@@ -620,7 +640,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            MinimumSize = new Size(600, 300)
         };
         SfSkinManager.SetVisualStyle(_resultsPanel, currentTheme);
 
@@ -645,7 +666,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal
         };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(gridsSplit, 850);
+        // Enforce safe minimum sizes on grids split (Option B): metrics ≥350px, variances ≥200px
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(gridsSplit, 350, 200, 850);
 
         // Metrics grid
         var metricsPanel = new GradientPanelExt
@@ -653,7 +675,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Padding = new Padding(5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            MinimumSize = new Size(300, 150)
         };
         SfSkinManager.SetVisualStyle(metricsPanel, currentTheme);
 
@@ -667,7 +690,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(metricsSearchPanel, currentTheme);
         var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
-        _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9 };
+        _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9, MaxLength = 100 };
         _metricsSearchTextBoxTextChangedHandler = MetricsSearchTextBox_TextChanged;
         _metricsSearchTextBox.TextChanged += _metricsSearchTextBoxTextChangedHandler;
         metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
@@ -699,7 +722,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Padding = new Padding(5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            MinimumSize = new Size(300, 150)
         };
         SfSkinManager.SetVisualStyle(variancesPanel, currentTheme);
 
@@ -713,7 +737,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(variancesSearchPanel, currentTheme);
         var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
-        _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11 };
+        _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11, MaxLength = 100 };
         _variancesSearchTextBoxTextChangedHandler = VariancesSearchTextBox_TextChanged;
         _variancesSearchTextBox.TextChanged += _variancesSearchTextBoxTextChangedHandler;
         variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
@@ -758,7 +782,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal
         };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(insightsSplit, 150);
+        // Enforce safe minimum sizes on insights split (Option B): insights ≥150px, recommendations ≥150px
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(insightsSplit, 150, 150, 300);
 
         // Insights list
         var insightsGroup = new GradientPanelExt
@@ -806,12 +831,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _resultsPanel.Controls.Add(resultsSplit);
         bottomPanel.Controls.Add(_resultsPanel);
 
-        // Summary panel
+        // Summary panel - increased padding with label truncation (Option A: AutoEllipsis)
         var summaryPanel = new Panel
         {
             Dock = DockStyle.Bottom,
             Height = 60,
-            Padding = new Padding(10)
+            Padding = new Padding(15),  // Increased from 10px
+            MinimumSize = new Size(500, 60)
         };
 
         var summaryTable = new TableLayoutPanel
@@ -824,11 +850,59 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         for (int i = 0; i < 5; i++)
             summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
 
-        _totalBudgetedLabel = new Label { Text = "Total Budgeted: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
-        _totalActualLabel = new Label { Text = "Total Actual: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
-        _totalVarianceLabel = new Label { Text = "Total Variance: $0.00", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
-        _averageVarianceLabel = new Label { Text = "Avg Variance: 0.00%", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
-        _recommendationExplanationLabel = new Label { Text = "", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        // Create shared tooltip for truncated labels
+        var summaryTooltip = new ToolTip
+        {
+            AutoPopDelay = 5000,
+            InitialDelay = 500,
+            ReshowDelay = 100
+        };
+
+        // Labels with AutoEllipsis for clean truncation + tooltip for full text (Option A)
+        _totalBudgetedLabel = new Label
+        {
+            Text = "Total Budgeted: $0.00",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true
+        };
+        summaryTooltip.SetToolTip(_totalBudgetedLabel, "Total Budgeted Amount");
+
+        _totalActualLabel = new Label
+        {
+            Text = "Total Actual: $0.00",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true
+        };
+        summaryTooltip.SetToolTip(_totalActualLabel, "Total Actual Amount");
+
+        _totalVarianceLabel = new Label
+        {
+            Text = "Total Variance: $0.00",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true
+        };
+        summaryTooltip.SetToolTip(_totalVarianceLabel, "Total Variance");
+
+        _averageVarianceLabel = new Label
+        {
+            Text = "Avg Variance: 0.00%",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true
+        };
+        summaryTooltip.SetToolTip(_averageVarianceLabel, "Average Variance Percentage");
+
+        _recommendationExplanationLabel = new Label
+        {
+            Text = "",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true
+        };
+        summaryTooltip.SetToolTip(_recommendationExplanationLabel, "Recommendation Details");
 
         summaryTable.Controls.Add(_totalBudgetedLabel, 0, 0);
         summaryTable.Controls.Add(_totalActualLabel, 1, 0);
@@ -839,14 +913,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         summaryPanel.Controls.Add(summaryTable);
         bottomPanel.Controls.Add(summaryPanel);
 
-        // Charts panel
+        // Charts panel - increased padding and explicit MinimumSize
         _chartsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
             Height = 300,
-            Padding = new Padding(10),
+            Padding = new Padding(12),  // Increased from 10px
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            MinimumSize = new Size(600, 250)
         };
         SfSkinManager.SetVisualStyle(_chartsPanel, currentTheme);
 
@@ -855,7 +930,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical
         };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(chartsSplit, 400);
+        // Enforce safe minimum sizes on chart split (Option B): trends ≥300px, forecast ≥300px
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(chartsSplit, 300, 300, 400);
 
         // Trends chart
         var trendsPanel = new GradientPanelExt
@@ -878,6 +954,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _trendsChart.Title.Text = "Monthly Budget Trends";
         _trendsChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         _trendsChart.Legend.Visible = true;
+        _trendsChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Explicit legend positioning per Syncfusion standards
+        _trendsChart.ShowToolTips = true;  // Enable tooltips for data point inspection
 
         trendsPanel.Controls.Add(_trendsChart);
         chartsSplit.Panel1.Controls.Add(trendsPanel);
@@ -903,6 +981,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _forecastChart.Title.Text = "Reserve Forecast";
         _forecastChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
         _forecastChart.Legend.Visible = true;
+        _forecastChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Explicit legend positioning per Syncfusion standards
+        _forecastChart.ShowToolTips = true;  // Enable tooltips for data point inspection
 
         forecastPanel.Controls.Add(_forecastChart);
         chartsSplit.Panel2.Controls.Add(forecastPanel);
@@ -1152,8 +1232,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
                 break;
 
             case nameof(ViewModel.IsLoading):
-                _loadingOverlay?.Visible = ViewModel.IsLoading;
-                _noDataOverlay?.Visible = !ViewModel.IsLoading && (ViewModel.Metrics == null || ViewModel.Metrics.Count == 0);
+                if (_loadingOverlay != null && !_loadingOverlay.IsDisposed)
+                    _loadingOverlay.SafeInvoke(() => _loadingOverlay.Visible = ViewModel.IsLoading);
+
+                if (_noDataOverlay != null && !_noDataOverlay.IsDisposed)
+                    _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !ViewModel.IsLoading && (ViewModel.Metrics == null || ViewModel.Metrics.Count == 0));
                 break;
 
             case nameof(ViewModel.StatusText):
@@ -1190,6 +1273,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         if (_trendsChart == null || ViewModel == null || !ViewModel.TrendData.Any())
             return;
 
+        if (_trendsChart.InvokeRequired)
+        {
+            _trendsChart.SafeInvoke(() => UpdateTrendsChart());
+            return;
+        }
+
         try
         {
             _trendsChart.Series.Clear();
@@ -1220,6 +1309,12 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (_forecastChart == null || ViewModel == null || !ViewModel.ForecastData.Any())
             return;
+
+        if (_forecastChart.InvokeRequired)
+        {
+            _forecastChart.SafeInvoke(() => UpdateForecastChart());
+            return;
+        }
 
         try
         {

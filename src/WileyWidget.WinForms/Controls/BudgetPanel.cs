@@ -105,6 +105,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         : base(scopeFactory, logger)
     {
         InitializeComponent();
+
+        // Apply DPI-aware minimum size before layout initialization
+        MinimumSize = new Size(
+            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200.0f),
+            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(700.0f)
+        );
+
         InitializeControls();
         ApplySyncfusionTheme();
 
@@ -155,10 +162,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             return;
         }
 
+        // Batch layout initialization for better performance
+        SuspendLayout();
+
         // Set up form properties
         Text = "Budget Management";
         Size = new Size(1400, 900);
-        MinimumSize = new Size(1000, 600);
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Management & Analysis" };
@@ -168,13 +177,16 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // Main split container
+        // Main split container - proportional sizing with SafeSplitterDistanceHelper
+        // Ensures filter panel (Panel1) stays ≥120px while grid (Panel2) stays ≥50% of remaining height
         _mainSplitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical
+            Orientation = Orientation.Vertical,
+            SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(150.0f)
         };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 150);
+        // Configure proportional sizing: filter min 120px, grid min 300px, desired split at 150px
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplitContainer, 120, 300, 150);
 
         // Top panel - Summary and filters
         InitializeTopPanel();
@@ -220,6 +232,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Set tab order
         SetTabOrder();
 
+        // Explicit overlay Z-order management: LoadingOverlay on bottom, NoDataOverlay on top
+        _loadingOverlay?.SendToBack();
+        _noDataOverlay?.BringToFront();
+
+        ResumeLayout(false);
         this.PerformLayout();
         this.Refresh();
 
@@ -337,10 +354,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _summaryPanel.Controls.Add(summaryTable);
         topPanel.Controls.Add(_summaryPanel);
 
-        // Filter panel - NO manual BackColor; let SfSkinManager handle it
+        // Filter panel - Fixed height (120px) to prevent unbounded growth when grid is shrunk
+        // NO manual BackColor; let SfSkinManager handle it
         _filterPanel = new GradientPanelExt
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
+            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f),
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
@@ -377,6 +396,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _searchTextBox = new TextBoxExt
         {
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 1,
             AccessibleName = "Search Budget Entries",
             AccessibleDescription = "Search budget entries by account, description, or department"
@@ -397,6 +417,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _fiscalYearComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 2,
             AccessibleName = "Fiscal Year Filter",
             AccessibleDescription = "Filter budget entries by fiscal year",
@@ -424,6 +445,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _entityComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 8,
             AccessibleName = "Entity Filter",
             AccessibleDescription = "Filter budget entries by entity or fund",
@@ -450,6 +472,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _departmentComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 3,
             AccessibleName = "Department Filter",
             AccessibleDescription = "Filter budget entries by department",
@@ -470,6 +493,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _fundTypeComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 4,
             AccessibleName = "Fund Type Filter",
             AccessibleDescription = "Filter budget entries by fund type",
@@ -494,6 +518,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "1000",
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 5,
             AccessibleName = "Variance Threshold",
             AccessibleDescription = "Filter entries with variance greater than this amount"
@@ -505,6 +530,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Over Budget Only",
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 6,
             AccessibleName = "Show Over Budget Only",
             AccessibleDescription = "Show only entries that are over budget"
@@ -516,6 +542,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Under Budget Only",
             Dock = DockStyle.Fill,
+            Margin = new Padding(5),
             TabIndex = 7,
             AccessibleName = "Show Under Budget Only",
             AccessibleDescription = "Show only entries that are under budget"
@@ -554,11 +581,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         SfSkinManager.SetVisualStyle(bottomPanel, themeName);
 
-        // Budget grid
+        // Budget grid with AutoScroll enabled for overflow content
         _gridPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
+            AutoScroll = true,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
@@ -717,10 +745,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         bottomPanel.Controls.Add(_gridPanel);
 
         // Embedded mapping wizard container (hidden by default)
+        // Mapping wizard container - hidden by default; expands with proportional sizing (Option B)
         _mappingContainer = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 260,
+            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(260.0f),
             Visible = false
         };
 
@@ -732,12 +761,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _mappingContainer.Controls.Add(_mappingWizardPanel);
         bottomPanel.Controls.Add(_mappingContainer);
 
-        // Button panel
+        // Button panel with AutoScroll for high DPI button overflow (Option A)
         _buttonPanel = new GradientPanelExt
         {
             Dock = DockStyle.Bottom,
-            Height = 50,
+            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50.0f),
             Padding = new Padding(10),
+            AutoScroll = true,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
@@ -747,11 +777,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Dock = DockStyle.Fill,
             ColumnCount = 8,
-            RowCount = 1
+            RowCount = 1,
+            AutoSize = false,
+            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800.0f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(30.0f))
         };
 
+        // Use absolute column widths (120px) instead of percentage for consistent button sizing
         for (int i = 0; i < 8; i++)
-            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
+            buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f)));
 
         _loadBudgetsButton = new SfButton
         {
@@ -1889,7 +1922,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null) _statusLabel.Text = message;
+        this.InvokeIfRequired(() =>
+        {
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? string.Empty;
+            }
+            catch { }
+        });
     }
 
     private void ClosePanel()

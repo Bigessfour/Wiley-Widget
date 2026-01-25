@@ -25,6 +25,7 @@ using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
 #pragma warning disable CS8604 // Possible null reference argument
@@ -227,8 +228,10 @@ namespace WileyWidget.WinForms.Forms
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
 
             // [PERF] Initialize DI container first, before creating any services
-            // This ensures all dependencies are available for resolution
-            _serviceProvider = serviceProvider;
+            // This ensures all dependencies are available for resolution. If caller did not provide
+            // a service provider, prefer Program.Services when available; otherwise create a
+            // minimal fallback provider so first-run UX does not crash.
+            _serviceProvider = serviceProvider ?? WileyWidget.WinForms.Program.ServicesOrNull ?? WileyWidget.WinForms.Program.CreateFallbackServiceProvider();
             _configuration = configuration;
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
@@ -242,10 +245,25 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Apply global theme before any child controls are created
             // Theme is inherited from Program.InitializeTheme() via SfSkinManager.ApplicationVisualTheme
             // This call ensures cascade to form and early controls
-            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            try
+            {
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to apply theme in MainForm constructor");
+                // Continue without theme - form will use default styling
+            }
 
             // [PERF] Subscribe to theme switching
-            _themeService.ThemeChanged += OnThemeChanged;
+            try
+            {
+                _themeService.ThemeChanged += OnThemeChanged;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to subscribe to theme changes in MainForm constructor");
+            }
 
             // [PERF] Optimize painting for heavy Syncfusion UI (non-test-harness only)
             if (!_uiConfig.IsUiTestHarness)
@@ -303,6 +321,19 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         protected override void OnLoad(EventArgs e)
         {
+            if (IsDisposed)
+            {
+                _logger?.LogWarning("OnLoad called on disposed form - ignoring");
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                _logger?.LogWarning("OnLoad called before handle creation - deferring");
+                base.OnLoad(e);
+                return;
+            }
+
             base.OnLoad(e);
 
             // [PERF] Track lifecycle event
@@ -354,6 +385,19 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
+            if (IsDisposed)
+            {
+                _logger?.LogWarning("OnShown called on disposed form - ignoring");
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                _logger?.LogWarning("OnShown called before handle creation - deferring");
+                base.OnShown(e);
+                return;
+            }
+
             if (DesignMode)
             {
                 base.OnShown(e);
@@ -368,8 +412,28 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // [PERF] Create cancellation token for 30-second initialization timeout
-            _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogWarning("Form disposed during initialization token creation");
+                return;
+            }
             var cancellationToken = _initializationCts.Token;
+
+            // Initialize async diagnostics logger early so we capture all OnShown lifecycle events
+            // (moved earlier to ensure docking and layout restore logs are recorded)
+            try
+            {
+                InitializeAsyncDiagnosticsLogger();
+            }
+            catch (Exception ex)
+            {
+                // Ensure diagnostics logger failures do not block startup
+                _logger?.LogWarning(ex, "InitializeAsyncDiagnosticsLogger failed during OnShown startup - continuing");
+            }
 
             // [PERF] Phase 1: Initialize Syncfusion docking
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
@@ -401,8 +465,8 @@ namespace WileyWidget.WinForms.Forms
                     {
                         var layoutPath = GetDockingLayoutPath();
                         _ = LoadAndApplyDockingLayout(layoutPath, cancellationToken);
-                        _dockingManager?.EnsureZOrder();
                         ApplyThemeToDockingPanels();
+                        // Z-order adjustment is now handled by debounced handler in DockStateChanged
                     }
                 }
                 catch (Exception ex)
@@ -421,8 +485,7 @@ namespace WileyWidget.WinForms.Forms
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
             timelineService?.RecordFormLifecycleEvent("MainForm", "Shown");
 
-            // [PERF] Initialize async diagnostics logger
-            InitializeAsyncDiagnosticsLogger();
+            // Async diagnostics logger already initialized earlier in OnShown
 
             // [PERF] Subscribe to activation event (unsubscribes after first activation)
             Activated += MainForm_Activated;
@@ -521,15 +584,15 @@ namespace WileyWidget.WinForms.Forms
                 (_logger as IDisposable)?.Dispose();
 
                 // [PERF] Cancel pending initialization (safe if already disposed)
-                try 
-                { 
+                try
+                {
                     if (_initializationCts != null && !_initializationCts.IsCancellationRequested)
                     {
-                        _initializationCts.Cancel(); 
+                        _initializationCts.Cancel();
                     }
-                } 
-                catch (ObjectDisposedException) 
-                { 
+                }
+                catch (ObjectDisposedException)
+                {
                     // Token source already disposed - this is fine during cleanup
                 }
                 catch { }
@@ -607,6 +670,11 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void MainForm_Activated(object? sender, EventArgs e)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             _asyncLogger?.Debug("MainForm activated - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
@@ -619,17 +687,24 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Helper: First-chance exception handler with re-entry guard.
-        /// Logs theme and docking exceptions at Debug level.
+        /// Logs all exceptions with full diagnostic information including stack trace.
+        /// Special handling for theme and docking exceptions at Debug level.
         /// </summary>
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
         {
             var ex = e.Exception;
             if (ex == null) return;
 
-            if (ex is NullReferenceException && ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
+            // Filter common Syncfusion noise patterns
+            if (ex is NullReferenceException)
             {
-                _logger?.LogDebug("Ignored theme NullReferenceException during initialization");
-                return;
+                if (ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) ||
+                    ex.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger?.LogDebug("Ignored Syncfusion NullReferenceException during initialization: {Message}", ex.Message);
+                    return;
+                }
             }
 
             // [PERF] Prevent recursive re-entry
@@ -641,17 +716,28 @@ namespace WileyWidget.WinForms.Forms
                 var logger = _logger;
                 try
                 {
+                    // Enhanced logging with stack trace for better debugging
                     if (ex.Source?.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase) == true ||
                         ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
                     {
-                        logger?.LogDebug(ex, "First-chance theme exception detected");
+                        logger?.LogDebug(ex, "First-chance theme exception detected - Stack Trace: {StackTrace}", ex.StackTrace);
                     }
 
                     if (ex.Source?.Contains("DockingManager", StringComparison.OrdinalIgnoreCase) == true ||
                         ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase))
                     {
-                        logger?.LogDebug(ex, "First-chance docking exception detected");
+                        logger?.LogDebug(ex, "First-chance docking exception detected - Stack Trace: {StackTrace}", ex.StackTrace);
                     }
+
+                    // Log all other first-chance exceptions for diagnostics
+                    if (ex.InnerException != null)
+                    {
+                        logger?.LogTrace("First-chance exception has inner exception - Type: {InnerExceptionType}, Message: {InnerMessage}, Stack: {InnerStack}",
+                            ex.InnerException.GetType().Name, ex.InnerException.Message, ex.InnerException.StackTrace);
+                    }
+
+                    // Log error for non-theme/docking exceptions
+                    logger?.LogError(ex, "First-chance exception detected");
                 }
                 catch { }
             }

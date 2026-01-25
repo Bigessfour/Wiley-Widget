@@ -134,6 +134,7 @@ public static class DashboardFactory
 
     /// <summary>
     /// Create a dashboard card with title and description.
+    /// Includes full accessibility support for screen readers (WCAG 2.1 Level A).
     /// </summary>
     private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
     {
@@ -152,7 +153,9 @@ public static class DashboardFactory
         // Accessibility: give controls deterministic names for UI automation
         string safeKey = string.Concat(title.Where(c => !char.IsWhiteSpace(c)));
         panel.Name = $"DashboardCard_{safeKey}";
-        panel.AccessibleName = panel.Name;
+        panel.AccessibleName = $"Dashboard Card: {title}";  // Descriptive title
+        panel.AccessibleRole = AccessibleRole.Grouping;  // Card is a container/group
+        panel.AccessibleDescription = $"Click to navigate to {title} panel. {description}";  // Full description
 
         var titleLabel = new Label
         {
@@ -160,7 +163,9 @@ public static class DashboardFactory
             Dock = DockStyle.Top,
             Height = 28,
             Name = panel.Name + "_Title",
-            AccessibleName = panel.Name + "_Title"
+            AccessibleName = $"{title} Card Title",  // Descriptive title
+            AccessibleRole = AccessibleRole.StaticText,  // Static text role
+            Font = new Font(SegoeUiFontName, 12F, FontStyle.Bold)
         };
 
         var descriptionLabel = new Label
@@ -168,7 +173,9 @@ public static class DashboardFactory
             Text = description,
             Dock = DockStyle.Fill,
             Name = panel.Name + "_Desc",
-            AccessibleName = panel.Name + "_Desc"
+            AccessibleName = $"{title} Card Description",  // Descriptive label
+            AccessibleRole = AccessibleRole.StaticText,  // Static text role
+            AccessibleDescription = description  // Full text
         };
 
         panel.Controls.Add(descriptionLabel);

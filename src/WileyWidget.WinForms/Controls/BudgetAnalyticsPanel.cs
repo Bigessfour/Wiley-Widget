@@ -518,7 +518,7 @@ namespace WileyWidget.WinForms.Controls
             _trendChart.PrimaryYAxis.Title = "Amount ($)";
             _trendChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
             _trendChart.PrimaryYAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-            
+
             // Configure Y-axis to display currency formatting
             try
             {
@@ -530,7 +530,7 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { /* Gracefully handle if property doesn't exist */ }
-            
+
             _trendChart.TabIndex = 10;
         }
 
@@ -549,7 +549,7 @@ namespace WileyWidget.WinForms.Controls
             _departmentChart.PrimaryYAxis.Title = "Variance %";
             _departmentChart.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
             _departmentChart.PrimaryYAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-            
+
             // Configure Y-axis to display percentage formatting
             try
             {
@@ -561,7 +561,7 @@ namespace WileyWidget.WinForms.Controls
                 }
             }
             catch { /* Gracefully handle if property doesn't exist */ }
-            
+
             _departmentChart.TabIndex = 11;
         }
 
@@ -877,7 +877,7 @@ namespace WileyWidget.WinForms.Controls
 
                 if (_comboDateRange?.SelectedItem is string range)
                     ViewModel.SelectedDateRange = range;
-                
+
                 // Reload data with applied filters
                 if (ViewModel.LoadDataCommand.CanExecute(null))
                 {
@@ -908,10 +908,15 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private void UpdateStatus(string message)
         {
-            if (_summaryLabel != null && !IsDisposed)
+            this.InvokeIfRequired(() =>
             {
-                _summaryLabel.Text = message ?? "Ready";
-            }
+                try
+                {
+                    if (_summaryLabel != null && !_summaryLabel.IsDisposed)
+                        _summaryLabel.Text = message ?? "Ready";
+                }
+                catch { }
+            });
         }
 
         private async Task RefreshDataAsync(CancellationToken cancellationToken = default)

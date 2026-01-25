@@ -25,6 +25,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -801,6 +802,12 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         if (_chartControl == null || ViewModel == null) return;
 
+        if (_chartControl.InvokeRequired)
+        {
+            _chartControl.SafeInvoke(() => UpdateChart());
+            return;
+        }
+
         try
         {
             _chartControl.Series.Clear();
@@ -853,7 +860,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         if (_lblChartSummary == null || ViewModel == null) return;
         try
         {
-            _lblChartSummary.Text = $"Total: {ViewModel.TotalEvents:N0}  Peak: {ViewModel.PeakEvents:N0}  Last updated: {ViewModel.LastChartUpdated:yyyy-MM-dd HH:mm}";
+            _lblChartSummary.SafeInvoke(() =>
+            {
+                _lblChartSummary.Text = $"Total: {ViewModel.TotalEvents:N0}  Peak: {ViewModel.PeakEvents:N0}  Last updated: {ViewModel.LastChartUpdated:yyyy-MM-dd HH:mm}";
+            });
         }
         catch { }
     }
@@ -864,7 +874,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         try
         {
-            _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Entries.Any();
+            if (!_noDataOverlay.IsDisposed)
+            {
+                _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Entries.Any());
+            }
         }
         catch
         {

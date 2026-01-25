@@ -57,6 +57,17 @@ namespace WileyWidget.WinForms.Configuration
         public static IServiceProvider ConfigureServices()
         {
             var services = CreateServiceCollection();
+
+            // Ensure core services (moved into WileyWidget.Services) are available when using the standalone ConfigureServices helper
+            var defaultConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["UI:IsUiTestHarness"] = "true"
+                })
+                .Build();
+
+            services.AddWileyWidgetCoreServices(defaultConfig);
+
             return services.BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateScopes = true,
@@ -92,6 +103,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp =>
                 new Serilog.Extensions.Logging.SerilogLoggerFactory(Serilog.Log.Logger)
                     .CreateLogger(string.Empty));
+
+            // Also register Serilog's native logger for components that depend on Serilog.ILogger directly
+            services.AddSingleton<Serilog.ILogger>(_ => Serilog.Log.Logger);
 
             // Microsoft Logging Framework (provides ILogger<T> for dependency injection)
             services.AddLogging(loggingBuilder =>
@@ -305,7 +319,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddHostedService<TelemetryStartupService>();
 
             // Application event bus for cross-scope in-process notifications
-            services.AddSingleton<IAppEventBus, AppEventBus>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
             services.TryAddSingleton<IStartupTimelineService, StartupTimelineService>();
@@ -469,9 +483,8 @@ namespace WileyWidget.WinForms.Configuration
 
             // Grok Health Checks (registered with health check service)
             services.AddHealthChecks()
-                .AddCheck<GrokHealthCheck>("grok-api", tags: new[] { "startup", "ai" });
-                // TODO: Add ChatHistoryHealthCheck after IConversationRepository is fully integrated
-                // .AddCheck<ChatHistoryHealthCheck>("chat-history", tags: new[] { "startup", "persistence" });
+                .AddCheck<GrokHealthCheck>("grok-api", tags: new[] { "startup", "ai" })
+                .AddCheck<ChatHistoryHealthCheck>("chat-history", tags: new[] { "startup", "persistence" });
 
             // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
             // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
@@ -501,7 +514,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<RealtimeDashboardService>();
 
             // User Preferences Service (Singleton - manages user settings persistence)
-            services.AddSingleton<UserPreferencesService>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // Role-Based Access Control (Singleton - manages permissions and roles)
             services.AddSingleton<RoleBasedAccessControl>();
@@ -527,7 +540,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IWindowStateService, WindowStateService>();
 
             // File Import Service (Transient - async file import with JSON/XML parsing support)
-            services.AddTransient<IFileImportService, FileImportService>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)
@@ -558,6 +571,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
+            // Example panels' ViewModels - sometimes omitted during refactor
+            services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
+            // JARVIS Chat ViewModel for docked chat control
+            services.AddScoped<WileyWidget.WinForms.Controls.JARVISChatViewModel>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)

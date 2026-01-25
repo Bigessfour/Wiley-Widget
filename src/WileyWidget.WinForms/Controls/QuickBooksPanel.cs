@@ -31,6 +31,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -1708,11 +1709,20 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <param name="isError">True if this is an error message.</param>
     private void UpdateStatus(string message, bool isError = false)
     {
-        if (_statusLabel != null)
+        // Marshal status updates to UI thread if required (non-blocking)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message;
-            _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                {
+                    _statusLabel.Text = message ?? string.Empty;
+                    _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
+                    try { _statusLabel.Invalidate(); } catch { }
+                }
+            }
+            catch { }
+        });
     }
 
     /// <summary>
@@ -2023,7 +2033,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (_syncHistoryGrid?.View != null)
         {
-            _syncHistoryGrid.View.Refresh();
+            _syncHistoryGrid.SafeInvoke(() => _syncHistoryGrid.View.Refresh());
+        }
+
+        // Update NoDataOverlay visibility based on data presence
+        if (_noDataOverlay != null && ViewModel != null)
+        {
+            var hasData = ViewModel.FilteredSyncHistory.Count > 0;
+            if (!_noDataOverlay.IsDisposed)
+                _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading);
         }
     }
 
@@ -2032,7 +2050,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (_noDataOverlay == null || ViewModel == null) return;
 
         var hasData = ViewModel.FilteredSyncHistory.Count > 0;
-        _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading;
+        if (!_noDataOverlay.IsDisposed)
+            _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading);
     }
 
     #endregion
@@ -2795,7 +2814,12 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
         };
 
-        return saveDialog.ShowDialog() == DialogResult.OK ? saveDialog.FileName : null;
+        if (saveDialog.ShowDialog() == DialogResult.OK)
+        {
+            return saveDialog.FileName;
+        }
+
+        return null;
     }
 
     /// <summary>

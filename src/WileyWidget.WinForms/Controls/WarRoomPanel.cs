@@ -124,7 +124,6 @@ namespace WileyWidget.WinForms.Controls
                 {
                     BlinkStyle = ErrorBlinkStyle.NeverBlink,
                     BlinkRate = 0,
-                    Icon = null!,
                     ContainerControl = this
                 };
 

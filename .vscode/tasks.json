@@ -237,11 +237,20 @@
 		},
 		{
 			"label": "test",
-			"command": "dotnet test WileyWidget.sln",
+			"dependsOn": [
+				"build: fast"
+			],
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--no-build",
+				"WileyWidget.sln"
+			],
 			"type": "shell",
 			"group": "test",
 			"problemMatcher": "$msCompile"
 		},
+
 		{
 			"label": "🛑 Kill All Dotnet Processes",
 			"command": "powershell",
@@ -468,9 +477,13 @@
 		},
 		{
 			"label": "🧪 Run UI Tests (Isolated)",
+			"dependsOn": [
+				"build: fast"
+			],
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"${workspaceFolder}/tests",
 				"-k",
 				"UI"
@@ -487,9 +500,13 @@
 		},
 		{
 			"label": "🔧 Run Tests with Mock Services",
+			"dependsOn": [
+				"build: fast"
+			],
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"${workspaceFolder}/tests",
 				"-k",
 				"Mock"
@@ -544,10 +561,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -558,10 +579,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -572,10 +597,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -584,12 +613,17 @@
 			],
 			"group": "test"
 		},
+
 		{
 			"label": "test: mcp-tests",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj"
 			],
 			"isBackground": false,
@@ -704,6 +738,23 @@
 			},
 			"group": "test",
 			"problemMatcher": []
+		},
+		{
+			"label": "maintenance: Kill Test Processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"scripts/maintenance/kill-test-processes.ps1"
+			],
+			"presentation": {
+				"panel": "new",
+				"reveal": "always",
+				"echo": true
+			},
+			"problemMatcher": [],
+			"group": "none"
 		}
 	]
 }

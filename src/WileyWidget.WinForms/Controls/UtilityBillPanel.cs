@@ -81,6 +81,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private EventHandler? _panelHeaderCloseHandler;
 
     private ErrorProvider? _errorProvider;
+    private System.Threading.SynchronizationContext? _uiSyncContext;
 
     #endregion
 
@@ -103,6 +104,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         try
         {
+            // Capture the current SynchronizationContext (should be the WinForms UI context)
+            _uiSyncContext = System.Threading.SynchronizationContext.Current;
+
             InitializeControls();
             BindViewModel();
 
@@ -764,11 +768,55 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
         ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
-        // Subscribe to collection changes
-        _billsCollectionChangedHandler = (s, e) => UpdateBillsGrid();
+        // Subscribe to collection changes. Post updates to the captured UI SynchronizationContext
+        // to avoid creating control handles from background threads (which can throw).
+        _billsCollectionChangedHandler = (s, e) =>
+        {
+            if (_uiSyncContext != null)
+            {
+                try
+                {
+                    _uiSyncContext.Post(_ =>
+                    {
+                        try { UpdateBillsGrid(); }
+                        catch (Exception ex) { Logger.LogError(ex, "Error updating bills grid from UI sync context"); }
+                    }, null);
+                }
+                catch (Exception)
+                {
+                    // Fallback to control-based invoke if posting fails
+                    this.InvokeIfRequired(UpdateBillsGrid);
+                }
+            }
+            else
+            {
+                this.InvokeIfRequired(UpdateBillsGrid);
+            }
+        };
         ViewModel.FilteredBills.CollectionChanged += _billsCollectionChangedHandler;
 
-        _customersCollectionChangedHandler = (s, e) => UpdateCustomersGrid();
+        _customersCollectionChangedHandler = (s, e) =>
+        {
+            if (_uiSyncContext != null)
+            {
+                try
+                {
+                    _uiSyncContext.Post(_ =>
+                    {
+                        try { UpdateCustomersGrid(); }
+                        catch (Exception ex) { Logger.LogError(ex, "Error updating customers grid from UI sync context"); }
+                    }, null);
+                }
+                catch (Exception)
+                {
+                    this.InvokeIfRequired(UpdateCustomersGrid);
+                }
+            }
+            else
+            {
+                this.InvokeIfRequired(UpdateCustomersGrid);
+            }
+        };
         ViewModel.Customers.CollectionChanged += _customersCollectionChangedHandler;
 
         // Initial data binding
@@ -956,27 +1004,51 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Ensure all UI updates happen on the UI thread to avoid cross-thread exceptions.
+        void PostToUi(System.Action a)
+        {
+            if (_uiSyncContext != null)
+            {
+                try { _uiSyncContext.Post(_ => { try { a(); } catch { } }, null); }
+                catch
+                {
+                    // fallback to control-based invoke if posting fails
+                    try { this.InvokeIfRequired(a); } catch { }
+                }
+            }
+            else
+            {
+                try { this.InvokeIfRequired(a); } catch { }
+            }
+        }
+
         if (e.PropertyName == nameof(ViewModel.IsLoading))
         {
-            if (_loadingOverlay != null)
-                _loadingOverlay.Visible = ViewModel.IsLoading;
-            UpdateNoDataOverlay();
+            PostToUi(() =>
+            {
+                if (_loadingOverlay != null)
+                    _loadingOverlay.Visible = ViewModel.IsLoading;
+                UpdateNoDataOverlay();
+            });
         }
         else if (e.PropertyName == nameof(ViewModel.StatusText))
         {
-            if (_statusLabel != null)
-                _statusLabel.Text = ViewModel.StatusText;
+            PostToUi(() =>
+            {
+                if (_statusLabel != null)
+                    _statusLabel.Text = ViewModel.StatusText;
+            });
         }
         else if (e.PropertyName == nameof(ViewModel.SelectedBill) || e.PropertyName == nameof(ViewModel.SelectedCustomer))
         {
-            UpdateButtonStates();
+            PostToUi(UpdateButtonStates);
         }
         else if (e.PropertyName == nameof(ViewModel.TotalOutstanding) ||
                  e.PropertyName == nameof(ViewModel.OverdueCount) ||
                  e.PropertyName == nameof(ViewModel.TotalRevenue) ||
                  e.PropertyName == nameof(ViewModel.BillsThisMonth))
         {
-            UpdateSummaryLabels();
+            PostToUi(UpdateSummaryLabels);
         }
     }
 
@@ -1146,9 +1218,15 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        if (_uiSyncContext != null)
         {
-            _statusLabel.Text = message;
+            try { _uiSyncContext.Post(_ => { try { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; } catch { } }, null); }
+            catch { this.InvokeIfRequired(() => { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; }); }
+        }
+        else
+        {
+            try { this.InvokeIfRequired(() => { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; }); }
+            catch { }
         }
     }
 

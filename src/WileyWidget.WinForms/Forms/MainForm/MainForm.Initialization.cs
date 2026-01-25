@@ -14,7 +14,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
@@ -42,6 +44,9 @@ public partial class MainForm
         // [PERF] Theme and panel initialization from OnShown - deferred after docking is ready
         try
         {
+            // Check for cancellation early
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Align UI with persisted theme from service
             if (_themeService != null)
             {
@@ -74,7 +79,9 @@ public partial class MainForm
                 {
                     // Priority panels: Dashboard only to reduce clutter
                     _logger?.LogInformation("[PANEL] Showing Dashboard");
-                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
+                    // Ensure UI handle is available; small delay helps controls create handles on slower machines
+                    try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
+                    this.InvokeIfRequired(() => _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true));
                     _logger?.LogInformation("Priority panels shown successfully");
                 }
                 catch (NullReferenceException nrex)
@@ -93,6 +100,8 @@ public partial class MainForm
                 _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
                 foreach (Control control in this.Controls)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     if (_dockingManager.GetEnableDocking(control))
                     {
                         await NotifyPanelVisibilityChangedAsync(control);
@@ -101,6 +110,11 @@ public partial class MainForm
             }
 
             _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("InitializeAsync canceled");
+            _asyncLogger?.Information("InitializeAsync canceled");
         }
         catch (Exception ex)
         {
@@ -298,8 +312,14 @@ public partial class MainForm
             try
             {
                 _logger?.LogDebug("OnShown: Running late image validation pass");
-                LateValidateMenuBarImages();
-                LateValidateRibbonImages();
+                if (_ribbon != null)
+                {
+                    _ribbon.ValidateAndConvertImages(_logger);
+                }
+                if (_menuStrip != null)
+                {
+                    _menuStrip.ValidateAndConvertImages(_logger);
+                }
                 _logger?.LogDebug("OnShown: Late image validation completed");
             }
             catch (Exception validationEx)
@@ -406,8 +426,27 @@ public partial class MainForm
         try
         {
             _mruList.Clear();
-            _mruList.AddRange(_windowStateService.LoadMru());
-            _logger?.LogDebug("MRU list loaded: {Count} items", _mruList.Count);
+            var loadedMru = _windowStateService.LoadMru();
+            
+            // Validate each path before adding to MRU list
+            foreach (var file in loadedMru)
+            {
+                if (string.IsNullOrWhiteSpace(file))
+                    continue;
+
+                // Only add files that still exist
+                if (System.IO.File.Exists(file))
+                {
+                    _mruList.Add(file);
+                }
+                else
+                {
+                    _logger?.LogDebug("MRU file no longer exists, skipping: {File}", file);
+                }
+            }
+            
+            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", 
+                _mruList.Count, loadedMru.Count(), loadedMru.Count() - _mruList.Count);
         }
         catch (Exception ex)
         {
@@ -511,19 +550,70 @@ public partial class MainForm
                     continue;
                 }
 
-                var ext = Path.GetExtension(file).ToLowerInvariant();
+                string ext;
+                try
+                {
+                    ext = Path.GetExtension(file)?.ToLowerInvariant() ?? string.Empty;
+                }
+                catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
+                {
+                    _logger?.LogWarning(ex, "Skipping dropped file due to malformed path: {File}", file);
+                    try { ShowErrorDialog("Invalid File Path", $"The file path '{file}' is invalid and will be skipped."); } catch { }
+                    continue;
+                }
+
                 _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
                 _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
 
-                // Add to MRU
-                _windowStateService.AddToMru(file);
-                _mruList.Clear();
-                _mruList.AddRange(_windowStateService.LoadMru());
+                // Add to MRU with error handling for storage directory issues
+                try
+                {
+                    _windowStateService.AddToMru(file);
+                    _mruList.Clear();
+                    _mruList.AddRange(_windowStateService.LoadMru());
+                }
+                catch (DirectoryNotFoundException dnfEx)
+                {
+                    _logger?.LogWarning(dnfEx, "MRU storage directory not found - creating it");
+                    // Storage service should handle directory creation, but log for diagnostics
+                }
+                catch (IOException ioEx)
+                {
+                    _logger?.LogWarning(ioEx, "Failed to add file to MRU (non-fatal): {File}", file);
+                    // Continue with import even if MRU update fails
+                }
+                catch (Exception mruEx)
+                {
+                    _logger?.LogWarning(mruEx, "Unexpected error updating MRU (non-fatal): {File}", file);
+                    // Continue with import even if MRU update fails
+                }
+
+                // Validate _fileImportService before attempting import
+                if (_fileImportService == null)
+                {
+                    _logger?.LogError("FileImportService is null - DI may have failed");
+                    ShowErrorDialog("Service Error", "File import service is not available. Please restart the application.");
+                    continue;
+                }
 
                 if (ext == ".csv" || ext == ".xlsx" || ext == ".xls" || ext == ".json" || ext == ".xml")
                 {
-                    var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
-                    HandleImportResult(file, result);
+                    try
+                    {
+                        var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
+                        HandleImportResult(file, result);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogInformation("File import canceled for {File}", Path.GetFileName(file));
+                        ShowErrorDialog("Import Canceled", $"Import was canceled for '{Path.GetFileName(file)}'");
+                        break; // Exit loop on cancellation
+                    }
+                    catch (IOException ioEx)
+                    {
+                        _logger?.LogError(ioEx, "IO error importing file: {File}", file);
+                        ShowErrorDialog("Import Error", $"Failed to read file:\n{Path.GetFileName(file)}\n\nError: {ioEx.Message}");
+                    }
                 }
                 else
                 {
@@ -541,15 +631,29 @@ public partial class MainForm
     /// <summary>
     /// Handles import result from file import service.
     /// Displays success or error message to user.
+    /// Validates result.Data is not null before processing.
     /// </summary>
     private void HandleImportResult<T>(string file, Result<T> result) where T : class
     {
+        if (result == null)
+        {
+            _logger?.LogWarning("HandleImportResult called with null result for {File}", Path.GetFileName(file));
+            ShowErrorDialog("Import Error", "Import result was null");
+            return;
+        }
+
         if (result.IsSuccess && result.Data != null)
         {
             var count = (result.Data as System.Collections.IDictionary)?.Count ?? 0;
             _logger?.LogInformation("Successfully imported {File}: {Count} properties", Path.GetFileName(file), count);
             try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
                 "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger); } catch { }
+        }
+        else if (result.IsSuccess && result.Data == null)
+        {
+            // Edge case: IsSuccess but Data is null
+            _logger?.LogWarning("Import reported success but returned null data for {File}", Path.GetFileName(file));
+            ShowErrorDialog("Import Warning", $"File imported but no data was returned:\n{Path.GetFileName(file)}");
         }
         else
         {

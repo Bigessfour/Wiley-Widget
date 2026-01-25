@@ -271,17 +271,28 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     // Get JARVIS chat control from the right panel
                     var rightPanel = mainForm.GetRightDockPanel();
-                    if (rightPanel?.Controls[0] is TabControl tabControl)
+
+                    // Guard against empty control collections to avoid ArgumentOutOfRangeException
+                    if (rightPanel != null && rightPanel.Controls != null && rightPanel.Controls.Count > 0 && rightPanel.Controls[0] is TabControl tabControl)
                     {
                         var jarvisTab = tabControl.TabPages.Cast<TabPage>()
                             .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
-                        if (jarvisTab?.Controls[0] is WileyWidget.WinForms.Controls.JARVISChatUserControl jarvisControl)
+
+                        if (jarvisTab != null && jarvisTab.Controls != null && jarvisTab.Controls.Count > 0 && jarvisTab.Controls[0] is WileyWidget.WinForms.Controls.JARVISChatUserControl jarvisControl)
                         {
                             // Set initial prompt and switch tab
                             jarvisControl.InitialPrompt = insightContext.ToString();
                             mainForm.SwitchRightPanel(WileyWidget.WinForms.Forms.RightDockPanelFactory.RightPanelMode.JarvisChat);
                             _logger.LogInformation("Switched to JARVIS Chat tab with insight context ({ContextLength} chars)", insightContext.Length);
                         }
+                        else
+                        {
+                            _logger.LogDebug("JARVIS tab or control not found in right panel or control collection empty");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Right panel or its controls are not ready for JARVIS chat switch");
                     }
                 }
                 else

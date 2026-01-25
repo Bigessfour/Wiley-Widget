@@ -11,7 +11,7 @@
     "\\.txt$",
     "\\.yml$",
     "\\.yaml$",
-    "\\.json$",
+    "ai-fetchable-manifest\\.json$",
     "^tests/",
     "^src/legacy/",
     "packages\\.lock\\.json$",
@@ -25,7 +25,7 @@
     "^wwwroot/",
     "^schemas/"
   ],
-  "focus_mode": true,
+  "focus_mode": false,
   "include_only_extensions": [".cs", ".csproj", ".sln", ".xaml"],
   "max_files": 700,
   "emit_full_tree": false,

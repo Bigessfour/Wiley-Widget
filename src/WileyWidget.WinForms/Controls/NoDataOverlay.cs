@@ -185,10 +185,23 @@ namespace WileyWidget.WinForms.Controls
                 };
                 _actionButton.Click += _actionButtonClickHandler;
 
-                // Add to container for proper layout
-                var container = Controls[0] as TableLayoutPanel; // Assuming table is first control
+                // Add to container for proper layout (guard against missing controls)
+                TableLayoutPanel? container = null;
+                if (Controls != null && Controls.Count > 0 && Controls[0] is TableLayoutPanel tbl)
+                {
+                    container = tbl;
+                }
+
                 var innerContainer = container?.GetControlFromPosition(1, 1) as FlowLayoutPanel;
-                innerContainer?.Controls.Add(_actionButton);
+                if (innerContainer != null)
+                {
+                    innerContainer.Controls.Add(_actionButton);
+                }
+                else
+                {
+                    // Fallback: add directly to this overlay so the button is still available
+                    Controls.Add(_actionButton);
+                }
             }
 
             _actionButton.Text = buttonText;

@@ -135,17 +135,17 @@ namespace WileyWidget.WinForms.Services.AI
         }
     }
 
-    // TODO: Implement ChatHistoryHealthCheck after creating IConversationRepository
-    // This class will verify database connectivity and schema readiness for conversation storage.
-    // When ready, uncomment below and create IConversationRepository interface and implementation.
-    /*
+    /// <summary>
+    /// Health check for Chat History persistence readiness.
+    /// Verifies database connectivity and schema readiness for conversation storage.
+    /// </summary>
     public sealed class ChatHistoryHealthCheck : IHealthCheck
     {
-        private readonly IConversationRepository? _conversationRepository;
+        private readonly WileyWidget.Services.Abstractions.IConversationRepository? _conversationRepository;
         private readonly ILogger<ChatHistoryHealthCheck>? _logger;
 
         public ChatHistoryHealthCheck(
-            IConversationRepository? conversationRepository = null,
+            WileyWidget.Services.Abstractions.IConversationRepository? conversationRepository = null,
             ILogger<ChatHistoryHealthCheck>? logger = null)
         {
             _conversationRepository = conversationRepository;
@@ -161,44 +161,48 @@ namespace WileyWidget.WinForms.Services.AI
                 _logger?.LogWarning("[HealthCheck] IConversationRepository not registered - chat history persistence disabled");
                 return HealthCheckResult.Degraded(
                     description: "Chat history persistence not configured",
-                    data: new { status = "DEGRADED", message = "IConversationRepository not registered" }.ToString());
+                    data: new Dictionary<string, object>
+                    {
+                        ["status"] = "DEGRADED",
+                        ["message"] = "IConversationRepository not registered"
+                    });
             }
 
             try
             {
-                var conversations = await _conversationRepository.GetConversationsAsync(0, 1, cancellationToken).ConfigureAwait(false);
+                // Simple connectivity ping: Get count of conversations (fails if schema/DB missing)
+                _ = await _conversationRepository.GetConversationsAsync(0, 1, cancellationToken).ConfigureAwait(false);
 
                 _logger?.LogInformation("[HealthCheck] Chat history persistence PASSED - Database accessible");
                 return HealthCheckResult.Healthy(
                     description: "Chat history persistence is ready",
-                    data: new
+                    data: new Dictionary<string, object>
                     {
-                        status = "HEALTHY",
-                        message = "Database accessible, conversation history can be persisted"
-                    }.ToString());
+                        ["status"] = "HEALTHY",
+                        ["message"] = "Database accessible, conversation history can be persisted"
+                    });
             }
             catch (OperationCanceledException)
             {
                 _logger?.LogWarning("[HealthCheck] Chat history persistence check timed out");
                 return HealthCheckResult.Degraded(
                     description: "Chat history persistence check timed out",
-                    data: new { status = "TIMEOUT" }.ToString());
+                    data: new Dictionary<string, object> { ["status"] = "TIMEOUT" });
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[HealthCheck] Chat history persistence check failed");
                 return HealthCheckResult.Degraded(
                     description: "Chat history persistence unavailable",
-                    data: new
+                    data: new Dictionary<string, object>
                     {
-                        status = "DEGRADED",
-                        error = ex.GetType().Name,
-                        message = ex.Message,
-                        recommendation = "Chat will continue without persistence. Check database connectivity."
-                    }.ToString(),
+                        ["status"] = "DEGRADED",
+                        ["error"] = ex.GetType().Name,
+                        ["message"] = ex.Message,
+                        ["recommendation"] = "Chat will continue without persistence. Check database connectivity."
+                    },
                     exception: ex);
             }
         }
     }
-    */
 }

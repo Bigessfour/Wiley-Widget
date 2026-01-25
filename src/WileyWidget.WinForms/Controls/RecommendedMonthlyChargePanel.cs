@@ -20,6 +20,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -831,13 +832,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             case nameof(ViewModel.Departments):
                 UpdateChart();
                 if (_departmentsGrid != null)
-                    _departmentsGrid.Refresh();
+                    _departmentsGrid.SafeInvoke(() => _departmentsGrid.Refresh());
                 UpdateNoDataOverlay();
                 break;
 
             case nameof(ViewModel.Benchmarks):
                 if (_benchmarksGrid != null)
-                    _benchmarksGrid.Refresh();
+                    _benchmarksGrid.SafeInvoke(() => _benchmarksGrid.Refresh());
                 break;
 
             case nameof(ViewModel.RecommendationExplanation):
@@ -862,7 +863,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     {
         if (_noDataOverlay == null || ViewModel == null) return;
         var hasData = ViewModel.Departments.Any();
-        _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading;
+        if (!_noDataOverlay.IsDisposed)
+            _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading);
     }
 
     private void UpdateChart()
@@ -874,6 +876,12 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
                 _chartControl.Series.Clear();
                 _chartControl.Refresh();
             }
+            return;
+        }
+
+        if (_chartControl.InvokeRequired)
+        {
+            _chartControl.SafeInvoke(() => UpdateChart());
             return;
         }
 
@@ -1002,10 +1010,15 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message ?? "Ready";
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? "Ready";
+            }
+            catch { }
+        });
     }
 
     private void EnableControls(bool enabled)

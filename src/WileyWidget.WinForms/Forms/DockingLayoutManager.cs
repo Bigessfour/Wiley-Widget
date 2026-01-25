@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 using System.Xml;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Runtime.Serialization;
@@ -32,6 +33,9 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public class DockingLayoutManager : IDisposable
 {
+    [DllImport("user32.dll")]
+    private static extern bool LockWindowUpdate(IntPtr hWndLock);
+
     private bool _disposed;
 
     // Layout persistence constants
@@ -135,11 +139,35 @@ public class DockingLayoutManager : IDisposable
                 // 2. Fallback to disk if cache miss or decompression failed (async I/O, background-safe)
                 if (layoutData == null)
                 {
-                    if (!File.Exists(_layoutPath))
-                    {
-                        _logger?.LogInformation("No saved layout found at {Path} - using default docking configuration", _layoutPath);
-                        return;
-                    }
+                        // Ensure directory exists before attempting file I/O. This avoids first-run failures
+                        // when the settings folder has not yet been created by the application.
+                        var dir = Path.GetDirectoryName(_layoutPath);
+                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(dir);
+                                _logger?.LogDebug("Created layout directory: {Dir}", dir);
+                            }
+                            catch (Exception dirEx)
+                            {
+                                _logger?.LogWarning(dirEx, "Failed to create layout directory {Dir} - will continue and attempt fallback if file missing", dir);
+                            }
+                        }
+
+                        if (!File.Exists(_layoutPath))
+                        {
+                            _logger?.LogInformation("No saved layout found at {Path} - resetting to default docking configuration", _layoutPath);
+                            try
+                            {
+                                ResetToDefaultLayout();
+                            }
+                            catch (Exception resetEx)
+                            {
+                                _logger?.LogWarning(resetEx, "ResetToDefaultLayout() failed during first-run fallback");
+                            }
+                            return;
+                        }
 
                     var ioSw = Stopwatch.StartNew();
                     byte[] diskData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken).ConfigureAwait(false);
@@ -216,18 +244,98 @@ public class DockingLayoutManager : IDisposable
 
                 try
                 {
+                    // Marshal the entire UI-side sequence to the UI thread so any access to
+                    // control handles (including LockWindowUpdate calls) happens on the creating thread.
                     await UIThreadHelper.ExecuteOnUIThreadAsync(_uiControl, async () =>
                     {
-                        if (dockingManager.HostControl?.IsDisposed ?? true)
-                        {
-                            _logger?.LogWarning("Host control disposed during layout apply - aborting");
-                            return;
-                        }
+                        // Ensure OS-level window update lock is called on UI thread (Handle access is UI-only)
+                        try { LockWindowUpdate(_uiControl.Handle); }
+                        catch (Exception lockWinEx) { _logger?.LogDebug(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
 
-                        using var ms = new MemoryStream(layoutData);
-                        var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
-                        dockingManager.LoadDockState(serializer);
-                        _logger?.LogInformation("Docking layout applied on UI thread (attempt {Attempt}/{MaxAttempts})", retryAttempt + 1, MaxRetryAttempts);
+                        try
+                        {
+                            if (dockingManager.HostControl?.IsDisposed ?? true)
+                            {
+                                _logger?.LogWarning("Host control disposed during layout apply - aborting");
+                                return;
+                            }
+
+                            try
+                            {
+                                try
+                                {
+                                    dockingManager.LockDockPanelsUpdate();
+                                }
+                                catch (Exception lockEx)
+                                {
+                                    _logger?.LogDebug(lockEx, "Failed to lock DockingManager panels for batch update");
+                                }
+
+                                using var ms = new MemoryStream(layoutData);
+                                var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
+                                dockingManager.LoadDockState(serializer);
+                                _logger?.LogInformation("Docking layout applied on UI thread (attempt {Attempt}/{MaxAttempts})", retryAttempt + 1, MaxRetryAttempts);
+
+                                // Defer right-panel visibility until content is fully switched to avoid flicker
+                                try
+                                {
+                                    if (_rightDockPanel != null)
+                                    {
+                                        try
+                                        {
+                                            // Hide right panel before releasing batch updates
+                                            dockingManager.SetDockVisibility(_rightDockPanel, false);
+                                        }
+                                        catch (Exception visEx)
+                                        {
+                                            _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
+                                        }
+
+                                        try
+                                        {
+                                            // Ensure default tab/content is selected before showing
+                                            RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
+                                        }
+                                        catch (Exception switchEx)
+                                        {
+                                            _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
+                                        }
+
+                                        // Small micro-delay to let the control settle (UI thread)
+                                        try { await Task.Delay(50); } catch { /* ignore */ }
+
+                                        try
+                                        {
+                                            dockingManager.SetDockVisibility(_rightDockPanel, true);
+                                        }
+                                        catch (Exception visEx)
+                                        {
+                                            _logger?.LogDebug(visEx, "Failed to set right panel visibility=true after layout apply");
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger?.LogDebug(ex, "Deferred right panel visibility handling failed");
+                                }
+                            }
+                            finally
+                            {
+                                try
+                                {
+                                    dockingManager.UnlockDockPanelsUpdate();
+                                }
+                                catch (Exception unlockEx)
+                                {
+                                    _logger?.LogDebug(unlockEx, "Failed to unlock DockingManager panels after layout apply");
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            try { LockWindowUpdate(IntPtr.Zero); }
+                            catch (Exception unlockWinEx) { _logger?.LogDebug(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
+                        }
                     }, _logger);
 
                     // Success - exit retry loop

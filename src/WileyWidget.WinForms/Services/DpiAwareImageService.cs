@@ -208,6 +208,111 @@ public sealed class DpiAwareImageService : IDisposable
     }
 
     /// <summary>
+    /// Gets a DPI-aware scaled image at a specific target size, selecting the best DPI variant.
+    /// High-DPI optimization: Avoids blurring on 125%/150%/200% displays by selecting the appropriate
+    /// pre-scaled variant from DPIImages collection instead of upscaling a small base image.
+    /// </summary>
+    /// <param name="iconName">Name of the icon (e.g., "dashboard", "accounts").</param>
+    /// <param name="targetSize">Target size for the image (e.g., new Size(32, 32) for ribbon large buttons).</param>
+    /// <returns>Optimally scaled bitmap for current display DPI, or null if icon not found.</returns>
+    /// <remarks>
+    /// DPI Selection Logic:
+    /// - 96 DPI (100%): Returns 16x16 base image, scaled to targetSize if needed
+    /// - 120 DPI (125%): Returns 20x20 DPI120Image if available
+    /// - 144 DPI (150%): Returns 24x24 DPI144Image if available
+    /// - 192 DPI (200%): Returns 32x32 DPI192Image if available
+    /// 
+    /// This avoids the Syncfusion ribbon blurring issue where 32px icons upscaled from 16px sources
+    /// appear fuzzy on non-100% displays.
+    /// </remarks>
+    public Image? GetScaledImage(string iconName, Size targetSize)
+    {
+        if (string.IsNullOrWhiteSpace(iconName) || targetSize.Width <= 0 || targetSize.Height <= 0)
+        {
+            return null;
+        }
+
+        if (!_iconNameToIndex.TryGetValue(iconName, out int index))
+        {
+            _logger.LogWarning("Icon not found for scaled retrieval: {IconName}", iconName);
+            return null;
+        }
+
+        try
+        {
+            // Detect current display DPI (in pixels per inch)
+            // Using a temporary bitmap to measure actual screen DPI
+            int dpiX = 96;  // Default fallback
+            try
+            {
+                using (var bmp = new Bitmap(1, 1))
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    dpiX = (int)g.DpiX;  // Read actual screen DPI
+                }
+            }
+            catch
+            {
+                // If DPI detection fails, use 96 (100%) as safe default
+            }
+
+            // Select the best-matched DPI image variant to minimize scaling artifacts
+            Image? selectedImage = null;
+            int selectedDpi = 96;
+
+            if (dpiX >= 192)  // 200% scaling
+            {
+                if (_imageList.DPIImages.Count > index && _imageList.DPIImages[index]?.DPI192Image != null)
+                {
+                    selectedImage = _imageList.DPIImages[index].DPI192Image;
+                    selectedDpi = 192;
+                }
+            }
+            else if (dpiX >= 144)  // 150% scaling
+            {
+                if (_imageList.DPIImages.Count > index && _imageList.DPIImages[index]?.DPI144Image != null)
+                {
+                    selectedImage = _imageList.DPIImages[index].DPI144Image;
+                    selectedDpi = 144;
+                }
+            }
+            else if (dpiX >= 120)  // 125% scaling
+            {
+                if (_imageList.DPIImages.Count > index && _imageList.DPIImages[index]?.DPI120Image != null)
+                {
+                    selectedImage = _imageList.DPIImages[index].DPI120Image;
+                    selectedDpi = 120;
+                }
+            }
+
+            // Fallback to base image if no DPI variant is available
+            selectedImage ??= _imageList.Images[index];
+
+            // If target size matches selected image size, return as-is (no scaling needed)
+            if (selectedImage != null && selectedImage.Size == targetSize)
+            {
+                _logger.LogDebug("Selected DPI {Dpi} image for {IconName} at native size {Size}", selectedDpi, iconName, targetSize);
+                return selectedImage;
+            }
+
+            // Scale to target size if needed (minimal upscaling from pre-scaled variant)
+            if (selectedImage != null)
+            {
+                var scaled = new Bitmap(selectedImage, targetSize);
+                _logger.LogDebug("Scaled DPI {Dpi} image {IconName} from {SourceSize} to {TargetSize}", selectedDpi, iconName, selectedImage.Size, targetSize);
+                return scaled;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get scaled image for icon {IconName} at size {TargetSize}", iconName, targetSize);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the image index for an icon name.
     /// </summary>
     /// <param name="iconName">Name of the icon.</param>

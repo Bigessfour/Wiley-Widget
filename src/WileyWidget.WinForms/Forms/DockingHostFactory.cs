@@ -21,6 +21,7 @@ using WileyWidget.WinForms.Themes;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using Syncfusion.WinForms.DataGrid;
 using Action = System.Action;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -89,7 +90,7 @@ public static class DockingHostFactory
                 Name = "LeftDockPanel"
             };
 
-            // Add header
+            // Add header with accessibility attributes
             var navHeader = new Label
             {
                 Text = "Navigation",
@@ -99,7 +100,10 @@ public static class DockingHostFactory
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 BackColor = SystemColors.Control,
                 BorderStyle = BorderStyle.FixedSingle,
-                Name = "NavHeader"
+                Name = "NavHeader",
+                AccessibleName = "Navigation Panel Header",  // Descriptive header
+                AccessibleRole = AccessibleRole.Grouping,  // Header role
+                AccessibleDescription = "Quick access buttons for main application views and panels"
             };
             leftDockPanel.Controls.Add(navHeader);
 
@@ -116,9 +120,12 @@ public static class DockingHostFactory
             };
             leftDockPanel.Controls.Add(navButtonsPanel);
 
-            // Helper to create navigation button
+            // Helper to create navigation button with accessibility support
             Func<string, System.Action, Button> createNavButton = (text, clickHandler) =>
             {
+                // Clean up emoji/special chars for accessible name (for screen readers)
+                var cleanText = System.Text.RegularExpressions.Regex.Replace(text, @"[^\w\s]", "").Trim();
+
                 var btn = new Button
                 {
                     Text = text,
@@ -129,7 +136,10 @@ public static class DockingHostFactory
                     Padding = new Padding(8, 0, 8, 0),
                     Font = new Font("Segoe UI", 9),
                     ForeColor = SystemColors.ControlText,
-                    AutoSize = false
+                    AutoSize = false,
+                    AccessibleName = $"Navigate to {cleanText}",  // Descriptive accessible name
+                    AccessibleRole = AccessibleRole.PushButton,  // Button role for screen readers
+                    AccessibleDescription = $"Click to open the {cleanText} panel"  // Full description
                 };
                 btn.Click += (s, e) => clickHandler();
                 return btn;
@@ -219,15 +229,15 @@ public static class DockingHostFactory
             return false;
         }
 
-        try
-        {
-            dockingManager.DockControl(control, host, dockingStyle, size);
-            control.Visible = true;
+            try
+            {
+                dockingManager.DockControl(control, host, dockingStyle, size);
+                control.SafeInvoke(() => control.Visible = true);
 
-            logger?.LogInformation("TryDockControl: Successfully docked {ControlName} to {HostName} with style {Style}",
-                control.Name, host.Name, dockingStyle);
-            return true;
-        }
+                logger?.LogInformation("TryDockControl: Successfully docked {ControlName} to {HostName} with style {Style}",
+                    control.Name, host.Name, dockingStyle);
+                return true;
+            }
         catch (Exception ex)
         {
             logger?.LogError(ex, "TryDockControl: Failed to dock {ControlName}", control.Name);
@@ -417,8 +427,11 @@ public static class DockingHostFactory
             var headerLabel = parent.Controls["ActivityHeaderLabel"] as Label;
             if (headerLabel != null && !headerLabel.IsDisposed)
             {
-                headerLabel.Text = "Recent Activity (Fallback — real data unavailable)";
-                headerLabel.ForeColor = SystemColors.GrayText;
+                headerLabel.SafeInvoke(() =>
+                {
+                    headerLabel.Text = "Recent Activity (Fallback — real data unavailable)";
+                    headerLabel.ForeColor = SystemColors.GrayText;
+                });
             }
         }
         catch
@@ -442,8 +455,11 @@ public static class DockingHostFactory
             var headerLabel = parent.Controls["ActivityHeaderLabel"] as Label;
             if (headerLabel != null && !headerLabel.IsDisposed)
             {
-                headerLabel.Text = "Recent Activity";
-                headerLabel.ForeColor = SystemColors.ControlText;
+                headerLabel.SafeInvoke(() =>
+                {
+                    headerLabel.Text = "Recent Activity";
+                    headerLabel.ForeColor = SystemColors.ControlText;
+                });
             }
         }
         catch

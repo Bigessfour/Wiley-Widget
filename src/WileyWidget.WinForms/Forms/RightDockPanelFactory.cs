@@ -159,8 +159,8 @@ public static class RightDockPanelFactory
             logger?.LogInformation("RightDockPanelFactory: Switching right panel from {CurrentMode} to {TargetMode}",
                 currentMode, targetMode);
 
-            // Switch tabs based on target mode
-            if (rightDockPanel.Controls[0] is TabControl tabControl)
+            // Switch tabs based on target mode - guard against empty Controls collection
+            if (rightDockPanel.Controls != null && rightDockPanel.Controls.Count > 0 && rightDockPanel.Controls[0] is TabControl tabControl)
             {
                 switch (targetMode)
                 {

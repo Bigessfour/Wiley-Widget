@@ -1,10 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -26,6 +28,12 @@ namespace WileyWidget.WinForms
         private static MainForm? _mainFormInstance;
 
         public static IServiceProvider Services => _services ?? throw new InvalidOperationException("Services not initialized");
+
+        /// <summary>
+        /// Safe accessor that returns the internal services instance or null if not yet initialized.
+        /// Use this when callers must avoid the exception thrown by <see cref="Services"/>.
+        /// </summary>
+        public static IServiceProvider? ServicesOrNull => _services;
 
         public static MainForm? MainFormInstance
         {
@@ -64,6 +72,9 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
+            // Ensure log directory exists before Serilog initialization
+            EnsureLogDirectoryExists();
+
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
@@ -262,9 +273,11 @@ namespace WileyWidget.WinForms
             Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 {
+                    // Ensure core services are registered (moved into WileyWidget.Services)
+                    services.AddWileyWidgetCoreServices(hostContext.Configuration);
+
+                    // Register WinForms-specific services
                     services.AddWinFormsServices(hostContext.Configuration);
-
-
                 })
                 .UseSerilog((context, services, configuration) => configuration
                     .ReadFrom.Configuration(context.Configuration)
@@ -286,14 +299,66 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - theme may not apply correctly");
-                throw new InvalidOperationException("Office2019Theme assembly is required but failed to load. Ensure Syncfusion.WinForms.Themes NuGet package is installed.", ex);
+                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - falling back to default theme");
+                // Fallback: continue without theme assembly, UI will use default rendering
+                themeName = "Default";
             }
 
             // Set application-level theme
-            SfSkinManager.ApplicationVisualTheme = themeName;
-            // Note: SfSkinManager.ApplyStylesOnApplication does not exist in this version.
-            Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
+            try
+            {
+                SfSkinManager.ApplicationVisualTheme = themeName;
+                Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to set ApplicationVisualTheme - theme may not apply correctly");
+            }
+        }
+
+        /// <summary>
+        /// Ensures log directory exists before Serilog attempts to write.
+        /// Prevents silent failures when %APPDATA%\WileyWidget\logs doesn't exist.
+        /// </summary>
+        static void EnsureLogDirectoryExists()
+        {
+            try
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var logDirectory = Path.Combine(appDataPath, "WileyWidget", "logs");
+
+                if (!Directory.Exists(logDirectory))
+                {
+                    Directory.CreateDirectory(logDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Fallback: write to console if directory creation fails
+                Console.WriteLine($"Warning: Failed to create log directory: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a minimal IServiceProvider for first-run or fallback scenarios.
+        /// Registers only essential services (logging + empty IConfiguration) so UI can initialize safely.
+        /// </summary>
+        public static IServiceProvider CreateFallbackServiceProvider()
+        {
+            try
+            {
+                var services = new ServiceCollection();
+                services.AddLogging();
+                services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection().Build());
+                var sp = services.BuildServiceProvider();
+                Log.Warning("Program: using minimal fallback IServiceProvider created by CreateFallbackServiceProvider()");
+                return sp;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Program: failed to create fallback IServiceProvider - returning empty provider");
+                return new ServiceCollection().BuildServiceProvider();
+            }
         }
     }
 }

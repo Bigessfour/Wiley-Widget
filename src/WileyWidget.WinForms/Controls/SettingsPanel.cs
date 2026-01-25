@@ -18,6 +18,7 @@ using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Utils;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -55,12 +56,12 @@ namespace WileyWidget.WinForms.Controls
         #region UI Control Fields
         // Header and main container
         private PanelHeader? _panelHeader;
-        private GradientPanelExt? _mainPanel;
+        private GradientPanelExt? _mainPanel = null;  // Modern InitializeComponent uses FlowLayoutPanel
         private StatusStrip? _statusStrip;
         private ToolStripStatusLabel? _statusLabel;
 
         // Appearance group
-        private GradientPanelExt? _themeGroup;
+        private GradientPanelExt? _themeGroup = null;  // Modern InitializeComponent creates inline in GroupBox
         private Syncfusion.WinForms.ListView.SfComboBox? _themeCombo;
         private Syncfusion.WinForms.ListView.SfComboBox? _fontCombo;
 
@@ -341,90 +342,45 @@ namespace WileyWidget.WinForms.Controls
             _statusStrip.Items.Add(_statusLabel);
             Controls.Add(_statusStrip);
 
-            // Main scrollable content area
-            _mainPanel = new GradientPanelExt
+            // Main container: FlowLayoutPanel for vertical stacking of groups
+            var mainFlowPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0, CONTROL_SPACING, 0, GROUP_PADDING),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                FlowDirection = FlowDirection.TopDown,
                 AutoScroll = true,
-                AutoScrollMinSize = new Size(520, 3000)
+                Padding = new Padding(GROUP_PADDING)
             };
-            SfSkinManager.SetVisualStyle(_mainPanel, _themeName);
+            Controls.Add(mainFlowPanel);
 
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
             _tooltip = new ToolTip();
             _aiToolTip = new ToolTip();
 
-            int y = CONTROL_SPACING;
-
-            // Create sections
-            CreateAppTitleSection(ref y);
-            CreateAppearanceSection(ref y);
-            CreateGeneralSettingsSection(ref y);
-            CreateExportSection(ref y);
-            CreateBehaviorSection(ref y);
-            CreateAiSection(ref y);
-            CreateFormatSection(ref y);
-            CreateAboutSection(ref y);
-            CreateButtonRow(ref y);
-
-            _mainPanel.Controls.Add(_panelHeader);
-            Controls.Add(_mainPanel);
-            Controls.Add(_statusStrip);
-
-            ResumeLayout(false);
-        }
-
-        private void CreateAppTitleSection(ref int y)
-        {
-            var lblAppTitle = new Label
-            {
-                Text = SettingsPanelResources.AppTitleLabel,
-                AutoSize = true,
-                Location = new Point(GROUP_PADDING, y + 4),
-                Font = new Font("Segoe UI", 9, FontStyle.Regular)
-            };
-#pragma warning disable RS0030
-            _txtAppTitle = new TextBoxExt
+            // Group 1: Appearance (using GroupBox for visual separation)
+            var appearanceGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, AutoSize = true };
+            var appearanceTable = CreateTableLayoutPanel(3, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));  // 3 rows, 2 columns (label + control)
+            appearanceTable.Controls.Add(new Label { Text = SettingsPanelResources.AppTitleLabel, Anchor = AnchorStyles.Left }, 0, 0);
+            appearanceTable.Controls.Add(_txtAppTitle = new TextBoxExt
             {
                 Name = "txtAppTitle",
-                Location = new Point(GROUP_PADDING + LABEL_WIDTH, y),
                 Width = 300,
                 MaxLength = 100,
                 Font = new Font("Segoe UI", 10F),
                 AccessibleName = "Application Title",
                 AccessibleDescription = "Set the friendly application title"
-            };
-#pragma warning restore RS0030
-            if (ViewModel != null)
-            {
-                _txtAppTitle.DataBindings.Add("Text", ViewModel, "AppTitle", true, DataSourceUpdateMode.OnPropertyChanged);
-            }
+            }, 1, 0);
             _tooltip?.SetToolTip(_txtAppTitle, "Enter a custom title for the application window");
-            _mainPanel.Controls.Add(lblAppTitle);
-            _mainPanel.Controls.Add(_txtAppTitle);
-            y += 50;
-        }
-
-        private void CreateAppearanceSection(ref int y)
-        {
-            _themeGroup = CreateGroupPanel("Appearance", ref y);
-
-            var lblTheme = new Label { Text = "Theme:", AutoSize = true, Location = new Point(GROUP_PADDING, 50), Font = new Font("Segoe UI", 9) };
-            _themeCombo = new Syncfusion.WinForms.ListView.SfComboBox
+            appearanceTable.Controls.Add(new Label { Text = "Theme:", Anchor = AnchorStyles.Left }, 0, 1);
+            appearanceTable.Controls.Add(_themeCombo = new Syncfusion.WinForms.ListView.SfComboBox
             {
                 Name = "themeCombo",
-                Location = new Point(GROUP_PADDING + LABEL_WIDTH, 48),
                 Size = new Size(220, 24),
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AllowDropDownResize = false,
                 MaxDropDownItems = 5,
                 ThemeName = _themeName
-            };
+            }, 1, 1);
             _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
-
             try
             {
                 if (ViewModel?.Themes != null && ViewModel.Themes.Count > 0)
@@ -440,58 +396,293 @@ namespace WileyWidget.WinForms.Controls
             {
                 Logger.LogError(ex, "SettingsPanel: Error populating theme dropdown");
             }
-
-            var lblFont = new Label { Text = "Font:", AutoSize = true, Location = new Point(GROUP_PADDING, 85), Font = new Font("Segoe UI", 9) };
-            _fontCombo = new Syncfusion.WinForms.ListView.SfComboBox
+            appearanceTable.Controls.Add(new Label { Text = "Font:", Anchor = AnchorStyles.Left }, 0, 2);
+            appearanceTable.Controls.Add(_fontCombo = new Syncfusion.WinForms.ListView.SfComboBox
             {
                 Name = "fontCombo",
-                Location = new Point(GROUP_PADDING + LABEL_WIDTH, 82),
                 Size = new Size(220, 24),
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
                 AllowDropDownResize = false,
                 MaxDropDownItems = 10,
                 ThemeName = _themeName
-            };
+            }, 1, 2);
             _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             _fontCombo.DataSource = GetAvailableFonts();
+            appearanceGroup.Controls.Add(appearanceTable);
+            mainFlowPanel.Controls.Add(appearanceGroup);
 
-            _themeGroup.Controls.Add(lblTheme);
-            _themeGroup.Controls.Add(_themeCombo);
-            _themeGroup.Controls.Add(lblFont);
-            _themeGroup.Controls.Add(_fontCombo);
-
-            _mainPanel.Controls.Add(_themeGroup);
-            y += 200;
-        }
-
-        private void CreateGeneralSettingsSection(ref int y)
-        {
-            _chkOpenEditFormsDocked = new CheckBoxAdv
+            // Group 2: General Settings
+            var generalGroup = new GroupBox { Text = "General Settings", AutoSize = true };
+            var generalTable = CreateTableLayoutPanel(2, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
+            generalTable.Controls.Add(new Label { Text = "Open edit forms docked:", Anchor = AnchorStyles.Left }, 0, 0);
+            generalTable.Controls.Add(_chkOpenEditFormsDocked = new CheckBoxAdv
             {
-                Text = "Open edit forms docked (as floating tool windows)",
                 AutoSize = true,
-                Location = new Point(GROUP_PADDING, y),
                 Checked = ViewModel?.OpenEditFormsDocked ?? false,
                 Font = new Font("Segoe UI", 9),
                 AccessibleName = "Open edit forms docked"
-            };
+            }, 1, 0);
             _tooltip?.SetToolTip(_chkOpenEditFormsDocked, "Open account edit forms as dockable floating windows instead of modal dialogs");
-            _mainPanel.Controls.Add(_chkOpenEditFormsDocked);
-            y += 40;
-
-            _chkUseDemoData = new CheckBoxAdv
+            generalTable.Controls.Add(new Label { Text = "Use demo data:", Anchor = AnchorStyles.Left }, 0, 1);
+            generalTable.Controls.Add(_chkUseDemoData = new CheckBoxAdv
             {
-                Text = "Use demo/sample data (for demonstrations)",
                 AutoSize = true,
-                Location = new Point(GROUP_PADDING, y),
                 Checked = ViewModel?.UseDemoData ?? false,
                 Font = new Font("Segoe UI", 9),
                 AccessibleName = "Use demo data"
-            };
+            }, 1, 1);
             _tooltip?.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data.");
-            _mainPanel.Controls.Add(_chkUseDemoData);
-            y += 45;
+            generalGroup.Controls.Add(generalTable);
+            mainFlowPanel.Controls.Add(generalGroup);
+
+            // Group 3: Data Export
+            var exportGroup = new GroupBox { Text = "Data Export", AutoSize = true };
+            var exportTable = CreateTableLayoutPanel(1, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F), new ColumnStyle(SizeType.Absolute, 50));
+            exportTable.Controls.Add(new Label { Text = "Path:", Anchor = AnchorStyles.Left }, 0, 0);
+            exportTable.Controls.Add(_txtExportPath = new TextBoxExt
+            {
+                Name = "txtExportPath",
+                Width = 200,
+                MaxLength = 260,
+                AccessibleName = "Export path"
+            }, 1, 0);
+            if (ViewModel != null && !string.IsNullOrEmpty(ViewModel.DefaultExportPath))
+            {
+                _txtExportPath.Text = ViewModel.DefaultExportPath;
+            }
+            _tooltip?.SetToolTip(_txtExportPath, "Directory where exported data files will be saved");
+            exportTable.Controls.Add(_btnBrowseExportPath = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Name = "btnBrowseExportPath",
+                Text = "...",
+                Size = new Size(40, 24),
+                ThemeName = _themeName
+            }, 2, 0);
+            _tooltip?.SetToolTip(_btnBrowseExportPath, "Open folder browser to select export directory");
+            exportGroup.Controls.Add(exportTable);
+            mainFlowPanel.Controls.Add(exportGroup);
+
+            // Group 4: Behavior & Logging
+            var behaviorGroup = new GroupBox { Text = "Behavior & Logging", AutoSize = true };
+            var behaviorTable = CreateTableLayoutPanel(2, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
+            behaviorTable.Controls.Add(new Label { Text = "Auto-save (min):", Anchor = AnchorStyles.Left }, 0, 0);
+            behaviorTable.Controls.Add(_numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox
+            {
+                Name = "numAutoSaveInterval",
+                Size = new Size(80, 24),
+                MinValue = 1,
+                MaxValue = 60,
+                Value = ViewModel != null ? ViewModel.AutoSaveIntervalMinutes : 5,
+                ThemeName = _themeName
+            }, 1, 0);
+            _tooltip?.SetToolTip(_numAutoSaveInterval, "How often data is auto-saved (1-60 minutes)");
+            behaviorTable.Controls.Add(new Label { Text = "Log Level:", Anchor = AnchorStyles.Left }, 0, 1);
+            behaviorTable.Controls.Add(_cmbLogLevel = new Syncfusion.WinForms.ListView.SfComboBox
+            {
+                Name = "cmbLogLevel",
+                Size = new Size(150, 24),
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                ThemeName = _themeName
+            }, 1, 1);
+            var logLevels = new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" }.ToList();
+            _cmbLogLevel.DataSource = logLevels;
+            _cmbLogLevel.SelectedItem = ViewModel != null ? ViewModel.LogLevel : "Information";
+            _tooltip?.SetToolTip(_cmbLogLevel, "Verbosity level for application logging");
+            behaviorGroup.Controls.Add(behaviorTable);
+            mainFlowPanel.Controls.Add(behaviorGroup);
+
+            // Group 5: AI Settings
+            var aiGroup = new GroupBox { Text = "AI / xAI Settings", AutoSize = true };
+            var aiTable = CreateTableLayoutPanel(8, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
+            aiTable.Controls.Add(new Label { Text = "Enable AI:", Anchor = AnchorStyles.Left }, 0, 0);
+            aiTable.Controls.Add(_chkEnableAi = new CheckBoxAdv
+            {
+                AutoSize = true,
+                Checked = ViewModel?.EnableAi ?? false,
+                Font = new Font("Segoe UI", 9)
+            }, 1, 0);
+            _aiToolTip?.SetToolTip(_chkEnableAi, "Enable or disable AI features.");
+            aiTable.Controls.Add(new Label { Text = "Endpoint:", Anchor = AnchorStyles.Left }, 0, 1);
+            aiTable.Controls.Add(_txtXaiApiEndpoint = new TextBox
+            {
+                Name = "txtXaiApiEndpoint",
+                Width = 250,
+                MaxLength = 500,
+                Text = ViewModel?.XaiApiEndpoint ?? string.Empty
+            }, 1, 1);
+            _aiToolTip?.SetToolTip(_txtXaiApiEndpoint, "API endpoint for xAI Grok.");
+            aiTable.Controls.Add(new Label { Text = "Model:", Anchor = AnchorStyles.Left }, 0, 2);
+            aiTable.Controls.Add(_cmbXaiModel = new Syncfusion.WinForms.ListView.SfComboBox
+            {
+                Name = "cmbXaiModel",
+                Size = new Size(220, 24),
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                ThemeName = _themeName
+            }, 1, 2);
+            try
+            {
+                _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList();
+                _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4-0709";
+            }
+            catch { }
+            _aiToolTip?.SetToolTip(_cmbXaiModel, "Select model used for recommendations.");
+            aiTable.Controls.Add(new Label { Text = "API Key:", Anchor = AnchorStyles.Left }, 0, 3);
+            var apiKeyPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            apiKeyPanel.Controls.Add(_txtXaiApiKey = new TextBox
+            {
+                Name = "txtXaiApiKey",
+                Width = 180,
+                MaxLength = 500,
+                UseSystemPasswordChar = true,
+                Text = ViewModel?.XaiApiKey ?? string.Empty
+            });
+            apiKeyPanel.Controls.Add(_btnShowApiKey = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Name = "btnShowApiKey",
+                Text = "Show",
+                Size = new Size(50, 24),
+                ThemeName = _themeName
+            });
+            aiTable.Controls.Add(apiKeyPanel, 1, 3);
+            _aiToolTip?.SetToolTip(_txtXaiApiKey, "API key stored securely (not logged).");
+            aiTable.Controls.Add(new Label { Text = "Timeout (s):", Anchor = AnchorStyles.Left }, 0, 4);
+            aiTable.Controls.Add(_numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox
+            {
+                Name = "numXaiTimeout",
+                Size = new Size(80, 24),
+                MinValue = 1,
+                MaxValue = 300,
+                Value = ViewModel?.XaiTimeout ?? 30,
+                ThemeName = _themeName
+            }, 1, 4);
+            _aiToolTip?.SetToolTip(_numXaiTimeout, "Maximum time (seconds) to wait for response.");
+            aiTable.Controls.Add(new Label { Text = "Max tokens:", Anchor = AnchorStyles.Left }, 0, 5);
+            aiTable.Controls.Add(_numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox
+            {
+                Name = "numXaiMaxTokens",
+                Size = new Size(100, 24),
+                MinValue = 1,
+                MaxValue = 65536,
+                Value = ViewModel?.XaiMaxTokens ?? 2000,
+                ThemeName = _themeName
+            }, 1, 5);
+            aiTable.Controls.Add(new Label { Text = "Temperature:", Anchor = AnchorStyles.Left }, 0, 6);
+            aiTable.Controls.Add(_numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox
+            {
+                Name = "numXaiTemperature",
+                Size = new Size(80, 24),
+                MinValue = 0.0,
+                MaxValue = 1.0,
+                Value = ViewModel?.XaiTemperature ?? 0.7,
+                ThemeName = _themeName
+            }, 1, 6);
+            _aiToolTip?.SetToolTip(_numXaiTemperature, "Response randomness (0=deterministic, 1=varied).");
+            aiTable.Controls.Add(new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Anchor = AnchorStyles.Left }, 0, 7);
+            aiTable.Controls.Add(_lnkAiLearnMore = new LinkLabel
+            {
+                Text = SettingsPanelResources.AiSettingsLearnMoreLabel,
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8F)
+            }, 1, 7);
+            aiGroup.Controls.Add(aiTable);
+            mainFlowPanel.Controls.Add(aiGroup);
+
+            // Group 6: Display Formats
+            var formatGroup = new GroupBox { Text = "Display Formats", AutoSize = true };
+            var formatTable = CreateTableLayoutPanel(1, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Absolute, 130), new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Absolute, 90));
+            formatTable.Controls.Add(new Label { Text = "Date:", Anchor = AnchorStyles.Left }, 0, 0);
+            formatTable.Controls.Add(_txtDateFormat = new TextBoxExt
+            {
+                Name = "txtDateFormat",
+                Width = 120,
+                MaxLength = 50,
+                Text = ViewModel?.DateFormat ?? "yyyy-MM-dd"
+            }, 1, 0);
+            formatTable.Controls.Add(new Label { Text = "Currency:", Anchor = AnchorStyles.Left }, 2, 0);
+            formatTable.Controls.Add(_txtCurrencyFormat = new TextBoxExt
+            {
+                Name = "txtCurrencyFormat",
+                Width = 80,
+                MaxLength = 10,
+                Text = ViewModel?.CurrencyFormat ?? "C2"
+            }, 3, 0);
+            formatGroup.Controls.Add(formatTable);
+            mainFlowPanel.Controls.Add(formatGroup);
+
+            // Group 7: About
+            var aboutGroup = new GroupBox { Text = SettingsPanelResources.AboutGroup, AutoSize = true };
+            var aboutFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true };
+            aboutFlow.Controls.Add(_lblVersion = new Label
+            {
+                Text = $"Wiley Widget v1.0.0\n.NET {Environment.Version}\nRuntime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9)
+            });
+            aboutFlow.Controls.Add(_lblDbStatus = new Label
+            {
+                Text = "Database: Connected",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9)
+            });
+            aboutGroup.Controls.Add(aboutFlow);
+            mainFlowPanel.Controls.Add(aboutGroup);
+
+            // Bottom Buttons
+            var buttonFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
+            buttonFlow.Controls.Add(_btnClose = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Name = "btnClose",
+                Text = "Close",
+                Width = 100,
+                Height = 36,
+                ThemeName = _themeName
+            });
+            _tooltip?.SetToolTip(_btnClose, "Close this settings panel");
+            buttonFlow.Controls.Add(_btnSave = new Syncfusion.WinForms.Controls.SfButton
+            {
+                Name = "btnSave",
+                Text = "Save Settings",
+                Width = 140,
+                Height = 36,
+                ThemeName = _themeName,
+                Enabled = false
+            });
+            _tooltip?.SetToolTip(_btnSave, "Save all changes (validation runs first)");
+            mainFlowPanel.Controls.Add(buttonFlow);
+
+            // Apply theme
+            SfSkinManager.SetVisualStyle(this, _themeName);
+
+            ResumeLayout(false);
         }
+
+        // Helper: Create a TableLayoutPanel with auto-sizing columns/rows
+        private TableLayoutPanel CreateTableLayoutPanel(int rowCount, params ColumnStyle[] columnStyles)
+        {
+            var table = new TableLayoutPanel
+            {
+                RowCount = rowCount,
+                ColumnCount = columnStyles.Length,
+                AutoSize = true,
+                Padding = new Padding(CONTROL_SPACING),
+                Dock = DockStyle.Fill
+            };
+            foreach (var style in columnStyles)
+            {
+                table.ColumnStyles.Add(style);
+            }
+            for (int i = 0; i < rowCount; i++)
+            {
+                table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            }
+            return table;
+        }
+
+
+
+
+
+
 
         private void CreateExportSection(ref int y)
         {
@@ -532,44 +723,7 @@ namespace WileyWidget.WinForms.Controls
             y += 85;
         }
 
-        private void CreateBehaviorSection(ref int y)
-        {
-            var behaviorGroup = CreateGroupPanel("Behavior & Logging", ref y);
 
-            var lblAutoSave = new Label { Text = "Auto-save (min):", AutoSize = true, Location = new Point(GROUP_PADDING, 50), Font = new Font("Segoe UI", 9) };
-            _numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox
-            {
-                Name = "numAutoSaveInterval",
-                Location = new Point(GROUP_PADDING + LABEL_WIDTH, 48),
-                Size = new Size(80, 24),
-                MinValue = 1,
-                MaxValue = 60,
-                Value = ViewModel != null ? ViewModel.AutoSaveIntervalMinutes : 5,
-                ThemeName = _themeName
-            };
-            _tooltip?.SetToolTip(_numAutoSaveInterval, "How often data is auto-saved (1-60 minutes)");
-
-            var lblLogLevel = new Label { Text = "Log Level:", AutoSize = true, Location = new Point(GROUP_PADDING, 85), Font = new Font("Segoe UI", 9) };
-            _cmbLogLevel = new Syncfusion.WinForms.ListView.SfComboBox
-            {
-                Name = "cmbLogLevel",
-                Location = new Point(GROUP_PADDING + LABEL_WIDTH, 82),
-                Size = new Size(150, 24),
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                ThemeName = _themeName
-            };
-            var logLevels = new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" }.ToList();
-            _cmbLogLevel.DataSource = logLevels;
-            _cmbLogLevel.SelectedItem = ViewModel != null ? ViewModel.LogLevel : "Information";
-            _tooltip?.SetToolTip(_cmbLogLevel, "Verbosity level for application logging");
-
-            behaviorGroup.Controls.Add(lblAutoSave);
-            behaviorGroup.Controls.Add(_numAutoSaveInterval);
-            behaviorGroup.Controls.Add(lblLogLevel);
-            behaviorGroup.Controls.Add(_cmbLogLevel);
-            _mainPanel.Controls.Add(behaviorGroup);
-            y += 125;
-        }
 
         private void CreateAiSection(ref int y)
         {
@@ -902,9 +1056,33 @@ namespace WileyWidget.WinForms.Controls
         #endregion
 
         #region Data Binding
+        private void ClearExistingBindings()
+        {
+            // Clear bindings from all controls to prevent duplicates when handle is recreated
+            _themeCombo?.DataBindings.Clear();
+            _txtAppTitle?.DataBindings.Clear();
+            _chkOpenEditFormsDocked?.DataBindings.Clear();
+            _chkUseDemoData?.DataBindings.Clear();
+            _txtExportPath?.DataBindings.Clear();
+            _numAutoSaveInterval?.DataBindings.Clear();
+            _cmbLogLevel?.DataBindings.Clear();
+            _txtDateFormat?.DataBindings.Clear();
+            _txtCurrencyFormat?.DataBindings.Clear();
+            _chkEnableAi?.DataBindings.Clear();
+            _txtXaiApiEndpoint?.DataBindings.Clear();
+            _txtXaiApiKey?.DataBindings.Clear();
+            _cmbXaiModel?.DataBindings.Clear();
+            _numXaiTimeout?.DataBindings.Clear();
+            _numXaiMaxTokens?.DataBindings.Clear();
+            _numXaiTemperature?.DataBindings.Clear();
+        }
+
         private void SetupBindings()
         {
             _bindingSource = new BindingSource { DataSource = ViewModel };
+
+            // Clear any existing bindings to prevent duplicates when handle is recreated
+            ClearExistingBindings();
 
             // Theme binding
             if (_themeCombo != null && ViewModel != null)
@@ -1405,12 +1583,20 @@ namespace WileyWidget.WinForms.Controls
 
         private void UpdateStatus(string message, bool isError = false)
         {
-            if (_statusLabel != null)
+            // Always marshal to UI thread (non-blocking) to protect against cross-thread updates
+            this.InvokeIfRequired(() =>
             {
-                _statusLabel.Text = message;
-                _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
-                _statusLabel.Invalidate();
-            }
+                try
+                {
+                    if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    {
+                        _statusLabel.Text = message ?? string.Empty;
+                        _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
+                        try { _statusLabel.Invalidate(); } catch { }
+                    }
+                }
+                catch { }
+            });
         }
 
         private void ClosePanel()

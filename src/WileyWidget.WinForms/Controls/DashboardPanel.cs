@@ -115,6 +115,13 @@ namespace WileyWidget.WinForms.Controls
                 ShowAlways = true
             };
 
+            // Enforce minimum panel size to prevent cramped layouts on small screens
+            // Accounts for multi-chart, gauge, and grid layouts (DPI-aware)
+            this.MinimumSize = new Size(
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1000.0f),
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600.0f)
+            );
+
             InitializeComponent();
 
             // Apply theme via SfSkinManager (single source of truth)
@@ -227,6 +234,10 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
+            // Suspend layout during initialization to prevent flickering and layout thrashing
+            // Complex nested layouts (4 gauge panels, 1 chart, 1 grid, 3 sparklines) benefit from batched redraws
+            this.SuspendLayout();
+            
             var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             // Top panel and toolbar
             // Shared header (consistent 44px height + 8px padding)
@@ -379,15 +390,23 @@ namespace WileyWidget.WinForms.Controls
 
             // Gauge metrics panel - 4 RadialGauges in horizontal layout
             // Replaces separate KPI list for cleaner, more visual dashboard
-            var gaugePanel = new FlowLayoutPanel
+            // Use TableLayoutPanel instead of FlowLayoutPanel to prevent overflow on small screens
+            // TableLayoutPanel supports AutoScroll and provides better control over cell sizing
+            var gaugePanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 MinimumSize = new Size(600, 140),
-                AutoScroll = false,
-                WrapContents = false,
-                FlowDirection = FlowDirection.LeftToRight,
+                AutoScroll = true,  // Allow horizontal scroll if panel < 1120px wide (4 × 280px)
+                ColumnCount = 4,
+                RowCount = 1,
                 Padding = new Padding(8)
             };
+            // Allocate each column equally (25% each)
+            for (int i = 0; i < 4; i++)
+            {
+                gaugePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+            }
+            gaugePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // Create 4 gauge panels for metrics
             var gaugeControls = new[]
@@ -398,9 +417,12 @@ namespace WileyWidget.WinForms.Controls
                 CreateGaugePanel("Budget Variance", "gauge")
             };
 
+            int gaugeIndex = 0;
             foreach (var gaugeControl in gaugeControls)
             {
-                gaugePanel.Controls.Add(gaugeControl);
+                // TableLayoutPanel.Controls.Add(control, col, row)
+                gaugePanel.Controls.Add(gaugeControl, gaugeIndex, 0);
+                gaugeIndex++;
             }
 
             // Add gauge panel to row 0, spanning both columns
@@ -408,12 +430,14 @@ namespace WileyWidget.WinForms.Controls
             mainSplit.SetColumnSpan(gaugePanel, 2);
 
             // Left column: chart area - configured per Syncfusion demo patterns
+            // Enforce minimum size to prevent cramped chart legend placement
             var chartPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(4),
+                Padding = new Padding(12),  // Increased padding for better breathing room
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                MinimumSize = new Size(300, 200)  // Enforce minimum chart area (prevents cramped legend)
             };
             theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(chartPanel, theme);
@@ -435,8 +459,24 @@ namespace WileyWidget.WinForms.Controls
             _mainChart.PrimaryYAxis.TickSize = new Size(5, 1); // Per demos: tick size
 
             // Legend configuration per demos (ChartAppearance.cs patterns)
+            // OPTION C: Use ChartControl's built-in ResponsiveLayout to adapt legend placement
+            // If available in Syncfusion WinForms, ResponsiveLayout automatically repositions legend to prevent overlap
             _mainChart.ShowLegend = true;  // Show legend for clarity
             _mainChart.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside; // Per demos
+            
+            // Attempt to enable ResponsiveLayout if available in this Syncfusion version
+            try
+            {
+                var responsiveLayoutProp = _mainChart.GetType().GetProperty("EnableResponsiveLayout");
+                if (responsiveLayoutProp != null)
+                {
+                    responsiveLayoutProp.SetValue(_mainChart, true);
+                    Logger.LogDebug("DashboardPanel: EnableResponsiveLayout activated for chart legend");
+                }
+            }
+            catch { /* ResponsiveLayout not available in this Syncfusion version; use default legend placement */ }
+            
+            // Fallback: Set bottom placement as default; legend will adapt if ResponsiveLayout is enabled
             _mainChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Bottom placement per Syncfusion best practices
             _mainChart.Legend.ItemsAlignment = StringAlignment.Center;  // Center alignment
 
@@ -444,7 +484,16 @@ namespace WileyWidget.WinForms.Controls
             mainSplit.Controls.Add(chartPanel, 0, 1); // Row 1, column 0 (chart)
 
             // Right column: details grid
-            var rightPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
+            // OPTION B: Document expected grid height; defer to user resizing for high DPI scenarios
+            // Grid MinimumSize is NOT enforced here; instead, document that SfDataGrid requires ≥200px height
+            // to display 3+ rows (DPI-aware). Users on 150%+ DPI should resize parent form accordingly.
+            var rightPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1,
+                Padding = new Padding(12)  // Increased padding for better breathing room
+            };
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
 
@@ -503,9 +552,10 @@ namespace WileyWidget.WinForms.Controls
             var summaryPanel = new GradientPanelExt
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(8),
+                Padding = new Padding(12),  // Increased padding for better breathing room
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                MinimumSize = new Size(0, 80)  // Prevent summary row from compressing below 80px
             };
             theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(summaryPanel, theme);
@@ -590,13 +640,61 @@ namespace WileyWidget.WinForms.Controls
             };
             Controls.Add(_noDataOverlay);
 
-            // Bindings will be applied after ViewModel is resolved (OnViewModelResolved)
-
+            // Resume layout after all controls added
+            this.ResumeLayout(false);
             this.PerformLayout();
             this.Refresh();
             try { Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name); } catch { }
 
+            // Validate toolbar visibility post-layout (OPTION B)
+            // Logs if toolbar is collapsed or invisible after layout settles
+            ValidateToolbarVisibility();
+
             // Theme handler removed - SfSkinManager cascade handles all theme changes automatically
+        }
+
+        /// <summary>
+        /// Validates toolbar visibility after layout completion (OPTION B).
+        /// Logs a warning if the toolbar is collapsed or has zero height,
+        /// indicating potential layout issues that could prevent user access to Refresh/Export buttons.
+        /// </summary>
+        private void ValidateToolbarVisibility()
+        {
+            try
+            {
+                if (_topPanel == null || _topPanel.IsDisposed)
+                    return;
+
+                // Check if toolbar container has valid dimensions
+                if (_topPanel.Height <= 0 || _topPanel.Width <= 0)
+                {
+                    Logger.LogWarning(
+                        "DashboardPanel: Toolbar visibility issue detected - Height={ToolbarHeight}, Width={ToolbarWidth}. " +
+                        "Buttons (Refresh, Export, Navigate) may not be accessible.",
+                        _topPanel.Height, _topPanel.Width);
+                    return;
+                }
+
+                // Check if toolbar is visible and not obscured
+                if (!_topPanel.Visible)
+                {
+                    Logger.LogWarning(
+                        "DashboardPanel: Toolbar is hidden (Visible=false). User cannot access Refresh, Export, or Navigation buttons.");
+                    return;
+                }
+
+                Logger.LogDebug(
+                    "DashboardPanel: Toolbar validation passed - Height={ToolbarHeight}, Width={ToolbarWidth}, Visible={IsVisible}",
+                    _topPanel.Height, _topPanel.Width, _topPanel.Visible);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Panel was disposed before validation could run
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "DashboardPanel: Unexpected error during toolbar validation");
+            }
         }
 
         /// <summary>

@@ -1451,10 +1451,15 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message;
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? string.Empty;
+            }
+            catch { }
+        });
         _logger.LogDebug("Status: {Message}", message);
     }
 

@@ -26,6 +26,9 @@ public partial class MainForm
         if (rootControl == null || rootControl.IsDisposed || string.IsNullOrWhiteSpace(themeName))
             return;
 
+        // Validate theme name before applying
+        themeName = AppThemeColors.ValidateTheme(themeName);
+
         try
         {
             // Use breadth-first queue-based traversal to avoid stack overflow on deep hierarchies
@@ -33,12 +36,20 @@ public partial class MainForm
             queue.Enqueue(rootControl);
 
             int appliedCount = 0;
+            var processedControls = new System.Collections.Generic.HashSet<Control>();
+
             while (queue.Count > 0)
             {
                 var control = queue.Dequeue();
 
                 if (control == null || control.IsDisposed)
                     continue;
+
+                // Skip if already processed (prevents re-application cycles)
+                if (processedControls.Contains(control))
+                    continue;
+
+                processedControls.Add(control);
 
                 // Apply theme to current control with per-control error handling
                 try
@@ -123,11 +134,30 @@ public partial class MainForm
         if (string.IsNullOrWhiteSpace(text))
             return;
 
+        // Early disposal check before attempting any UI operations
+        if (IsDisposed)
+        {
+            _logger?.LogDebug("ApplyStatus called on disposed form - ignoring");
+            return;
+        }
+
         try
         {
             if (this.IsHandleCreated && this.InvokeRequired)
             {
-                try { this.BeginInvoke(new System.Action(() => ApplyStatus(text))); } catch { }
+                try 
+                { 
+                    if (!IsDisposed)
+                    {
+                        this.SafeInvoke(() => ApplyStatus(text)); 
+                    }
+                } 
+                catch (InvalidOperationException)
+                {
+                    // Handle destroyed or disposed during BeginInvoke
+                    _logger?.LogDebug("BeginInvoke failed in ApplyStatus - form may be disposed");
+                }
+                catch { }
                 return;
             }
         }
@@ -172,19 +202,74 @@ public partial class MainForm
     /// <summary>
     /// Updates the MRU menu with the current MRU list.
     /// Each menu item opens the file when clicked.
+    /// Validates file paths before adding to prevent orphaned entries.
     /// </summary>
     private void UpdateMruMenu(ToolStripMenuItem menu)
     {
+        if (menu == null)
+        {
+            _logger?.LogWarning("UpdateMruMenu called with null menu");
+            return;
+        }
+
         menu.DropDownItems.Clear();
+        
+        // Validate and filter MRU list before adding to menu
+        var validFiles = new System.Collections.Generic.List<string>();
         foreach (var file in _mruList)
         {
+            if (string.IsNullOrWhiteSpace(file))
+                continue;
+
+            // Validate file exists before adding to menu
+            if (!System.IO.File.Exists(file))
+            {
+                _logger?.LogDebug("MRU file no longer exists, skipping: {File}", file);
+                continue;
+            }
+
+            validFiles.Add(file);
+            
             var item = new ToolStripMenuItem(file);
             item.Click += async (s, e) =>
             {
-                var result = await _fileImportService.ImportDataAsync<System.Collections.Generic.Dictionary<string, object>>(file);
-                HandleImportResult(file, result);
+                try
+                {
+                    // Re-check file existence before import (could have been deleted since menu opened)
+                    if (!System.IO.File.Exists(file))
+                    {
+                        ShowErrorDialog("File Not Found", $"The file no longer exists:\n{file}");
+                        return;
+                    }
+
+                    var result = await _fileImportService.ImportDataAsync<System.Collections.Generic.Dictionary<string, object>>(file);
+                    HandleImportResult(file, result);
+                }
+                catch (System.IO.FileNotFoundException fnfEx)
+                {
+                    _logger?.LogWarning(fnfEx, "MRU file not found during import: {File}", file);
+                    ShowErrorDialog("File Not Found", $"The file could not be found:\n{file}");
+                }
+                catch (System.IO.IOException ioEx)
+                {
+                    _logger?.LogError(ioEx, "IO error importing MRU file: {File}", file);
+                    ShowErrorDialog("Import Error", $"Failed to read file:\n{file}\n\nError: {ioEx.Message}");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Unexpected error importing MRU file: {File}", file);
+                    ShowErrorDialog("Import Error", $"Failed to import file:\n{System.IO.Path.GetFileName(file)}\n\nError: {ex.Message}");
+                }
             };
             menu.DropDownItems.Add(item);
+        }
+
+        // Sync validated list back to _mruList if any files were removed
+        if (validFiles.Count != _mruList.Count)
+        {
+            _mruList.Clear();
+            _mruList.AddRange(validFiles);
+            _logger?.LogDebug("MRU list cleaned: {Removed} invalid entries removed", _mruList.Count - validFiles.Count);
         }
     }
 

@@ -175,6 +175,21 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
+            // If called from a non-UI thread, marshal the ShowPanel call to the UI thread without blocking.
+            if (_parentControl != null && _parentControl.InvokeRequired)
+            {
+                try
+                {
+                    _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // Log and continue on current thread if marshalling fails for any reason
+                    Logger.LogWarning(ex, "Failed to marshal ShowPanel to UI thread for panel {PanelName}", panelName);
+                }
+            }
+
             try
             {
                 Logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);

@@ -10,7 +10,7 @@ namespace WileyWidget.WinForms.Forms
 {
     public static class StatusBarFactory
     {
-        public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null)
+        public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null, bool useSyncfusionDocking = true)
         {
             // 1. Validation - Intake form and logger
             if (form == null) throw new ArgumentNullException(nameof(form));
@@ -29,9 +29,20 @@ namespace WileyWidget.WinForms.Forms
             statusBar.Spacing = new Size(2, 2);
 
             // 4. Features - SizingGrip and Border Styles
-            statusBar.SizingGrip = true;
-            statusBar.BorderSides = Border3DSide.Top;
-            statusBar.BorderStyle = BorderStyle.FixedSingle;
+            // CRITICAL: Disable SizingGrip when using Syncfusion docking to prevent layout conflicts
+            // (grip can interfere with panel resizing or cause visual glitches like overlapping borders)
+            statusBar.SizingGrip = !useSyncfusionDocking;
+            if (!useSyncfusionDocking)
+            {
+                logger?.LogDebug("StatusBar SizingGrip enabled (traditional WinForms mode)");
+            }
+            else
+            {
+                logger?.LogDebug("StatusBar SizingGrip disabled (Syncfusion docking mode prevents layout conflicts)");
+            }
+            // Use flat style for Office 2019 look - remove legacy 3D borders
+            statusBar.BorderStyle = BorderStyle.None;
+            // The theme manager will handle the top separator line
 
             var panels = new List<StatusBarAdvPanel>();
 
